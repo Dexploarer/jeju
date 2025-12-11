@@ -37,6 +37,19 @@ import PlayerTradeEscrowAbiJson from '../../abis/PlayerTradeEscrow.json';
 // Paymaster ABIs (ERC-4337 Account Abstraction)
 import SponsoredPaymasterAbiJson from '../../abis/SponsoredPaymaster.json';
 
+// Native token ABI
+import JejuTokenAbiJson from '../../abis/JejuToken.json';
+
+// Service ABIs
+import CreditManagerAbiJson from '../../abis/CreditManager.json';
+import MultiTokenPaymasterAbiJson from '../../abis/MultiTokenPaymaster.json';
+
+// Paymaster System ABIs
+import TokenRegistryAbiJson from '../../abis/TokenRegistry.json';
+import PaymasterFactoryAbiJson from '../../abis/PaymasterFactory.json';
+import LiquidityVaultAbiJson from '../../abis/LiquidityVault.json';
+import AppTokenPreferenceAbiJson from '../../abis/AppTokenPreference.json';
+
 import type { Abi } from 'viem';
 
 // Extract and type the ABIs
@@ -61,8 +74,21 @@ export const MockERC20Abi = MockERC20AbiJson.abi as Abi;
 export const MockAggregatorV3Abi = MockAggregatorV3AbiJson.abi as Abi;
 
 // Moderation ABIs
-export const BanManagerAbi = BanManagerAbiJson as Abi;
-export const ModerationMarketplaceAbi = ModerationMarketplaceAbiJson as Abi;
+export const BanManagerAbi = BanManagerAbiJson.abi as Abi;
+export const ModerationMarketplaceAbi = ModerationMarketplaceAbiJson.abi as Abi;
+
+// Native token ABI
+export const JejuTokenAbi = JejuTokenAbiJson.abi as Abi;
+
+// Service ABIs
+export const CreditManagerAbi = CreditManagerAbiJson.abi as Abi;
+export const MultiTokenPaymasterAbi = MultiTokenPaymasterAbiJson.abi as Abi;
+
+// Paymaster System ABIs
+export const TokenRegistryAbi = TokenRegistryAbiJson.abi as Abi;
+export const PaymasterFactoryAbi = PaymasterFactoryAbiJson.abi as Abi;
+export const LiquidityVaultAbi = LiquidityVaultAbiJson.abi as Abi;
+export const AppTokenPreferenceAbi = AppTokenPreferenceAbiJson.abi as Abi;
 
 // Game ABIs (Hyperscape / forkable game infrastructure)
 // Note: Games use the standard Jeju BanManager for moderation (see moderation/BanManager.sol)
@@ -82,6 +108,9 @@ export { OTCAbiJson, SimplePoolOracleAbiJson, RegistrationHelperAbiJson, MockERC
 export { BanManagerAbiJson, ModerationMarketplaceAbiJson };
 export { GoldAbiJson, ItemsAbiJson, GameIntegrationAbiJson, PlayerTradeEscrowAbiJson };
 export { SponsoredPaymasterAbiJson };
+export { JejuTokenAbiJson };
+export { CreditManagerAbiJson, MultiTokenPaymasterAbiJson };
+export { TokenRegistryAbiJson, PaymasterFactoryAbiJson, LiquidityVaultAbiJson, AppTokenPreferenceAbiJson };
 
 // Common ABI fragments for convenience
 export const ERC20ReadAbi = [

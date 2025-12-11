@@ -13,6 +13,7 @@ import type {
   IdentitySystemDeployment,
   PaymasterSystemDeployment,
   GameSystemDeployment,
+  XLPDeployment,
   ContractAddresses,
 } from './types';
 import { CHAIN_IDS, ZERO_ADDRESS, isValidAddress } from './types';
@@ -28,6 +29,10 @@ import localnetMultiToken from '../deployments/localnet/multi-token-system.json'
 import eilLocalnet from '../deployments/eil-localnet.json';
 import eilTestnet from '../deployments/eil-testnet.json';
 import gameSystem1337 from '../deployments/game-system-1337.json';
+import predimarket1337 from '../deployments/predimarket-1337.json';
+import rpgTokens1337 from '../deployments/rpg-tokens-1337.json';
+import elizaToken1337 from '../deployments/eliza-token-1337.json';
+import xlpAmmLocalnet from '../deployments/xlp-amm-localnet.json';
 
 // Combine localnet deployments for identity system
 const identitySystem1337 = localnetDeployment;
@@ -73,6 +78,11 @@ function filterNulls<T extends object>(obj: T): Partial<T> {
 export const gameSystemDeployments: Partial<Record<ChainId, GameSystemDeployment>> = {
   1337: filterNulls(gameSystem1337) as GameSystemDeployment,
   420691: filterNulls(gameSystem1337) as GameSystemDeployment,
+};
+
+export const xlpDeployments: Partial<Record<ChainId, XLPDeployment>> = {
+  1337: xlpAmmLocalnet as XLPDeployment,
+  420691: xlpAmmLocalnet as XLPDeployment,
 };
 
 // ============================================================================
@@ -166,6 +176,13 @@ export function getSponsoredPaymaster(chainId: ChainId): Address | undefined {
 }
 
 /**
+ * Get XLP AMM deployment for a chain
+ */
+export function getXLPDeployment(chainId: ChainId): XLPDeployment {
+  return xlpDeployments[chainId] ?? {};
+}
+
+/**
  * Get all contract addresses for a chain
  */
 export function getContractAddresses(chainId: ChainId): ContractAddresses {
@@ -253,6 +270,10 @@ export const rawDeployments = {
   eilLocalnet,
   eilTestnet,
   gameSystem1337,
+  predimarket1337,
+  rpgTokens1337,
+  elizaToken1337,
+  xlpAmmLocalnet,
 } as const;
 
 // Re-export types
@@ -263,6 +284,7 @@ export type {
   IdentitySystemDeployment,
   PaymasterSystemDeployment,
   GameSystemDeployment,
+  XLPDeployment,
   ContractAddresses,
 } from './types';
 

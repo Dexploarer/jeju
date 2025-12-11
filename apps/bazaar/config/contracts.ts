@@ -9,6 +9,7 @@ import {
   getGameItems,
   getGameIntegration,
   getPaymasterSystem,
+  getXLPDeployment,
   bazaarMarketplaceDeployments,
   erc20FactoryDeployments,
   gameSystemDeployments,
@@ -24,6 +25,14 @@ export interface V4Contracts {
   positionManager?: Address
   quoterV4?: Address
   stateView?: Address
+}
+
+export interface XLPContracts {
+  v2Factory?: Address
+  v3Factory?: Address
+  router?: Address
+  positionManager?: Address
+  weth?: Address
 }
 
 /**
@@ -144,4 +153,40 @@ export function getTokenFactoryContracts(chainId: number): TokenFactoryContracts
 export function hasTokenFactory(chainId: number): boolean {
   const contracts = getTokenFactoryContracts(chainId)
   return !!contracts?.erc20Factory && isValidAddress(contracts.erc20Factory)
+}
+
+// XLP AMM Contracts (V2 + V3) - loaded from deployments
+function buildXLPContracts(chainId: ChainId): XLPContracts {
+  const xlp = getXLPDeployment(chainId)
+  return {
+    v2Factory: xlp.v2Factory as Address | undefined,
+    v3Factory: xlp.v3Factory as Address | undefined,
+    router: xlp.router as Address | undefined,
+    positionManager: xlp.positionManager as Address | undefined,
+    weth: xlp.weth as Address | undefined,
+  }
+}
+
+export const XLP_CONTRACTS: Record<number, XLPContracts> = {
+  1337: buildXLPContracts(1337),
+  [JEJU_CHAIN_ID]: buildXLPContracts(420691),
+}
+
+export function getXLPContracts(chainId: number): XLPContracts | undefined {
+  return XLP_CONTRACTS[chainId]
+}
+
+export function hasXLPV2(chainId: number): boolean {
+  const contracts = getXLPContracts(chainId)
+  return !!contracts?.v2Factory && isValidAddress(contracts.v2Factory)
+}
+
+export function hasXLPV3(chainId: number): boolean {
+  const contracts = getXLPContracts(chainId)
+  return !!contracts?.v3Factory && isValidAddress(contracts.v3Factory)
+}
+
+export function hasXLPRouter(chainId: number): boolean {
+  const contracts = getXLPContracts(chainId)
+  return !!contracts?.router && isValidAddress(contracts.router)
 }

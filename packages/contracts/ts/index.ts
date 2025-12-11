@@ -50,6 +50,28 @@ export {
   IdentityRegistryAbi,
   ERC20ReadAbi,
   ERC20WriteAbi,
+  // Native token ABI
+  JejuTokenAbi,
+  JejuTokenAbiJson,
+  // Moderation ABIs
+  BanManagerAbi,
+  BanManagerAbiJson,
+  ModerationMarketplaceAbi,
+  ModerationMarketplaceAbiJson,
+  // Service ABIs (with JEJU support)
+  CreditManagerAbi,
+  CreditManagerAbiJson,
+  MultiTokenPaymasterAbi,
+  MultiTokenPaymasterAbiJson,
+  // Paymaster System ABIs
+  TokenRegistryAbi,
+  TokenRegistryAbiJson,
+  PaymasterFactoryAbi,
+  PaymasterFactoryAbiJson,
+  LiquidityVaultAbi,
+  LiquidityVaultAbiJson,
+  AppTokenPreferenceAbi,
+  AppTokenPreferenceAbiJson,
   // OIF (Open Intents Framework) ABIs
   InputSettlerAbi,
   OutputSettlerAbi,
@@ -95,11 +117,13 @@ export {
   identitySystemDeployments,
   paymasterDeployments,
   gameSystemDeployments,
+  xlpDeployments,
   // Helper functions
   getUniswapV4,
   getBazaarMarketplace,
   getERC20Factory,
   getIdentityRegistry,
+  getXLPDeployment,
   getContractAddresses,
   getContractAddressesByNetwork,
   // Game system helpers

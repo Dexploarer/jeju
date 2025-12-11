@@ -7,7 +7,7 @@
     "packages/*",
     "apps/*",
     "vendor/*",
-    "vendor/hyperscape/packages/*"
+    "vendor/*/packages/*"
   ],
   "overrides": {
     "@jejunetwork/contracts": "workspace:*",
@@ -28,6 +28,15 @@
     "cleanup": "bun run scripts/cleanup-processes.ts",
     "build": "bun run docs:generate && bun run scripts/build.ts",
     "test": "bun run scripts/test-all.ts",
+    "test:core": "bun run scripts/test-all.ts --phase=core",
+    "test:packages": "bun run scripts/test-all.ts --phase=packages",
+    "test:apps": "bun run scripts/test-all.ts --phase=apps",
+    "test:vendor": "bun run scripts/test-all.ts --phase=vendor",
+    "test:wallet": "bun run scripts/test-all.ts --wallet --phase=wallet",
+    "test:all": "bun run scripts/test-all.ts --wallet",
+    "test:help": "bun run scripts/test-all.ts --help",
+    "synpress:cache": "cd packages/tests && bun run synpress:cache",
+    "synpress:cache:clear": "rm -rf .synpress-cache",
     "clean": "bun run scripts/clean.ts",
     "localnet:start": "cd packages/deployment && bun run localnet:start",
     "localnet:stop": "cd packages/deployment && bun run localnet:stop",
@@ -50,7 +59,16 @@
     "oif:verify": "bun run scripts/verify-oif-deployment.ts",
     "testnet:check": "bun run scripts/check-testnet-readiness.ts",
     "testnet:keys": "bun run scripts/deploy/generate-operator-keys.ts",
-    "testnet:full": "bun run scripts/deploy/testnet-full.ts"
+    "testnet:full": "bun run scripts/deploy/testnet-full.ts",
+    "testnet:deployer": "bun run scripts/setup-testnet-deployer.ts",
+    "testnet:fund": "bun run scripts/fund-testnet-deployer.ts",
+    "testnet:bridge": "bun run scripts/fund-testnet-deployer.ts --bridge",
+    "testnet:accumulate": "bun run scripts/token-accumulator.ts",
+    "testnet:accumulate:watch": "bun run scripts/token-accumulator.ts --watch",
+    "apps:list": "bun run scripts/list-apps.ts",
+    "vendor:list": "bun run scripts/list-apps.ts",
+    "vendor:sync": "bun run scripts/setup-apps.ts",
+    "vendor:update": "bun run scripts/vendor-update.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.911.0",

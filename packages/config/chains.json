@@ -1,157 +1,255 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2025-12-09",
+  "description": "Multi-chain node infrastructure for EIL/OIF deployment. Contract addresses are in contracts.json.",
   
-  "testnet": {
-    "jeju": {
-      "chainId": 420690,
-      "name": "Jeju Testnet",
-      "rpcUrl": "https://testnet-rpc.jeju.network",
-      "wsUrl": "wss://testnet-ws.jeju.network",
-      "explorerUrl": "https://testnet-explorer.jeju.network",
-      "nativeCurrency": { "name": "Ether", "symbol": "ETH", "decimals": 18 },
-      "l1ChainId": 11155111,
-      "isL2": true,
-      "bridgeType": "optimism"
-    },
-    "sepolia": {
+  "testnets": {
+    "ethereum-sepolia": {
       "chainId": 11155111,
       "name": "Sepolia",
-      "rpcUrl": "https://ethereum-sepolia-rpc.publicnode.com",
-      "wsUrl": "wss://ethereum-sepolia-rpc.publicnode.com",
-      "explorerUrl": "https://sepolia.etherscan.io",
-      "nativeCurrency": { "name": "Ether", "symbol": "ETH", "decimals": 18 },
-      "isL1": true,
-      "faucet": "https://sepoliafaucet.com"
+      "type": "l1",
+      "stack": "ethereum",
+      "node": {
+        "execution": "geth",
+        "consensus": "lighthouse",
+        "image": {
+          "execution": "ethereum/client-go:v1.14.11",
+          "consensus": "sigp/lighthouse:v6.0.1"
+        },
+        "storage": { "execution": "300Gi", "consensus": "200Gi" },
+        "resources": { "cpu": "2000m", "memory": "8Gi" },
+        "syncTime": "24-48h"
+      },
+      "internal": {
+        "rpc": "http://geth-l1.l1.svc.cluster.local:8545",
+        "ws": "ws://geth-l1.l1.svc.cluster.local:8546"
+      }
     },
-    "baseSepolia": {
+    
+    "base-sepolia": {
       "chainId": 84532,
       "name": "Base Sepolia",
-      "rpcUrl": "https://sepolia.base.org",
-      "wsUrl": "wss://sepolia.base.org",
-      "explorerUrl": "https://sepolia.basescan.org",
-      "nativeCurrency": { "name": "Ether", "symbol": "ETH", "decimals": 18 },
+      "type": "l2",
+      "stack": "op-stack",
       "l1ChainId": 11155111,
-      "isL2": true,
-      "bridgeType": "optimism",
-      "faucet": "https://www.alchemy.com/faucets/base-sepolia"
+      "node": {
+        "execution": "op-geth",
+        "consensus": "op-node",
+        "image": {
+          "execution": "us-docker.pkg.dev/oplabs-tools-artifacts/images/op-geth:v1.101408.0",
+          "consensus": "us-docker.pkg.dev/oplabs-tools-artifacts/images/op-node:v1.9.4"
+        },
+        "storage": { "execution": "500Gi" },
+        "resources": { "cpu": "2000m", "memory": "8Gi" },
+        "syncTime": "4-8h",
+        "config": { "network": "base-sepolia" }
+      },
+      "internal": {
+        "rpc": "http://op-geth-base-sepolia.l2-base.svc.cluster.local:8545"
+      }
     },
-    "arbitrumSepolia": {
-      "chainId": 421614,
-      "name": "Arbitrum Sepolia",
-      "rpcUrl": "https://sepolia-rollup.arbitrum.io/rpc",
-      "wsUrl": "wss://sepolia-rollup.arbitrum.io/rpc",
-      "explorerUrl": "https://sepolia.arbiscan.io",
-      "nativeCurrency": { "name": "Ether", "symbol": "ETH", "decimals": 18 },
-      "l1ChainId": 11155111,
-      "isL2": true,
-      "bridgeType": "arbitrum",
-      "faucet": "https://faucet.quicknode.com/arbitrum/sepolia"
-    },
-    "optimismSepolia": {
+    
+    "optimism-sepolia": {
       "chainId": 11155420,
       "name": "Optimism Sepolia",
-      "rpcUrl": "https://sepolia.optimism.io",
-      "wsUrl": "wss://sepolia.optimism.io",
-      "explorerUrl": "https://sepolia-optimism.etherscan.io",
-      "nativeCurrency": { "name": "Ether", "symbol": "ETH", "decimals": 18 },
+      "type": "l2",
+      "stack": "op-stack",
       "l1ChainId": 11155111,
-      "isL2": true,
-      "bridgeType": "optimism",
-      "faucet": "https://www.alchemy.com/faucets/optimism-sepolia"
+      "node": {
+        "execution": "op-geth",
+        "consensus": "op-node",
+        "image": {
+          "execution": "us-docker.pkg.dev/oplabs-tools-artifacts/images/op-geth:v1.101408.0",
+          "consensus": "us-docker.pkg.dev/oplabs-tools-artifacts/images/op-node:v1.9.4"
+        },
+        "storage": { "execution": "500Gi" },
+        "resources": { "cpu": "2000m", "memory": "8Gi" },
+        "syncTime": "4-8h",
+        "config": { "network": "op-sepolia" }
+      },
+      "internal": {
+        "rpc": "http://op-geth-optimism-sepolia.l2-optimism.svc.cluster.local:8545"
+      }
     },
-    "bscTestnet": {
+    
+    "arbitrum-sepolia": {
+      "chainId": 421614,
+      "name": "Arbitrum Sepolia",
+      "type": "l2",
+      "stack": "nitro",
+      "l1ChainId": 11155111,
+      "node": {
+        "execution": "nitro",
+        "image": { "execution": "offchainlabs/nitro-node:v3.2.1-d81324d" },
+        "storage": { "execution": "500Gi" },
+        "resources": { "cpu": "4000m", "memory": "16Gi" },
+        "syncTime": "8-12h"
+      },
+      "internal": {
+        "rpc": "http://nitro-arbitrum-sepolia.l2-arbitrum.svc.cluster.local:8547"
+      }
+    },
+    
+    "bsc-testnet": {
       "chainId": 97,
       "name": "BSC Testnet",
-      "rpcUrl": "https://data-seed-prebsc-1-s1.bnbchain.org:8545",
-      "wsUrl": "wss://bsc-testnet-rpc.publicnode.com",
-      "explorerUrl": "https://testnet.bscscan.com",
-      "nativeCurrency": { "name": "BNB", "symbol": "BNB", "decimals": 18 },
-      "isL1": true,
-      "bridgeType": "native",
-      "faucet": "https://testnet.bnbchain.org/faucet-smart"
+      "type": "l1",
+      "stack": "bsc",
+      "node": {
+        "execution": "bsc-geth",
+        "image": { "execution": "ghcr.io/bnb-chain/bsc:v1.4.15" },
+        "storage": { "execution": "500Gi" },
+        "resources": { "cpu": "4000m", "memory": "16Gi" },
+        "syncTime": "12-24h"
+      },
+      "internal": {
+        "rpc": "http://bsc-geth-testnet.l1-bsc.svc.cluster.local:8545"
+      }
+    },
+    
+    "jeju-testnet": {
+      "chainId": 420690,
+      "name": "Jeju Testnet",
+      "type": "l2",
+      "stack": "op-stack",
+      "l1ChainId": 11155111,
+      "isOurs": true,
+      "node": {
+        "execution": "reth",
+        "consensus": "op-node",
+        "isSequencer": true,
+        "image": {
+          "execution": "ghcr.io/paradigmxyz/op-reth:latest",
+          "consensus": "us-docker.pkg.dev/oplabs-tools-artifacts/images/op-node:v1.9.4"
+        },
+        "storage": { "execution": "500Gi" },
+        "resources": { "cpu": "2000m", "memory": "8Gi" }
+      },
+      "internal": {
+        "rpc": "http://reth-sequencer.execution.svc.cluster.local:8545"
+      }
     }
   },
   
-  "mainnet": {
-    "jeju": {
-      "chainId": 420691,
-      "name": "Jeju",
-      "rpcUrl": "https://rpc.jeju.network",
-      "wsUrl": "wss://ws.jeju.network",
-      "explorerUrl": "https://explorer.jeju.network",
-      "nativeCurrency": { "name": "Ether", "symbol": "ETH", "decimals": 18 },
-      "l1ChainId": 1,
-      "isL2": true,
-      "bridgeType": "optimism"
-    },
-    "ethereum": {
+  "mainnets": {
+    "ethereum-mainnet": {
       "chainId": 1,
       "name": "Ethereum",
-      "rpcUrl": "https://eth.llamarpc.com",
-      "wsUrl": "wss://eth.llamarpc.com",
-      "explorerUrl": "https://etherscan.io",
-      "nativeCurrency": { "name": "Ether", "symbol": "ETH", "decimals": 18 },
-      "isL1": true
+      "type": "l1",
+      "stack": "ethereum",
+      "node": {
+        "execution": "geth",
+        "consensus": "lighthouse",
+        "image": {
+          "execution": "ethereum/client-go:v1.14.11",
+          "consensus": "sigp/lighthouse:v6.0.1"
+        },
+        "storage": { "execution": "2Ti", "consensus": "500Gi" },
+        "resources": { "cpu": "8000m", "memory": "32Gi" },
+        "syncTime": "48-72h"
+      },
+      "internal": {
+        "rpc": "http://geth-mainnet.l1.svc.cluster.local:8545"
+      }
     },
-    "base": {
+    
+    "base-mainnet": {
       "chainId": 8453,
       "name": "Base",
-      "rpcUrl": "https://mainnet.base.org",
-      "wsUrl": "wss://mainnet.base.org",
-      "explorerUrl": "https://basescan.org",
-      "nativeCurrency": { "name": "Ether", "symbol": "ETH", "decimals": 18 },
+      "type": "l2",
+      "stack": "op-stack",
       "l1ChainId": 1,
-      "isL2": true,
-      "bridgeType": "optimism"
+      "node": {
+        "execution": "op-geth",
+        "consensus": "op-node",
+        "image": {
+          "execution": "us-docker.pkg.dev/oplabs-tools-artifacts/images/op-geth:v1.101408.0",
+          "consensus": "us-docker.pkg.dev/oplabs-tools-artifacts/images/op-node:v1.9.4"
+        },
+        "storage": { "execution": "2Ti" },
+        "resources": { "cpu": "4000m", "memory": "16Gi" },
+        "syncTime": "24-48h"
+      },
+      "internal": {
+        "rpc": "http://op-geth-base.l2-base.svc.cluster.local:8545"
+      }
     },
-    "arbitrum": {
+    
+    "optimism-mainnet": {
+      "chainId": 10,
+      "name": "OP Mainnet",
+      "type": "l2",
+      "stack": "op-stack",
+      "l1ChainId": 1,
+      "node": {
+        "execution": "op-geth",
+        "consensus": "op-node",
+        "image": {
+          "execution": "us-docker.pkg.dev/oplabs-tools-artifacts/images/op-geth:v1.101408.0",
+          "consensus": "us-docker.pkg.dev/oplabs-tools-artifacts/images/op-node:v1.9.4"
+        },
+        "storage": { "execution": "2Ti" },
+        "resources": { "cpu": "4000m", "memory": "16Gi" },
+        "syncTime": "24-48h"
+      },
+      "internal": {
+        "rpc": "http://op-geth-optimism.l2-optimism.svc.cluster.local:8545"
+      }
+    },
+    
+    "arbitrum-one": {
       "chainId": 42161,
       "name": "Arbitrum One",
-      "rpcUrl": "https://arb1.arbitrum.io/rpc",
-      "wsUrl": "wss://arb1.arbitrum.io/rpc",
-      "explorerUrl": "https://arbiscan.io",
-      "nativeCurrency": { "name": "Ether", "symbol": "ETH", "decimals": 18 },
+      "type": "l2",
+      "stack": "nitro",
       "l1ChainId": 1,
-      "isL2": true,
-      "bridgeType": "arbitrum"
+      "node": {
+        "execution": "nitro",
+        "image": { "execution": "offchainlabs/nitro-node:v3.2.1-d81324d" },
+        "storage": { "execution": "4Ti" },
+        "resources": { "cpu": "8000m", "memory": "32Gi" },
+        "syncTime": "48-72h"
+      },
+      "internal": {
+        "rpc": "http://nitro-arbitrum.l2-arbitrum.svc.cluster.local:8547"
+      }
     },
-    "optimism": {
-      "chainId": 10,
-      "name": "Optimism",
-      "rpcUrl": "https://mainnet.optimism.io",
-      "wsUrl": "wss://mainnet.optimism.io",
-      "explorerUrl": "https://optimistic.etherscan.io",
-      "nativeCurrency": { "name": "Ether", "symbol": "ETH", "decimals": 18 },
-      "l1ChainId": 1,
-      "isL2": true,
-      "bridgeType": "optimism"
-    },
-    "bsc": {
+    
+    "bsc-mainnet": {
       "chainId": 56,
-      "name": "BNB Chain",
-      "rpcUrl": "https://bsc-dataseed.bnbchain.org",
-      "wsUrl": "wss://bsc-ws-node.nariox.org",
-      "explorerUrl": "https://bscscan.com",
-      "nativeCurrency": { "name": "BNB", "symbol": "BNB", "decimals": 18 },
-      "isL1": true,
-      "bridgeType": "native"
+      "name": "BNB Smart Chain",
+      "type": "l1",
+      "stack": "bsc",
+      "node": {
+        "execution": "bsc-geth",
+        "image": { "execution": "ghcr.io/bnb-chain/bsc:v1.4.15" },
+        "storage": { "execution": "3Ti" },
+        "resources": { "cpu": "8000m", "memory": "32Gi" },
+        "syncTime": "48-72h"
+      },
+      "internal": {
+        "rpc": "http://bsc-geth.l1-bsc.svc.cluster.local:8545"
+      }
+    },
+    
+    "jeju-mainnet": {
+      "chainId": 420691,
+      "name": "Jeju",
+      "type": "l2",
+      "stack": "op-stack",
+      "l1ChainId": 1,
+      "isOurs": true,
+      "node": {
+        "execution": "reth",
+        "consensus": "op-node",
+        "isSequencer": true
+      }
     }
   },
-  
-  "entryPoints": {
-    "v0.6": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
-    "v0.7": "0x0000000071727De22E5E9d8BAf0edAc6f37da032"
-  },
-  
-  "l2Precompiles": {
-    "L2CrossDomainMessenger": "0x4200000000000000000000000000000000000007",
-    "L2StandardBridge": "0x4200000000000000000000000000000000000010",
-    "L2ToL1MessagePasser": "0x4200000000000000000000000000000000000016",
-    "GasPriceOracle": "0x420000000000000000000000000000000000000F",
-    "L1Block": "0x4200000000000000000000000000000000000015",
-    "WETH": "0x4200000000000000000000000000000000000006"
+
+  "stacks": {
+    "ethereum": { "description": "Standard Ethereum L1", "components": ["geth", "lighthouse"] },
+    "op-stack": { "description": "Optimism Stack L2", "components": ["op-geth", "op-node"], "requiresL1": true },
+    "nitro": { "description": "Arbitrum Nitro L2", "components": ["nitro-node"], "requiresL1": true },
+    "bsc": { "description": "BNB Smart Chain", "components": ["bsc-geth"] }
   }
 }
-
-
