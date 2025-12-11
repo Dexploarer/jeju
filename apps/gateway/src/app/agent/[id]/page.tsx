@@ -1,14 +1,10 @@
-/**
- * Agent Profile Page
- * Shows complete agent information, reputation, bans, labels, reports
- */
-
 'use client';
 
 import { use } from 'react';
 import { useReadContract } from 'wagmi';
-import { Shield, AlertTriangle, Flag, Clock, TrendingUp } from 'lucide-react';
+import { Shield, AlertTriangle, Flag, Clock, TrendingUp, Github } from 'lucide-react';
 import ReputationViewer from '../../../components/moderation/ReputationViewer';
+import GitHubReputationPanel from '../../../components/GitHubReputationPanel';
 import { MODERATION_CONTRACTS } from '../../../config/moderation';
 
 interface PageProps {
@@ -179,6 +175,18 @@ export default function AgentProfilePage({ params }: PageProps) {
             Reputation & Moderation Status
           </h2>
           <ReputationViewer agentId={agentId} />
+        </div>
+
+        {/* GitHub Reputation Section */}
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <Github size={24} />
+            Developer Reputation
+          </h2>
+          <GitHubReputationPanel
+            agentId={agentId}
+            registryAddress={MODERATION_CONTRACTS.IdentityRegistry}
+          />
         </div>
 
         {/* Reports History */}

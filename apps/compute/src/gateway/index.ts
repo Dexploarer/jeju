@@ -29,6 +29,19 @@ import { cors } from 'hono/cors';
 import { Contract, JsonRpcProvider, Wallet, verifyMessage } from 'ethers';
 import net from 'node:net';
 import type { Context } from 'hono';
+import type { Address } from 'viem';
+import {
+  ContentModerator,
+  createContentModerator,
+  MemoryIncidentStorage,
+  SeverityEnum,
+  type ModerationIncident,
+} from '../compute/sdk/content-moderation';
+import {
+  createCloudBridge,
+  type CloudProviderBridge,
+  type CloudModelInfo,
+} from '../compute/sdk/cloud-integration';
 
 // ============================================================================
 // Types
@@ -45,6 +58,13 @@ interface GatewayConfig {
   privateKey?: string;
   gatewayName?: string;
   gatewayEndpoint?: string;
+  // Moderation
+  moderationEnabled?: boolean;
+  aiModerationEndpoint?: string;
+  aiModerationModel?: string;
+  // Cloud integration
+  cloudEndpoint?: string;
+  cloudApiKey?: string;
 }
 
 interface Provider {
@@ -91,11 +111,20 @@ const REGISTRY_ABI = [
 const RENTAL_ABI = [
   'function getRental(bytes32 rentalId) view returns (tuple(bytes32 rentalId, address user, address provider, uint8 status, uint256 startTime, uint256 endTime, uint256 totalCost, uint256 paidAmount, uint256 refundedAmount, string sshPublicKey, string containerImage, string startupScript, string sshHost, uint16 sshPort))',
   'function isRentalActive(bytes32 rentalId) view returns (bool)',
+  'function getUserRentals(address user) view returns (bytes32[])',
+  'function getProviderRentals(address provider) view returns (bytes32[])',
+  // Write functions
+  'function createRental(address provider, uint256 duration, string sshPublicKey, string containerImage, string startupScript) payable returns (bytes32)',
+  'function extendRental(bytes32 rentalId, uint256 additionalHours) payable',
+  'function cancelRental(bytes32 rentalId)',
+  'function rateRental(bytes32 rentalId, uint8 rating, string review)',
   // Reputation
   'function getProviderRecord(address provider) view returns (tuple(uint256 totalRentals, uint256 completedRentals, uint256 failedRentals, uint256 totalEarnings, uint256 avgRating, uint256 ratingCount, bool banned))',
   'function getUserRecord(address user) view returns (tuple(uint256 totalRentals, uint256 completedRentals, uint256 cancelledRentals, uint256 disputedRentals, uint256 abuseReports, bool banned, uint256 bannedAt, string banReason))',
   'function isUserBanned(address user) view returns (bool)',
   'function isProviderBanned(address provider) view returns (bool)',
+  // Pricing
+  'function calculateRentalCost(address provider, uint256 duration) view returns (uint256)',
 ];
 
 // ERC-8004 IdentityRegistry ABI (for gateway registration) - reserved for future use
@@ -146,6 +175,14 @@ export class ComputeGateway {
   private providerCache: Map<string, Provider> = new Map();
   private lastCacheRefresh = 0;
   private cacheRefreshInterval = 60_000;
+  
+  // Content moderation
+  private moderator: ContentModerator;
+  private moderationStorage: MemoryIncidentStorage;
+  private moderationEnabled: boolean;
+  
+  // Cloud integration
+  private cloudBridge: CloudProviderBridge | null = null;
 
   constructor(config: GatewayConfig) {
     this.config = config;
@@ -186,6 +223,34 @@ export class ComputeGateway {
         _REPUTATION_REGISTRY_ABI,
         signerOrProvider
       );
+    }
+
+    // Initialize content moderation
+    this.moderationEnabled = config.moderationEnabled ?? true;
+    this.moderationStorage = new MemoryIncidentStorage();
+    this.moderator = createContentModerator({
+      enableLocalFilter: true,
+      enableAIClassifier: !!config.aiModerationEndpoint,
+      aiClassifierEndpoint: config.aiModerationEndpoint,
+      aiClassifierModel: config.aiModerationModel || 'moderation',
+      recordIncidents: true,
+      minConfidenceToFlag: 70,
+      minConfidenceToBlock: 85,
+      onIncident: async (incident: ModerationIncident) => {
+        await this.moderationStorage.save(incident);
+        if (incident.highestSeverity >= SeverityEnum.HIGH) {
+          console.warn(`[Gateway Moderation] High severity incident: ${incident.id}`);
+        }
+      },
+    });
+
+    // Initialize cloud bridge if endpoint configured
+    if (config.cloudEndpoint) {
+      this.cloudBridge = createCloudBridge({
+        cloudEndpoint: config.cloudEndpoint,
+        cloudApiKey: config.cloudApiKey,
+        rpcUrl: config.rpcUrl,
+      });
     }
 
     this.setupRoutes();
@@ -400,7 +465,245 @@ export class ComputeGateway {
       });
     });
 
-    // ========== Rental Routes ==========
+    // ========== Rental Management ==========
+
+    // List user's rentals
+    this.app.get('/v1/rentals', async (c: Context) => {
+      const userAddress = c.req.query('user');
+      if (!userAddress) {
+        return c.json({ error: 'User address required' }, 400);
+      }
+
+      const rentalIds = await this.rental.getUserRentals(userAddress);
+      const rentals = [];
+
+      for (const rentalId of rentalIds) {
+        const rental = await this.rental.getRental(rentalId);
+        if (rental) {
+          const provider = await this.getProvider(rental.provider);
+          rentals.push({
+            rentalId: rental.rentalId,
+            user: rental.user,
+            provider: rental.provider,
+            providerName: provider?.name || 'Unknown',
+            status: this.rentalStatusToString(rental.status),
+            startTime: Number(rental.startTime) * 1000,
+            endTime: Number(rental.endTime) * 1000,
+            totalCost: rental.totalCost.toString(),
+            paidAmount: rental.paidAmount.toString(),
+            sshHost: rental.sshHost,
+            sshPort: Number(rental.sshPort),
+            containerImage: rental.containerImage,
+          });
+        }
+      }
+
+      return c.json({ rentals });
+    });
+
+    // Get rental quote
+    this.app.get('/v1/rentals/quote', async (c: Context) => {
+      const provider = c.req.query('provider');
+      const duration = c.req.query('duration');
+      
+      if (!provider || !duration) {
+        return c.json({ error: 'Provider and duration required' }, 400);
+      }
+
+      const cost = await this.rental.calculateRentalCost(provider, duration);
+      const providerInfo = await this.getProvider(provider);
+
+      return c.json({
+        provider,
+        providerName: providerInfo?.name || 'Unknown',
+        durationHours: Number(duration),
+        totalCostWei: cost.toString(),
+        totalCostEth: (Number(cost) / 1e18).toFixed(6),
+      });
+    });
+
+    // Create rental
+    this.app.post('/v1/rentals', async (c: Context) => {
+      const authResult = await this.verifyAuth(c);
+      if (!authResult.valid) {
+        return c.json({ error: authResult.reason }, 401);
+      }
+
+      const body = await c.req.json<{
+        provider: string;
+        duration: number;
+        sshPublicKey: string;
+        containerImage?: string;
+        startupScript?: string;
+      }>();
+
+      // Verify provider is active
+      const provider = await this.getProvider(body.provider);
+      if (!provider || !provider.active) {
+        return c.json({ error: 'Provider not found or inactive' }, 400);
+      }
+
+      // Check user is not banned
+      const userRep = await this.checkReputation(authResult.address!, 'user');
+      if (userRep.banned) {
+        return c.json({ error: 'User is banned' }, 403);
+      }
+
+      // Calculate cost
+      const cost = await this.rental.calculateRentalCost(body.provider, body.duration);
+
+      // Return transaction data for frontend to execute
+      return c.json({
+        success: true,
+        transaction: {
+          to: this.config.rentalAddress,
+          value: cost.toString(),
+          data: this.rental.interface.encodeFunctionData('createRental', [
+            body.provider,
+            body.duration,
+            body.sshPublicKey,
+            body.containerImage || '',
+            body.startupScript || '',
+          ]),
+        },
+        estimatedCost: cost.toString(),
+        provider: body.provider,
+        duration: body.duration,
+      });
+    });
+
+    // Get specific rental
+    this.app.get('/v1/rentals/:rentalId', async (c: Context) => {
+      const rentalId = c.req.param('rentalId');
+      const rental = await this.rental.getRental(rentalId);
+
+      if (!rental || rental.rentalId === '0x0000000000000000000000000000000000000000000000000000000000000000') {
+        return c.json({ error: 'Rental not found' }, 404);
+      }
+
+      const provider = await this.getProvider(rental.provider);
+
+      return c.json({
+        rentalId: rental.rentalId,
+        user: rental.user,
+        provider: rental.provider,
+        providerName: provider?.name || 'Unknown',
+        status: this.rentalStatusToString(rental.status),
+        startTime: Number(rental.startTime) * 1000,
+        endTime: Number(rental.endTime) * 1000,
+        totalCost: rental.totalCost.toString(),
+        paidAmount: rental.paidAmount.toString(),
+        refundedAmount: rental.refundedAmount.toString(),
+        sshPublicKey: rental.sshPublicKey,
+        containerImage: rental.containerImage,
+        startupScript: rental.startupScript,
+        sshHost: rental.sshHost,
+        sshPort: Number(rental.sshPort),
+      });
+    });
+
+    // Extend rental
+    this.app.post('/v1/rentals/:rentalId/extend', async (c: Context) => {
+      const authResult = await this.verifyAuth(c);
+      if (!authResult.valid) {
+        return c.json({ error: authResult.reason }, 401);
+      }
+
+      const rentalId = c.req.param('rentalId');
+      const body = await c.req.json<{ additionalHours: number }>();
+
+      const rental = await this.rental.getRental(rentalId);
+      if (!rental || rental.user.toLowerCase() !== authResult.address!.toLowerCase()) {
+        return c.json({ error: 'Rental not found or not owned by user' }, 404);
+      }
+
+      if (rental.status !== 1) { // ACTIVE
+        return c.json({ error: 'Rental is not active' }, 400);
+      }
+
+      const extensionCost = await this.rental.calculateRentalCost(rental.provider, body.additionalHours);
+
+      return c.json({
+        success: true,
+        transaction: {
+          to: this.config.rentalAddress,
+          value: extensionCost.toString(),
+          data: this.rental.interface.encodeFunctionData('extendRental', [
+            rentalId,
+            body.additionalHours,
+          ]),
+        },
+        estimatedCost: extensionCost.toString(),
+        additionalHours: body.additionalHours,
+      });
+    });
+
+    // Cancel rental
+    this.app.post('/v1/rentals/:rentalId/cancel', async (c: Context) => {
+      const authResult = await this.verifyAuth(c);
+      if (!authResult.valid) {
+        return c.json({ error: authResult.reason }, 401);
+      }
+
+      const rentalId = c.req.param('rentalId');
+      const rental = await this.rental.getRental(rentalId);
+
+      if (!rental || rental.user.toLowerCase() !== authResult.address!.toLowerCase()) {
+        return c.json({ error: 'Rental not found or not owned by user' }, 404);
+      }
+
+      if (rental.status !== 1) { // ACTIVE
+        return c.json({ error: 'Rental is not active' }, 400);
+      }
+
+      return c.json({
+        success: true,
+        transaction: {
+          to: this.config.rentalAddress,
+          value: '0',
+          data: this.rental.interface.encodeFunctionData('cancelRental', [rentalId]),
+        },
+      });
+    });
+
+    // Rate rental
+    this.app.post('/v1/rentals/:rentalId/rate', async (c: Context) => {
+      const authResult = await this.verifyAuth(c);
+      if (!authResult.valid) {
+        return c.json({ error: authResult.reason }, 401);
+      }
+
+      const rentalId = c.req.param('rentalId');
+      const body = await c.req.json<{ rating: number; review?: string }>();
+
+      if (body.rating < 1 || body.rating > 5) {
+        return c.json({ error: 'Rating must be between 1 and 5' }, 400);
+      }
+
+      const rental = await this.rental.getRental(rentalId);
+      if (!rental || rental.user.toLowerCase() !== authResult.address!.toLowerCase()) {
+        return c.json({ error: 'Rental not found or not owned by user' }, 404);
+      }
+
+      if (rental.status !== 2) { // COMPLETED
+        return c.json({ error: 'Can only rate completed rentals' }, 400);
+      }
+
+      return c.json({
+        success: true,
+        transaction: {
+          to: this.config.rentalAddress,
+          value: '0',
+          data: this.rental.interface.encodeFunctionData('rateRental', [
+            rentalId,
+            body.rating,
+            body.review || '',
+          ]),
+        },
+      });
+    });
+
+    // ========== Proxy Route Management ==========
 
     // Create proxy route for a rental
     this.app.post('/v1/routes', async (c: Context) => {
@@ -504,7 +807,7 @@ export class ComputeGateway {
 
     // ========== Proxy Endpoints ==========
 
-    // Proxy HTTP request to provider
+    // Proxy HTTP request to provider (with content moderation)
     this.app.all('/v1/proxy/:provider/*', async (c: Context) => {
       const providerAddress = c.req.param('provider');
       const provider = await this.getProvider(providerAddress);
@@ -518,7 +821,73 @@ export class ComputeGateway {
       const proxyPath = fullPath.split('/').slice(4).join('/');
       const targetUrl = `${provider.endpoint}/${proxyPath}`;
 
-      // Forward request
+      // Content moderation for inference requests
+      const userAddress = c.req.header('x-jeju-address') as Address | undefined;
+      if (this.moderationEnabled && proxyPath.includes('chat/completions')) {
+        const bodyClone = await c.req.text();
+        
+        // Parse request to extract messages (skip moderation if invalid JSON)
+        let parsedBody: { messages?: Array<{ content: string }>; model?: string } | null = null;
+        try {
+          parsedBody = JSON.parse(bodyClone) as { 
+            messages?: Array<{ content: string }>;
+            model?: string;
+          };
+        } catch {
+          // Invalid JSON - let the provider handle the error
+          parsedBody = null;
+        }
+        
+        if (parsedBody?.messages) {
+          const content = parsedBody.messages.map(m => m.content).join('\n');
+          const moderationResult = await this.moderator.moderate(content, {
+            userAddress: userAddress ?? '0x0000000000000000000000000000000000000000' as Address,
+            providerAddress: providerAddress as Address,
+            modelId: parsedBody.model || 'unknown',
+            requestType: 'inference',
+          });
+          
+          if (!moderationResult.allowed) {
+            const categories = moderationResult.flags.map(f => 
+              ContentModerator.getCategoryName(f.category)
+            ).join(', ');
+            
+            return c.json({
+              error: {
+                message: `Content blocked by moderation policy: ${categories}`,
+                code: 'content_policy_violation',
+                incidentId: moderationResult.incidentId,
+              }
+            }, 400);
+          }
+        }
+
+        // Forward request (body already read)
+        const headers: Record<string, string> = {};
+        for (const [key, value] of c.req.raw.headers) {
+          if (!['host', 'connection'].includes(key.toLowerCase())) {
+            headers[key] = value;
+          }
+        }
+
+        const response = await fetch(targetUrl, {
+          method: c.req.method,
+          headers,
+          body: bodyClone,
+        });
+
+        const responseHeaders: Record<string, string> = {};
+        response.headers.forEach((value, key) => {
+          responseHeaders[key] = value;
+        });
+
+        return new Response(response.body, {
+          status: response.status,
+          headers: responseHeaders,
+        });
+      }
+
+      // Forward request without moderation for non-inference endpoints
       const headers: Record<string, string> = {};
       for (const [key, value] of c.req.raw.headers) {
         if (!['host', 'connection'].includes(key.toLowerCase())) {
@@ -557,6 +926,181 @@ export class ComputeGateway {
         totalBytesOut: Array.from(this.sessions.values()).reduce((sum, s) => sum + s.bytesOut, 0),
       });
     });
+    
+    // ========== Moderation Endpoints ==========
+    
+    // Get moderation incidents
+    this.app.get('/v1/moderation/incidents', async (c: Context) => {
+      const limit = parseInt(c.req.query('limit') || '100', 10);
+      const incidents = await this.moderationStorage.getUnreviewed(limit);
+      return c.json({ incidents, count: incidents.length });
+    });
+    
+    // Get moderation stats
+    this.app.get('/v1/moderation/stats', (c: Context) => {
+      return c.json({
+        enabled: this.moderationEnabled,
+        incidentCount: this.moderationStorage.size(),
+      });
+    });
+    
+    // ========== Model Discovery (Cloud Integration) ==========
+    
+    // List available models from cloud and decentralized providers
+    this.app.get('/v1/models', async (c: Context) => {
+      const modelType = c.req.query('type'); // llm, image, video, audio, embedding
+      const source = c.req.query('source'); // cloud, decentralized, all
+      
+      const models: Array<{
+        id: string;
+        name: string;
+        provider: string;
+        type: string;
+        source: 'cloud' | 'decentralized';
+        capabilities?: string[];
+        contextWindow?: number;
+        pricing?: { inputPerMillion?: number; outputPerMillion?: number };
+      }> = [];
+      
+      // Get cloud models
+      if (this.cloudBridge && (source === 'cloud' || source === 'all' || !source)) {
+        await this.cloudBridge.initialize();
+        const cloudModels = await this.cloudBridge.discoverModels(
+          modelType ? { modelType: this.parseModelType(modelType) } : undefined
+        );
+        
+        for (const result of cloudModels) {
+          models.push({
+            id: result.model.modelId,
+            name: result.model.name,
+            provider: result.model.creator.name,
+            type: this.modelTypeToString(result.model.modelType),
+            source: 'cloud',
+            capabilities: this.capabilitiesToStrings(result.model.capabilities),
+            contextWindow: result.model.contextWindow,
+            pricing: {
+              inputPerMillion: Number(result.model.pricing.pricePerInputToken) / 1e12,
+              outputPerMillion: Number(result.model.pricing.pricePerOutputToken) / 1e12,
+            },
+          });
+        }
+      }
+      
+      return c.json({
+        models,
+        count: models.length,
+        cloudEnabled: !!this.cloudBridge,
+      });
+    });
+    
+    // Get cloud status
+    this.app.get('/v1/cloud/status', async (c: Context) => {
+      if (!this.cloudBridge) {
+        return c.json({
+          enabled: false,
+          endpoint: null,
+          modelCount: 0,
+          skillCount: 0,
+        });
+      }
+      
+      const status = await this.cloudBridge.getStatus();
+      return c.json({
+        enabled: true,
+        ...status,
+      });
+    });
+    
+    // List cloud A2A skills
+    this.app.get('/v1/cloud/skills', (c: Context) => {
+      if (!this.cloudBridge) {
+        return c.json({ skills: [], count: 0 });
+      }
+      
+      const skills = this.cloudBridge.getAvailableSkills();
+      return c.json({ skills, count: skills.length });
+    });
+    
+    // Proxy inference to cloud
+    this.app.post('/v1/cloud/inference', async (c: Context) => {
+      if (!this.cloudBridge) {
+        return c.json({ error: 'Cloud integration not enabled' }, 503);
+      }
+      
+      const body = await c.req.json<{
+        model: string;
+        messages: Array<{ role: string; content: string }>;
+        temperature?: number;
+        max_tokens?: number;
+      }>();
+      
+      const result = await this.cloudBridge.inference(
+        body.model,
+        body.messages,
+        {
+          temperature: body.temperature,
+          maxTokens: body.max_tokens,
+        }
+      );
+      
+      return c.json(result);
+    });
+    
+    // Execute A2A skill on cloud
+    this.app.post('/v1/cloud/skills/:skillId', async (c: Context) => {
+      if (!this.cloudBridge) {
+        return c.json({ error: 'Cloud integration not enabled' }, 503);
+      }
+      
+      const skillId = c.req.param('skillId');
+      const body = await c.req.json<{ input: string | Record<string, unknown> }>();
+      
+      const result = await this.cloudBridge.executeSkill(skillId, body.input);
+      return c.json({ result });
+    });
+  }
+  
+  // Helper to parse model type from query
+  private parseModelType(type: string): number {
+    const types: Record<string, number> = {
+      llm: 0,
+      image: 1,
+      video: 2,
+      audio: 3,
+      speech_to_text: 4,
+      text_to_speech: 5,
+      embedding: 6,
+      multimodal: 7,
+    };
+    return types[type.toLowerCase()] ?? 0;
+  }
+  
+  // Helper to convert model type to string
+  private modelTypeToString(type: number): string {
+    const types = ['llm', 'image', 'video', 'audio', 'speech_to_text', 'text_to_speech', 'embedding', 'multimodal'];
+    return types[type] ?? 'unknown';
+  }
+  
+  // Helper to convert capability bitmask to strings
+  private capabilitiesToStrings(caps: number): string[] {
+    const result: string[] = [];
+    if (caps & 1) result.push('text_generation');
+    if (caps & 2) result.push('code_generation');
+    if (caps & 4) result.push('vision');
+    if (caps & 8) result.push('function_calling');
+    if (caps & 16) result.push('streaming');
+    if (caps & 32) result.push('embeddings');
+    if (caps & 64) result.push('long_context');
+    if (caps & 128) result.push('reasoning');
+    if (caps & 256) result.push('image_generation');
+    if (caps & 512) result.push('image_editing');
+    if (caps & 1024) result.push('speech_to_text');
+    if (caps & 2048) result.push('text_to_speech');
+    if (caps & 4096) result.push('audio_generation');
+    if (caps & 8192) result.push('video_generation');
+    if (caps & 16384) result.push('video_analysis');
+    if (caps & 32768) result.push('multimodal');
+    return result;
   }
 
   /**
@@ -674,6 +1218,14 @@ export class ComputeGateway {
         if (sessionId) this.sessions.delete(sessionId);
       });
     });
+  }
+
+  /**
+   * Convert rental status number to string
+   */
+  private rentalStatusToString(status: number): string {
+    const statuses = ['PENDING', 'ACTIVE', 'COMPLETED', 'CANCELLED', 'DISPUTED'];
+    return statuses[status] || 'UNKNOWN';
   }
 
   /**
@@ -812,6 +1364,13 @@ export async function startComputeGateway(): Promise<ComputeGateway> {
     privateKey: process.env.PRIVATE_KEY,
     gatewayName: process.env.GATEWAY_NAME || 'Jeju Compute Gateway',
     gatewayEndpoint: process.env.GATEWAY_ENDPOINT,
+    // Moderation config
+    moderationEnabled: process.env.MODERATION_ENABLED !== 'false',
+    aiModerationEndpoint: process.env.AI_MODERATION_ENDPOINT,
+    aiModerationModel: process.env.AI_MODERATION_MODEL,
+    // Cloud integration config
+    cloudEndpoint: process.env.CLOUD_ENDPOINT || process.env.NEXT_PUBLIC_APP_URL,
+    cloudApiKey: process.env.CLOUD_API_KEY,
   };
 
   const gateway = new ComputeGateway(config);

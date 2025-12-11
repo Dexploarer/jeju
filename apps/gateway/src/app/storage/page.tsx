@@ -1,16 +1,13 @@
-/**
- * Gateway Storage Manager
- * Manage IPFS file storage, payments, and pinning
- */
-
 'use client';
 
 import { useState } from 'react';
 import { useAccount, useReadContract } from 'wagmi';
 import { Upload, Folder, DollarSign, Clock, HardDrive } from 'lucide-react';
+import { IPFS_API_URL, CONTRACTS } from '../../config';
 
-const FILE_STORAGE_MANAGER_ADDRESS = process.env.NEXT_PUBLIC_FILE_STORAGE_MANAGER_ADDRESS as `0x${string}`;
-const JEJU_IPFS_API = process.env.NEXT_PUBLIC_JEJU_IPFS_API || 'http://localhost:3100';
+// Client-side config from centralized config
+const FILE_STORAGE_MANAGER_ADDRESS = CONTRACTS.fileStorageManager || '0x0B306BF915C4d645ff596e518fAf3F9669b97016' as const;
+const JEJU_IPFS_API = IPFS_API_URL;
 
 const FILE_STORAGE_ABI = [
   {
@@ -129,9 +126,6 @@ export default function StorageManagerPage() {
   );
 }
 
-/**
- * Upload Section
- */
 function UploadSection() {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -266,9 +260,6 @@ function UploadSection() {
   );
 }
 
-/**
- * Files Section
- */
 function FilesSection({ fileCIDs }: { fileCIDs: readonly `0x${string}`[] }) {
   if (fileCIDs.length === 0) {
     return (
@@ -288,9 +279,6 @@ function FilesSection({ fileCIDs }: { fileCIDs: readonly `0x${string}`[] }) {
   );
 }
 
-/**
- * Individual File Card
- */
 function FileCard({ cidBytes }: { cidBytes: `0x${string}` }) {
   const { data: fileData } = useReadContract({
     address: FILE_STORAGE_MANAGER_ADDRESS,
@@ -339,9 +327,6 @@ function FileCard({ cidBytes }: { cidBytes: `0x${string}` }) {
   );
 }
 
-/**
- * Funding Section
- */
 function FundingSection() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">

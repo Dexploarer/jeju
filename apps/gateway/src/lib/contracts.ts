@@ -1,21 +1,8 @@
-/**
- * Gateway contract ABIs and addresses
- * 
- * Provides minimal ABI definitions needed for frontend interactions with:
- * - Token Registry
- * - Paymaster Factory
- * - Liquidity Vaults
- * - ERC20 tokens
- * 
- * @module gateway/lib/contracts
- */
+import type { Address } from 'viem';
 
-import { Address } from 'viem';
+// Canonical zero address constant
+export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as Address;
 
-/**
- * Token Registry contract ABI
- * Handles token registration and configuration
- */
 export const TOKEN_REGISTRY_ABI = [
   {
     type: 'function',
@@ -72,10 +59,6 @@ export const TOKEN_REGISTRY_ABI = [
   }
 ] as const;
 
-/**
- * Paymaster Factory contract ABI
- * Deploys and manages paymaster infrastructure
- */
 export const PAYMASTER_FACTORY_ABI = [
   {
     type: 'function',
@@ -122,10 +105,6 @@ export const PAYMASTER_FACTORY_ABI = [
   }
 ] as const;
 
-/**
- * Liquidity Vault contract ABI
- * Manages ETH and token liquidity for paymasters
- */
 export const LIQUIDITY_VAULT_ABI = [
   {
     type: 'function',
@@ -163,9 +142,44 @@ export const LIQUIDITY_VAULT_ABI = [
   }
 ] as const;
 
-/**
- * Standard ERC20 token ABI
- */
+export const JEJU_TOKEN_ABI = [
+  {
+    type: 'function',
+    name: 'isBanned',
+    inputs: [{ name: 'account', type: 'address' }],
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'view'
+  },
+  {
+    type: 'function',
+    name: 'banEnforcementEnabled',
+    inputs: [],
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'view'
+  },
+  {
+    type: 'function',
+    name: 'faucet',
+    inputs: [],
+    outputs: [],
+    stateMutability: 'nonpayable'
+  },
+  {
+    type: 'function',
+    name: 'faucetCooldownRemaining',
+    inputs: [{ name: 'account', type: 'address' }],
+    outputs: [{ type: 'uint256' }],
+    stateMutability: 'view'
+  },
+  {
+    type: 'function',
+    name: 'faucetEnabled',
+    inputs: [],
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'view'
+  },
+] as const;
+
 export const IERC20_ABI = [
   {
     type: 'function',
@@ -195,18 +209,3 @@ export const IERC20_ABI = [
     stateMutability: 'nonpayable'
   }
 ] as const;
-
-/**
- * Get deployed contract addresses from environment
- * 
- * @returns Contract addresses for token registry, paymaster factory, and price oracle
- */
-export const getContractAddresses = (): {
-  tokenRegistry: Address;
-  paymasterFactory: Address;
-  priceOracle: Address;
-} => ({
-  tokenRegistry: (import.meta.env.VITE_TOKEN_REGISTRY_ADDRESS || '0x0000000000000000000000000000000000000000') as Address,
-  paymasterFactory: (import.meta.env.VITE_PAYMASTER_FACTORY_ADDRESS || '0x0000000000000000000000000000000000000000') as Address,
-  priceOracle: (import.meta.env.VITE_PRICE_ORACLE_ADDRESS || '0x0000000000000000000000000000000000000000') as Address,
-});

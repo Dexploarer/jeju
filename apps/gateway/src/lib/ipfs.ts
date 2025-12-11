@@ -1,20 +1,14 @@
-/**
- * Jeju IPFS Client
- * Uses LOCAL Jeju IPFS infrastructure (no Pinata/external services)
- */
+import { IPFS_API_URL, IPFS_GATEWAY_URL } from '../config';
 
-const JEJU_IPFS_API = process.env.NEXT_PUBLIC_JEJU_IPFS_API || 'http://localhost:3100';
-const JEJU_IPFS_GATEWAY = process.env.NEXT_PUBLIC_JEJU_IPFS_GATEWAY || 'http://localhost:3100';
+// IPFS client for both client and server contexts
+const getIpfsApi = () => IPFS_API_URL;
+const getIpfsGateway = () => IPFS_GATEWAY_URL;
 
-/**
- * Upload file to Jeju IPFS (local nodes, x402 payments)
- * @returns Real IPFS CID hash
- */
 export async function uploadToIPFS(file: File): Promise<string> {
   const formData = new FormData();
   formData.append('file', file);
   
-  const response = await fetch(`${JEJU_IPFS_API}/upload`, {
+  const response = await fetch(`${getIpfsApi()}/upload`, {
     method: 'POST',
     headers: {
       'X-Duration-Months': '1',
@@ -30,16 +24,14 @@ export async function uploadToIPFS(file: File): Promise<string> {
     throw new Error(`Upload failed: ${response.statusText}`);
   }
 
-  const { cid } = await response.json();
+  const { cid } = await response.json() as { cid: string };
   return cid;
 }
 
-/** Get IPFS gateway URL for viewing */
 export function getIPFSUrl(hash: string): string {
-  return `${JEJU_IPFS_GATEWAY}/ipfs/${hash}`;
+  return `${getIpfsGateway()}/ipfs/${hash}`;
 }
 
-/** Retrieve file from IPFS */
 export async function retrieveFromIPFS(hash: string): Promise<Blob> {
   const response = await fetch(getIPFSUrl(hash));
   
@@ -50,10 +42,8 @@ export async function retrieveFromIPFS(hash: string): Promise<Blob> {
   return await response.blob();
 }
 
-/** Check if file exists in IPFS */
 export async function fileExists(cid: string): Promise<boolean> {
-  const response = await fetch(`${JEJU_IPFS_API}/pins?cid=${cid}`);
-  const { count } = await response.json();
+  const response = await fetch(`${getIpfsApi()}/pins?cid=${cid}`);
+  const { count } = await response.json() as { count: number };
   return count > 0;
 }
-

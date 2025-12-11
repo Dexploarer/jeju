@@ -86,17 +86,23 @@ vendor/*
 # Misc
 .cache/
 .cache-synpress/
+.synpress-cache/
 vendor/
 vendor_examples/
 playwright-report/
-test-results
+test-results/
 *.backup
 *.bak
 **/__pycache__/
 **/*.cpython-314.pyc
 
+# Private keys - NEVER commit
 cache/packages/deployment/.keys/
+packages/deployment/.keys/
 
 # Root-owned build artifacts (delete with sudo rm -rf)
 packages/contracts/out-root-owned/
 packages/contracts/cache-root-owned/
+
+# Generated documentation
+docs/

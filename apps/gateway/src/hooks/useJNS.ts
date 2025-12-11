@@ -1,22 +1,13 @@
-/**
- * JNS (Jeju Name Service) React Hooks
- * 
- * Provides hooks for:
- * - Name registration and management
- * - Name resolution
- * - Reverse resolution
- * - Price quotes
- */
-
 import { useState, useCallback } from 'react';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { type Address, type Hash, namehash } from 'viem';
+import { CONTRACTS, INDEXER_URL } from '../config';
 
-// Contract addresses (loaded from environment or deployment)
-const JNS_REGISTRY = import.meta.env.VITE_JNS_REGISTRY as Address || '0x0000000000000000000000000000000000000000';
-const JNS_RESOLVER = import.meta.env.VITE_JNS_RESOLVER as Address || '0x0000000000000000000000000000000000000000';
-const JNS_REGISTRAR = import.meta.env.VITE_JNS_REGISTRAR as Address || '0x0000000000000000000000000000000000000000';
-const JNS_REVERSE_REGISTRAR = import.meta.env.VITE_JNS_REVERSE_REGISTRAR as Address || '0x0000000000000000000000000000000000000000';
+// Contract addresses from centralized config
+const JNS_REGISTRY = CONTRACTS.jnsRegistry;
+const JNS_RESOLVER = CONTRACTS.jnsResolver;
+const JNS_REGISTRAR = CONTRACTS.jnsRegistrar;
+const JNS_REVERSE_REGISTRAR = CONTRACTS.jnsReverseRegistrar;
 
 // Contract ABIs
 const JNS_REGISTRAR_ABI = [
@@ -209,8 +200,6 @@ const JNS_REVERSE_REGISTRAR_ABI = [
   },
 ] as const;
 
-// ============ Types ============
-
 export interface JNSRegistration {
   name: string;
   owner: Address;
@@ -242,11 +231,6 @@ export interface JNSResolverData {
   appInfo: JNSAppInfo;
 }
 
-// ============ Hooks ============
-
-/**
- * Hook for checking name availability and getting price quotes
- */
 export function useJNSLookup() {
   const publicClient = usePublicClient();
   const { address } = useAccount();
@@ -340,16 +324,51 @@ export function useJNSLookup() {
     };
   }, [publicClient]);
 
+  const getOwnerNames = useCallback(async (ownerAddress: Address): Promise<JNSRegistration[]> => {
+    if (JNS_REGISTRAR === '0x0000000000000000000000000000000000000000') {
+      return [];
+    }
+
+    const query = `
+      query OwnerNames($owner: String!) {
+        jnsNames(where: { owner_eq: $owner }) {
+          name
+          owner
+          expiresAt
+        }
+      }
+    `;
+
+    const response = await fetch(INDEXER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, variables: { owner: ownerAddress.toLowerCase() } }),
+    });
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const { data } = await response.json();
+    const names = data?.jnsNames || [];
+
+    return names.map((n: { name: string; owner: string; expiresAt: string }) => ({
+      name: n.name,
+      owner: n.owner as Address,
+      expiresAt: parseInt(n.expiresAt),
+      inGracePeriod: false,
+      isAvailable: false,
+    }));
+  }, []);
+
   return {
     checkAvailability,
     getPrice,
     getRegistration,
+    getOwnerNames,
   };
 }
 
-/**
- * Hook for registering and managing names
- */
 export function useJNSRegister() {
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
@@ -439,9 +458,6 @@ export function useJNSRegister() {
   };
 }
 
-/**
- * Hook for resolving names to addresses and records
- */
 export function useJNSResolver() {
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
@@ -537,18 +553,39 @@ export function useJNSResolver() {
     });
   }, [walletClient]);
 
+  const setAppConfig = useCallback(async (
+    name: string,
+    appContract: Address,
+    appId: `0x${string}`,
+    agentId: bigint,
+    endpoint: string,
+    a2aEndpoint: string
+  ): Promise<Hash> => {
+    if (!walletClient) {
+      throw new Error('Wallet not connected');
+    }
+
+    const fullName = name.endsWith('.jeju') ? name : `${name}.jeju`;
+    const node = namehash(fullName) as `0x${string}`;
+
+    return await walletClient.writeContract({
+      address: JNS_RESOLVER,
+      abi: JNS_RESOLVER_ABI,
+      functionName: 'setAppConfig',
+      args: [node, appContract, appId, agentId, endpoint, a2aEndpoint],
+    });
+  }, [walletClient]);
+
   return {
     resolve,
     getText,
     getAppInfo,
     setAddr,
     setText,
+    setAppConfig,
   };
 }
 
-/**
- * Hook for reverse resolution (address → name)
- */
 export function useJNSReverse() {
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
@@ -583,9 +620,14 @@ export function useJNSReverse() {
     });
   }, [walletClient]);
 
+  const getPrimaryName = useCallback(async (addr: Address): Promise<string | null> => {
+    return reverseLookup(addr);
+  }, [reverseLookup]);
+
   return {
     reverseLookup,
     setPrimaryName,
+    getPrimaryName,
   };
 }
 

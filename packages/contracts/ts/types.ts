@@ -133,6 +133,18 @@ export interface LiquiditySystemDeployment {
   token1?: Address;
 }
 
+export interface XLPDeployment {
+  v2Factory?: Address;
+  v3Factory?: Address;
+  router?: Address;
+  positionManager?: Address;
+  liquidityAggregator?: Address;
+  routerRegistry?: Address;
+  weth?: Address;
+  deployedAt?: string;
+  chainId?: number;
+}
+
 export interface L1Deployment {
   portal?: Address;
   bridge?: Address;
@@ -231,6 +243,7 @@ export interface ContractAddresses {
   usdc?: Address;
   elizaOS?: Address;
   goldToken?: Address;
+  jeju?: Address;
   
   // Game System (Hyperscape-compatible)
   // Note: Moderation uses standard Jeju BanManager via banManager field
