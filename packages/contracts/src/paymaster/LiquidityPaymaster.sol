@@ -125,7 +125,8 @@ contract LiquidityPaymaster is BasePaymaster, Pausable {
         address _feeDistributor,
         address _priceOracle,
         address _owner
-    ) BasePaymaster(_entryPoint, _owner) {
+    ) BasePaymaster(_entryPoint) {
+        if (_owner != msg.sender) _transferOwnership(_owner);
         require(_paymentToken != address(0), "Invalid payment token");
         require(_liquidityVault != address(0), "Invalid vault");
         require(_feeDistributor != address(0), "Invalid distributor");
@@ -207,7 +208,7 @@ contract LiquidityPaymaster is BasePaymaster, Pausable {
         }
 
         // Check our EntryPoint deposit is sufficient
-        uint256 currentDeposit = entryPoint().balanceOf(address(this));
+        uint256 currentDeposit = entryPoint.balanceOf(address(this));
         if (currentDeposit < maxCost + minEntryPointBalance) {
             revert InsufficientLiquidity();
         }
@@ -327,7 +328,7 @@ contract LiquidityPaymaster is BasePaymaster, Pausable {
     function fundFromVault(uint256 amount) external onlyOwner {
         require(liquidityVault.provideETHForGas(amount), "Vault transfer failed");
         // ETH is now in this contract, deposit to EntryPoint
-        entryPoint().depositTo{value: amount}(address(this));
+        entryPoint.depositTo{value: amount}(address(this));
         emit EntryPointFunded(amount);
     }
 
@@ -348,11 +349,11 @@ contract LiquidityPaymaster is BasePaymaster, Pausable {
      * @custom:security Permissionless design allows keepers or users to maintain system
      */
     function refillEntryPointDeposit() external {
-        uint256 currentBalance = entryPoint().balanceOf(address(this));
+        uint256 currentBalance = entryPoint.balanceOf(address(this));
         if (currentBalance < minEntryPointBalance) {
             uint256 needed = (minEntryPointBalance * 2) - currentBalance; // Refill to 2x min
             require(liquidityVault.provideETHForGas(needed), "Vault transfer failed");
-            entryPoint().depositTo{value: needed}(address(this));
+            entryPoint.depositTo{value: needed}(address(this));
             emit EntryPointFunded(needed);
         }
     }
@@ -369,7 +370,7 @@ contract LiquidityPaymaster is BasePaymaster, Pausable {
      *      - Vault has available ETH liquidity
      */
     function isOperational() external view returns (bool) {
-        return !paused() && entryPoint().balanceOf(address(this)) >= minEntryPointBalance && priceOracle.isPriceFresh()
+        return !paused() && entryPoint.balanceOf(address(this)) >= minEntryPointBalance && priceOracle.isPriceFresh()
             && liquidityVault.availableETH() > 0;
     }
 
@@ -386,7 +387,7 @@ contract LiquidityPaymaster is BasePaymaster, Pausable {
         view
         returns (uint256 entryPointBalance, uint256 vaultLiquidity, bool oracleFresh, bool operational)
     {
-        entryPointBalance = entryPoint().balanceOf(address(this));
+        entryPointBalance = entryPoint.balanceOf(address(this));
         vaultLiquidity = liquidityVault.availableETH();
         oracleFresh = priceOracle.isPriceFresh();
         operational = this.isOperational();

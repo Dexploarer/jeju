@@ -97,7 +97,6 @@ test-results/
 **/*.cpython-314.pyc
 
 # Private keys - NEVER commit
-cache/packages/deployment/.keys/
 packages/deployment/.keys/
 
 # Root-owned build artifacts (delete with sudo rm -rf)

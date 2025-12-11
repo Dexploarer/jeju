@@ -28,15 +28,6 @@ import MockAggregatorV3AbiJson from '../../abis/MockAggregatorV3.json';
 import BanManagerAbiJson from '../../abis/BanManager.json';
 import ModerationMarketplaceAbiJson from '../../abis/ModerationMarketplace.json';
 
-// Game ABIs (Hyperscape / forkable game contracts)
-import GoldAbiJson from '../../abis/Gold.json';
-import ItemsAbiJson from '../../abis/Items.json';
-import GameIntegrationAbiJson from '../../abis/GameIntegration.json';
-import PlayerTradeEscrowAbiJson from '../../abis/PlayerTradeEscrow.json';
-
-// Paymaster ABIs (ERC-4337 Account Abstraction)
-import SponsoredPaymasterAbiJson from '../../abis/SponsoredPaymaster.json';
-
 // Native token ABI
 import JejuTokenAbiJson from '../../abis/JejuToken.json';
 
@@ -49,6 +40,15 @@ import TokenRegistryAbiJson from '../../abis/TokenRegistry.json';
 import PaymasterFactoryAbiJson from '../../abis/PaymasterFactory.json';
 import LiquidityVaultAbiJson from '../../abis/LiquidityVault.json';
 import AppTokenPreferenceAbiJson from '../../abis/AppTokenPreference.json';
+
+// Game ABIs (Hyperscape / forkable game contracts)
+import GoldAbiJson from '../../abis/Gold.json';
+import ItemsAbiJson from '../../abis/Items.json';
+import GameIntegrationAbiJson from '../../abis/GameIntegration.json';
+import PlayerTradeEscrowAbiJson from '../../abis/PlayerTradeEscrow.json';
+
+// Paymaster ABIs (ERC-4337 Account Abstraction)
+import SponsoredPaymasterAbiJson from '../../abis/SponsoredPaymaster.json';
 
 import type { Abi } from 'viem';
 
@@ -91,7 +91,6 @@ export const LiquidityVaultAbi = LiquidityVaultAbiJson.abi as Abi;
 export const AppTokenPreferenceAbi = AppTokenPreferenceAbiJson.abi as Abi;
 
 // Game ABIs (Hyperscape / forkable game infrastructure)
-// Note: Games use the standard Jeju BanManager for moderation (see moderation/BanManager.sol)
 export const GoldAbi = GoldAbiJson.abi as Abi;
 export const ItemsAbi = ItemsAbiJson.abi as Abi;
 export const GameIntegrationAbi = GameIntegrationAbiJson.abi as Abi;
@@ -106,11 +105,11 @@ export { InputSettlerAbiJson, OutputSettlerAbiJson, SolverRegistryAbiJson };
 export { SimpleOracleAbiJson, HyperlaneOracleAbiJson, SuperchainOracleAbiJson };
 export { OTCAbiJson, SimplePoolOracleAbiJson, RegistrationHelperAbiJson, MockERC20AbiJson, MockAggregatorV3AbiJson };
 export { BanManagerAbiJson, ModerationMarketplaceAbiJson };
-export { GoldAbiJson, ItemsAbiJson, GameIntegrationAbiJson, PlayerTradeEscrowAbiJson };
-export { SponsoredPaymasterAbiJson };
 export { JejuTokenAbiJson };
 export { CreditManagerAbiJson, MultiTokenPaymasterAbiJson };
 export { TokenRegistryAbiJson, PaymasterFactoryAbiJson, LiquidityVaultAbiJson, AppTokenPreferenceAbiJson };
+export { GoldAbiJson, ItemsAbiJson, GameIntegrationAbiJson, PlayerTradeEscrowAbiJson };
+export { SponsoredPaymasterAbiJson };
 
 // Common ABI fragments for convenience
 export const ERC20ReadAbi = [
@@ -194,4 +193,3 @@ export const ERC20WriteAbi = [
     stateMutability: 'nonpayable',
   },
 ] as const;
-

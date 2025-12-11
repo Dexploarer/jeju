@@ -88,7 +88,11 @@ contract SponsoredPaymaster is BasePaymaster {
     constructor(
         IEntryPoint _entryPoint,
         address _owner
-    ) BasePaymaster(_entryPoint, _owner) {}
+    ) BasePaymaster(_entryPoint) {
+        if (_owner != msg.sender) {
+            _transferOwnership(_owner);
+        }
+    }
 
     // ============ Paymaster Core ============
 
@@ -163,7 +167,7 @@ contract SponsoredPaymaster is BasePaymaster {
         }
 
         // Check we have enough deposit
-        uint256 deposit = entryPoint().balanceOf(address(this));
+        uint256 deposit = entryPoint.balanceOf(address(this));
         if (deposit < maxCost) {
             revert InsufficientDeposit();
         }
@@ -268,7 +272,7 @@ contract SponsoredPaymaster is BasePaymaster {
      * @dev Anyone can fund, but only owner can withdraw
      */
     function fund() external payable {
-        entryPoint().depositTo{value: msg.value}(address(this));
+        entryPoint.depositTo{value: msg.value}(address(this));
         emit Funded(msg.sender, msg.value);
     }
 
@@ -278,7 +282,7 @@ contract SponsoredPaymaster is BasePaymaster {
      * @param amount Amount to withdraw
      */
     function withdraw(address payable to, uint256 amount) external onlyOwner {
-        entryPoint().withdrawTo(to, amount);
+        entryPoint.withdrawTo(to, amount);
         emit Withdrawn(to, amount);
     }
 
@@ -317,7 +321,7 @@ contract SponsoredPaymaster is BasePaymaster {
         uint256 totalTx,
         uint256 totalGas
     ) {
-        deposit = entryPoint().balanceOf(address(this));
+        deposit = entryPoint.balanceOf(address(this));
         isPaused = paused;
         totalTx = totalTxSponsored;
         totalGas = totalGasSponsored;
@@ -345,7 +349,7 @@ contract SponsoredPaymaster is BasePaymaster {
         uint256 count = userTxCountHour[user] == currentHour ? userTxCount[user] : 0;
         if (count >= maxTxPerUserPerHour) return (false, "Rate limited");
         
-        if (entryPoint().balanceOf(address(this)) < gasCost) {
+        if (entryPoint.balanceOf(address(this)) < gasCost) {
             return (false, "Insufficient deposit");
         }
         
@@ -363,7 +367,7 @@ contract SponsoredPaymaster is BasePaymaster {
 
     receive() external payable {
         // Accept ETH for funding
-        entryPoint().depositTo{value: msg.value}(address(this));
+        entryPoint.depositTo{value: msg.value}(address(this));
         emit Funded(msg.sender, msg.value);
     }
 }

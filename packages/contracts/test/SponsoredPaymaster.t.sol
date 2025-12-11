@@ -8,10 +8,11 @@ import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/Pac
 
 /**
  * @title Mock EntryPoint for testing
- * @dev Implements minimal IEntryPoint interface for paymaster testing
+ * @dev Implements IEntryPoint interface for paymaster testing
  */
 contract MockEntryPoint {
     mapping(address => uint256) public deposits;
+    mapping(address => bool) public staked;
 
     function balanceOf(address account) external view returns (uint256) {
         return deposits[account];
@@ -28,11 +29,49 @@ contract MockEntryPoint {
         require(success, "Withdraw failed");
     }
 
-    // ERC-165 interface support (required by BasePaymaster)
-    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
-        // IEntryPoint interface ID
-        return interfaceId == 0x283f5489 || interfaceId == 0x01ffc9a7;
+    // IStakeManager methods
+    function addStake(uint32 /* unstakeDelaySec */) external payable {
+        deposits[msg.sender] += msg.value;
+        staked[msg.sender] = true;
     }
+
+    function unlockStake() external {
+        staked[msg.sender] = false;
+    }
+
+    function withdrawStake(address payable withdrawAddress) external {
+        uint256 amount = deposits[msg.sender];
+        deposits[msg.sender] = 0;
+        staked[msg.sender] = false;
+        (bool success,) = withdrawAddress.call{value: amount}("");
+        require(success, "Withdraw failed");
+    }
+
+    function getDepositInfo(address account) external view returns (
+        uint256 deposit,
+        bool _staked,
+        uint112 stake,
+        uint32 unstakeDelaySec,
+        uint48 withdrawTime
+    ) {
+        return (deposits[account], staked[account], uint112(deposits[account]), 0, 0);
+    }
+
+    // INonceManager methods
+    function getNonce(address /* sender */, uint192 /* key */) external pure returns (uint256) {
+        return 0;
+    }
+
+    function incrementNonce(uint192 /* key */) external pure {}
+
+    // ERC-165 interface support (required by BasePaymaster)
+    // Returns true for all interface checks to allow mock testing
+    function supportsInterface(bytes4 /* interfaceId */) external pure returns (bool) {
+        return true;
+    }
+
+    // Allow receiving ETH
+    receive() external payable {}
 }
 
 /**

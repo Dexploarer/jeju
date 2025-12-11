@@ -3,8 +3,6 @@
   "exclude_dependencies": true,
   "exclude_informational": true,
   "exclude_low": true,
-  "exclude_medium": true,
-  "exclude_high": true,
   "exclude_optimization": true,
   "filter_paths": "lib/,node_modules/,test/,script/,src/mocks/,src/mmo/,src/tokens/Mock,src/otc/mocks/",
   "compile_force_framework": "foundry"

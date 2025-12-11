@@ -246,7 +246,6 @@ export interface ContractAddresses {
   jeju?: Address;
   
   // Game System (Hyperscape-compatible)
-  // Note: Moderation uses standard Jeju BanManager via banManager field
   itemsNFT?: Address;
   playerTradeEscrow?: Address;
   gameIntegration?: Address;
