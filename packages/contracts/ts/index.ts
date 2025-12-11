@@ -116,8 +116,8 @@ export {
   erc20FactoryDeployments,
   identitySystemDeployments,
   paymasterDeployments,
-  gameSystemDeployments,
   xlpDeployments,
+  gameSystemDeployments,
   // Helper functions
   getUniswapV4,
   getBazaarMarketplace,

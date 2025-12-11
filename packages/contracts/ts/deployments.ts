@@ -12,8 +12,8 @@ import type {
   ERC20FactoryDeployment,
   IdentitySystemDeployment,
   PaymasterSystemDeployment,
-  GameSystemDeployment,
   XLPDeployment,
+  GameSystemDeployment,
   ContractAddresses,
 } from './types';
 import { CHAIN_IDS, ZERO_ADDRESS, isValidAddress } from './types';
@@ -37,7 +37,6 @@ import xlpAmmLocalnet from '../deployments/xlp-amm-localnet.json';
 // Combine localnet deployments for identity system
 const identitySystem1337 = localnetDeployment;
 const localnetAddresses = localnetDeployment;
-const multiTokenSystem1337 = localnetMultiToken;
 
 // ============================================================================
 // Typed Deployment Exports
@@ -68,6 +67,11 @@ export const paymasterDeployments: Partial<Record<ChainId, PaymasterSystemDeploy
   420691: paymasterSystemLocalnet as PaymasterSystemDeployment,
 };
 
+export const xlpDeployments: Partial<Record<ChainId, XLPDeployment>> = {
+  1337: xlpAmmLocalnet as XLPDeployment,
+  420691: xlpAmmLocalnet as XLPDeployment,
+};
+
 // Filter out null values from JSON (JSON doesn't support undefined)
 function filterNulls<T extends object>(obj: T): Partial<T> {
   return Object.fromEntries(
@@ -78,11 +82,6 @@ function filterNulls<T extends object>(obj: T): Partial<T> {
 export const gameSystemDeployments: Partial<Record<ChainId, GameSystemDeployment>> = {
   1337: filterNulls(gameSystem1337) as GameSystemDeployment,
   420691: filterNulls(gameSystem1337) as GameSystemDeployment,
-};
-
-export const xlpDeployments: Partial<Record<ChainId, XLPDeployment>> = {
-  1337: xlpAmmLocalnet as XLPDeployment,
-  420691: xlpAmmLocalnet as XLPDeployment,
 };
 
 // ============================================================================
@@ -124,6 +123,13 @@ export function getIdentityRegistry(chainId: ChainId): Address | undefined {
 }
 
 /**
+ * Get XLP AMM deployment for a chain
+ */
+export function getXLPDeployment(chainId: ChainId): XLPDeployment {
+  return xlpDeployments[chainId] ?? {};
+}
+
+/**
  * Get game system deployment for a chain
  */
 export function getGameSystem(chainId: ChainId): GameSystemDeployment {
@@ -160,7 +166,6 @@ export function getGameIntegration(chainId: ChainId): Address | undefined {
 
 /**
  * Get paymaster system deployment for a chain
- * Includes SponsoredPaymaster, LiquidityPaymaster, EntryPoint, etc.
  */
 export function getPaymasterSystem(chainId: ChainId): PaymasterSystemDeployment {
   return paymasterDeployments[chainId] ?? {};
@@ -176,20 +181,12 @@ export function getSponsoredPaymaster(chainId: ChainId): Address | undefined {
 }
 
 /**
- * Get XLP AMM deployment for a chain
- */
-export function getXLPDeployment(chainId: ChainId): XLPDeployment {
-  return xlpDeployments[chainId] ?? {};
-}
-
-/**
  * Get all contract addresses for a chain
  */
 export function getContractAddresses(chainId: ChainId): ContractAddresses {
   const v4 = getUniswapV4(chainId);
   const identity = identitySystemDeployments[chainId];
   const paymaster = paymasterDeployments[chainId];
-  const marketplace = bazaarMarketplaceDeployments[chainId];
   const game = gameSystemDeployments[chainId];
 
   return {
@@ -266,7 +263,6 @@ export const rawDeployments = {
   identitySystem1337,
   localnetAddresses,
   paymasterSystemLocalnet,
-  multiTokenSystem1337,
   eilLocalnet,
   eilTestnet,
   gameSystem1337,
@@ -283,8 +279,7 @@ export type {
   ERC20FactoryDeployment,
   IdentitySystemDeployment,
   PaymasterSystemDeployment,
-  GameSystemDeployment,
   XLPDeployment,
+  GameSystemDeployment,
   ContractAddresses,
 } from './types';
-
