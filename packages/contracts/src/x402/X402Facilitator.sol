@@ -8,6 +8,16 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 
+interface IFeeConfigX402 {
+    function getMarketplaceFees() external view returns (
+        uint16 bazaarPlatformFeeBps,
+        uint16 launchpadCreatorFeeBps,
+        uint16 launchpadCommunityFeeBps,
+        uint16 x402ProtocolFeeBps
+    );
+    function getTreasury() external view returns (address);
+}
+
 /**
  * @title X402Facilitator
  * @author Jeju Network
@@ -61,10 +71,17 @@ contract X402Facilitator is Ownable, ReentrancyGuard, EIP712 {
     mapping(address => bool) public authorizedServices;
 
     /// @notice Protocol fee in basis points (100 = 1%)
+    /// @dev Can be overridden by FeeConfig if set
     uint256 public protocolFeeBps = 50; // 0.5% default
 
     /// @notice Protocol fee recipient
     address public feeRecipient;
+
+    /// @notice Fee configuration contract (governance-controlled)
+    IFeeConfigX402 public feeConfig;
+
+    /// @notice Total protocol fees collected
+    uint256 public totalProtocolFees;
 
     /// @notice Total settlements processed
     uint256 public totalSettlements;
@@ -194,17 +211,20 @@ contract X402Facilitator is Ownable, ReentrancyGuard, EIP712 {
         // Mark nonce as used
         usedNonces[nonceHash] = true;
 
-        // Calculate fee
-        uint256 protocolFee = (amount * protocolFeeBps) / 10000;
+        // Calculate fee using governance-controlled rate
+        uint256 currentFeeBps = _getProtocolFeeBps();
+        uint256 protocolFee = (amount * currentFeeBps) / 10000;
         uint256 recipientAmount = amount - protocolFee;
+        address feeAddr = _getFeeRecipient();
 
         // Generate payment ID
         paymentId = keccak256(abi.encodePacked(payer, recipient, nonce, block.timestamp));
 
         // Transfer tokens
         IERC20(token).safeTransferFrom(payer, recipient, recipientAmount);
-        if (protocolFee > 0) {
-            IERC20(token).safeTransferFrom(payer, feeRecipient, protocolFee);
+        if (protocolFee > 0 && feeAddr != address(0)) {
+            IERC20(token).safeTransferFrom(payer, feeAddr, protocolFee);
+            totalProtocolFees += protocolFee;
         }
 
         // Update stats
@@ -292,9 +312,11 @@ contract X402Facilitator is Ownable, ReentrancyGuard, EIP712 {
         // Mark nonce as used
         usedNonces[nonceHash] = true;
 
-        // Calculate amounts
-        uint256 protocolFee = (amount * protocolFeeBps) / 10000;
+        // Calculate amounts using governance-controlled rate
+        uint256 currentFeeBps = _getProtocolFeeBps();
+        uint256 protocolFee = (amount * currentFeeBps) / 10000;
         uint256 recipientAmount = amount - protocolFee;
+        address feeAddr = _getFeeRecipient();
 
         // Generate payment ID
         paymentId = keccak256(abi.encodePacked(payer, recipient, nonce, block.timestamp));
@@ -307,8 +329,9 @@ contract X402Facilitator is Ownable, ReentrancyGuard, EIP712 {
 
         // Distribute funds
         IERC20(token).safeTransfer(recipient, recipientAmount);
-        if (protocolFee > 0) {
-            IERC20(token).safeTransfer(feeRecipient, protocolFee);
+        if (protocolFee > 0 && feeAddr != address(0)) {
+            IERC20(token).safeTransfer(feeAddr, protocolFee);
+            totalProtocolFees += protocolFee;
         }
 
         // Update stats
@@ -434,6 +457,60 @@ contract X402Facilitator is Ownable, ReentrancyGuard, EIP712 {
         emit FeeRecipientUpdated(feeRecipient, newRecipient);
         feeRecipient = newRecipient;
     }
+
+    /**
+     * @notice Set fee configuration contract (governance-controlled)
+     * @param _feeConfig Address of FeeConfig contract
+     */
+    function setFeeConfig(address _feeConfig) external onlyOwner {
+        address oldConfig = address(feeConfig);
+        feeConfig = IFeeConfigX402(_feeConfig);
+        emit FeeConfigUpdated(oldConfig, _feeConfig);
+    }
+
+    /**
+     * @notice Get current effective protocol fee rate
+     */
+    function getEffectiveProtocolFee() external view returns (uint256) {
+        return _getProtocolFeeBps();
+    }
+
+    /**
+     * @notice Get protocol fee statistics
+     */
+    function getProtocolFeeStats() external view returns (
+        uint256 _totalProtocolFees,
+        uint256 _currentFeeBps,
+        address _recipient
+    ) {
+        return (totalProtocolFees, _getProtocolFeeBps(), _getFeeRecipient());
+    }
+
+    /**
+     * @dev Get current protocol fee in basis points from FeeConfig or local value
+     */
+    function _getProtocolFeeBps() internal view returns (uint256) {
+        if (address(feeConfig) != address(0)) {
+            (,,, uint16 x402ProtocolFeeBps) = feeConfig.getMarketplaceFees();
+            return x402ProtocolFeeBps;
+        }
+        return protocolFeeBps;
+    }
+
+    /**
+     * @dev Get fee recipient from FeeConfig or local value
+     */
+    function _getFeeRecipient() internal view returns (address) {
+        if (address(feeConfig) != address(0)) {
+            address configRecipient = feeConfig.getTreasury();
+            if (configRecipient != address(0)) {
+                return configRecipient;
+            }
+        }
+        return feeRecipient;
+    }
+
+    event FeeConfigUpdated(address indexed oldConfig, address indexed newConfig);
 
     /**
      * @notice Emergency token recovery
