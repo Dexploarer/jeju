@@ -5,20 +5,24 @@ import "forge-std/Test.sol";
 import "../../src/compute/InferenceServing.sol";
 import "../../src/compute/ComputeRegistry.sol";
 import "../../src/compute/LedgerManager.sol";
+import "../../src/distributor/FeeConfig.sol";
 
 contract InferenceServingTest is Test {
     InferenceServing public inference;
     ComputeRegistry public registry;
     LedgerManager public ledger;
+    FeeConfig public feeConfig;
 
     address public owner;
     address public provider1;
     address public user1;
+    address public treasury;
     uint256 public provider1Key;
 
     function setUp() public {
         owner = address(this);
         user1 = makeAddr("user1");
+        treasury = makeAddr("treasury");
         (provider1, provider1Key) = makeAddrAndKey("provider1");
 
         vm.deal(user1, 10 ether);
@@ -28,6 +32,9 @@ contract InferenceServingTest is Test {
         registry = new ComputeRegistry(owner);
         ledger = new LedgerManager(address(registry), owner);
         inference = new InferenceServing(address(registry), address(ledger), owner);
+        
+        // Deploy FeeConfig with 5% inference fee
+        feeConfig = new FeeConfig(address(0), address(0), treasury, owner);
 
         // Setup ledger to work with inference
         ledger.setInferenceContract(address(inference));
@@ -130,5 +137,61 @@ contract InferenceServingTest is Test {
 
     function test_Version() public view {
         assertEq(inference.version(), "2.0.0");
+    }
+
+    function test_SettleWithPlatformFee() public {
+        // Configure platform fee collection
+        inference.setFeeConfig(address(feeConfig));
+        inference.setTreasury(treasury);
+        
+        // Register service
+        vm.prank(provider1);
+        inference.registerService("llama-3.1-8b", "https://api.test.com/v1", 1e9, 2e9);
+
+        // User creates ledger and deposits
+        vm.prank(user1);
+        ledger.createLedger{value: 1 ether}();
+
+        vm.prank(user1);
+        ledger.transferToProvider(provider1, 0.5 ether);
+
+        vm.prank(provider1);
+        ledger.acknowledgeUser(user1);
+
+        // Create signature
+        bytes32 requestHash = bytes32(uint256(12345));
+        uint256 inputTokens = 100;
+        uint256 outputTokens = 50;
+        uint256 nonce = inference.getNonce(user1, provider1);
+
+        bytes32 messageHash =
+            keccak256(abi.encodePacked(user1, provider1, requestHash, inputTokens, outputTokens, nonce));
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(provider1Key, ethSignedHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        // Record balances before
+        uint256 providerBalanceBefore = provider1.balance;
+        uint256 treasuryBalanceBefore = treasury.balance;
+
+        // Settle
+        vm.prank(user1);
+        inference.settle(provider1, requestHash, inputTokens, outputTokens, nonce, signature);
+
+        // Calculate expected amounts
+        uint256 totalFee = (inputTokens * 1e9) + (outputTokens * 2e9);
+        uint16 platformFeeBps = feeConfig.getInferenceFee(); // 500 = 5%
+        uint256 platformFee = (totalFee * platformFeeBps) / 10000;
+        uint256 providerFee = totalFee - platformFee;
+
+        // Verify provider received their share (minus platform fee)
+        assertEq(provider1.balance - providerBalanceBefore, providerFee, "Provider should receive totalFee - platformFee");
+        
+        // CRITICAL: Verify treasury received platform fee
+        assertEq(treasury.balance - treasuryBalanceBefore, platformFee, "Treasury should receive platform fee");
+        
+        // Verify tracking
+        assertEq(inference.totalPlatformFeesCollected(), platformFee, "Platform fees should be tracked");
     }
 }

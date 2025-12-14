@@ -10,7 +10,7 @@ import {IComputeRegistry} from "./interfaces/IComputeRegistry.sol";
 
 interface ILedgerManager {
     function settle(address user, address provider, uint256 amount, bytes32 requestHash) external;
-    function settleWithPlatformFee(address user, address provider, uint256 providerAmount, uint256 platformFee, bytes32 requestHash) external;
+    function settlePlatformFee(address user, address provider, address treasury, uint256 amount) external;
     function isAcknowledged(address user, address provider) external view returns (bool);
     function getProviderBalance(address user, address provider) external view returns (uint256);
 }
@@ -328,12 +328,14 @@ contract InferenceServing is Ownable, Pausable, ReentrancyGuard {
 
         // Execute settlement via ledger
         ledger.settle(msg.sender, provider, providerFee, requestHash);
-
-        emit Settled(msg.sender, provider, requestHash, inputTokens, outputTokens, totalFee, nonce);
         
-        if (platformFee > 0) {
+        // Transfer platform fee to treasury
+        if (platformFee > 0 && treasury != address(0)) {
+            ledger.settlePlatformFee(msg.sender, provider, treasury, platformFee);
             emit PlatformFeeCollected(provider, platformFee, platformFeeBps);
         }
+
+        emit Settled(msg.sender, provider, requestHash, inputTokens, outputTokens, totalFee, nonce);
     }
     
     // ============ Platform Fee Events ============
