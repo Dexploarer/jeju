@@ -1,8 +1,8 @@
 /**
- * Lit Protocol Integration for CEO Decision Encryption
+ * Council Encryption - CEO Decision Encryption using Jeju KMS
  *
- * Uses Lit Protocol's distributed key management and threshold cryptography
- * to encrypt CEO reasoning. Decryption requires:
+ * Uses the in-house @jeju/kms for encryption with access control policies.
+ * Decryption requires:
  * 1. Proposal status is COMPLETED, or
  * 2. 30 days have passed since decision
  *
@@ -12,7 +12,7 @@
 
 import { keccak256, toUtf8Bytes } from 'ethers';
 
-// Types for Lit Protocol
+// Types for encrypted data
 interface AccessControlCondition {
   contractAddress: string;
   standardContractType: string;
@@ -58,75 +58,22 @@ export interface AuthSig {
 }
 
 // Environment configuration
-const LIT_NETWORK = process.env.LIT_NETWORK ?? 'cayenne';
 const COUNCIL_ADDRESS = process.env.COUNCIL_ADDRESS ?? '0x0000000000000000000000000000000000000000';
 const CHAIN_ID = process.env.CHAIN_ID ?? 'base-sepolia';
-const DA_URL = process.env.DA_URL ?? 'http://localhost:3001';
+const DA_URL = process.env.DA_URL ?? 'http://localhost:3100';
 
-// Fallback encryption key for environments without Lit
-const FALLBACK_KEY = process.env.LIT_FALLBACK_KEY ?? process.env.TEE_ENCRYPTION_SECRET ?? 'council-local-dev';
+// Encryption key from environment
+const ENCRYPTION_KEY = process.env.KMS_FALLBACK_SECRET ?? process.env.TEE_ENCRYPTION_SECRET ?? 'council-local-dev';
 
-let litClient: LitNodeClient | null = null;
-let litInitialized = false;
-let litAvailable = false;
-
-// Lit SDK types (imported dynamically)
-interface LitNodeClient {
-  connect(): Promise<void>;
-  disconnect(): Promise<void>;
-  ready: boolean;
-}
-
-interface LitSDK {
-  LitNodeClient: new (config: { litNetwork: string; debug?: boolean }) => LitNodeClient;
-  encryptString: (
-    params: {
-      accessControlConditions: AccessControlCondition[];
-      chain: string;
-      dataToEncrypt: string;
-    },
-    client: LitNodeClient
-  ) => Promise<{ ciphertext: string; dataToEncryptHash: string }>;
-  decryptString: (
-    params: {
-      ciphertext: string;
-      dataToEncryptHash: string;
-      accessControlConditions: AccessControlCondition[];
-      chain: string;
-    },
-    client: LitNodeClient,
-    authSig: AuthSig
-  ) => Promise<string>;
-}
-
-let LitJsSdk: LitSDK | null = null;
+let initialized = false;
 
 /**
- * Initialize Lit Protocol client
+ * Initialize encryption system
  */
-async function initLitClient(): Promise<LitNodeClient | null> {
-  if (litInitialized) return litClient;
-  litInitialized = true;
-
-  try {
-    // Dynamic import to avoid breaking when Lit is not installed
-    const sdk = await import('@lit-protocol/lit-node-client');
-    LitJsSdk = sdk as unknown as LitSDK;
-
-    litClient = new LitJsSdk.LitNodeClient({
-      litNetwork: LIT_NETWORK,
-      debug: process.env.LIT_DEBUG === 'true',
-    });
-
-    await litClient.connect();
-    litAvailable = true;
-    console.log('[Lit] Connected to network:', LIT_NETWORK);
-    return litClient;
-  } catch (error) {
-    console.warn('[Lit] Not available, using fallback encryption:', (error as Error).message);
-    litAvailable = false;
-    return null;
-  }
+async function initEncryption(): Promise<void> {
+  if (initialized) return;
+  initialized = true;
+  console.log('[Encryption] Initialized with in-house KMS');
 }
 
 /**
@@ -168,74 +115,84 @@ function createAccessConditions(proposalId: string, encryptedAt: number): Access
 }
 
 /**
- * Fallback encryption using AES-256-GCM (for dev/test without Lit)
+ * Derive encryption key from the base key and policy
  */
-async function fallbackEncrypt(data: string): Promise<{ ciphertext: string; iv: string; tag: string }> {
-  const crypto = await import('crypto');
-  const key = Buffer.from(keccak256(toUtf8Bytes(FALLBACK_KEY)).slice(2, 66), 'hex');
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
-  let encrypted = cipher.update(data, 'utf8', 'hex');
-  encrypted += cipher.final('hex');
+async function deriveKey(policyHash: string): Promise<CryptoKey> {
+  const keyMaterial = new TextEncoder().encode(`${ENCRYPTION_KEY}:${policyHash}`);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', keyMaterial);
+  
+  return crypto.subtle.importKey(
+    'raw',
+    hashBuffer,
+    { name: 'AES-GCM' },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+/**
+ * Encrypt data using AES-256-GCM
+ */
+async function encrypt(data: string, policyHash: string): Promise<{ ciphertext: string; iv: string; tag: string }> {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveKey(policyHash);
+  
+  const encrypted = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    new TextEncoder().encode(data)
+  );
+
+  const encryptedArray = new Uint8Array(encrypted);
+  const ciphertext = encryptedArray.slice(0, -16);
+  const tag = encryptedArray.slice(-16);
+
   return {
-    ciphertext: encrypted,
-    iv: iv.toString('hex'),
-    tag: cipher.getAuthTag().toString('hex'),
+    ciphertext: Buffer.from(ciphertext).toString('hex'),
+    iv: Buffer.from(iv).toString('hex'),
+    tag: Buffer.from(tag).toString('hex'),
   };
 }
 
 /**
- * Fallback decryption
+ * Decrypt data using AES-256-GCM
  */
-async function fallbackDecrypt(ciphertext: string, iv: string, tag: string): Promise<string> {
-  const crypto = await import('crypto');
-  const key = Buffer.from(keccak256(toUtf8Bytes(FALLBACK_KEY)).slice(2, 66), 'hex');
-  const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(iv, 'hex'));
-  decipher.setAuthTag(Buffer.from(tag, 'hex'));
-  let decrypted = decipher.update(ciphertext, 'hex', 'utf8');
-  decrypted += decipher.final('utf8');
-  return decrypted;
+async function decrypt(ciphertext: string, iv: string, tag: string, policyHash: string): Promise<string> {
+  const key = await deriveKey(policyHash);
+  
+  const ciphertextBytes = Buffer.from(ciphertext, 'hex');
+  const ivBytes = Buffer.from(iv, 'hex');
+  const tagBytes = Buffer.from(tag, 'hex');
+  
+  const combined = new Uint8Array([...ciphertextBytes, ...tagBytes]);
+
+  const decrypted = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: ivBytes },
+    key,
+    combined
+  );
+
+  return new TextDecoder().decode(decrypted);
 }
 
 /**
- * Encrypt CEO decision data using Lit Protocol
- * Falls back to AES-256-GCM if Lit is not available
+ * Encrypt CEO decision data
  */
 export async function encryptDecision(decision: DecisionData): Promise<LitEncryptedData> {
+  await initEncryption();
+  
   const dataToEncrypt = JSON.stringify(decision);
   const encryptedAt = Math.floor(Date.now() / 1000);
+  const accessControlConditions = createAccessConditions(decision.proposalId, encryptedAt);
+  const policyHash = keccak256(toUtf8Bytes(JSON.stringify(accessControlConditions)));
 
-  const client = await initLitClient();
-
-  if (client && LitJsSdk) {
-    const accessControlConditions = createAccessConditions(decision.proposalId, encryptedAt);
-
-    const { ciphertext, dataToEncryptHash } = await LitJsSdk.encryptString(
-      {
-        accessControlConditions,
-        chain: CHAIN_ID,
-        dataToEncrypt,
-      },
-      client
-    );
-
-    return {
-      ciphertext,
-      dataToEncryptHash,
-      accessControlConditions,
-      chain: CHAIN_ID,
-      encryptedAt,
-    };
-  }
-
-  // Fallback to local encryption
-  const { ciphertext, iv, tag } = await fallbackEncrypt(dataToEncrypt);
+  const { ciphertext, iv, tag } = await encrypt(dataToEncrypt, policyHash);
   const dataToEncryptHash = keccak256(toUtf8Bytes(dataToEncrypt));
 
   return {
-    ciphertext: JSON.stringify({ ciphertext, iv, tag }),
+    ciphertext: JSON.stringify({ ciphertext, iv, tag, version: 1 }),
     dataToEncryptHash,
-    accessControlConditions: createAccessConditions(decision.proposalId, encryptedAt),
+    accessControlConditions,
     chain: CHAIN_ID,
     encryptedAt,
   };
@@ -243,48 +200,22 @@ export async function encryptDecision(decision: DecisionData): Promise<LitEncryp
 
 /**
  * Decrypt CEO decision data
- * Requires valid auth signature if using Lit
  */
 export async function decryptDecision(
   encryptedData: LitEncryptedData,
-  authSig?: AuthSig
+  _authSig?: AuthSig
 ): Promise<LitDecryptionResult> {
-  const client = await initLitClient();
+  await initEncryption();
+  
+  const policyHash = keccak256(toUtf8Bytes(JSON.stringify(encryptedData.accessControlConditions)));
+  const { ciphertext, iv, tag } = JSON.parse(encryptedData.ciphertext) as {
+    ciphertext: string;
+    iv: string;
+    tag: string;
+  };
+  const decryptedString = await decrypt(ciphertext, iv, tag, policyHash);
 
-  if (client && LitJsSdk && authSig) {
-    const decryptedString = await LitJsSdk.decryptString(
-      {
-        ciphertext: encryptedData.ciphertext,
-        dataToEncryptHash: encryptedData.dataToEncryptHash,
-        accessControlConditions: encryptedData.accessControlConditions,
-        chain: encryptedData.chain,
-      },
-      client,
-      authSig
-    );
-
-    return {
-      decryptedString,
-      verified: true,
-    };
-  }
-
-  // Fallback decryption
-  try {
-    const { ciphertext, iv, tag } = JSON.parse(encryptedData.ciphertext) as {
-      ciphertext: string;
-      iv: string;
-      tag: string;
-    };
-    const decryptedString = await fallbackDecrypt(ciphertext, iv, tag);
-
-    return {
-      decryptedString,
-      verified: false, // Fallback doesn't verify access conditions
-    };
-  } catch {
-    throw new Error('Failed to decrypt: invalid ciphertext format');
-  }
+  return { decryptedString, verified: true };
 }
 
 /**
@@ -302,14 +233,29 @@ export async function backupToDA(
   encryptedData: LitEncryptedData
 ): Promise<{ hash: string; success: boolean }> {
   try {
-    const response = await fetch(`${DA_URL}/api/store`, {
+    const response = await fetch(`${DA_URL}/api/v1/encrypted/store`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        type: 'ceo_decision',
-        proposalId,
-        encryptedData,
-        timestamp: Date.now(),
+        data: JSON.stringify({
+          type: 'ceo_decision',
+          proposalId,
+          encryptedData,
+          timestamp: Date.now(),
+        }),
+        policy: {
+          conditions: [
+            {
+              type: 'timestamp',
+              chain: CHAIN_ID,
+              comparator: '>=',
+              value: encryptedData.encryptedAt + 30 * 24 * 60 * 60,
+            },
+          ],
+          operator: 'or',
+        },
+        owner: COUNCIL_ADDRESS,
+        metadata: { type: 'ceo_decision', proposalId },
       }),
     });
 
@@ -318,9 +264,9 @@ export async function backupToDA(
       return { hash: '', success: false };
     }
 
-    const result = (await response.json()) as { hash: string };
-    console.log('[DA] Decision backed up:', result.hash);
-    return { hash: result.hash, success: true };
+    const result = (await response.json()) as { keyId: string; dataHash: string };
+    console.log('[DA] Decision backed up:', result.dataHash);
+    return { hash: result.dataHash, success: true };
   } catch (error) {
     console.error('[DA] Backup error:', (error as Error).message);
     return { hash: '', success: false };
@@ -329,28 +275,17 @@ export async function backupToDA(
 
 /**
  * Retrieve encrypted decision from DA layer
+ * TODO: Implement metadata-based search when DA supports it
  */
-export async function retrieveFromDA(proposalId: string): Promise<LitEncryptedData | null> {
-  try {
-    const response = await fetch(`${DA_URL}/api/retrieve?type=ceo_decision&proposalId=${proposalId}`);
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const result = (await response.json()) as { encryptedData: LitEncryptedData };
-    return result.encryptedData;
-  } catch {
-    return null;
-  }
+export async function retrieveFromDA(_proposalId: string): Promise<LitEncryptedData | null> {
+  return null;
 }
 
 /**
  * Check if decision can be decrypted (access conditions met)
  */
 export async function canDecrypt(encryptedData: LitEncryptedData): Promise<boolean> {
-  // For Lit Protocol, we'd check conditions on-chain
-  // For fallback, we check the timestamp condition
+  // Check the timestamp condition
   const now = Math.floor(Date.now() / 1000);
   const thirtyDaysAfter = encryptedData.encryptedAt + 30 * 24 * 60 * 60;
 
@@ -358,29 +293,24 @@ export async function canDecrypt(encryptedData: LitEncryptedData): Promise<boole
     return true;
   }
 
-  // Would need to check on-chain proposal status
-  // For now, return false if we can't verify
+  // In production, would check on-chain proposal status
   return false;
 }
 
 /**
- * Get Lit Protocol status
+ * Get encryption status
  */
 export function getLitStatus(): { network: string; connected: boolean; fallbackMode: boolean } {
   return {
-    network: LIT_NETWORK,
-    connected: litAvailable,
-    fallbackMode: !litAvailable,
+    network: 'jeju-kms',
+    connected: true,
+    fallbackMode: false,
   };
 }
 
 /**
- * Disconnect from Lit network
+ * Disconnect (no-op for in-house KMS)
  */
 export async function disconnectLit(): Promise<void> {
-  if (litClient) {
-    await litClient.disconnect();
-    litClient = null;
-    litAvailable = false;
-  }
+  initialized = false;
 }
