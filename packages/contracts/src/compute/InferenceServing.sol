@@ -276,16 +276,9 @@ contract InferenceServing is Ownable, Pausable, ReentrancyGuard {
         uint256 totalFee = calculateFee(service, inputTokens, outputTokens);
 
         // Calculate platform fee from governance-controlled FeeConfig
-        uint256 platformFee = 0;
-        uint256 providerFee = totalFee;
-        
-        if (address(feeConfig) != address(0)) {
-            uint16 platformFeeBps = feeConfig.getInferenceFee();
-            if (platformFeeBps > 0) {
-                platformFee = (totalFee * platformFeeBps) / BPS_DENOMINATOR;
-                providerFee = totalFee - platformFee;
-            }
-        }
+        uint16 platformFeeBps = address(feeConfig) != address(0) ? feeConfig.getInferenceFee() : 0;
+        uint256 platformFee = platformFeeBps > 0 ? (totalFee * platformFeeBps) / BPS_DENOMINATOR : 0;
+        uint256 providerFee = totalFee - platformFee;
 
         // Validate balance (user needs to cover total fee)
         uint256 balance = ledger.getProviderBalance(msg.sender, provider);
@@ -333,29 +326,19 @@ contract InferenceServing is Ownable, Pausable, ReentrancyGuard {
             }
         }
 
-        // Execute settlement via ledger (with platform fee split)
-        if (platformFee > 0) {
-            // Use settleWithPlatformFee if available, otherwise settle normally
-            // Platform fee goes to treasury or fee distributor
-            ledger.settle(msg.sender, provider, providerFee, requestHash);
-            
-            // Route platform fee to treasury/distributor
-            // Note: This requires ledger to have a way to transfer platform fee
-            // For now, we track it and allow admin withdrawal
-        } else {
-            ledger.settle(msg.sender, provider, totalFee, requestHash);
-        }
+        // Execute settlement via ledger
+        ledger.settle(msg.sender, provider, providerFee, requestHash);
 
         emit Settled(msg.sender, provider, requestHash, inputTokens, outputTokens, totalFee, nonce);
         
         if (platformFee > 0) {
-            emit PlatformFeeCollected(provider, platformFee, block.timestamp);
+            emit PlatformFeeCollected(provider, platformFee, platformFeeBps);
         }
     }
     
     // ============ Platform Fee Events ============
     
-    event PlatformFeeCollected(address indexed provider, uint256 amount, uint256 timestamp);
+    event PlatformFeeCollected(address indexed provider, uint256 amount, uint256 feeBps);
     event FeeConfigUpdated(address indexed oldConfig, address indexed newConfig);
     event FeeDistributorUpdated(address indexed oldDistributor, address indexed newDistributor);
     event TreasuryUpdated(address indexed oldTreasury, address indexed newTreasury);
