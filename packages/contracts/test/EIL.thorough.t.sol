@@ -735,6 +735,61 @@ contract EILThoroughTest is Test {
         assertTrue(stake.isActive, "Should be active");
     }
 
+    // ============ Fuzz Tests: Price Oracle Scenarios ============
+
+    function testFuzz_TokenCost_VariableGasPrice(uint64 gasUnits) public view {
+        vm.assume(gasUnits >= 21000 && gasUnits <= 1_000_000);
+
+        uint256 gasCostETH = uint256(gasUnits) * 1 gwei;
+        uint256 tokenCost = paymaster.previewTokenCost(gasUnits, 1 gwei, address(token));
+
+        // Token cost should be within 0-20% margin of gas cost
+        assertTrue(tokenCost >= gasCostETH, "Token cost too low");
+        assertTrue(tokenCost <= (gasCostETH * 1200) / 1000, "Token cost too high");
+    }
+
+    function testFuzz_Fee_VariableAmounts(uint96 transferAmount) public {
+        vm.assume(transferAmount >= 0.01 ether && transferAmount <= 1000 ether);
+
+        uint256 fee = messagingPaymaster.calculateFee(transferAmount);
+        uint256 expectedFee = (transferAmount * 10) / 10000; // 10 bps
+
+        assertEq(fee, expectedFee, "Fee calculation incorrect");
+        assertTrue(fee < transferAmount, "Fee exceeds transfer");
+    }
+
+    function testFuzz_SwapQuote_VariableLiquidity(uint64 swapAmount) public {
+        vm.assume(swapAmount >= 0.001 ether && swapAmount <= 10 ether);
+
+        (uint256 amountOut, uint256 priceImpact) = paymaster.getSwapQuote(address(0), address(token), swapAmount);
+
+        uint256 ethLiquidity = paymaster.getTotalLiquidity(address(0));
+        if (ethLiquidity > 0) {
+            assertTrue(amountOut <= paymaster.getTotalLiquidity(address(token)), "Output exceeds liquidity");
+            assertTrue(priceImpact <= 10000, "Price impact exceeds 100%");
+        }
+    }
+
+    function testFuzz_XLPStake_RandomSlashAmount(uint96 slashAmount) public {
+        _registerXLP(xlps[0], 10 ether);
+        vm.assume(slashAmount >= 0.01 ether && slashAmount <= 5 ether);
+
+        l1StakeManager.setAuthorizedSlasher(address(this), true);
+
+        bytes32 voucherId = keccak256(abi.encodePacked("fuzz-slash", slashAmount));
+        address victim = address(0x9999);
+
+        L1StakeManager.XLPStake memory stakeBefore = l1StakeManager.getStake(xlps[0]);
+        l1StakeManager.slash(xlps[0], L2_CHAIN_ID, voucherId, slashAmount, victim);
+        L1StakeManager.XLPStake memory stakeAfter = l1StakeManager.getStake(xlps[0]);
+        uint256 actualSlashed = stakeBefore.stakedAmount - stakeAfter.stakedAmount;
+
+        // Should slash min(requested, 50% of stake)
+        uint256 maxSlash = (stakeBefore.stakedAmount * 50) / 100;
+        uint256 expectedSlash = slashAmount > maxSlash ? maxSlash : slashAmount;
+        assertEq(actualSlashed, expectedSlash, "Unexpected slash amount");
+    }
+
     // ============ Helper Functions ============
 
     function _registerXLP(address xlp, uint256 stake) internal {

@@ -3,15 +3,19 @@ pragma solidity ^0.8.26;
 
 import {Test, console} from "forge-std/Test.sol";
 import {ComputeRental} from "../../src/compute/ComputeRental.sol";
+import {FeeConfig} from "../../src/distributor/FeeConfig.sol";
 
 contract ComputeRentalTest is Test {
     ComputeRental public rental;
+    FeeConfig public feeConfig;
 
     address public owner;
     address public treasury;
     address public provider;
     address public user;
     address public arbitrator;
+    address public council;
+    address public ceo;
 
     function setUp() public {
         owner = address(this);
@@ -19,8 +23,14 @@ contract ComputeRentalTest is Test {
         provider = makeAddr("provider");
         user = makeAddr("user");
         arbitrator = makeAddr("arbitrator");
+        council = makeAddr("council");
+        ceo = makeAddr("ceo");
+
+        // Deploy FeeConfig
+        feeConfig = new FeeConfig(council, ceo, treasury, owner);
 
         rental = new ComputeRental(owner, treasury);
+        rental.setFeeConfig(address(feeConfig));
 
         // Fund test accounts
         vm.deal(provider, 100 ether);
@@ -484,5 +494,53 @@ contract ComputeRentalTest is Test {
         vm.stopPrank();
 
         return rentalId;
+    }
+
+    // ============ Platform Fee Tests ============
+
+    function test_completeRentalWithPlatformFee() public {
+        // Register provider
+        _registerProvider();
+
+        // Create rental
+        bytes32 rentalId = _createRental();
+
+        // Start rental
+        vm.prank(provider);
+        rental.startRental(rentalId, "ssh://192.168.1.1:22", "https://192.168.1.1:8443");
+
+        // Fast forward to end of rental
+        vm.warp(block.timestamp + 2 hours);
+
+        // Record balances before
+        uint256 providerBalanceBefore = provider.balance;
+        uint256 treasuryBalanceBefore = treasury.balance;
+
+        // Complete rental
+        vm.prank(provider);
+        rental.completeRental(rentalId);
+
+        // Get rental cost
+        (, , , , , , , uint256 totalCost, , , , ) = rental.getRental(rentalId);
+
+        // Get fee rate from FeeConfig (3% rental fee by default)
+        uint16 feeBps = feeConfig.getRentalFee();
+        uint256 platformFee = (totalCost * feeBps) / 10000;
+        uint256 providerPayment = totalCost - platformFee;
+
+        // Verify provider received payment minus platform fee
+        assertGt(provider.balance - providerBalanceBefore, 0, "Provider should receive payment");
+
+        // Verify treasury received platform fee
+        assertEq(treasury.balance - treasuryBalanceBefore, platformFee, "Treasury should receive platform fee");
+
+        // Verify tracking
+        assertEq(rental.totalPlatformFeesCollected(), platformFee, "Platform fees should be tracked");
+    }
+
+    function test_SetFeeConfig() public {
+        FeeConfig newConfig = new FeeConfig(council, ceo, treasury, owner);
+        rental.setFeeConfig(address(newConfig));
+        assertEq(address(rental.feeConfig()), address(newConfig));
     }
 }

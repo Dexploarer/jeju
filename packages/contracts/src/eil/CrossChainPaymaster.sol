@@ -22,6 +22,11 @@ interface IFeeDistributor {
     function distributeFees(uint256 amount, address appAddress) external;
 }
 
+interface IFeeConfigCrossChain {
+    function getDeFiFees() external view returns (uint16 swapProtocolFeeBps, uint16 bridgeFeeBps, uint16 crossChainMarginBps);
+    function getTreasury() external view returns (address);
+}
+
 interface IAppTokenPreference {
     struct TokenBalance {
         address token;
@@ -133,7 +138,11 @@ contract CrossChainPaymaster is BasePaymaster, ReentrancyGuard {
     IAppTokenPreference public appTokenPreference;
 
     /// @notice Fee margin for gas sponsorship (basis points)
+    /// @dev Can be overridden by FeeConfig if set
     uint256 public feeMargin = DEFAULT_FEE_MARGIN;
+
+    /// @notice Fee configuration contract (governance-controlled)
+    IFeeConfigCrossChain public feeConfig;
 
     /// @notice Maximum gas cost allowed per transaction
     uint256 public maxGasCost = 0.1 ether;
@@ -448,7 +457,7 @@ contract CrossChainPaymaster is BasePaymaster, ReentrancyGuard {
     }
 
     /**
-     * @notice Set the fee margin for gas sponsorship
+     * @notice Set the fee margin for gas sponsorship (fallback if FeeConfig not set)
      * @param _feeMargin New margin in basis points (max 2000 = 20%)
      */
     function setFeeMargin(uint256 _feeMargin) external onlyOwner {
@@ -457,6 +466,36 @@ contract CrossChainPaymaster is BasePaymaster, ReentrancyGuard {
         feeMargin = _feeMargin;
         emit FeeMarginUpdated(oldMargin, _feeMargin);
     }
+
+    /**
+     * @notice Set fee configuration contract (governance-controlled)
+     * @param _feeConfig Address of FeeConfig contract
+     */
+    function setFeeConfig(address _feeConfig) external onlyOwner {
+        address oldConfig = address(feeConfig);
+        feeConfig = IFeeConfigCrossChain(_feeConfig);
+        emit FeeConfigUpdated(oldConfig, _feeConfig);
+    }
+
+    /**
+     * @notice Get current effective fee margin
+     */
+    function getEffectiveFeeMargin() external view returns (uint256) {
+        return _getFeeMargin();
+    }
+
+    /**
+     * @dev Get current fee margin from FeeConfig or local value
+     */
+    function _getFeeMargin() internal view returns (uint256) {
+        if (address(feeConfig) != address(0)) {
+            (,, uint16 crossChainMarginBps) = feeConfig.getDeFiFees();
+            return crossChainMarginBps;
+        }
+        return feeMargin;
+    }
+
+    event FeeConfigUpdated(address indexed oldConfig, address indexed newConfig);
 
     /**
      * @notice Set maximum gas cost per transaction
@@ -1214,8 +1253,8 @@ contract CrossChainPaymaster is BasePaymaster, ReentrancyGuard {
             tokenAmount = gasCostETH;
         }
 
-        // Add fee margin
-        tokenAmount = (tokenAmount * (BASIS_POINTS + feeMargin)) / BASIS_POINTS;
+        // Add fee margin (governance-controlled via FeeConfig)
+        tokenAmount = (tokenAmount * (BASIS_POINTS + _getFeeMargin())) / BASIS_POINTS;
     }
 
     /**
