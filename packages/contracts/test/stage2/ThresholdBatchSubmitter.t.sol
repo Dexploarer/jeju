@@ -38,6 +38,7 @@ contract ThresholdBatchSubmitterTest is Test {
     uint256 constant SEQ2_KEY = 0x2;
     uint256 constant SEQ3_KEY = 0x3;
     uint256 constant UNAUTHORIZED_KEY = 0x999;
+    uint256 constant ADMIN_TIMELOCK_DELAY = 2 days;
 
     address seq1;
     address seq2;
@@ -55,9 +56,35 @@ contract ThresholdBatchSubmitterTest is Test {
         batchInbox = new MockBatchInbox();
         submitter = new ThresholdBatchSubmitter(address(batchInbox), owner, 2);
 
-        submitter.addSequencer(seq1);
-        submitter.addSequencer(seq2);
-        submitter.addSequencer(seq3);
+        _addSequencer(seq1);
+        _addSequencer(seq2);
+        _addSequencer(seq3);
+    }
+
+    /// @notice Helper to add a sequencer via propose + execute flow
+    function _addSequencer(address seq) internal {
+        _addSequencerTo(submitter, seq);
+    }
+    
+    /// @notice Helper to add a sequencer to any submitter instance
+    function _addSequencerTo(ThresholdBatchSubmitter sub, address seq) internal {
+        bytes32 changeId = sub.proposeAddSequencer(seq);
+        vm.warp(block.timestamp + ADMIN_TIMELOCK_DELAY + 1);
+        sub.executeAddSequencer(changeId);
+    }
+    
+    /// @notice Helper to set threshold via propose + execute flow
+    function _setThreshold(uint256 threshold) internal {
+        bytes32 changeId = submitter.proposeSetThreshold(threshold);
+        vm.warp(block.timestamp + ADMIN_TIMELOCK_DELAY + 1);
+        submitter.executeSetThreshold(changeId);
+    }
+    
+    /// @notice Helper to remove a sequencer via propose + execute flow
+    function _removeSequencer(address seq) internal {
+        bytes32 changeId = submitter.proposeRemoveSequencer(seq);
+        vm.warp(block.timestamp + ADMIN_TIMELOCK_DELAY + 1);
+        submitter.executeRemoveSequencer(changeId);
     }
 
     // ============ Helper Functions ============
@@ -227,85 +254,101 @@ contract ThresholdBatchSubmitterTest is Test {
         assertEq(submitter.nonce(), 5);
     }
 
-    // ============ Sequencer Management Tests ============
+    // ============ Sequencer Management Tests (Propose/Execute Pattern) ============
 
-    function testAddSequencer() public {
+    function testProposeAndExecuteAddSequencer() public {
         address newSeq = address(0x123);
-        submitter.addSequencer(newSeq);
+        bytes32 changeId = submitter.proposeAddSequencer(newSeq);
+        
+        // Cannot execute immediately
+        vm.expectRevert();
+        submitter.executeAddSequencer(changeId);
+        
+        // Warp past timelock
+        vm.warp(block.timestamp + ADMIN_TIMELOCK_DELAY + 1);
+        submitter.executeAddSequencer(changeId);
 
         assertTrue(submitter.isSequencer(newSeq));
         assertEq(submitter.sequencerCount(), 4);
     }
 
-    function testAddSequencerZeroAddress() public {
+    function testProposeAddSequencerZeroAddress() public {
         vm.expectRevert(ThresholdBatchSubmitter.ZeroAddress.selector);
-        submitter.addSequencer(address(0));
+        submitter.proposeAddSequencer(address(0));
     }
 
-    function testAddSequencerDuplicate() public {
-        // Should be idempotent
-        submitter.addSequencer(seq1);
-        assertEq(submitter.sequencerCount(), 3);
-    }
-
-    function testRemoveSequencer() public {
-        submitter.removeSequencer(seq3);
+    function testProposeAndExecuteRemoveSequencer() public {
+        bytes32 changeId = submitter.proposeRemoveSequencer(seq3);
+        vm.warp(block.timestamp + ADMIN_TIMELOCK_DELAY + 1);
+        submitter.executeRemoveSequencer(changeId);
 
         assertFalse(submitter.isSequencer(seq3));
         assertEq(submitter.sequencerCount(), 2);
     }
 
-    function testRemoveSequencerAdjustsThreshold() public {
+    function testRemoveSequencerMaintainsMinThreshold() public {
         // threshold=2, count=3
-        submitter.removeSequencer(seq3);
-        // threshold=2, count=2
-        submitter.removeSequencer(seq2);
-        // threshold should adjust to 1 (can't be > count)
-        assertEq(submitter.threshold(), 1);
+        bytes32 changeId1 = submitter.proposeRemoveSequencer(seq3);
+        vm.warp(block.timestamp + ADMIN_TIMELOCK_DELAY + 1);
+        submitter.executeRemoveSequencer(changeId1);
+        
+        // threshold=2, count=2 - at minimum
+        assertEq(submitter.threshold(), 2);
+        assertEq(submitter.sequencerCount(), 2);
+        
+        // Now try to remove another - need to warp AFTER proposing
+        // Record timestamp BEFORE proposing
+        uint256 proposalTime = block.timestamp;
+        bytes32 changeId2 = submitter.proposeRemoveSequencer(seq2);
+        
+        // Warp relative to the proposal time, not current timestamp
+        // The proposal was made at proposalTime, so we need to be at proposalTime + delay
+        vm.warp(proposalTime + ADMIN_TIMELOCK_DELAY + 1);
+        submitter.executeRemoveSequencer(changeId2);
+        
+        // Threshold stays at MIN_THRESHOLD=2, but count is 1
+        // This means submissions will fail until more sequencers added
+        assertEq(submitter.threshold(), 2); // MIN_THRESHOLD
         assertEq(submitter.sequencerCount(), 1);
     }
 
-    function testRemoveSequencerNotAuthorized() public {
-        // Should be idempotent
-        submitter.removeSequencer(unauthorized);
-        assertEq(submitter.sequencerCount(), 3);
-    }
+    // ============ Threshold Management Tests (Propose/Execute Pattern) ============
 
-    // ============ Threshold Management Tests ============
-
-    function testSetThreshold() public {
-        submitter.setThreshold(3);
+    function testProposeAndExecuteSetThreshold() public {
+        bytes32 changeId = submitter.proposeSetThreshold(3);
+        vm.warp(block.timestamp + ADMIN_TIMELOCK_DELAY + 1);
+        submitter.executeSetThreshold(changeId);
         assertEq(submitter.threshold(), 3);
     }
 
-    function testSetThresholdZero() public {
+    function testProposeSetThresholdZero() public {
         vm.expectRevert(abi.encodeWithSelector(ThresholdBatchSubmitter.InvalidThreshold.selector, 0, 3));
-        submitter.setThreshold(0);
+        submitter.proposeSetThreshold(0);
     }
 
-    function testSetThresholdTooHigh() public {
+    function testProposeSetThresholdTooHigh() public {
         vm.expectRevert(abi.encodeWithSelector(ThresholdBatchSubmitter.InvalidThreshold.selector, 5, 3));
-        submitter.setThreshold(5);
+        submitter.proposeSetThreshold(5);
     }
 
     // ============ Access Control Tests ============
 
-    function testOnlyOwnerCanAddSequencer() public {
+    function testOnlyOwnerCanProposeAddSequencer() public {
         vm.prank(seq1);
         vm.expectRevert();
-        submitter.addSequencer(address(0x999));
+        submitter.proposeAddSequencer(address(0x999));
     }
 
-    function testOnlyOwnerCanRemoveSequencer() public {
+    function testOnlyOwnerCanProposeRemoveSequencer() public {
         vm.prank(seq1);
         vm.expectRevert();
-        submitter.removeSequencer(seq2);
+        submitter.proposeRemoveSequencer(seq2);
     }
 
-    function testOnlyOwnerCanSetThreshold() public {
+    function testOnlyOwnerCanProposeSetThreshold() public {
         vm.prank(seq1);
         vm.expectRevert();
-        submitter.setThreshold(1);
+        submitter.proposeSetThreshold(1);
     }
 
     // ============ View Function Tests ============
@@ -381,23 +424,26 @@ contract ThresholdBatchSubmitterTest is Test {
 
     // ============ Boundary Conditions ============
 
-    function testThresholdOfOne() public {
-        // Create new submitter with threshold=1
-        ThresholdBatchSubmitter sub1 = new ThresholdBatchSubmitter(address(batchInbox), owner, 1);
-        sub1.addSequencer(seq1);
+    function testThresholdOfTwo() public {
+        // Create new submitter with threshold=2 (MIN_THRESHOLD)
+        ThresholdBatchSubmitter sub2 = new ThresholdBatchSubmitter(address(batchInbox), owner, 2);
+        _addSequencerTo(sub2, seq1);
+        _addSequencerTo(sub2, seq2);
 
         bytes memory batchData = hex"deadbeef";
-        bytes[] memory signatures = new bytes[](1);
-        signatures[0] = _signBatchFor(sub1, batchData, SEQ1_KEY);
-        address[] memory signers = new address[](1);
+        bytes[] memory signatures = new bytes[](2);
+        signatures[0] = _signBatchFor(sub2, batchData, SEQ1_KEY);
+        signatures[1] = _signBatchFor(sub2, batchData, SEQ2_KEY);
+        address[] memory signers = new address[](2);
         signers[0] = seq1;
+        signers[1] = seq2;
 
-        sub1.submitBatch(batchData, signatures, signers);
-        assertEq(sub1.nonce(), 1);
+        sub2.submitBatch(batchData, signatures, signers);
+        assertEq(sub2.nonce(), 1);
     }
 
     function testThresholdEqualsSequencerCount() public {
-        submitter.setThreshold(3);
+        _setThreshold(3);
 
         bytes memory batchData = hex"deadbeef";
         bytes[] memory signatures = new bytes[](3);
@@ -459,8 +505,8 @@ contract ThresholdBatchSubmitterTest is Test {
     function testBatchInboxReverts() public {
         RevertingBatchInbox revertingInbox = new RevertingBatchInbox();
         ThresholdBatchSubmitter subRevert = new ThresholdBatchSubmitter(address(revertingInbox), owner, 2);
-        subRevert.addSequencer(seq1);
-        subRevert.addSequencer(seq2);
+        _addSequencerTo(subRevert, seq1);
+        _addSequencerTo(subRevert, seq2);
 
         bytes memory batchData = hex"deadbeef";
         bytes[] memory signatures = new bytes[](2);
@@ -548,7 +594,7 @@ contract ThresholdBatchSubmitterTest is Test {
         bytes memory batchData = hex"deadbeef";
 
         // Remove seq2
-        submitter.removeSequencer(seq2);
+        _removeSequencer(seq2);
 
         // Try to submit with removed sequencer
         bytes[] memory signatures = new bytes[](2);
@@ -566,7 +612,7 @@ contract ThresholdBatchSubmitterTest is Test {
     function testSubmitWithNewlyAddedSequencer() public {
         uint256 SEQ4_KEY = 0x4;
         address seq4 = vm.addr(SEQ4_KEY);
-        submitter.addSequencer(seq4);
+        _addSequencer(seq4);
 
         bytes memory batchData = hex"deadbeef";
 
@@ -645,7 +691,7 @@ contract ThresholdBatchSubmitterTest is Test {
     // ============ Duplicate Detection Edge Cases ============
 
     function testDuplicateAtDifferentPositions() public {
-        submitter.setThreshold(3);
+        _setThreshold(3);
         bytes memory batchData = hex"deadbeef";
 
         // Duplicate at positions 0 and 2
@@ -674,7 +720,7 @@ contract ThresholdBatchSubmitterTest is Test {
         for (uint256 i = 0; i < 10; i++) {
             keys[i] = i + 100;
             addrs[i] = vm.addr(keys[i]);
-            subMany.addSequencer(addrs[i]);
+            _addSequencerTo(subMany, addrs[i]);
         }
 
         bytes memory batchData = hex"deadbeef";
@@ -722,12 +768,13 @@ contract ThresholdBatchSubmitterTest is Test {
     }
 
     function testFuzzThresholdBound(uint8 thresholdInput) public {
-        vm.assume(thresholdInput >= 1 && thresholdInput <= 3);
+        // MIN_THRESHOLD is 2, so only test valid thresholds 2-3
+        vm.assume(thresholdInput >= 2 && thresholdInput <= 3);
 
         ThresholdBatchSubmitter sub = new ThresholdBatchSubmitter(address(batchInbox), owner, thresholdInput);
-        sub.addSequencer(seq1);
-        sub.addSequencer(seq2);
-        sub.addSequencer(seq3);
+        _addSequencerTo(sub, seq1);
+        _addSequencerTo(sub, seq2);
+        _addSequencerTo(sub, seq3);
 
         assertEq(sub.threshold(), thresholdInput);
     }

@@ -371,32 +371,60 @@ contract GovernanceTimelockTest is Test {
     // ============ Admin Functions ============
 
     function testSetTimelockDelay() public {
-        // Stage 2: Minimum delay is 7 days
+        // Stage 2: Minimum delay is 7 days, must go through proposal
         uint256 newDelay = 14 days;
-        vm.prank(owner);
-        timelock.setTimelockDelay(newDelay);
+        
+        bytes memory callData = abi.encodeWithSelector(timelock.setTimelockDelay.selector, newDelay);
+        
+        vm.prank(governance);
+        bytes32 proposalId = timelock.proposeUpgrade(address(timelock), callData, "Update delay");
+        
+        vm.warp(block.timestamp + 30 days + 1);
+        timelock.execute(proposalId);
 
         assertEq(timelock.timelockDelay(), newDelay);
     }
 
     function testSetTimelockDelayBelowMinimum() public {
-        vm.prank(owner);
-        vm.expectRevert(GovernanceTimelock.InvalidDelay.selector);
-        timelock.setTimelockDelay(3 days); // Below EMERGENCY_MIN_DELAY (7 days for Stage 2)
+        // Setting delay below minimum should fail even via proposal
+        bytes memory callData = abi.encodeWithSelector(timelock.setTimelockDelay.selector, 3 days);
+        
+        vm.prank(governance);
+        bytes32 proposalId = timelock.proposeUpgrade(address(timelock), callData, "Update delay");
+        
+        vm.warp(block.timestamp + 30 days + 1);
+        
+        // Execute should fail with InvalidDelay
+        vm.expectRevert(GovernanceTimelock.ExecutionFailed.selector);
+        timelock.execute(proposalId);
     }
 
     function testSetGovernance() public {
         address newGov = makeAddr("newGov");
-        vm.prank(owner);
-        timelock.setGovernance(newGov);
+        
+        // Must go through proposal flow, not direct owner call
+        bytes memory callData = abi.encodeWithSelector(timelock.setGovernance.selector, newGov);
+        
+        vm.prank(governance);
+        bytes32 proposalId = timelock.proposeUpgrade(address(timelock), callData, "Change governance");
+        
+        vm.warp(block.timestamp + 30 days + 1);
+        timelock.execute(proposalId);
 
         assertEq(timelock.governance(), newGov);
     }
 
     function testSetSecurityCouncil() public {
         address newCouncil = makeAddr("newCouncil");
-        vm.prank(owner);
-        timelock.setSecurityCouncil(newCouncil);
+        
+        // Must go through proposal flow, not direct owner call
+        bytes memory callData = abi.encodeWithSelector(timelock.setSecurityCouncil.selector, newCouncil);
+        
+        vm.prank(governance);
+        bytes32 proposalId = timelock.proposeUpgrade(address(timelock), callData, "Change security council");
+        
+        vm.warp(block.timestamp + 30 days + 1);
+        timelock.execute(proposalId);
 
         assertEq(timelock.securityCouncil(), newCouncil);
     }
