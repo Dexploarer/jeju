@@ -3,7 +3,7 @@
  * Tests balance tracking, refresh logic, and edge cases
  */
 
-import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, test, expect, afterEach } from 'bun:test';
 import { LiquidityManager } from '../../src/solver/liquidity';
 import type { PublicClient, WalletClient } from 'viem';
 

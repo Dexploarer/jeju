@@ -16,7 +16,7 @@ describe('Trading Bot Integration', () => {
   describe('Default Bot Configuration Integration', () => {
     test('should create valid configurations for all networks', () => {
       ['localnet', 'testnet', 'mainnet'].forEach(network => {
-        const bots = getDefaultBotsForNetwork(network as any);
+        const bots = getDefaultBotsForNetwork(network as 'localnet' | 'testnet' | 'mainnet');
         expect(bots.length).toBeGreaterThan(0);
         
         bots.forEach(bot => {

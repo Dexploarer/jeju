@@ -59,9 +59,11 @@ contract StorageMarketTest is Test {
     }
 
     function test_CompleteDealWithPlatformFee() public {
-        // Create deal
+        // Create deal - calculate cost first
+        uint256 cost = market.calculateDealCost(provider, 1024 * 1024 * 1024, 30, 1);
+        
         vm.prank(user);
-        bytes32 dealId = market.createDeal{value: 1 ether}(
+        bytes32 dealId = market.createDeal{value: cost}(
             provider,
             "QmTestCid123",
             1024 * 1024 * 1024,
@@ -84,12 +86,12 @@ contract StorageMarketTest is Test {
         // Complete deal
         vm.prank(provider);
         market.completeDeal(dealId);
-
+        
         // Get fee rate from FeeConfig
         uint256 feeBps = feeConfig.getStorageUploadFee(); // 200 = 2%
         
-        // The deal cost was 1 ether
-        uint256 totalPayment = 1 ether;
+        // The total payment is the deal cost
+        uint256 totalPayment = cost;
         uint256 platformFee = (totalPayment * feeBps) / 10000;
         uint256 providerPayment = totalPayment - platformFee;
 
@@ -116,9 +118,11 @@ contract StorageMarketTest is Test {
         // Set local fee
         market.setPlatformFee(500); // 5%
 
-        // Create and complete deal
+        // Create and complete deal - calculate cost first
+        uint256 cost = market.calculateDealCost(provider, 1024 * 1024 * 1024, 30, 1);
+
         vm.prank(user);
-        bytes32 dealId = market.createDeal{value: 1 ether}(
+        bytes32 dealId = market.createDeal{value: cost}(
             provider,
             "QmTestCid456",
             1024 * 1024 * 1024,
@@ -138,7 +142,7 @@ contract StorageMarketTest is Test {
         market.completeDeal(dealId);
 
         // Should use local 5% fee
-        uint256 platformFee = (1 ether * 500) / 10000;
+        uint256 platformFee = (cost * 500) / 10000;
         assertEq(treasury.balance - treasuryBalanceBefore, platformFee);
     }
 }

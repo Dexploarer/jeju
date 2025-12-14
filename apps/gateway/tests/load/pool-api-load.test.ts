@@ -25,7 +25,7 @@ beforeAll(async () => {
       console.warn(`⚠️  Gateway server returned ${response.status}, tests will be skipped`);
       serverAvailable = false;
     }
-  } catch (error) {
+  } catch {
     console.warn(`⚠️  Gateway server not running at ${BASE_URL}. Tests will be skipped.`);
     console.warn('   Start with: bun run dev');
     console.warn('   Or set SKIP_LOAD_TESTS=true to skip these tests');
@@ -154,6 +154,7 @@ test('Load Test: POST /api/pools/quote', async () => {
   }
   
   await Promise.all(requests);
+  clearTimeout(timeout);
   
   const successful = results.filter(r => r.status === 200 || r.status === 404);
   const failed = results.filter(r => r.status !== 200 && r.status !== 404);

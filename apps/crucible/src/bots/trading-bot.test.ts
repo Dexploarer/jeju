@@ -12,6 +12,7 @@ import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
 import type { TradingBotOptions } from './trading-bot';
 import type { ChainId } from './autocrat-types';
 import type { TradingBotStrategy, TradingBotChain } from '../types';
+import type { DefaultBotConfig } from './default-bots';
 
 // Note: These tests focus on logic and structure
 // Full integration tests would require mocked RPC clients
@@ -190,7 +191,7 @@ describe('Default Bots Configuration', () => {
     const { DEFAULT_BOTS } = require('./default-bots');
     
     expect(DEFAULT_BOTS.length).toBeGreaterThan(0);
-    DEFAULT_BOTS.forEach((bot: any) => {
+    DEFAULT_BOTS.forEach((bot: DefaultBotConfig) => {
       expect(bot.name).toBeTruthy();
       expect(bot.description).toBeTruthy();
       expect(bot.strategies.length).toBeGreaterThan(0);
@@ -204,7 +205,7 @@ describe('Default Bots Configuration', () => {
     const bots = getDefaultBotsForNetwork('testnet');
     
     const testnetChains = new Set([420690, 11155111, 84532, 421614]);
-    bots.forEach((bot: any) => {
+    bots.forEach((bot: DefaultBotConfig) => {
       bot.chains.forEach((chainId: number) => {
         expect(testnetChains.has(chainId)).toBe(true);
       });
@@ -291,7 +292,7 @@ describe('Executor Bot Type Routing', () => {
   });
 
   test('should handle unknown bot type', () => {
-    const unknownType = 'unknown' as any;
+    const unknownType = 'unknown' as unknown as string;
     const validTypes = ['ai_agent', 'trading_bot', 'org_tool'];
     expect(validTypes.includes(unknownType)).toBe(false);
   });
