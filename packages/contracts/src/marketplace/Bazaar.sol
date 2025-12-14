@@ -9,6 +9,11 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IIdentityRegistry} from "../registry/interfaces/IIdentityRegistry.sol";
 
+interface IFeeConfigBazaar {
+    function getBazaarFee() external view returns (uint16);
+    function getTreasury() external view returns (address);
+}
+
 /**
  * @title Bazaar
  * @author Jeju Network
@@ -94,6 +99,7 @@ contract Bazaar is ReentrancyGuard, Ownable {
     // ============ State Variables ============
 
     /// @notice Platform fee in basis points (250 = 2.5%)
+    /// @dev Can be overridden by FeeConfig if set
     uint256 public platformFeeBps = 250;
 
     /// @notice Maximum platform fee (10%)
@@ -101,6 +107,12 @@ contract Bazaar is ReentrancyGuard, Ownable {
 
     /// @notice Platform fee recipient
     address public feeRecipient;
+
+    /// @notice Fee configuration contract (governance-controlled)
+    IFeeConfigBazaar public feeConfig;
+
+    /// @notice Total platform fees collected
+    uint256 public totalPlatformFeesCollected;
 
     /// @notice Game Gold token address (the primary in-game currency)
     address public immutable gameGold;
@@ -306,8 +318,9 @@ contract Bazaar is ReentrancyGuard, Ownable {
         Currency currency = listing.currency;
         address customCurrencyAddress = listing.customCurrencyAddress;
 
-        // Calculate fees
-        uint256 platformFee = (price * platformFeeBps) / 10000;
+        // Calculate fees using governance-controlled rate
+        uint256 currentFeeBps = _getPlatformFeeBps();
+        uint256 platformFee = (price * currentFeeBps) / 10000;
         uint256 creatorRoyalty = 0;
 
         address creator = creatorAddresses[assetContract];
@@ -317,20 +330,23 @@ contract Bazaar is ReentrancyGuard, Ownable {
         }
 
         uint256 sellerProceeds = price - platformFee - creatorRoyalty;
+        address recipient = _getFeeRecipient();
 
         // EFFECTS: Update state BEFORE external calls (CEI pattern)
         listing.status = ListingStatus.SOLD;
         delete tokenListings[assetContract][tokenId];
+        totalPlatformFeesCollected += platformFee;
 
         // Emit event before external calls for transparency
         emit ListingSold(listingId, msg.sender, seller, assetType, amount, price, currency);
+        emit PlatformFeeCollected(listingId, platformFee, currentFeeBps);
 
         // INTERACTIONS: Handle payment based on currency
         if (currency == Currency.ETH) {
             if (msg.value != price) revert InsufficientPayment();
 
             // Transfer funds
-            _transferETH(feeRecipient, platformFee);
+            _transferETH(recipient, platformFee);
             if (creatorRoyalty > 0 && creator != address(0)) {
                 _transferETH(creator, creatorRoyalty);
             }
@@ -351,7 +367,7 @@ contract Bazaar is ReentrancyGuard, Ownable {
             IERC20 token = IERC20(tokenAddress);
 
             // Transfer tokens from buyer
-            token.safeTransferFrom(msg.sender, feeRecipient, platformFee);
+            token.safeTransferFrom(msg.sender, recipient, platformFee);
 
             if (creatorRoyalty > 0 && creator != address(0)) {
                 token.safeTransferFrom(msg.sender, creator, creatorRoyalty);
@@ -389,7 +405,7 @@ contract Bazaar is ReentrancyGuard, Ownable {
     }
 
     /**
-     * @notice Update platform fee (owner only)
+     * @notice Update platform fee (owner only, fallback if FeeConfig not set)
      * @param newFeeBps New fee in basis points
      */
     function setPlatformFee(uint256 newFeeBps) external onlyOwner {
@@ -407,6 +423,62 @@ contract Bazaar is ReentrancyGuard, Ownable {
         feeRecipient = newRecipient;
         emit FeeRecipientUpdated(newRecipient);
     }
+
+    /**
+     * @notice Set fee configuration contract (governance-controlled)
+     * @param _feeConfig Address of FeeConfig contract
+     */
+    function setFeeConfig(address _feeConfig) external onlyOwner {
+        address oldConfig = address(feeConfig);
+        feeConfig = IFeeConfigBazaar(_feeConfig);
+        emit FeeConfigUpdated(oldConfig, _feeConfig);
+    }
+
+    /**
+     * @notice Get current effective platform fee rate
+     */
+    function getEffectivePlatformFee() external view returns (uint256) {
+        return _getPlatformFeeBps();
+    }
+
+    /**
+     * @notice Get platform fee statistics
+     */
+    function getPlatformFeeStats() external view returns (
+        uint256 _totalPlatformFeesCollected,
+        uint256 _currentFeeBps,
+        address _recipient
+    ) {
+        return (totalPlatformFeesCollected, _getPlatformFeeBps(), _getFeeRecipient());
+    }
+
+    /**
+     * @dev Get current platform fee in basis points from FeeConfig or local value
+     */
+    function _getPlatformFeeBps() internal view returns (uint256) {
+        if (address(feeConfig) != address(0)) {
+            return feeConfig.getBazaarFee();
+        }
+        return platformFeeBps;
+    }
+
+    /**
+     * @dev Get fee recipient from FeeConfig or local value
+     */
+    function _getFeeRecipient() internal view returns (address) {
+        if (address(feeConfig) != address(0)) {
+            address configRecipient = feeConfig.getTreasury();
+            if (configRecipient != address(0)) {
+                return configRecipient;
+            }
+        }
+        return feeRecipient;
+    }
+
+    // ============ Platform Fee Events ============
+
+    event PlatformFeeCollected(uint256 indexed listingId, uint256 amount, uint256 feeBps);
+    event FeeConfigUpdated(address indexed oldConfig, address indexed newConfig);
 
     /**
      * @notice Set creator royalty for a collection (owner only)
