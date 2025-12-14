@@ -39,9 +39,9 @@ contract StorageMarketTest is Test {
         market = new StorageMarket(address(registry), treasury, owner);
         market.setFeeConfig(address(feeConfig));
 
-        // Register provider
+        // Register provider (type 1 = IPFS, attestation hash)
         vm.prank(provider);
-        registry.register{value: 0.1 ether}("TestProvider", "https://storage.test", "ipfs");
+        registry.register{value: 0.1 ether}("TestProvider", "https://storage.test", 1, bytes32(uint256(1)));
     }
 
     function test_CreateDeal() public {
