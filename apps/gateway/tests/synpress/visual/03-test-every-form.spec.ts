@@ -201,7 +201,7 @@ test.describe('EVERY FORM TEST - Complete Form Validation', () => {
 });
 
 test.describe('Form Field Validation - All Inputs', () => {
-  test('should test all input types across all forms', async ({ page, metamask }) => {
+  test('should test all input types across all forms', async ({ _page, _metamask }) => {
     await page.goto(GATEWAY_URL);
     await connectWallet(page, metamask);
 
