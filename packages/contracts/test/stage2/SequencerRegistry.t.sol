@@ -289,7 +289,7 @@ contract SequencerRegistryTest is Test {
 
         // Slash sequencer
         vm.prank(owner);
-        registry.slash(sequencer1, SequencerRegistry.SlashingReason.DOUBLE_SIGNING);
+        registry.slash(sequencer1, SequencerRegistry.SlashingReason.DOUBLE_SIGNING, new bytes(130));
 
         vm.startPrank(sequencer1);
         vm.expectRevert(SequencerRegistry.AlreadySlashed.selector);
@@ -350,7 +350,7 @@ contract SequencerRegistryTest is Test {
         uint256 treasuryBefore = jejuToken.balanceOf(treasury);
 
         vm.prank(owner);
-        registry.slash(sequencer1, SequencerRegistry.SlashingReason.DOUBLE_SIGNING);
+        registry.slash(sequencer1, SequencerRegistry.SlashingReason.DOUBLE_SIGNING, new bytes(130));
 
         SequencerRegistry.Sequencer memory seq = _getSequencer(sequencer1);
         assertEq(seq.stake, 0); // 100% slash
@@ -366,7 +366,7 @@ contract SequencerRegistryTest is Test {
         vm.stopPrank();
 
         vm.prank(owner);
-        registry.slash(sequencer1, SequencerRegistry.SlashingReason.CENSORSHIP);
+        registry.slash(sequencer1, SequencerRegistry.SlashingReason.CENSORSHIP, bytes.concat(bytes32(uint256(1))));
 
         SequencerRegistry.Sequencer memory seq = _getSequencer(sequencer1);
         assertEq(seq.stake, 5000 ether); // 50% slash
@@ -380,7 +380,7 @@ contract SequencerRegistryTest is Test {
         vm.stopPrank();
 
         vm.prank(owner);
-        registry.slash(sequencer1, SequencerRegistry.SlashingReason.DOWNTIME);
+        registry.slash(sequencer1, SequencerRegistry.SlashingReason.DOWNTIME, "");
 
         SequencerRegistry.Sequencer memory seq = _getSequencer(sequencer1);
         assertEq(seq.stake, 9000 ether); // 10% slash
@@ -394,7 +394,7 @@ contract SequencerRegistryTest is Test {
         vm.stopPrank();
 
         vm.prank(owner);
-        registry.slash(sequencer1, SequencerRegistry.SlashingReason.GOVERNANCE_BAN);
+        registry.slash(sequencer1, SequencerRegistry.SlashingReason.GOVERNANCE_BAN, bytes.concat(bytes32(uint256(1))));
 
         SequencerRegistry.Sequencer memory seq = _getSequencer(sequencer1);
         assertEq(seq.stake, 0); // 100% slash
@@ -410,7 +410,7 @@ contract SequencerRegistryTest is Test {
 
         // Slash 50% (1000 ether), leaving 1000 ether (exactly MIN_STAKE)
         vm.prank(owner);
-        registry.slash(sequencer1, SequencerRegistry.SlashingReason.CENSORSHIP);
+        registry.slash(sequencer1, SequencerRegistry.SlashingReason.CENSORSHIP, bytes.concat(bytes32(uint256(1))));
 
         SequencerRegistry.Sequencer memory seq = _getSequencer(sequencer1);
         assertEq(seq.stake, 1000 ether);
@@ -418,7 +418,7 @@ contract SequencerRegistryTest is Test {
 
         // Slash again, goes below minimum
         vm.prank(owner);
-        registry.slash(sequencer1, SequencerRegistry.SlashingReason.CENSORSHIP);
+        registry.slash(sequencer1, SequencerRegistry.SlashingReason.CENSORSHIP, bytes.concat(bytes32(uint256(1))));
 
         seq = _getSequencer(sequencer1);
         assertEq(seq.stake, 500 ether);
@@ -429,7 +429,7 @@ contract SequencerRegistryTest is Test {
     function testSlashWhenNotActive() public {
         vm.prank(owner);
         vm.expectRevert(SequencerRegistry.NotActive.selector);
-        registry.slash(sequencer1, SequencerRegistry.SlashingReason.DOUBLE_SIGNING);
+        registry.slash(sequencer1, SequencerRegistry.SlashingReason.DOUBLE_SIGNING, new bytes(130));
     }
 
     function testSlashWhenAlreadySlashed() public {
@@ -439,11 +439,11 @@ contract SequencerRegistryTest is Test {
         vm.stopPrank();
 
         vm.prank(owner);
-        registry.slash(sequencer1, SequencerRegistry.SlashingReason.DOUBLE_SIGNING);
+        registry.slash(sequencer1, SequencerRegistry.SlashingReason.DOUBLE_SIGNING, new bytes(130));
 
         vm.prank(owner);
         vm.expectRevert(SequencerRegistry.AlreadySlashed.selector);
-        registry.slash(sequencer1, SequencerRegistry.SlashingReason.CENSORSHIP);
+        registry.slash(sequencer1, SequencerRegistry.SlashingReason.CENSORSHIP, bytes.concat(bytes32(uint256(1))));
     }
 
     // ============ Downtime Tests ============
@@ -645,7 +645,7 @@ contract SequencerRegistryTest is Test {
         vm.stopPrank();
 
         vm.prank(owner);
-        registry.slash(sequencer1, SequencerRegistry.SlashingReason.CENSORSHIP);
+        registry.slash(sequencer1, SequencerRegistry.SlashingReason.CENSORSHIP, bytes.concat(bytes32(uint256(1))));
 
         // Check slashing events array
         (,,, uint256 timestamp) = registry.slashingEvents(0);

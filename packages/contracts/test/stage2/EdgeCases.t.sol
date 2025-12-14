@@ -426,18 +426,16 @@ contract DisputeGameFactoryEdgeCasesTest is Test {
     // ============ Zero Address Tests ============
 
     function testCreateGameWithZeroProposer() public {
-        // Creating game with zero proposer is technically allowed but economically useless
+        // SECURITY: Creating game with zero proposer is now rejected
         vm.prank(challenger);
-        bytes32 gameId = factory.createGame{value: 1 ether}(
+        vm.expectRevert(DisputeGameFactory.InvalidProposer.selector);
+        factory.createGame{value: 1 ether}(
             address(0),
             STATE_ROOT,
             CLAIM_ROOT,
             DisputeGameFactory.GameType.FAULT_DISPUTE,
             DisputeGameFactory.ProverType.CANNON
         );
-
-        DisputeGameFactory.DisputeGame memory game = factory.getGame(gameId);
-        assertEq(game.proposer, address(0));
     }
 
     function testSetTreasuryToZero() public {
@@ -871,7 +869,7 @@ contract SequencerRegistryEdgeCasesTest is Test {
         vm.stopPrank();
 
         vm.prank(owner);
-        registry.slash(sequencer1, SequencerRegistry.SlashingReason.CENSORSHIP);
+        registry.slash(sequencer1, SequencerRegistry.SlashingReason.CENSORSHIP, bytes.concat(bytes32(uint256(1))));
 
         (, uint256 stake,,,,,,,,bool isActive,) = registry.sequencers(sequencer1);
         assertEq(stake, 1000 ether);
@@ -888,7 +886,7 @@ contract SequencerRegistryEdgeCasesTest is Test {
         uint256 balanceBefore = jejuToken.balanceOf(sequencer1);
 
         vm.prank(owner);
-        registry.slash(sequencer1, SequencerRegistry.SlashingReason.CENSORSHIP);
+        registry.slash(sequencer1, SequencerRegistry.SlashingReason.CENSORSHIP, bytes.concat(bytes32(uint256(1))));
 
         (, uint256 stake,,,,,,,,bool isActive,) = registry.sequencers(sequencer1);
         assertEq(stake, 750 ether);
@@ -907,7 +905,7 @@ contract SequencerRegistryEdgeCasesTest is Test {
         vm.stopPrank();
 
         vm.prank(owner);
-        registry.slash(sequencer1, SequencerRegistry.SlashingReason.DOWNTIME);
+        registry.slash(sequencer1, SequencerRegistry.SlashingReason.DOWNTIME, "");
 
         (, uint256 stake,,,,,,,,bool isActive, bool isSlashed) = registry.sequencers(sequencer1);
         assertEq(stake, 9000 ether);
@@ -923,21 +921,21 @@ contract SequencerRegistryEdgeCasesTest is Test {
 
         // First slash: 2000 * 10% = 200, remaining 1800
         vm.prank(owner);
-        registry.slash(sequencer1, SequencerRegistry.SlashingReason.DOWNTIME);
+        registry.slash(sequencer1, SequencerRegistry.SlashingReason.DOWNTIME, "");
         (, uint256 stake1,,,,,,,,bool isActive1,) = registry.sequencers(sequencer1);
         assertEq(stake1, 1800 ether);
         assertTrue(isActive1);
 
         // Second slash: 1800 * 10% = 180, remaining 1620
         vm.prank(owner);
-        registry.slash(sequencer1, SequencerRegistry.SlashingReason.DOWNTIME);
+        registry.slash(sequencer1, SequencerRegistry.SlashingReason.DOWNTIME, "");
         (, uint256 stake2,,,,,,,,bool isActive2,) = registry.sequencers(sequencer1);
         assertEq(stake2, 1620 ether);
         assertTrue(isActive2);
 
         // Third slash: 1620 * 10% = 162, remaining 1458
         vm.prank(owner);
-        registry.slash(sequencer1, SequencerRegistry.SlashingReason.DOWNTIME);
+        registry.slash(sequencer1, SequencerRegistry.SlashingReason.DOWNTIME, "");
         (, uint256 stake3,,,,,,,,bool isActive3,) = registry.sequencers(sequencer1);
         assertEq(stake3, 1458 ether);
         assertTrue(isActive3);
@@ -945,7 +943,7 @@ contract SequencerRegistryEdgeCasesTest is Test {
         // Continue until below MIN_STAKE
         while (isActive3) {
             vm.prank(owner);
-            registry.slash(sequencer1, SequencerRegistry.SlashingReason.DOWNTIME);
+            registry.slash(sequencer1, SequencerRegistry.SlashingReason.DOWNTIME, "");
             (,,,,,,,,,isActive3,) = registry.sequencers(sequencer1);
         }
 
@@ -1203,22 +1201,44 @@ contract GovernanceTimelockEdgeCasesTest is Test {
 
     function testSetTimelockDelayExactlyAtMinimum() public {
         uint256 minDelay = timelock.EMERGENCY_MIN_DELAY();
-        vm.prank(owner);
-        timelock.setTimelockDelay(minDelay);
+        
+        // Must go through proposal flow
+        bytes memory callData = abi.encodeWithSelector(timelock.setTimelockDelay.selector, minDelay);
+        vm.prank(governance);
+        bytes32 proposalId = timelock.proposeUpgrade(address(timelock), callData, "Set to minimum");
+        
+        vm.warp(block.timestamp + 30 days + 1);
+        timelock.execute(proposalId);
+        
         assertEq(timelock.timelockDelay(), minDelay);
     }
 
     function testSetTimelockDelayOneSecondBelowMinimum() public {
         uint256 minDelay = timelock.EMERGENCY_MIN_DELAY();
-        vm.prank(owner);
-        vm.expectRevert(GovernanceTimelock.InvalidDelay.selector);
-        timelock.setTimelockDelay(minDelay - 1);
+        
+        // Must go through proposal flow
+        bytes memory callData = abi.encodeWithSelector(timelock.setTimelockDelay.selector, minDelay - 1);
+        vm.prank(governance);
+        bytes32 proposalId = timelock.proposeUpgrade(address(timelock), callData, "Set below minimum");
+        
+        vm.warp(block.timestamp + 30 days + 1);
+        
+        // Execute should fail
+        vm.expectRevert(GovernanceTimelock.ExecutionFailed.selector);
+        timelock.execute(proposalId);
     }
 
     function testSetGovernanceToZero() public {
-        vm.prank(owner);
-        timelock.setGovernance(address(0));
-        assertEq(timelock.governance(), address(0));
+        // Setting governance to zero via proposal should fail due to InvalidTarget check
+        bytes memory callData = abi.encodeWithSelector(timelock.setGovernance.selector, address(0));
+        vm.prank(governance);
+        bytes32 proposalId = timelock.proposeUpgrade(address(timelock), callData, "Set gov to zero");
+        
+        vm.warp(block.timestamp + 30 days + 1);
+        
+        // Execute should fail
+        vm.expectRevert(GovernanceTimelock.ExecutionFailed.selector);
+        timelock.execute(proposalId);
     }
 
     // ============ Execution Failure Recovery ============
