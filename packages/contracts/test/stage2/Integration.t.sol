@@ -127,14 +127,29 @@ contract Stage2IntegrationTest is Test {
         assertEq(addressesBefore.length, 2);
 
         // Slash sequencer1 via timelock (since ownership was transferred)
+        // SECURITY: Slash now requires proof - create a valid double sign proof (130 bytes min)
+        bytes memory doubleSignProof = abi.encodePacked(
+            bytes32(uint256(1)), // Block hash 1
+            bytes32(uint256(2)), // Block hash 2
+            bytes32(uint256(3)), // Signature r1
+            bytes32(uint256(4)), // Signature s1
+            bytes1(uint8(27)),   // Signature v1
+            bytes32(uint256(5)), // Signature r2
+            bytes32(uint256(6)), // Signature s2
+            bytes1(uint8(28))    // Signature v2
+        );
+        
         bytes memory slashData = abi.encodeWithSelector(
-            SequencerRegistry.slash.selector, sequencer1, SequencerRegistry.SlashingReason.DOUBLE_SIGNING
+            SequencerRegistry.slash.selector,
+            sequencer1,
+            SequencerRegistry.SlashingReason.DOUBLE_SIGNING,
+            doubleSignProof
         );
 
         vm.prank(governance);
         bytes32 proposalId = timelock.proposeUpgrade(address(sequencerRegistry), slashData, "Slash double signer");
 
-        vm.warp(block.timestamp + 2 hours + 1);
+        vm.warp(block.timestamp + 30 days + 1); // Use correct 30-day timelock
         timelock.execute(proposalId);
 
         (address[] memory addressesAfter,) = sequencerRegistry.getActiveSequencers();
