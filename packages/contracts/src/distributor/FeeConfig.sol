@@ -36,7 +36,6 @@ contract FeeConfig is Ownable, Pausable {
     uint256 public constant BPS_DENOMINATOR = 10000;
     uint256 public constant MAX_FEE_BPS = 3000; // Max 30% for any single fee
     uint256 public constant FEE_INCREASE_TIMELOCK = 3 days;
-    uint256 public constant FEE_DECREASE_DELAY = 0; // Instant decreases
 
     // ============================================================================
     // Structs
@@ -125,10 +124,6 @@ contract FeeConfig is Ownable, Pausable {
 
     /// @notice Pending fee changes (by proposal ID)
     mapping(bytes32 => PendingFeeChange) public pendingChanges;
-    bytes32[] public pendingChangeIds;
-
-    /// @notice Contract addresses that can read fees
-    mapping(address => bool) public authorizedReaders;
 
     /// @notice Last update timestamps per category
     mapping(bytes32 => uint256) public lastUpdated;
@@ -185,7 +180,6 @@ contract FeeConfig is Ownable, Pausable {
     event CouncilUpdated(address indexed oldCouncil, address indexed newCouncil);
     event CEOUpdated(address indexed oldCeo, address indexed newCeo);
     event TreasuryUpdated(address indexed oldTreasury, address indexed newTreasury);
-    event ReaderAuthorized(address indexed reader, bool authorized);
 
     // ============================================================================
     // Errors
@@ -332,8 +326,6 @@ contract FeeConfig is Ownable, Pausable {
             proposedBy: msg.sender,
             executed: false
         });
-
-        pendingChangeIds.push(changeId);
 
         emit FeeChangeProposed(changeId, feeType, effectiveAt, msg.sender);
     }
@@ -662,13 +654,6 @@ contract FeeConfig is Ownable, Pausable {
     }
 
     /**
-     * @notice Get pending fee changes
-     */
-    function getPendingChanges() external view returns (bytes32[] memory) {
-        return pendingChangeIds;
-    }
-
-    /**
      * @notice Get treasury address
      */
     function getTreasury() external view returns (address) {
@@ -693,11 +678,6 @@ contract FeeConfig is Ownable, Pausable {
         if (newTreasury == address(0)) revert InvalidAddress();
         emit TreasuryUpdated(treasury, newTreasury);
         treasury = newTreasury;
-    }
-
-    function setAuthorizedReader(address reader, bool authorized) external onlyOwner {
-        authorizedReaders[reader] = authorized;
-        emit ReaderAuthorized(reader, authorized);
     }
 
     function pause() external onlyOwner {

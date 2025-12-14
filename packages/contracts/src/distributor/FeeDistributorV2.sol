@@ -142,7 +142,6 @@ contract FeeDistributorV2 is ReentrancyGuard, Ownable, Pausable {
     );
     event AppClaimed(address indexed app, uint256 amount);
     event PaymasterSet(address indexed paymaster);
-    event ContributorPoolUpdated(uint256 period, uint256 newBalance);
     event SnapshotSubmitted(uint256 indexed period, uint256 totalPool, uint256 contributorCount, uint256 totalShares);
     event SnapshotFinalized(uint256 indexed period, uint256 timestamp);
     event ContributorClaimed(address indexed contributor, uint256 indexed period, uint256 amount);
