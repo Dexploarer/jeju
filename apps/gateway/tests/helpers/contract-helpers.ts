@@ -41,9 +41,6 @@ export async function deployTestToken(
     [name, symbol, initialSupply, account.address]
   );
 
-  // Combine bytecode with constructor args
-  const deployData = `${ERC20_BYTECODE}${constructorArgs.slice(2)}` as `0x${string}`;
-
   // Deploy the contract
   const hash = await walletClient.deployContract({
     abi: ERC20_ABI,

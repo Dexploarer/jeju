@@ -35,7 +35,7 @@ export default defineConfig({
   
   // Global settings
   use: {
-    baseURL: 'http://localhost:4015',
+    baseURL: process.env.BASE_URL || 'http://localhost:4015',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -49,6 +49,7 @@ export default defineConfig({
       use: { 
         ...devices['Desktop Chrome'],
         headless: true,
+        baseURL: process.env.BASE_URL || 'http://localhost:4015',
       },
     },
     

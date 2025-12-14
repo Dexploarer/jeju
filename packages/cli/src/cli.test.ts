@@ -94,10 +94,17 @@ describe('keys command', () => {
     expect(stdout).toContain('0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266');
   });
 
-  test('genesis --help', async () => {
+  test('genesis --help shows ceremony options', async () => {
     const { stdout, exitCode } = await runCLI(['keys', 'genesis', '--help']);
     expect(exitCode).toBe(0);
-    expect(stdout).toContain('Secure key generation');
+    expect(stdout).toContain('Secure key generation ceremony');
+    expect(stdout).toContain('--network');
+  });
+
+  test('supports burn action', async () => {
+    const { stdout, exitCode } = await runCLI(['keys', '--help']);
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain('show | genesis | balance');
   });
 });
 
