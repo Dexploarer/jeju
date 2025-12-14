@@ -41,7 +41,12 @@
     "test:e2e:debug": "playwright test --debug",
     "test:all": "bun run test && bun run test:e2e:mock",
     "clean": "rm -rf dist dist-ext-chrome dist-ext-firefox src-tauri/target android/app/build ios/App/build",
-    "build:all": "bun run build && bun run build:ext:chrome && bun run build:ext:firefox"
+    "build:all": "bun run build && bun run build:ext:chrome && bun run build:ext:firefox",
+    "build:web": "bun run build",
+    "build:extensions": "bun run build:ext:chrome && bun run build:ext:firefox",
+    "build:mobile": "bun run build && bunx cap sync",
+    "generate:icons": "bun run scripts/generate-icons.ts",
+    "preflight": "bun run typecheck && bun run test && bun run build:all"
   },
   "dependencies": {
     "@elizaos/core": "^1.6.5",

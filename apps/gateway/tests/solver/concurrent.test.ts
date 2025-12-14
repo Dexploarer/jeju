@@ -3,7 +3,7 @@
  * Tests race conditions, parallel execution, and async edge cases
  */
 
-import { describe, test, expect, beforeEach } from 'bun:test';
+import { describe, test, expect } from 'bun:test';
 
 describe('Concurrent Intent Processing', () => {
   // Simulates the solver's pending map behavior

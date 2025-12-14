@@ -97,6 +97,7 @@ contract LedgerManager is Ownable, Pausable, ReentrancyGuard {
     error UnauthorizedCaller();
     error TransferFailed();
     error InvalidAmount();
+    error ZeroAddress();
 
     // ============ Modifiers ============
 
@@ -301,6 +302,39 @@ contract LedgerManager is Ownable, Pausable, ReentrancyGuard {
 
         emit Settled(user, provider, amount, requestHash);
     }
+
+    /**
+     * @notice Settle platform fee from user's provider sub-account to treasury
+     * @param user User address
+     * @param provider Provider whose sub-account to deduct from
+     * @param treasury Recipient of platform fee
+     * @param amount Platform fee amount
+     */
+    function settlePlatformFee(address user, address provider, address treasury, uint256 amount)
+        external
+        nonReentrant
+        onlyInferenceContract
+    {
+        if (treasury == address(0)) revert ZeroAddress();
+        if (amount == 0) return; // No-op for zero fees
+        
+        ProviderSubAccount storage subAccount = subAccounts[user][provider];
+        if (amount > subAccount.balance) revert InsufficientBalance(subAccount.balance, amount);
+
+        subAccount.balance -= amount;
+
+        Ledger storage ledger = ledgers[user];
+        ledger.totalBalance -= amount;
+        ledger.lockedBalance -= amount;
+
+        // Transfer to treasury
+        (bool success,) = treasury.call{value: amount}("");
+        if (!success) revert TransferFailed();
+
+        emit PlatformFeeSettled(user, provider, treasury, amount);
+    }
+
+    event PlatformFeeSettled(address indexed user, address indexed provider, address indexed treasury, uint256 amount);
 
     // ============ View Functions ============
 
