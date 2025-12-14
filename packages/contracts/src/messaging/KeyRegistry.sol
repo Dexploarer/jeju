@@ -26,7 +26,6 @@ import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/Messa
 contract KeyRegistry is ReentrancyGuard {
     using ECDSA for bytes32;
     using MessageHashUtils for bytes32;
-    using MessageHashUtils for bytes32;
 
     // ============ Structs ============
 
@@ -55,6 +54,7 @@ contract KeyRegistry is ReentrancyGuard {
     mapping(address => uint256) public oneTimePreKeyIndex;
 
     // Historical keys (for decrypting old messages)
+    // slither-disable-next-line uninitialized-state
     mapping(address => bytes32[]) public keyHistory;
 
     // ERC-8004 agent keys (agentId => owner => bundle)
@@ -182,15 +182,16 @@ contract KeyRegistry is ReentrancyGuard {
 
     /**
      * @notice Consume a one-time pre-key (called when initiating conversation)
-     * @dev Rate limited to prevent DoS attacks
+     * @dev Rate limited to prevent DoS attacks. Timestamp used intentionally for cooldown.
      * @param user Address whose pre-key to consume
      * @return preKey The one-time pre-key
      * @return keyIndex Index of the consumed key
      */
+    // slither-disable-next-line timestamp
     function consumeOneTimePreKey(address user) external nonReentrant returns (bytes32 preKey, uint256 keyIndex) {
         if (!keyBundles[user].isActive) revert KeyBundleInactive();
 
-        // Rate limiting per consumer-user pair
+        // Rate limiting per consumer-user pair (timestamp intentional for cooldown)
         uint256 lastConsumed = lastPreKeyConsumption[user][msg.sender];
         if (block.timestamp - lastConsumed < PRE_KEY_CONSUMPTION_COOLDOWN) {
             revert PreKeyConsumptionRateLimited();
@@ -397,9 +398,11 @@ contract KeyRegistry is ReentrancyGuard {
 
     /**
      * @notice Check if pre-key rotation is needed
+     * @dev Timestamp comparison is intentional for rotation period enforcement
      * @param user Address to check
      * @return needsRotation True if pre-key should be rotated
      */
+    // slither-disable-next-line timestamp
     function needsPreKeyRotation(address user) external view returns (bool needsRotation) {
         PublicKeyBundle storage bundle = keyBundles[user];
         if (!bundle.isActive) return false;
