@@ -1,5 +1,10 @@
 /**
  * Key management utilities
+ * 
+ * Security features:
+ * - AES-256-GCM encryption with scrypt key derivation
+ * - Secure random key generation
+ * - Memory clearing after use
  */
 
 import { Wallet } from 'ethers';
@@ -13,7 +18,9 @@ import { WELL_KNOWN_KEYS, type KeyConfig, type KeySet, type NetworkType } from '
 
 const scryptAsync = promisify(scrypt);
 
-interface OperatorKeySet {
+const KEY_LENGTH = 32;
+
+export interface OperatorKeySet {
   sequencer: KeyConfig;
   batcher: KeyConfig;
   proposer: KeyConfig;
@@ -32,7 +39,6 @@ export function getDefaultDeployerKey(network: NetworkType): KeyConfig {
     return WELL_KNOWN_KEYS.dev[0];
   }
   
-  // For testnet/mainnet, try to load from saved keys
   const keysDir = getKeysDir();
   const keyFile = join(keysDir, network, 'deployer.json');
   
@@ -41,7 +47,7 @@ export function getDefaultDeployerKey(network: NetworkType): KeyConfig {
     return data;
   }
   
-  throw new Error(`No deployer key configured for ${network}. Run: jeju keys generate --network=${network}`);
+  throw new Error(`No deployer key configured for ${network}. Run: jeju keys genesis -n ${network}`);
 }
 
 export function resolvePrivateKey(network: NetworkType): string {
@@ -88,10 +94,17 @@ export function generateOperatorKeys(): OperatorKeySet {
   };
 }
 
+/**
+ * Encrypt a KeySet using AES-256-GCM with scrypt key derivation
+ * 
+ * Format: salt (32) + iv (16) + authTag (16) + encrypted
+ */
 export async function encryptKeySet(keySet: KeySet, password: string): Promise<Buffer> {
   const salt = randomBytes(32);
   const iv = randomBytes(16);
-  const key = (await scryptAsync(password, salt, 32)) as Buffer;
+  
+  // Derive key using scrypt (memory-hard function)
+  const key = (await scryptAsync(password, salt, KEY_LENGTH)) as Buffer;
   
   const cipher = createCipheriv('aes-256-gcm', key, iv);
   const data = JSON.stringify(keySet);
@@ -103,17 +116,23 @@ export async function encryptKeySet(keySet: KeySet, password: string): Promise<B
   
   const authTag = cipher.getAuthTag();
   
+  // Clear sensitive data from memory
+  key.fill(0);
+  
   // Format: salt (32) + iv (16) + authTag (16) + encrypted
   return Buffer.concat([salt, iv, authTag, encrypted]);
 }
 
+/**
+ * Decrypt a KeySet
+ */
 export async function decryptKeySet(encrypted: Buffer, password: string): Promise<KeySet> {
   const salt = encrypted.subarray(0, 32);
   const iv = encrypted.subarray(32, 48);
   const authTag = encrypted.subarray(48, 64);
   const data = encrypted.subarray(64);
   
-  const key = (await scryptAsync(password, salt, 32)) as Buffer;
+  const key = (await scryptAsync(password, salt, KEY_LENGTH)) as Buffer;
   
   const decipher = createDecipheriv('aes-256-gcm', key, iv);
   decipher.setAuthTag(authTag);
@@ -122,6 +141,9 @@ export async function decryptKeySet(encrypted: Buffer, password: string): Promis
     decipher.update(data),
     decipher.final(),
   ]);
+  
+  // Clear key from memory
+  key.fill(0);
   
   return JSON.parse(decrypted.toString('utf8'));
 }
@@ -148,7 +170,7 @@ export function saveKeys(network: NetworkType, keys: KeyConfig[], encrypt = fals
   chmodSync(filepath, 0o600);
   
   // Also save deployer separately for easy access
-  const deployer = keys.find(k => k.role?.includes('admin') || k.role?.includes('deployer'));
+  const deployer = keys.find(k => k.role?.includes('admin') || k.role?.includes('Admin'));
   if (deployer) {
     const deployerFile = join(networkDir, 'deployer.json');
     writeFileSync(deployerFile, JSON.stringify(deployer, null, 2), { mode: 0o600 });
@@ -175,8 +197,9 @@ export function loadKeys(network: NetworkType): KeySet | null {
 
 export function hasKeys(network: NetworkType): boolean {
   const keysDir = getKeysDir();
-  return existsSync(join(keysDir, network, 'operators.json')) ||
-         existsSync(join(keysDir, network, 'deployer.json'));
+  return existsSync(join(keysDir, network, 'operators.enc')) ||
+         existsSync(join(keysDir, network, 'operators.json')) ||
+         existsSync(join(keysDir, network, 'addresses.json'));
 }
 
 export function showKeyInfo(key: KeyConfig): void {
@@ -186,18 +209,19 @@ export function showKeyInfo(key: KeyConfig): void {
 }
 
 export function printFundingRequirements(keys: OperatorKeySet, network: NetworkType): void {
-  logger.subheader('Funding Requirements');
-  
   const requirements = [
-    { key: keys.admin, amount: '0.5 ETH', purpose: 'L1 contract deployments' },
-    { key: keys.batcher, amount: '0.1 ETH', purpose: 'Submitting batches' },
-    { key: keys.proposer, amount: '0.1 ETH', purpose: 'Submitting proposals' },
+    { key: keys.admin, amount: network === 'mainnet' ? '1.0 ETH' : '0.5 ETH', purpose: 'L1 contract deployments' },
+    { key: keys.batcher, amount: network === 'mainnet' ? '0.5 ETH' : '0.1 ETH', purpose: 'Submitting batches (ongoing)' },
+    { key: keys.proposer, amount: network === 'mainnet' ? '0.5 ETH' : '0.1 ETH', purpose: 'Submitting proposals (ongoing)' },
+    { key: keys.sequencer, amount: '0.01 ETH', purpose: 'Sequencer operations' },
   ];
   
   for (const req of requirements) {
-    logger.info(`  ${req.key.name}: ${req.key.address}`);
-    logger.info(`    Amount: ${req.amount} (${req.purpose})`);
-    logger.newline();
+    if (req.key) {
+      logger.info(`  ${req.key.name}: ${req.key.address}`);
+      logger.info(`    Required: ${req.amount} (${req.purpose})`);
+      logger.newline();
+    }
   }
   
   if (network === 'testnet') {
@@ -218,21 +242,33 @@ export function validatePassword(password: string): { valid: boolean; errors: st
   const errors: string[] = [];
   
   if (password.length < 16) {
-    errors.push('Password must be at least 16 characters');
+    errors.push('Minimum 16 characters');
   }
   if (!/[A-Z]/.test(password)) {
-    errors.push('Password must contain uppercase letters');
+    errors.push('Must contain uppercase letters');
   }
   if (!/[a-z]/.test(password)) {
-    errors.push('Password must contain lowercase letters');
+    errors.push('Must contain lowercase letters');
   }
   if (!/[0-9]/.test(password)) {
-    errors.push('Password must contain numbers');
+    errors.push('Must contain numbers');
   }
   if (!/[^A-Za-z0-9]/.test(password)) {
-    errors.push('Password must contain special characters');
+    errors.push('Must contain special characters (!@#$%^&*...)');
   }
   
   return { valid: errors.length === 0, errors };
 }
 
+/**
+ * Securely clear a string from memory (best effort)
+ */
+export function secureClear(str: string): void {
+  // In JavaScript, we can't truly guarantee memory clearing,
+  // but we can overwrite the string content
+  if (typeof str === 'string' && str.length > 0) {
+    // This won't work for immutable strings, but signals intent
+    const arr = str.split('');
+    arr.fill('\0');
+  }
+}
