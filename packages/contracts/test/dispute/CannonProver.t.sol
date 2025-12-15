@@ -2,7 +2,7 @@
 pragma solidity ^0.8.26;
 
 import "forge-std/Test.sol";
-import "../../src/stage2/cannon/CannonProver.sol";
+import "../../src/dispute/provers/CannonProver.sol";
 
 /// @title MockMIPS
 /// @notice Mock MIPS VM for testing CannonProver

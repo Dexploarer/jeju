@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import "./SequencerRegistry.sol";
-import "./DisputeGameFactory.sol";
+import "../sequencer/SequencerRegistry.sol";
+import "../dispute/DisputeGameFactory.sol";
 
 /// @notice Adapter to integrate SequencerRegistry with L2OutputOracle for Stage 2
 contract L2OutputOracleAdapter {

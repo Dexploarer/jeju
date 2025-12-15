@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import "./GovernanceTimelock.sol";
+import "../governance/GovernanceTimelock.sol";
 
 /// @notice Adapter to integrate GovernanceTimelock with OptimismPortal for Stage 2
 contract OptimismPortalAdapter {

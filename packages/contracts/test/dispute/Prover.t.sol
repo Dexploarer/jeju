@@ -2,8 +2,8 @@
 pragma solidity ^0.8.26;
 
 import "forge-std/Test.sol";
-import "../../src/stage2/provers/Prover.sol";
-import "../../src/stage2/DisputeGameFactory.sol";
+import "../../src/dispute/provers/Prover.sol";
+import "../../src/dispute/DisputeGameFactory.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 contract ProverTest is Test {

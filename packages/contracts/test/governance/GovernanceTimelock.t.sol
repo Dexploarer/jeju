@@ -2,7 +2,7 @@
 pragma solidity ^0.8.26;
 
 import "forge-std/Test.sol";
-import "../../src/stage2/GovernanceTimelock.sol";
+import "../../src/governance/GovernanceTimelock.sol";
 
 contract MockTarget {
     uint256 public value;
