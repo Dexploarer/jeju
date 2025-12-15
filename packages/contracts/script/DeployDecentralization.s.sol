@@ -91,8 +91,9 @@ contract DeployDecentralization is Script {
         console.log("  - Prover enabled as CANNON prover");
 
         // 6. Deploy L2OutputOracleAdapter
-        L2OutputOracleAdapter l2Adapter =
-            new L2OutputOracleAdapter(payable(address(sequencerRegistry)), payable(address(disputeFactory)), l2OutputOracle);
+        L2OutputOracleAdapter l2Adapter = new L2OutputOracleAdapter(
+            payable(address(sequencerRegistry)), payable(address(disputeFactory)), l2OutputOracle
+        );
         console.log("L2OutputOracleAdapter deployed:", address(l2Adapter));
 
         // 7. Deploy OptimismPortalAdapter
