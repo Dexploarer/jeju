@@ -286,23 +286,56 @@ services:
     networks:
       - jeju-decentralized
 
-  # OP Batcher with Threshold Signing
+  # OP Batcher - sends batches to threshold-batcher proxy
   op-batcher:
     image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-batcher:v1.9.4
     container_name: jeju-decentralized-batcher
     environment:
-      - OP_BATCHER_L1_ETH_RPC=http://geth-l1:8545
+      - OP_BATCHER_L1_ETH_RPC=http://threshold-batcher:4200/submit
       - OP_BATCHER_L2_ETH_RPC=http://op-geth-sequencer-1:8545
       - OP_BATCHER_ROLLUP_RPC=http://op-node-1:8547
       - OP_BATCHER_PRIVATE_KEY=${BATCHER_PRIVATE_KEY}
-      - OP_BATCHER_THRESHOLD_ENABLED=true
-      - OP_BATCHER_THRESHOLD_SUBMITTER=${THRESHOLD_BATCH_SUBMITTER_ADDRESS}
     volumes:
       - ./secrets:/secrets:ro
     depends_on:
-      - op-node-1
+      threshold-batcher:
+        condition: service_healthy
     networks:
       - jeju-decentralized
+
+  # Threshold Batcher Proxy - collects threshold signatures before L1 submission
+  threshold-batcher:
+    image: oven/bun:1
+    container_name: jeju-decentralized-threshold-batcher
+    working_dir: /app
+    ports:
+      - "4200:4200"
+    volumes:
+      - ./scripts/sequencer:/app
+      - ./packages/contracts/deployments:/app/deployments:ro
+    environment:
+      - L1_RPC_URL=http://geth-l1:8545
+      - THRESHOLD_BATCH_SUBMITTER_ADDRESS=${THRESHOLD_BATCH_SUBMITTER_ADDRESS}
+      - COORDINATOR_PRIVATE_KEY=${DEPLOYER_PRIVATE_KEY}
+      - SIGNER_1_URL=http://signer-1:4100
+      - SIGNER_2_URL=http://signer-2:4100
+      - SIGNER_3_URL=http://signer-3:4100
+      - SIGNER_API_KEY=${SIGNER_API_KEY:-demo-key}
+      - THRESHOLD=${SIGNER_THRESHOLD:-2}
+      - BATCHER_PROXY_PORT=4200
+    command: ["bun", "run", "threshold-batcher.ts"]
+    depends_on:
+      signer-1:
+        condition: service_healthy
+      signer-2:
+        condition: service_healthy
+    networks:
+      - jeju-decentralized
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4200/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # OP Proposer
   op-proposer:
@@ -351,10 +384,10 @@ services:
     secrets:
       - deployer-key
 
-  # Sequencer Registry Monitor
-  sequencer-registry-monitor:
+  # Consensus Coordinator - Real P2P signature collection
+  consensus-coordinator:
     image: oven/bun:1
-    container_name: jeju-decentralized-registry-monitor
+    container_name: jeju-decentralized-consensus
     working_dir: /app
     volumes:
       - ./scripts/sequencer:/app
@@ -362,16 +395,27 @@ services:
     environment:
       - L1_RPC_URL=http://geth-l1:8545
       - SEQUENCER_REGISTRY_ADDRESS=${SEQUENCER_REGISTRY_ADDRESS}
+      - SIGNER_1_URL=http://signer-1:4100
+      - SIGNER_2_URL=http://signer-2:4100
+      - SIGNER_3_URL=http://signer-3:4100
+      - SIGNER_API_KEY=${SIGNER_API_KEY:-demo-key}
+      - VOTE_RATIO=0.67
+      - BLOCK_INTERVAL=2000
       - NODE_ENV=development
     command: >
       sh -c "
-        echo 'Waiting for contracts...' &&
+        echo 'Waiting for contracts and signers...' &&
         sleep 30 &&
-        echo 'Starting sequencer registry monitor...' &&
+        echo 'Starting consensus coordinator...' &&
         bun run run-consensus.ts
       "
     depends_on:
-      - contract-deployer
+      contract-deployer:
+        condition: service_completed_successfully
+      signer-1:
+        condition: service_healthy
+      signer-2:
+        condition: service_healthy
     networks:
       - jeju-decentralized
     restart: unless-stopped
