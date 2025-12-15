@@ -4,12 +4,10 @@
 
 import {
   type Action,
-  type ActionExample,
   type HandlerCallback,
   type IAgentRuntime,
   type Memory,
   type State,
-  logger,
 } from "@elizaos/core";
 import type { Address } from "viem";
 import { JEJU_SERVICE_NAME, type JejuService } from "../service";

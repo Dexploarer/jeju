@@ -4,7 +4,6 @@
 
 import {
   type Action,
-  type ActionExample,
   type HandlerCallback,
   type IAgentRuntime,
   type Memory,

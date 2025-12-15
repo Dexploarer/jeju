@@ -19,7 +19,7 @@
  */
 
 import type { Plugin } from "@elizaos/core";
-import { getNetworkName, getNetworkDescription } from "@jejunetwork/config";
+import { getNetworkName } from "@jejunetwork/config";
 
 // Actions
 import { rentGpuAction } from "./actions/compute";

@@ -21,7 +21,7 @@ export const jejuDefiProvider: Provider = {
   async get(
     runtime: IAgentRuntime,
     _message: Memory,
-    state?: State,
+    _state?: State,
   ): Promise<ProviderResult> {
     const service = runtime.getService(JEJU_SERVICE_NAME) as
       | JejuService
