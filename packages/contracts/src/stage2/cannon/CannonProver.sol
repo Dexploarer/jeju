@@ -8,34 +8,30 @@ import "../interfaces/IProver.sol";
 /// @dev This contract wraps the Cannon VM to provide fraud proof verification
 ///      compatible with our DisputeGameFactory
 interface IMIPS {
-    function step(bytes calldata stateData, bytes calldata proof, bytes32 localContext) 
-        external returns (bytes32 postState);
+    function step(bytes calldata stateData, bytes calldata proof, bytes32 localContext)
+        external
+        returns (bytes32 postState);
 }
 
 interface IPreimageOracle {
-    function readPreimage(bytes32 key, uint256 offset) 
-        external view returns (bytes32 dat, uint256 datLen);
-    function loadLocalData(
-        uint256 ident,
-        bytes32 localContext,
-        bytes32 word,
-        uint256 size,
-        uint256 partOffset
-    ) external returns (bytes32 key);
+    function readPreimage(bytes32 key, uint256 offset) external view returns (bytes32 dat, uint256 datLen);
+    function loadLocalData(uint256 ident, bytes32 localContext, bytes32 word, uint256 size, uint256 partOffset)
+        external
+        returns (bytes32 key);
 }
 
-/// @title CannonProver  
+/// @title CannonProver
 /// @notice Real fraud proof verification using Cannon MIPS VM
 contract CannonProver is IProver {
     /// @notice The Cannon MIPS VM contract
     IMIPS public immutable mips;
-    
+
     /// @notice The preimage oracle for loading state data
     IPreimageOracle public immutable oracle;
-    
+
     /// @notice Maximum number of steps for bisection game
     uint256 public constant MAX_GAME_DEPTH = 73;
-    
+
     /// @notice Step execution gas limit
     uint256 public constant STEP_GAS_LIMIT = 400_000;
 
@@ -48,7 +44,7 @@ contract CannonProver is IProver {
 
     /// @notice Active disputes
     mapping(bytes32 => ClaimNode[]) public disputes;
-    
+
     event StepVerified(bytes32 indexed disputeId, uint256 position, bytes32 preState, bytes32 postState);
     event DisputeResolved(bytes32 indexed disputeId, bool challengerWins);
 
@@ -67,25 +63,23 @@ contract CannonProver is IProver {
 
     /// @notice Verify a fraud proof by executing a single MIPS step
     /// @param _preStateRoot The claimed pre-state root
-    /// @param _postStateRoot The claimed post-state root  
+    /// @param _postStateRoot The claimed post-state root
     /// @param _proof Encoded proof containing:
     ///        - stateData: The pre-state data
     ///        - memoryProof: Merkle proof for memory access
     ///        - localContext: Context for preimage oracle
     /// @return valid True if the proof shows invalid state transition
-    function verifyProof(
-        bytes32 _preStateRoot,
-        bytes32 _postStateRoot,
-        bytes calldata _proof
-    ) external view override returns (bool valid) {
+    function verifyProof(bytes32 _preStateRoot, bytes32 _postStateRoot, bytes calldata _proof)
+        external
+        view
+        override
+        returns (bool valid)
+    {
         if (_proof.length < 100) revert InvalidProofData();
-        
+
         // Decode proof components
-        (
-            bytes memory stateData,
-            bytes memory memoryProof,
-            bytes32 localContext
-        ) = abi.decode(_proof, (bytes, bytes, bytes32));
+        (bytes memory stateData, bytes memory memoryProof, bytes32 localContext) =
+            abi.decode(_proof, (bytes, bytes, bytes32));
 
         // Verify pre-state matches claimed root
         bytes32 computedPreState = keccak256(stateData);
@@ -96,9 +90,9 @@ contract CannonProver is IProver {
         // Execute single MIPS step via static call to avoid state changes
         // In production, this would call mips.step() but we use staticcall pattern
         bytes memory callData = abi.encodeCall(IMIPS.step, (stateData, memoryProof, localContext));
-        
+
         (bool success, bytes memory result) = address(mips).staticcall{gas: STEP_GAS_LIMIT}(callData);
-        
+
         if (!success) {
             // Step execution failed - could be invalid instruction or memory fault
             // This is a valid challenge if proposer claimed success
@@ -106,7 +100,7 @@ contract CannonProver is IProver {
         }
 
         bytes32 computedPostState = abi.decode(result, (bytes32));
-        
+
         // If computed post-state doesn't match claimed post-state, fraud is proven
         return computedPostState != _postStateRoot;
     }
@@ -116,18 +110,16 @@ contract CannonProver is IProver {
     /// @param _postStateRoot Post-state root
     /// @param _proof Defense proof data
     /// @return valid True if defense is valid
-    function verifyDefenseProof(
-        bytes32 _preStateRoot,
-        bytes32 _postStateRoot,
-        bytes calldata _proof
-    ) external view override returns (bool valid) {
+    function verifyDefenseProof(bytes32 _preStateRoot, bytes32 _postStateRoot, bytes calldata _proof)
+        external
+        view
+        override
+        returns (bool valid)
+    {
         if (_proof.length < 100) revert InvalidProofData();
-        
-        (
-            bytes memory stateData,
-            bytes memory memoryProof,
-            bytes32 localContext
-        ) = abi.decode(_proof, (bytes, bytes, bytes32));
+
+        (bytes memory stateData, bytes memory memoryProof, bytes32 localContext) =
+            abi.decode(_proof, (bytes, bytes, bytes32));
 
         // Verify pre-state
         bytes32 computedPreState = keccak256(stateData);
@@ -138,13 +130,13 @@ contract CannonProver is IProver {
         // Execute step
         bytes memory callData = abi.encodeCall(IMIPS.step, (stateData, memoryProof, localContext));
         (bool success, bytes memory result) = address(mips).staticcall{gas: STEP_GAS_LIMIT}(callData);
-        
+
         if (!success) {
             return false;
         }
 
         bytes32 computedPostState = abi.decode(result, (bytes32));
-        
+
         // Defense is valid if computed matches claimed
         return computedPostState == _postStateRoot;
     }
@@ -153,11 +145,7 @@ contract CannonProver is IProver {
     /// @param _disputeId Unique dispute identifier
     /// @param _rootClaim The state root being disputed
     function startBisection(bytes32 _disputeId, bytes32 _rootClaim) external {
-        disputes[_disputeId].push(ClaimNode({
-            stateHash: _rootClaim,
-            position: 1,
-            countered: false
-        }));
+        disputes[_disputeId].push(ClaimNode({stateHash: _rootClaim, position: 1, countered: false}));
     }
 
     /// @notice Make a move in the bisection game
@@ -165,25 +153,16 @@ contract CannonProver is IProver {
     /// @param _parentIndex Index of parent claim
     /// @param _claim The new intermediate state claim
     /// @param _isAttack True if attacking, false if defending
-    function bisect(
-        bytes32 _disputeId,
-        uint256 _parentIndex,
-        bytes32 _claim,
-        bool _isAttack
-    ) external {
+    function bisect(bytes32 _disputeId, uint256 _parentIndex, bytes32 _claim, bool _isAttack) external {
         ClaimNode[] storage claims = disputes[_disputeId];
         ClaimNode storage parent = claims[_parentIndex];
-        
-        uint256 newPosition = _isAttack 
-            ? parent.position * 2      // Attack: go to left child
+
+        uint256 newPosition = _isAttack
+            ? parent.position * 2 // Attack: go to left child
             : parent.position * 2 + 1; // Defend: go to right child
-            
-        claims.push(ClaimNode({
-            stateHash: _claim,
-            position: newPosition,
-            countered: false
-        }));
-        
+
+        claims.push(ClaimNode({stateHash: _claim, position: newPosition, countered: false}));
+
         parent.countered = true;
     }
 
@@ -192,15 +171,10 @@ contract CannonProver is IProver {
     /// @param _claimIndex The claim index to resolve
     /// @param _stateData Pre-state data
     /// @param _proof Memory proof
-    function step(
-        bytes32 _disputeId,
-        uint256 _claimIndex,
-        bytes calldata _stateData,
-        bytes calldata _proof
-    ) external {
+    function step(bytes32 _disputeId, uint256 _claimIndex, bytes calldata _stateData, bytes calldata _proof) external {
         ClaimNode[] storage claims = disputes[_disputeId];
         ClaimNode storage claim = claims[_claimIndex];
-        
+
         // Execute MIPS step
         bytes32 postState;
         try mips.step(_stateData, _proof, bytes32(0)) returns (bytes32 result) {
@@ -210,10 +184,10 @@ contract CannonProver is IProver {
             emit DisputeResolved(_disputeId, true);
             return;
         }
-        
+
         bytes32 preState = keccak256(_stateData);
         emit StepVerified(_disputeId, claim.position, preState, postState);
-        
+
         // Determine winner based on state comparison
         bool challengerWins = postState != claim.stateHash;
         emit DisputeResolved(_disputeId, challengerWins);
@@ -234,4 +208,3 @@ contract CannonProver is IProver {
         return "cannon-mips64";
     }
 }
-

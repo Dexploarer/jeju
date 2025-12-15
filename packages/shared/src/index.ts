@@ -1,6 +1,6 @@
 /**
  * Jeju Shared Package
- * Common hooks, components, APIs, and utilities used across all Jeju apps
+ * Common hooks, components, APIs, database, cache, secrets, triggers, and utilities for Jeju apps
  */
 
 // Hooks
@@ -45,3 +45,58 @@ export {
   healthMiddleware,
   healthChecks,
 } from './health-middleware';
+
+// Decentralized Cache
+export {
+  getCacheClient,
+  getCacheRentalClient,
+  resetCacheClients,
+  resetCacheRentalClient,
+  type CacheClient,
+  type CacheClientConfig,
+  type CacheStats,
+  type CacheInstance,
+  type CacheRentalPlan,
+  CacheRentalClient,
+} from './cache';
+
+// Decentralized Secrets
+export {
+  getSecretsLoader,
+  initializeSecrets,
+  loadSecretsFromEnv,
+  validateSecrets,
+  resetSecretsLoaders,
+  type SecretsLoader,
+  type SecretsConfig,
+  type SecretMetadata,
+  type AppSecretsConfig,
+} from './secrets';
+
+// Decentralized Triggers
+export {
+  getTriggerClient,
+  registerAppTriggers,
+  unregisterAppTriggers,
+  resetTriggerClient,
+  type TriggerClient,
+  type TriggerConfig,
+  type Trigger,
+  type CreateTriggerRequest,
+  type TriggerProof,
+  type TriggerStats,
+  type AppTriggerConfig,
+  type AppTriggersConfig,
+} from './triggers';
+
+// Node Authentication
+export {
+  NodeAuth,
+  getNodeAuth,
+  resetNodeAuth,
+  getNodeAddress,
+  nodeSign,
+  initializeNode,
+  type NodeIdentity,
+  type NodeAuthConfig,
+} from './node-auth';

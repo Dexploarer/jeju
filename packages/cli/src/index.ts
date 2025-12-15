@@ -25,6 +25,7 @@ import { deployCommand } from './commands/deploy';
 import { initCommand } from './commands/init';
 import { keysCommand } from './commands/keys';
 import { statusCommand } from './commands/status';
+import { tokenCommand } from './commands/token';
 
 function getVersion(): string {
   try {
@@ -76,6 +77,7 @@ program.addCommand(deployCommand);
 program.addCommand(initCommand);
 program.addCommand(keysCommand);
 program.addCommand(statusCommand);
+program.addCommand(tokenCommand);
 
 // Default: show help
 program.action(() => {
@@ -95,6 +97,11 @@ program.action(() => {
   console.log('  ' + chalk.cyan('jeju keys genesis') + '     Secure key ceremony');
   console.log('  ' + chalk.cyan('jeju deploy testnet') + '   Deploy to testnet');
   console.log('  ' + chalk.cyan('jeju deploy mainnet') + '   Deploy to mainnet\n');
+  
+  console.log(chalk.bold('Tokens:\n'));
+  console.log('  ' + chalk.cyan('jeju token deploy jeju') + '    Deploy JEJU cross-chain');
+  console.log('  ' + chalk.cyan('jeju token status <token>') + ' Check deployment status');
+  console.log('  ' + chalk.cyan('jeju token bridge') + '         Bridge tokens cross-chain\n');
   
   console.log(chalk.dim('Run `jeju <command> --help` for details.\n'));
 });

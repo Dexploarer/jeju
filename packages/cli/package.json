@@ -49,9 +49,9 @@
     "typescript": "^5.3.3"
   },
   "peerDependencies": {
-    "@jejunetwork/config": "workspace:*",
-    "@jejunetwork/contracts": "workspace:*",
-    "@jejunetwork/types": "workspace:*"
+    "@jejunetwork/config": ">=0.1.0",
+    "@jejunetwork/contracts": ">=0.1.0",
+    "@jejunetwork/types": ">=0.1.0"
   },
   "engines": {
     "node": ">=18.0.0",

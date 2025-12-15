@@ -31,6 +31,7 @@ contract FeeGovernance {
     bytes32 public constant FEE_TYPE_INFRASTRUCTURE = keccak256("infrastructure");
     bytes32 public constant FEE_TYPE_MARKETPLACE = keccak256("marketplace");
     bytes32 public constant FEE_TYPE_NAMES = keccak256("names");
+    bytes32 public constant FEE_TYPE_TOKEN = keccak256("token");
 
     // ============ Encoding Functions ============
 
@@ -53,13 +54,8 @@ contract FeeGovernance {
         require(appShareBps + lpShareBps + contributorShareBps == 10000, "Must sum to 100%");
         require(ethLpShareBps + tokenLpShareBps == 10000, "LP must sum to 100%");
 
-        bytes memory newValues = abi.encode(
-            appShareBps,
-            lpShareBps,
-            contributorShareBps,
-            ethLpShareBps,
-            tokenLpShareBps
-        );
+        bytes memory newValues =
+            abi.encode(appShareBps, lpShareBps, contributorShareBps, ethLpShareBps, tokenLpShareBps);
 
         callData = abi.encodeCall(FeeConfig.proposeFeeChange, (FEE_TYPE_DISTRIBUTION, newValues));
     }
@@ -79,11 +75,7 @@ contract FeeGovernance {
         require(rentalPlatformFeeBps <= 3000, "Max 30%");
         require(triggerPlatformFeeBps <= 3000, "Max 30%");
 
-        bytes memory newValues = abi.encode(
-            inferencePlatformFeeBps,
-            rentalPlatformFeeBps,
-            triggerPlatformFeeBps
-        );
+        bytes memory newValues = abi.encode(inferencePlatformFeeBps, rentalPlatformFeeBps, triggerPlatformFeeBps);
 
         callData = abi.encodeCall(FeeConfig.proposeFeeChange, (FEE_TYPE_COMPUTE, newValues));
     }
@@ -94,11 +86,11 @@ contract FeeGovernance {
      * @param retrievalFeeBps Fee on retrievals (100 = 1%)
      * @param pinningFeeBps Fee on pinning (100 = 1%)
      */
-    function encodeStorageFeeChange(
-        uint16 uploadFeeBps,
-        uint16 retrievalFeeBps,
-        uint16 pinningFeeBps
-    ) external pure returns (bytes memory callData) {
+    function encodeStorageFeeChange(uint16 uploadFeeBps, uint16 retrievalFeeBps, uint16 pinningFeeBps)
+        external
+        pure
+        returns (bytes memory callData)
+    {
         require(uploadFeeBps <= 3000, "Max 30%");
         require(retrievalFeeBps <= 3000, "Max 30%");
         require(pinningFeeBps <= 3000, "Max 30%");
@@ -114,11 +106,11 @@ contract FeeGovernance {
      * @param bridgeFeeBps Bridge fee (10 = 0.1%)
      * @param crossChainMarginBps Cross-chain paymaster margin (1000 = 10%)
      */
-    function encodeDeFiFeeChange(
-        uint16 swapProtocolFeeBps,
-        uint16 bridgeFeeBps,
-        uint16 crossChainMarginBps
-    ) external pure returns (bytes memory callData) {
+    function encodeDeFiFeeChange(uint16 swapProtocolFeeBps, uint16 bridgeFeeBps, uint16 crossChainMarginBps)
+        external
+        pure
+        returns (bytes memory callData)
+    {
         require(swapProtocolFeeBps <= 3000, "Max 30%");
         require(bridgeFeeBps <= 3000, "Max 30%");
         require(crossChainMarginBps <= 3000, "Max 30%");
@@ -144,12 +136,8 @@ contract FeeGovernance {
         require(sequencerRevenueShareBps <= 5000, "Max 50%");
         require(oracleTreasuryShareBps <= 5000, "Max 50%");
 
-        bytes memory newValues = abi.encode(
-            sequencerRevenueShareBps,
-            oracleTreasuryShareBps,
-            rpcPremiumFeeBps,
-            messagingFeeBps
-        );
+        bytes memory newValues =
+            abi.encode(sequencerRevenueShareBps, oracleTreasuryShareBps, rpcPremiumFeeBps, messagingFeeBps);
 
         callData = abi.encodeCall(FeeConfig.proposeFeeChange, (FEE_TYPE_INFRASTRUCTURE, newValues));
     }
@@ -170,12 +158,8 @@ contract FeeGovernance {
         require(bazaarPlatformFeeBps <= 3000, "Max 30%");
         require(launchpadCreatorFeeBps + launchpadCommunityFeeBps == 10000, "Must sum to 100%");
 
-        bytes memory newValues = abi.encode(
-            bazaarPlatformFeeBps,
-            launchpadCreatorFeeBps,
-            launchpadCommunityFeeBps,
-            x402ProtocolFeeBps
-        );
+        bytes memory newValues =
+            abi.encode(bazaarPlatformFeeBps, launchpadCreatorFeeBps, launchpadCommunityFeeBps, x402ProtocolFeeBps);
 
         callData = abi.encodeCall(FeeConfig.proposeFeeChange, (FEE_TYPE_MARKETPLACE, newValues));
     }
@@ -186,17 +170,59 @@ contract FeeGovernance {
      * @param agentDiscountBps Discount for ERC-8004 agents (500 = 5%)
      * @param renewalDiscountBps Discount for renewals (1000 = 10%)
      */
-    function encodeNamesFeeChange(
-        uint256 baseRegistrationPrice,
-        uint16 agentDiscountBps,
-        uint16 renewalDiscountBps
-    ) external pure returns (bytes memory callData) {
+    function encodeNamesFeeChange(uint256 baseRegistrationPrice, uint16 agentDiscountBps, uint16 renewalDiscountBps)
+        external
+        pure
+        returns (bytes memory callData)
+    {
         require(agentDiscountBps <= 10000, "Max 100%");
         require(renewalDiscountBps <= 10000, "Max 100%");
 
         bytes memory newValues = abi.encode(baseRegistrationPrice, agentDiscountBps, renewalDiscountBps);
 
         callData = abi.encodeCall(FeeConfig.proposeFeeChange, (FEE_TYPE_NAMES, newValues));
+    }
+
+    /**
+     * @notice Encode token fee change proposal (for BBLN, JEJU, and cross-chain tokens)
+     * @param xlpRewardShareBps XLP reward share from bridge fees (8000 = 80%)
+     * @param protocolShareBps Protocol treasury share (1000 = 10%)
+     * @param burnShareBps Deflationary burn share (1000 = 10%)
+     * @param transferFeeBps Transfer fee (0 = no fee, max 100 = 1%)
+     * @param bridgeFeeMinBps Minimum bridge fee floor (5 = 0.05%)
+     * @param bridgeFeeMaxBps Maximum bridge fee cap (100 = 1%)
+     * @param xlpMinStakeBps Min XLP stake as % of transfer (1000 = 10%)
+     * @param zkProofDiscountBps Discount for ZK-verified transfers (2000 = 20% off)
+     */
+    function encodeTokenFeeChange(
+        uint16 xlpRewardShareBps,
+        uint16 protocolShareBps,
+        uint16 burnShareBps,
+        uint16 transferFeeBps,
+        uint16 bridgeFeeMinBps,
+        uint16 bridgeFeeMaxBps,
+        uint16 xlpMinStakeBps,
+        uint16 zkProofDiscountBps
+    ) external pure returns (bytes memory callData) {
+        // Fee distribution must sum to 100%
+        require(xlpRewardShareBps + protocolShareBps + burnShareBps == 10000, "Must sum to 100%");
+        require(bridgeFeeMinBps <= bridgeFeeMaxBps, "Min > Max");
+        require(bridgeFeeMaxBps <= 3000, "Max 30%");
+        require(transferFeeBps <= 1000, "Max 10%");
+        require(zkProofDiscountBps <= 10000, "Max 100%");
+
+        bytes memory newValues = abi.encode(
+            xlpRewardShareBps,
+            protocolShareBps,
+            burnShareBps,
+            transferFeeBps,
+            bridgeFeeMinBps,
+            bridgeFeeMaxBps,
+            xlpMinStakeBps,
+            zkProofDiscountBps
+        );
+
+        callData = abi.encodeCall(FeeConfig.proposeFeeChange, (FEE_TYPE_TOKEN, newValues));
     }
 
     // ============ Execution Calldata Encoding ============
@@ -230,6 +256,7 @@ contract FeeGovernance {
         if (feeType == FEE_TYPE_INFRASTRUCTURE) return "infrastructure";
         if (feeType == FEE_TYPE_MARKETPLACE) return "marketplace";
         if (feeType == FEE_TYPE_NAMES) return "names";
+        if (feeType == FEE_TYPE_TOKEN) return "token";
         return "unknown";
     }
 
@@ -237,13 +264,8 @@ contract FeeGovernance {
      * @notice Validate that a fee type is known
      */
     function isValidFeeType(bytes32 feeType) external pure returns (bool) {
-        return feeType == FEE_TYPE_DISTRIBUTION ||
-               feeType == FEE_TYPE_COMPUTE ||
-               feeType == FEE_TYPE_STORAGE ||
-               feeType == FEE_TYPE_DEFI ||
-               feeType == FEE_TYPE_INFRASTRUCTURE ||
-               feeType == FEE_TYPE_MARKETPLACE ||
-               feeType == FEE_TYPE_NAMES;
+        return feeType == FEE_TYPE_DISTRIBUTION || feeType == FEE_TYPE_COMPUTE || feeType == FEE_TYPE_STORAGE
+            || feeType == FEE_TYPE_DEFI || feeType == FEE_TYPE_INFRASTRUCTURE || feeType == FEE_TYPE_MARKETPLACE
+            || feeType == FEE_TYPE_NAMES || feeType == FEE_TYPE_TOKEN;
     }
 }
-

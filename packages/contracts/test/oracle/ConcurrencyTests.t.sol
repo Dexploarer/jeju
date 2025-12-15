@@ -85,9 +85,8 @@ contract ConcurrencyTests is Test {
         uint256 price1 = 3500_00000000;
         uint256 price2 = 3501_00000000;
 
-        IReportVerifier.ReportSubmission memory submission1 = _buildSubmission(
-            feedId, price1, 9500, block.timestamp, round, oraclePks[0]
-        );
+        IReportVerifier.ReportSubmission memory submission1 =
+            _buildSubmission(feedId, price1, 9500, block.timestamp, round, oraclePks[0]);
 
         // First submission should succeed
         vm.prank(oracles[0]);
@@ -95,9 +94,8 @@ contract ConcurrencyTests is Test {
         assertTrue(accepted1);
 
         // Second submission for same round should be rejected
-        IReportVerifier.ReportSubmission memory submission2 = _buildSubmission(
-            feedId, price2, 9500, block.timestamp, round, oraclePks[1]
-        );
+        IReportVerifier.ReportSubmission memory submission2 =
+            _buildSubmission(feedId, price2, 9500, block.timestamp, round, oraclePks[1]);
 
         vm.prank(oracles[1]);
         bool accepted2 = verifier.submitReport(submission2);
@@ -106,18 +104,16 @@ contract ConcurrencyTests is Test {
 
     function test_ConcurrentReportSubmission_DifferentRounds() public {
         // Submit round 1
-        IReportVerifier.ReportSubmission memory submission1 = _buildSubmission(
-            feedId, 3500_00000000, 9500, block.timestamp, 1, oraclePks[0]
-        );
+        IReportVerifier.ReportSubmission memory submission1 =
+            _buildSubmission(feedId, 3500_00000000, 9500, block.timestamp, 1, oraclePks[0]);
         vm.prank(oracles[0]);
         assertTrue(verifier.submitReport(submission1));
 
         // Wait a bit and submit round 2
         vm.warp(block.timestamp + 60);
 
-        IReportVerifier.ReportSubmission memory submission2 = _buildSubmission(
-            feedId, 3510_00000000, 9500, block.timestamp, 2, oraclePks[1]
-        );
+        IReportVerifier.ReportSubmission memory submission2 =
+            _buildSubmission(feedId, 3510_00000000, 9500, block.timestamp, 2, oraclePks[1]);
         vm.prank(oracles[1]);
         assertTrue(verifier.submitReport(submission2));
 
@@ -138,9 +134,8 @@ contract ConcurrencyTests is Test {
 
             uint256 price = 3500_00000000 + (i * 1000000);
 
-            IReportVerifier.ReportSubmission memory submission = _buildSubmission(
-                feedId, price, 9500, currentTime, i, oraclePks[i % 5]
-            );
+            IReportVerifier.ReportSubmission memory submission =
+                _buildSubmission(feedId, price, 9500, currentTime, i, oraclePks[i % 5]);
 
             vm.prank(oracles[i % 5]);
             bool accepted = verifier.submitReport(submission);
@@ -196,15 +191,12 @@ contract ConcurrencyTests is Test {
         vm.stopPrank();
 
         // Submit to all three feeds concurrently
-        IReportVerifier.ReportSubmission memory sub1 = _buildSubmission(
-            feedId, 3500_00000000, 9500, block.timestamp, 1, oraclePks[0]
-        );
-        IReportVerifier.ReportSubmission memory sub2 = _buildSubmission(
-            feedId2, 45000_00000000, 9500, block.timestamp, 1, oraclePks[1]
-        );
-        IReportVerifier.ReportSubmission memory sub3 = _buildSubmission(
-            feedId3, 1_00000000, 9900, block.timestamp, 1, oraclePks[2]
-        );
+        IReportVerifier.ReportSubmission memory sub1 =
+            _buildSubmission(feedId, 3500_00000000, 9500, block.timestamp, 1, oraclePks[0]);
+        IReportVerifier.ReportSubmission memory sub2 =
+            _buildSubmission(feedId2, 45000_00000000, 9500, block.timestamp, 1, oraclePks[1]);
+        IReportVerifier.ReportSubmission memory sub3 =
+            _buildSubmission(feedId3, 1_00000000, 9900, block.timestamp, 1, oraclePks[2]);
 
         vm.prank(oracles[0]);
         assertTrue(verifier.submitReport(sub1));
@@ -229,9 +221,8 @@ contract ConcurrencyTests is Test {
 
     function test_DisputeWhileNewReportSubmitted() public {
         // Submit initial report
-        IReportVerifier.ReportSubmission memory submission1 = _buildSubmission(
-            feedId, 3500_00000000, 9500, block.timestamp, 1, oraclePks[0]
-        );
+        IReportVerifier.ReportSubmission memory submission1 =
+            _buildSubmission(feedId, 3500_00000000, 9500, block.timestamp, 1, oraclePks[0]);
         vm.prank(oracles[0]);
         verifier.submitReport(submission1);
 
@@ -239,17 +230,12 @@ contract ConcurrencyTests is Test {
         bytes32 reportHash = _computeReportHash(feedId, 3500_00000000, 9500, block.timestamp, 1);
 
         vm.prank(oracles[1]);
-        disputeGame.openDispute{value: 100 ether}(
-            reportHash,
-            IDisputeGame.DisputeReason.PRICE_DEVIATION,
-            bytes32(0)
-        );
+        disputeGame.openDispute{value: 100 ether}(reportHash, IDisputeGame.DisputeReason.PRICE_DEVIATION, bytes32(0));
 
         // Submit new report while dispute is open
         vm.warp(block.timestamp + 60);
-        IReportVerifier.ReportSubmission memory submission2 = _buildSubmission(
-            feedId, 3510_00000000, 9500, block.timestamp, 2, oraclePks[2]
-        );
+        IReportVerifier.ReportSubmission memory submission2 =
+            _buildSubmission(feedId, 3510_00000000, 9500, block.timestamp, 2, oraclePks[2]);
 
         vm.prank(oracles[2]);
         bool accepted = verifier.submitReport(submission2);
@@ -294,9 +280,8 @@ contract ConcurrencyTests is Test {
             currentTime += 60;
             vm.warp(currentTime);
 
-            IReportVerifier.ReportSubmission memory submission = _buildSubmission(
-                feedId, prices[i], 9500, currentTime, i + 1, oraclePks[i]
-            );
+            IReportVerifier.ReportSubmission memory submission =
+                _buildSubmission(feedId, prices[i], 9500, currentTime, i + 1, oraclePks[i]);
 
             vm.prank(oracles[i]);
             bool accepted = verifier.submitReport(submission);
@@ -364,29 +349,15 @@ contract ConcurrencyTests is Test {
             sourcesHash: sourcesHash
         });
 
-        bytes32 reportHash = keccak256(
-            abi.encodePacked(
-                _feedId,
-                _price,
-                _confidence,
-                _timestamp,
-                _round,
-                sourcesHash
-            )
-        );
+        bytes32 reportHash = keccak256(abi.encodePacked(_feedId, _price, _confidence, _timestamp, _round, sourcesHash));
 
-        bytes32 ethSignedHash = keccak256(
-            abi.encodePacked("\x19Ethereum Signed Message:\n32", reportHash)
-        );
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", reportHash));
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(_signerPk, ethSignedHash);
         bytes[] memory signatures = new bytes[](1);
         signatures[0] = abi.encodePacked(r, s, v);
 
-        return IReportVerifier.ReportSubmission({
-            report: report,
-            signatures: signatures
-        });
+        return IReportVerifier.ReportSubmission({report: report, signatures: signatures});
     }
 
     function _computeReportHash(
@@ -396,16 +367,6 @@ contract ConcurrencyTests is Test {
         uint256 _timestamp,
         uint256 _round
     ) internal pure returns (bytes32) {
-        return keccak256(
-            abi.encodePacked(
-                _feedId,
-                _price,
-                _confidence,
-                _timestamp,
-                _round,
-                keccak256("test-source")
-            )
-        );
+        return keccak256(abi.encodePacked(_feedId, _price, _confidence, _timestamp, _round, keccak256("test-source")));
     }
 }
-

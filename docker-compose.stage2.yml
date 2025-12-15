@@ -112,7 +112,7 @@ services:
     volumes:
       - nethermind-l1-data:/data
       - ./secrets:/secrets:ro
-      - ./config/chainspecs:/chainspec:ro
+      - ./packages/deployment/chainspecs:/chainspec:ro
     networks:
       - jeju-stage2
     healthcheck:
@@ -216,7 +216,7 @@ services:
     volumes:
       - op-nethermind-seq-3-data:/data
       - ./secrets:/secrets:ro
-      - ./config/chainspecs:/chainspec:ro
+      - ./packages/deployment/chainspecs:/chainspec:ro
     depends_on:
       geth-l1:
         condition: service_healthy
@@ -533,7 +533,7 @@ http.server.HTTPServer((\"\", 5052), BeaconHandler).serve_forever()
     ports:
       - "9090:9090"
     volumes:
-      - ./config/prometheus:/etc/prometheus
+      - ./packages/deployment/monitoring:/etc/prometheus
       - prometheus-data:/prometheus
     command:
       - --config.file=/etc/prometheus/prometheus-stage2.yml

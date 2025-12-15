@@ -53,12 +53,14 @@
     "wallet"
   ],
   "dependencies": {
-    "@jeju/kms": "workspace:*",
-    "@jeju/shared": "workspace:*",
-    "@jejunetwork/storage-pinning-api": "workspace:*",
+    "@jeju/kms": ">=0.1.0",
+    "@jeju/shared": ">=0.1.0",
     "@tenkeylabs/dappwright": "^2.11.3",
     "hono": "^4.0.0",
     "viem": "^2.7.15"
+  },
+  "optionalDependencies": {
+    "@jejunetwork/storage-pinning-api": ">=0.1.0"
   },
   "peerDependencies": {
     "@playwright/test": ">=1.55.1",

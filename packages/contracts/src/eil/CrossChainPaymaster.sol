@@ -12,6 +12,24 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {ICrossDomainMessenger} from "./ICrossDomainMessenger.sol";
 
+/**
+ * @title IEIP3009
+ * @notice Interface for EIP-3009 transferWithAuthorization
+ */
+interface IEIP3009 {
+    function transferWithAuthorization(
+        address from,
+        address to,
+        uint256 value,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes32 nonce,
+        bytes calldata signature
+    ) external;
+
+    function authorizationState(address authorizer, bytes32 nonce) external view returns (bool);
+}
+
 interface IPriceOracle {
     function getPrice(address token) external view returns (uint256 priceUSD, uint256 decimals);
     function isPriceFresh(address token) external view returns (bool);
@@ -640,6 +658,90 @@ contract CrossChainPaymaster is BasePaymaster, ReentrancyGuard {
         if (token != address(0)) {
             IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         }
+
+        if (excessRefund > 0) {
+            (bool success,) = msg.sender.call{value: excessRefund}("");
+            if (!success) revert TransferFailed();
+        }
+    }
+
+    /**
+     * @notice Create a cross-chain transfer request using EIP-3009 (gasless for user)
+     * @dev User signs transferWithAuthorization off-chain, paymaster executes
+     * @param token EIP-3009 compliant token address
+     * @param amount Amount to transfer
+     * @param destinationToken Token to receive on destination
+     * @param destinationChainId Target chain ID
+     * @param recipient Address to receive tokens on destination
+     * @param gasOnDestination Gas to include on destination
+     * @param maxFee Maximum fee willing to pay
+     * @param feeIncrement Fee increase per block
+     * @param validAfter EIP-3009 validity start
+     * @param validBefore EIP-3009 validity end
+     * @param authNonce EIP-3009 nonce
+     * @param authSignature EIP-3009 authorization signature
+     */
+    function createVoucherRequestGasless(
+        address token,
+        uint256 amount,
+        address destinationToken,
+        uint256 destinationChainId,
+        address recipient,
+        uint256 gasOnDestination,
+        uint256 maxFee,
+        uint256 feeIncrement,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes32 authNonce,
+        bytes calldata authSignature
+    ) external payable nonReentrant returns (bytes32 requestId) {
+        if (!supportedTokens[token]) revert UnsupportedToken();
+        if (amount == 0) revert InsufficientAmount();
+        if (maxFee < MIN_FEE) revert InsufficientFee();
+        if (destinationChainId == chainId) revert InvalidDestinationChain();
+        if (recipient == address(0)) revert InvalidRecipient();
+        if (msg.value < maxFee) revert InsufficientFee();
+
+        uint256 excessRefund = msg.value - maxFee;
+
+        requestId = keccak256(
+            abi.encodePacked(msg.sender, token, amount, destinationChainId, block.number, block.timestamp, ++_requestNonce)
+        );
+
+        voucherRequests[requestId] = VoucherRequest({
+            requester: msg.sender,
+            token: token,
+            amount: amount,
+            destinationToken: destinationToken,
+            destinationChainId: destinationChainId,
+            recipient: recipient,
+            gasOnDestination: gasOnDestination,
+            maxFee: maxFee,
+            feeIncrement: feeIncrement,
+            deadline: block.number + REQUEST_TIMEOUT,
+            createdBlock: block.number,
+            claimed: false,
+            expired: false,
+            refunded: false,
+            bidCount: 0,
+            winningXLP: address(0),
+            winningFee: 0
+        });
+
+        emit VoucherRequested(
+            requestId, msg.sender, token, amount, destinationChainId, recipient, maxFee, block.number + REQUEST_TIMEOUT
+        );
+
+        // Use EIP-3009 transferWithAuthorization (gasless for user)
+        IEIP3009(token).transferWithAuthorization(
+            msg.sender,
+            address(this),
+            amount,
+            validAfter,
+            validBefore,
+            authNonce,
+            authSignature
+        );
 
         if (excessRefund > 0) {
             (bool success,) = msg.sender.call{value: excessRefund}("");

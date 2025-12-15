@@ -54,11 +54,7 @@ contract SequencerRegistryTest is Test {
 
         // Deploy SequencerRegistry
         registry = new SequencerRegistry(
-            address(jejuToken),
-            address(identityRegistry),
-            address(reputationRegistry),
-            treasury,
-            owner
+            address(jejuToken), address(identityRegistry), address(reputationRegistry), treasury, owner
         );
 
         // Connect FeeConfig
@@ -116,10 +112,10 @@ contract SequencerRegistryTest is Test {
 
     function test_ReceiveETH() public {
         uint256 amount = 5 ether;
-        
+
         (bool success,) = address(registry).call{value: amount}("");
         assertTrue(success);
-        
+
         assertEq(registry.epochAccumulatedRevenue(), amount);
     }
 
@@ -269,7 +265,7 @@ contract SequencerRegistryTest is Test {
     function test_SetSequencerRevenueShare_Fallback() public {
         // Remove FeeConfig to use fallback
         registry.setFeeConfig(address(0));
-        
+
         registry.setSequencerRevenueShare(1000); // 10%
         assertEq(registry.getEffectiveRevenueShareBps(), 1000);
     }

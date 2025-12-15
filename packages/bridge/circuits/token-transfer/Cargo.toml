@@ -1,0 +1,14 @@
+[package]
+name = "token-transfer"
+version = "0.1.0"
+edition = "2021"
+description = "SP1 ZK program for cross-chain token transfer verification"
+
+[dependencies]
+sp1-zkvm = { workspace = true }
+serde = { workspace = true }
+hex = { workspace = true }
+
+[[bin]]
+name = "token-transfer"
+path = "src/main.rs"

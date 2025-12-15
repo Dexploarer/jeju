@@ -9,7 +9,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
  * @title KeyRegistry
  * @notice On-chain registry for MPC/KMS key management with access control
  * @dev Stores key metadata and access policies. Actual keys are managed off-chain by MPC parties.
- * 
+ *
  * Key features:
  * - Register keys with metadata and access policies
  * - Role-based access control for decryption
@@ -22,12 +22,13 @@ contract KeyRegistry is Ownable, AccessControl, ReentrancyGuard {
     bytes32 public constant GUARDIAN_ROLE = keccak256("GUARDIAN_ROLE");
 
     enum AccessType {
-        OPEN,           // Anyone can access
-        OWNER_ONLY,     // Only key owner
-        ALLOWLIST,      // Specific addresses
-        STAKE_GATED,    // Minimum stake required
-        ROLE_BASED,     // Role-based access
-        TIME_LOCKED     // Time-based access
+        OPEN, // Anyone can access
+        OWNER_ONLY, // Only key owner
+        ALLOWLIST, // Specific addresses
+        STAKE_GATED, // Minimum stake required
+        ROLE_BASED, // Role-based access
+        TIME_LOCKED // Time-based access
+
     }
 
     enum KeyStatus {
@@ -39,18 +40,18 @@ contract KeyRegistry is Ownable, AccessControl, ReentrancyGuard {
 
     struct AccessPolicy {
         AccessType accessType;
-        uint256 minStake;           // For STAKE_GATED
-        bytes32 requiredRole;       // For ROLE_BASED
-        uint256 unlockTime;         // For TIME_LOCKED
-        address[] allowlist;        // For ALLOWLIST
+        uint256 minStake; // For STAKE_GATED
+        bytes32 requiredRole; // For ROLE_BASED
+        uint256 unlockTime; // For TIME_LOCKED
+        address[] allowlist; // For ALLOWLIST
     }
 
     struct KeyMetadata {
         bytes32 keyId;
         address owner;
         bytes32 publicKeyHash;
-        uint8 keyType;              // 0: encryption, 1: signing, 2: session
-        uint8 curve;                // 0: secp256k1, 1: ed25519
+        uint8 keyType; // 0: encryption, 1: signing, 2: session
+        uint8 curve; // 0: secp256k1, 1: ed25519
         uint32 threshold;
         uint32 totalParties;
         uint32 version;
@@ -82,12 +83,12 @@ contract KeyRegistry is Ownable, AccessControl, ReentrancyGuard {
     mapping(bytes32 => KeyMetadata) public keys;
     mapping(bytes32 => KeyVersion[]) public keyVersions;
     mapping(bytes32 => mapping(address => bool)) public keyAllowlist;
-    
+
     // MPC party storage
     mapping(address => MPCParty) public parties;
     address[] public partyList;
     uint256 public minPartyStake;
-    
+
     // Access tracking
     mapping(bytes32 => mapping(address => uint64)) public lastAccess;
     mapping(bytes32 => uint256) public accessCount;
@@ -148,18 +149,20 @@ contract KeyRegistry is Ownable, AccessControl, ReentrancyGuard {
             policy: policy
         });
 
-        keyVersions[keyId].push(KeyVersion({
-            version: 1,
-            publicKeyHash: publicKeyHash,
-            commitmentHash: keccak256(abi.encodePacked(keyId, publicKeyHash, block.timestamp)),
-            createdAt: uint64(block.timestamp),
-            rotatedAt: 0,
-            status: KeyStatus.ACTIVE
-        }));
+        keyVersions[keyId].push(
+            KeyVersion({
+                version: 1,
+                publicKeyHash: publicKeyHash,
+                commitmentHash: keccak256(abi.encodePacked(keyId, publicKeyHash, block.timestamp)),
+                createdAt: uint64(block.timestamp),
+                rotatedAt: 0,
+                status: KeyStatus.ACTIVE
+            })
+        );
 
         // Set up allowlist if applicable
         if (policy.accessType == AccessType.ALLOWLIST) {
-            for (uint i = 0; i < policy.allowlist.length; i++) {
+            for (uint256 i = 0; i < policy.allowlist.length; i++) {
                 keyAllowlist[keyId][policy.allowlist[i]] = true;
             }
         }
@@ -180,7 +183,7 @@ contract KeyRegistry is Ownable, AccessControl, ReentrancyGuard {
 
         // Mark current version as rotated
         KeyVersion[] storage versions = keyVersions[keyId];
-        for (uint i = 0; i < versions.length; i++) {
+        for (uint256 i = 0; i < versions.length; i++) {
             if (versions[i].status == KeyStatus.ACTIVE) {
                 versions[i].status = KeyStatus.ROTATED;
                 versions[i].rotatedAt = uint64(block.timestamp);
@@ -190,17 +193,19 @@ contract KeyRegistry is Ownable, AccessControl, ReentrancyGuard {
         uint32 newVersion = key.version + 1;
 
         // Add new version
-        versions.push(KeyVersion({
-            version: newVersion,
-            publicKeyHash: newPublicKeyHash,
-            commitmentHash: keccak256(abi.encodePacked(keyId, newPublicKeyHash, block.timestamp)),
-            createdAt: uint64(block.timestamp),
-            rotatedAt: 0,
-            status: KeyStatus.ACTIVE
-        }));
+        versions.push(
+            KeyVersion({
+                version: newVersion,
+                publicKeyHash: newPublicKeyHash,
+                commitmentHash: keccak256(abi.encodePacked(keyId, newPublicKeyHash, block.timestamp)),
+                createdAt: uint64(block.timestamp),
+                rotatedAt: 0,
+                status: KeyStatus.ACTIVE
+            })
+        );
 
         emit KeyRotated(keyId, key.version, newVersion);
-        
+
         key.version = newVersion;
         key.publicKeyHash = newPublicKeyHash;
         key.rotatedAt = uint64(block.timestamp);
@@ -214,16 +219,14 @@ contract KeyRegistry is Ownable, AccessControl, ReentrancyGuard {
         KeyMetadata storage key = keys[keyId];
         require(key.createdAt != 0, "Key not found");
         require(
-            key.owner == msg.sender || 
-            hasRole(GUARDIAN_ROLE, msg.sender) ||
-            hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
+            key.owner == msg.sender || hasRole(GUARDIAN_ROLE, msg.sender) || hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
             "Not authorized"
         );
 
         key.status = KeyStatus.REVOKED;
 
         KeyVersion[] storage versions = keyVersions[keyId];
-        for (uint i = 0; i < versions.length; i++) {
+        for (uint256 i = 0; i < versions.length; i++) {
             versions[i].status = KeyStatus.REVOKED;
         }
 
@@ -243,31 +246,31 @@ contract KeyRegistry is Ownable, AccessControl, ReentrancyGuard {
         if (key.status != KeyStatus.ACTIVE) return (false, 0);
 
         version = key.version;
-        
+
         AccessPolicy storage policy = key.policy;
 
         if (policy.accessType == AccessType.OPEN) {
             return (true, version);
         }
-        
+
         if (policy.accessType == AccessType.OWNER_ONLY) {
             return (accessor == key.owner, version);
         }
-        
+
         if (policy.accessType == AccessType.ALLOWLIST) {
             return (keyAllowlist[keyId][accessor], version);
         }
-        
+
         if (policy.accessType == AccessType.STAKE_GATED) {
             // Check accessor's stake in the system
             MPCParty storage party = parties[accessor];
             return (party.stake >= policy.minStake, version);
         }
-        
+
         if (policy.accessType == AccessType.ROLE_BASED) {
             return (hasRole(policy.requiredRole, accessor), version);
         }
-        
+
         if (policy.accessType == AccessType.TIME_LOCKED) {
             return (block.timestamp >= policy.unlockTime, version);
         }
@@ -282,10 +285,10 @@ contract KeyRegistry is Ownable, AccessControl, ReentrancyGuard {
      */
     function recordAccess(bytes32 keyId, address accessor) external onlyRole(OPERATOR_ROLE) {
         require(keys[keyId].createdAt != 0, "Key not found");
-        
+
         lastAccess[keyId][accessor] = uint64(block.timestamp);
         accessCount[keyId]++;
-        
+
         emit AccessGranted(keyId, accessor);
     }
 
@@ -342,14 +345,14 @@ contract KeyRegistry is Ownable, AccessControl, ReentrancyGuard {
 
         // Clear old allowlist if changing from ALLOWLIST
         if (key.policy.accessType == AccessType.ALLOWLIST) {
-            for (uint i = 0; i < key.policy.allowlist.length; i++) {
+            for (uint256 i = 0; i < key.policy.allowlist.length; i++) {
                 keyAllowlist[keyId][key.policy.allowlist[i]] = false;
             }
         }
 
         // Set up new allowlist if applicable
         if (newPolicy.accessType == AccessType.ALLOWLIST) {
-            for (uint i = 0; i < newPolicy.allowlist.length; i++) {
+            for (uint256 i = 0; i < newPolicy.allowlist.length; i++) {
                 keyAllowlist[keyId][newPolicy.allowlist[i]] = true;
             }
         }
@@ -390,8 +393,8 @@ contract KeyRegistry is Ownable, AccessControl, ReentrancyGuard {
     function getActiveParties() external view returns (address[] memory) {
         uint256 count = 0;
         uint64 staleThreshold = uint64(block.timestamp) - 5 minutes;
-        
-        for (uint i = 0; i < partyList.length; i++) {
+
+        for (uint256 i = 0; i < partyList.length; i++) {
             if (parties[partyList[i]].active && parties[partyList[i]].lastSeen >= staleThreshold) {
                 count++;
             }
@@ -399,12 +402,12 @@ contract KeyRegistry is Ownable, AccessControl, ReentrancyGuard {
 
         address[] memory active = new address[](count);
         uint256 j = 0;
-        for (uint i = 0; i < partyList.length; i++) {
+        for (uint256 i = 0; i < partyList.length; i++) {
             if (parties[partyList[i]].active && parties[partyList[i]].lastSeen >= staleThreshold) {
                 active[j++] = partyList[i];
             }
         }
-        
+
         return active;
     }
 
@@ -415,13 +418,13 @@ contract KeyRegistry is Ownable, AccessControl, ReentrancyGuard {
     function _verifyActiveParties(uint32 required) internal view returns (bool) {
         uint256 count = 0;
         uint64 staleThreshold = uint64(block.timestamp) - 5 minutes;
-        
-        for (uint i = 0; i < partyList.length && count < required; i++) {
+
+        for (uint256 i = 0; i < partyList.length && count < required; i++) {
             if (parties[partyList[i]].active && parties[partyList[i]].lastSeen >= staleThreshold) {
                 count++;
             }
         }
-        
+
         return count >= required;
     }
 

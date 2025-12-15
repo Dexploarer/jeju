@@ -1,17 +1,27 @@
 {
   "name": "@jejunetwork/config",
   "version": "0.1.0",
-  "description": "Configuration files and utilities for Jeju Network",
+  "description": "Configuration files and utilities for Jeju Network (Node.js only)",
   "license": "MIT",
   "type": "module",
   "main": "./index.ts",
   "types": "./index.ts",
   "exports": {
-    ".": "./index.ts",
-    "./network": "./network.ts",
-    "./ports": "./ports.ts",
+    ".": {
+      "node": "./index.ts",
+      "types": "./index.ts"
+    },
+    "./network": {
+      "node": "./network.ts",
+      "types": "./network.ts"
+    },
+    "./ports": {
+      "node": "./ports.ts",
+      "types": "./ports.ts"
+    },
     "./chain/mainnet.json": "./chain/mainnet.json",
     "./chain/testnet.json": "./chain/testnet.json",
+    "./chain/localnet.json": "./chain/localnet.json",
     "./tokens": "./tokens.json",
     "./contracts": "./contracts.json",
     "./services": "./services.json",
@@ -22,6 +32,9 @@
     "*.json",
     "chain"
   ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/elizaos/jeju.git",
@@ -30,7 +43,8 @@
   "keywords": [
     "jeju",
     "config",
-    "network"
+    "network",
+    "node"
   ],
   "publishConfig": {
     "access": "public"

@@ -73,9 +73,7 @@ contract BoundaryTests is Test {
     // ==================== Price Boundary Tests ====================
 
     function test_PriceZero_Reverts() public {
-        IReportVerifier.ReportSubmission memory submission = _buildSubmission(
-            feedId, 0, 9500, block.timestamp, 1
-        );
+        IReportVerifier.ReportSubmission memory submission = _buildSubmission(feedId, 0, 9500, block.timestamp, 1);
 
         vm.expectRevert(IReportVerifier.InvalidReport.selector);
         vm.prank(signer);
@@ -83,9 +81,8 @@ contract BoundaryTests is Test {
     }
 
     function test_PriceMaxUint256() public {
-        IReportVerifier.ReportSubmission memory submission = _buildSubmission(
-            feedId, type(uint256).max, 9500, block.timestamp, 1
-        );
+        IReportVerifier.ReportSubmission memory submission =
+            _buildSubmission(feedId, type(uint256).max, 9500, block.timestamp, 1);
 
         vm.prank(signer);
         bool accepted = verifier.submitReport(submission);
@@ -96,9 +93,8 @@ contract BoundaryTests is Test {
     }
 
     function test_ConfidenceZero() public {
-        IReportVerifier.ReportSubmission memory submission = _buildSubmission(
-            feedId, 3500_00000000, 0, block.timestamp, 1
-        );
+        IReportVerifier.ReportSubmission memory submission =
+            _buildSubmission(feedId, 3500_00000000, 0, block.timestamp, 1);
 
         vm.prank(signer);
         bool accepted = verifier.submitReport(submission);
@@ -109,9 +105,8 @@ contract BoundaryTests is Test {
     }
 
     function test_ConfidenceMax() public {
-        IReportVerifier.ReportSubmission memory submission = _buildSubmission(
-            feedId, 3500_00000000, 10000, block.timestamp, 1
-        );
+        IReportVerifier.ReportSubmission memory submission =
+            _buildSubmission(feedId, 3500_00000000, 10000, block.timestamp, 1);
 
         vm.prank(signer);
         bool accepted = verifier.submitReport(submission);
@@ -125,15 +120,10 @@ contract BoundaryTests is Test {
 
     function test_TimestampInFuture_Reverts() public {
         uint256 futureTime = block.timestamp + 1 hours;
-        IReportVerifier.ReportSubmission memory submission = _buildSubmission(
-            feedId, 3500_00000000, 9500, futureTime, 1
-        );
+        IReportVerifier.ReportSubmission memory submission =
+            _buildSubmission(feedId, 3500_00000000, 9500, futureTime, 1);
 
-        vm.expectRevert(abi.encodeWithSelector(
-            IReportVerifier.StaleReport.selector,
-            futureTime,
-            block.timestamp
-        ));
+        vm.expectRevert(abi.encodeWithSelector(IReportVerifier.StaleReport.selector, futureTime, block.timestamp));
         vm.prank(signer);
         verifier.submitReport(submission);
     }
@@ -141,15 +131,9 @@ contract BoundaryTests is Test {
     function test_TimestampStale_Reverts() public {
         // MAX_PRICE_AGE is typically 1 hour
         uint256 staleTime = block.timestamp - 2 hours;
-        IReportVerifier.ReportSubmission memory submission = _buildSubmission(
-            feedId, 3500_00000000, 9500, staleTime, 1
-        );
+        IReportVerifier.ReportSubmission memory submission = _buildSubmission(feedId, 3500_00000000, 9500, staleTime, 1);
 
-        vm.expectRevert(abi.encodeWithSelector(
-            IReportVerifier.StaleReport.selector,
-            staleTime,
-            block.timestamp
-        ));
+        vm.expectRevert(abi.encodeWithSelector(IReportVerifier.StaleReport.selector, staleTime, block.timestamp));
         vm.prank(signer);
         verifier.submitReport(submission);
     }
@@ -157,9 +141,8 @@ contract BoundaryTests is Test {
     // ==================== Round Boundary Tests ====================
 
     function test_RoundZero() public {
-        IReportVerifier.ReportSubmission memory submission = _buildSubmission(
-            feedId, 3500_00000000, 9500, block.timestamp, 0
-        );
+        IReportVerifier.ReportSubmission memory submission =
+            _buildSubmission(feedId, 3500_00000000, 9500, block.timestamp, 0);
 
         vm.prank(signer);
         bool accepted = verifier.submitReport(submission);
@@ -169,17 +152,13 @@ contract BoundaryTests is Test {
 
     function test_RoundSkipping_Reverts() public {
         // Submit round 1
-        IReportVerifier.ReportSubmission memory sub1 = _buildSubmission(
-            feedId, 3500_00000000, 9500, block.timestamp, 1
-        );
+        IReportVerifier.ReportSubmission memory sub1 = _buildSubmission(feedId, 3500_00000000, 9500, block.timestamp, 1);
         vm.prank(signer);
         verifier.submitReport(sub1);
 
         // Try to submit round 5 (skipping 2,3,4) - should revert
         vm.warp(block.timestamp + 60);
-        IReportVerifier.ReportSubmission memory sub5 = _buildSubmission(
-            feedId, 3510_00000000, 9500, block.timestamp, 5
-        );
+        IReportVerifier.ReportSubmission memory sub5 = _buildSubmission(feedId, 3510_00000000, 9500, block.timestamp, 5);
 
         vm.expectRevert(abi.encodeWithSelector(IReportVerifier.RoundMismatch.selector, 2, 5));
         vm.prank(signer);
@@ -207,18 +186,14 @@ contract BoundaryTests is Test {
         bytes32 reportHash = keccak256(
             abi.encodePacked(feedId, uint256(3500_00000000), uint256(9500), block.timestamp, uint256(1), sourcesHash)
         );
-        bytes32 ethSignedHash = keccak256(
-            abi.encodePacked("\x19Ethereum Signed Message:\n32", reportHash)
-        );
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", reportHash));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(differentPk, ethSignedHash);
-        
+
         bytes[] memory signatures = new bytes[](1);
         signatures[0] = abi.encodePacked(r, s, v);
 
-        IReportVerifier.ReportSubmission memory submission = IReportVerifier.ReportSubmission({
-            report: report,
-            signatures: signatures
-        });
+        IReportVerifier.ReportSubmission memory submission =
+            IReportVerifier.ReportSubmission({report: report, signatures: signatures});
 
         // With no committee check, any valid signature is accepted
         vm.prank(signer);
@@ -231,9 +206,8 @@ contract BoundaryTests is Test {
         uint256 unauthorizedPk = 0x9999;
         address unauthorizedAddr = vm.addr(unauthorizedPk);
 
-        IReportVerifier.ReportSubmission memory submission = _buildSubmissionWithKey(
-            feedId, 3500_00000000, 9500, block.timestamp, 1, unauthorizedPk
-        );
+        IReportVerifier.ReportSubmission memory submission =
+            _buildSubmissionWithKey(feedId, 3500_00000000, 9500, block.timestamp, 1, unauthorizedPk);
 
         // Unauthorized transmitter triggers Unauthorized error (before signature check)
         vm.expectRevert();
@@ -248,34 +222,21 @@ contract BoundaryTests is Test {
 
         vm.expectRevert(abi.encodeWithSelector(IDisputeGame.ReportNotDisputable.selector, fakeHash));
         vm.prank(user1);
-        disputeGame.openDispute{value: 100 ether}(
-            fakeHash,
-            IDisputeGame.DisputeReason.PRICE_DEVIATION,
-            bytes32(0)
-        );
+        disputeGame.openDispute{value: 100 ether}(fakeHash, IDisputeGame.DisputeReason.PRICE_DEVIATION, bytes32(0));
     }
 
     function test_DisputeInsufficientBond_Reverts() public {
         // Submit a valid report first
-        IReportVerifier.ReportSubmission memory submission = _buildSubmission(
-            feedId, 3500_00000000, 9500, block.timestamp, 1
-        );
+        IReportVerifier.ReportSubmission memory submission =
+            _buildSubmission(feedId, 3500_00000000, 9500, block.timestamp, 1);
         vm.prank(signer);
         verifier.submitReport(submission);
 
         bytes32 reportHash = _computeReportHash(feedId, 3500_00000000, 9500, block.timestamp, 1);
 
-        vm.expectRevert(abi.encodeWithSelector(
-            IDisputeGame.InsufficientBond.selector,
-            1 ether,
-            100 ether
-        ));
+        vm.expectRevert(abi.encodeWithSelector(IDisputeGame.InsufficientBond.selector, 1 ether, 100 ether));
         vm.prank(user1);
-        disputeGame.openDispute{value: 1 ether}(
-            reportHash,
-            IDisputeGame.DisputeReason.PRICE_DEVIATION,
-            bytes32(0)
-        );
+        disputeGame.openDispute{value: 1 ether}(reportHash, IDisputeGame.DisputeReason.PRICE_DEVIATION, bytes32(0));
     }
 
     // ==================== Subscription Edge Cases ====================
@@ -347,13 +308,11 @@ contract BoundaryTests is Test {
 
     // ==================== Helper Functions ====================
 
-    function _buildSubmission(
-        bytes32 _feedId,
-        uint256 _price,
-        uint256 _confidence,
-        uint256 _timestamp,
-        uint256 _round
-    ) internal view returns (IReportVerifier.ReportSubmission memory) {
+    function _buildSubmission(bytes32 _feedId, uint256 _price, uint256 _confidence, uint256 _timestamp, uint256 _round)
+        internal
+        view
+        returns (IReportVerifier.ReportSubmission memory)
+    {
         return _buildSubmissionWithKey(_feedId, _price, _confidence, _timestamp, _round, signerPk);
     }
 
@@ -376,29 +335,15 @@ contract BoundaryTests is Test {
             sourcesHash: sourcesHash
         });
 
-        bytes32 reportHash = keccak256(
-            abi.encodePacked(
-                _feedId,
-                _price,
-                _confidence,
-                _timestamp,
-                _round,
-                sourcesHash
-            )
-        );
+        bytes32 reportHash = keccak256(abi.encodePacked(_feedId, _price, _confidence, _timestamp, _round, sourcesHash));
 
-        bytes32 ethSignedHash = keccak256(
-            abi.encodePacked("\x19Ethereum Signed Message:\n32", reportHash)
-        );
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", reportHash));
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(_signerPk, ethSignedHash);
         bytes[] memory signatures = new bytes[](1);
         signatures[0] = abi.encodePacked(r, s, v);
 
-        return IReportVerifier.ReportSubmission({
-            report: report,
-            signatures: signatures
-        });
+        return IReportVerifier.ReportSubmission({report: report, signatures: signatures});
     }
 
     function _computeReportHash(
@@ -408,15 +353,6 @@ contract BoundaryTests is Test {
         uint256 _timestamp,
         uint256 _round
     ) internal pure returns (bytes32) {
-        return keccak256(
-            abi.encodePacked(
-                _feedId,
-                _price,
-                _confidence,
-                _timestamp,
-                _round,
-                keccak256("test-source")
-            )
-        );
+        return keccak256(abi.encodePacked(_feedId, _price, _confidence, _timestamp, _round, keccak256("test-source")));
     }
 }

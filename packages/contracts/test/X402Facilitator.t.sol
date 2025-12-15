@@ -259,7 +259,7 @@ contract X402FacilitatorTest is Test {
         address council = makeAddr("council");
         address ceo = makeAddr("ceo");
         FeeConfig feeConfig = new FeeConfig(council, ceo, feeRecipient, owner);
-        
+
         vm.prank(owner);
         facilitator.setFeeConfig(address(feeConfig));
         assertEq(address(facilitator.feeConfig()), address(feeConfig));
@@ -283,7 +283,11 @@ contract X402FacilitatorTest is Test {
         uint256 protocolFee = (amount * 50) / 10000;
 
         // Verify fee recipient received protocol fee
-        assertEq(usdc.balanceOf(feeRecipient) - feeRecipientBalanceBefore, protocolFee, "Fee recipient should receive protocol fee");
+        assertEq(
+            usdc.balanceOf(feeRecipient) - feeRecipientBalanceBefore,
+            protocolFee,
+            "Fee recipient should receive protocol fee"
+        );
 
         // Verify tracking
         assertGt(facilitator.totalProtocolFees(), 0, "Protocol fees should be tracked");

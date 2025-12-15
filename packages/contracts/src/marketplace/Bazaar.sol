@@ -444,11 +444,11 @@ contract Bazaar is ReentrancyGuard, Ownable {
     /**
      * @notice Get platform fee statistics
      */
-    function getPlatformFeeStats() external view returns (
-        uint256 _totalPlatformFeesCollected,
-        uint256 _currentFeeBps,
-        address _recipient
-    ) {
+    function getPlatformFeeStats()
+        external
+        view
+        returns (uint256 _totalPlatformFeesCollected, uint256 _currentFeeBps, address _recipient)
+    {
         return (totalPlatformFeesCollected, _getPlatformFeeBps(), _getFeeRecipient());
     }
 

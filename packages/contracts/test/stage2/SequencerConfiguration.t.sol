@@ -68,11 +68,7 @@ contract SequencerConfigurationTest is Test {
 
         // Deploy Stage 2 contracts
         registry = new SequencerRegistry(
-            address(token),
-            address(identityRegistry),
-            address(reputationRegistry),
-            treasury,
-            owner
+            address(token), address(identityRegistry), address(reputationRegistry), treasury, owner
         );
 
         batchSubmitter = new ThresholdBatchSubmitter(
@@ -127,10 +123,10 @@ contract SequencerConfigurationTest is Test {
     function test_SequencerRegistry_SlashingPercentagesAreEffective() public view {
         // Double signing should have significant penalty (>=10%)
         assertGe(registry.SLASH_DOUBLE_SIGN(), 1000, "Double sign penalty too low");
-        
+
         // Censorship penalty should be meaningful (>=5%)
         assertGe(registry.SLASH_CENSORSHIP(), 500, "Censorship penalty too low");
-        
+
         // Downtime penalty should exist but be lower (>=1%)
         assertGe(registry.SLASH_DOWNTIME(), 100, "Downtime penalty too low");
     }
@@ -203,7 +199,7 @@ contract SequencerConfigurationTest is Test {
         // Try to submit with only 1 signature (threshold is 2)
         bytes memory batchData = "test batch";
         bytes32 digest = batchSubmitter.getBatchDigest(batchData);
-        
+
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(sequencer1Key, digest);
         bytes memory sig = abi.encodePacked(r, s, v);
 
@@ -260,7 +256,7 @@ contract SequencerConfigurationTest is Test {
         // Timeout should be at least 7 days for Stage 2
         assertGe(timeout, 7 days, "Game timeout must be >= 7 days");
     }
-    
+
     function test_DisputeGameFactory_BondAmountsAreReasonable() public view {
         uint256 minBond = disputeFactory.MIN_BOND();
         uint256 maxBond = disputeFactory.MAX_BOND();
@@ -311,7 +307,7 @@ contract SequencerConfigurationTest is Test {
         // Verify configuration
         (address[] memory activeSeqs,) = registry.getActiveSequencers();
         assertEq(activeSeqs.length, 3, "Should have 3 active sequencers");
-        
+
         address[] memory seqs = batchSubmitter.getSequencers();
         assertEq(seqs.length, 3, "Should have 3 threshold signers");
         assertGe(batchSubmitter.threshold(), 2, "Threshold should be at least 2");
@@ -321,7 +317,7 @@ contract SequencerConfigurationTest is Test {
 
     function test_Stage2ChecklistComplete() public view {
         // Stage 2 Decentralization Checklist
-        
+
         // 1. Multiple sequencers can participate
         assertTrue(registry.MIN_STAKE() > 0, "Staking enabled");
         assertTrue(registry.MAX_STAKE() > registry.MIN_STAKE(), "Stake limits set");
@@ -346,4 +342,3 @@ contract SequencerConfigurationTest is Test {
         assertTrue(registry.SLASH_DOUBLE_SIGN() > 0, "Slashing enabled");
     }
 }
-

@@ -285,7 +285,7 @@ contract DelegationTests is Test {
         // Plus previous: d1=5, d2=5
         assertEq(feeRouter.getDelegatorPendingRewards(delegator1, operatorId1), 10 ether); // 5 + 5
         assertEq(feeRouter.getDelegatorPendingRewards(delegator2, operatorId1), 15 ether); // 5 + 10
-        assertEq(feeRouter.getDelegatorPendingRewards(delegator3, operatorId1), 5 ether);  // 0 + 5
+        assertEq(feeRouter.getDelegatorPendingRewards(delegator3, operatorId1), 5 ether); // 0 + 5
     }
 
     // ==================== Boundary Conditions ====================
@@ -335,7 +335,8 @@ contract DelegationTests is Test {
     }
 
     function test_GetOperatorAssignmentsByAddress_Empty() public view {
-        ICommitteeManager.CommitteeAssignment[] memory assignments = committee.getOperatorAssignmentsByAddress(operator1);
+        ICommitteeManager.CommitteeAssignment[] memory assignments =
+            committee.getOperatorAssignmentsByAddress(operator1);
         assertEq(assignments.length, 0);
     }
 
@@ -370,4 +371,3 @@ contract DelegationTests is Test {
         assertEq(pending, rewards.delegatorPool);
     }
 }
-

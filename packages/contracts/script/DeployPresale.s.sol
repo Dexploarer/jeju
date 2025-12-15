@@ -2,8 +2,8 @@
 pragma solidity ^0.8.26;
 
 import {Script, console2} from "forge-std/Script.sol";
-import {JejuPresale} from "../src/tokens/JejuPresale.sol";
-import {JejuToken} from "../src/tokens/JejuToken.sol";
+import {Presale} from "../src/tokens/Presale.sol";
+import {Token} from "../src/tokens/Token.sol";
 
 contract DeployPresale is Script {
     // Presale parameters
@@ -31,29 +31,38 @@ contract DeployPresale is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(deployerPrivateKey);
         address treasury = vm.envOr("TREASURY_ADDRESS", deployer);
-        address tokenAddress = vm.envOr("JEJU_TOKEN_ADDRESS", address(0));
+        address tokenAddress = vm.envOr("TOKEN_ADDRESS", address(0));
 
         console2.log("Deployer:", deployer);
         console2.log("Treasury:", treasury);
 
         vm.startBroadcast(deployerPrivateKey);
 
-        JejuToken token;
+        Token token;
 
         // Deploy or use existing token
         if (tokenAddress == address(0)) {
-            console2.log("Deploying new JejuToken...");
-            token = new JejuToken(deployer, address(0), true);
-            console2.log("JejuToken deployed at:", address(token));
+            console2.log("Deploying new Token...");
+            token = new Token(
+                "Jeju",
+                "JEJU",
+                1_000_000_000 * 10**18,
+                deployer,
+                10_000_000_000 * 10**18,
+                true
+            );
+            // Enable faucet for testnet
+            token.setConfig(0, 0, false, false, true);
+            console2.log("Token deployed at:", address(token));
         } else {
-            console2.log("Using existing JejuToken at:", tokenAddress);
-            token = JejuToken(tokenAddress);
+            console2.log("Using existing Token at:", tokenAddress);
+            token = Token(tokenAddress);
         }
 
         // Deploy presale
-        console2.log("Deploying JejuPresale...");
-        JejuPresale presale = new JejuPresale(address(token), treasury, deployer);
-        console2.log("JejuPresale deployed at:", address(presale));
+        console2.log("Deploying Presale...");
+        Presale presale = new Presale(address(token), treasury, deployer);
+        console2.log("Presale deployed at:", address(presale));
 
         // Configure presale timing
         uint256 whitelistStart = block.timestamp + WHITELIST_OFFSET;
@@ -63,11 +72,14 @@ contract DeployPresale is Script {
 
         console2.log("Configuring presale...");
         presale.configure(
+            Presale.PresaleMode.FIXED_PRICE,
+            PRESALE_ALLOCATION,
             SOFT_CAP,
             HARD_CAP,
             MIN_CONTRIBUTION,
             MAX_CONTRIBUTION,
             TOKEN_PRICE,
+            0, 0, 0, // CCA params (unused for fixed price)
             whitelistStart,
             publicStart,
             presaleEnd,
@@ -79,7 +91,7 @@ contract DeployPresale is Script {
 
         // Transfer presale tokens to contract
         if (tokenAddress == address(0)) {
-            console2.log("Transferring", PRESALE_ALLOCATION / 1e18, "JEJU to presale...");
+            console2.log("Transferring", PRESALE_ALLOCATION / 1e18, "tokens to presale...");
             token.transfer(address(presale), PRESALE_ALLOCATION);
         }
 
@@ -87,8 +99,8 @@ contract DeployPresale is Script {
 
         // Log deployment summary
         console2.log("\n=== Deployment Summary ===");
-        console2.log("JejuToken:", address(token));
-        console2.log("JejuPresale:", address(presale));
+        console2.log("Token:", address(token));
+        console2.log("Presale:", address(presale));
         console2.log("Treasury:", treasury);
         console2.log("\n=== Presale Config ===");
         console2.log("Soft Cap:", SOFT_CAP / 1e18, "ETH");

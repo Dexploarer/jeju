@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
  * @title ForcedInclusion
  * @notice Allows users to force transaction inclusion when sequencers censor.
  *         Stage 2 requires: users can bypass sequencers via L1 if needed.
- * 
+ *
  * Flow:
  * 1. User deposits tx + fee to this contract
  * 2. Sequencer has INCLUSION_WINDOW blocks to include it
@@ -30,19 +30,19 @@ contract ForcedInclusion is ReentrancyGuard, Pausable {
 
     // Sequencer must include within 50 L1 blocks (~10 mins)
     uint256 public constant INCLUSION_WINDOW = 50;
-    
+
     // Minimum fee to queue a forced tx
     uint256 public constant MIN_FEE = 0.001 ether;
-    
+
     // Time after which unclaimed txs can be refunded
     uint256 public constant EXPIRY_WINDOW = 1 days;
 
     address public immutable batchInbox;
     address public sequencerRegistry;
-    
+
     mapping(bytes32 => QueuedTx) public queuedTxs;
     bytes32[] public pendingTxIds;
-    
+
     uint256 public totalPendingFees;
 
     event TxQueued(bytes32 indexed txId, address indexed sender, uint256 fee, uint256 queuedAt);
@@ -224,4 +224,3 @@ contract ForcedInclusion is ReentrancyGuard, Pausable {
 
     receive() external payable {}
 }
-

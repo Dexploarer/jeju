@@ -133,6 +133,8 @@ export const DEFAULT_PORTS = {
   l1Rpc: 8545,
   l2Rpc: 9545,
   l2Ws: 9546,
+  cqlApi: 4300,  // CovenantSQL API for decentralized storage
+  cqlRpc: 4661,  // CovenantSQL internal RPC
   gateway: 4001,
   bazaar: 4006,
   compute: 4007,
