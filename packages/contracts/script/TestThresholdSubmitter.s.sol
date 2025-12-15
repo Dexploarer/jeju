@@ -2,7 +2,7 @@
 pragma solidity ^0.8.26;
 
 import "forge-std/Script.sol";
-import "../src/stage2/ThresholdBatchSubmitter.sol";
+import "../src/sequencer/ThresholdBatchSubmitter.sol";
 
 contract MockBatchInbox {
     bytes[] public batches;
