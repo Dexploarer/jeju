@@ -4,7 +4,7 @@ pragma solidity ^0.8.26;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
-import "./interfaces/IProver.sol";
+import "./provers/Prover.sol";
 
 contract DisputeGameFactory is Ownable, ReentrancyGuard, Pausable {
     struct DisputeGame {

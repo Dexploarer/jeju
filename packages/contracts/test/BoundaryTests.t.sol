@@ -2,11 +2,11 @@
 pragma solidity ^0.8.26;
 
 import "forge-std/Test.sol";
-import "../../src/stage2/ThresholdBatchSubmitter.sol";
-import "../../src/stage2/ForcedInclusion.sol";
-import "../../src/stage2/SequencerRegistry.sol";
-import "../../src/stage2/DisputeGameFactory.sol";
-import "../../src/stage2/GovernanceTimelock.sol";
+import "../../src/sequencer/ThresholdBatchSubmitter.sol";
+import "../../src/bridge/ForcedInclusion.sol";
+import "../../src/sequencer/SequencerRegistry.sol";
+import "../../src/dispute/DisputeGameFactory.sol";
+import "../../src/governance/GovernanceTimelock.sol";
 import "../../src/registry/IdentityRegistry.sol";
 import "../../src/registry/ReputationRegistry.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";

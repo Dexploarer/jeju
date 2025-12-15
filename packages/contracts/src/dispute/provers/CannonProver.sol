@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import "../interfaces/IProver.sol";
-import "../interfaces/IMips.sol";
+import "./IProver.sol";
+import "./IMips.sol";
 
 /// @title CannonProver
 /// @notice Adapter that integrates with Optimism's Cannon MIPS VM for real fraud proofs

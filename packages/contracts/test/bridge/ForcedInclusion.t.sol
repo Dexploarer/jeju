@@ -2,7 +2,7 @@
 pragma solidity ^0.8.26;
 
 import "forge-std/Test.sol";
-import "../../src/stage2/ForcedInclusion.sol";
+import "../../src/bridge/ForcedInclusion.sol";
 
 contract MockBatchInbox {
     bytes[] public batches;
