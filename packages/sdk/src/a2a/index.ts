@@ -65,6 +65,7 @@ export interface DiscoveredAgent {
   endpoint: string;
   card: AgentCard;
   jnsName?: string;
+  skills: Array<{ id: string; name: string; description: string }>;
 }
 
 export interface A2AModule {
@@ -85,6 +86,10 @@ export interface A2AModule {
   callCompute(request: A2ARequest): Promise<A2AResponse>;
   callStorage(request: A2ARequest): Promise<A2AResponse>;
   callGateway(request: A2ARequest): Promise<A2AResponse>;
+  callBazaar(request: A2ARequest): Promise<A2AResponse>;
+
+  // Agent discovery
+  discoverAgents(tags?: string[]): Promise<DiscoveredAgent[]>;
 
   // Streaming
   stream(
@@ -146,6 +151,7 @@ export function createA2AModule(
       endpoint: records.a2aEndpoint,
       card,
       jnsName: normalized,
+      skills: card.skills.map((s) => ({ id: s.id, name: s.name, description: s.description })),
     };
   }
 
@@ -248,6 +254,42 @@ export function createA2AModule(
     return call(services.gateway.a2a, request);
   }
 
+  async function callBazaar(request: A2ARequest): Promise<A2AResponse> {
+    return call(services.bazaar ?? `${services.gateway.api}/bazaar`, request);
+  }
+
+  async function discoverAgents(tags?: string[]): Promise<DiscoveredAgent[]> {
+    // Query gateway for registered agents
+    const response = await callGateway({
+      skillId: "list-registered-apps",
+      params: tags ? { tags } : {},
+    });
+
+    const apps = (response.data?.apps ?? []) as Array<{
+      name: string;
+      endpoint: string;
+      jnsName?: string;
+      metadata?: Record<string, unknown>;
+    }>;
+
+    // Discover agent cards for each app
+    const agents: DiscoveredAgent[] = [];
+    for (const app of apps.slice(0, 20)) {
+      const card = await discover(app.endpoint).catch(() => null);
+      if (card) {
+        agents.push({
+          name: app.name,
+          endpoint: app.endpoint,
+          card,
+          jnsName: app.jnsName,
+          skills: card.skills.map((s) => ({ id: s.id, name: s.name, description: s.description })),
+        });
+      }
+    }
+
+    return agents;
+  }
+
   async function stream(
     endpoint: string,
     request: A2ARequest,
@@ -323,6 +365,8 @@ export function createA2AModule(
     callCompute,
     callStorage,
     callGateway,
+    callBazaar,
+    discoverAgents,
     stream,
   };
 }

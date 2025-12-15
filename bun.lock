@@ -698,6 +698,22 @@
         "typeorm",
       ],
     },
+    "packages/dapp-services": {
+      "name": "@jeju/dapp-services",
+      "version": "1.0.0",
+      "dependencies": {
+        "@jeju/cql": "workspace:*",
+        "@jeju/kms": "workspace:*",
+        "@jejunetwork/config": "workspace:*",
+        "ethers": "^6.13.4",
+        "hono": "^4.7.0",
+        "viem": "^2.21.0",
+      },
+      "devDependencies": {
+        "@types/bun": "latest",
+        "typescript": "^5.7.0",
+      },
+    },
     "packages/deployment": {
       "name": "@jejunetwork/deployment",
       "version": "0.1.0",
@@ -3787,6 +3803,8 @@
     "@jeju/council-app": ["@jeju/council-app@workspace:apps/council/app"],
 
     "@jeju/cql": ["@jeju/cql@workspace:packages/cql"],
+
+    "@jeju/dapp-services": ["@jeju/dapp-services@workspace:packages/dapp-services"],
 
     "@jeju/kms": ["@jeju/kms@workspace:packages/kms"],
 

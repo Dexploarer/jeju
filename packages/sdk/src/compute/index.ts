@@ -106,10 +106,12 @@ export interface CreateRentalParams {
 
 export interface InferenceModel {
   provider: Address;
+  modelId: string;
   model: string;
   endpoint: string;
   pricePerInputToken: bigint;
   pricePerOutputToken: bigint;
+  pricePerToken: string;
   active: boolean;
 }
 
@@ -456,10 +458,12 @@ export function createComputeModule(
         if (svc.active) {
           models.push({
             provider: svc.provider,
+            modelId: svc.model,
             model: svc.model,
             endpoint: svc.endpoint,
             pricePerInputToken: svc.pricePerInputToken,
             pricePerOutputToken: svc.pricePerOutputToken,
+            pricePerToken: formatEther(svc.pricePerInputToken + svc.pricePerOutputToken),
             active: svc.active,
           });
         }
