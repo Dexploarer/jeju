@@ -11,11 +11,7 @@ import {
 } from "@elizaos/core";
 import { formatEther } from "viem";
 import { getNetworkName } from "@jejunetwork/config";
-import {
-  JEJU_SERVICE_NAME,
-  type JejuService,
-  type JejuWalletData,
-} from "../service";
+import { JEJU_SERVICE_NAME, type JejuService } from "../service";
 
 const networkName = getNetworkName();
 
