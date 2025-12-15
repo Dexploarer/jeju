@@ -15,7 +15,7 @@
     "migrate": "bun run src/db/migrate.ts"
   },
   "dependencies": {
-    "@jeju/cql": "workspace:*",
+    "@jeju/db": "workspace:*",
     "@jeju/kms": "workspace:*",
     "@jejunetwork/sdk": "workspace:*",
     "@jejunetwork/config": "workspace:*",
