@@ -2,7 +2,7 @@
  * Storage Module - IPFS, multi-provider storage
  */
 
-import type { Hex } from "viem";
+// viem types used for type safety
 import { parseEther } from "viem";
 import type { NetworkType } from "@jejunetwork/types";
 import type { JejuWallet } from "../wallet";

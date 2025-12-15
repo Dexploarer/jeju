@@ -14,7 +14,7 @@ const { expect } = test;
 const GATEWAY_URL = process.env.GATEWAY_URL || 'http://localhost:4001';
 
 test.describe('Bridge from Ethereum Flow', () => {
-  test.beforeEach(async ({ _page, _metamask }) => {
+  test.beforeEach(async ({ page, metamask }) => {
     await page.goto(GATEWAY_URL);
     await connectWallet(page, metamask);
     
@@ -38,7 +38,7 @@ test.describe('Bridge from Ethereum Flow', () => {
     console.log('✅ Native token warning displayed');
   });
 
-  test('should only show bridgeable tokens', async ({ _page }) => {
+  test('should only show bridgeable tokens', async ({ page }) => {
     // Open token selector
     await page.locator('.input').first().click();
     await page.waitForTimeout(500);
@@ -56,7 +56,7 @@ test.describe('Bridge from Ethereum Flow', () => {
     console.log('✅ Only bridgeable tokens shown');
   });
 
-  test('should allow custom token address', async ({ _page }) => {
+  test('should allow custom token address', async ({ page }) => {
     // Switch to custom mode
     await page.getByRole('button', { name: /Custom Address/i }).click();
     
@@ -71,7 +71,7 @@ test.describe('Bridge from Ethereum Flow', () => {
     console.log('✅ Custom token address mode works');
   });
 
-  test('should validate amount input and show USD value', async ({ _page }) => {
+  test('should validate amount input and show USD value', async ({ page }) => {
     // Select token
     await page.locator('.input').first().click();
     await page.getByText('CLANKER').click();
@@ -87,7 +87,7 @@ test.describe('Bridge from Ethereum Flow', () => {
     console.log('✅ Amount validation and USD calculation working');
   });
 
-  test('should show bridge transaction details', async ({ _page }) => {
+  test('should show bridge transaction details', async ({ page }) => {
     await expect(page.getByText(/Estimated Time/i)).toBeVisible();
     await expect(page.getByText(/~2 minutes/i)).toBeVisible();
     await expect(page.getByText(/OP Stack Standard Bridge/i)).toBeVisible();
@@ -95,7 +95,7 @@ test.describe('Bridge from Ethereum Flow', () => {
     console.log('✅ Bridge details displayed');
   });
 
-  test('should handle optional recipient address', async ({ _page }) => {
+  test('should handle optional recipient address', async ({ page }) => {
     // Select token and amount
     await page.locator('.input').first().click();
     await page.getByText('VIRTUAL').click();
@@ -112,7 +112,7 @@ test.describe('Bridge from Ethereum Flow', () => {
     console.log('✅ Optional recipient works');
   });
 
-  test.skip('should execute bridge transaction', async ({ _page, _metamask }) => {
+  test.skip('should execute bridge transaction', async ({ page, metamask }) => {
     // Skip in CI - requires real tokens and Base connection
     
     // Select token
