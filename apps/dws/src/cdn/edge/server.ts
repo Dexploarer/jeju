@@ -139,7 +139,7 @@ export class EdgeNodeServer {
     this.app.use('/*', logger());
 
     // Request tracking
-    this.app.use('/*', async (c, next) => {
+    this.app.use('/*', async (_c, next) => {
       this.activeConnections++;
       const startTime = Date.now();
 

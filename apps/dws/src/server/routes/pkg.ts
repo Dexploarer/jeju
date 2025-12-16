@@ -1,5 +1,6 @@
 /**
  * Package Registry Routes (JejuPkg) - npm CLI compatible API
+ * Consolidated with upstream proxy and full caching
  */
 
 import { Hono } from 'hono';
@@ -81,7 +82,7 @@ export function createPkgRouter(ctx: PkgContext): Hono {
     return c.json(result);
   });
 
-  // User login/registration (npm CLI compatible)
+  // User login/registration (npm CLI compatible - for compatibility)
   router.put('/-/user/:user{.+}', async (c) => {
     const body = await c.req.json<{ name: string; password: string; email?: string }>();
     return c.json({
