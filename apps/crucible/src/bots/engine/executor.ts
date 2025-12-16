@@ -269,6 +269,7 @@ export class TransactionExecutor {
     }
 
     const hash = await walletClient.sendTransaction({
+      chain: walletClient.chain,
       account: this.account,
       to: routerAddress as `0x${string}`,
       data: data as `0x${string}`,

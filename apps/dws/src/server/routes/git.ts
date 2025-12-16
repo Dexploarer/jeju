@@ -1,6 +1,5 @@
 /**
- * Git HTTP Server - Smart HTTP Protocol and Extended APIs
- * Consolidated from apps/git and apps/dws
+ * Git HTTP Server - Smart HTTP Protocol and Extended APIs (JejuGit)
  */
 
 import { Hono } from 'hono';

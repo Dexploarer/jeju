@@ -69,10 +69,20 @@ bot:
   enableCrossChain: true
   enableSolanaArb: false  # Disabled by default, enable for Solana networks
   enableLiquidity: true
+  enableYieldFarming: true
   solanaRpcUrl: ""
   solanaNetwork: "mainnet-beta"
   minProfitBps: 50
   maxSlippageBps: 100
+  # Yield farming configuration
+  yieldFarming:
+    minApr: 1              # Minimum APR to consider (%)
+    maxRiskScore: 60       # Maximum risk score (0-100)
+    preferRealYield: true  # Prioritize real yield over token emissions
+    minTvl: 1000000        # Minimum TVL in USD
+    maxPositionPercent: 20 # Max % of portfolio per position
+    autoCompound: true     # Auto-compound earnings
+    autoRebalance: true    # Auto-rebalance positions
 
 autoscaling:
   enabled: false

@@ -30,4 +30,17 @@ data:
   {{- if .Values.bot.solanaNetwork }}
   SOLANA_NETWORK: {{ .Values.bot.solanaNetwork | quote }}
   {{- end }}
+  # Yield Farming Configuration
+  {{- if .Values.bot.enableYieldFarming }}
+  ENABLE_YIELD_FARMING: "true"
+  {{- with .Values.bot.yieldFarming }}
+  YIELD_MIN_APR: {{ .minApr | default 1 | quote }}
+  YIELD_MAX_RISK_SCORE: {{ .maxRiskScore | default 60 | quote }}
+  YIELD_PREFER_REAL_YIELD: {{ .preferRealYield | default true | quote }}
+  YIELD_MIN_TVL: {{ .minTvl | default 1000000 | quote }}
+  YIELD_MAX_POSITION_PERCENT: {{ .maxPositionPercent | default 20 | quote }}
+  YIELD_AUTO_COMPOUND: {{ .autoCompound | default true | quote }}
+  YIELD_AUTO_REBALANCE: {{ .autoRebalance | default true | quote }}
+  {{- end }}
+  {{- end }}
   {{- end }}

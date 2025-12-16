@@ -6,7 +6,7 @@
  */
 
 import { describe, test, expect, beforeEach } from 'bun:test';
-import { keccak256, stringToHex, parseAbi } from 'viem';
+import { keccak256, stringToHex, parseAbi, parseEther, stringToBytes } from 'viem';
 
 // Event signatures from oracle-processor.ts
 const EVENTS = {
@@ -119,7 +119,7 @@ describe('Oracle Event Encoding', () => {
     const reportHash = '0xbeef000000000000000000000000000000000000000000000000000000000000';
     const encoded = INTERFACES.dispute.encodeEventLog(
       INTERFACES.dispute.getEvent('DisputeOpened')!,
-      [disputeId, reportHash, testFeedId, testAddress, ethers.parseEther('100'), 0]
+      [disputeId, reportHash, testFeedId, testAddress, parseEther('100'), 0]
     );
 
     expect(encoded.topics[0]).toBe(EVENTS.DISPUTE_OPENED);
@@ -178,7 +178,7 @@ describe('Oracle Event Decoding', () => {
 
     const encoded = INTERFACES.dispute.encodeEventLog(
       INTERFACES.dispute.getEvent('DisputeResolved')!,
-      [disputeId, 1, ethers.parseEther('10'), ethers.parseEther('5')]
+      [disputeId, 1, parseEther('10'), parseEther('5')]
     );
 
     const decoded = INTERFACES.dispute.parseLog({
@@ -190,8 +190,8 @@ describe('Oracle Event Decoding', () => {
     // args[0] is disputeId (indexed), rest are in data
     expect(decoded!.args[0]).toBe(disputeId);
     expect(decoded!.args[1]).toBe(1n); // outcome (INVALID)
-    expect(decoded!.args[2]).toBe(ethers.parseEther('10')); // slashedAmount
-    expect(decoded!.args[3]).toBe(ethers.parseEther('5')); // reward
+    expect(decoded!.args[2]).toBe(parseEther('10')); // slashedAmount
+    expect(decoded!.args[3]).toBe(parseEther('5')); // reward
   });
 });
 
@@ -261,8 +261,8 @@ describe('Oracle Event Set Membership', () => {
   });
 
   test('should reject non-oracle events', () => {
-    const transferEvent = ethers.id('Transfer(address,address,uint256)');
-    const approvalEvent = ethers.id('Approval(address,address,uint256)');
+    const transferEvent = keccak256(stringToBytes('Transfer(address,address,uint256)'));
+    const approvalEvent = keccak256(stringToBytes('Approval(address,address,uint256)'));
     
     expect(ORACLE_EVENT_SET.has(transferEvent)).toBe(false);
     expect(ORACLE_EVENT_SET.has(approvalEvent)).toBe(false);
@@ -293,9 +293,9 @@ describe('Oracle Data Validation', () => {
   });
 
   test('should validate dispute bond minimum', () => {
-    const MIN_BOND = ethers.parseEther('100');
-    const validBond = ethers.parseEther('100');
-    const invalidBond = ethers.parseEther('1');
+    const MIN_BOND = parseEther('100');
+    const validBond = parseEther('100');
+    const invalidBond = parseEther('1');
 
     expect(validBond).toBeGreaterThanOrEqual(MIN_BOND);
     expect(invalidBond).toBeLessThan(MIN_BOND);

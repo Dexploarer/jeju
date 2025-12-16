@@ -4,7 +4,7 @@
   "displayName": "Subsquid Indexer",
   "version": "1.0.0",
   "type": "core",
-  "description": "Blockchain indexer with GraphQL API",
+  "description": "Blockchain indexer with GraphQL API - indexes all on-chain events for apps",
   "commands": {
     "dev": "bun run dev",
     "build": "bun run build",
@@ -20,25 +20,47 @@
   "optional": false,
   "enabled": true,
   "autoStart": false,
-  "tags": ["indexer", "graphql", "data", "jns"],
+  "tags": ["indexer", "graphql", "data", "jns", "infrastructure"],
   "jns": {
     "name": "indexer.jeju",
     "description": "Blockchain Indexer with GraphQL API",
     "url": "https://indexer.jeju.network"
   },
-  "agent": {
-    "enabled": true,
-    "tags": ["jeju-app", "indexer", "graphql", "data"],
-    "metadata": {
-      "category": "data",
-      "provider": "jeju-network"
-    },
-    "trustModels": ["open"],
-    "jnsName": "indexer.jeju"
-  },
   "healthCheck": {
     "url": "http://localhost:4350/graphql",
     "interval": 30000
+  },
+  "agent": {
+    "enabled": true,
+    "a2aEndpoint": "/a2a",
+    "mcpEndpoint": "/mcp",
+    "tags": ["jeju-app", "indexer", "graphql", "data"],
+    "metadata": {
+      "category": "data",
+      "provider": "jeju-network",
+      "features": ["graphql", "subscriptions", "historical-data"]
+    },
+    "trustModels": ["open"],
+    "x402Support": false,
+    "jnsName": "indexer.jeju"
+  },
+  "decentralization": {
+    "cdn": {
+      "enabled": true,
+      "regions": ["global"],
+      "apiCaching": {
+        "enabled": true,
+        "defaultTtl": 5,
+        "varyHeaders": ["x-jeju-address"]
+      },
+      "serviceWorker": false
+    },
+    "robustness": {
+      "multiOrigin": false,
+      "offlineSupport": false,
+      "p2pFallback": true,
+      "contentAddressed": false
+    }
   },
   "testing": {
     "unit": {
@@ -56,8 +78,6 @@
       "timeout": 300000,
       "requiresChain": true
     },
-    "services": ["postgres", "chain"],
-    "dependencies": []
+    "services": ["postgres", "chain"]
   }
 }
-

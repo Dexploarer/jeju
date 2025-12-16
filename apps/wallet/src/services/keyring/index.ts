@@ -309,9 +309,35 @@ class KeyringService {
       return this.decrypt(encrypted, password) as Promise<Hex>;
     }
     
-    // For HD accounts, derive from mnemonic
-    // This is simplified - in production, need to track which mnemonic belongs to which account
-    throw new Error('Export not implemented for HD accounts');
+    // For HD accounts, derive private key from mnemonic
+    if (account.type === 'hd') {
+      const hdAccount = account as HDAccount;
+      const walletId = this.hdAccountToWallet.get(address);
+      if (!walletId) throw new Error('HD wallet not found for this account');
+      
+      const encryptedMnemonic = this.encryptedMnemonics.get(walletId);
+      if (!encryptedMnemonic) throw new Error('Mnemonic not found');
+      
+      const mnemonic = await this.decrypt(encryptedMnemonic, password);
+      const derivedAccount = mnemonicToAccount(mnemonic, { 
+        path: `${hdAccount.hdPath}/${hdAccount.index}` 
+      });
+      
+      // The account has a privateKey getter that returns the derived key
+      // We need to use the HDAccount's method to get the private key
+      // Since viem's HDAccount doesn't expose privateKey directly, 
+      // we derive it from the seed
+      const { HDKey } = await import('@scure/bip32');
+      const { mnemonicToSeedSync } = await import('@scure/bip39');
+      const seed = mnemonicToSeedSync(mnemonic);
+      const hdKey = HDKey.fromMasterSeed(seed);
+      const derivedKey = hdKey.derive(`${hdAccount.hdPath}/${hdAccount.index}`);
+      if (!derivedKey.privateKey) throw new Error('Failed to derive private key');
+      
+      return `0x${Buffer.from(derivedKey.privateKey).toString('hex')}` as Hex;
+    }
+    
+    throw new Error('Cannot export key for this account type');
   }
 
   private async getSigner(address: Address, password: string) {
@@ -325,8 +351,21 @@ class KeyringService {
       return privateKeyToAccount(privateKey);
     }
     
-    // For HD accounts - simplified
-    throw new Error('HD signing requires mnemonic derivation');
+    if (account.type === 'hd') {
+      const hdAccount = account as HDAccount;
+      const walletId = this.hdAccountToWallet.get(address);
+      if (!walletId) throw new Error('HD wallet not found for this account');
+      
+      const encryptedMnemonic = this.encryptedMnemonics.get(walletId);
+      if (!encryptedMnemonic) throw new Error('Mnemonic not found');
+      
+      const mnemonic = await this.decrypt(encryptedMnemonic, password);
+      return mnemonicToAccount(mnemonic, { 
+        path: `${hdAccount.hdPath}/${hdAccount.index}` 
+      });
+    }
+    
+    throw new Error(`Cannot get signer for account type: ${account.type}`);
   }
 
   private async deriveKey(password: string): Promise<CryptoKey> {

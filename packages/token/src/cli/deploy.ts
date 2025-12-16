@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * @fileoverview CLI for deploying cross-chain token
- * @module @babylon/experimental-token/cli/deploy
+ * @module @jejunetwork/token/cli/deploy
  *
  * Usage:
  *   bun run src/cli/deploy.ts --network testnet --config ./token-config.json
@@ -51,8 +51,8 @@ const options = program.opts();
 
 function getDefaultTokenEconomics(): TokenEconomics {
   return {
-    name: 'Babylon Token',
-    symbol: 'BABYLON',
+    name: 'Jeju Token',
+    symbol: 'JEJU',
     decimals: 18,
     totalSupply: 1_000_000_000n, // 1 billion tokens
     allocation: {
@@ -273,7 +273,7 @@ async function main() {
     '╔══════════════════════════════════════════════════════════════╗'
   );
   console.log(
-    '║     Babylon Cross-Chain Token Deployment                     ║'
+    '║     Cross-Chain Token Deployment                             ║'
   );
   console.log(
     '║     Permissionless • Hyperlane Warp Routes • EVM + Solana    ║'

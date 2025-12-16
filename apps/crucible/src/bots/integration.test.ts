@@ -54,7 +54,7 @@ describe('Trading Bot Integration', () => {
     test('should validate chain configurations are accessible', () => {
       const { DEFAULT_CHAINS } = require('./default-bots');
       
-      Object.values(DEFAULT_CHAINS).forEach(chain => {
+      (Object.values(DEFAULT_CHAINS) as Array<{ rpcUrl: string; blockTime: number; chainId: number }>).forEach(chain => {
         expect(chain.rpcUrl).toMatch(/^https?:\/\//);
         expect(chain.blockTime).toBeGreaterThan(0);
         expect(chain.chainId).toBeGreaterThan(0);

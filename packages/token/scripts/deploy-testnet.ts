@@ -8,11 +8,11 @@
  * - Configures cross-chain warp routes
  * 
  * Usage:
- *   cd vendor/babylon/packages/experimental-token
+ *   cd packages/token
  *   bun run scripts/deploy-testnet.ts
  * 
  * Or from Jeju root:
- *   bun run vendor/babylon/packages/experimental-token/scripts/deploy-testnet.ts
+ *   bun run packages/token/scripts/deploy-testnet.ts
  */
 
 import { createWalletClient, http, type Hex } from 'viem';
@@ -70,7 +70,7 @@ async function main() {
     console.log('  • Arbitrum Sepolia (421614)');
     console.log();
     console.log('Contracts to deploy:');
-    console.log('  • BabylonToken');
+    console.log('  • Token');
     console.log('  • TokenVesting');
     console.log('  • FeeDistributor');
     console.log('  • WarpRoute');

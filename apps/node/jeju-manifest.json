@@ -1,23 +1,72 @@
 {
+  "$schema": "../../packages/config/jeju-manifest.schema.json",
   "name": "node",
   "displayName": "Network Node",
-  "description": "Run infrastructure and earn rewards",
-  "enabled": true,
-  "autoStart": false,
-  "ports": {
-    "main": 1420
-  },
+  "version": "1.0.0",
+  "type": "core",
+  "description": "Run infrastructure nodes (compute, storage, CDN, proxy) and earn rewards",
   "commands": {
     "dev": "bun run dev",
     "build": "bun run build",
+    "build:tauri": "bun run tauri build",
     "test": "bun run test:unit"
   },
-  "env": {
-    "JEJU_RPC_URL": "http://127.0.0.1:8545",
-    "CHAIN_ID": "1337"
+  "ports": {
+    "main": 1420,
+    "cdn": 4020,
+    "proxy": 4025,
+    "compute": 4026
   },
-  "requirements": {
-    "contracts": true
+  "dependencies": ["contracts", "config", "dws"],
+  "optional": false,
+  "enabled": true,
+  "autoStart": false,
+  "tags": ["node", "infrastructure", "operator", "cdn", "storage", "compute", "proxy", "rewards"],
+  "jns": {
+    "name": "node.jeju",
+    "description": "Network Node Operator Dashboard",
+    "url": "https://node.jeju.network"
+  },
+  "healthCheck": {
+    "url": "http://localhost:1420/health",
+    "interval": 30000
+  },
+  "agent": {
+    "enabled": true,
+    "a2aEndpoint": "/a2a",
+    "mcpEndpoint": "/mcp",
+    "tags": ["jeju-app", "node", "operator", "infrastructure"],
+    "metadata": {
+      "category": "infrastructure",
+      "provider": "jeju-network",
+      "features": ["cdn-edge", "storage-node", "compute-node", "proxy-node"]
+    },
+    "trustModels": ["staked"],
+    "x402Support": false,
+    "jnsName": "node.jeju"
+  },
+  "decentralization": {
+    "cdn": {
+      "enabled": true,
+      "regions": ["global"],
+      "cacheRules": [
+        { "pattern": "/assets/**", "ttl": 31536000, "immutable": true },
+        { "pattern": "/api/**", "ttl": 0 }
+      ],
+      "serviceWorker": true
+    },
+    "frontend": {
+      "ipfs": true,
+      "jnsName": "node.jeju",
+      "buildDir": "dist",
+      "spa": true
+    },
+    "robustness": {
+      "multiOrigin": true,
+      "offlineSupport": true,
+      "p2pFallback": true,
+      "contentAddressed": true
+    }
   },
   "testing": {
     "unit": {
@@ -31,4 +80,3 @@
     }
   }
 }
-

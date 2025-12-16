@@ -346,9 +346,9 @@ describe('Concurrent Evaluations', () => {
       sourceChain: 11155111,
       destinationChain: 84532,
       inputToken: '0x0000000000000000000000000000000000000000',
-      inputAmount: ethers.parseEther((1 + i * 0.1).toString()).toString(),
+      inputAmount: parseEther((1 + i * 0.1).toString()).toString(),
       outputToken: '0x0000000000000000000000000000000000000000',
-      outputAmount: ethers.parseEther((0.95 + i * 0.09).toString()).toString(),
+      outputAmount: parseEther((0.95 + i * 0.09).toString()).toString(),
     }));
     
     const results = await Promise.all(intents.map(intent => strategy.evaluate(intent)));
@@ -370,9 +370,9 @@ describe('Concurrent Evaluations', () => {
       sourceChain: 11155111,
       destinationChain: 84532,
       inputToken: '0x0000000000000000000000000000000000000000',
-      inputAmount: ethers.parseEther('10').toString(),
+      inputAmount: parseEther('10').toString(),
       outputToken: '0x0000000000000000000000000000000000000000',
-      outputAmount: ethers.parseEther('9.5').toString(),
+      outputAmount: parseEther('9.5').toString(),
     };
     
     // Call same intent 5 times in parallel

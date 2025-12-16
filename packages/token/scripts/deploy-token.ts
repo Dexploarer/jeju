@@ -232,13 +232,40 @@ async function setupTokenDistribution(
 ): Promise<void> {
   console.log('\n🔧 Setting up token distribution...');
 
-  // TODO: Transfer allocations
-  // - BABYLON_LABS_TOKENS to Vesting
-  // - TREASURY_TOKENS to Vesting
-  // - AIRDROP_TOKENS to Airdrop
-  // - LIQUIDITY_TOKENS to market making
-  // - PUBLIC_SALE_TOKENS to CCA
+  const tokenAbi = [
+    {
+      name: 'transfer',
+      type: 'function',
+      inputs: [
+        { name: 'to', type: 'address' },
+        { name: 'amount', type: 'uint256' },
+      ],
+      outputs: [{ name: '', type: 'bool' }],
+    },
+  ] as const;
 
+  // Transfer allocations to respective contracts
+  const transfers = [
+    { to: addresses.vesting, amount: tokensToWei(BABYLON_LABS_TOKENS + TREASURY_TOKENS), name: 'Vesting' },
+    { to: addresses.airdrop, amount: tokensToWei(AIRDROP_TOKENS), name: 'Airdrop' },
+    { to: addresses.ccaLauncher, amount: tokensToWei(PUBLIC_SALE_TOKENS), name: 'CCA Launcher' },
+  ];
+
+  for (const { to, amount, name } of transfers) {
+    console.log(`   📤 Transferring ${formatEther(amount)} BBLN to ${name}...`);
+    const hash = await walletClient.writeContract({
+      address: addresses.token,
+      abi: tokenAbi,
+      functionName: 'transfer',
+      args: [to, amount],
+      account: owner,
+    });
+    await publicClient.waitForTransactionReceipt({ hash });
+    console.log(`      ✅ Tx: ${hash}`);
+  }
+
+  // LIQUIDITY_TOKENS remain with deployer for market making setup
+  console.log(`   💧 ${formatEther(tokensToWei(LIQUIDITY_TOKENS))} BBLN retained for liquidity provision`);
   console.log('   ⏭️  Token distribution setup complete');
 }
 
@@ -250,9 +277,72 @@ async function setupVestingSchedules(
 ): Promise<void> {
   console.log('\n🔧 Setting up vesting schedules...');
 
-  // TODO: Create vesting schedules
-  // - Babylon Labs: 4-year linear with 1-year cliff
-  // - Treasury: Long-term gradual unlock
+  const vestingAbi = [
+    {
+      name: 'createSchedule',
+      type: 'function',
+      inputs: [
+        { name: 'beneficiary', type: 'address' },
+        { name: 'totalAmount', type: 'uint256' },
+        { name: 'cliffDuration', type: 'uint256' },
+        { name: 'vestingDuration', type: 'uint256' },
+        { name: 'tgeUnlockPercent', type: 'uint8' },
+        { name: 'revocable', type: 'bool' },
+        { name: 'category', type: 'uint8' },
+      ],
+      outputs: [{ name: 'scheduleId', type: 'uint256' }],
+    },
+  ] as const;
+
+  // Read beneficiary addresses from environment
+  const babylonLabsAddress = process.env.BABYLON_LABS_ADDRESS as Address | undefined;
+  const treasuryAddress = process.env.TREASURY_ADDRESS as Address | undefined;
+
+  if (!babylonLabsAddress || !treasuryAddress) {
+    console.log('   ⚠️  BABYLON_LABS_ADDRESS or TREASURY_ADDRESS not set in env');
+    console.log('   ⏭️  Skipping vesting schedule creation (set env vars to configure)');
+    return;
+  }
+
+  // Babylon Labs: 4-year vesting with 1-year cliff, 0% TGE unlock
+  console.log('   📅 Creating Babylon Labs vesting schedule...');
+  const labsHash = await walletClient.writeContract({
+    address: vestingAddress,
+    abi: vestingAbi,
+    functionName: 'createSchedule',
+    args: [
+      babylonLabsAddress,
+      tokensToWei(BABYLON_LABS_TOKENS),
+      BigInt(BABYLON_LABS_CLIFF),
+      BigInt(BABYLON_LABS_VESTING),
+      0, // 0% TGE unlock
+      true, // revocable
+      0, // category: Team
+    ],
+    account: owner,
+  });
+  await publicClient.waitForTransactionReceipt({ hash: labsHash });
+  console.log(`      ✅ Tx: ${labsHash}`);
+
+  // Treasury: Long-term gradual unlock
+  console.log('   📅 Creating Treasury vesting schedule...');
+  const treasuryHash = await walletClient.writeContract({
+    address: vestingAddress,
+    abi: vestingAbi,
+    functionName: 'createSchedule',
+    args: [
+      treasuryAddress,
+      tokensToWei(TREASURY_TOKENS),
+      BigInt(TREASURY_CLIFF),
+      BigInt(TREASURY_VESTING),
+      0, // 0% TGE unlock
+      true, // revocable
+      1, // category: Treasury
+    ],
+    account: owner,
+  });
+  await publicClient.waitForTransactionReceipt({ hash: treasuryHash });
+  console.log(`      ✅ Tx: ${treasuryHash}`);
 
   console.log('   ⏭️  Vesting schedules setup complete');
 }
@@ -265,10 +355,82 @@ async function setupAirdrop(
 ): Promise<void> {
   console.log('\n🔧 Setting up airdrop...');
 
-  // TODO: Configure airdrop
-  // - Set merkle root
-  // - Set start/end time
-  // - Authorize drippers (backend service)
+  const airdropAbi = [
+    {
+      name: 'setMerkleRoot',
+      type: 'function',
+      inputs: [{ name: 'root', type: 'bytes32' }],
+      outputs: [],
+    },
+    {
+      name: 'setClaimWindow',
+      type: 'function',
+      inputs: [
+        { name: 'start', type: 'uint256' },
+        { name: 'end', type: 'uint256' },
+      ],
+      outputs: [],
+    },
+    {
+      name: 'setDripper',
+      type: 'function',
+      inputs: [
+        { name: 'dripper', type: 'address' },
+        { name: 'authorized', type: 'bool' },
+      ],
+      outputs: [],
+    },
+  ] as const;
+
+  // Read configuration from environment
+  const merkleRoot = process.env.AIRDROP_MERKLE_ROOT as `0x${string}` | undefined;
+  const dripperAddress = process.env.AIRDROP_DRIPPER_ADDRESS as Address | undefined;
+
+  if (!merkleRoot) {
+    console.log('   ⚠️  AIRDROP_MERKLE_ROOT not set in env');
+    console.log('   ⏭️  Run generate-merkle.ts first to create the merkle tree');
+    return;
+  }
+
+  // Set merkle root
+  console.log('   🌳 Setting merkle root...');
+  const rootHash = await walletClient.writeContract({
+    address: airdropAddress,
+    abi: airdropAbi,
+    functionName: 'setMerkleRoot',
+    args: [merkleRoot],
+    account: owner,
+  });
+  await publicClient.waitForTransactionReceipt({ hash: rootHash });
+  console.log(`      ✅ Tx: ${rootHash}`);
+
+  // Set claim window: starts immediately, ends in 90 days
+  const startTime = BigInt(Math.floor(Date.now() / 1000));
+  const endTime = startTime + BigInt(90 * 24 * 60 * 60); // 90 days
+  console.log('   ⏰ Setting claim window (90 days)...');
+  const windowHash = await walletClient.writeContract({
+    address: airdropAddress,
+    abi: airdropAbi,
+    functionName: 'setClaimWindow',
+    args: [startTime, endTime],
+    account: owner,
+  });
+  await publicClient.waitForTransactionReceipt({ hash: windowHash });
+  console.log(`      ✅ Tx: ${windowHash}`);
+
+  // Authorize dripper if configured
+  if (dripperAddress) {
+    console.log('   🔓 Authorizing dripper service...');
+    const dripperHash = await walletClient.writeContract({
+      address: airdropAddress,
+      abi: airdropAbi,
+      functionName: 'setDripper',
+      args: [dripperAddress, true],
+      account: owner,
+    });
+    await publicClient.waitForTransactionReceipt({ hash: dripperHash });
+    console.log(`      ✅ Tx: ${dripperHash}`);
+  }
 
   console.log('   ⏭️  Airdrop setup complete');
 }

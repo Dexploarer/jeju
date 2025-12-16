@@ -190,7 +190,7 @@ export class MultiChainLauncher {
     const tokenResult = await this.deployContractInternal(
       publicClient,
       walletClient,
-      'BabylonToken',
+      'Token',
       [
         this.config.token.name,
         this.config.token.symbol,
@@ -300,7 +300,7 @@ export class MultiChainLauncher {
     const tokenResult = await this.deployContractInternal(
       publicClient,
       walletClient,
-      'BabylonToken',
+      'Token',
       [
         this.config.token.name,
         this.config.token.symbol,

@@ -58,6 +58,12 @@ export {
   type UnifiedPosition,
   type RebalanceAction,
   type PoolAnalysis,
+  YieldFarmingStrategy,
+  type YieldOpportunity,
+  type FarmPosition,
+  type YieldFarmingConfig,
+  type YieldSource,
+  type RiskLevel,
 } from './strategies';
 
 // ============ Solana DEX Adapters ============

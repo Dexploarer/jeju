@@ -7,7 +7,8 @@
   "description": "Query blockchain metrics and system health via Prometheus. Exposes PromQL queries, active alerts, and scrape target status via A2A protocol.",
   "commands": {
     "dev": "bun run server/a2a.ts",
-    "start": "bun run server/a2a.ts"
+    "start": "bun run server/a2a.ts",
+    "build": "bun run build"
   },
   "ports": {
     "main": 9091,
@@ -19,6 +20,11 @@
   "enabled": true,
   "autoStart": false,
   "tags": ["monitoring", "prometheus", "grafana", "metrics", "alerts", "observability"],
+  "jns": {
+    "name": "monitoring.jeju",
+    "description": "Network Monitoring Dashboard",
+    "url": "https://monitoring.jeju.network"
+  },
   "healthCheck": {
     "url": "http://localhost:9091/.well-known/agent-card.json",
     "interval": 30000
@@ -26,14 +32,40 @@
   "agent": {
     "enabled": true,
     "a2aEndpoint": "/api/a2a",
+    "mcpEndpoint": "/api/mcp",
     "tags": ["jeju-app", "monitoring", "metrics", "alerts"],
     "metadata": {
       "category": "observability",
-      "provider": "jeju-network"
+      "provider": "jeju-network",
+      "features": ["prometheus", "grafana", "alerts"]
     },
     "trustModels": ["open"],
     "x402Support": false,
     "jnsName": "monitoring.jeju"
+  },
+  "decentralization": {
+    "cdn": {
+      "enabled": true,
+      "regions": ["global"],
+      "cacheRules": [
+        { "pattern": "/assets/**", "ttl": 31536000, "immutable": true },
+        { "pattern": "/api/metrics/**", "ttl": 5 },
+        { "pattern": "/api/**", "ttl": 0 }
+      ],
+      "serviceWorker": false
+    },
+    "frontend": {
+      "ipfs": true,
+      "jnsName": "monitoring.jeju",
+      "buildDir": "dist",
+      "spa": true
+    },
+    "robustness": {
+      "multiOrigin": true,
+      "offlineSupport": false,
+      "p2pFallback": true,
+      "contentAddressed": true
+    }
   },
   "testing": {
     "unit": {
@@ -42,4 +74,3 @@
     }
   }
 }
-

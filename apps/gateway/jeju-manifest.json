@@ -17,7 +17,7 @@
     "a2a": 4003,
     "ws": 4012
   },
-  "dependencies": ["contracts", "config"],
+  "dependencies": ["contracts", "config", "dws"],
   "optional": false,
   "enabled": true,
   "autoStart": true,
@@ -27,6 +27,10 @@
     "description": "Protocol Infrastructure Hub for the Network",
     "url": "https://gateway.jeju.network"
   },
+  "healthCheck": {
+    "url": "http://localhost:4003/health",
+    "interval": 30000
+  },
   "agent": {
     "enabled": true,
     "a2aEndpoint": "http://localhost:4003/a2a",
@@ -34,15 +38,45 @@
     "tags": ["jeju-app", "protocol", "infrastructure", "nodes", "staking", "intents", "cross-chain", "oif"],
     "metadata": {
       "category": "infrastructure",
-      "provider": "jeju-network"
+      "provider": "jeju-network",
+      "features": ["bridge", "paymaster", "liquidity", "solver", "intents"]
     },
     "trustModels": ["open"],
     "x402Support": true,
     "jnsName": "gateway.jeju"
   },
-  "healthCheck": {
-    "url": "http://localhost:4003/health",
-    "interval": 30000
+  "decentralization": {
+    "cdn": {
+      "enabled": true,
+      "regions": ["global"],
+      "cacheRules": [
+        { "pattern": "/assets/**", "ttl": 31536000, "immutable": true },
+        { "pattern": "/api/quotes/**", "ttl": 2, "staleWhileRevalidate": 10 },
+        { "pattern": "/api/prices/**", "ttl": 5 },
+        { "pattern": "/api/**", "ttl": 0 },
+        { "pattern": "/**/*.html", "ttl": 60, "staleWhileRevalidate": 3600 }
+      ],
+      "apiCaching": {
+        "enabled": true,
+        "defaultTtl": 5,
+        "varyHeaders": ["x-jeju-address", "x-chain-id"]
+      },
+      "serviceWorker": true
+    },
+    "frontend": {
+      "ipfs": true,
+      "arweave": true,
+      "jnsName": "gateway.jeju",
+      "buildDir": "dist",
+      "spa": true,
+      "fallbackOrigins": ["https://gateway.jeju.network"]
+    },
+    "robustness": {
+      "multiOrigin": true,
+      "offlineSupport": true,
+      "p2pFallback": true,
+      "contentAddressed": true
+    }
   },
   "testing": {
     "unit": {

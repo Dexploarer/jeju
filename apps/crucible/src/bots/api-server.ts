@@ -26,6 +26,7 @@ import { cors } from 'hono/cors';
 import { serve } from '@hono/node-server';
 import { UnifiedBot, type UnifiedBotConfig, type TradeResult } from './unified-bot';
 import type { RebalanceAction, UnifiedPosition, PoolAnalysis } from './strategies/liquidity-manager';
+import type { ChainId } from './autocrat-types';
 
 // ============ Types ============
 
@@ -569,8 +570,17 @@ export async function startBotAPIServer(config: APIConfig): Promise<void> {
 // ============ CLI Entry Point ============
 
 export async function main(): Promise<void> {
+  const enableYieldFarming = (process.env.ENABLE_YIELD_FARMING ?? 'true') === 'true';
+  const yieldMinApr = process.env.YIELD_MIN_APR ? parseFloat(process.env.YIELD_MIN_APR) : undefined;
+  const yieldMaxRiskScore = process.env.YIELD_MAX_RISK_SCORE ? parseInt(process.env.YIELD_MAX_RISK_SCORE) : undefined;
+  const yieldPreferReal = process.env.YIELD_PREFER_REAL_YIELD ? process.env.YIELD_PREFER_REAL_YIELD === 'true' : undefined;
+  const yieldMinTvl = process.env.YIELD_MIN_TVL ? parseFloat(process.env.YIELD_MIN_TVL) : undefined;
+  const yieldMaxPositionPercent = process.env.YIELD_MAX_POSITION_PERCENT ? parseFloat(process.env.YIELD_MAX_POSITION_PERCENT) : undefined;
+  const yieldAutoCompound = process.env.YIELD_AUTO_COMPOUND ? process.env.YIELD_AUTO_COMPOUND === 'true' : undefined;
+  const yieldAutoRebalance = process.env.YIELD_AUTO_REBALANCE ? process.env.YIELD_AUTO_REBALANCE === 'true' : undefined;
+
   const botConfig: UnifiedBotConfig = {
-    evmChains: [1, 42161, 10, 8453] as any[], // Ethereum, Arbitrum, Optimism, Base
+    evmChains: [1, 42161, 10, 8453] as ChainId[], // Ethereum, Arbitrum, Optimism, Base
     solanaNetwork: (process.env.SOLANA_NETWORK as 'mainnet-beta' | 'devnet' | 'localnet') ?? 'mainnet-beta',
     evmPrivateKey: process.env.EVM_PRIVATE_KEY,
     solanaPrivateKey: process.env.SOLANA_PRIVATE_KEY,
@@ -582,11 +592,20 @@ export async function main(): Promise<void> {
     enableLiquidation: false,
     enableSolver: false,
     enableXLP: false, // Enable for XLP (Cross-chain Liquidity Provider) mode
-    enableYieldFarming: true, // Enable cross-chain yield optimization
+    enableYieldFarming: enableYieldFarming,
     minProfitBps: 50, // 0.5%
     maxPositionSize: BigInt(10e18), // 10 ETH
     maxSlippageBps: 100, // 1%
     maxGasPrice: BigInt(100e9), // 100 gwei
+    yieldFarmingConfig: enableYieldFarming ? {
+      ...(yieldMinApr !== undefined ? { minApr: yieldMinApr } : {}),
+      ...(yieldMaxRiskScore !== undefined ? { maxRiskScore: yieldMaxRiskScore } : {}),
+      ...(yieldPreferReal !== undefined ? { preferRealYield: yieldPreferReal } : {}),
+      ...(yieldMinTvl !== undefined ? { minTvl: yieldMinTvl } : {}),
+      ...(yieldMaxPositionPercent !== undefined ? { maxPositionPercent: yieldMaxPositionPercent } : {}),
+      ...(yieldAutoCompound !== undefined ? { autoCompound: yieldAutoCompound } : {}),
+      ...(yieldAutoRebalance !== undefined ? { autoRebalance: yieldAutoRebalance } : {}),
+    } : undefined,
   };
 
   const bot = new UnifiedBot(botConfig);

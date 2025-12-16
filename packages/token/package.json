@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Cross-chain token deployment and Hyperlane Warp Routes for BBLN, JEJU, and custom tokens",
+  "description": "Cross-chain token deployment and Hyperlane Warp Routes for JEJU and custom tokens",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {

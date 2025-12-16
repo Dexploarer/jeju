@@ -41,6 +41,7 @@ describe('BotInitializer', () => {
       serviceRegistry: '0x' + '5'.repeat(40) as `0x${string}`,
     },
     services: {
+      dwsUrl: 'http://localhost:4001',
       computeMarketplace: 'http://localhost:4007',
       storageApi: 'http://localhost:3100',
       ipfsGateway: 'http://localhost:3100',
@@ -52,7 +53,8 @@ describe('BotInitializer', () => {
   let initializer: BotInitializer;
 
   beforeEach(() => {
-    mockAgentSdk.registerAgent.mockClear();
+    // Clear mock call history by resetting calls array
+    (mockAgentSdk.registerAgent as ReturnType<typeof mock>).mock.calls = [];
     initializer = new BotInitializer({
       crucibleConfig: baseConfig,
       agentSdk: mockAgentSdk,
@@ -181,20 +183,33 @@ describe('BotInitializer', () => {
     });
 
     test('should handle registration failures gracefully', async () => {
-      mockAgentSdk.registerAgent.mockRejectedValueOnce(new Error('Registration failed'));
-      const bots = await initializer.initializeDefaultBots();
-      // Should continue with other bots
-      expect(bots.size).toBeLessThan(DEFAULT_BOTS.length);
+      // Create a failing mock for this test
+      const failingAgentSdk = {
+        registerAgent: mock(() => Promise.reject(new Error('Registration failed'))),
+      } as unknown as AgentSDK;
+      
+      const failingInitializer = new BotInitializer({
+        crucibleConfig: baseConfig,
+        agentSdk: failingAgentSdk,
+        publicClient: mockPublicClient,
+        walletClient: mockWalletClient,
+      });
+      
+      const bots = await failingInitializer.initializeDefaultBots();
+      // Should continue with other bots (all will fail)
+      expect(bots.size).toBe(0);
     });
 
     test('should handle bot initialization failures', async () => {
-      // Mock registerAgent to succeed but bot init to fail
-      mockAgentSdk.registerAgent.mockResolvedValue({
-        agentId: 1n,
-        vaultAddress: '0x' + '1'.repeat(40) as `0x${string}`,
-        characterCid: 'QmTest',
-        stateCid: 'QmState',
-      });
+      // Mock registerAgent to succeed
+      const successAgentSdk = {
+        registerAgent: mock(() => Promise.resolve({
+          agentId: 1n,
+          vaultAddress: '0x' + '1'.repeat(40) as `0x${string}`,
+          characterCid: 'QmTest',
+          stateCid: 'QmState',
+        })),
+      } as unknown as AgentSDK;
       
       // This will fail because TradingBot needs real dependencies
       // But initializer should handle it gracefully

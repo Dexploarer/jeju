@@ -54,10 +54,20 @@ bot:
   enableCrossChain: true
   enableSolanaArb: true
   enableLiquidity: true
+  enableYieldFarming: true
   solanaRpcUrl: "https://api.devnet.solana.com"
   solanaNetwork: "devnet"
   minProfitBps: 100  # Higher threshold for testnet
   maxSlippageBps: 200
+  # Yield farming configuration for testnet
+  yieldFarming:
+    minApr: 0.5           # Lower threshold for testing
+    maxRiskScore: 80      # Accept higher risk for testing
+    preferRealYield: true
+    minTvl: 10000         # Lower TVL threshold for testnet
+    maxPositionPercent: 30
+    autoCompound: true
+    autoRebalance: true
 
 resources:
   api:

@@ -5,8 +5,8 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 
 interface ISequencerRegistrySlash {
-    function getCurrentSequencer() external view returns (address);
     function slash(address sequencer, uint8 reason, bytes calldata proof) external;
+    function getCurrentSequencer() external view returns (address);
 }
 
 /**

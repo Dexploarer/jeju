@@ -70,6 +70,10 @@ spec:
             - name: ENABLE_LIQUIDITY
               value: "true"
             {{- end }}
+            {{- if .Values.bot.enableYieldFarming }}
+            - name: ENABLE_YIELD_FARMING
+              value: "true"
+            {{- end }}
             {{- with .Values.bot.solanaRpcUrl }}
             - name: SOLANA_RPC_URL
               value: {{ . | quote }}

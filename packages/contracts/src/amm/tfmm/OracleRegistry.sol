@@ -52,6 +52,7 @@ contract OracleRegistry is IOracleRegistry, Ownable {
     enum OracleType {
         CHAINLINK,
         PYTH,
+        TWAP,
         CUSTOM
     }
 
@@ -71,8 +72,14 @@ contract OracleRegistry is IOracleRegistry, Ownable {
     /// @notice Pyth oracle contract
     IPyth public pyth;
 
+    /// @notice TWAP oracle contract
+    ITWAPOracle public twapOracle;
+
     /// @notice Oracle configs by token
     mapping(address => OracleInfo) public oracles;
+
+    /// @notice Fallback oracle configs by token (used when primary fails)
+    mapping(address => OracleInfo) public fallbackOracles;
 
     /// @notice Price cache (for gas optimization)
     mapping(address => uint256) private _cachedPrices;
@@ -87,6 +94,12 @@ contract OracleRegistry is IOracleRegistry, Ownable {
     /// @notice Governance address
     address public governance;
 
+    /// @notice Enable fallback oracle usage
+    bool public useFallback = true;
+
+    /// @notice Max deviation between primary and fallback (basis points)
+    uint256 public maxPriceDeviation = 500; // 5%
+
     // ============ Events ============
 
     event OracleRegistered(
@@ -95,8 +108,15 @@ contract OracleRegistry is IOracleRegistry, Ownable {
         bytes32 pythId,
         OracleType oracleType
     );
+    event FallbackOracleRegistered(
+        address indexed token,
+        address feed,
+        OracleType oracleType
+    );
     event OracleDeactivated(address indexed token);
     event PythUpdated(address indexed pyth);
+    event TWAPOracleUpdated(address indexed twapOracle);
+    event FallbackUsed(address indexed token, OracleType fallbackType);
 
     // ============ Errors ============
 
@@ -104,14 +124,17 @@ contract OracleRegistry is IOracleRegistry, Ownable {
     error PriceStale(address token, uint256 staleness);
     error InvalidPrice(address token);
     error OracleInactive(address token);
+    error PriceDeviationTooHigh(address token, uint256 deviation);
 
     // ============ Constructor ============
 
     constructor(
         address pyth_,
+        address twapOracle_,
         address governance_
     ) Ownable(msg.sender) {
         pyth = IPyth(pyth_);
+        twapOracle = ITWAPOracle(twapOracle_);
         governance = governance_;
     }
 

@@ -1511,10 +1511,10 @@ class ServicesOrchestrator {
     }
 
     // DWS provides both Git and NPM - expose unified URL
-    const storage = this.services.get('storage');
-    if (storage) {
-      env.DWS_GIT_URL = `${storage.url}/git`;
-      env.DWS_NPM_URL = `${storage.url}/npm`;
+    const storageService = this.services.get('storage');
+    if (storageService) {
+      env.DWS_GIT_URL = `${storageService.url}/git`;
+      env.DWS_NPM_URL = `${storageService.url}/npm`;
     }
 
     return env;

@@ -10,34 +10,6 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    },
-    "./sdk": {
-      "types": "./dist/sdk/client.d.ts",
-      "import": "./dist/sdk/client.js"
-    },
-    "./tee": {
-      "types": "./dist/tee/dstack-agent.d.ts",
-      "import": "./dist/tee/dstack-agent.js"
-    },
-    "./mpc": {
-      "types": "./dist/mpc/frost-signing.d.ts",
-      "import": "./dist/mpc/frost-signing.js"
-    },
-    "./credentials": {
-      "types": "./dist/credentials/verifiable-credentials.d.ts",
-      "import": "./dist/credentials/verifiable-credentials.js"
-    },
-    "./providers/farcaster": {
-      "types": "./dist/providers/farcaster.d.ts",
-      "import": "./dist/providers/farcaster.js"
-    },
-    "./providers/social": {
-      "types": "./dist/providers/social.d.ts",
-      "import": "./dist/providers/social.js"
-    },
-    "./infrastructure": {
-      "types": "./dist/infrastructure/index.d.ts",
-      "import": "./dist/infrastructure/index.js"
     }
   },
   "files": [
