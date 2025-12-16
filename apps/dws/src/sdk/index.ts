@@ -2,22 +2,25 @@
  * DWS SDK
  */
 
-import { type Account, signMessage } from 'viem';
+import type { Account, WalletClient } from 'viem';
 import type { AuthHeaders, InferenceRequest, InferenceResponse, UploadResult } from '../types';
 
 export interface DWSSDKConfig {
   baseUrl: string;
   account?: Account;
+  walletClient?: WalletClient;
 }
 
 export class DWSSDK {
   private baseUrl: string;
   private account?: Account;
+  private walletClient?: WalletClient;
   private address?: string;
 
   constructor(config: DWSSDKConfig) {
     this.baseUrl = config.baseUrl.replace(/\/$/, '');
     this.account = config.account;
+    this.walletClient = config.walletClient;
     if (this.account) this.address = this.account.address;
   }
 
@@ -26,12 +29,12 @@ export class DWSSDK {
   }
 
   async generateAuthHeaders(): Promise<AuthHeaders> {
-    if (!this.account) throw new Error('Account required');
+    if (!this.walletClient || !this.account) throw new Error('WalletClient and Account required');
     if (!this.address) this.address = this.account.address;
 
     const timestamp = Date.now().toString();
     const nonce = Math.random().toString(36).slice(2);
-    const signature = await signMessage({
+    const signature = await this.walletClient.signMessage({
       account: this.account,
       message: `DWS Auth\nTimestamp: ${timestamp}\nNonce: ${nonce}`,
     });
@@ -61,7 +64,7 @@ export class DWSSDK {
 
   async inference(request: InferenceRequest): Promise<InferenceResponse> {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (this.signer) Object.assign(headers, await this.generateAuthHeaders());
+    if (this.account) Object.assign(headers, await this.generateAuthHeaders());
 
     const response = await fetch(`${this.baseUrl}/compute/chat/completions`, { method: 'POST', headers, body: JSON.stringify(request) });
     if (!response.ok) throw new Error(`Inference failed: ${response.statusText}`);

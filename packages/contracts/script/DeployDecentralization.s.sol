@@ -7,7 +7,6 @@ import "../src/sequencer/SequencerRegistry.sol";
 import "../src/sequencer/ThresholdBatchSubmitter.sol";
 import "../src/governance/GovernanceTimelock.sol";
 import "../src/dispute/DisputeGameFactory.sol";
-import "../src/dispute/provers/Prover.sol";
 import "../src/dispute/provers/CannonProver.sol";
 import "../src/bridge/L2OutputOracleAdapter.sol";
 import "../src/bridge/OptimismPortalAdapter.sol";
@@ -193,15 +192,9 @@ contract DeployDecentralization is Script {
         console.log("DisputeGameFactory deployed:", address(disputeFactory));
         console.log("  - Dispute timeout:", DISPUTE_TIMEOUT / 1 days, "days");
 
-        // Deploy legacy Prover (signature-based, for testing)
-        Prover legacyProver = new Prover();
-        console.log("Prover (legacy):", address(legacyProver));
-
-        // Enable both provers in DisputeGameFactory
+        // Enable CannonProver (real MIPS fraud proofs)
         disputeFactory.setProverImplementation(DisputeGameFactory.ProverType.CANNON, address(cannonProver), true);
-        disputeFactory.setProverImplementation(DisputeGameFactory.ProverType.SIMPLE, address(legacyProver), true);
-        console.log("  - CannonProver enabled as CANNON prover");
-        console.log("  - LegacyProver enabled as SIMPLE prover");
+        console.log("  - CannonProver enabled");
         console.log("");
 
         // ============================================================
@@ -274,20 +267,32 @@ contract DeployDecentralization is Script {
         console.log("");
         console.log("Fraud Proof System:");
         console.log("  PreimageOracle:", preimageOracleAddress);
-        console.log("  MIPS64:", mipsAddress);
+        console.log("  MIPS:", mipsAddress);
         console.log("  CannonProver:", address(cannonProver));
-        console.log("  LegacyProver:", address(legacyProver));
         console.log("");
         console.log("Bridge Adapters:");
         console.log("  L2OutputOracleAdapter:", address(l2Adapter));
         console.log("  OptimismPortalAdapter:", address(portalAdapter));
         console.log("");
-        console.log("Stage 2 Compliance:");
+        console.log("Stage 2 Compliance Status:");
         console.log("  [x] 7-day dispute window");
         console.log("  [x] 30-day upgrade timelock");
         console.log("  [x] 7-day emergency minimum");
         console.log("  [x] Forced inclusion mechanism");
-        console.log("  [x] Cannon MIPS fraud proofs");
         console.log("  [x] Security Council integration");
+        console.log("");
+        
+        // Fraud proof status depends on MIPS deployment
+        if (mipsAddress.code.length > 0 && preimageOracleAddress.code.length > 0) {
+            console.log("  [x] Cannon MIPS fraud proofs - PRODUCTION READY");
+        } else {
+            console.log("  [ ] Cannon MIPS fraud proofs - TEST MODE (needs MIPS deployment)");
+            console.log("");
+            console.log("=== ACTION REQUIRED FOR TRUE STAGE 2 ===");
+            console.log("Deploy Optimism Cannon contracts and set env vars:");
+            console.log("  MIPS_ADDRESS=<deployed MIPS.sol address>");
+            console.log("  PREIMAGE_ORACLE_ADDRESS=<deployed PreimageOracle.sol address>");
+            console.log("See: https://github.com/ethereum-optimism/optimism/packages/contracts-bedrock");
+        }
     }
 }

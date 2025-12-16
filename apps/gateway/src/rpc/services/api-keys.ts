@@ -138,3 +138,11 @@ export async function revokeApiKeyById(id: string, address: Address): Promise<bo
 
 // Note: updateApiKeyTier would require adding an update method to apiKeyState
 // For now, users should revoke and create new keys with different tiers
+
+export function getApiKeyStats(): { total: number; active: number; cached: number } {
+  return {
+    total: localKeyCache.size, // Approximate - actual count requires DB query
+    active: localKeyCache.size, // Keys in cache are active
+    cached: localKeyCache.size,
+  };
+}
