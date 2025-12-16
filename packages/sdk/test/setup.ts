@@ -9,7 +9,7 @@
  *   OR: import './setup' in test files
  */
 
-import { execa, type ExecaChildProcess } from "execa";
+import { execa, type ResultPromise } from "execa";
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import { join, resolve } from "path";
 import type { Hex } from "viem";
@@ -28,7 +28,7 @@ export const TEST_GATEWAY_URL = process.env.TEST_GATEWAY_URL || "http://127.0.0.
 export const TEST_PRIVATE_KEY = DEPLOYER_KEY;
 
 // Track processes we start
-let startedProcesses: ExecaChildProcess[] = [];
+let startedProcesses: ResultPromise[] = [];
 let servicesStarted = false;
 let rootDir: string | null = null;
 
@@ -329,6 +329,7 @@ export async function setupTestEnvironment(): Promise<{
       gatewayUrl: TEST_GATEWAY_URL,
       privateKey: TEST_PRIVATE_KEY,
       chainRunning: true,
+      contractsDeployed: true,
       servicesRunning: true,
     };
   }

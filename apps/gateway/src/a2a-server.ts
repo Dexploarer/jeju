@@ -404,7 +404,7 @@ async function executeSkill(skillId: string, params: Record<string, unknown>, pa
     case 'rpc-get-limits': {
       const address = params.address as string;
       if (!address || !isAddress(address)) return { message: 'Valid address required', data: { error: 'Missing or invalid address parameter' } };
-      const keys = getApiKeysForAddress(address as Address);
+      const keys = await getApiKeysForAddress(address as Address);
       const activeKeys = keys.filter(k => k.isActive);
       return {
         message: `Tier: FREE, Limit: ${RATE_LIMITS.FREE}/min`,
@@ -414,7 +414,7 @@ async function executeSkill(skillId: string, params: Record<string, unknown>, pa
     case 'rpc-get-usage': {
       const address = params.address as string;
       if (!address || !isAddress(address)) return { message: 'Valid address required', data: { error: 'Missing or invalid address parameter' } };
-      const keys = getApiKeysForAddress(address as Address);
+      const keys = await getApiKeysForAddress(address as Address);
       const totalRequests = keys.reduce((sum, k) => sum + k.requestCount, 0);
       return { message: `${totalRequests} total requests, ${keys.length} API keys`, data: { totalRequests, apiKeys: keys.length } };
     }
@@ -422,11 +422,11 @@ async function executeSkill(skillId: string, params: Record<string, unknown>, pa
       const address = params.address as string;
       const name = (params.name as string) || 'A2A Generated';
       if (!address || !isAddress(address)) return { message: 'Valid address required', data: { error: 'Missing or invalid address parameter' } };
-      const existingKeys = getApiKeysForAddress(address as Address);
+      const existingKeys = await getApiKeysForAddress(address as Address);
       if (existingKeys.filter(k => k.isActive).length >= 10) {
         return { message: 'Maximum API keys reached (10)', data: { error: 'Maximum API keys reached' } };
       }
-      const { key, record } = createApiKey(address as Address, name);
+      const { key, record } = await createApiKey(address as Address, name);
       return { message: `API key created: ${key.slice(0, 15)}...`, data: { key, id: record.id, tier: record.tier, warning: 'Store this key securely - it will not be shown again' } };
     }
     case 'rpc-staking-info': {

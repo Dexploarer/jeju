@@ -231,7 +231,7 @@ rpcApp.get('/v1/usage', async (c) => {
   const address = getValidatedAddress(c);
   if (!address) return c.json({ error: 'Valid X-Wallet-Address header required' }, 401);
 
-  const keys = getApiKeysForAddress(address);
+  const keys = await getApiKeysForAddress(address);
   const activeKeys = keys.filter(k => k.isActive);
   const totalRequests = keys.reduce((sum, k) => sum + k.requestCount, 0);
   const tier = (c.res.headers.get('X-RateLimit-Tier') || 'FREE') as keyof typeof RATE_LIMITS;
@@ -279,7 +279,7 @@ rpcApp.get('/v1/payments', (c) => {
   });
 });
 
-rpcApp.get('/v1/payments/credits', (c) => {
+rpcApp.get('/v1/payments/credits', async (c) => {
   const address = getValidatedAddress(c);
   if (!address) return c.json({ error: 'Valid X-Wallet-Address header required' }, 401);
   const balance = await getCredits(address);

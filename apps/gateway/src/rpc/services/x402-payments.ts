@@ -89,7 +89,7 @@ export async function verifyX402Payment(
   if (Date.now() / 1000 - proof.timestamp > 300) return { valid: false, error: 'Expired' };
 
   const message = `x402:rpc:${proof.network}:${proof.payTo}:${proof.amount}:${proof.nonce}:${proof.timestamp}`;
-  const recovered = recoverAddress({
+  const recovered = await recoverAddress({
     hash: hashMessage({ raw: message as `0x${string}` }),
     signature: proof.signature as `0x${string}`,
   });

@@ -306,6 +306,158 @@ export const BAN_MANAGER_ABI = [
   },
 ] as const;
 
+export const CONTENT_REGISTRY_ABI = [
+  {
+    type: 'function',
+    name: 'registerContent',
+    inputs: [
+      { name: 'contentHash', type: 'bytes32' },
+      { name: 'infohash', type: 'bytes32' },
+      { name: 'size', type: 'uint64' },
+      { name: 'tier', type: 'uint8' },
+    ],
+    outputs: [{ name: '', type: 'uint8' }],
+    stateMutability: 'payable',
+  },
+  {
+    type: 'function',
+    name: 'flagContent',
+    inputs: [
+      { name: 'contentHash', type: 'bytes32' },
+      { name: 'violationType', type: 'uint8' },
+      { name: 'evidenceHash', type: 'bytes32' },
+    ],
+    outputs: [{ name: 'caseId', type: 'bytes32' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'canServe',
+    inputs: [{ name: 'contentHash', type: 'bytes32' }],
+    outputs: [{ name: '', type: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'isBlocked',
+    inputs: [{ name: 'contentHash', type: 'bytes32' }],
+    outputs: [{ name: '', type: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getContent',
+    inputs: [{ name: 'contentHash', type: 'bytes32' }],
+    outputs: [
+      {
+        type: 'tuple',
+        components: [
+          { name: 'contentHash', type: 'bytes32' },
+          { name: 'status', type: 'uint8' },
+          { name: 'violationType', type: 'uint8' },
+          { name: 'tier', type: 'uint8' },
+          { name: 'uploader', type: 'address' },
+          { name: 'uploadedAt', type: 'uint64' },
+          { name: 'size', type: 'uint64' },
+          { name: 'seedCount', type: 'uint64' },
+          { name: 'rewardPool', type: 'uint128' },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'startSeeding',
+    inputs: [{ name: 'infohash', type: 'bytes32' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'stopSeeding',
+    inputs: [{ name: 'infohash', type: 'bytes32' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'reportSeeding',
+    inputs: [
+      { name: 'infohash', type: 'bytes32' },
+      { name: 'bytesServed', type: 'uint128' },
+      { name: 'signature', type: 'bytes' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'claimRewards',
+    inputs: [],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'getSeederStats',
+    inputs: [{ name: 'seeder', type: 'address' }],
+    outputs: [
+      {
+        type: 'tuple',
+        components: [
+          { name: 'totalBytesServed', type: 'uint128' },
+          { name: 'pendingRewards', type: 'uint128' },
+          { name: 'activeTorrents', type: 'uint64' },
+          { name: 'lastReportTime', type: 'uint64' },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getRewardRate',
+    inputs: [{ name: 'tier', type: 'uint8' }],
+    outputs: [{ name: '', type: 'uint128' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getBlocklistLength',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getBlocklistBatch',
+    inputs: [
+      { name: 'offset', type: 'uint256' },
+      { name: 'limit', type: 'uint256' },
+    ],
+    outputs: [{ name: '', type: 'bytes32[]' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'topUpRewardPool',
+    inputs: [{ name: 'contentHash', type: 'bytes32' }],
+    outputs: [],
+    stateMutability: 'payable',
+  },
+  {
+    type: 'function',
+    name: 'isSeeding',
+    inputs: [
+      { name: 'infohash', type: 'bytes32' },
+      { name: 'seeder', type: 'address' },
+    ],
+    outputs: [{ name: '', type: 'bool' }],
+    stateMutability: 'view',
+  },
+] as const;
+
 export const CDN_REGISTRY_ABI = [
   {
     type: 'function',

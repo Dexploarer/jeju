@@ -853,7 +853,7 @@ class ServicesOrchestrator {
             return Response.json({ jobs });
           }
           if (req.method === 'POST') {
-            const body = await req.json();
+            const body = await req.json() as { cron: string; callback: string };
             const job = {
               id: `job-${Date.now()}`,
               cron: body.cron,
@@ -876,7 +876,7 @@ class ServicesOrchestrator {
         }
 
         if (url.pathname === '/api/v1/trigger' && req.method === 'POST') {
-          const body = await req.json();
+          const body = await req.json() as { jobId: string };
           // Simulate trigger execution
           return Response.json({ triggered: body.jobId, timestamp: Date.now() });
         }
@@ -950,7 +950,7 @@ class ServicesOrchestrator {
             return Response.json({ vms });
           }
           if (req.method === 'POST') {
-            const body = await req.json();
+            const body = await req.json() as { image: string };
             const vm = {
               id: `vm-${Date.now()}`,
               status: 'running',
@@ -1071,7 +1071,7 @@ class ServicesOrchestrator {
 
         // Job submission
         if (url.pathname === '/api/v1/jobs' && req.method === 'POST') {
-          const body = await req.json() as { command?: string; image?: string };
+          await req.json() as { command?: string; image?: string };
           const jobId = `job-${Date.now()}`;
           jobs.set(jobId, { id: jobId, status: 'completed', result: 'Mock job completed' });
           return Response.json({ jobId, status: 'queued' });
@@ -1203,7 +1203,7 @@ class ServicesOrchestrator {
             repositories.set(`${owner}/${body.name}`, repo);
             return Response.json({
               id: `${owner}/${body.name}`,
-              name: body.name,
+              repoName: body.name,
               full_name: `${owner}/${body.name}`,
               ...repo,
             }, { status: 201 });
