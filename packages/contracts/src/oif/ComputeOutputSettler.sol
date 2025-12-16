@@ -3,21 +3,19 @@ pragma solidity ^0.8.26;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {
-    IOutputSettler,
     ComputeRentalOrderData,
     ComputeInferenceOrderData,
     COMPUTE_RENTAL_ORDER_TYPE,
     COMPUTE_INFERENCE_ORDER_TYPE
 } from "./IOIF.sol";
+import {BaseOutputSettler} from "./BaseOutputSettler.sol";
 
 /**
  * @title ComputeOutputSettler
  * @author Jeju Network
  * @notice OIF OutputSettler for compute intents (rentals + inference)
- * @dev Routes cross-chain compute intents to ComputeRental/InferenceServing contracts
+ * @dev Extends BaseOutputSettler with compute-specific fill logic
  *
  * Flow:
  * 1. User creates compute intent on source chain (locks payment)
@@ -26,22 +24,21 @@ import {
  * 4. This contract calls ComputeRental/InferenceServing
  * 5. Oracle attests fill, solver claims payment on source chain
  */
-contract ComputeOutputSettler is IOutputSettler, Ownable, ReentrancyGuard {
+contract ComputeOutputSettler is BaseOutputSettler {
     using SafeERC20 for IERC20;
 
     // ============ State ============
 
-    uint256 public immutable chainId;
     address public computeRental;
     address public inferenceServing;
     address public ledgerManager;
 
-    mapping(address => mapping(address => uint256)) public solverLiquidity;
-    mapping(address => uint256) public solverETH;
-    mapping(bytes32 => bool) public filledOrders;
-    mapping(bytes32 => FillRecord) public fillRecords;
+    /// @notice Compute-specific fill records
+    mapping(bytes32 => ComputeFillRecord) public computeFillRecords;
 
-    struct FillRecord {
+    // ============ Structs ============
+
+    struct ComputeFillRecord {
         address solver;
         address user;
         bytes32 rentalId;
@@ -52,12 +49,19 @@ contract ComputeOutputSettler is IOutputSettler, Ownable, ReentrancyGuard {
 
     // ============ Events ============
 
-    event LiquidityDeposited(address indexed solver, address indexed token, uint256 amount);
-    event LiquidityWithdrawn(address indexed solver, address indexed token, uint256 amount);
     event ComputeRentalFilled(
-        bytes32 indexed orderId, bytes32 indexed rentalId, address indexed provider, address user, uint256 durationHours
+        bytes32 indexed orderId,
+        bytes32 indexed rentalId,
+        address indexed provider,
+        address user,
+        uint256 durationHours
     );
-    event ComputeInferenceFilled(bytes32 indexed orderId, address indexed provider, address indexed user, string model);
+    event ComputeInferenceFilled(
+        bytes32 indexed orderId,
+        address indexed provider,
+        address indexed user,
+        string model
+    );
     event InferenceSettled(
         bytes32 indexed orderId,
         address indexed provider,
@@ -65,25 +69,28 @@ contract ComputeOutputSettler is IOutputSettler, Ownable, ReentrancyGuard {
         uint256 inputTokens,
         uint256 outputTokens
     );
+    event ComputeContractsUpdated(
+        address computeRental,
+        address inferenceServing,
+        address ledgerManager
+    );
 
     // ============ Errors ============
 
-    error OrderAlreadyFilled();
-    error InsufficientLiquidity();
-    error InvalidAmount();
-    error InvalidRecipient();
     error InvalidProvider();
-    error TransferFailed();
     error ComputeRentalNotSet();
     error InferenceServingNotSet();
     error RentalCreationFailed();
+    // Note: OrderAlreadyFilled, InsufficientLiquidity, etc. inherited from BaseOutputSettler
 
     // ============ Constructor ============
 
-    constructor(uint256 _chainId, address _computeRental, address _inferenceServing, address _ledgerManager)
-        Ownable(msg.sender)
-    {
-        chainId = _chainId;
+    constructor(
+        uint256 _chainId,
+        address _computeRental,
+        address _inferenceServing,
+        address _ledgerManager
+    ) BaseOutputSettler(_chainId) {
         computeRental = _computeRental;
         inferenceServing = _inferenceServing;
         ledgerManager = _ledgerManager;
@@ -91,53 +98,25 @@ contract ComputeOutputSettler is IOutputSettler, Ownable, ReentrancyGuard {
 
     // ============ Admin ============
 
-    function setComputeContracts(address _computeRental, address _inferenceServing, address _ledgerManager)
-        external
-        onlyOwner
-    {
+    function setComputeContracts(
+        address _computeRental,
+        address _inferenceServing,
+        address _ledgerManager
+    ) external onlyOwner {
         computeRental = _computeRental;
         inferenceServing = _inferenceServing;
         ledgerManager = _ledgerManager;
+        emit ComputeContractsUpdated(_computeRental, _inferenceServing, _ledgerManager);
     }
 
-    // ============ Solver Liquidity ============
+    // ============ IOutputSettler Implementation ============
 
-    function depositLiquidity(address token, uint256 amount) external nonReentrant {
-        if (amount == 0) revert InvalidAmount();
-        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
-        solverLiquidity[msg.sender][token] += amount;
-        emit LiquidityDeposited(msg.sender, token, amount);
-    }
-
-    function depositETH() external payable nonReentrant {
-        if (msg.value == 0) revert InvalidAmount();
-        solverETH[msg.sender] += msg.value;
-        emit LiquidityDeposited(msg.sender, address(0), msg.value);
-    }
-
-    function withdrawLiquidity(address token, uint256 amount) external nonReentrant {
-        if (solverLiquidity[msg.sender][token] < amount) revert InsufficientLiquidity();
-        solverLiquidity[msg.sender][token] -= amount;
-        IERC20(token).safeTransfer(msg.sender, amount);
-        emit LiquidityWithdrawn(msg.sender, token, amount);
-    }
-
-    function withdrawETH(uint256 amount) external nonReentrant {
-        if (solverETH[msg.sender] < amount) revert InsufficientLiquidity();
-        solverETH[msg.sender] -= amount;
-        (bool success,) = msg.sender.call{value: amount}("");
-        if (!success) revert TransferFailed();
-        emit LiquidityWithdrawn(msg.sender, address(0), amount);
-    }
-
-    // ============ Fill (IOutputSettler) ============
-
-    function fill(bytes32 orderId, bytes calldata originData, bytes calldata fillerData)
-        external
-        payable
-        override
-        nonReentrant
-    {
+    /// @notice Fills an order on the destination chain
+    function fill(
+        bytes32 orderId,
+        bytes calldata originData,
+        bytes calldata fillerData
+    ) external payable override nonReentrant {
         if (filledOrders[orderId]) revert OrderAlreadyFilled();
 
         // Decode order type from first 32 bytes of originData
@@ -155,7 +134,7 @@ contract ComputeOutputSettler is IOutputSettler, Ownable, ReentrancyGuard {
                 abi.decode(fillerData, (ComputeInferenceOrderData, address, uint256));
             _fillInference(orderId, data, user, payment);
         } else {
-            // Standard token fill
+            // Standard token fill - delegate to base
             (address token, uint256 amount, address recipient, uint256 gas) =
                 abi.decode(fillerData, (address, uint256, address, uint256));
             _fillToken(orderId, token, amount, recipient, gas);
@@ -166,20 +145,23 @@ contract ComputeOutputSettler is IOutputSettler, Ownable, ReentrancyGuard {
 
     // ============ Compute Rental Fill ============
 
-    function fillComputeRental(bytes32 orderId, ComputeRentalOrderData calldata data, address user, uint256 payment)
-        external
-        nonReentrant
-        returns (bytes32 rentalId)
-    {
+    function fillComputeRental(
+        bytes32 orderId,
+        ComputeRentalOrderData calldata data,
+        address user,
+        uint256 payment
+    ) external nonReentrant returns (bytes32 rentalId) {
         if (filledOrders[orderId]) revert OrderAlreadyFilled();
         rentalId = _fillRental(orderId, data, user, payment);
         emit Fill(orderId, COMPUTE_RENTAL_ORDER_TYPE, abi.encode(rentalId));
     }
 
-    function _fillRental(bytes32 orderId, ComputeRentalOrderData memory data, address user, uint256 payment)
-        internal
-        returns (bytes32 rentalId)
-    {
+    function _fillRental(
+        bytes32 orderId,
+        ComputeRentalOrderData memory data,
+        address user,
+        uint256 payment
+    ) internal returns (bytes32 rentalId) {
         if (computeRental == address(0)) revert ComputeRentalNotSet();
         if (data.provider == address(0)) revert InvalidProvider();
         if (user == address(0)) revert InvalidRecipient();
@@ -191,7 +173,7 @@ contract ComputeOutputSettler is IOutputSettler, Ownable, ReentrancyGuard {
         if (solverETH[msg.sender] < payment) revert InsufficientLiquidity();
         solverETH[msg.sender] -= payment;
 
-        // Call ComputeRental.createRentalFor to properly assign the user
+        // Call ComputeRental.createRentalFor
         (bool success, bytes memory result) = computeRental.call{value: payment}(
             abi.encodeWithSignature(
                 "createRentalFor(address,address,uint256,string,string,string)",
@@ -206,7 +188,7 @@ contract ComputeOutputSettler is IOutputSettler, Ownable, ReentrancyGuard {
         if (!success) revert RentalCreationFailed();
         rentalId = abi.decode(result, (bytes32));
 
-        fillRecords[orderId] = FillRecord({
+        computeFillRecords[orderId] = ComputeFillRecord({
             solver: msg.sender,
             user: user,
             rentalId: rentalId,
@@ -231,23 +213,18 @@ contract ComputeOutputSettler is IOutputSettler, Ownable, ReentrancyGuard {
         emit Fill(orderId, COMPUTE_INFERENCE_ORDER_TYPE, abi.encode(data.model));
     }
 
-    function _fillInference(bytes32 orderId, ComputeInferenceOrderData memory data, address user, uint256 payment)
-        internal
-    {
+    function _fillInference(
+        bytes32 orderId,
+        ComputeInferenceOrderData memory data,
+        address user,
+        uint256 payment
+    ) internal {
         if (user == address(0)) revert InvalidRecipient();
 
         // CEI: Mark filled
         filledOrders[orderId] = true;
 
-        // For cross-chain inference:
-        // 1. Solver executes inference off-chain with a provider
-        // 2. Solver deposits payment to LedgerManager on user's behalf
-        // 3. Solver calls InferenceServing.settle with provider signature
-        //
-        // This simplified version just records the fill.
-        // The actual settlement is done separately via settleInference().
-
-        fillRecords[orderId] = FillRecord({
+        computeFillRecords[orderId] = ComputeFillRecord({
             solver: msg.sender,
             user: user,
             rentalId: bytes32(0),
@@ -261,7 +238,6 @@ contract ComputeOutputSettler is IOutputSettler, Ownable, ReentrancyGuard {
 
     /**
      * @notice Settle an inference request with provider signature
-     * @dev Solver calls this after executing inference off-chain
      * @param orderId The original order ID
      * @param provider Provider address
      * @param requestHash Hash of the request
@@ -279,12 +255,10 @@ contract ComputeOutputSettler is IOutputSettler, Ownable, ReentrancyGuard {
         uint256 nonce,
         bytes calldata signature
     ) external nonReentrant {
-        FillRecord storage record = fillRecords[orderId];
+        ComputeFillRecord storage record = computeFillRecords[orderId];
         if (record.solver != msg.sender) revert InvalidProvider();
         if (inferenceServing == address(0)) revert InferenceServingNotSet();
 
-        // Call InferenceServing.settle
-        // Note: This requires the user to have deposited and acknowledged the provider
         (bool success,) = inferenceServing.call(
             abi.encodeWithSignature(
                 "settle(address,bytes32,uint256,uint256,uint256,bytes)",
@@ -297,7 +271,6 @@ contract ComputeOutputSettler is IOutputSettler, Ownable, ReentrancyGuard {
             )
         );
 
-        // Don't revert on failure - settlement might be done separately
         if (success) {
             emit InferenceSettled(orderId, provider, record.user, inputTokens, outputTokens);
         }
@@ -305,9 +278,13 @@ contract ComputeOutputSettler is IOutputSettler, Ownable, ReentrancyGuard {
 
     // ============ Standard Token Fill ============
 
-    function _fillToken(bytes32 orderId, address token, uint256 amount, address recipient, uint256 gasAmount)
-        internal
-    {
+    function _fillToken(
+        bytes32 orderId,
+        address token,
+        uint256 amount,
+        address recipient,
+        uint256 gasAmount
+    ) internal {
         if (amount == 0) revert InvalidAmount();
         if (recipient == address(0)) revert InvalidRecipient();
 
@@ -315,12 +292,15 @@ contract ComputeOutputSettler is IOutputSettler, Ownable, ReentrancyGuard {
 
         fillRecords[orderId] = FillRecord({
             solver: msg.sender,
-            user: recipient,
-            rentalId: bytes32(0),
-            paymentAmount: amount,
+            recipient: recipient,
+            token: token,
+            amount: amount,
+            gasProvided: gasAmount,
             filledBlock: block.number,
-            isRental: false
+            filledTimestamp: block.timestamp
         });
+
+        emit OrderFilled(orderId, msg.sender, recipient, token, amount);
 
         if (token == address(0)) {
             uint256 total = amount + gasAmount;
@@ -342,27 +322,13 @@ contract ComputeOutputSettler is IOutputSettler, Ownable, ReentrancyGuard {
         }
     }
 
-    // ============ View ============
+    // ============ View Functions ============
 
-    function isFilled(bytes32 orderId) external view returns (bool) {
-        return filledOrders[orderId];
-    }
-
-    function getFillRecord(bytes32 orderId) external view returns (FillRecord memory) {
-        return fillRecords[orderId];
-    }
-
-    function getSolverLiquidity(address solver, address token) external view returns (uint256) {
-        return solverLiquidity[solver][token];
-    }
-
-    function getSolverETH(address solver) external view returns (uint256) {
-        return solverETH[solver];
+    function getComputeFillRecord(bytes32 orderId) external view returns (ComputeFillRecord memory) {
+        return computeFillRecords[orderId];
     }
 
     function version() external pure returns (string memory) {
-        return "1.0.0";
+        return "2.0.0";
     }
-
-    receive() external payable {}
 }

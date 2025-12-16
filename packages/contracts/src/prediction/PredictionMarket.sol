@@ -6,6 +6,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {JejuMath} from "../libraries/JejuMath.sol";
 
 interface IPredictionOracle {
     enum ContestState {
@@ -677,14 +678,9 @@ contract PredictionMarket is ReentrancyGuard, Pausable, Ownable {
         uint256 qYes = market.yesShares;
         uint256 qNo = market.noShares;
 
-        // P(YES) = e^(q_yes/b) / (e^(q_yes/b) + e^(q_no/b))
-        // Simplified using exp approximation for display
-        uint256 expYes = _exp(qYes * 1e18 / b);
-        uint256 expNo = _exp(qNo * 1e18 / b);
-        uint256 sum = expYes + expNo;
-
-        yesPrice = (expYes * BASIS_POINTS) / sum;
-        noPrice = (expNo * BASIS_POINTS) / sum;
+        // Use JejuMath.lmsrPrice for accurate probability calculation
+        yesPrice = JejuMath.lmsrPrice(qYes, qNo, b, true);
+        noPrice = JejuMath.lmsrPrice(qYes, qNo, b, false);
     }
 
     /**
@@ -726,76 +722,30 @@ contract PredictionMarket is ReentrancyGuard, Pausable, Ownable {
         return allMarketIds[index];
     }
 
-    // ============ Internal LMSR Math ============
+    // ============ Internal LMSR Math (uses JejuMath library) ============
 
     /**
      * @notice LMSR cost function: C(q) = b * ln(e^(q_yes/b) + e^(q_no/b))
+     * @dev Uses JejuMath for exp/ln calculations
      */
     function _costFunction(uint256 qYes, uint256 qNo, uint256 b) internal pure returns (uint256) {
-        require(b > 0, "Invalid liquidity");
-
-        // Simplified calculation using exp approximation
-        uint256 expYes = _exp(qYes * 1e18 / b);
-        uint256 expNo = _exp(qNo * 1e18 / b);
-        uint256 sum = expYes + expNo;
-
-        return (b * _ln(sum)) / 1e18;
+        return JejuMath.lmsrCost(qYes, qNo, b);
     }
 
     /**
-     * @notice Approximation of e^x for x in [0, 10]
-     * @dev Uses Taylor series for small x
+     * @notice Wrapper for JejuMath.exp
      */
     function _exp(uint256 x) internal pure returns (uint256) {
-        if (x == 0) return 1e18;
-        if (x > 10e18) return type(uint256).max / 1e18; // Overflow protection
-
-        // e^x ≈ 1 + x + x^2/2! + x^3/3! + x^4/4! + x^5/5!
-        uint256 result = 1e18;
-        uint256 term = x;
-
-        result += term;
-        term = (term * x) / (2 * 1e18);
-        result += term;
-        term = (term * x) / (3 * 1e18);
-        result += term;
-        term = (term * x) / (4 * 1e18);
-        result += term;
-        term = (term * x) / (5 * 1e18);
-        result += term;
-
-        return result;
+        if (x == 0) return JejuMath.PRECISION;
+        if (x > JejuMath.MAX_EXP_INPUT) return type(uint256).max / JejuMath.PRECISION;
+        return JejuMath.exp(x);
     }
 
     /**
-     * @notice Approximation of ln(x) for x > 0
-     * @dev Uses change of base and binary search
+     * @notice Wrapper for JejuMath.ln
      */
     function _ln(uint256 x) internal pure returns (uint256) {
-        require(x > 0, "ln(0) undefined");
-        if (x == 1e18) return 0;
-
-        // For x close to 1, use Taylor series: ln(1+y) ≈ y - y^2/2 + y^3/3 - y^4/4
-        if (x > 0.5e18 && x < 1.5e18) {
-            int256 y = int256(x) - 1e18;
-            int256 result = y;
-            int256 term = y;
-
-            term = -(term * y) / 1e18 / 2;
-            result += term;
-            term = -(term * y) / 1e18 * 2 / 3;
-            result += term;
-            term = -(term * y) / 1e18 * 3 / 4;
-            result += term;
-
-            return uint256(result);
-        }
-
-        // For other values, use simpler approximation
-        // ln(x) ≈ 2 * ((x-1)/(x+1))
-        uint256 numerator = (x - 1e18) * 2 * 1e18;
-        uint256 denominator = x + 1e18;
-        return numerator / denominator;
+        return JejuMath.ln(x);
     }
 
     // ============ Admin Functions ============
@@ -809,7 +759,7 @@ contract PredictionMarket is ReentrancyGuard, Pausable, Ownable {
     }
 
     function version() external pure returns (string memory) {
-        return "1.0.0";
+        return "2.0.0";
     }
 
     /**
