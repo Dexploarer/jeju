@@ -4,24 +4,19 @@ pragma solidity ^0.8.26;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {
-    IInputSettler,
-    IOracle,
     GaslessCrossChainOrder,
     ResolvedCrossChainOrder,
     Output,
     FillInstruction
 } from "./IOIF.sol";
+import {BaseInputSettler} from "./BaseInputSettler.sol";
 
 /**
  * @title InputSettler
  * @author Jeju Network
- * @notice OIF InputSettler for receiving intents and locking user funds
- * @dev Implements ERC-7683 compatible input settlement for cross-chain intents
+ * @notice OIF InputSettler for receiving token intents and locking user funds
+ * @dev Extends BaseInputSettler with ERC20/ETH-specific asset handling
  *
  * ## How it works:
  * 1. User submits an intent via open() or openFor() (gasless)
@@ -35,40 +30,22 @@ import {
  * - Users can refund expired intents
  * - Solver must be registered in SolverRegistry
  */
-contract InputSettler is IInputSettler, Ownable, ReentrancyGuard {
+contract InputSettler is BaseInputSettler {
     using SafeERC20 for IERC20;
-    using ECDSA for bytes32;
-    using MessageHashUtils for bytes32;
 
     // ============ Constants ============
 
     /// @notice Order data type for standard cross-chain swap
     bytes32 public constant SWAP_ORDER_TYPE = keccak256("CrossChainSwap");
 
-    /// @notice Blocks before solver can claim (fraud proof window)
-    uint256 public constant CLAIM_DELAY = 150;
-
     // ============ State Variables ============
 
-    /// @notice Chain ID of this deployment
-    uint256 public immutable chainId;
-
-    /// @notice Oracle contract for cross-chain attestations
-    IOracle public oracle;
-
-    /// @notice Solver registry contract
-    address public solverRegistry;
-
-    /// @notice Order storage
-    mapping(bytes32 => Order) public orders;
-
-    /// @notice User nonces for replay protection
-    mapping(address => uint256) public nonces;
+    /// @notice Token order storage
+    mapping(bytes32 => TokenOrder) public orders;
 
     // ============ Structs ============
 
-    struct Order {
-        address user;
+    struct TokenOrder {
         address inputToken;
         uint256 inputAmount;
         address outputToken;
@@ -76,12 +53,6 @@ contract InputSettler is IInputSettler, Ownable, ReentrancyGuard {
         uint256 destinationChainId;
         address recipient;
         uint256 maxFee;
-        uint32 openDeadline;
-        uint32 fillDeadline;
-        address solver;
-        bool filled;
-        bool refunded;
-        uint256 createdBlock;
     }
 
     // ============ Events ============
@@ -96,76 +67,28 @@ contract InputSettler is IInputSettler, Ownable, ReentrancyGuard {
         uint32 fillDeadline
     );
 
-    event OrderClaimed(bytes32 indexed orderId, address indexed solver, uint256 claimBlock);
-
-    event OrderSettled(bytes32 indexed orderId, address indexed solver, uint256 amount, uint256 fee);
-
-    event OrderRefunded(bytes32 indexed orderId, address indexed user, uint256 amount);
-
-    event OracleUpdated(address indexed oldOracle, address indexed newOracle);
-
     // ============ Errors ============
 
-    error OrderExpired();
-    error OrderNotExpired();
-    error OrderAlreadyFilled();
-    error OrderAlreadyRefunded();
-    error OrderNotFound();
-    error InvalidSignature();
     error InvalidAmount();
     error InvalidRecipient();
-    error InvalidDeadline();
-    error NotAttested();
-    error ClaimDelayNotPassed();
-    error OnlySolver();
     error TransferFailed();
 
     // ============ Constructor ============
 
-    constructor(uint256 _chainId, address _oracle, address _solverRegistry) Ownable(msg.sender) {
-        chainId = _chainId;
-        oracle = IOracle(_oracle);
-        solverRegistry = _solverRegistry;
-    }
+    constructor(
+        uint256 _chainId,
+        address _oracle,
+        address _solverRegistry
+    ) BaseInputSettler(_chainId, _oracle, _solverRegistry) {}
 
-    // ============ Admin Functions ============
+    // ============ Asset Handling Implementation ============
 
-    function setOracle(address _oracle) external onlyOwner {
-        emit OracleUpdated(address(oracle), _oracle);
-        oracle = IOracle(_oracle);
-    }
-
-    function setSolverRegistry(address _registry) external onlyOwner {
-        solverRegistry = _registry;
-    }
-
-    // ============ Order Management ============
-
-    /// @inheritdoc IInputSettler
-    function open(GaslessCrossChainOrder calldata order) external override nonReentrant {
-        _openOrder(order, msg.sender, "");
-    }
-
-    /// @inheritdoc IInputSettler
-    function openFor(GaslessCrossChainOrder calldata order, bytes calldata signature, bytes calldata originFillerData)
-        external
-        override
-        nonReentrant
-    {
-        // Verify signature
-        bytes32 orderHash = keccak256(abi.encode(order));
-        address signer = orderHash.toEthSignedMessageHash().recover(signature);
-        if (signer != order.user) revert InvalidSignature();
-
-        _openOrder(order, order.user, originFillerData);
-    }
-
-    function _openOrder(GaslessCrossChainOrder calldata order, address user, bytes memory originFillerData) internal {
-        // Validate order
-        if (block.number > order.openDeadline) revert OrderExpired();
-        if (order.fillDeadline <= order.openDeadline) revert InvalidDeadline();
-
-        // Decode order data (inputToken, inputAmount, outputToken, outputAmount, destChain, recipient, maxFee)
+    /// @inheritdoc BaseInputSettler
+    function _lockAssets(
+        GaslessCrossChainOrder calldata order,
+        address user
+    ) internal override returns (bytes32 orderId) {
+        // Decode order data
         (
             address inputToken,
             uint256 inputAmount,
@@ -180,7 +103,7 @@ contract InputSettler is IInputSettler, Ownable, ReentrancyGuard {
         if (recipient == address(0)) revert InvalidRecipient();
 
         // Generate order ID
-        bytes32 orderId = keccak256(
+        orderId = keccak256(
             abi.encodePacked(user, order.nonce, chainId, inputToken, inputAmount, destinationChainId, block.number)
         );
 
@@ -197,55 +120,86 @@ contract InputSettler is IInputSettler, Ownable, ReentrancyGuard {
             IERC20(inputToken).safeTransferFrom(user, address(this), inputAmount);
         }
 
-        // Update nonce
-        nonces[user] = order.nonce + 1;
-
-        // Store order
-        orders[orderId] = Order({
-            user: user,
+        // Store order details
+        orders[orderId] = TokenOrder({
             inputToken: inputToken,
             inputAmount: inputAmount,
             outputToken: outputToken,
             outputAmount: outputAmount,
             destinationChainId: destinationChainId,
             recipient: recipient,
-            maxFee: maxFee,
-            openDeadline: order.openDeadline,
-            fillDeadline: order.fillDeadline,
-            solver: address(0),
-            filled: false,
-            refunded: false,
-            createdBlock: block.number
+            maxFee: maxFee
         });
 
-        // Emit events
-        emit OrderCreated(orderId, user, inputToken, inputAmount, destinationChainId, recipient, order.fillDeadline);
+        emit OrderCreated(
+            orderId,
+            user,
+            inputToken,
+            inputAmount,
+            destinationChainId,
+            recipient,
+            order.fillDeadline
+        );
+    }
 
-        // Build resolved order for Open event
+    /// @inheritdoc BaseInputSettler
+    function _releaseAssetsToSolver(bytes32 orderId, address solver) internal override {
+        TokenOrder storage order = orders[orderId];
+
+        if (order.inputToken == address(0)) {
+            (bool success,) = solver.call{value: order.inputAmount}("");
+            if (!success) revert TransferFailed();
+        } else {
+            IERC20(order.inputToken).safeTransfer(solver, order.inputAmount);
+        }
+    }
+
+    /// @inheritdoc BaseInputSettler
+    function _refundAssetsToUser(bytes32 orderId) internal override {
+        TokenOrder storage order = orders[orderId];
+        OrderState storage state = _orderStates[orderId];
+
+        if (order.inputToken == address(0)) {
+            (bool success,) = state.user.call{value: order.inputAmount}("");
+            if (!success) revert TransferFailed();
+        } else {
+            IERC20(order.inputToken).safeTransfer(state.user, order.inputAmount);
+        }
+    }
+
+    /// @inheritdoc BaseInputSettler
+    function _buildResolvedOrder(
+        GaslessCrossChainOrder calldata order,
+        bytes32 orderId,
+        address user,
+        bytes memory originFillerData
+    ) internal view override returns (ResolvedCrossChainOrder memory resolved) {
+        TokenOrder storage tokenOrder = orders[orderId];
+
         Output[] memory maxSpent = new Output[](1);
         maxSpent[0] = Output({
-            token: bytes32(uint256(uint160(inputToken))),
-            amount: inputAmount,
+            token: bytes32(uint256(uint160(tokenOrder.inputToken))),
+            amount: tokenOrder.inputAmount,
             recipient: bytes32(uint256(uint160(address(this)))),
             chainId: chainId
         });
 
         Output[] memory minReceived = new Output[](1);
         minReceived[0] = Output({
-            token: bytes32(uint256(uint160(outputToken))),
-            amount: outputAmount,
-            recipient: bytes32(uint256(uint160(recipient))),
-            chainId: destinationChainId
+            token: bytes32(uint256(uint160(tokenOrder.outputToken))),
+            amount: tokenOrder.outputAmount,
+            recipient: bytes32(uint256(uint160(tokenOrder.recipient))),
+            chainId: tokenOrder.destinationChainId
         });
 
         FillInstruction[] memory fillInstructions = new FillInstruction[](1);
         fillInstructions[0] = FillInstruction({
-            destinationChainId: SafeCast.toUint64(destinationChainId),
-            destinationSettler: bytes32(0), // Will be filled by aggregator
+            destinationChainId: SafeCast.toUint64(tokenOrder.destinationChainId),
+            destinationSettler: bytes32(0),
             originData: originFillerData
         });
 
-        ResolvedCrossChainOrder memory resolved = ResolvedCrossChainOrder({
+        resolved = ResolvedCrossChainOrder({
             user: user,
             originChainId: chainId,
             openDeadline: order.openDeadline,
@@ -255,17 +209,15 @@ contract InputSettler is IInputSettler, Ownable, ReentrancyGuard {
             minReceived: minReceived,
             fillInstructions: fillInstructions
         });
-
-        emit Open(orderId, resolved);
     }
 
-    /// @inheritdoc IInputSettler
-    function resolveFor(GaslessCrossChainOrder calldata order, bytes calldata originFillerData)
-        external
-        view
-        override
-        returns (ResolvedCrossChainOrder memory resolved)
-    {
+    // ============ View Functions ============
+
+    /// @notice Resolve a gasless order into a full resolved order
+    function resolveFor(
+        GaslessCrossChainOrder calldata order,
+        bytes calldata originFillerData
+    ) external view override returns (ResolvedCrossChainOrder memory resolved) {
         // Decode order data
         (
             address inputToken,
@@ -318,108 +270,16 @@ contract InputSettler is IInputSettler, Ownable, ReentrancyGuard {
         });
     }
 
-    // ============ Solver Functions ============
-
-    /// @notice Claim an order (solver commits to fill)
-    /// @param orderId The order to claim
-    function claimOrder(bytes32 orderId) external nonReentrant {
-        Order storage order = orders[orderId];
-
-        if (order.user == address(0)) revert OrderNotFound();
-        if (order.filled || order.refunded) revert OrderAlreadyFilled();
-        if (block.number > order.openDeadline) revert OrderExpired();
-        if (order.solver != address(0)) revert OrderAlreadyFilled();
-
-        order.solver = msg.sender;
-
-        emit OrderClaimed(orderId, msg.sender, block.number);
-    }
-
-    /// @notice Settle an order after oracle attestation
-    /// @param orderId The order to settle
-    function settle(bytes32 orderId) external nonReentrant {
-        Order storage order = orders[orderId];
-
-        if (order.user == address(0)) revert OrderNotFound();
-        if (order.filled) revert OrderAlreadyFilled();
-        if (order.refunded) revert OrderAlreadyRefunded();
-        if (order.solver != msg.sender) revert OnlySolver();
-
-        // Check oracle attestation
-        if (!oracle.hasAttested(orderId)) revert NotAttested();
-
-        // Check claim delay from attestation block (fraud proof window)
-        uint256 attestationBlock = oracle.getAttestationBlock(orderId);
-        if (attestationBlock == 0) revert NotAttested();
-        if (block.number < attestationBlock + CLAIM_DELAY) revert ClaimDelayNotPassed();
-
-        order.filled = true;
-
-        // Transfer input tokens to solver (full input amount - fee calculated off-chain)
-        uint256 solverReceives = order.inputAmount;
-
-        if (order.inputToken == address(0)) {
-            (bool success,) = msg.sender.call{value: solverReceives}("");
-            if (!success) revert TransferFailed();
-        } else {
-            IERC20(order.inputToken).safeTransfer(msg.sender, solverReceives);
-        }
-
-        emit OrderSettled(orderId, msg.sender, solverReceives, order.maxFee);
-    }
-
-    // ============ User Functions ============
-
-    /// @notice Refund an expired order
-    /// @param orderId The order to refund
-    function refund(bytes32 orderId) external nonReentrant {
-        Order storage order = orders[orderId];
-
-        if (order.user == address(0)) revert OrderNotFound();
-        if (order.filled) revert OrderAlreadyFilled();
-        if (order.refunded) revert OrderAlreadyRefunded();
-        if (block.number <= order.fillDeadline) revert OrderNotExpired();
-
-        order.refunded = true;
-
-        // Return input tokens to user
-        if (order.inputToken == address(0)) {
-            (bool success,) = order.user.call{value: order.inputAmount}("");
-            if (!success) revert TransferFailed();
-        } else {
-            IERC20(order.inputToken).safeTransfer(order.user, order.inputAmount);
-        }
-
-        emit OrderRefunded(orderId, order.user, order.inputAmount);
-    }
-
-    // ============ View Functions ============
-
-    function getOrder(bytes32 orderId) external view returns (Order memory) {
+    /**
+     * @notice Get token order details
+     * @param orderId Order ID
+     * @return order Token order details
+     */
+    function getOrder(bytes32 orderId) external view returns (TokenOrder memory) {
         return orders[orderId];
     }
 
-    function canSettle(bytes32 orderId) external view returns (bool) {
-        Order storage order = orders[orderId];
-        if (order.filled || order.refunded || order.solver == address(0)) return false;
-        if (!oracle.hasAttested(orderId)) return false;
-        
-        uint256 attestationBlock = oracle.getAttestationBlock(orderId);
-        return attestationBlock > 0 && block.number >= attestationBlock + CLAIM_DELAY;
-    }
-
-    function canRefund(bytes32 orderId) external view returns (bool) {
-        Order storage order = orders[orderId];
-        return !order.filled && !order.refunded && block.number > order.fillDeadline;
-    }
-
-    function getUserNonce(address user) external view returns (uint256) {
-        return nonces[user];
-    }
-
     function version() external pure returns (string memory) {
-        return "1.0.0";
+        return "2.0.0";
     }
-
-    receive() external payable {}
 }

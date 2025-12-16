@@ -78,14 +78,19 @@ interface IStorageTypes {
         uint256 avgLatencyMs;
     }
 
+    /// @notice Storage deal (struct optimized for gas efficiency)
+    /// @dev Fields packed to minimize storage slots:
+    ///      Slot 1: dealId (32)
+    ///      Slot 2: user (20) + status (1) + tier (1) = 22 bytes
+    ///      Slot 3: provider (20)
     struct StorageDeal {
         bytes32 dealId;
         address user;
+        DealStatus status;    // Packed with user (saves 1 slot)
+        StorageTier tier;     // Packed with user (saves 1 slot)
         address provider;
-        DealStatus status;
         string cid;
         uint256 sizeBytes;
-        StorageTier tier;
         uint256 startTime;
         uint256 endTime;
         uint256 totalCost;
@@ -95,11 +100,13 @@ interface IStorageTypes {
         uint256 retrievalCount;
     }
 
+    /// @notice Storage quote (struct optimized for gas efficiency)
+    /// @dev Slot 1: provider (20) + tier (1) = 21 bytes packed
     struct StorageQuote {
         address provider;
+        StorageTier tier;     // Packed with provider
         uint256 sizeBytes;
         uint256 durationDays;
-        StorageTier tier;
         uint256 cost;
         CostBreakdown costBreakdown;
         uint256 expiresAt;

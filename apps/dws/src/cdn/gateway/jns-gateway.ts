@@ -12,11 +12,21 @@
 
 import { Hono, type Context } from 'hono';
 import { cors } from 'hono/cors';
-import { createPublicClient, http, readContract, keccak256, stringToBytes, type Address, type Chain } from 'viem';
+import { createPublicClient, http, keccak256, stringToBytes, type Address } from 'viem';
 import { parseAbi } from 'viem';
+import { base, baseSepolia, localhost } from 'viem/chains';
 import { EdgeCache, getEdgeCache } from '../cache/edge-cache';
 import { OriginFetcher, getOriginFetcher } from '../cache/origin-fetcher';
-import { inferChainFromRpcUrl } from '../../../scripts/shared/chain-utils';
+
+function inferChainFromRpcUrl(rpcUrl: string) {
+  if (rpcUrl.includes('base-sepolia') || rpcUrl.includes('84532')) {
+    return baseSepolia;
+  }
+  if (rpcUrl.includes('base') && !rpcUrl.includes('localhost')) {
+    return base;
+  }
+  return localhost;
+}
 
 // ============================================================================
 // Types
