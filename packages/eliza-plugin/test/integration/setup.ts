@@ -149,7 +149,7 @@ async function deployContracts(): Promise<void> {
   try {
     await execa("forge", [
       "script",
-      "script/Deploy.s.sol:DeployAll",
+      "deploy/Deploy.s.sol:DeployAll",
       "--rpc-url", TEST_RPC_URL,
       "--private-key", DEPLOYER_KEY,
       "--broadcast",

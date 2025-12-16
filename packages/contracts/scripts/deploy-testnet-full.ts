@@ -142,7 +142,7 @@ async function main() {
   console.log("\n1️⃣ Deploying Cloud Integration (Tokens + Registries)...");
   try {
     const cloudOutput = runForgeScript(
-      "script/DeployCloudIntegration.s.sol:DeployCloudIntegration",
+      "deploy/DeployCloudIntegration.s.sol:DeployCloudIntegration",
       SEPOLIA_RPC
     );
     const cloudAddresses = parseAddresses(cloudOutput);
@@ -156,7 +156,7 @@ async function main() {
   console.log("\n2️⃣ Deploying OIF Contracts...");
   try {
     const oifOutput = runForgeScript(
-      "script/DeployOIF.s.sol:DeployOIF",
+      "deploy/DeployOIF.s.sol:DeployOIF",
       SEPOLIA_RPC,
       ["--env", "ORACLE_TYPE=simple"]
     );
@@ -187,7 +187,7 @@ async function main() {
   console.log("\n1️⃣ Deploying Cloud Integration (Tokens + Registries)...");
   try {
     const cloudOutput = runForgeScript(
-      "script/DeployCloudIntegration.s.sol:DeployCloudIntegration",
+      "deploy/DeployCloudIntegration.s.sol:DeployCloudIntegration",
       BASE_SEPOLIA_RPC
     );
     const cloudAddresses = parseAddresses(cloudOutput);
@@ -201,7 +201,7 @@ async function main() {
   console.log("\n2️⃣ Deploying OIF Contracts...");
   try {
     const oifOutput = runForgeScript(
-      "script/DeployOIF.s.sol:DeployOIF",
+      "deploy/DeployOIF.s.sol:DeployOIF",
       BASE_SEPOLIA_RPC,
       ["--env", "ORACLE_TYPE=simple"]
     );

@@ -4,12 +4,9 @@ pragma solidity ^0.8.26;
 import "forge-std/Test.sol";
 import "../../src/compute/ComputeRegistry.sol";
 import "../../src/registry/interfaces/IIdentityRegistry.sol";
+import "../../src/registry/ERC8004ProviderMixin.sol";
 import "../../src/moderation/BanManager.sol";
 
-/**
- * @title MockIdentityRegistry
- * @notice Mock IdentityRegistry for testing ERC-8004 integration
- */
 contract MockIdentityRegistry is IIdentityRegistry {
     mapping(uint256 => address) private _owners;
     mapping(uint256 => bool) private _exists;
@@ -159,10 +156,6 @@ contract MockIdentityRegistry is IIdentityRegistry {
     }
 }
 
-/**
- * @title ComputeRegistryIntegrationTest
- * @notice Integration tests for ERC-8004 and moderation features
- */
 contract ComputeRegistryIntegrationTest is Test {
     ComputeRegistry public registry;
     MockIdentityRegistry public identityRegistry;
@@ -182,23 +175,14 @@ contract ComputeRegistryIntegrationTest is Test {
         vm.deal(provider2, 10 ether);
         vm.deal(bannedProvider, 10 ether);
 
-        // Deploy mocks
         identityRegistry = new MockIdentityRegistry();
         banManager = new BanManager(owner, owner);
-
-        // Deploy registry with mocks
         registry = new ComputeRegistry(owner, address(identityRegistry), address(banManager), 0.01 ether);
     }
 
-    // ============ ERC-8004 Integration Tests ============
-
     function test_RegisterWithAgent() public {
         vm.startPrank(provider1);
-
-        // Register agent in IdentityRegistry
         uint256 agentId = identityRegistry.register("ipfs://test");
-
-        // Register provider with agent
         registry.registerWithAgent{value: 0.01 ether}(
             "Test Provider", "https://api.test.com", bytes32(uint256(1)), agentId
         );
@@ -216,13 +200,10 @@ contract ComputeRegistryIntegrationTest is Test {
 
     function test_RegisterWithAgentFailsIfNotOwner() public {
         vm.startPrank(provider1);
-
-        // Register agent owned by provider2
         uint256 agentId = identityRegistry.register("ipfs://test");
         vm.stopPrank();
 
         vm.startPrank(provider2);
-        // Try to register with agent owned by provider1
         vm.expectRevert(abi.encodeWithSignature("NotAgentOwner()"));
         registry.registerWithAgent{value: 0.01 ether}(
             "Test Provider", "https://api.test.com", bytes32(uint256(1)), agentId
@@ -253,25 +234,18 @@ contract ComputeRegistryIntegrationTest is Test {
         vm.stopPrank();
 
         vm.startPrank(provider2);
-        // Try to link same agent to different provider
-        vm.expectRevert(abi.encodeWithSignature("AgentAlreadyLinked()"));
+        vm.expectRevert(ERC8004ProviderMixin.NotAgentOwner.selector);
         registry.registerWithAgent{value: 0.01 ether}(
             "Test Provider 2", "https://api2.test.com", bytes32(uint256(2)), agentId
         );
-
         vm.stopPrank();
     }
 
     function test_RequireAgentRegistration() public {
         registry.setRequireAgentRegistration(true);
-
         vm.startPrank(provider1);
-
-        // Should fail without agent
         vm.expectRevert(abi.encodeWithSignature("AgentRequired()"));
         registry.register{value: 0.01 ether}("Test Provider", "https://api.test.com", bytes32(uint256(1)));
-
-        // Should succeed with agent
         uint256 agentId = identityRegistry.register("ipfs://test");
         registry.registerWithAgent{value: 0.01 ether}(
             "Test Provider", "https://api.test.com", bytes32(uint256(1)), agentId
@@ -300,8 +274,7 @@ contract ComputeRegistryIntegrationTest is Test {
 
         uint256 agentId = identityRegistry.register("ipfs://test");
         identityRegistry.setBanned(agentId, true);
-
-        vm.expectRevert(abi.encodeWithSignature("AgentIsBanned(uint256)", agentId));
+        vm.expectRevert(ERC8004ProviderMixin.AgentIsBanned.selector);
         registry.registerWithAgent{value: 0.01 ether}(
             "Test Provider", "https://api.test.com", bytes32(uint256(1)), agentId
         );
@@ -335,15 +308,10 @@ contract ComputeRegistryIntegrationTest is Test {
         );
 
         assertFalse(registry.isProviderBanned(provider1));
-
-        // Ban the address
         vm.stopPrank();
         vm.prank(owner);
         banManager.applyAddressBan(provider1, bytes32(0), "Test ban");
-
         assertTrue(registry.isProviderBanned(provider1));
-
-        vm.stopPrank();
     }
 
     function test_IsProviderBannedByAgent() public {
@@ -355,24 +323,14 @@ contract ComputeRegistryIntegrationTest is Test {
         );
 
         assertFalse(registry.isProviderBanned(provider1));
-
-        // Ban the agent
-        identityRegistry.setBanned(agentId, true);
-
-        assertTrue(registry.isProviderBanned(provider1));
-
         vm.stopPrank();
+        identityRegistry.setBanned(agentId, true);
+        assertTrue(registry.isProviderBanned(provider1));
     }
-
-    // ============ Admin Function Tests ============
 
     function test_SetIdentityRegistry() public {
         MockIdentityRegistry newRegistry = new MockIdentityRegistry();
-
         registry.setIdentityRegistry(address(newRegistry));
-
-        // Verify it was updated
-        // (Can't directly check, but can verify it's used in next registration)
         vm.startPrank(provider1);
         uint256 agentId = newRegistry.register("ipfs://test");
         registry.registerWithAgent{value: 0.01 ether}(
@@ -397,15 +355,10 @@ contract ComputeRegistryIntegrationTest is Test {
     }
 
     function test_SetRequireAgentRegistration() public {
-        // Test that registration without agent works when not required
         vm.startPrank(provider1);
         registry.register{value: 0.01 ether}("Test Provider", "https://api.test.com", bytes32(uint256(1)));
         vm.stopPrank();
-
-        // Require agent registration
         registry.setRequireAgentRegistration(true);
-
-        // Now registration without agent should fail
         vm.startPrank(provider2);
         vm.expectRevert(abi.encodeWithSignature("AgentRequired()"));
         registry.register{value: 0.01 ether}("Test Provider 2", "https://api2.test.com", bytes32(uint256(2)));

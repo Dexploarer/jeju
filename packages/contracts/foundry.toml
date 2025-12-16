@@ -31,19 +31,19 @@ skip = [
     "src/paymaster/**",
     
     # Deploy scripts for disabled features
-    "script/DeployCompute.s.sol",
-    "script/DeployUniswapV4Periphery.s.sol",
-    "script/Deploy*Cloud*.s.sol",
-    "script/DeployPredimarket*.s.sol",
-    "script/DeployEIL*.s.sol",
-    "script/DeploySponsoredPaymaster.s.sol",
-    "script/DeployDAO.s.sol",
-    "script/DeployBazaarMarketplace.s.sol",
-    "script/DeployOracleNetwork.s.sol",
-    "script/DeployPerps.s.sol",
-    "script/DeployJejuMarket.s.sol",
-    "script/DeployJejuToken.s.sol",
-    "script/otc/**",
+    "deploy/DeployCompute.s.sol",
+    "deploy/DeployUniswapV4Periphery.s.sol",
+    "deploy/Deploy*Cloud*.s.sol",
+    "deploy/DeployPredimarket*.s.sol",
+    "deploy/DeployEIL*.s.sol",
+    "deploy/DeploySponsoredPaymaster.s.sol",
+    "deploy/DeployDAO.s.sol",
+    "deploy/DeployBazaarMarketplace.s.sol",
+    "deploy/DeployOracleNetwork.s.sol",
+    "deploy/DeployPerps.s.sol",
+    "deploy/DeployJejuMarket.s.sol",
+    "deploy/DeployJejuToken.s.sol",
+    "deploy/otc/**",
     
     # Tests for incomplete/disabled features
     "test/PaymasterFactory.t.sol"

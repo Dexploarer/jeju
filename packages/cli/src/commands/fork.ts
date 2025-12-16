@@ -453,11 +453,11 @@ async function main() {
   console.log('Balance:', (await getBalance(publicClient, { address: account.address })).toString());
 
   // L1 contracts (OptimismPortal, L2OutputOracle, L1CrossDomainMessenger, L1StandardBridge, SystemConfig)
-  // are deployed via the OP Stack deploy scripts in packages/contracts/script/
-  // Run: forge script script/Deploy.s.sol --rpc-url \${chainConfig.l1RpcUrl} --broadcast
+  // are deployed via the OP Stack deploy scripts in packages/contracts/deploy/
+  // Run: forge script deploy/Deploy.s.sol --rpc-url \${chainConfig.l1RpcUrl} --broadcast
   console.log('\\nTo deploy L1 contracts, run:');
   console.log('  cd packages/contracts');
-  console.log('  forge script script/Deploy.s.sol --rpc-url ' + chainConfig.l1RpcUrl + ' --broadcast --private-key <DEPLOYER_KEY>');
+  console.log('  forge script deploy/Deploy.s.sol --rpc-url ' + chainConfig.l1RpcUrl + ' --broadcast --private-key <DEPLOYER_KEY>');
   console.log('\\nAfter deployment, update chain.json with the deployed addresses.');
 }
 
