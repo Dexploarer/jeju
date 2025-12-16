@@ -9,8 +9,8 @@
  *
  * Environment:
  *   SOLANA_PRIVATE_KEY - Base58 encoded private key
- *   TOKEN_NAME - Token name (default: "Babylon Token")
- *   TOKEN_SYMBOL - Token symbol (default: "BABYLON")
+ *   TOKEN_NAME - Token name (default: "Jeju Token")
+ *   TOKEN_SYMBOL - Token symbol (default: "JEJU")
  *   TOKEN_DECIMALS - Decimals (default: 9)
  *   INITIAL_SUPPLY - Initial supply (default: 1000000000)
  */
@@ -27,8 +27,8 @@ const network = networkArg as 'mainnet' | 'devnet';
 
 // Configuration
 const config = {
-  name: process.env.TOKEN_NAME ?? 'Babylon Token',
-  symbol: process.env.TOKEN_SYMBOL ?? 'BABYLON',
+  name: process.env.TOKEN_NAME ?? 'Jeju Token',
+  symbol: process.env.TOKEN_SYMBOL ?? 'JEJU',
   decimals: Number(process.env.TOKEN_DECIMALS ?? '9'),
   initialSupply: BigInt(process.env.INITIAL_SUPPLY ?? '1000000000') * 10n ** 9n,
 };

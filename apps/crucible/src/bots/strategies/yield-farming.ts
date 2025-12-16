@@ -77,7 +77,7 @@ export interface YieldOpportunity {
   lastVerified: number;
   
   // Requirements
-  minDeposit: bigint;
+  minDeposit: string;          // Serializable (was bigint)
   lockPeriod: number;          // Seconds, 0 = no lock
   
   // Metadata
@@ -319,6 +319,7 @@ export class YieldFarmingStrategy extends EventEmitter {
   
   private opportunities: Map<string, YieldOpportunity> = new Map();
   private positions: Map<string, FarmPosition> = new Map();
+  private curveVPSnapshots: Map<string, { vp: bigint; ts: number }> = new Map();
   private running = false;
   private pollInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -508,7 +509,7 @@ export class YieldFarmingStrategy extends EventEmitter {
             verified: true,
             verificationMethod: 'on_chain',
             lastVerified: Date.now(),
-            minDeposit: 0n,
+            minDeposit: '0',
             lockPeriod: 0,
             lastUpdate: Date.now(),
           });
@@ -534,17 +535,18 @@ export class YieldFarmingStrategy extends EventEmitter {
     if (!cometAddress) return opportunities;
 
     try {
-      const [utilization, supplyRate, baseToken] = await Promise.all([
-        client.readContract({
-          address: cometAddress,
-          abi: COMPOUND_COMET_ABI,
-          functionName: 'getUtilization',
-        }) as Promise<bigint>,
+      const utilization = await client.readContract({
+        address: cometAddress,
+        abi: COMPOUND_COMET_ABI,
+        functionName: 'getUtilization',
+      }) as bigint;
+
+      const [supplyRate, baseToken] = await Promise.all([
         client.readContract({
           address: cometAddress,
           abi: COMPOUND_COMET_ABI,
           functionName: 'getSupplyRate',
-          args: [0n], // Will use actual utilization
+          args: [utilization],
         }) as Promise<bigint>,
         client.readContract({
           address: cometAddress,
@@ -554,8 +556,8 @@ export class YieldFarmingStrategy extends EventEmitter {
       ]);
 
       // Calculate APR from per-second rate
-      const secondsPerYear = 31536000n;
-      const supplyApr = Number(supplyRate * secondsPerYear) / 1e18 * 100;
+      const secondsPerYear = 31_536_000;
+      const supplyApr = parseFloat(formatUnits(supplyRate, 18)) * secondsPerYear * 100;
 
       opportunities.push({
         id: `compound-v3-${chainId}-usdc`,
@@ -585,7 +587,7 @@ export class YieldFarmingStrategy extends EventEmitter {
         verified: true,
         verificationMethod: 'on_chain',
         lastVerified: Date.now(),
-        minDeposit: 0n,
+        minDeposit: '0',
         lockPeriod: 0,
         lastUpdate: Date.now(),
       });
@@ -629,6 +631,9 @@ export class YieldFarmingStrategy extends EventEmitter {
       const feePercent = Number(fee) / 1e10;
       const estimatedApr = feePercent * 365 * 10; // Rough estimate
 
+      // Store virtual price snapshot so we can verify real yield later (permissionless)
+      this.curveVPSnapshots.set(`${chainId}:${poolAddress}`, { vp: virtualPrice, ts: Date.now() });
+
       opportunities.push({
         id: `curve-${chainId}-3pool`,
         chain: 'evm',
@@ -654,10 +659,10 @@ export class YieldFarmingStrategy extends EventEmitter {
         riskLevel: this.calculateRiskLevel(protocol.riskBase),
         riskScore: protocol.riskBase,
         riskFactors: ['Smart contract risk', 'Stablecoin depeg risk', 'IL on imbalanced pools'],
-        verified: true,
+        verified: false, // requires time-series verification via virtual_price delta
         verificationMethod: 'on_chain',
         lastVerified: Date.now(),
-        minDeposit: 0n,
+        minDeposit: '0',
         lockPeriod: 0,
         lastUpdate: Date.now(),
       });
@@ -732,7 +737,7 @@ export class YieldFarmingStrategy extends EventEmitter {
         verified: true,
         verificationMethod: 'api',
         lastVerified: Date.now(),
-        minDeposit: 0n,
+        minDeposit: '0',
         lockPeriod: 0, // Liquid staking
         lastUpdate: Date.now(),
       }];
@@ -778,7 +783,7 @@ export class YieldFarmingStrategy extends EventEmitter {
         verified: true,
         verificationMethod: 'api',
         lastVerified: Date.now(),
-        minDeposit: 0n,
+        minDeposit: '0',
         lockPeriod: 0,
         lastUpdate: Date.now(),
       }];
@@ -844,7 +849,7 @@ export class YieldFarmingStrategy extends EventEmitter {
           verified: true,
           verificationMethod: 'api',
           lastVerified: Date.now(),
-          minDeposit: 0n,
+          minDeposit: '0',
           lockPeriod: 0,
           lastUpdate: Date.now(),
         });
@@ -909,7 +914,7 @@ export class YieldFarmingStrategy extends EventEmitter {
           verified: true,
           verificationMethod: 'api',
           lastVerified: Date.now(),
-          minDeposit: 0n,
+          minDeposit: '0',
           lockPeriod: 0,
           lastUpdate: Date.now(),
         });
@@ -1067,24 +1072,103 @@ export class YieldFarmingStrategy extends EventEmitter {
 
       // Verify based on protocol type
       if (opp.protocol === 'aave-v3') {
-        // Re-fetch from Aave
         method = 'aave_reserve_data';
-        // Would fetch and calculate
+        const poolAddress = EVM_PROTOCOLS.find(p => p.name === 'aave-v3')?.contracts[opp.chainId as ChainId];
+        const tokenAddress = opp.tokens[0]?.address;
+        if (!poolAddress || !tokenAddress) throw new Error('Missing Aave pool or token address');
+
+        const reserveData = await client.readContract({
+          address: poolAddress,
+          abi: AAVE_POOL_ABI,
+          functionName: 'getReserveData',
+          args: [tokenAddress as Address],
+        }) as readonly [
+          bigint, // configuration
+          bigint, // liquidityIndex
+          bigint, // currentLiquidityRate (ray, 27 decimals)
+          bigint, // variableBorrowIndex
+          bigint, // currentVariableBorrowRate
+          bigint, // currentStableBorrowRate
+          bigint, // lastUpdateTimestamp
+          number, // id
+          Address, // aTokenAddress
+          Address, // stableDebtTokenAddress
+          Address, // variableDebtTokenAddress
+          Address, // interestRateStrategyAddress
+          bigint, // accruedToTreasury
+          bigint, // unbacked
+          bigint  // isolationModeTotalDebt
+        ];
+
+        const currentLiquidityRateRay = reserveData[2];
+        onChainApr = parseFloat(formatUnits(currentLiquidityRateRay, 27)) * 100;
       } else if (opp.protocol === 'compound-v3') {
         method = 'compound_supply_rate';
+        const cometAddress = EVM_PROTOCOLS.find(p => p.name === 'compound-v3')?.contracts[opp.chainId as ChainId];
+        if (!cometAddress) throw new Error('Missing Compound comet address');
+
+        const utilization = await client.readContract({
+          address: cometAddress,
+          abi: COMPOUND_COMET_ABI,
+          functionName: 'getUtilization',
+        }) as bigint;
+
+        const supplyRate = await client.readContract({
+          address: cometAddress,
+          abi: COMPOUND_COMET_ABI,
+          functionName: 'getSupplyRate',
+          args: [utilization],
+        }) as bigint;
+
+        const secondsPerYear = 31_536_000;
+        onChainApr = parseFloat(formatUnits(supplyRate, 18)) * secondsPerYear * 100;
       } else if (opp.protocol.includes('uniswap') || opp.protocol === 'curve') {
-        method = 'fee_growth_analysis';
-        // Calculate from fee growth over time
+        if (opp.protocol === 'curve') {
+          method = 'curve_virtual_price_delta';
+          const snapshotKey = `${opp.chainId as ChainId}:${opp.poolAddress}`;
+          const prev = this.curveVPSnapshots.get(snapshotKey);
+          const currentVp = await client.readContract({
+            address: opp.poolAddress as Address,
+            abi: CURVE_POOL_ABI,
+            functionName: 'get_virtual_price',
+          }) as bigint;
+
+          const now = Date.now();
+          this.curveVPSnapshots.set(snapshotKey, { vp: currentVp, ts: now });
+
+          if (!prev) {
+            onChainApr = 0;
+          } else {
+            const prevVp = parseFloat(formatUnits(prev.vp, 18));
+            const currVp = parseFloat(formatUnits(currentVp, 18));
+            const dtMs = Math.max(1, now - prev.ts);
+            const growth = (currVp - prevVp) / prevVp;
+            const annualization = (365 * 24 * 60 * 60 * 1000) / dtMs;
+            onChainApr = growth * annualization * 100;
+          }
+        } else {
+          method = 'unsupported_onchain_fee_verification';
+          onChainApr = 0;
+        }
       }
     } else {
-      method = 'api_verification';
-      // Re-fetch from protocol API
+      if (!this.solanaConnection) throw new Error('Solana not configured');
+      if (opp.protocol === 'marinade' || opp.protocol === 'jito') {
+        method = 'solana_inflation_rate';
+        const inflation = await this.solanaConnection.getInflationRate();
+        const raw = inflation.total;
+        const pct = raw < 1 ? raw * 100 : raw;
+        onChainApr = pct;
+      } else {
+        method = 'unsupported_onchain_verification';
+        onChainApr = 0;
+      }
     }
 
-    const discrepancy = Math.abs(onChainApr - opp.totalApr) / opp.totalApr * 100;
+    const discrepancy = opp.totalApr > 0 ? (Math.abs(onChainApr - opp.totalApr) / opp.totalApr) * 100 : 0;
 
     return {
-      verified: discrepancy < 10, // Within 10% is acceptable
+      verified: onChainApr > 0 && discrepancy < 10,
       onChainApr,
       reportedApr: opp.totalApr,
       discrepancy,

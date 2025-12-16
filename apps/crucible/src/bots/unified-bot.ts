@@ -414,6 +414,10 @@ export class UnifiedBot extends EventEmitter {
       });
     }
 
+    if (this.config.enableYieldFarming) {
+      this.yieldFarming?.start();
+    }
+
     // Start monitoring loop
     this.monitorLoop();
 
@@ -432,6 +436,7 @@ export class UnifiedBot extends EventEmitter {
 
     this.solanaArb?.stop();
     this.liquidityManager?.stop();
+    this.yieldFarming?.stop();
 
     console.log('✅ Bot stopped');
     this.emit('stopped');

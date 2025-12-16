@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, mock } from 'bun:test';
 
 // Test the contract interaction logic in stake-rate-limiter.ts
-// We mock ethers.Contract to verify:
+// We mock contract calls to verify:
 // 1. Correct ABI calls are made
 // 2. Tier calculation from stake amount
 // 3. Ban status checking

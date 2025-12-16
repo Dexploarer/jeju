@@ -1,6 +1,5 @@
 /**
- * Git Types for DWS
- * Consolidated from apps/git and apps/dws
+ * Git Types for DWS (JejuGit)
  */
 
 import type { Address, Hex } from 'viem';

@@ -14,7 +14,7 @@ import {
 } from 'viem';
 
 export type ContractName =
-  | 'BabylonToken'
+  | 'Token'
   | 'TokenVesting'
   | 'FeeDistributor'
   | 'Presale'
@@ -273,7 +273,7 @@ export async function getContractBytecode(
  */
 export async function preloadAllArtifacts(): Promise<void> {
   const contracts: ContractName[] = [
-    'BabylonToken',
+    'Token',
     'TokenVesting',
     'FeeDistributor',
     'Presale',

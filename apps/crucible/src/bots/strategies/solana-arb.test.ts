@@ -13,7 +13,7 @@ import {
 describe('Solana Arbitrage Configuration', () => {
   describe('Chain ID', () => {
     it('should have valid Solana pseudo chain ID', () => {
-      expect(SOLANA_CHAIN_ID).toBe(900001);
+      expect(Number(SOLANA_CHAIN_ID)).toBe(900001);
       expect(typeof SOLANA_CHAIN_ID).toBe('number');
     });
   });

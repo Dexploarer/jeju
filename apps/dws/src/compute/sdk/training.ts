@@ -160,9 +160,6 @@ export interface TrainingSDKConfig {
   };
 }
 
-// ============ Contract ABIs ============
-// Using inline ABI definitions for better type inference
-
 const coordinatorAbi = [
   {
     name: 'createRun',
@@ -613,10 +610,7 @@ const erc20Abi = [
   },
 ] as const;
 
-// Result types for contract reads
 type RunResult = readonly [Address, number, number, number, number, number];
-
-// ============ SDK Implementation ============
 
 export class TrainingSDK {
   private publicClient: PublicClient;
@@ -670,8 +664,6 @@ export class TrainingSDK {
       args,
     } as never) as Promise<T>;
   }
-
-  // ============ Run Management ============
 
   async createRun(options: CreateRunOptions): Promise<Hash> {
     const args = [

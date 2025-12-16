@@ -8,7 +8,7 @@
 
 import { test, expect } from '@playwright/test'
 import { createServer, type Server } from 'http'
-import { keccak256, toUtf8Bytes } from 'ethers'
+import { keccak256, stringToBytes } from 'viem'
 
 // Mock Phala Cloud server
 let mockServer: Server | null = null
@@ -156,7 +156,7 @@ test.describe('TEE Decision Making Unit Tests', () => {
 
   test('encryption produces valid ciphertext', () => {
     const testData = JSON.stringify({ test: 'data', timestamp: Date.now() })
-    const hash = keccak256(toUtf8Bytes(testData))
+    const hash = keccak256(stringToBytes(testData))
     
     expect(hash).toMatch(/^0x[a-f0-9]{64}$/)
     expect(hash.length).toBe(66)
@@ -166,8 +166,8 @@ test.describe('TEE Decision Making Unit Tests', () => {
     const decision = { approved: true, reasoning: 'Test', confidence: 95 }
     const json = JSON.stringify(decision)
     
-    const hash1 = keccak256(toUtf8Bytes(json))
-    const hash2 = keccak256(toUtf8Bytes(json))
+    const hash1 = keccak256(stringToBytes(json))
+    const hash2 = keccak256(stringToBytes(json))
     
     expect(hash1).toBe(hash2)
   })
@@ -176,8 +176,8 @@ test.describe('TEE Decision Making Unit Tests', () => {
     const decision1 = { approved: true, reasoning: 'Approved', confidence: 95 }
     const decision2 = { approved: false, reasoning: 'Rejected', confidence: 80 }
     
-    const hash1 = keccak256(toUtf8Bytes(JSON.stringify(decision1)))
-    const hash2 = keccak256(toUtf8Bytes(JSON.stringify(decision2)))
+    const hash1 = keccak256(stringToBytes(JSON.stringify(decision1)))
+    const hash2 = keccak256(stringToBytes(JSON.stringify(decision2)))
     
     expect(hash1).not.toBe(hash2)
   })

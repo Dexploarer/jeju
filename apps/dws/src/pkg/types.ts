@@ -1,6 +1,5 @@
 /**
  * Package Registry Types (JejuPkg)
- * Consolidated from apps/dws and apps/storage/pinning-api
  */
 
 import type { Address, Hex } from 'viem';

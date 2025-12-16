@@ -130,8 +130,18 @@ export interface BridgeService {
     pendingIntents: number;
   }>;
   
+  // Arbitrage operations
+  getArbOpportunities(): ArbOpportunity[];
+  executeArb(opportunityId: string): Promise<{ success: boolean; txHash?: string; profit?: number }>;
+  setArbEnabled(enabled: boolean): void;
+  
+  // MEV operations
+  submitJitoBundle(transactions: Uint8Array[]): Promise<{ bundleId: string; landed: boolean }>;
+  getJitoTipFloor(): Promise<bigint>;
+  
   // Events
   onTransfer(callback: (event: TransferEvent) => void): () => void;
+  onArbitrage(callback: (opportunity: ArbOpportunity) => void): () => void;
   onError(callback: (error: Error) => void): () => void;
 }
 
@@ -140,6 +150,7 @@ export interface BridgeService {
 class BridgeServiceImpl implements BridgeService {
   private config: BridgeServiceConfig;
   private running = false;
+  private arbEnabled = false;
   private stats: BridgeStats = {
     totalTransfersProcessed: 0,
     totalVolumeProcessed: 0n,
@@ -148,14 +159,27 @@ class BridgeServiceImpl implements BridgeService {
     activeChains: [],
     uptime: 0,
     lastTransferAt: 0,
+    arbOpportunitiesDetected: 0,
+    arbTradesExecuted: 0,
+    arbProfitUsd: 0,
+    jitoBundlesSubmitted: 0,
+    jitoBundlesLanded: 0,
+    mevProfitUsd: 0,
   };
   private transferCallbacks: Set<(event: TransferEvent) => void> = new Set();
+  private arbCallbacks: Set<(opportunity: ArbOpportunity) => void> = new Set();
   private errorCallbacks: Set<(error: Error) => void> = new Set();
   private startTime = 0;
   private recentTransfers: TransferEvent[] = [];
+  private arbOpportunities: Map<string, ArbOpportunity> = new Map();
+  private arbPollInterval: ReturnType<typeof setInterval> | null = null;
+
+  // Jito settings
+  private jitoBlockEngineUrl = 'https://mainnet.block-engine.jito.wtf';
 
   constructor(config: BridgeServiceConfig) {
     this.config = config;
+    this.arbEnabled = config.enableArbitrage ?? false;
   }
 
   async start(): Promise<void> {
@@ -183,6 +207,11 @@ class BridgeServiceImpl implements BridgeService {
       await this.startSolver();
     }
     
+    // Start arbitrage detector if enabled
+    if (this.config.enableArbitrage) {
+      await this.startArbitrage();
+    }
+    
     console.log('[Bridge] Bridge service started');
   }
 
@@ -192,7 +221,11 @@ class BridgeServiceImpl implements BridgeService {
     console.log('[Bridge] Stopping bridge service...');
     this.running = false;
     
-    // Cleanup would go here
+    // Stop arbitrage polling
+    if (this.arbPollInterval) {
+      clearInterval(this.arbPollInterval);
+      this.arbPollInterval = null;
+    }
     
     console.log('[Bridge] Bridge service stopped');
   }

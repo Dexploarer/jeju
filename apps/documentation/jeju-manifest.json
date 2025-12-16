@@ -4,7 +4,7 @@
   "displayName": "Documentation",
   "version": "1.0.0",
   "type": "core",
-  "description": "VitePress documentation site",
+  "description": "VitePress documentation site - fully decentralized and cached",
   "commands": {
     "dev": "bun run dev",
     "build": "bun run build",
@@ -17,16 +17,55 @@
   "optional": true,
   "enabled": true,
   "autoStart": true,
-  "tags": ["docs"],
+  "tags": ["docs", "documentation", "vitepress"],
+  "jns": {
+    "name": "docs.jeju",
+    "description": "Network Documentation",
+    "url": "https://docs.jeju.network"
+  },
+  "healthCheck": {
+    "url": "http://localhost:4004",
+    "interval": 30000
+  },
   "agent": {
     "enabled": true,
+    "a2aEndpoint": "/a2a",
+    "mcpEndpoint": "/mcp",
     "tags": ["jeju-app", "documentation"],
     "metadata": {
       "category": "documentation",
-      "provider": "jeju-network"
+      "provider": "jeju-network",
+      "features": ["search", "versioning"]
     },
     "trustModels": ["open"],
+    "x402Support": false,
     "jnsName": "docs.jeju"
+  },
+  "decentralization": {
+    "cdn": {
+      "enabled": true,
+      "regions": ["global"],
+      "cacheRules": [
+        { "pattern": "/assets/**", "ttl": 31536000, "immutable": true },
+        { "pattern": "/**/*.html", "ttl": 3600, "staleWhileRevalidate": 86400 },
+        { "pattern": "/**/*.js", "ttl": 31536000, "immutable": true },
+        { "pattern": "/**/*.css", "ttl": 31536000, "immutable": true }
+      ],
+      "serviceWorker": true
+    },
+    "frontend": {
+      "ipfs": true,
+      "arweave": true,
+      "jnsName": "docs.jeju",
+      "buildDir": ".vitepress/dist",
+      "spa": false
+    },
+    "robustness": {
+      "multiOrigin": true,
+      "offlineSupport": true,
+      "p2pFallback": true,
+      "contentAddressed": true
+    }
   },
   "testing": {
     "unit": {
@@ -39,4 +78,3 @@
     }
   }
 }
-

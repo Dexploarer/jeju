@@ -1,5 +1,5 @@
 /**
- * Package Registry Routes (JejuPkg) - npm CLI compatible API (for compatibility)
+ * Package Registry Routes (JejuPkg) - npm CLI compatible API
  * Consolidated with upstream proxy and full caching
  */
 

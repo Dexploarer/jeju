@@ -130,9 +130,9 @@ export interface FeeConfig {
 
 /** Complete token economics configuration */
 export interface TokenEconomics {
-  /** Token name (e.g., "Babylon Token") */
+  /** Token name (e.g., "Jeju Token") */
   name: string;
-  /** Token symbol (e.g., "BABYLON") */
+  /** Token symbol (e.g., "JEJU") */
   symbol: string;
   /** Token decimals (typically 18 for EVM, 9 for Solana) */
   decimals: number;

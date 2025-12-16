@@ -26,7 +26,24 @@ npm install @jejunetwork/oauth3
 ### Client-Side SDK
 
 ```typescript
-import { createOAuth3Client, AuthProvider } from '@jejunetwork/oauth3';
+import { 
+  createOAuth3Client, 
+  AuthProvider,
+  // MPC/FROST
+  FROSTCoordinator,
+  generateKeyShares,
+  // TEE
+  DstackAuthAgent,
+  startAuthAgent,
+  // Credentials
+  VerifiableCredentialIssuer,
+  // Providers
+  FarcasterProvider,
+  GoogleProvider,
+  // Infrastructure
+  OAuth3JNSService,
+  OAuth3StorageService,
+} from '@jejunetwork/oauth3';
 
 // Create client
 const oauth3 = createOAuth3Client({
@@ -64,7 +81,7 @@ const credential = await oauth3.issueCredential(
 ### Server-Side (Running Your Own TEE Node)
 
 ```typescript
-import { startAuthAgent } from '@jejunetwork/oauth3/tee';
+import { startAuthAgent } from '@jejunetwork/oauth3';
 
 // Start the OAuth3 agent server
 await startAuthAgent({
@@ -255,7 +272,7 @@ interface OAuth3Client {
 All OAuth3 nodes run inside TEEs and provide attestation quotes that can be verified on-chain:
 
 ```typescript
-import { DstackAuthAgent } from '@jejunetwork/oauth3/tee';
+import { DstackAuthAgent } from '@jejunetwork/oauth3';
 
 const agent = new DstackAuthAgent(config);
 const attestation = await agent.getAttestation();
@@ -272,7 +289,7 @@ const isValid = await teeVerifierContract.verifyAttestation(
 Keys never exist in full form - they're split across nodes using FROST threshold signatures:
 
 ```typescript
-import { generateKeyShares, FROSTCoordinator } from '@jejunetwork/oauth3/mpc';
+import { generateKeyShares, FROSTCoordinator } from '@jejunetwork/oauth3';
 
 // Generate 3 shares with threshold 2
 const shares = generateKeyShares(3, 2);

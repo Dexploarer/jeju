@@ -35,22 +35,34 @@ describe('Complete User Workflow E2E', () => {
   beforeAll(async () => {
     logger.info('🚀 Setting up complete workflow test...');
     
-    provider = new ethers.JsonRpcProvider('http://localhost:8545');
+    const rpcUrl = 'http://localhost:8545';
+    const chain = inferChainFromRpcUrl(rpcUrl);
     
-    cloudOperator = new ethers.Wallet(
-      '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d',
-      provider
-    );
+    publicClient = createPublicClient({
+      chain,
+      transport: http(rpcUrl),
+    });
     
-    cloudAgentSigner = new ethers.Wallet(
-      '0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a',
-      provider
-    );
+    cloudOperatorAccount = privateKeyToAccount('0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d' as `0x${string}`);
+    cloudOperator = createWalletClient({
+      account: cloudOperatorAccount,
+      chain,
+      transport: http(rpcUrl),
+    });
     
-    testUser = new ethers.Wallet(
-      '0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6',
-      provider
-    );
+    cloudAgentAccount = privateKeyToAccount('0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a' as `0x${string}`);
+    cloudAgentSigner = createWalletClient({
+      account: cloudAgentAccount,
+      chain,
+      transport: http(rpcUrl),
+    });
+    
+    testUserAccount = privateKeyToAccount('0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6' as `0x${string}`);
+    testUser = createWalletClient({
+      account: testUserAccount,
+      chain,
+      transport: http(rpcUrl),
+    });
     
     const config: CloudConfig = {
       identityRegistryAddress: '0x5FbDB2315678afecb367f032d93F642f64180aa3',
@@ -58,9 +70,10 @@ describe('Complete User Workflow E2E', () => {
       cloudReputationProviderAddress: '0x5FC8d32690cc91D4c39d9d3abcBD16989F875707',
       serviceRegistryAddress: '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9',
       creditManagerAddress: '0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9',
-      provider,
+      rpcUrl,
+      chain,
       logger,
-      cloudAgentSigner, // Add cloud agent signer
+      cloudAgentSigner: cloudAgentAccount,
       chainId: 31337n
     };
     
@@ -71,20 +84,32 @@ describe('Complete User Workflow E2E', () => {
   test('STEP 1: User registers as agent', async () => {
     logger.info('👤 Step 1: User registration...');
     
-    const identityRegistry = new ethers.Contract(
-      '0x5FbDB2315678afecb367f032d93F642f64180aa3',
-      ['function register(string calldata tokenURI) external returns (uint256)'],
-      testUser
-    );
+    const identityRegistryAbi = parseAbi(['function register(string calldata tokenURI) external returns (uint256)', 'event Registered(uint256 indexed agentId, address indexed owner, uint8 tier, uint256 registeredAt, string tokenURI)']);
+    const identityRegistryAddress = '0x5FbDB2315678afecb367f032d93F642f64180aa3' as Address;
     
-    const tx = await identityRegistry.register('ipfs://QmTestUser');
-    const receipt = await tx.wait();
+    const hash = await writeContract(testUser, {
+      address: identityRegistryAddress,
+      abi: identityRegistryAbi,
+      functionName: 'register',
+      args: ['ipfs://QmTestUser'],
+    });
     
-    const event = receipt.logs.find((log: { topics: string[] }) => 
-      log.topics[0] === ethers.id('Registered(uint256,address,uint8,uint256,string)')
-    );
+    const receipt = await waitForTransactionReceipt(publicClient, { hash });
     
-    userAgentId = BigInt(event.topics[1]);
+    const registeredEventSignature = keccak256(stringToHex('Registered(uint256,address,uint8,uint256,string)'));
+    const event = receipt.logs.find((log) => log.topics[0] === registeredEventSignature);
+    
+    if (!event) {
+      throw new Error('Registered event not found');
+    }
+    
+    const decoded = decodeEventLog({
+      abi: identityRegistryAbi,
+      data: event.data,
+      topics: event.topics,
+    });
+    
+    userAgentId = decoded.args.agentId as bigint;
     expect(userAgentId).toBeGreaterThan(0n);
     
     logger.success(`✓ User registered with agent ID: ${userAgentId}`);
@@ -232,15 +257,17 @@ describe('Complete User Workflow E2E', () => {
   test('STEP 6: Verify user cannot access services', async () => {
     logger.info('🔒 Step 6: Verifying ban enforcement...');
     
-    const identityRegistry = new ethers.Contract(
-      '0x5FbDB2315678afecb367f032d93F642f64180aa3',
-      [
-        'function getAgent(uint256 agentId) external view returns (tuple(uint256 agentId, address owner, uint8 tier, address stakedToken, uint256 stakedAmount, uint256 registeredAt, uint256 lastActivityAt, bool isBanned, bool isSlashed))'
-      ],
-      provider
-    );
+    const identityRegistryAbi = parseAbi([
+      'function getAgent(uint256 agentId) external view returns (tuple(uint256 agentId, address owner, uint8 tier, address stakedToken, uint256 stakedAmount, uint256 registeredAt, uint256 lastActivityAt, bool isBanned, bool isSlashed))'
+    ]);
+    const identityRegistryAddress = '0x5FbDB2315678afecb367f032d93F642f64180aa3' as Address;
     
-    const agent = await identityRegistry.getAgent(userAgentId);
+    const agent = await publicClient.readContract({
+      address: identityRegistryAddress,
+      abi: identityRegistryAbi,
+      functionName: 'getAgent',
+      args: [userAgentId],
+    }) as { isBanned: boolean };
     
     if (agent.isBanned) {
       logger.success('✓ User is BANNED - all requests should be rejected');
@@ -301,27 +328,37 @@ describe('Auto-Ban Threshold Workflow E2E', () => {
   test('WORKFLOW: Create new user for auto-ban test', async () => {
     logger.info('👤 Creating new user for auto-ban test...');
     
-    const newUser = ethers.Wallet.createRandom().connect(provider);
+    const newUserPrivateKey = generatePrivateKey();
+    const newUserAccount = privateKeyToAccount(newUserPrivateKey);
+    const newUser = createWalletClient({
+      account: newUserAccount,
+      chain: publicClient.chain!,
+      transport: http('http://localhost:8545'),
+    });
     
     // Fund user with ETH
-    await (await cloudOperator.sendTransaction({
-      to: await newUser.getAddress(),
-      value: ethers.parseEther('1')
-    })).wait();
+    const fundHash = await cloudOperator.sendTransaction({
+      to: newUserAccount.address,
+      value: parseEther('1'),
+    });
+    await waitForTransactionReceipt(publicClient, { hash: fundHash });
     
-    const identityRegistry = new ethers.Contract(
-      '0x5FbDB2315678afecb367f032d93F642f64180aa3',
-      ['function register() external returns (uint256)'],
-      newUser
-    );
+    const identityRegistryAbi = parseAbi(['function register() external returns (uint256)']);
+    const identityRegistryAddress = '0x5FbDB2315678afecb367f032d93F642f64180aa3' as Address;
     
-    const tx = await identityRegistry.register();
-    const receipt = await tx.wait();
+    const registerHash = await newUser.writeContract({
+      address: identityRegistryAddress,
+      abi: identityRegistryAbi,
+      functionName: 'register',
+      args: [],
+    });
     
-    const event = receipt.logs.find((log: { topics: string[] }) => 
-      log.topics[0] === ethers.id('Registered(uint256,address,uint8,uint256,string)')
-    );
+    const receipt = await waitForTransactionReceipt(publicClient, { hash: registerHash });
     
+    const registeredEventTopic = keccak256(stringToBytes('Registered(uint256,address,uint8,uint256,string)'));
+    const event = receipt.logs.find((log) => log.topics[0] === registeredEventTopic);
+    
+    if (!event) throw new Error('Registered event not found');
     abusiveUserAgentId = BigInt(event.topics[1]);
     logger.success(`✓ New user agent ID: ${abusiveUserAgentId}`);
   });
@@ -376,16 +413,18 @@ describe('Service Discovery and Cost E2E', () => {
     
     for (const serviceName of services) {
       // Check if service is available
-      const serviceRegistry = new ethers.Contract(
-        '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9',
-        [
-          'function isServiceAvailable(string calldata serviceName) external view returns (bool)',
-          'function getServiceCost(string calldata serviceName, address user) external view returns (uint256)'
-        ],
-        provider
-      );
+      const serviceRegistryAbi = parseAbi([
+        'function isServiceAvailable(string calldata serviceName) external view returns (bool)',
+        'function getServiceCost(string calldata serviceName, address user) external view returns (uint256)'
+      ]);
+      const serviceRegistryAddress = '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9' as Address;
       
-      const isAvailable = await serviceRegistry.isServiceAvailable(serviceName);
+      const isAvailable = await publicClient.readContract({
+        address: serviceRegistryAddress,
+        abi: serviceRegistryAbi,
+        functionName: 'isServiceAvailable',
+        args: [serviceName],
+      }) as boolean;
       
       if (!isAvailable) {
         logger.warn(`  ${serviceName}: Not available`);
@@ -393,14 +432,20 @@ describe('Service Discovery and Cost E2E', () => {
       }
       
       // Get cost
-      const cost = await serviceRegistry.getServiceCost(serviceName, await testUser.getAddress());
-      logger.info(`  ${serviceName}: ${ethers.formatEther(cost)} elizaOS`);
+      const cost = await publicClient.readContract({
+        address: serviceRegistryAddress,
+        abi: serviceRegistryAbi,
+        functionName: 'getServiceCost',
+        args: [serviceName, testUserAccount.address],
+      }) as bigint;
+      
+      logger.info(`  ${serviceName}: ${formatEther(cost)} elizaOS`);
       
       // Check user credit
       const credit = await integration.checkUserCredit(
-        await testUser.getAddress(),
+        testUserAccount.address,
         serviceName,
-        '0xa513E6E4b8f2a923D98304ec87F64353C4D5C853' // elizaOS token
+        '0xa513E6E4b8f2a923D98304ec87F64353C4D5C853' as Address // elizaOS token
       );
       
       logger.info(`    Credit: ${credit.sufficient ? 'Sufficient ✓' : 'Insufficient ✗'}`);

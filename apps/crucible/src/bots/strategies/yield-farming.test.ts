@@ -67,7 +67,7 @@ describe('Yield Farming Strategy', () => {
         verified: true,
         verificationMethod: 'on_chain',
         lastVerified: Date.now(),
-        minDeposit: 0n,
+        minDeposit: '0',
         lockPeriod: 0,
         lastUpdate: Date.now(),
       };
@@ -99,7 +99,7 @@ describe('Yield Farming Strategy', () => {
         verified: false,
         verificationMethod: 'estimated',
         lastVerified: Date.now(),
-        minDeposit: 0n,
+        minDeposit: '0',
         lockPeriod: 0,
         lastUpdate: Date.now(),
       };
@@ -134,8 +134,8 @@ describe('Yield Farming Strategy', () => {
       const lowRiskScore = 100 * (1 - 15 / 100);
       const highRiskScore = 100 * (1 - 80 / 100);
 
-      expect(lowRiskScore).toBe(85);
-      expect(highRiskScore).toBe(20);
+      expect(lowRiskScore).toBeCloseTo(85, 1);
+      expect(highRiskScore).toBeCloseTo(20, 1);
       expect(lowRiskScore).toBeGreaterThan(highRiskScore);
     });
   });
@@ -274,7 +274,7 @@ describe('Yield Farming Strategy', () => {
         verified: true,
         verificationMethod: 'on_chain',
         lastVerified: Date.now(),
-        minDeposit: 0n,
+        minDeposit: '0',
         lockPeriod: 0,
         lastUpdate: Date.now(),
       };

@@ -22,11 +22,11 @@ function createPool(
   return {
     address,
     chainId,
-    dex: 'uniswap_v2',
+    type: 'UNISWAP_V2' as const,
     token0: { address: token0Address, symbol: 'T0', decimals: 18, chainId },
     token1: { address: token1Address, symbol: 'T1', decimals: 18, chainId },
-    reserve0,
-    reserve1,
+    reserve0: reserve0.toString(),
+    reserve1: reserve1.toString(),
     fee: 30,
     lastUpdate: Date.now(),
   };

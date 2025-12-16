@@ -156,8 +156,8 @@ async function main() {
 
   if (isDryRun) {
     console.log('DRY RUN - Would deploy:');
-    console.log('  - BabylonToken on Jeju Testnet (home chain)');
-    console.log('  - BabylonToken on Sepolia (synthetic)');
+    console.log('  - Token on Jeju Testnet (home chain)');
+    console.log('  - Token on Sepolia (synthetic)');
     console.log('  - FeeDistributor on Jeju Testnet');
     console.log('  - TokenVesting on Jeju Testnet');
     console.log('  - Presale on Jeju Testnet');
@@ -180,8 +180,8 @@ async function main() {
   console.log('Deploying to Jeju Testnet (home chain)...');
 
   const tokenConfig = {
-    name: 'Babylon',
-    symbol: 'BABYLON',
+    name: 'Jeju',
+    symbol: 'JEJU',
     totalSupply: parseEther('1000000000'),
   };
 
@@ -191,7 +191,7 @@ async function main() {
 
   try {
     const startTime = Date.now();
-    const result = await deployContract(jejuPublic, jejuWallet, 'BabylonToken', [
+    const result = await deployContract(jejuPublic, jejuWallet, 'Token', [
       tokenConfig.name,
       tokenConfig.symbol,
       tokenConfig.totalSupply,
@@ -202,16 +202,16 @@ async function main() {
 
     deploymentMetrics.push({
       chain: 'Jeju Testnet',
-      contractName: 'BabylonToken',
+      contractName: 'Token',
       address: result.address,
       gasUsed: result.gasUsed.toString(),
       deploymentTime: Date.now() - startTime,
       txHash: result.txHash,
     });
 
-    console.log(`  BabylonToken: ${result.address} (${Date.now() - startTime}ms)`);
+    console.log(`  Token: ${result.address} (${Date.now() - startTime}ms)`);
   } catch (e) {
-    console.log(`  ERROR deploying BabylonToken: ${e}`);
+    console.log(`  ERROR deploying Token: ${e}`);
   }
 
   if (jejuTokenAddress) {
@@ -268,7 +268,7 @@ async function main() {
 
   try {
     const startTime = Date.now();
-    const result = await deployContract(sepoliaPublic, sepoliaWallet, 'BabylonToken', [
+    const result = await deployContract(sepoliaPublic, sepoliaWallet, 'Token', [
       tokenConfig.name,
       tokenConfig.symbol,
       0n, // No initial supply on synthetic chain
@@ -279,14 +279,14 @@ async function main() {
 
     deploymentMetrics.push({
       chain: 'Sepolia',
-      contractName: 'BabylonToken',
+      contractName: 'Token',
       address: result.address,
       gasUsed: result.gasUsed.toString(),
       deploymentTime: Date.now() - startTime,
       txHash: result.txHash,
     });
 
-    console.log(`  BabylonToken: ${result.address} (${Date.now() - startTime}ms)`);
+    console.log(`  Token: ${result.address} (${Date.now() - startTime}ms)`);
   } catch (e) {
     console.log(`  ERROR deploying to Sepolia: ${e}`);
   }
