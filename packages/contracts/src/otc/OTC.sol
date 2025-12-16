@@ -10,6 +10,7 @@ import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IAggregatorV3} from "./interfaces/IAggregatorV3.sol";
 import {IOTC} from "./interfaces/IOTC.sol";
+import {OracleLib} from "../libraries/OracleLib.sol";
 
 /// @title OTC-like Token Sale Desk - Multi-Token Support
 /// @notice Permissionless consignment creation, approver-gated approvals, price snapshot on creation using Chainlink.
@@ -669,20 +670,23 @@ contract OTC is IOTC, Ownable, Pausable, ReentrancyGuard {
     }
 
     function _readTokenUsdPriceFromOracle(address oracle) internal view returns (uint256) {
-        IAggregatorV3 feed = IAggregatorV3(oracle);
-        (uint80 roundId, int256 answer,, uint256 updatedAt, uint80 answeredInRound) = feed.latestRoundData();
-        require(answer > 0, "bad price");
-        require(answeredInRound >= roundId, "stale round");
-        require(updatedAt > 0 && block.timestamp - updatedAt <= maxFeedAgeSeconds, "stale price");
-        return uint256(answer);
+        OracleLib.ChainlinkConfig memory config = OracleLib.ChainlinkConfig({
+            feed: oracle,
+            maxStaleness: maxFeedAgeSeconds,
+            expectedDecimals: 8
+        });
+        (uint256 price,) = OracleLib.readChainlinkPriceStrict(config);
+        return price;
     }
 
     function _readEthUsdPrice() internal view returns (uint256) {
-        (uint80 roundId, int256 answer,, uint256 updatedAt, uint80 answeredInRound) = ethUsdFeed.latestRoundData();
-        require(answer > 0, "bad price");
-        require(answeredInRound >= roundId, "stale round");
-        require(updatedAt > 0 && block.timestamp - updatedAt <= maxFeedAgeSeconds, "stale price");
-        return uint256(answer);
+        OracleLib.ChainlinkConfig memory config = OracleLib.ChainlinkConfig({
+            feed: address(ethUsdFeed),
+            maxStaleness: maxFeedAgeSeconds,
+            expectedDecimals: 8
+        });
+        (uint256 price,) = OracleLib.readChainlinkPriceStrict(config);
+        return price;
     }
 
     function _mulDiv(uint256 a, uint256 b, uint256 d) internal pure returns (uint256) {

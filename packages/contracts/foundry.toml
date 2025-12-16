@@ -11,43 +11,42 @@ evm_version = "cancun"
 
 # Skip these contracts from compilation - incomplete or have missing dependencies
 skip = [
+    # External integrations not needed for core functionality
     "src/prediction/JejuMarket.sol",
     "src/uniswap-v2/**",
     "src/uniswap-v4/**",
     "src/mmo/**",
     "src/games/**",
     "src/governance/council/**",
-    "src/oracle/**",
     "src/cdn/**",
-    "src/paymaster/**",
     "src/eil/**",
     "src/bridge/eil/**",
     "src/perps/**",
     "src/marketplace/**",
     "src/prediction-markets/**",
-    "script/DeployCompute.s.sol",
-    "script/DeployUniswapV4Periphery.s.sol",
-    "script/Deploy*Cloud*.s.sol",
-    "script/DeployPredimarket*.s.sol",
-    "script/DeployEIL*.s.sol",
-    "script/DeploySponsoredPaymaster.s.sol",
-    "script/DeployDAO.s.sol",
-    "script/DeployBazaarMarketplace.s.sol",
-    "script/DeployOracleNetwork.s.sol",
-    "script/DeployPerps.s.sol",
-    "script/DeployJejuMarket.s.sol",
-    "script/DeployJejuToken.s.sol",
-    "script/otc/**",
-    "test/oracle/**",
-    "test/eil/**",
-    "test/perps/**",
-    "test/CloudReputationProvider.t.sol",
-    "test/PaymasterFactory.t.sol",
-    "test/mocks/MockAggregator.sol",
-    "test/mocks/PerpsMocks.sol",
-    "test/interfaces/**",
-    "test/messaging/**",
-    "test/compute/**"
+    
+    # Paymaster contracts need ERC-4337 integration work
+    "src/services/MultiTokenPaymaster.sol",
+    "src/services/ServicePaymaster.sol",
+    "src/paymaster/**",
+    
+    # Deploy scripts for disabled features
+    "deploy/DeployCompute.s.sol",
+    "deploy/DeployUniswapV4Periphery.s.sol",
+    "deploy/Deploy*Cloud*.s.sol",
+    "deploy/DeployPredimarket*.s.sol",
+    "deploy/DeployEIL*.s.sol",
+    "deploy/DeploySponsoredPaymaster.s.sol",
+    "deploy/DeployDAO.s.sol",
+    "deploy/DeployBazaarMarketplace.s.sol",
+    "deploy/DeployOracleNetwork.s.sol",
+    "deploy/DeployPerps.s.sol",
+    "deploy/DeployJejuMarket.s.sol",
+    "deploy/DeployJejuToken.s.sol",
+    "deploy/otc/**",
+    
+    # Tests for incomplete/disabled features
+    "test/PaymasterFactory.t.sol"
 ]
 
 # Test settings
@@ -114,5 +113,3 @@ mainnet = { key = "${ETHERSCAN_API_KEY}" }
 sepolia = { key = "${ETHERSCAN_API_KEY}" }
 base = { key = "${BASESCAN_API_KEY}", url = "https://api.basescan.org/api" }
 base_sepolia = { key = "${BASESCAN_API_KEY}", url = "https://api-sepolia.basescan.org/api" }
-
-

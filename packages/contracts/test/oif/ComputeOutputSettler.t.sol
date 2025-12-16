@@ -3,6 +3,7 @@ pragma solidity ^0.8.26;
 
 import {Test, console} from "forge-std/Test.sol";
 import {ComputeOutputSettler} from "../../src/oif/ComputeOutputSettler.sol";
+import {BaseOutputSettler} from "../../src/oif/BaseOutputSettler.sol";
 import {
     ComputeRentalOrderData,
     ComputeInferenceOrderData,
@@ -144,7 +145,7 @@ contract ComputeOutputSettlerTest is Test {
 
     function test_withdrawETH_insufficientBalance() public {
         vm.prank(user);
-        vm.expectRevert(ComputeOutputSettler.InsufficientLiquidity.selector);
+        vm.expectRevert(BaseOutputSettler.InsufficientLiquidity.selector);
         settler.withdrawETH(1 ether);
     }
 
@@ -168,12 +169,11 @@ contract ComputeOutputSettlerTest is Test {
         assertTrue(settler.isFilled(orderId));
         assertTrue(rentalId != bytes32(0));
 
-        ComputeOutputSettler.FillRecord memory record = settler.getFillRecord(orderId);
+        BaseOutputSettler.FillRecord memory record = settler.getFillRecord(orderId);
         assertEq(record.solver, solver);
-        assertEq(record.user, user);
-        assertEq(record.rentalId, rentalId);
-        assertEq(record.paymentAmount, payment);
-        assertTrue(record.isRental);
+        assertEq(record.recipient, user);
+        assertEq(record.amount, payment);
+        assertTrue(record.filledBlock > 0);
     }
 
     function test_fillComputeRental_deductsETH() public {
@@ -210,7 +210,7 @@ contract ComputeOutputSettlerTest is Test {
         settler.fillComputeRental(orderId, data, user, 0.1 ether);
 
         vm.prank(solver);
-        vm.expectRevert(ComputeOutputSettler.OrderAlreadyFilled.selector);
+        vm.expectRevert(BaseOutputSettler.OrderAlreadyFilled.selector);
         settler.fillComputeRental(orderId, data, user, 0.1 ether);
     }
 
@@ -226,7 +226,7 @@ contract ComputeOutputSettlerTest is Test {
         });
 
         vm.prank(solver);
-        vm.expectRevert(ComputeOutputSettler.InsufficientLiquidity.selector);
+        vm.expectRevert(BaseOutputSettler.InsufficientLiquidity.selector);
         settler.fillComputeRental(orderId, data, user, 100 ether);
     }
 
@@ -265,10 +265,9 @@ contract ComputeOutputSettlerTest is Test {
 
         assertTrue(settler.isFilled(orderId));
 
-        ComputeOutputSettler.FillRecord memory record = settler.getFillRecord(orderId);
+        BaseOutputSettler.FillRecord memory record = settler.getFillRecord(orderId);
         assertEq(record.solver, solver);
-        assertEq(record.user, user);
-        assertFalse(record.isRental);
+        assertEq(record.recipient, user);
     }
 
     // ============ Standard Token Fill Tests ============
