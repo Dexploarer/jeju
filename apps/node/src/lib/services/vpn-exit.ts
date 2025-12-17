@@ -73,6 +73,19 @@ export interface VPNSession {
   successful: boolean;
 }
 
+// ============================================================================
+// VPN Registry ABI
+// ============================================================================
+
+const VPN_REGISTRY_ABI = [
+  'function register(bytes2 countryCode, bytes32 regionHash, string endpoint, string wireguardPubKey, tuple(bool supportsWireGuard, bool supportsSOCKS5, bool supportsHTTPConnect, bool servesCDN, bool isVPNExit) capabilities) external payable',
+  'function getNode(address operator) external view returns (tuple(address operator, bytes2 countryCode, bytes32 regionHash, string endpoint, string wireguardPubKey, uint256 stake, uint256 registeredAt, uint256 lastSeen, tuple(bool supportsWireGuard, bool supportsSOCKS5, bool supportsHTTPConnect, bool servesCDN, bool isVPNExit) capabilities, bool active, uint256 totalBytesServed, uint256 totalSessions, uint256 successfulSessions))',
+  'function heartbeat() external',
+  'function recordSession(address nodeAddr, address client, uint256 bytesServed, bool successful) external',
+  'function isActive(address operator) external view returns (bool)',
+  'function allowedCountries(bytes2 countryCode) external view returns (bool)',
+  'function blockedCountries(bytes2 countryCode) external view returns (bool)',
+] as const;
 
 // ============================================================================
 // Prometheus Metrics
@@ -403,12 +416,9 @@ export class VPNExitService {
     vpnSessionDuration.observe(durationSeconds);
     vpnSessionsTotal.inc({ status: successful ? 'success' : 'failed' });
 
-    // Record session on-chain
-    if (this.client.walletClient?.account) {
-      const totalBytes = session.bytesUp + session.bytesDown;
-      // Note: This would be called by the coordinator in production
-      // await this.client.walletClient.writeContract({...});
-    }
+    // Record session on-chain (coordinator calls this in production)
+    const totalBytes = session.bytesUp + session.bytesDown;
+    console.log(`[VPNExit] Session ended: ${totalBytes} bytes transferred`);
 
     this.sessions.delete(clientId);
   }
