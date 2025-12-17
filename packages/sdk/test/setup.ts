@@ -9,7 +9,7 @@
  *   OR: import './setup' in test files
  */
 
-import { execa, type ExecaChildProcess } from "execa";
+import { execa, type ResultPromise } from "execa";
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import { join, resolve } from "path";
 import type { Hex } from "viem";
@@ -28,7 +28,7 @@ export const TEST_GATEWAY_URL = process.env.TEST_GATEWAY_URL || "http://127.0.0.
 export const TEST_PRIVATE_KEY = DEPLOYER_KEY;
 
 // Track processes we start
-let startedProcesses: ExecaChildProcess[] = [];
+let startedProcesses: ResultPromise[] = [];
 let servicesStarted = false;
 let rootDir: string | null = null;
 
@@ -194,45 +194,58 @@ async function deployContracts(): Promise<void> {
 
 /**
  * Start app services (storage, compute, gateway)
+ * 
+ * NOTE: Services should be started externally via `bun run dev` or docker-compose.
+ * This function will skip starting services by default to avoid complex startup issues.
  */
 async function startServices(): Promise<void> {
-  // Skip service startup in CI or when SKIP_SERVICES is set
-  // Services should be started via `bun run dev` or docker-compose
-  if (process.env.CI || process.env.SKIP_SERVICES) {
-    console.log("Skipping app service startup (use SKIP_SERVICES=0 to enable)");
+  // Skip service startup - services should be started externally
+  // Use `bun run dev` or docker-compose to start services
+  console.log("⚠ Service auto-start disabled. Start services manually with: jeju dev");
+  console.log("   Or run: bun run dev in apps/gateway, apps/dws");
+  
+  // Skip service startup in CI or when SKIP_SERVICES is set (default behavior)
+  if (!process.env.START_SERVICES) {
+    console.log("⚠ Set START_SERVICES=1 to attempt service startup");
     return;
   }
   
   const root = findRoot();
   
-  // Start each service
+  // Services with their package.json locations and start commands
   const services = [
-    { name: "DWS", dir: "apps/dws", port: 4030, cmd: "bun run dev" },
-    { name: "Gateway", dir: "apps/gateway", port: 4003, cmd: "bun run start:a2a" },
+    { name: "Gateway", dir: "apps/gateway", port: 4003, cmd: "bun run dev:a2a" },
+    { name: "DWS", dir: "apps/dws", port: 4007, cmd: "bun run dev:server" },
   ];
   
   for (const svc of services) {
     const svcDir = join(root, svc.dir);
-    if (!existsSync(svcDir)) {
-      console.log(`⚠ ${svc.name} directory not found`);
+    const pkgJson = join(svcDir, "package.json");
+    
+    if (!existsSync(pkgJson)) {
+      console.log(`⚠ ${svc.name} package.json not found at ${svcDir}`);
       continue;
     }
     
     console.log(`Starting ${svc.name}...`);
     
-    const [cmd, ...args] = svc.cmd.split(" ");
-    const proc = execa(cmd, args, {
-      cwd: svcDir,
-      stdio: "pipe",
-      detached: true,
-      env: {
-        ...process.env,
-        PORT: String(svc.port),
-        RPC_URL: TEST_RPC_URL,
-        CHAIN_ID: "1337",
-      },
-    });
-    startedProcesses.push(proc);
+    try {
+      const [cmd, ...args] = svc.cmd.split(" ");
+      const proc = execa(cmd, args, {
+        cwd: svcDir,
+        stdio: "pipe",
+        detached: true,
+        env: {
+          ...process.env,
+          PORT: String(svc.port),
+          RPC_URL: TEST_RPC_URL,
+          CHAIN_ID: "1337",
+        },
+      });
+      startedProcesses.push(proc);
+    } catch (e) {
+      console.log(`⚠ Failed to start ${svc.name}`);
+    }
   }
   
   // Wait for services with short timeout (10s each)
@@ -316,6 +329,7 @@ export async function setupTestEnvironment(): Promise<{
       gatewayUrl: TEST_GATEWAY_URL,
       privateKey: TEST_PRIVATE_KEY,
       chainRunning: true,
+      contractsDeployed: true,
       servicesRunning: true,
     };
   }

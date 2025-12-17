@@ -91,13 +91,15 @@ async function checkPrerequisites() {
   // Check AWS credentials
   const awsCheck = await $`aws sts get-caller-identity`.quiet().nothrow();
   if (awsCheck.exitCode !== 0) {
-    throw new Error('AWS credentials not configured');
+    const errorMsg = awsCheck.stderr.toString() || awsCheck.stdout.toString() || 'Unknown error';
+    throw new Error(`AWS credentials not configured: ${errorMsg.split('\n')[0]}`);
   }
 
   // Check kubectl
   const kubectlCheck = await $`kubectl cluster-info`.quiet().nothrow();
   if (kubectlCheck.exitCode !== 0) {
-    throw new Error('kubectl not configured or cluster not accessible');
+    const errorMsg = kubectlCheck.stderr.toString() || kubectlCheck.stdout.toString() || 'Unknown error';
+    throw new Error(`kubectl not configured or cluster not accessible: ${errorMsg.split('\n')[0]}`);
   }
 
   // Check terraform state
@@ -236,8 +238,10 @@ async function deployBundler() {
 }
 
 async function verifyDeployment() {
-  // Verify RPC
-  const rpcResponse = await fetch('https://testnet-rpc.jeju.network', {
+  // Verify RPC - use environment variable if available, otherwise default
+  const rpcUrl = process.env.JEJU_TESTNET_RPC_URL || 'https://testnet-rpc.jeju.network';
+  
+  const rpcResponse = await fetch(rpcUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -248,9 +252,23 @@ async function verifyDeployment() {
     }),
   });
 
-  const rpcData = await rpcResponse.json() as { result?: string };
-  if (!rpcData.result || parseInt(rpcData.result, 16) !== 420690) {
-    throw new Error('RPC not returning correct chain ID');
+  if (!rpcResponse.ok) {
+    throw new Error(`RPC health check failed: HTTP ${rpcResponse.status} ${rpcResponse.statusText}`);
+  }
+
+  const rpcData = await rpcResponse.json() as { result?: string; error?: { message: string } };
+  
+  if (rpcData.error) {
+    throw new Error(`RPC error: ${rpcData.error.message}`);
+  }
+  
+  if (!rpcData.result) {
+    throw new Error('RPC returned no result');
+  }
+  
+  const chainId = parseInt(rpcData.result, 16);
+  if (chainId !== 420690) {
+    throw new Error(`RPC not returning correct chain ID: expected 420690, got ${chainId}`);
   }
 
   steps[11].message = 'All checks passed';

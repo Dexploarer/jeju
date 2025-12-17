@@ -30,12 +30,18 @@ import { EventEmitter } from 'events';
 
 // ============ Configuration ============
 
-const SUPPORTED_CHAINS = {
+const SUPPORTED_EVM_CHAINS = {
   1: { chain: mainnet, name: 'Ethereum' },
   42161: { chain: arbitrum, name: 'Arbitrum' },
   10: { chain: optimism, name: 'Optimism' },
   8453: { chain: base, name: 'Base' },
 } as const;
+
+// Solana chain IDs (101 = mainnet, 102 = devnet)
+const SOLANA_CHAIN_IDS = [101, 102] as const;
+
+// For compatibility with existing code
+const SUPPORTED_CHAINS = SUPPORTED_EVM_CHAINS;
 
 // XLP Contract ABI
 const XLP_POOL_ABI = parseAbi([
@@ -66,7 +72,7 @@ const DEFAULT_ALLOCATION: Record<number, number> = {
 
 const REBALANCE_THRESHOLD_PERCENT = 10;
 
-// Token addresses by chain
+// Token addresses by chain (EVM uses Address type)
 const TOKENS: Record<string, Record<number, Address>> = {
   USDC: {
     1: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
@@ -85,6 +91,26 @@ const TOKENS: Record<string, Record<number, Address>> = {
     8453: '0x4200000000000000000000000000000000000006',
   },
 };
+
+// Solana token mints (for cross-chain reference)
+const SOLANA_TOKENS: Record<string, string> = {
+  USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapT8G4wEGGkZwyTDt1v',
+  USDT: 'Es9vMFrzaCERmJfrF4H2FsqcVc7eHvqZN9Y1FMx6ByGu',
+  SOL: 'So11111111111111111111111111111111111111112',
+  WETH: '7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs', // Wormhole WETH
+};
+
+export function isSolanaChain(chainId: number): boolean {
+  return SOLANA_CHAIN_IDS.includes(chainId as 101 | 102);
+}
+
+export function getSolanaTokenMint(symbol: string): string | undefined {
+  return SOLANA_TOKENS[symbol];
+}
+
+export function getEvmTokenAddress(symbol: string, chainId: number): Address | undefined {
+  return TOKENS[symbol]?.[chainId];
+}
 
 // ============ Types ============
 

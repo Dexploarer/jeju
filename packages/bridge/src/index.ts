@@ -101,7 +101,41 @@ export {
 	type FillRequest,
 	type RouteStats,
 	type XLPStats,
+	isSolanaChain,
+	getSolanaTokenMint,
+	getEvmTokenAddress,
 } from "./xlp/index.js";
+
+export {
+	FederatedIdentityBridge,
+	createFederatedIdentityBridge,
+	type FederatedIdentityConfig,
+	type SolanaAgent,
+	type FederatedAgent,
+	type CrossChainIdentityLink,
+} from "./identity/index.js";
+
+export {
+	NFTBridgeService,
+	createNFTBridgeService,
+	type NFTBridgeConfig,
+	type BridgeRequest as NFTBridgeRequest,
+	type SolanaNFTMetadata,
+	type CrossChainNFT,
+	BridgeStatus as NFTBridgeStatus,
+} from "./nft/index.js";
+
+export {
+	SolanaNetworkRegistry,
+	createSolanaNetworkRegistry,
+	registerSolanaNetworks,
+	establishSolanaTrust,
+	type NetworkRegistryConfig,
+	type SolanaNetworkConfig,
+	type NetworkContracts,
+	type SolanaNetworkInfo,
+	TrustTier,
+} from "./federation/index.js";
 
 export {
 	type ComponentHealth,

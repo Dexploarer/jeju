@@ -46,7 +46,6 @@ describe('BotInitializer', () => {
   let mockAgentSdk: AgentSDK;
 
   beforeEach(() => {
-    // Create fresh mock for each test
     mockAgentSdk = {
       registerAgent: mock(() => Promise.resolve({
         agentId: 1n,
