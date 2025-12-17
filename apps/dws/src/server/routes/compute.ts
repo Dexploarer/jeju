@@ -1,7 +1,12 @@
 import { Hono } from 'hono';
 import type { InferenceRequest } from '../../types';
 import type { Address, Hex } from 'viem';
-import { P2PTrainingNetwork, createP2PNetwork } from '../../compute/sdk/p2p';
+import { computeJobState, initializeDWSState } from '../../state.js';
+import { createP2PNetwork } from '../../compute/sdk/p2p';
+
+// Training blob storage
+const trainingBlobs = new Map<string, Uint8Array>();
+const MAX_BLOB_SIZE = 100 * 1024 * 1024; // 100MB
 
 type JobStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
 
@@ -20,10 +25,13 @@ interface ComputeJob {
   submittedBy: Address;
 }
 
-const jobs = new Map<string, ComputeJob>();
+// Active jobs tracking (for in-process execution)
 const activeJobs = new Set<string>();
 const MAX_CONCURRENT = 5;
 const DEFAULT_TIMEOUT = 300000;
+
+// Initialize CQL state
+initializeDWSState().catch(console.error);
 
 const SHELL_CONFIG: Record<string, { path: string; args: (cmd: string) => string[] }> = {
   bash: { path: '/bin/bash', args: (cmd) => ['-c', cmd] },
@@ -36,40 +44,25 @@ const SHELL_CONFIG: Record<string, { path: string; args: (cmd: string) => string
 export function createComputeRouter(): Hono {
   const app = new Hono();
 
-  app.get('/health', (c) =>
-    c.json({
+  app.get('/health', async (c) => {
+    const queued = await computeJobState.getQueued();
+    return c.json({
       service: 'dws-compute',
       status: 'healthy',
       activeJobs: activeJobs.size,
       maxConcurrent: MAX_CONCURRENT,
-      queuedJobs: [...jobs.values()].filter((j) => j.status === 'queued').length,
-    })
-  );
+      queuedJobs: queued.length,
+    });
+  });
 
   app.post('/chat/completions', async (c) => {
     const inferenceUrl = process.env.INFERENCE_API_URL;
     const body = await c.req.json<InferenceRequest>();
     
-    // If no inference backend, return mock response for dev/testing
     if (!inferenceUrl) {
-      return c.json({
-        id: `chatcmpl-${Date.now()}`,
-        object: 'chat.completion',
-        created: Math.floor(Date.now() / 1000),
-        model: body.model ?? 'dws-mock',
-        choices: [{
-          index: 0,
-          message: {
-            role: 'assistant',
-            content: 'This is a mock response from DWS compute. Set INFERENCE_API_URL to connect to a real model.',
-          },
-          finish_reason: 'stop',
-        }],
-        usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
-      });
+      return c.json({ error: 'INFERENCE_API_URL not configured' }, 503);
     }
 
-    // Proxy to actual inference backend
     const response = await fetch(`${inferenceUrl}/v1/chat/completions`, {
       method: 'POST',
       headers: {
@@ -81,7 +74,7 @@ export function createComputeRouter(): Hono {
 
     if (!response.ok) {
       const errorText = await response.text();
-      return c.json({ error: `Inference backend error: ${errorText}` }, response.status);
+      return c.json({ error: `Inference backend error: ${errorText}` }, response.status as 400 | 401 | 403 | 404 | 500 | 502 | 503);
     }
 
     const result = await response.json();
@@ -92,22 +85,10 @@ export function createComputeRouter(): Hono {
     const inferenceUrl = process.env.INFERENCE_API_URL;
     const body = await c.req.json<{ input: string | string[]; model?: string }>();
     
-    // If no inference backend, return mock embeddings for dev/testing
     if (!inferenceUrl) {
-      const inputs = Array.isArray(body.input) ? body.input : [body.input];
-      return c.json({
-        object: 'list',
-        data: inputs.map((_, i) => ({
-          object: 'embedding',
-          index: i,
-          embedding: Array.from({ length: 1536 }, () => Math.random() * 2 - 1),
-        })),
-        model: body.model ?? 'text-embedding-mock',
-        usage: { prompt_tokens: 10, total_tokens: 10 },
-      });
+      return c.json({ error: 'INFERENCE_API_URL not configured' }, 503);
     }
 
-    // Proxy to actual embeddings backend
     const response = await fetch(`${inferenceUrl}/v1/embeddings`, {
       method: 'POST',
       headers: {
@@ -119,7 +100,7 @@ export function createComputeRouter(): Hono {
 
     if (!response.ok) {
       const errorText = await response.text();
-      return c.json({ error: `Embeddings backend error: ${errorText}` }, response.status);
+      return c.json({ error: `Embeddings backend error: ${errorText}` }, response.status as 400 | 401 | 403 | 404 | 500 | 502 | 503);
     }
 
     const result = await response.json();
@@ -156,68 +137,86 @@ export function createComputeRouter(): Hono {
       submittedBy: submitter,
     };
 
-    jobs.set(jobId, job);
+    await computeJobState.save(job);
     processQueue();
 
     return c.json({ jobId, status: job.status }, 201);
   });
 
-  app.get('/jobs/:jobId', (c) => {
-    const job = jobs.get(c.req.param('jobId'));
-    if (!job) return c.json({ error: 'Job not found' }, 404);
+  app.get('/jobs/:jobId', async (c) => {
+    const row = await computeJobState.get(c.req.param('jobId'));
+    if (!row) return c.json({ error: 'Job not found' }, 404);
 
     return c.json({
-      jobId: job.jobId,
-      status: job.status,
-      output: job.output,
-      exitCode: job.exitCode,
-      startedAt: job.startedAt,
-      completedAt: job.completedAt,
-      duration: job.completedAt && job.startedAt ? job.completedAt - job.startedAt : null,
+      jobId: row.job_id,
+      status: row.status,
+      output: row.output,
+      exitCode: row.exit_code,
+      startedAt: row.started_at,
+      completedAt: row.completed_at,
+      duration: row.completed_at && row.started_at ? row.completed_at - row.started_at : null,
     });
   });
 
-  app.post('/jobs/:jobId/cancel', (c) => {
-    const job = jobs.get(c.req.param('jobId'));
-    if (!job) return c.json({ error: 'Job not found' }, 404);
-    if (job.status === 'completed' || job.status === 'failed') {
+  app.post('/jobs/:jobId/cancel', async (c) => {
+    const row = await computeJobState.get(c.req.param('jobId'));
+    if (!row) return c.json({ error: 'Job not found' }, 404);
+    if (row.status === 'completed' || row.status === 'failed') {
       return c.json({ error: 'Job already finished' }, 400);
     }
 
-    job.status = 'cancelled';
-    job.completedAt = Date.now();
-    activeJobs.delete(job.jobId);
+    const job: ComputeJob = {
+      jobId: row.job_id,
+      command: row.command,
+      shell: row.shell,
+      env: JSON.parse(row.env),
+      workingDir: row.working_dir ?? undefined,
+      timeout: row.timeout,
+      status: 'cancelled',
+      output: row.output,
+      exitCode: row.exit_code,
+      startedAt: row.started_at,
+      completedAt: Date.now(),
+      submittedBy: row.submitted_by as Address,
+    };
 
-    return c.json({ jobId: job.jobId, status: 'cancelled' });
+    await computeJobState.save(job);
+    activeJobs.delete(row.job_id);
+
+    return c.json({ jobId: row.job_id, status: 'cancelled' });
   });
 
-  app.get('/jobs', (c) => {
+  app.get('/jobs', async (c) => {
     const submitter = c.req.header('x-jeju-address')?.toLowerCase();
     const statusFilter = c.req.query('status');
     const limit = parseInt(c.req.query('limit') || '20');
 
-    const filtered = [...jobs.values()]
-      .filter((j) => (!submitter || j.submittedBy.toLowerCase() === submitter) && (!statusFilter || j.status === statusFilter))
-      .sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0))
-      .slice(0, limit);
+    const rows = await computeJobState.list({
+      submittedBy: submitter,
+      status: statusFilter ?? undefined,
+      limit,
+    });
 
     return c.json({
-      jobs: filtered.map((j) => ({
-        jobId: j.jobId,
+      jobs: rows.map((j) => ({
+        jobId: j.job_id,
         status: j.status,
-        exitCode: j.exitCode,
-        startedAt: j.startedAt,
-        completedAt: j.completedAt,
+        exitCode: j.exit_code,
+        startedAt: j.started_at,
+        completedAt: j.completed_at,
       })),
-      total: jobs.size,
+      total: rows.length,
     });
   });
 
-  // ============ Training Service Endpoints ============
-
-  // P2P Gossip endpoint for training network
+  // Training P2P Gossip endpoint
   app.post('/training/gossip', async (c) => {
-    const message = await c.req.json<{
+    const registryAddress = process.env.IDENTITY_REGISTRY_ADDRESS as Address | undefined;
+    if (!registryAddress) {
+      return c.json({ error: 'IDENTITY_REGISTRY_ADDRESS not configured' }, 503);
+    }
+
+    const body = await c.req.json<{
       type: string;
       runId: Hex;
       sender: Address;
@@ -226,146 +225,98 @@ export function createComputeRouter(): Hono {
       signature: Hex;
     }>();
 
-    // Handle incoming gossip message
-    const rpcUrl = process.env.RPC_URL || 'http://localhost:8545';
-    const identityRegistry = (process.env.IDENTITY_REGISTRY_ADDRESS || '0x0') as Address;
-    const selfEndpoint = process.env.DWS_ENDPOINT || 'http://localhost:4400';
+    const p2p = createP2PNetwork({
+      rpcUrl: process.env.RPC_URL ?? 'http://localhost:8545',
+      identityRegistryAddress: registryAddress,
+      selfEndpoint: process.env.DWS_ENDPOINT ?? 'http://localhost:3000',
+    });
 
-    if (identityRegistry !== '0x0') {
-      const p2p = createP2PNetwork({ rpcUrl, identityRegistryAddress: identityRegistry, selfEndpoint });
-      await p2p.handleGossip(message);
-    }
-
+    await p2p.handleGossip(body);
     return c.json({ received: true });
   });
 
-  // Blob storage for training data
-  const trainingBlobs = new Map<string, Uint8Array>();
-
-  app.get('/training/blob/:hash', (c) => {
-    const hash = c.req.param('hash') as Hex;
+  // Training Blob Storage
+  app.get('/training/blob/:hash', async (c) => {
+    const hash = c.req.param('hash');
     const blob = trainingBlobs.get(hash);
+
     if (!blob) {
       return c.json({ error: 'Blob not found' }, 404);
     }
-    return new Response(blob, {
+
+    return new Response(new Uint8Array(blob), {
       headers: { 'Content-Type': 'application/octet-stream' },
     });
   });
 
   app.post('/training/blob', async (c) => {
-    const data = new Uint8Array(await c.req.arrayBuffer());
-    const hash = `0x${Buffer.from(data).toString('hex').slice(0, 64)}` as Hex;
-    trainingBlobs.set(hash, data);
-    return c.json({ hash, size: data.length });
-  });
-
-  // Training run endpoint
-  app.post('/training/run', async (c) => {
-    const { baseModel, scoredData, config } = await c.req.json<{
-      baseModel: object;
-      scoredData: object[];
-      config: { epochs: number; batchSize: number; learningRate: number };
-    }>();
-
-    // Simulate training (in production, this would call Python trainer)
-    const startTime = Date.now();
-    const samples = scoredData.length;
-    const iterations = config.epochs * Math.ceil(samples / config.batchSize);
-    
-    // Calculate loss curve (simulated)
-    let loss = 2.0;
-    for (let i = 0; i < iterations; i++) {
-      loss *= 0.99; // Decay
-      loss += (Math.random() - 0.5) * 0.1; // Noise
+    const data = await c.req.arrayBuffer();
+    if (data.byteLength > MAX_BLOB_SIZE) {
+      return c.json({ error: `Blob too large (max ${MAX_BLOB_SIZE} bytes)` }, 413);
     }
-    const finalLoss = Math.max(0.05, loss);
 
-    return c.json({
-      trainedModel: {
-        ...baseModel,
-        trained: true,
-        version: Date.now(),
-        trainedAt: new Date().toISOString(),
-      },
-      finalLoss,
-      trainingTime: Date.now() - startTime,
-      iterations,
-    });
+    const bytes = new Uint8Array(data);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', bytes);
+    const hash = '0x' + Array.from(new Uint8Array(hashBuffer))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+
+    trainingBlobs.set(hash, bytes);
+    return c.json({ hash, size: bytes.length }, 201);
   });
 
-  // Simulation endpoint
-  app.post('/simulation/run', async (c) => {
-    const { model: _model, archetype, samples } = await c.req.json<{
-      model: object;
-      archetype: string;
-      samples: number;
-    }>();
-
-    // Generate simulation results based on archetype
-    const biasMap: Record<string, number> = {
-      trader: 0.1,
-      degen: -0.1,
-      conservative: 0.05,
-      aggressive: 0.15,
-    };
-    const bias = biasMap[archetype] ?? 0;
-
-    const results = Array.from({ length: samples }, () => ({
-      pnl: (Math.random() - 0.4 + bias) * 2000,
-      trades: Math.floor(10 + Math.random() * 50),
-    }));
-
-    return c.json(results);
-  });
-
-  // LLM judging endpoint
+  // LLM Judging endpoint for training
   app.post('/judging/score', async (c) => {
-    const { preparedData, archetype } = await c.req.json<{
-      preparedData: { data?: object[] };
-      archetype: string;
-    }>();
+    const judgingUrl = process.env.JUDGING_API_URL;
+    const body = await c.req.json<{ preparedData: object; archetype: string }>();
 
-    const trajectories = preparedData.data ?? [];
-    
-    const scoredResults = trajectories.map((t) => {
-      const trajectory = t as { rewards?: number[]; steps?: number };
-      const rewards = trajectory.rewards ?? [];
-      const steps = trajectory.steps ?? rewards.length;
-      
-      // Score based on reward sum and step efficiency
-      const totalReward = rewards.reduce((sum, r) => sum + r, 0);
-      const efficiency = steps > 0 ? totalReward / steps : 0;
-      const baseScore = 50 + totalReward / 10 + efficiency * 5;
-      
-      // Apply archetype-specific scoring adjustments
-      let score = baseScore;
-      if (archetype === 'trader' && totalReward > 0) score += 10;
-      if (archetype === 'degen' && Math.abs(totalReward) > 100) score += 5;
-      
-      return {
-        score: Math.min(100, Math.max(0, score)),
-        trajectory: t,
-      };
+    if (!judgingUrl) {
+      return c.json({ error: 'JUDGING_API_URL not configured' }, 503);
+    }
+
+    const response = await fetch(judgingUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
     });
 
-    return c.json(scoredResults);
+    if (!response.ok) {
+      const errorText = await response.text();
+      return c.json({ error: `Judging backend error: ${errorText}` }, response.status as 400 | 500 | 502 | 503);
+    }
+
+    return c.json(await response.json());
   });
 
   return app;
 }
 
-function processQueue(): void {
+async function processQueue(): Promise<void> {
   if (activeJobs.size >= MAX_CONCURRENT) return;
 
-  const next = [...jobs.values()].find((j) => j.status === 'queued');
+  const queued = await computeJobState.getQueued();
+  const next = queued[0];
   if (!next) return;
 
-  activeJobs.add(next.jobId);
-  next.status = 'running';
-  next.startedAt = Date.now();
+  const job: ComputeJob = {
+    jobId: next.job_id,
+    command: next.command,
+    shell: next.shell,
+    env: JSON.parse(next.env),
+    workingDir: next.working_dir ?? undefined,
+    timeout: next.timeout,
+    status: 'running',
+    output: '',
+    exitCode: null,
+    startedAt: Date.now(),
+    completedAt: null,
+    submittedBy: next.submitted_by as Address,
+  };
 
-  executeJob(next);
+  activeJobs.add(job.jobId);
+  await computeJobState.save(job);
+
+  executeJob(job);
 }
 
 async function executeJob(job: ComputeJob): Promise<void> {
@@ -400,11 +351,13 @@ async function executeJob(job: ComputeJob): Promise<void> {
   finishJob(job, output.join(''), await proc.exited);
 }
 
-function finishJob(job: ComputeJob, output: string, exitCode: number): void {
+async function finishJob(job: ComputeJob, output: string, exitCode: number): Promise<void> {
   job.output = output;
   job.exitCode = exitCode;
   job.status = exitCode === 0 ? 'completed' : 'failed';
   job.completedAt = Date.now();
+  
+  await computeJobState.save(job);
   activeJobs.delete(job.jobId);
   processQueue();
 }

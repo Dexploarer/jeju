@@ -148,7 +148,7 @@ app.post('/compute/inference', async (c) => {
   
   if (!response.ok) {
     const errorText = await response.text();
-    return c.json({ error: `Inference failed: ${errorText}` }, response.status);
+    return c.json({ error: `Inference failed: ${errorText}` }, response.status as 400 | 401 | 403 | 404 | 500 | 502 | 503);
   }
   
   const result = await response.json();

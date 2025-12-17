@@ -327,7 +327,7 @@ export class EdgeNodeServer {
 
       return c.json(
         { error: originResult.error, origin: originResult.origin },
-        { status: originResult.status || 502 }
+        (originResult.status || 502) as 400 | 401 | 403 | 404 | 500 | 502 | 503
       );
     }
 
