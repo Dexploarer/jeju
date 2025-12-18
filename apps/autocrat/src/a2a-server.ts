@@ -5,12 +5,11 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { formatEther, parseEther } from 'viem';
-import type { AutocratConfig } from './types';
+import type { AutocratConfig, AutocratVote } from './types';
 import { AutocratBlockchain } from './blockchain';
 import { autocratAgentRuntime, type DeliberationRequest } from './agents';
 import { getNetworkName, getWebsiteUrl } from '@jejunetwork/config';
-import { storeVote, getVotes, generateResearch, getResearch, store } from './local-services';
-import { checkDWSCompute, dwsGenerate } from './agents/runtime';
+import { storeVote, getVotes, generateResearch, getResearch, store, inference } from './local-services';
 import { ZERO_ADDRESS, assessClarity, assessCompleteness, assessFeasibility, assessAlignment, assessImpact, assessRisk, assessCostBenefit, calculateQualityScore, assessProposalWithAI } from './shared';
 import { getTEEMode } from './tee';
 
@@ -135,11 +134,6 @@ export class AutocratA2AServer {
     const agent = (params.agent as string) ?? 'ceo';
     if (!message) return { message: 'Error', data: { error: 'Missing message parameter' } };
 
-    const dwsUp = await checkDWSCompute();
-    if (!dwsUp) {
-      return { message: 'LLM unavailable', data: { error: 'DWS compute not available. Start with: docker compose up -d' } };
-    }
-
     const systemPrompts: Record<string, string> = {
       ceo: 'You are Eliza, AI CEO of Network DAO. Make decisive governance decisions.',
       treasury: 'You are the Treasury Guardian. Analyze financial implications.',
@@ -148,16 +142,22 @@ export class AutocratA2AServer {
       security: 'You are the Security Guardian. Identify risks and vulnerabilities.',
     };
 
-    const response = await dwsGenerate(message, systemPrompts[agent] ?? systemPrompts.ceo);
-    return { message: `${agent} responded`, data: { agent, model: 'dws-compute', response, timestamp: new Date().toISOString() } };
+    try {
+      const response = await inference({
+        messages: [{ role: 'user', content: message }],
+        systemPrompt: systemPrompts[agent] ?? systemPrompts.ceo,
+      });
+      return { message: `${agent} responded`, data: { agent, model: 'dws-compute', response, timestamp: new Date().toISOString() } };
+    } catch (error) {
+      return { message: 'LLM unavailable', data: { error: error instanceof Error ? error.message : 'DWS compute not available' } };
+    }
   }
 
   private async assessProposal(params: Record<string, unknown>): Promise<SkillResult> {
     const { title, summary, description } = params as { title?: string; summary?: string; description?: string };
 
     // Try AI assessment first
-    const dwsUp = await checkDWSCompute();
-    if (dwsUp && title && summary && description) {
+    if (title && summary && description) {
       const prompt = `Assess this DAO proposal and return JSON scores 0-100:
 
 Title: ${title}
@@ -167,20 +167,27 @@ Description: ${description}
 Return ONLY JSON:
 {"clarity":N,"completeness":N,"feasibility":N,"alignment":N,"impact":N,"riskAssessment":N,"costBenefit":N,"feedback":[],"blockers":[],"suggestions":[]}`;
 
-      const response = await dwsGenerate(prompt, 'You are a DAO proposal evaluator. Return only valid JSON.');
-      const parsed = JSON.parse(response) as { clarity: number; completeness: number; feasibility: number; alignment: number; impact: number; riskAssessment: number; costBenefit: number; feedback: string[]; blockers: string[]; suggestions: string[] };
-      const overallScore = calculateQualityScore(parsed);
-      return {
-        message: overallScore >= 90 ? `Ready: ${overallScore}/100` : `Needs work: ${overallScore}/100`,
-        data: { overallScore, criteria: parsed, feedback: parsed.feedback, blockers: parsed.blockers, suggestions: parsed.suggestions, readyToSubmit: overallScore >= 90, assessedBy: 'dws' }
-      };
+      try {
+        const response = await inference({
+          messages: [{ role: 'user', content: prompt }],
+          systemPrompt: 'You are a DAO proposal evaluator. Return only valid JSON.',
+        });
+        const parsed = JSON.parse(response) as { clarity: number; completeness: number; feasibility: number; alignment: number; impact: number; riskAssessment: number; costBenefit: number; feedback: string[]; blockers: string[]; suggestions: string[] };
+        const overallScore = calculateQualityScore(parsed);
+        return {
+          message: overallScore >= 90 ? `Ready: ${overallScore}/100` : `Needs work: ${overallScore}/100`,
+          data: { overallScore, criteria: parsed, feedback: parsed.feedback, blockers: parsed.blockers, suggestions: parsed.suggestions, readyToSubmit: overallScore >= 90, assessedBy: 'dws-compute' }
+        };
+      } catch {
+        // Fall through to heuristic
+      }
     }
 
     // Try cloud AI if configured
     const hasCloud = this.config.cloudEndpoint && this.config.cloudEndpoint !== 'local';
     if (hasCloud && title && summary && description) {
       try {
-        const result = await assessProposalWithAI(title, summary, description, this.config.cloudEndpoint, process.env.CLOUD_API_KEY);
+        const result = await assessProposalWithAI(title, summary, description, this.config.cloudEndpoint ?? '', process.env.CLOUD_API_KEY);
         return {
           message: result.overallScore >= 90 ? `Ready: ${result.overallScore}/100` : `Needs work: ${result.overallScore}/100`,
           data: { ...result, readyToSubmit: result.overallScore >= 90, assessedBy: 'cloud' }
@@ -217,7 +224,7 @@ Return ONLY JSON:
       message: 'Ready to submit',
       data: {
         action: 'submitProposal',
-        contract: this.config.contracts.council,
+        contract: this.config.contracts?.council ?? ZERO_ADDRESS,
         params: { proposalType: params.proposalType, qualityScore, contentHash: params.contentHash, targetContract: params.targetContract || ZERO_ADDRESS, callData: params.callData || '0x', value: params.value || '0' },
         bond: formatEther(parseEther('0.001'))
       }
@@ -239,7 +246,7 @@ Return ONLY JSON:
   private prepareBackProposal(params: Record<string, unknown>): SkillResult {
     return {
       message: 'Ready to back',
-      data: { action: 'backProposal', contract: this.config.contracts.council, params: { proposalId: params.proposalId, stakeAmount: params.stakeAmount || '0', reputationWeight: params.reputationWeight || 0 } }
+      data: { action: 'backProposal', contract: this.config.contracts?.council ?? ZERO_ADDRESS, params: { proposalId: params.proposalId, stakeAmount: params.stakeAmount || '0', reputationWeight: params.reputationWeight || 0 } }
     };
   }
 
@@ -247,7 +254,7 @@ Return ONLY JSON:
     if (!proposalId) return { message: 'Error', data: { error: 'Missing proposalId' } };
     
     // Get from local storage first
-    const localVotes = getVotes(proposalId);
+    const localVotes = await getVotes(proposalId);
     if (localVotes.length > 0) {
       return { message: `${localVotes.length} votes`, data: { proposalId, votes: localVotes, source: 'local' } };
     }
@@ -258,7 +265,7 @@ Return ONLY JSON:
     return { message: `${result.votes.length} votes`, data: { proposalId, votes: this.blockchain.formatVotes(result.votes), source: 'chain' } };
   }
 
-  private submitVote(params: Record<string, unknown>): SkillResult {
+  private async submitVote(params: Record<string, unknown>): Promise<SkillResult> {
     const { proposalId, agentId, vote, reasoning, confidence } = params as { proposalId: string; agentId: string; vote: 'APPROVE' | 'REJECT' | 'ABSTAIN'; reasoning: string; confidence: number };
 
     if (!proposalId || !agentId || !vote) {
@@ -286,11 +293,6 @@ Return ONLY JSON:
   private async runDeliberation(params: Record<string, unknown>): Promise<SkillResult> {
     const { proposalId, title, description, proposalType, submitter } = params as { proposalId: string; title?: string; description?: string; proposalType?: string; submitter?: string };
     if (!proposalId) return { message: 'Error', data: { error: 'Missing proposalId' } };
-
-    const dwsUp = await checkDWSCompute();
-    if (!dwsUp) {
-      return { message: 'LLM unavailable', data: { error: 'Deliberation requires DWS compute. Start with: docker compose up -d' } };
-    }
 
     const request: DeliberationRequest = {
       proposalId,
@@ -337,7 +339,8 @@ Return ONLY JSON:
 
   private async listModels(): Promise<SkillResult> {
     if (!this.blockchain.ceoDeployed) {
-      return { message: 'Contract not deployed', data: { models: [this.config.agents.ceo.model], currentModel: this.config.agents.ceo.model } };
+      const ceoModel = this.config.agents?.ceo?.model ?? 'default';
+      return { message: 'Contract not deployed', data: { models: [ceoModel], currentModel: ceoModel } };
     }
     const modelIds = await this.blockchain.ceoAgent.getAllModels() as string[];
     return { message: `${modelIds.length} models`, data: { models: modelIds } };
@@ -347,11 +350,6 @@ Return ONLY JSON:
     const proposalId = params.proposalId as string;
     const description = (params.description as string) ?? 'Proposal for DAO governance';
     if (!proposalId) return { message: 'Error', data: { error: 'Missing proposalId' } };
-
-    const dwsUp = await checkDWSCompute();
-    if (!dwsUp) {
-      return { message: 'LLM unavailable', data: { error: 'Research requires DWS compute. Start with: docker compose up -d' } };
-    }
 
     const research = await generateResearch(proposalId, description);
     return {
@@ -370,7 +368,7 @@ Return ONLY JSON:
   private prepareCastVeto(params: Record<string, unknown>): SkillResult {
     return {
       message: 'Ready to veto',
-      data: { action: 'castVetoVote', contract: this.config.contracts.council, params: { proposalId: params.proposalId, category: params.category, reasonHash: params.reason }, minStake: '0.01 ETH' }
+      data: { action: 'castVetoVote', contract: this.config.contracts?.council ?? ZERO_ADDRESS, params: { proposalId: params.proposalId, category: params.category, reasonHash: params.reason }, minStake: '0.01 ETH' }
     };
   }
 
@@ -395,14 +393,9 @@ Return ONLY JSON:
   private async makeCEODecision(proposalId: string): Promise<SkillResult> {
     if (!proposalId) return { message: 'Error', data: { error: 'Missing proposalId' } };
 
-    const dwsUp = await checkDWSCompute();
-    if (!dwsUp) {
-      return { message: 'LLM unavailable', data: { error: 'CEO decision requires DWS compute. Start with: docker compose up -d' } };
-    }
-
-    const votes = getVotes(proposalId);
-    const approves = votes.filter(v => v.vote === 'APPROVE').length;
-    const rejects = votes.filter(v => v.vote === 'REJECT').length;
+    const votes = await getVotes(proposalId);
+    const approves = votes.filter((v: AutocratVote) => v.vote === 'APPROVE').length;
+    const rejects = votes.filter((v: AutocratVote) => v.vote === 'REJECT').length;
     const total = votes.length || 1;
 
     // Use real LLM for decision reasoning
@@ -411,29 +404,36 @@ Return ONLY JSON:
 Council votes: ${approves} approve, ${rejects} reject, ${total - approves - rejects} abstain
 
 Vote details:
-${votes.map(v => `- ${v.role}: ${v.vote} (${v.confidence}%) - ${v.reasoning}`).join('\n')}
+${votes.map((v: AutocratVote) => `- ${v.role}: ${v.vote} (${v.confidence}%) - ${v.reasoning}`).join('\n')}
 
 Provide your decision as: APPROVED or REJECTED, with reasoning.`;
 
-    const response = await dwsGenerate(prompt, 'You are Eliza, AI CEO of Network DAO. Make decisive, well-reasoned governance decisions.');
-    const approved = response.toLowerCase().includes('approved') && !response.toLowerCase().includes('rejected');
+    try {
+      const response = await inference({
+        messages: [{ role: 'user', content: prompt }],
+        systemPrompt: 'You are Eliza, AI CEO of Network DAO. Make decisive, well-reasoned governance decisions.',
+      });
+      const approved = response.toLowerCase().includes('approved') && !response.toLowerCase().includes('rejected');
 
-    const decision = {
-      proposalId,
-      approved,
-      confidenceScore: Math.round((Math.max(approves, rejects) / total) * 100),
-      alignmentScore: Math.round(((approves + rejects) / total) * 100),
-      autocratVotes: { approve: approves, reject: rejects, abstain: total - approves - rejects },
-      reasoning: response.slice(0, 500),
-      recommendations: approved ? ['Proceed with implementation'] : ['Address council concerns'],
-      timestamp: new Date().toISOString(),
-      model: 'dws-compute',
-      teeMode: getTEEMode()
-    };
+      const decision = {
+        proposalId,
+        approved,
+        confidenceScore: Math.round((Math.max(approves, rejects) / total) * 100),
+        alignmentScore: Math.round(((approves + rejects) / total) * 100),
+        autocratVotes: { approve: approves, reject: rejects, abstain: total - approves - rejects },
+        reasoning: response.slice(0, 500),
+        recommendations: approved ? ['Proceed with implementation'] : ['Address council concerns'],
+        timestamp: new Date().toISOString(),
+        model: 'dws-compute',
+        teeMode: getTEEMode()
+      };
 
-    await store({ type: 'ceo_decision', ...decision });
+      await store({ type: 'ceo_decision', ...decision });
 
-    return { message: `CEO: ${approved ? 'APPROVED' : 'REJECTED'}`, data: decision };
+      return { message: `CEO: ${approved ? 'APPROVED' : 'REJECTED'}`, data: decision };
+    } catch (error) {
+      return { message: 'LLM unavailable', data: { error: error instanceof Error ? error.message : 'DWS compute not available' } };
+    }
   }
 
   getRouter(): Hono {

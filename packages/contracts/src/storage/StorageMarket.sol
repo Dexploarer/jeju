@@ -308,7 +308,7 @@ contract StorageMarket is IStorageTypes, ReentrancyGuard, Ownable {
         view
         returns (uint256)
     {
-        IStorageTypes.ProviderInfo memory info = registry.getProviderInfo(provider);
+        IStorageTypes.StorageProviderInfo memory info = registry.getStorageProviderInfo(provider);
 
         uint256 sizeGB = sizeBytes / (1024 ** 3);
         if (sizeGB == 0) sizeGB = 1;
@@ -337,7 +337,7 @@ contract StorageMarket is IStorageTypes, ReentrancyGuard, Ownable {
         view
         returns (StorageQuote memory)
     {
-        IStorageTypes.ProviderInfo memory info = registry.getProviderInfo(provider);
+        IStorageTypes.StorageProviderInfo memory info = registry.getStorageProviderInfo(provider);
         uint256 cost = calculateDealCost(provider, sizeBytes, durationDays, tier);
 
         uint256 sizeGB = sizeBytes / (1024 ** 3);
