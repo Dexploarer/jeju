@@ -219,11 +219,8 @@ export const jejuPlugin: Plugin = {
     listNftsAction,
     listNamesForSaleAction,
 
-    // === Moderation (basic) ===
+    // === Moderation ===
     reportAgentAction,
-    listModerationCasesAction,
-
-    // === Moderation (evidence & cases) ===
     submitEvidenceAction,
     supportEvidenceAction,
     getEvidenceAction,
@@ -231,7 +228,7 @@ export const jejuPlugin: Plugin = {
     claimEvidenceRewardAction,
     createCaseAction,
     getCaseAction,
-    listCasesAction,
+    listCasesAction, // LIST_MODERATION_CASES
     appealCaseAction,
     issueLabelAction,
     getLabelsAction,

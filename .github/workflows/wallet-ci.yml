@@ -87,7 +87,6 @@ jobs:
 
       - name: Start Jeju localnet (anvil)
         run: |
-          # Use anvil for CI (faster than Kurtosis)
           anvil --chain-id 1337 --port 9545 --block-time 1 --accounts 10 --balance 10000 &
           sleep 3
           curl -s -X POST http://localhost:9545 -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}' | grep -q "0x539" && echo "Localnet running"
@@ -145,7 +144,7 @@ jobs:
     needs: [lint-typecheck]
     strategy:
       matrix:
-        target: [chrome, firefox]
+        target: [chrome, firefox, safari, edge, brave]
     steps:
       - uses: actions/checkout@v4
       
@@ -160,11 +159,16 @@ jobs:
       - name: Build ${{ matrix.target }} extension
         run: EXT_TARGET=${{ matrix.target }} bun run build:ext
 
+      - name: Zip extension
+        run: cd dist-ext-${{ matrix.target }} && zip -r ../network-wallet-${{ matrix.target }}.zip .
+
       - name: Upload extension artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.target }}-extension
-          path: apps/wallet/dist-ext-${{ matrix.target }}
+          path: |
+            apps/wallet/dist-ext-${{ matrix.target }}
+            apps/wallet/network-wallet-${{ matrix.target }}.zip
           retention-days: 7
 
   # ============================================
@@ -235,6 +239,30 @@ jobs:
         with:
           name: tauri-${{ matrix.platform }}
           path: apps/wallet/src-tauri/target/${{ matrix.target }}/release/bundle/${{ matrix.artifact }}
+          retention-days: 14
+
+  # ============================================
+  # LINUX SNAP BUILD
+  # ============================================
+  build-snap:
+    name: Build Snap
+    needs: [lint-typecheck]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Snapcraft
+        uses: snapcore/action-build@v1
+        id: snapcraft
+        with:
+          path: apps/wallet
+
+      - name: Upload snap artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: snap-build
+          path: ${{ steps.snapcraft.outputs.snap }}
           retention-days: 14
 
   # ============================================
@@ -356,18 +384,15 @@ jobs:
           IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: |
-          # Create temporary keychain
           security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
           security default-keychain -s build.keychain
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
           security set-keychain-settings -t 3600 -u build.keychain
           
-          # Import certificate
           echo "$IOS_CERTIFICATE_BASE64" | base64 --decode > certificate.p12
           security import certificate.p12 -k build.keychain -P "$IOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" build.keychain
           
-          # Install provisioning profile
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           echo "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
 
@@ -402,3 +427,22 @@ jobs:
             apps/wallet/ios/App/build/Build/Products/Debug-iphonesimulator/*.app
           retention-days: 14
 
+  # ============================================
+  # BUILD SUMMARY
+  # ============================================
+  build-summary:
+    name: Build Summary
+    runs-on: ubuntu-latest
+    needs: [build-web, build-extensions, build-desktop, build-android, build-ios, build-snap]
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Check build status
+        run: |
+          echo "Build Summary:"
+          echo "=============="
+          echo "Web: ${{ needs.build-web.result }}"
+          echo "Extensions: ${{ needs.build-extensions.result }}"
+          echo "Desktop: ${{ needs.build-desktop.result }}"
+          echo "Android: ${{ needs.build-android.result }}"
+          echo "iOS: ${{ needs.build-ios.result }}"
+          echo "Snap: ${{ needs.build-snap.result }}"

@@ -8,7 +8,7 @@ import type { Address, Hex } from 'viem';
 // Platform Types
 // ============================================================================
 
-export type Platform = 'discord' | 'telegram' | 'whatsapp';
+export type Platform = 'discord' | 'telegram' | 'whatsapp' | 'farcaster' | 'web';
 
 export interface PlatformUser {
   platform: Platform;
@@ -60,6 +60,9 @@ export interface OttoUser {
   createdAt: number;
   lastActiveAt: number;
   settings: UserSettings;
+  // Farcaster specific
+  fid?: number;
+  farcasterUsername?: string;
 }
 
 export interface UserPlatformLink {
@@ -352,6 +355,23 @@ export interface TwilioWebhookPayload {
   MediaUrl0?: string;
 }
 
+export interface FarcasterFramePayload {
+  untrustedData: {
+    fid: number;
+    url: string;
+    messageHash: string;
+    timestamp: number;
+    network: number;
+    buttonIndex: number;
+    inputText?: string;
+    castId?: { fid: number; hash: string };
+    state?: string;
+  };
+  trustedData: {
+    messageBytes: string;
+  };
+}
+
 // ============================================================================
 // Config Types
 // ============================================================================
@@ -380,6 +400,13 @@ export interface OttoConfig {
     twilioToken?: string;
     phoneNumber?: string;
   };
+
+  farcaster: {
+    enabled: boolean;
+    apiKey?: string;
+    botFid?: number;
+    signerUuid?: string;
+  };
   
   trading: {
     defaultChainId: number;
@@ -407,6 +434,7 @@ export interface OttoState {
 }
 
 export interface UserSession {
+  sessionId: string;
   userId: string;
   platform: Platform;
   channelId: string;
@@ -436,3 +464,37 @@ export interface PendingTransaction {
   data: Record<string, unknown>;
 }
 
+// ============================================================================
+// Chat API Types
+// ============================================================================
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: number;
+  embed?: MessageEmbed;
+  buttons?: MessageButton[];
+}
+
+export interface ChatSession {
+  sessionId: string;
+  userId: string;
+  messages: ChatMessage[];
+  createdAt: number;
+  lastActiveAt: number;
+}
+
+export interface ChatRequest {
+  sessionId?: string;
+  message: string;
+  userId?: string;
+  walletAddress?: Address;
+}
+
+export interface ChatResponse {
+  sessionId: string;
+  message: ChatMessage;
+  requiresAuth: boolean;
+  authUrl?: string;
+}

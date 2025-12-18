@@ -107,7 +107,7 @@ export function getConfig(): OttoConfig {
   return {
     port: parseInt(process.env.OTTO_PORT ?? '4040'),
     webhookPort: parseInt(process.env.OTTO_WEBHOOK_PORT ?? '4041'),
-    baseUrl: process.env.OTTO_BASE_URL ?? 'http://localhost:4030',
+    baseUrl: process.env.OTTO_BASE_URL ?? 'http://localhost:4040',
     
     discord: {
       enabled: !!process.env.DISCORD_BOT_TOKEN,
@@ -127,6 +127,13 @@ export function getConfig(): OttoConfig {
       twilioSid: process.env.TWILIO_ACCOUNT_SID,
       twilioToken: process.env.TWILIO_AUTH_TOKEN,
       phoneNumber: process.env.TWILIO_WHATSAPP_NUMBER,
+    },
+
+    farcaster: {
+      enabled: !!process.env.NEYNAR_API_KEY && !!process.env.FARCASTER_BOT_FID,
+      apiKey: process.env.NEYNAR_API_KEY,
+      botFid: parseInt(process.env.FARCASTER_BOT_FID ?? '0'),
+      signerUuid: process.env.FARCASTER_SIGNER_UUID,
     },
     
     trading: {

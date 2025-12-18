@@ -71,10 +71,12 @@ export async function checkDWSCompute(): Promise<boolean> {
 
 export async function dwsGenerate(prompt: string, system: string, maxTokens = 500): Promise<string> {
   const endpoint = getDWSEndpoint();
-  const r = await fetch(`${endpoint}/chat`, {
+  // Use OpenAI-compatible endpoint
+  const r = await fetch(`${endpoint}/chat/completions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
+      model: 'llama3.2', // DWS will use configured inference backend
       messages: [
         { role: 'system', content: system },
         { role: 'user', content: prompt },
