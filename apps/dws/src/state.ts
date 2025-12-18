@@ -622,6 +622,60 @@ export const apiListingState = {
       CQL_DATABASE_ID
     );
   },
+  
+  async listAll(limit = 100): Promise<ApiListingRow[]> {
+    const client = await getCQLClient();
+    const result = await client.query<ApiListingRow>(
+      'SELECT * FROM api_listings ORDER BY created_at DESC LIMIT ?',
+      [limit],
+      CQL_DATABASE_ID
+    );
+    return result.rows;
+  },
+  
+  async listByProvider(providerId: string): Promise<ApiListingRow[]> {
+    const client = await getCQLClient();
+    const result = await client.query<ApiListingRow>(
+      'SELECT * FROM api_listings WHERE provider_id = ? ORDER BY created_at DESC',
+      [providerId],
+      CQL_DATABASE_ID
+    );
+    return result.rows;
+  },
+  
+  async listActive(): Promise<ApiListingRow[]> {
+    const client = await getCQLClient();
+    const result = await client.query<ApiListingRow>(
+      `SELECT * FROM api_listings WHERE status = 'active' ORDER BY created_at DESC`,
+      [],
+      CQL_DATABASE_ID
+    );
+    return result.rows;
+  },
+  
+  async getStats(): Promise<{ totalListings: number; activeListings: number; totalRevenue: string }> {
+    const client = await getCQLClient();
+    const total = await client.query<{ count: number }>(
+      'SELECT COUNT(*) as count FROM api_listings',
+      [],
+      CQL_DATABASE_ID
+    );
+    const active = await client.query<{ count: number }>(
+      `SELECT COUNT(*) as count FROM api_listings WHERE status = 'active'`,
+      [],
+      CQL_DATABASE_ID
+    );
+    const revenue = await client.query<{ total: string }>(
+      'SELECT COALESCE(SUM(CAST(total_revenue AS INTEGER)), 0) as total FROM api_listings',
+      [],
+      CQL_DATABASE_ID
+    );
+    return {
+      totalListings: total.rows[0]?.count ?? 0,
+      activeListings: active.rows[0]?.count ?? 0,
+      totalRevenue: revenue.rows[0]?.total ?? '0',
+    };
+  },
 };
 
 // API User Account Operations

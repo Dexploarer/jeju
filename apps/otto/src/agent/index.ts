@@ -219,6 +219,42 @@ If you can't determine the intent, respond with command: "help".`,
     }
   }
 
+  async handleFarcasterWebhook(payload: unknown): Promise<void> {
+    const adapter = this.platformManager.getAdapter('farcaster');
+    if (adapter?.handleWebhook) {
+      await adapter.handleWebhook(payload);
+    }
+  }
+
+  // ============================================================================
+  // Adapter Access
+  // ============================================================================
+
+  getFarcasterAdapter() {
+    return this.platformManager.getAdapter('farcaster') as import('../platforms/farcaster').FarcasterAdapter | null;
+  }
+
+  // ============================================================================
+  // Direct Chat (for web/API)
+  // ============================================================================
+
+  async chat(message: PlatformMessage): Promise<CommandResult> {
+    const command = this.commandHandler.parseCommand(message);
+    
+    if (command) {
+      return this.commandHandler.execute(command);
+    }
+    
+    if (this.aiEnabled) {
+      return this.handleNaturalLanguage(message);
+    }
+    
+    return {
+      success: false,
+      message: `I didn't understand that command.\n\nTry:\n• \`help\` - See available commands\n• \`swap 1 ETH to USDC\` - Swap tokens\n• \`balance\` - Check your balance`,
+    };
+  }
+
   // ============================================================================
   // Status
   // ============================================================================

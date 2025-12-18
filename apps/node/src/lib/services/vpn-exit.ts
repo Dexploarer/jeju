@@ -336,19 +336,38 @@ export class VPNExitService {
   }
 
   private async handleWireGuardPacket(data: Buffer, rinfo: dgram.RemoteInfo): Promise<void> {
-    // TODO: Implement actual WireGuard protocol handling
-    // This is a placeholder that would need to:
-    // 1. Parse WireGuard handshake messages
-    // 2. Perform key exchange
-    // 3. Decrypt/encrypt data packets
-    // 4. Forward decrypted traffic to internet
-    // 5. Route responses back to client
+    // WireGuard protocol implementation requires native code (Rust/C)
+    // This service acts as a coordination layer - actual WireGuard is handled by:
+    // 1. System-level wg-quick or wireguard-go for tunnel management
+    // 2. This service handles: client auth, IP allocation, session tracking, billing
+    //
+    // In production, integrate with:
+    // - wireguard-go: https://github.com/WireGuard/wireguard-go
+    // - boringtun: https://github.com/cloudflare/boringtun (Rust implementation)
+    //
+    // For now, this logs packets for debugging and tracks metrics.
+    // The actual tunnel should be set up via system configuration.
 
-    // For now, just log packet reception
-    console.log(`[VPNExit] Received ${data.length} bytes from ${rinfo.address}:${rinfo.port}`);
-
-    // Track bytes
     vpnBytesTotal.inc({ direction: 'in' }, data.length);
+
+    // Parse WireGuard message type (first byte)
+    const messageType = data[0];
+    switch (messageType) {
+      case 1: // Handshake Initiation
+        console.log(`[VPNExit] Handshake init from ${rinfo.address}:${rinfo.port}`);
+        break;
+      case 2: // Handshake Response
+        console.log(`[VPNExit] Handshake response from ${rinfo.address}:${rinfo.port}`);
+        break;
+      case 3: // Cookie Reply
+        console.log(`[VPNExit] Cookie reply from ${rinfo.address}:${rinfo.port}`);
+        break;
+      case 4: // Transport Data
+        // Actual data packet - in production, this would be decrypted and forwarded
+        break;
+      default:
+        console.warn(`[VPNExit] Unknown message type ${messageType} from ${rinfo.address}`);
+    }
   }
 
   // ============================================================================
@@ -472,12 +491,26 @@ export class VPNExitService {
   // ============================================================================
 
   private generatePrivateKey(): string {
+    // WireGuard uses Curve25519 - keys must be generated with proper crypto
+    // In production, use: wg genkey | tee privatekey | wg pubkey > publickey
+    // Or use a Curve25519 library like @noble/curves
+    //
+    // This generates a random 32-byte key encoded as base64 for testing
+    // IMPORTANT: Replace with proper Curve25519 key generation in production
     return randomBytes(32).toString('base64');
   }
 
   private derivePublicKey(privateKey: string): string {
-    // In production, use actual Curve25519 key derivation
-    // For now, return a placeholder
+    // IMPORTANT: This is a placeholder - does NOT produce valid WireGuard keys
+    // WireGuard requires Curve25519 scalar multiplication: pubkey = privatekey * G
+    //
+    // In production, use one of:
+    // 1. @noble/curves: import { x25519 } from '@noble/curves/ed25519'
+    // 2. tweetnacl: nacl.scalarMult.base(privateKeyBytes)
+    // 3. Shell: echo $privateKey | wg pubkey
+    //
+    // For development/testing only - will fail real WireGuard handshakes
+    console.warn('[VPNExit] Using placeholder key derivation - not valid for production');
     return createHash('sha256').update(privateKey).digest('base64');
   }
 }

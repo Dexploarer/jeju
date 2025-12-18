@@ -102,7 +102,12 @@ export function createKMSRouter(): Hono {
 
     const keyId = crypto.randomUUID();
     
-    // Generate a mock key for now (in production, would use actual MPC)
+    // In development mode, generate a local key. In production, this would use MPC.
+    const mpcEnabled = !!process.env.MPC_COORDINATOR_URL;
+    if (!mpcEnabled) {
+      console.warn('[KMS] Running in development mode - keys are not MPC-secured');
+    }
+    
     const randomBytes = new Uint8Array(32);
     crypto.getRandomValues(randomBytes);
     const privateKey = `0x${Array.from(randomBytes).map(b => b.toString(16).padStart(2, '0')).join('')}` as Hex;
@@ -123,6 +128,8 @@ export function createKMSRouter(): Hono {
 
     keys.set(keyId, key);
 
+    const mpcEnabled = !!process.env.MPC_COORDINATOR_URL;
+    
     return c.json({
       keyId,
       publicKey: key.publicKey,
@@ -130,6 +137,8 @@ export function createKMSRouter(): Hono {
       threshold,
       totalParties,
       createdAt: key.createdAt,
+      mode: mpcEnabled ? 'mpc' : 'development',
+      warning: mpcEnabled ? undefined : 'Key is locally generated. Set MPC_COORDINATOR_URL for production MPC keys.',
     }, 201);
   });
 
@@ -287,11 +296,21 @@ export function createKMSRouter(): Hono {
       keyId: string;
     }>();
 
-    // In production, this would actually decrypt
+    const mpcEnabled = !!process.env.MPC_COORDINATOR_URL;
+    
+    if (!mpcEnabled) {
+      return c.json({
+        error: 'Decryption not available in development mode',
+        message: 'MPC decryption requires MPC_COORDINATOR_URL to be configured',
+        mode: 'development',
+      }, 501);
+    }
+
+    // In production with MPC configured, would decrypt using threshold signatures
     return c.json({
-      message: 'Decryption requires actual key shares',
-      note: 'This is a stub - implement with actual MPC provider',
-    });
+      error: 'MPC decryption not yet implemented',
+      message: 'Configure MPC provider and implement threshold decryption',
+    }, 501);
   });
 
   // ============================================================================

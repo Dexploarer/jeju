@@ -5,10 +5,14 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { serveStatic } from 'hono/serve-static';
 import { serve } from '@hono/node-server';
 import { getConfig } from './config';
 import { OttoAgent } from './agent';
-import type { TelegramWebhookPayload, TwilioWebhookPayload, DiscordWebhookPayload } from './types';
+import { chatApi } from './web/chat-api';
+import { frameApi } from './web/frame';
+import { miniappApi } from './web/miniapp';
+import type { TelegramWebhookPayload, TwilioWebhookPayload, DiscordWebhookPayload, FarcasterFramePayload } from './types';
 
 const app = new Hono();
 const config = getConfig();
@@ -19,8 +23,8 @@ const agent = new OttoAgent();
 // Middleware
 app.use('/*', cors({
   origin: '*',
-  allowMethods: ['GET', 'POST', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization', 'X-Telegram-Bot-Api-Secret-Token'],
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization', 'X-Telegram-Bot-Api-Secret-Token', 'X-Session-Id', 'X-Wallet-Address'],
 }));
 
 // ============================================================================
@@ -54,6 +58,10 @@ app.get('/status', (c) => {
       whatsapp: {
         enabled: config.whatsapp.enabled,
         ready: status.ready.includes('whatsapp'),
+      },
+      farcaster: {
+        enabled: config.farcaster.enabled,
+        ready: status.ready.includes('farcaster'),
       },
     },
     ai: {
@@ -136,6 +144,50 @@ app.get('/webhooks/whatsapp', (c) => {
   return c.text('OK');
 });
 
+// Farcaster Frame webhook
+app.post('/webhooks/farcaster', async (c) => {
+  const payload = await c.req.json() as FarcasterFramePayload;
+  
+  // Validate frame message
+  const adapter = agent.getFarcasterAdapter();
+  if (adapter) {
+    const messageBytes = Buffer.from(payload.trustedData.messageBytes, 'hex');
+    const validated = await adapter.validateFrame(messageBytes);
+    
+    if (!validated?.valid) {
+      return c.json({ error: 'Invalid frame message' }, 400);
+    }
+  }
+  
+  // Handle frame interaction
+  agent.handleFarcasterWebhook(payload).catch(err => {
+    console.error('[Otto] Farcaster webhook error:', err);
+  });
+  
+  return c.json({ ok: true });
+});
+
+// ============================================================================
+// Chat API
+// ============================================================================
+
+app.route('/api/chat', chatApi);
+
+// ============================================================================
+// Farcaster Frame
+// ============================================================================
+
+app.route('/frame', frameApi);
+
+// ============================================================================
+// Miniapps (Telegram, Farcaster, Web)
+// ============================================================================
+
+app.route('/miniapp', miniappApi);
+
+// Redirect root to miniapp
+app.get('/', (c) => c.redirect('/miniapp/'));
+
 // ============================================================================
 // API Endpoints
 // ============================================================================
@@ -154,7 +206,7 @@ app.get('/api/info', (c) => {
     name: 'Otto',
     description: 'Decentralized multi-platform AI trading agent',
     version: '1.0.0',
-    platforms: ['discord', 'telegram', 'whatsapp'],
+    platforms: ['discord', 'telegram', 'whatsapp', 'farcaster', 'web'],
     features: [
       'swap',
       'bridge',
@@ -164,6 +216,12 @@ app.get('/api/info', (c) => {
       'limit-orders',
       'cross-chain',
     ],
+    miniapps: {
+      telegram: `${config.baseUrl}/miniapp/telegram`,
+      farcaster: `${config.baseUrl}/miniapp/farcaster`,
+      web: `${config.baseUrl}/miniapp/`,
+    },
+    frame: `${config.baseUrl}/frame`,
     links: {
       discord: config.discord.applicationId 
         ? `https://discord.com/api/oauth2/authorize?client_id=${config.discord.applicationId}&permissions=2147485696&scope=bot%20applications.commands`
@@ -185,7 +243,7 @@ app.get('/auth/callback', async (c) => {
   if (!address || !signature || !platform || !platformId || !nonce) {
     return c.html(`
       <html>
-        <body style="font-family: system-ui; padding: 2rem; text-align: center;">
+        <body style="font-family: system-ui; padding: 2rem; text-align: center; background: #1a1a2e; color: #fff;">
           <h1>Connection Failed</h1>
           <p>Missing required parameters.</p>
         </body>
@@ -197,10 +255,124 @@ app.get('/auth/callback', async (c) => {
   // For now, just show success
   return c.html(`
     <html>
-      <body style="font-family: system-ui; padding: 2rem; text-align: center;">
+      <body style="font-family: system-ui; padding: 2rem; text-align: center; background: #1a1a2e; color: #fff;">
         <h1>✅ Wallet Connected</h1>
         <p>Your wallet has been connected to Otto.</p>
         <p>You can now close this window and return to ${platform}.</p>
+        <script>
+          // Try to close window or redirect
+          if (window.opener) {
+            window.opener.postMessage({ type: 'wallet_connected', address: '${address}' }, '*');
+          }
+          setTimeout(() => window.close(), 2000);
+        </script>
+      </body>
+    </html>
+  `);
+});
+
+// Wallet connect page
+app.get('/auth/connect', (c) => {
+  return c.html(`
+    <html>
+      <head>
+        <title>Connect to Otto</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          body {
+            font-family: system-ui;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+          }
+          .container {
+            text-align: center;
+            padding: 2rem;
+            max-width: 400px;
+          }
+          h1 { margin-bottom: 0.5rem; }
+          p { color: #888; margin-bottom: 2rem; }
+          .btn {
+            display: block;
+            width: 100%;
+            padding: 16px;
+            margin: 8px 0;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+          }
+          .btn:hover { transform: scale(1.02); }
+          .btn-primary {
+            background: linear-gradient(135deg, #00d4ff, #0099ff);
+            color: #000;
+          }
+          .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>🤖 Connect to Otto</h1>
+          <p>Connect your wallet to start trading</p>
+          <button class="btn btn-primary" onclick="connectMetaMask()">
+            🦊 Connect MetaMask
+          </button>
+          <button class="btn btn-secondary" onclick="connectWalletConnect()">
+            🔗 WalletConnect
+          </button>
+        </div>
+        <script>
+          async function connectMetaMask() {
+            if (!window.ethereum) {
+              alert('Please install MetaMask');
+              return;
+            }
+            try {
+              const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+              const address = accounts[0];
+              
+              // Get sign message
+              const res = await fetch('/api/chat/auth/message?address=' + address);
+              const { message, nonce } = await res.json();
+              
+              // Sign message
+              const signature = await window.ethereum.request({
+                method: 'personal_sign',
+                params: [message, address],
+              });
+              
+              // Verify and connect
+              const verifyRes = await fetch('/api/chat/auth/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ address, message, signature, sessionId: new URLSearchParams(location.search).get('session') }),
+              });
+              
+              if (verifyRes.ok) {
+                if (window.opener) {
+                  window.opener.postMessage({ type: 'wallet_connected', address }, '*');
+                }
+                location.href = '/auth/callback?address=' + address + '&platform=web&platformId=' + address + '&nonce=' + nonce + '&signature=' + signature;
+              }
+            } catch (err) {
+              console.error(err);
+              alert('Connection failed');
+            }
+          }
+          
+          function connectWalletConnect() {
+            alert('WalletConnect coming soon');
+          }
+        </script>
       </body>
     </html>
   `);
@@ -217,13 +389,21 @@ async function main() {
   console.log('');
   
   // Check enabled platforms
-  if (!config.discord.enabled && !config.telegram.enabled && !config.whatsapp.enabled) {
+  const platformCount = [
+    config.discord.enabled,
+    config.telegram.enabled,
+    config.whatsapp.enabled,
+    config.farcaster.enabled,
+  ].filter(Boolean).length;
+
+  if (platformCount === 0) {
     console.log('⚠️  No platforms enabled. Set environment variables:');
     console.log('   - DISCORD_BOT_TOKEN + DISCORD_APPLICATION_ID for Discord');
     console.log('   - TELEGRAM_BOT_TOKEN for Telegram');
     console.log('   - TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN + TWILIO_WHATSAPP_NUMBER for WhatsApp');
+    console.log('   - NEYNAR_API_KEY + FARCASTER_BOT_FID for Farcaster');
     console.log('');
-    console.log('Running in API-only mode...');
+    console.log('Running in web-only mode...');
     console.log('');
   }
   
@@ -237,10 +417,20 @@ async function main() {
   console.log(`   Health: http://localhost:${port}/health`);
   console.log(`   Status: http://localhost:${port}/status`);
   console.log('');
+  console.log('📱 Miniapps:');
+  console.log(`   Web:       http://localhost:${port}/miniapp/`);
+  console.log(`   Telegram:  http://localhost:${port}/miniapp/telegram`);
+  console.log(`   Farcaster: http://localhost:${port}/miniapp/farcaster`);
+  console.log('');
+  console.log(`🖼️  Farcaster Frame: http://localhost:${port}/frame`);
+  console.log('');
   console.log('📡 Webhook endpoints:');
-  console.log(`   Discord:  http://localhost:${port}/webhooks/discord`);
-  console.log(`   Telegram: http://localhost:${port}/webhooks/telegram`);
-  console.log(`   WhatsApp: http://localhost:${port}/webhooks/whatsapp`);
+  console.log(`   Discord:   http://localhost:${port}/webhooks/discord`);
+  console.log(`   Telegram:  http://localhost:${port}/webhooks/telegram`);
+  console.log(`   WhatsApp:  http://localhost:${port}/webhooks/whatsapp`);
+  console.log(`   Farcaster: http://localhost:${port}/webhooks/farcaster`);
+  console.log('');
+  console.log(`💬 Chat API: http://localhost:${port}/api/chat`);
   console.log('');
   console.log('========================================');
   
@@ -268,4 +458,3 @@ main().catch(err => {
   console.error('[Otto] Fatal error:', err);
   process.exit(1);
 });
-

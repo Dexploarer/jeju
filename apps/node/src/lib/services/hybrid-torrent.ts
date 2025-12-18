@@ -68,7 +68,6 @@ interface WebTorrentInstance {
   destroy: (cb?: () => void) => void;
 }
 
-type Torrent = WebTorrentTorrent;
 import { Contract, JsonRpcProvider, Wallet } from 'ethers';
 import { createHash, randomBytes } from 'crypto';
 import type { Address } from 'viem';

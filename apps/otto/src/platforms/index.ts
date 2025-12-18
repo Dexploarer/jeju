@@ -6,12 +6,14 @@ export * from './types';
 export { DiscordAdapter } from './discord';
 export { TelegramAdapter } from './telegram';
 export { WhatsAppAdapter } from './whatsapp';
+export { FarcasterAdapter } from './farcaster';
 
 import type { Platform } from '../types';
 import type { PlatformAdapter } from './types';
 import { DiscordAdapter } from './discord';
 import { TelegramAdapter } from './telegram';
 import { WhatsAppAdapter } from './whatsapp';
+import { FarcasterAdapter } from './farcaster';
 import { getConfig } from '../config';
 
 export class PlatformManager {
@@ -53,6 +55,18 @@ export class PlatformManager {
       );
       await whatsapp.initialize();
       this.adapters.set('whatsapp', whatsapp);
+    }
+
+    // Initialize Farcaster
+    if (config.farcaster.enabled && config.farcaster.apiKey && config.farcaster.botFid) {
+      console.log('[PlatformManager] Initializing Farcaster adapter...');
+      const farcaster = new FarcasterAdapter(
+        config.farcaster.apiKey,
+        config.farcaster.botFid,
+        config.farcaster.signerUuid
+      );
+      await farcaster.initialize();
+      this.adapters.set('farcaster', farcaster);
     }
 
     console.log(`[PlatformManager] Initialized ${this.adapters.size} platform(s)`);

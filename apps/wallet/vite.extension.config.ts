@@ -3,7 +3,20 @@ import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
 import { copyFileSync, mkdirSync, existsSync, writeFileSync } from 'fs';
 
-const target = process.env.EXT_TARGET === 'firefox' ? 'firefox' : 'chrome';
+type ExtensionTarget = 'chrome' | 'firefox' | 'safari' | 'edge' | 'brave';
+
+const targetEnv = process.env.EXT_TARGET as ExtensionTarget | undefined;
+const validTargets: ExtensionTarget[] = ['chrome', 'firefox', 'safari', 'edge', 'brave'];
+const target: ExtensionTarget = targetEnv && validTargets.includes(targetEnv) ? targetEnv : 'chrome';
+
+// Map targets to manifest files
+const manifestMap: Record<ExtensionTarget, string> = {
+  chrome: 'src/extension/manifest.chrome.json',
+  firefox: 'src/extension/manifest.firefox.json',
+  safari: 'src/extension/manifest.safari.json',
+  edge: 'src/extension/manifest.edge.json',
+  brave: 'src/extension/manifest.chrome.json', // Brave uses Chrome MV3
+};
 
 export default defineConfig({
   plugins: [
@@ -22,9 +35,7 @@ export default defineConfig({
         }
 
         // Copy manifest
-        const manifestSrc = target === 'firefox' 
-          ? 'src/extension/manifest.firefox.json'
-          : 'src/extension/manifest.chrome.json';
+        const manifestSrc = manifestMap[target];
         copyFileSync(manifestSrc, `${distDir}/manifest.json`);
 
         // Copy locales

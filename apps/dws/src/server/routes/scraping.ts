@@ -459,8 +459,8 @@ async function performScrape(
   }
 
   if (type === 'screenshot') {
-    // Would generate actual screenshot with browser
-    result.screenshot = Buffer.from('screenshot-placeholder').toString('base64');
+    // Screenshot requires a browser instance - return error if not available
+    throw new Error('Screenshot capture requires BROWSERLESS_URL or browser pool configuration. Set BROWSERLESS_URL env var to enable screenshots.');
   }
 
   return result;

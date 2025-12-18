@@ -1,9 +1,24 @@
 import { useState } from 'react';
-import { Shield, Globe, Zap, Moon, Bell, Info, ExternalLink, ChevronRight } from 'lucide-react';
+import { invoke } from '@tauri-apps/api/tauri';
+import { Shield, Globe, Zap, Database, Gauge, Info, ExternalLink, ChevronRight } from 'lucide-react';
 
 export function SettingsPanel() {
   const [killSwitch, setKillSwitch] = useState(true);
   const [autoConnect, setAutoConnect] = useState(false);
+  const [adaptiveMode, setAdaptiveMode] = useState(true);
+  const [dwsEnabled, setDwsEnabled] = useState(true);
+
+  const toggleAdaptive = async () => {
+    const newValue = !adaptiveMode;
+    setAdaptiveMode(newValue);
+    await invoke('set_adaptive_mode', { enabled: newValue });
+  };
+
+  const toggleDws = async () => {
+    const newValue = !dwsEnabled;
+    setDwsEnabled(newValue);
+    await invoke('set_dws_enabled', { enabled: newValue });
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -86,10 +101,54 @@ export function SettingsPanel() {
         </div>
       </div>
 
+      {/* Bandwidth & Contribution */}
+      <div className="card">
+        <h3 className="font-medium mb-4 flex items-center gap-2">
+          <Gauge className="w-4 h-4 text-[#00aa55]" />
+          Bandwidth Management
+        </h3>
+
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="font-medium">Adaptive Bandwidth</div>
+              <div className="text-xs text-[#606070]">Share more when idle (up to 80%)</div>
+            </div>
+            <button
+              onClick={toggleAdaptive}
+              className={`w-12 h-6 rounded-full transition-colors ${
+                adaptiveMode ? 'bg-[#00ff88]' : 'bg-[#2a2a35]'
+              }`}
+            >
+              <div className={`w-5 h-5 bg-white rounded-full transition-transform ${
+                adaptiveMode ? 'translate-x-6' : 'translate-x-0.5'
+              }`} />
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="font-medium">Edge CDN Caching</div>
+              <div className="text-xs text-[#606070]">Cache and serve DWS content</div>
+            </div>
+            <button
+              onClick={toggleDws}
+              className={`w-12 h-6 rounded-full transition-colors ${
+                dwsEnabled ? 'bg-[#00ff88]' : 'bg-[#2a2a35]'
+              }`}
+            >
+              <div className={`w-5 h-5 bg-white rounded-full transition-transform ${
+                dwsEnabled ? 'translate-x-6' : 'translate-x-0.5'
+              }`} />
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* DNS */}
       <div className="card">
         <h3 className="font-medium mb-4 flex items-center gap-2">
-          <Globe className="w-4 h-4 text-[#00aa55]" />
+          <Globe className="w-4 h-4 text-[#606070]" />
           DNS Servers
         </h3>
 

@@ -115,7 +115,7 @@ export class CommandHandler {
         if (!user) {
           return {
             success: false,
-            message: '🔗 You need to connect your wallet first.\n\nUse `/otto connect` to link your wallet.',
+            message: 'Connect your wallet first: `connect`',
           };
         }
         return this.executeAuthenticatedCommand(command, user);
@@ -168,29 +168,14 @@ export class CommandHandler {
       if (cmd) {
         return {
           success: true,
-          message: `**${cmdName}**\n\n${cmd.description}\n\n**Usage:** \`${cmd.usage}\`\n\n**Examples:**\n${cmd.examples.map(e => `• \`${e}\``).join('\n')}`,
+          message: `**${cmdName}**: ${cmd.description}\n\nUsage: \`${cmd.usage}\`\nExample: \`${cmd.examples[0]}\``,
         };
       }
     }
 
-    const commandList = Object.entries(OTTO_COMMANDS)
-      .map(([name, cmd]) => `• **${name}** - ${cmd.description}`)
-      .join('\n');
-
     return {
       success: true,
-      message: `🤖 **Otto Trading Assistant**\n\nI can help you trade, bridge, and launch tokens across multiple chains.\n\n**Commands:**\n${commandList}\n\nUse \`/otto help <command>\` for more details.`,
-      embed: {
-        title: '🤖 Otto Commands',
-        description: 'Your AI trading assistant',
-        color: 0x00d4ff,
-        fields: [
-          { name: '💰 Trading', value: '`swap`, `bridge`, `send`', inline: true },
-          { name: '📊 Info', value: '`balance`, `price`, `portfolio`', inline: true },
-          { name: '🚀 Launch', value: '`launch`, `limit`, `orders`', inline: true },
-        ],
-        footer: 'Use /otto help <command> for details',
-      },
+      message: `**Otto Commands**\n\nswap · bridge · send · balance · price · portfolio · launch · limit · connect\n\nType \`help <command>\` for details.`,
     };
   }
 
@@ -198,12 +183,12 @@ export class CommandHandler {
     const url = await walletService.generateConnectUrl(
       command.platform,
       command.userId,
-      command.userId // We'd get the actual username from the platform
+      command.userId
     );
 
     return {
       success: true,
-      message: `🔗 **Connect Your Wallet**\n\nClick the link below to connect your wallet to Otto:\n\n${url}\n\nThis will allow you to trade directly from Discord/Telegram/WhatsApp.`,
+      message: `Connect your wallet to start trading.`,
       buttons: [
         { label: 'Connect Wallet', style: 'link', url },
       ],
