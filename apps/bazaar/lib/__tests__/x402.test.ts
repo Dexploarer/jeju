@@ -40,7 +40,7 @@ describe('x402 Payment Protocol', () => {
     // Create and sign payload
     const { createPaymentPayload, signPaymentPayload } = await import('../x402');
     
-    // Use Hardhat test account #0 private key for testing
+    // Use Anvil test account #0 private key for testing
     const testPrivateKey = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
     
     const unsignedPayload = createPaymentPayload(

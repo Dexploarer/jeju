@@ -114,7 +114,7 @@ export interface ProjectTemplate {
 }
 
 export const WELL_KNOWN_KEYS = {
-  // Anvil/Hardhat default accounts - prefunded with 10k ETH
+  // Anvil default accounts - prefunded with 10k ETH
   dev: [
     {
       name: 'Account #0 (Deployer)',

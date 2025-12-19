@@ -211,6 +211,86 @@ const inferenceProviders: APIProvider[] = [
 ];
 
 // ============================================================================
+// Cloud Provider AI Services (AWS, GCP, Azure)
+// ============================================================================
+
+const cloudProviders: APIProvider[] = [
+  {
+    id: 'aws-bedrock',
+    name: 'AWS Bedrock',
+    description: 'Claude, Llama, Titan, Mistral via AWS Bedrock',
+    baseUrl: 'https://bedrock-runtime.us-east-1.amazonaws.com',
+    authType: 'header',
+    authConfig: { headerName: 'Authorization' },
+    schemaType: 'rest',
+    categories: ['inference'],
+    envVar: 'AWS_BEDROCK_ACCESS_KEY_ID',
+    defaultPricePerRequest: 100000000000000n,
+    knownEndpoints: [
+      '/model/anthropic.claude-3-5-sonnet-20241022-v2:0/invoke',
+      '/model/anthropic.claude-3-opus-20240229-v1:0/invoke',
+      '/model/anthropic.claude-3-haiku-20240307-v1:0/invoke',
+      '/model/meta.llama3-2-90b-instruct-v1:0/invoke',
+      '/model/meta.llama3-2-11b-instruct-v1:0/invoke',
+      '/model/mistral.mistral-large-2407-v1:0/invoke',
+      '/model/amazon.titan-text-premier-v1:0/invoke',
+    ],
+    supportsStreaming: true,
+  },
+  {
+    id: 'gcp-vertex',
+    name: 'GCP Vertex AI',
+    description: 'Gemini, Claude, Llama via Google Cloud Vertex AI',
+    baseUrl: 'https://us-central1-aiplatform.googleapis.com/v1',
+    authType: 'bearer',
+    authConfig: { headerName: 'Authorization', prefix: 'Bearer ' },
+    schemaType: 'rest',
+    categories: ['inference'],
+    envVar: 'GCP_VERTEX_API_KEY',
+    defaultPricePerRequest: 100000000000000n,
+    knownEndpoints: [
+      '/projects/{project}/locations/{location}/publishers/google/models/gemini-1.5-pro:generateContent',
+      '/projects/{project}/locations/{location}/publishers/google/models/gemini-1.5-flash:generateContent',
+      '/projects/{project}/locations/{location}/publishers/anthropic/models/claude-3-5-sonnet:rawPredict',
+      '/projects/{project}/locations/{location}/publishers/meta/models/llama-3.2-90b-instruct-maas:rawPredict',
+    ],
+    supportsStreaming: true,
+  },
+  {
+    id: 'azure-openai',
+    name: 'Azure OpenAI',
+    description: 'GPT-4o, o1, Embeddings via Azure OpenAI Service',
+    baseUrl: 'https://{resource-name}.openai.azure.com/openai',
+    authType: 'header',
+    authConfig: { headerName: 'api-key' },
+    schemaType: 'openapi',
+    categories: ['inference'],
+    envVar: 'AZURE_OPENAI_API_KEY',
+    defaultPricePerRequest: 100000000000000n,
+    knownEndpoints: [
+      '/deployments/{deployment-id}/chat/completions',
+      '/deployments/{deployment-id}/completions',
+      '/deployments/{deployment-id}/embeddings',
+    ],
+    supportsStreaming: true,
+  },
+  {
+    id: 'sambanova',
+    name: 'SambaNova',
+    description: 'Ultra-fast Llama inference on SambaNova hardware',
+    baseUrl: 'https://api.sambanova.ai/v1',
+    authType: 'bearer',
+    authConfig: { headerName: 'Authorization', prefix: 'Bearer ' },
+    schemaType: 'openapi',
+    categories: ['inference'],
+    envVar: 'SAMBANOVA_API_KEY',
+    defaultPricePerRequest: 10000000000000n,
+    knownEndpoints: ['/chat/completions'],
+    supportsStreaming: true,
+  },
+];
+
+// ============================================================================
 // Blockchain/RPC Providers
 // ============================================================================
 
@@ -384,6 +464,7 @@ const mediaProviders: APIProvider[] = [
 
 export const ALL_PROVIDERS: APIProvider[] = [
   ...inferenceProviders,
+  ...cloudProviders,
   ...blockchainProviders,
   ...dataProviders,
   ...searchProviders,

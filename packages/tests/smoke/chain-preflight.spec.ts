@@ -23,7 +23,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 const RPC_URL = process.env.L2_RPC_URL || process.env.JEJU_RPC_URL || 'http://localhost:9545';
 const CHAIN_ID = parseInt(process.env.CHAIN_ID || '1337');
 
-// Hardhat/Anvil test account #0
+// Anvil test account #0
 const TEST_PRIVATE_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
 const TEST_ADDRESS = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as Address;
 

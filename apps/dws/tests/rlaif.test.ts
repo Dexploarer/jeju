@@ -253,7 +253,7 @@ describe('RLAIF Config', () => {
         clipRange: 0.2,
       },
       judge: {
-        modelCID: 'gpt-4o-mini',
+        modelCID: 'gpt-5',
         rubricId: 'default',
         temperature: 0.3,
       },

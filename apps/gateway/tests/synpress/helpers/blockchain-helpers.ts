@@ -141,7 +141,7 @@ export async function getTokenBalance(
  */
 export async function setBalance(page: Page, address: string, balance: bigint): Promise<void> {
   const balanceHex = '0x' + balance.toString(16);
-  await rpcCall(page, 'hardhat_setBalance', [address, balanceHex]);
+  await rpcCall(page, 'anvil_setBalance', [address, balanceHex]);
   console.log(`💰 Set balance for ${address.slice(0, 10)}... to ${balance} wei`);
 }
 
@@ -149,7 +149,7 @@ export async function setBalance(page: Page, address: string, balance: bigint): 
  * Impersonate account (for testing)
  */
 export async function impersonateAccount(page: Page, address: string): Promise<void> {
-  await rpcCall(page, 'hardhat_impersonateAccount', [address]);
+  await rpcCall(page, 'anvil_impersonateAccount', [address]);
   console.log(`🎭 Impersonating ${address}`);
 }
 
@@ -157,7 +157,7 @@ export async function impersonateAccount(page: Page, address: string): Promise<v
  * Stop impersonating account
  */
 export async function stopImpersonating(page: Page, address: string): Promise<void> {
-  await rpcCall(page, 'hardhat_stopImpersonatingAccount', [address]);
+  await rpcCall(page, 'anvil_stopImpersonatingAccount', [address]);
   console.log(`🎭 Stopped impersonating ${address}`);
 }
 
@@ -165,7 +165,7 @@ export async function stopImpersonating(page: Page, address: string): Promise<vo
  * Reset blockchain to initial state
  */
 export async function resetBlockchain(page: Page): Promise<void> {
-  await rpcCall(page, 'hardhat_reset', []);
+  await rpcCall(page, 'anvil_reset', []);
   console.log('🔄 Blockchain reset to initial state');
 }
 

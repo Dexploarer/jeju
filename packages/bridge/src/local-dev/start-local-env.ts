@@ -3,7 +3,7 @@
  * Start Local Development Environment
  *
  * Spins up:
- * 1. Local EVM chain (Anvil/Hardhat)
+ * 1. Local EVM chain (Anvil)
  * 2. Local Solana validator
  * 3. Mock TEE batcher
  * 4. Mock prover
