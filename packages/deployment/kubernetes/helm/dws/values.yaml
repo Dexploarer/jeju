@@ -1,0 +1,199 @@
+# Default values for DWS (Decentralized Web Services)
+
+replicaCount: 3
+
+image:
+  repository: jeju/dws
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "4030"
+  prometheus.io/path: "/metrics"
+
+podSecurityContext:
+  fsGroup: 1000
+
+securityContext:
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: false
+  runAsNonRoot: true
+  runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 4030
+  annotations: {}
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10g"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: dws.testnet.jejunetwork.org
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: dws-tls
+      hosts:
+        - dws.testnet.jejunetwork.org
+
+resources:
+  limits:
+    cpu: 2000m
+    memory: 4Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - dws
+          topologyKey: kubernetes.io/hostname
+
+# DWS Configuration
+config:
+  # Network
+  network: testnet
+  chainId: 84532
+  rpcUrl: "https://sepolia.base.org"
+  
+  # Contract addresses (set via values-testnet.yaml)
+  contracts:
+    identityRegistry: ""
+    repoRegistry: ""
+    packageRegistry: ""
+    containerRegistry: ""
+    modelRegistry: ""
+    jnsRegistry: ""
+    storageManager: ""
+  
+  # Storage backends
+  storage:
+    primary: ipfs
+    permanent: true
+    backends:
+      - type: ipfs
+        enabled: true
+        gateway: ""
+        pinningService: ""
+      - type: arweave
+        enabled: true
+        gateway: ""
+      - type: webtorrent
+        enabled: true
+  
+  # CDN configuration
+  cdn:
+    enabled: true
+    edgeNodes: 3
+    cacheSize: "10Gi"
+    
+  # P2P coordination
+  p2p:
+    enabled: true
+    port: 4031
+    
+  # Rate limiting
+  rateLimit:
+    enabled: true
+    requestsPerMinute: 1000
+
+# Environment variables
+env:
+  - name: NODE_ENV
+    value: "production"
+  - name: DWS_PORT
+    value: "4030"
+  - name: LOG_LEVEL
+    value: "info"
+
+# Secrets (referenced from Kubernetes secrets)
+secretEnv:
+  - name: DWS_PRIVATE_KEY
+    secretName: dws-secrets
+    secretKey: private-key
+  - name: IPFS_API_KEY
+    secretName: dws-secrets
+    secretKey: ipfs-api-key
+
+# Persistence for local storage cache
+persistence:
+  enabled: true
+  storageClass: "gp3"
+  size: 100Gi
+  accessModes:
+    - ReadWriteOnce
+
+# Health checks
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+# IPFS sidecar (optional - for running local IPFS node)
+ipfs:
+  enabled: false
+  image:
+    repository: ipfs/kubo
+    tag: "v0.27.0"
+  persistence:
+    size: 200Gi
+
+# Metrics
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    scrapeTimeout: 10s
+

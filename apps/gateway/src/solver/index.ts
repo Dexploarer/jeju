@@ -47,4 +47,3 @@ export { SolverAgent, LiquidityManager, EventMonitor, StrategyEngine };
 export * from './metrics';
 export * from './contracts';
 export * from './external';
-export * from './bat-xlp';

@@ -104,21 +104,10 @@ contract NodeStakingManager is INodeStakingManager, Ownable, Pausable, Reentranc
         string calldata rpcUrl,
         Region region
     ) external whenNotPaused returns (bytes32 nodeId) {
-        // Check if agent registration is required
         if (requireAgentRegistration) revert AgentRequired();
         return _registerNodeInternal(stakingToken, stakeAmount, rewardToken, rpcUrl, region, 0);
     }
 
-    /**
-     * @notice Register a new node with ERC-8004 agent verification
-     * @param stakingToken Token to stake (must be in TokenRegistry with paymaster)
-     * @param stakeAmount Amount to stake
-     * @param rewardToken Token operator wants rewards in
-     * @param rpcUrl Node's RPC endpoint
-     * @param region Geographic region
-     * @param operatorAgentId ERC-8004 agent ID of the operator
-     * @return nodeId Unique identifier for the node
-     */
     function registerNodeWithAgent(
         address stakingToken,
         uint256 stakeAmount,
@@ -358,22 +347,17 @@ contract NodeStakingManager is INodeStakingManager, Ownable, Pausable, Reentranc
             emit RewardsClaimed(nodeId, msg.sender, rewardToken, rewardAmount, _convertUSDToETH(rewardFee + stakeFee));
         }
 
-        // INTERACTIONS: All external calls LAST
-        // 1. Pay paymaster fees (best-effort, ignore failures)
         if (rewardPaymasterAddr != address(0)) {
             (bool success1,) = payable(rewardPaymasterAddr).call{value: _convertUSDToETH(rewardFee)}("");
             if (stakeFee > 0 && success1 && stakingPaymasterAddr != address(0)) {
-                (bool success2,) = payable(stakingPaymasterAddr).call{value: _convertUSDToETH(stakeFee)}("");
-                if (!success2) {} // Intentionally ignore - paymaster payment is best-effort
+                payable(stakingPaymasterAddr).call{value: _convertUSDToETH(stakeFee)}("");
             }
         }
 
-        // 2. Transfer rewards
         if (rewardAmount > 0) {
             IERC20(rewardToken).safeTransfer(msg.sender, rewardAmount);
         }
 
-        // 3. Return stake
         IERC20(stakedToken).safeTransfer(msg.sender, stakeToReturn);
     }
 
@@ -405,27 +389,19 @@ contract NodeStakingManager is INodeStakingManager, Ownable, Pausable, Reentranc
 
         if (!node.isActive || node.isSlashed) return 0;
 
-        // Time elapsed since last claim
         uint256 timeElapsed = block.timestamp - node.lastClaimTime;
-        if (timeElapsed < 1 days) return 0; // Minimum 1 day between claims
+        if (timeElapsed < 1 days) return 0;
 
-        // Base reward (pro-rated for time)
         uint256 baseRewardUSD = (baseRewardPerMonthUSD * timeElapsed) / 30 days;
-
-        // Uptime multiplier (0.5x - 2x)
         uint256 uptimeMultiplier = _calculateUptimeMultiplier(perf.uptimeScore);
         uint256 rewardWithUptime = (baseRewardUSD * uptimeMultiplier) / 10000;
-
-        // Volume bonus ($0.01 per 1,000 requests)
         uint256 volumeBonusUSD = (perf.requestsServed / 1000) * volumeBonusPerThousandRequests;
 
-        // Geographic bonus (+50% if underserved)
         uint256 geoBonusUSD = 0;
         if (_isUnderservedRegion(node.geographicRegion)) {
             geoBonusUSD = (rewardWithUptime * geographicBonusBPS) / 10000;
         }
 
-        // V2: Token diversity bonus (hook for v2 feature)
         uint256 diversityBonusUSD = 0;
         if (tokenDiversityBonusEnabled) {
             diversityBonusUSD = _calculateTokenDiversityBonus(node.stakedToken, rewardWithUptime);
@@ -607,7 +583,6 @@ contract NodeStakingManager is INodeStakingManager, Ownable, Pausable, Reentranc
         node.isSlashed = true;
         node.isActive = false;
 
-        // Slash amount goes to treasury
         IERC20(node.stakedToken).safeTransfer(owner(), slashAmount);
 
         emit NodeSlashed(nodeId, node.operator, slashAmount, reason);

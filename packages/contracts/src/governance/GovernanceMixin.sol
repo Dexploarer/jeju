@@ -3,50 +3,47 @@ pragma solidity ^0.8.26;
 
 /**
  * @title GovernanceMixin
- * @notice Library for standardized governance integration across contracts
+ * @notice Library for governance integration
  */
 library GovernanceMixin {
     struct Data {
         address governance;
         address securityCouncil;
         address timelock;
-        bool governanceEnabled;
+        bool enabled;
     }
 
     event GovernanceSet(address indexed governance);
-    event SecurityCouncilSet(address indexed securityCouncil);
+    event SecurityCouncilSet(address indexed council);
     event TimelockSet(address indexed timelock);
     event GovernanceEnabledChanged(bool enabled);
 
     error NotGovernance();
     error NotSecurityCouncil();
     error NotTimelock();
-    error GovernanceNotEnabled();
-    error ZeroAddress();
 
-    function setGovernance(Data storage self, address _governance) internal {
-        self.governance = _governance;
-        emit GovernanceSet(_governance);
+    function setGovernance(Data storage self, address addr) internal {
+        self.governance = addr;
+        emit GovernanceSet(addr);
     }
 
-    function setSecurityCouncil(Data storage self, address _securityCouncil) internal {
-        self.securityCouncil = _securityCouncil;
-        emit SecurityCouncilSet(_securityCouncil);
+    function setSecurityCouncil(Data storage self, address addr) internal {
+        self.securityCouncil = addr;
+        emit SecurityCouncilSet(addr);
     }
 
-    function setTimelock(Data storage self, address _timelock) internal {
-        self.timelock = _timelock;
-        emit TimelockSet(_timelock);
+    function setTimelock(Data storage self, address addr) internal {
+        self.timelock = addr;
+        emit TimelockSet(addr);
     }
 
-    function setGovernanceEnabled(Data storage self, bool enabled) internal {
-        self.governanceEnabled = enabled;
+    function setEnabled(Data storage self, bool enabled) internal {
+        self.enabled = enabled;
         emit GovernanceEnabledChanged(enabled);
     }
 
     function requireGovernance(Data storage self) internal view {
-        if (!self.governanceEnabled) return;
-        if (msg.sender != self.governance && msg.sender != self.timelock) {
+        if (self.enabled && msg.sender != self.governance && msg.sender != self.timelock) {
             revert NotGovernance();
         }
     }
@@ -60,11 +57,11 @@ library GovernanceMixin {
     }
 
     function requireGovernanceOrOwner(Data storage self, address owner) internal view {
-        if (!self.governanceEnabled) {
-            if (msg.sender != owner) revert NotGovernance();
-            return;
-        }
-        if (msg.sender != self.governance && msg.sender != self.timelock && msg.sender != owner) {
+        if (self.enabled) {
+            if (msg.sender != self.governance && msg.sender != self.timelock && msg.sender != owner) {
+                revert NotGovernance();
+            }
+        } else if (msg.sender != owner) {
             revert NotGovernance();
         }
     }
@@ -83,8 +80,7 @@ library GovernanceMixin {
         return msg.sender == self.securityCouncil;
     }
 
-    function canExecuteGovernanceAction(Data storage self) internal view returns (bool) {
-        if (!self.governanceEnabled) return true;
-        return msg.sender == self.governance || msg.sender == self.timelock;
+    function canExecute(Data storage self) internal view returns (bool) {
+        return !self.enabled || msg.sender == self.governance || msg.sender == self.timelock;
     }
 }

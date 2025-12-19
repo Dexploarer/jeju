@@ -82,7 +82,7 @@ const FILL_RELAY_ABI = [{
     { name: 'repaymentChainId', type: 'uint256' },
   ],
   outputs: [],
-  stateMutability: 'nonpayable',
+  stateMutability: 'payable',
 }] as const;
 
 // Check if deposit is filled
@@ -249,6 +249,10 @@ export class AcrossAdapter extends EventEmitter {
       message: deposit.message,
     };
 
+    const value = deposit.outputToken === '0x0000000000000000000000000000000000000000' 
+      ? deposit.outputAmount 
+      : 0n;
+    
     const hash = await client.wallet.writeContract({
       chain: client.wallet.chain,
       account: client.wallet.account!,
@@ -256,9 +260,7 @@ export class AcrossAdapter extends EventEmitter {
       abi: FILL_RELAY_ABI,
       functionName: 'fillV3Relay',
       args: [relayData, BigInt(deposit.originChainId)],
-      value: deposit.outputToken === '0x0000000000000000000000000000000000000000' 
-        ? deposit.outputAmount 
-        : BigInt(0),
+      value,
     });
 
     const receipt = await client.public.waitForTransactionReceipt({ hash });

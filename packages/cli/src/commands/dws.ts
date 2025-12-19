@@ -5,11 +5,12 @@
  */
 
 import { Command } from 'commander';
-import { spawn } from 'bun';
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { logger } from '../lib/logger';
-import { getChainStatus } from '../lib/chain';
+import { getChainStatus, bootstrapContracts } from '../lib/chain';
+import { createInfrastructureService } from '../services/infrastructure';
+import { findMonorepoRoot } from '../lib/system';
 import { DEFAULT_PORTS } from '../types';
 import type { Address } from 'viem';
 
@@ -26,6 +27,15 @@ function getDefaultAddress(): Address {
 export const dwsCommand = new Command('dws')
   .description('Decentralized Web Services (storage, git, pkg, ci, cdn)')
   .addCommand(
+    new Command('dev')
+      .description('Start DWS in development mode (auto-starts infrastructure)')
+      .option('--port <port>', 'Server port', String(DWS_PORT))
+      .option('--no-bootstrap', 'Skip contract bootstrapping')
+      .action(async (options) => {
+        await startDwsDev(options);
+      })
+  )
+  .addCommand(
     new Command('status')
       .description('Check DWS services status')
       .action(async () => {
@@ -34,7 +44,7 @@ export const dwsCommand = new Command('dws')
   )
   .addCommand(
     new Command('start')
-      .description('Start DWS server')
+      .description('Start DWS server (requires infrastructure to be running)')
       .option('--network <network>', 'Network: localnet, testnet, mainnet', 'localnet')
       .option('--port <port>', 'Server port', String(DWS_PORT))
       .action(async (options) => {
@@ -219,10 +229,91 @@ async function checkStatus(): Promise<void> {
   }
 }
 
+/**
+ * Start DWS in development mode with full infrastructure
+ * This is the main development entry point - starts Docker, services, localnet, and DWS
+ */
+async function startDwsDev(options: { port: string; bootstrap?: boolean }): Promise<void> {
+  const rootDir = findMonorepoRoot();
+  const dwsDir = join(rootDir, 'apps/dws');
+
+  if (!existsSync(dwsDir)) {
+    logger.error('DWS app not found');
+    process.exit(1);
+  }
+
+  console.log('\n╔══════════════════════════════════════════════════════════════╗');
+  console.log('║                     JEJU DWS DEV MODE                        ║');
+  console.log('╠══════════════════════════════════════════════════════════════╣');
+  console.log('║  All infrastructure required - no fallbacks.                 ║');
+  console.log('╚══════════════════════════════════════════════════════════════╝\n');
+
+  // Step 1: Start all infrastructure (Docker, services, localnet)
+  const infra = createInfrastructureService(rootDir);
+  const infraReady = await infra.ensureRunning();
+  
+  if (!infraReady) {
+    logger.error('Failed to start infrastructure');
+    logger.info('  Run: jeju infra status');
+    process.exit(1);
+  }
+
+  const rpcUrl = `http://127.0.0.1:${DEFAULT_PORTS.l2Rpc}`;
+
+  // Step 2: Bootstrap contracts (if enabled)
+  if (options.bootstrap !== false) {
+    const bootstrapFile = join(rootDir, 'packages/contracts/deployments/localnet-complete.json');
+    if (!existsSync(bootstrapFile)) {
+      logger.subheader('Contracts');
+      logger.step('Bootstrapping contracts...');
+      await bootstrapContracts(rootDir, rpcUrl);
+    } else {
+      logger.success('Contracts already deployed');
+    }
+  }
+
+  // Step 3: Start DWS server
+  logger.subheader('DWS Server');
+  logger.keyValue('Port', options.port);
+  logger.keyValue('RPC', rpcUrl);
+  logger.keyValue('CQL', 'http://127.0.0.1:4661');
+  logger.newline();
+
+  // Get environment from infrastructure service
+  const infraEnv = infra.getEnvVars();
+  
+  const proc = spawn({
+    cmd: ['bun', 'run', 'src/server/index.ts'],
+    cwd: dwsDir,
+    stdout: 'inherit',
+    stderr: 'inherit',
+    env: {
+      ...process.env,
+      ...infraEnv,
+      PORT: options.port,
+      DWS_PORT: options.port,
+      NETWORK: 'localnet',
+    },
+  });
+
+  // Handle shutdown
+  const cleanup = () => {
+    logger.newline();
+    logger.step('Shutting down...');
+    proc.kill('SIGTERM');
+    process.exit(0);
+  };
+
+  process.on('SIGINT', cleanup);
+  process.on('SIGTERM', cleanup);
+
+  await proc.exited;
+}
+
 async function startDws(options: { network: string; port: string }): Promise<void> {
   logger.header('DWS SERVER');
 
-  const rootDir = process.cwd();
+  const rootDir = findMonorepoRoot();
   const dwsDir = join(rootDir, 'apps/dws');
 
   if (!existsSync(dwsDir)) {
@@ -232,7 +323,8 @@ async function startDws(options: { network: string; port: string }): Promise<voi
 
   const chain = await getChainStatus(options.network as 'localnet' | 'testnet' | 'mainnet');
   if (!chain.running && options.network === 'localnet') {
-    logger.warn('Chain not running. Start with: jeju dev');
+    logger.warn('Chain not running. Use: jeju dws dev (auto-starts everything)');
+    logger.info('  Or start infrastructure manually: jeju infra start');
     process.exit(1);
   }
 
@@ -246,13 +338,21 @@ async function startDws(options: { network: string; port: string }): Promise<voi
   logger.keyValue('Network', options.network);
   logger.keyValue('RPC URL', rpcUrl);
 
+  // For localnet, get environment from infrastructure service
+  let infraEnv: Record<string, string> = {};
+  if (options.network === 'localnet') {
+    const infra = createInfrastructureService(rootDir);
+    infraEnv = infra.getEnvVars();
+  }
+
   const proc = spawn({
-    cmd: ['bun', 'run', 'start'],
+    cmd: ['bun', 'run', 'src/server/index.ts'],
     cwd: dwsDir,
     stdout: 'inherit',
     stderr: 'inherit',
     env: {
       ...process.env,
+      ...infraEnv,
       PORT: options.port,
       DWS_PORT: options.port,
       NETWORK: options.network,

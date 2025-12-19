@@ -301,21 +301,19 @@ describe("Error Recovery Under Concurrency", () => {
 		const result1 = await batcher.addTransfer(createTransfer(1));
 		expect(result1.batchId).toBeDefined();
 
-		// Add invalid transfer (zero amount)
+		// Add invalid transfer (zero amount) - should throw
 		const invalidTransfer = createTransfer(2);
 		invalidTransfer.amount = BigInt(0);
 
-		// Should still process (validation may happen later)
-		const result2 = await batcher.addTransfer(invalidTransfer);
-		expect(result2.batchId).toBeDefined();
+		// Invalid transfers are rejected immediately with validation error
+		await expect(batcher.addTransfer(invalidTransfer)).rejects.toThrow('Transfer amount must be positive');
 
-		// Add another valid transfer
+		// Add another valid transfer - should still work after rejection
 		const result3 = await batcher.addTransfer(createTransfer(3));
 		expect(result3.batchId).toBeDefined();
 
-		// All should be in same batch
-		expect(result1.batchId).toBe(result2.batchId);
-		expect(result2.batchId).toBe(result3.batchId);
+		// Both valid transfers should be in same batch
+		expect(result1.batchId).toBe(result3.batchId);
 	});
 });
 

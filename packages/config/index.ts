@@ -847,3 +847,95 @@ export {
   type SupportBranding,
   type CliBranding,
 } from './branding';
+
+// ============================================================================
+// Secrets & API Keys
+// ============================================================================
+
+export {
+  getSecret,
+  requireSecret,
+  requireSecretSync,
+  getSecretWithProvider,
+  storeLocalSecret,
+  storeAWSSecret,
+  validateSecrets,
+  getActiveProvider,
+  initSecretsDirectory,
+  type SecretName,
+  type SecretProvider,
+  type SecretResult,
+} from './secrets';
+
+export {
+  getApiKey,
+  getApiKeySync,
+  hasApiKey,
+  getApiKeyConfig,
+  getApiKeyStatus,
+  printApiKeyStatus,
+  getBlockExplorerKeys,
+  getExplorerKeyForChain,
+  getAIProviderKeys,
+  hasAnyAIProvider,
+  generateApiKeyDocs,
+  type ApiKeyName,
+  type ApiKeyConfig,
+  type ApiKeyStatus,
+  type BlockExplorerKeys,
+  type AIProviderKeys,
+} from './api-keys';
+
+// ============================================================================
+// Test Keys
+// ============================================================================
+
+export {
+  TEST_MNEMONIC,
+  ANVIL_KEYS,
+  ROLE_CONFIGS,
+  TESTNET_CHAINS,
+  BSC_FUNDING_WARNING,
+  getTestKeys,
+  getKeyByRole,
+  getDeployerKey,
+  getMultisigSigners,
+  testnetKeysExist,
+  saveTestnetKeys,
+  solanaKeysExist,
+  loadSolanaKeys,
+  saveSolanaKeys,
+  formatKeyForDisplay,
+  getRoleDescription,
+  printKeys,
+  SOLANA_ROLE_PATHS,
+  type KeyRole,
+  type KeyPair,
+  type TestKeySet,
+  type RoleConfig,
+  type SolanaKeyPair,
+  type ChainBalance,
+} from './test-keys';
+
+// ============================================================================
+// Config Updates (for deployment scripts)
+// ============================================================================
+
+export {
+  updateContractAddress,
+  updateContracts,
+  updateExternalContract,
+  updateServiceUrl,
+  updateExternalRpc,
+  updateEILChain,
+  saveDeploymentArtifact,
+  loadLatestArtifact,
+  applyArtifactToConfig,
+  applyTerraformOutputs,
+  applyTerraformOutputsFile,
+  updateChainConfig,
+  validateConfig,
+  printConfigSummary,
+  type DeploymentArtifact,
+  type ContractCategoryKey,
+} from './update';

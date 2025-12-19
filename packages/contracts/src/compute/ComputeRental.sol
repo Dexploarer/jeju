@@ -144,88 +144,33 @@ contract ComputeRental is Ownable, Pausable, ReentrancyGuard {
         bool banned;
     }
 
-    // ============ State Variables ============
-
-    /// @notice All rentals by ID
     mapping(bytes32 => Rental) public rentals;
-
-    /// @notice Provider resource configurations
     mapping(address => ProviderResources) public providerResources;
-
-    /// @notice User's active rentals
     mapping(address => bytes32[]) public userRentals;
-
-    /// @notice Provider's rentals
     mapping(address => bytes32[]) public providerRentals;
-
-    /// @notice Disputes by ID
     mapping(bytes32 => Dispute) public disputes;
-
-    /// @notice Rental disputes (rentalId => disputeId)
     mapping(bytes32 => bytes32) public rentalDisputes;
-
-    /// @notice Rental ratings (rentalId => rating)
     mapping(bytes32 => RentalRating) public rentalRatings;
-
-    /// @notice User records for reputation
     mapping(address => UserRecord) public userRecords;
-
-    /// @notice Provider records for reputation
     mapping(address => ProviderRecord) public providerRecords;
-
-    /// @notice ERC-8004 Identity Registry
     IIdentityRegistry public identityRegistry;
-
-    /// @notice ComputeRegistry for provider verification
     IComputeRegistry public computeRegistry;
-
-    /// @notice Whether to require providers to be registered in ComputeRegistry
     bool public requireRegisteredProvider;
-
-    /// @notice Agent ID => provider address mapping
     mapping(uint256 => address) public agentToProvider;
 
-    /// @notice Minimum rental duration (1 hour)
     uint256 public constant MIN_RENTAL_HOURS = 1;
-
-    /// @notice Maximum rental duration (30 days)
     uint256 public constant MAX_RENTAL_HOURS = 720;
-
-    /// @notice Platform fee percentage (basis points, 100 = 1%)
-    /// @dev Can be overridden by FeeConfig if set
-    uint256 public platformFeeBps = 250; // 2.5%
-
-    /// @notice Protocol treasury for fees
+    uint256 public platformFeeBps = 250;
     address public treasury;
-
-    /// @notice Fee configuration contract (governance-controlled)
     IFeeConfigCompute public feeConfig;
-
-    /// @notice Total platform fees collected
     uint256 public totalPlatformFeesCollected;
-
-    /// @notice Rental counter for unique IDs
     uint256 private _rentalCounter;
-
-    /// @notice Dispute counter
     uint256 private _disputeCounter;
-
-    /// @notice Dispute bond (prevents spam)
     uint256 public disputeBond = 0.01 ether;
-
-    /// @notice Abuse report threshold before auto-ban
     uint256 public abuseReportThreshold = 3;
-
-    /// @notice Arbitrators who can resolve disputes
     mapping(address => bool) public arbitrators;
-
-    /// @notice Trusted settlement contracts that can create rentals for users
     mapping(address => bool) public trustedSettlers;
-
-    /// @notice Credit manager for multi-token payments
     ICreditManager public creditManager;
-
-    /// @notice Supported payment tokens (token => accepted)
     mapping(address => bool) public acceptedTokens;
 
 
@@ -563,8 +508,6 @@ contract ComputeRental is Ownable, Pausable, ReentrancyGuard {
         emit RentalCreatedWithCredit(rentalId, msg.sender, provider, paymentToken, totalCost);
     }
 
-    // ============ Provider Actions ============
-
     function startRental(bytes32 rentalId, string calldata sshHost, uint16 sshPort, string calldata containerId)
         external
     {
@@ -661,8 +604,6 @@ contract ComputeRental is Ownable, Pausable, ReentrancyGuard {
     event PlatformFeeCollected(bytes32 indexed rentalId, uint256 amount, uint256 feeBps);
     event FeeConfigUpdated(address indexed oldConfig, address indexed newConfig);
 
-    // ============ User Actions ============
-
     function cancelRental(bytes32 rentalId) external nonReentrant {
         Rental storage rental = rentals[rentalId];
         if (rental.rentalId == bytes32(0)) revert RentalNotFound();
@@ -683,9 +624,6 @@ contract ComputeRental is Ownable, Pausable, ReentrancyGuard {
         if (!success) revert TransferFailed();
     }
 
-    /**
-     * @notice User extends an active rental
-     */
     function extendRental(bytes32 rentalId, uint256 additionalHours) external payable nonReentrant {
         Rental storage rental = rentals[rentalId];
         if (rental.rentalId == bytes32(0)) revert RentalNotFound();
@@ -723,14 +661,6 @@ contract ComputeRental is Ownable, Pausable, ReentrancyGuard {
         emit RentalRated(rentalId, msg.sender, rental.provider, score);
     }
 
-    // ============ Dispute System ============
-
-    /**
-     * @notice File a dispute for a rental
-     * @param rentalId The rental to dispute
-     * @param reason The dispute reason
-     * @param evidenceUri IPFS URI to evidence
-     */
     function createDispute(bytes32 rentalId, DisputeReason reason, string calldata evidenceUri)
         external
         payable
@@ -774,13 +704,6 @@ contract ComputeRental is Ownable, Pausable, ReentrancyGuard {
         emit DisputeCreated(disputeId, rentalId, msg.sender, reason);
     }
 
-    /**
-     * @notice Resolve a dispute (arbitrator only)
-     * @param disputeId The dispute to resolve
-     * @param inFavorOfInitiator Whether to rule in favor of initiator
-     * @param slashAmount Amount to slash from defendant
-     * @custom:security CEI pattern: Update all state before external calls
-     */
     function resolveDispute(bytes32 disputeId, bool inFavorOfInitiator, uint256 slashAmount)
         external
         nonReentrant
@@ -790,7 +713,6 @@ contract ComputeRental is Ownable, Pausable, ReentrancyGuard {
         if (dispute.disputeId == bytes32(0)) revert DisputeNotFound();
         if (dispute.resolved) revert AlreadyResolved();
 
-        // Cache values before state changes
         address initiator = dispute.initiator;
         bytes32 rentalId = dispute.rentalId;
         Rental storage rental = rentals[rentalId];
@@ -799,55 +721,37 @@ contract ComputeRental is Ownable, Pausable, ReentrancyGuard {
         uint256 paidAmount = rental.paidAmount;
         uint256 refundedAmount = rental.refundedAmount;
 
-        // Calculate refund if applicable
         uint256 refund = 0;
         if (inFavorOfInitiator && initiator == user && paidAmount > refundedAmount) {
             refund = paidAmount - refundedAmount;
         }
 
-        // EFFECTS: Update ALL state BEFORE external calls (CEI pattern)
         dispute.resolved = true;
         dispute.resolvedAt = block.timestamp;
         dispute.inFavorOfInitiator = inFavorOfInitiator;
         dispute.slashAmount = slashAmount;
 
         if (inFavorOfInitiator) {
-            if (refund > 0) {
-                rental.refundedAmount = paidAmount;
-            }
-            if (initiator == user) {
-                providerRecords[provider].failedRentals++;
-            }
+            if (refund > 0) rental.refundedAmount = paidAmount;
+            if (initiator == user) providerRecords[provider].failedRentals++;
         }
 
-        // Emit event before external calls
         emit DisputeResolved(disputeId, inFavorOfInitiator, slashAmount);
 
-        // INTERACTIONS: External calls last
         if (inFavorOfInitiator) {
-            // Return bond to initiator
             (bool bondSuccess,) = initiator.call{value: disputeBond}("");
             if (!bondSuccess) revert TransferFailed();
 
-            // Refund remaining amount if user won
             if (refund > 0) {
                 (bool refundSuccess,) = user.call{value: refund}("");
                 if (!refundSuccess) revert TransferFailed();
             }
         } else {
-            // Defendant wins - bond goes to treasury
             (bool treasurySuccess,) = treasury.call{value: disputeBond}("");
             if (!treasurySuccess) revert TransferFailed();
         }
     }
 
-
-    /**
-     * @notice Report user abuse (providers can report)
-     * @param rentalId The rental where abuse occurred
-     * @param reason The abuse reason
-     * @param evidenceUri IPFS URI to evidence
-     */
     function reportAbuse(bytes32 rentalId, DisputeReason reason, string calldata evidenceUri) external {
         Rental storage rental = rentals[rentalId];
         if (rental.rentalId == bytes32(0)) revert RentalNotFound();
@@ -906,16 +810,6 @@ contract ComputeRental is Ownable, Pausable, ReentrancyGuard {
         return _calculateCost(provider, durationHours);
     }
 
-    /**
-     * @notice Get x402-compatible payment requirement for a rental
-     * @param provider Provider address
-     * @param durationHours Rental duration in hours
-     * @return cost Required payment in wei
-     * @return asset Asset address (0x0 for ETH)
-     * @return payTo Payment recipient (this contract)
-     * @return network Network identifier
-     * @return description Human-readable description
-     */
     function getPaymentRequirement(address provider, uint256 durationHours)
         external
         view
@@ -993,8 +887,6 @@ contract ComputeRental is Ownable, Pausable, ReentrancyGuard {
         return providerRecords[provider].banned;
     }
 
-    // ============ Internal Functions ============
-
     function _calculateCost(address provider, uint256 durationHours) internal view returns (uint256) {
         ProviderResources storage pr = providerResources[provider];
         uint256 baseCost = durationHours * pr.pricing.pricePerHour;
@@ -1020,26 +912,16 @@ contract ComputeRental is Ownable, Pausable, ReentrancyGuard {
         treasury = newTreasury;
     }
 
-    /**
-     * @notice Set fee configuration contract (governance-controlled)
-     * @param _feeConfig Address of FeeConfig contract
-     */
     function setFeeConfig(address _feeConfig) external onlyOwner {
         address oldConfig = address(feeConfig);
         feeConfig = IFeeConfigCompute(_feeConfig);
         emit FeeConfigUpdated(oldConfig, _feeConfig);
     }
 
-    /**
-     * @notice Get current effective platform fee rate
-     */
     function getEffectivePlatformFee() external view returns (uint256) {
         return _getPlatformFeeBps();
     }
 
-    /**
-     * @notice Get platform fee statistics
-     */
     function getPlatformFeeStats()
         external
         view

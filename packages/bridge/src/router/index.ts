@@ -1,15 +1,3 @@
-/**
- * Cross-Chain Router
- * 
- * Comprehensive routing, bridging, and arbitrage detection:
- * - CrossChainRouter: Route finding and execution
- * - CCIPAdapter: Chainlink permissionless token transfers
- * - WormholeAdapter: Wormhole bridge for Solana/EVM
- * - MultiBridgeRouter: Optimal route selection across all bridges
- * - ArbitrageDetector: Cross-chain MEV and arbitrage
- * - JejuRoutingOptimizer: Route optimization to maximize Jeju revenue
- */
-
 export * from './cross-chain-router';
 export * from './ccip-adapter';
 export * from './wormhole-adapter';
@@ -23,8 +11,8 @@ export {
   isBscChain,
   getChainConfig as getJejuChainConfig,
   getStablecoinAddress,
-  ChainId,
-  CHAIN_CONFIGS,
+  ChainId as JejuChainId,
+  CHAIN_CONFIGS as JEJU_CHAIN_CONFIGS,
   JEJU_CHAIN_ID,
   JEJU_TESTNET_CHAIN_ID,
   type ChainConfig as JejuChainConfig,

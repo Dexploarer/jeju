@@ -41,7 +41,7 @@ export class TEEBatcher {
   }
 
   async addTransfer(transfer: CrossChainTransfer): Promise<{
-    batchId: Hash32;
+    batchId: string;
     position: number;
     estimatedCost: bigint;
   }> {
@@ -72,7 +72,7 @@ export class TEEBatcher {
     this.currentBatch.estimatedTotalCost += estimatedCost;
 
     // Save batch info before potential finalization
-    const batchId = this.currentBatch.id;
+    const batchId = this.hashToString(this.currentBatch.id);
 
     // Check if batch is ready
     if (this.currentBatch.transfers.length >= this.config.maxBatchSize) {

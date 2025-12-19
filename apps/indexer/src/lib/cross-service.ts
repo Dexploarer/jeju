@@ -2,7 +2,7 @@ import { createPublicClient, http, keccak256, stringToHex, type Address, type Ch
 import { parseAbi } from 'viem';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function readContract<T>(client: { readContract: (params: unknown) => Promise<unknown> }, params: { address: Address; abi: readonly unknown[]; functionName: string; args?: readonly unknown[] }): Promise<T> {
+async function readContract<T>(client: any, params: { address: Address; abi: readonly unknown[]; functionName: string; args?: readonly unknown[] }): Promise<T> {
   return client.readContract(params) as Promise<T>;
 }
 
@@ -206,7 +206,8 @@ export interface CrossServiceConfig {
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 export class CrossServiceClient {
-  private publicClient: { readContract: (params: unknown) => Promise<unknown> };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private publicClient: any;
   private computeRegistryAddress?: Address;
   private storageRegistryAddress?: Address;
   private identityRegistryAddress?: Address;

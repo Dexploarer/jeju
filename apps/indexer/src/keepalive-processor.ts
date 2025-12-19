@@ -101,7 +101,7 @@ export async function processKeepaliveEvents(ctx: ProcessorContext<Store>): Prom
             abi: ABI.keepalive,
             topics: log.topics as [`0x${string}`, ...`0x${string}`[]],
             data: log.data as `0x${string}`,
-          }) as { args: readonly [string, string, string, bigint] };
+          }) as unknown as { args: readonly [string, string, string, bigint] };
 
           const keepaliveId = args[0];
           const ownerAddr = args[1];
@@ -137,7 +137,7 @@ export async function processKeepaliveEvents(ctx: ProcessorContext<Store>): Prom
             abi: ABI.keepalive,
             topics: log.topics as [`0x${string}`, ...`0x${string}`[]],
             data: log.data as `0x${string}`,
-          }) as { args: readonly [string, number, string] };
+          }) as unknown as { args: readonly [string, number, string] };
 
           const keepaliveId = args[0];
           const resourceType = Number(args[1]);
@@ -175,7 +175,7 @@ export async function processKeepaliveEvents(ctx: ProcessorContext<Store>): Prom
             abi: ABI.keepalive,
             topics: log.topics as [`0x${string}`, ...`0x${string}`[]],
             data: log.data as `0x${string}`,
-          }) as { args: readonly [string, number, bigint, number, number] };
+          }) as unknown as { args: readonly [string, number, bigint, number, number] };
 
           const keepaliveId = args[0];
           const status = Number(args[1]);
@@ -221,7 +221,7 @@ export async function processKeepaliveEvents(ctx: ProcessorContext<Store>): Prom
             abi: ABI.keepalive,
             topics: log.topics as [`0x${string}`, ...`0x${string}`[]],
             data: log.data as `0x${string}`,
-          }) as { args: readonly [string, number, number] };
+          }) as unknown as { args: readonly [string, number, number] };
 
           const keepaliveId = args[0];
           const newStatus = Number(args[2]);
@@ -238,7 +238,7 @@ export async function processKeepaliveEvents(ctx: ProcessorContext<Store>): Prom
             abi: ABI.keepalive,
             topics: log.topics as [`0x${string}`, ...`0x${string}`[]],
             data: log.data as `0x${string}`,
-          }) as { args: readonly [string, bigint, string] };
+          }) as unknown as { args: readonly [string, bigint, string] };
 
           const keepaliveId = args[0];
           const amount = args[1];
@@ -273,7 +273,7 @@ export async function processKeepaliveEvents(ctx: ProcessorContext<Store>): Prom
             abi: ABI.mirror,
             topics: log.topics as [`0x${string}`, ...`0x${string}`[]],
             data: log.data as `0x${string}`,
-          }) as { args: readonly [string, string, string, string] };
+          }) as unknown as { args: readonly [string, string, string, string] };
 
           const mirrorId = args[0];
           const ensNode = args[1];
@@ -306,7 +306,7 @@ export async function processKeepaliveEvents(ctx: ProcessorContext<Store>): Prom
             abi: ABI.mirror,
             topics: log.topics as [`0x${string}`, ...`0x${string}`[]],
             data: log.data as `0x${string}`,
-          }) as { args: readonly [string, string, bigint] };
+          }) as unknown as { args: readonly [string, string, bigint] };
 
           const mirrorId = args[0];
           const ethBlockNumber = args[2];
@@ -338,7 +338,7 @@ export async function processKeepaliveEvents(ctx: ProcessorContext<Store>): Prom
             abi: ABI.mirror,
             topics: log.topics as [`0x${string}`, ...`0x${string}`[]],
             data: log.data as `0x${string}`,
-          }) as { args: readonly [string, string] };
+          }) as unknown as { args: readonly [string, string] };
 
           const mirrorId = args[0];
           const reason = args[1];

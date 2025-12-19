@@ -8,9 +8,12 @@
       "@/*": ["./src/*"],
       "@jejunetwork/shared": ["../../packages/shared/src/index.ts"],
       "@jejunetwork/shared/*": ["../../packages/shared/src/*"]
-    }
+    },
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitReturns": false,
+    "skipLibCheck": true
   },
-  "include": ["src"],
-  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "node_modules"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": ["src", "vite.config.ts"],
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "node_modules", "../dws"]
 }

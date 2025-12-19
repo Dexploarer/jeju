@@ -1,15 +1,8 @@
-/**
- * @fileoverview Farcaster Hub Types
- */
-
 import type { Address, Hex } from 'viem';
 
 export interface HubConfig {
-  /** Hub gRPC URL (e.g., 'hub.testnet.jejunetwork.org:2283') */
   hubUrl: string;
-  /** HTTP API URL (optional, for REST endpoints) */
   httpUrl?: string;
-  /** Request timeout in milliseconds */
   timeoutMs?: number;
 }
 

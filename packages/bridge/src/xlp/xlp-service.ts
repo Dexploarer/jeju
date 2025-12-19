@@ -40,8 +40,8 @@ const SUPPORTED_EVM_CHAINS = {
   8453: { chain: base, name: 'Base' },
 } as const;
 
-// Solana chain IDs (101 = mainnet, 102 = devnet)
-const SOLANA_CHAIN_IDS = [101, 102] as const;
+// Solana chain IDs (101 = mainnet, 102 = devnet, 103 = localnet, 104 = local-solana)
+const SOLANA_CHAIN_IDS = [101, 102, 103, 104] as const;
 
 
 // XLP Contract ABI
@@ -102,7 +102,7 @@ const SOLANA_TOKENS: Record<string, string> = {
 };
 
 export function isSolanaChain(chainId: number): boolean {
-  return SOLANA_CHAIN_IDS.includes(chainId as 101 | 102);
+  return SOLANA_CHAIN_IDS.includes(chainId as 101 | 102 | 103 | 104);
 }
 
 export function getSolanaTokenMint(symbol: string): string | undefined {

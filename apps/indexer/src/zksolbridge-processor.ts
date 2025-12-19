@@ -179,10 +179,9 @@ export async function processBridgeEvents(ctx: ProcessorContext<Store>): Promise
   }
 }
 
-// Main entry point
-if (import.meta.main) {
-  bridgeProcessor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
-    await processBridgeEvents(ctx);
-  });
-}
+// Main entry point - this file is typically run via sqd commands
+// Uncomment below if running directly with node/bun
+// bridgeProcessor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
+//   await processBridgeEvents(ctx);
+// });
 
