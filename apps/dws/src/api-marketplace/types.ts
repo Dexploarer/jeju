@@ -2,9 +2,11 @@
  * API Marketplace Types
  *
  * Decentralized API key marketplace with TEE-backed secure key vault
+ * Enhanced with Proof-of-Cloud verification for high-risk operations
  */
 
-import type { Address } from 'viem';
+import type { Address, Hex } from 'viem';
+import type { TEEPlatform, PoCVerificationLevel, PoCStatus } from '../poc/types';
 
 // ============================================================================
 // Authentication Types
@@ -77,6 +79,14 @@ export interface AccessControl {
   allowedMethods: Array<'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'>;
 }
 
+/**
+ * Risk level for API operations
+ * - low: No special requirements
+ * - medium: Prefer PoC-verified nodes but allow unverified
+ * - high: Require PoC-verified nodes (TEE attestation + cloud verification)
+ */
+export type APIRiskLevel = 'low' | 'medium' | 'high';
+
 export interface APIListing {
   id: string;
   providerId: string;
@@ -97,6 +107,12 @@ export interface APIListing {
   totalRequests: bigint;
   /** Total revenue in wei */
   totalRevenue: bigint;
+  /** Risk level (determines PoC requirements) */
+  riskLevel: APIRiskLevel;
+  /** Required minimum PoC verification level (for medium/high risk) */
+  requiredPoCLevel?: PoCVerificationLevel;
+  /** Agent ID in ERC-8004 registry (for PoC verification) */
+  agentId?: bigint;
 }
 
 // ============================================================================
@@ -169,8 +185,32 @@ export interface VaultKey {
   encryptedKey: string;
   /** TEE attestation of key storage */
   attestation?: string;
+  /** Proof-of-Cloud verification status */
+  pocVerification?: PoCVerificationInfo;
   /** Creation timestamp */
   createdAt: number;
+}
+
+/**
+ * Proof-of-Cloud verification information
+ */
+export interface PoCVerificationInfo {
+  /** PoC verification status */
+  status: PoCStatus;
+  /** Verification level (1, 2, or 3) */
+  level: PoCVerificationLevel | null;
+  /** TEE platform type */
+  platform: TEEPlatform | null;
+  /** Hardware ID hash (salted) */
+  hardwareIdHash: Hex | null;
+  /** Cloud provider (e.g., "aws", "gcp", "azure") */
+  cloudProvider: string | null;
+  /** Data center region */
+  region: string | null;
+  /** Last verification timestamp */
+  verifiedAt: number | null;
+  /** Verification expiry timestamp */
+  expiresAt: number | null;
 }
 
 export interface VaultDecryptRequest {
@@ -183,6 +223,8 @@ export interface VaultDecryptRequest {
     endpoint: string;
     requestId: string;
   };
+  /** Whether PoC verification is required for this request */
+  requirePoC?: boolean;
 }
 
 // ============================================================================
@@ -244,6 +286,15 @@ export interface MarketplaceStats {
   totalVolume: bigint;
   last24hRequests: bigint;
   last24hVolume: bigint;
+  /** PoC statistics */
+  pocStats: {
+    /** Number of listings requiring PoC */
+    pocRequiredListings: number;
+    /** Number of verified vault keys */
+    verifiedVaultKeys: number;
+    /** Requests served via PoC-verified nodes */
+    pocVerifiedRequests: bigint;
+  };
 }
 
 export interface ProviderHealth {

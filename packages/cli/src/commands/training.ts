@@ -129,6 +129,37 @@ const CONTRACTS = {
   nodePerformanceOracle: (process.env.NODE_PERFORMANCE_ADDRESS || '0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f') as `0x${string}`,
 };
 
+// RLAIF-specific ABI
+const RLAIF_COORDINATOR_ABI = [
+  { name: 'createRun', type: 'function', inputs: [
+    { name: 'runId', type: 'bytes32' },
+    { name: 'environmentId', type: 'string' },
+    { name: 'policyModelCID', type: 'string' },
+    { name: 'targetIterations', type: 'uint32' },
+  ], outputs: [], stateMutability: 'nonpayable' },
+  { name: 'getRunState', type: 'function', inputs: [{ name: 'runId', type: 'bytes32' }], outputs: [{ name: '', type: 'uint8' }], stateMutability: 'view' },
+  { name: 'getCurrentIteration', type: 'function', inputs: [{ name: 'runId', type: 'bytes32' }], outputs: [{ name: '', type: 'uint32' }], stateMutability: 'view' },
+  { name: 'getBestPolicy', type: 'function', inputs: [{ name: 'runId', type: 'bytes32' }], outputs: [
+    { name: 'policyCID', type: 'string' },
+    { name: 'evalScore', type: 'uint256' },
+  ], stateMutability: 'view' },
+] as const;
+
+const RLAIF_CONTRACTS = {
+  rlaifCoordinator: (process.env.RLAIF_COORDINATOR_ADDRESS || '0x322813Fd9A801c5507c9544369c222f2122d1C2d') as `0x${string}`,
+};
+
+const RLAIF_STATES = [
+  'Uninitialized',
+  'CollectingRollouts',
+  'Judging',
+  'Training',
+  'Evaluating',
+  'Promoting',
+  'Paused',
+  'Finished',
+];
+
 export const trainingCommand = new Command('training')
   .description('Distributed training operations (Psyche-compatible)')
   .addCommand(
@@ -232,6 +263,93 @@ export const trainingCommand = new Command('training')
       .action(async () => {
         await listModels();
       })
+  )
+  // RLAIF commands for Babylon/environment training
+  .addCommand(
+    new Command('rlaif')
+      .description('RLAIF training commands')
+      .addCommand(
+        new Command('create')
+          .description('Create an RLAIF training run')
+          .requiredOption('--env <environment>', 'Environment ID (e.g., babylon)')
+          .requiredOption('--model <model>', 'Base model CID or name')
+          .option('--network <network>', 'Network: localnet, testnet, mainnet', 'localnet')
+          .option('--iterations <n>', 'Target iterations', '10')
+          .option('--archetype <type>', 'Archetype for rubric (Babylon only)')
+          .action(async (options) => {
+            await createRLAIFRun(options);
+          })
+      )
+      .addCommand(
+        new Command('status')
+          .description('Get RLAIF run status')
+          .argument('<run-id>', 'RLAIF run ID')
+          .option('--network <network>', 'Network: localnet, testnet, mainnet', 'localnet')
+          .action(async (runId, options) => {
+            await getRLAIFStatus(runId, options.network);
+          })
+      )
+      .addCommand(
+        new Command('list')
+          .description('List RLAIF runs')
+          .option('--network <network>', 'Network: localnet, testnet, mainnet', 'localnet')
+          .option('--env <environment>', 'Filter by environment')
+          .action(async (options) => {
+            await listRLAIFRuns(options);
+          })
+      )
+      .addCommand(
+        new Command('submit-trajectories')
+          .description('Submit trajectories to an RLAIF run')
+          .argument('<run-id>', 'RLAIF run ID')
+          .requiredOption('--manifest <cid>', 'Trajectory manifest CID')
+          .option('--network <network>', 'Network: localnet, testnet, mainnet', 'localnet')
+          .action(async (runId, options) => {
+            await submitRLAIFTrajectories(runId, options);
+          })
+      )
+  )
+  // Babylon-specific training
+  .addCommand(
+    new Command('babylon')
+      .description('Babylon-specific training commands')
+      .addCommand(
+        new Command('generate')
+          .description('Generate trajectories for an archetype')
+          .requiredOption('--archetype <type>', 'Archetype: trader, degen, scammer, etc.')
+          .option('--agents <n>', 'Number of agents', '5')
+          .option('--ticks <n>', 'Ticks per agent', '20')
+          .action(async (options) => {
+            await babylonGenerate(options);
+          })
+      )
+      .addCommand(
+        new Command('score')
+          .description('Score trajectories with RULER')
+          .option('--archetype <type>', 'Archetype to score')
+          .option('--limit <n>', 'Max trajectories to score', '100')
+          .action(async (options) => {
+            await babylonScore(options);
+          })
+      )
+      .addCommand(
+        new Command('train')
+          .description('Run full training pipeline')
+          .requiredOption('--archetype <type>', 'Archetype: trader, degen, etc.')
+          .option('--model <model>', 'Base model', 'Qwen/Qwen2.5-3B-Instruct')
+          .option('--iterations <n>', 'Training iterations', '5')
+          .option('--use-jeju', 'Use Jeju RLAIF infrastructure', true)
+          .action(async (options) => {
+            await babylonTrain(options);
+          })
+      )
+      .addCommand(
+        new Command('archetypes')
+          .description('List available archetypes')
+          .action(async () => {
+            await listArchetypes();
+          })
+      )
   );
 
 async function checkStatus(network: string): Promise<void> {
@@ -872,5 +990,390 @@ async function listModels(): Promise<void> {
 
   logger.newline();
   logger.info('Create a training run with: jeju training create --model <model-id>');
+}
+
+// RLAIF Commands
+async function createRLAIFRun(options: {
+  env: string;
+  model: string;
+  network: string;
+  iterations: string;
+  archetype?: string;
+}): Promise<void> {
+  logger.header('CREATE RLAIF RUN');
+
+  const dwsUrl = getDwsUrl();
+
+  logger.keyValue('Environment', options.env);
+  logger.keyValue('Model', options.model);
+  logger.keyValue('Iterations', options.iterations);
+  if (options.archetype) {
+    logger.keyValue('Archetype', options.archetype);
+  }
+  logger.newline();
+
+  try {
+    logger.step('Creating RLAIF run via DWS...');
+
+    const response = await fetch(`${dwsUrl}/rlaif/runs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        environment: {
+          id: options.env,
+          type: options.env === 'babylon' ? 'game' : 'custom',
+          configCID: options.archetype ? `${options.env}-${options.archetype}` : options.env,
+        },
+        model: {
+          baseModelCID: options.model,
+          tokenizer: options.model.includes('Qwen') ? options.model : 'Qwen/Qwen2.5-3B-Instruct',
+        },
+        judge: {
+          rubricId: options.archetype ? `babylon-${options.archetype}` : 'default',
+        },
+        targetIterations: parseInt(options.iterations),
+        minTrajectoriesPerIteration: 20,
+      }),
+      signal: AbortSignal.timeout(30000),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+    }
+
+    const result = await response.json() as { runId: string; status: string };
+
+    logger.success('RLAIF run created');
+    logger.keyValue('Run ID', result.runId);
+    logger.newline();
+    logger.info(`Check status: jeju training rlaif status ${result.runId}`);
+    logger.info(`Start training: curl -X POST ${dwsUrl}/rlaif/runs/${result.runId}/start`);
+  } catch (error) {
+    logger.error(`Failed to create RLAIF run: ${error}`);
+    process.exit(1);
+  }
+}
+
+async function getRLAIFStatus(runId: string, network: string): Promise<void> {
+  logger.header('RLAIF RUN STATUS');
+
+  const dwsUrl = getDwsUrl();
+
+  try {
+    const response = await fetch(`${dwsUrl}/rlaif/runs/${runId}`, {
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        logger.error(`Run ${runId} not found`);
+        return;
+      }
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const run = await response.json() as {
+      config: { runId: string; environment: { id: string }; targetIterations: number };
+      state: number;
+      currentIteration: number;
+      currentPolicyCID: string;
+      bestPolicyCID?: string;
+      bestEvalScore?: number;
+      iterations: Array<{
+        iteration: number;
+        state: number;
+        evalPassed?: boolean;
+        metrics?: { evalScore?: number };
+      }>;
+    };
+
+    const stateLabel = RLAIF_STATES[run.state] || 'Unknown';
+    const progress = run.config.targetIterations > 0
+      ? ((run.currentIteration / run.config.targetIterations) * 100).toFixed(1)
+      : '0';
+
+    logger.keyValue('Run ID', run.config.runId);
+    logger.keyValue('Environment', run.config.environment.id);
+    logger.newline();
+
+    logger.subheader('Status');
+    logger.table([
+      { label: 'State', value: stateLabel, status: run.state === 7 ? 'ok' : run.state === 6 ? 'warning' : 'ok' },
+      { label: 'Iteration', value: `${run.currentIteration} / ${run.config.targetIterations} (${progress}%)`, status: 'ok' },
+      { label: 'Current Policy', value: run.currentPolicyCID.slice(0, 30) + '...', status: 'ok' },
+    ]);
+
+    if (run.bestPolicyCID) {
+      logger.newline();
+      logger.subheader('Best Model');
+      logger.table([
+        { label: 'Policy CID', value: run.bestPolicyCID.slice(0, 40) + '...', status: 'ok' },
+        { label: 'Eval Score', value: String(run.bestEvalScore ?? 0), status: 'ok' },
+      ]);
+    }
+
+    if (run.iterations.length > 0) {
+      logger.newline();
+      logger.subheader('Recent Iterations');
+      const recent = run.iterations.slice(-5);
+      for (const iter of recent) {
+        const iterState = RLAIF_STATES[iter.state] || 'Unknown';
+        const icon = iter.evalPassed ? '✅' : iter.state === 7 ? '✅' : '🔄';
+        console.log(`  ${icon} Iteration ${iter.iteration}: ${iterState}`);
+        if (iter.metrics?.evalScore !== undefined) {
+          console.log(`     Eval Score: ${iter.metrics.evalScore}`);
+        }
+      }
+    }
+  } catch (error) {
+    logger.error(`Failed to get RLAIF status: ${error}`);
+    process.exit(1);
+  }
+}
+
+async function listRLAIFRuns(options: { network: string; env?: string }): Promise<void> {
+  logger.header('RLAIF RUNS');
+
+  const dwsUrl = getDwsUrl();
+
+  try {
+    const params = new URLSearchParams();
+    if (options.env) params.set('environment', options.env);
+
+    const response = await fetch(`${dwsUrl}/rlaif/runs?${params}`, {
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const runs = await response.json() as Array<{
+      runId: string;
+      environment: string;
+      state: number;
+      currentIteration: number;
+      targetIterations: number;
+    }>;
+
+    if (!Array.isArray(runs) || runs.length === 0) {
+      logger.info('No RLAIF runs found');
+      logger.newline();
+      logger.info('Create a run with: jeju training rlaif create --env babylon --model Qwen/Qwen2.5-3B-Instruct');
+      return;
+    }
+
+    logger.info(`Found ${runs.length} RLAIF runs:\n`);
+
+    for (const run of runs) {
+      const stateLabel = RLAIF_STATES[run.state] || 'Unknown';
+      const progress = run.targetIterations > 0
+        ? ((run.currentIteration / run.targetIterations) * 100).toFixed(1)
+        : '0';
+      const icon = run.state === 7 ? '✅' : run.state === 6 ? '⏸️' : '🔄';
+
+      console.log(`  ${icon} ${run.runId.slice(0, 18)}...`);
+      console.log(`     Environment: ${run.environment}`);
+      console.log(`     State: ${stateLabel}`);
+      console.log(`     Progress: ${run.currentIteration}/${run.targetIterations} (${progress}%)`);
+      console.log('');
+    }
+  } catch (error) {
+    logger.warn(`DWS not available: ${error}`);
+    logger.info('Start DWS with: jeju dev start');
+  }
+}
+
+async function submitRLAIFTrajectories(runId: string, options: { manifest: string; network: string }): Promise<void> {
+  logger.header('SUBMIT TRAJECTORIES');
+
+  const dwsUrl = getDwsUrl();
+
+  logger.keyValue('Run ID', runId);
+  logger.keyValue('Manifest CID', options.manifest);
+  logger.newline();
+
+  try {
+    logger.step('Loading trajectories from manifest...');
+
+    // First load the manifest to get trajectory count
+    const manifestRes = await fetch(`${dwsUrl}/rlaif/manifests/${options.manifest}`);
+    if (!manifestRes.ok) {
+      throw new Error(`Failed to load manifest: ${manifestRes.status}`);
+    }
+    const manifest = await manifestRes.json() as { trajectoryCIDs: string[]; totalCount: number };
+
+    logger.keyValue('Trajectories', String(manifest.totalCount));
+    logger.newline();
+
+    logger.step('Submitting to RLAIF run...');
+
+    const response = await fetch(`${dwsUrl}/rlaif/runs/${runId}/rollouts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        manifestCID: options.manifest,
+      }),
+      signal: AbortSignal.timeout(30000),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+    }
+
+    const result = await response.json() as { trajectoryCount: number };
+
+    logger.success(`Submitted ${result.trajectoryCount} trajectories`);
+  } catch (error) {
+    logger.error(`Failed to submit trajectories: ${error}`);
+    process.exit(1);
+  }
+}
+
+// Babylon-specific commands
+async function babylonGenerate(options: { archetype: string; agents: string; ticks: string }): Promise<void> {
+  logger.header('BABYLON TRAJECTORY GENERATION');
+
+  logger.keyValue('Archetype', options.archetype);
+  logger.keyValue('Agents', options.agents);
+  logger.keyValue('Ticks per agent', options.ticks);
+  logger.newline();
+
+  logger.step('Starting trajectory generation...');
+  logger.info('Run this command in the Babylon project:');
+  logger.newline();
+  console.log(`  cd vendor/babylon && bun run train parallel --archetypes ${options.archetype} --num-agents ${options.agents} --ticks ${options.ticks}`);
+  logger.newline();
+  logger.info('Or use the Babylon CLI:');
+  console.log(`  babylon train parallel -a ${options.archetype} -n ${options.agents} -t ${options.ticks}`);
+}
+
+async function babylonScore(options: { archetype?: string; limit: string }): Promise<void> {
+  logger.header('BABYLON RULER SCORING');
+
+  if (options.archetype) {
+    logger.keyValue('Archetype', options.archetype);
+  }
+  logger.keyValue('Limit', options.limit);
+  logger.newline();
+
+  logger.step('Starting RULER scoring...');
+  logger.info('Run this command in the Babylon project:');
+  logger.newline();
+
+  if (options.archetype) {
+    console.log(`  cd vendor/babylon && bun run train score --archetype ${options.archetype} --limit ${options.limit}`);
+  } else {
+    console.log(`  cd vendor/babylon && bun run train score --limit ${options.limit}`);
+  }
+  logger.newline();
+  logger.info('Or use the Babylon CLI:');
+  console.log(`  babylon train score${options.archetype ? ` --archetype ${options.archetype}` : ''}`);
+}
+
+async function babylonTrain(options: {
+  archetype: string;
+  model: string;
+  iterations: string;
+  useJeju: boolean;
+}): Promise<void> {
+  logger.header('BABYLON TRAINING');
+
+  logger.keyValue('Archetype', options.archetype);
+  logger.keyValue('Model', options.model);
+  logger.keyValue('Iterations', options.iterations);
+  logger.keyValue('Infrastructure', options.useJeju ? 'Jeju RLAIF' : 'Local');
+  logger.newline();
+
+  if (options.useJeju) {
+    logger.step('Creating Jeju RLAIF run...');
+
+    const dwsUrl = getDwsUrl();
+
+    try {
+      // Create RLAIF run
+      const response = await fetch(`${dwsUrl}/rlaif/runs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          environment: {
+            id: 'babylon',
+            type: 'game',
+            configCID: `babylon-${options.archetype}`,
+          },
+          model: {
+            baseModelCID: options.model,
+            tokenizer: 'Qwen/Qwen2.5-3B-Instruct',
+          },
+          judge: {
+            rubricId: `babylon-${options.archetype}`,
+          },
+          targetIterations: parseInt(options.iterations),
+          minTrajectoriesPerIteration: 20,
+        }),
+        signal: AbortSignal.timeout(30000),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const result = await response.json() as { runId: string };
+      logger.success(`Created RLAIF run: ${result.runId}`);
+
+      logger.newline();
+      logger.step('Next steps:');
+      logger.info('1. Generate trajectories:');
+      console.log(`   babylon train parallel -a ${options.archetype} -n 10 -t 30`);
+      logger.info('2. Load trajectories to Jeju:');
+      console.log(`   jeju training babylon score --archetype ${options.archetype}`);
+      logger.info('3. Start training:');
+      console.log(`   curl -X POST ${dwsUrl}/rlaif/runs/${result.runId}/start`);
+      logger.info('4. Monitor progress:');
+      console.log(`   jeju training rlaif status ${result.runId}`);
+    } catch (error) {
+      logger.warn(`DWS not available, falling back to local training`);
+      logger.newline();
+      logger.info('Run local training:');
+      console.log(`  cd vendor/babylon/packages/training/python`);
+      console.log(`  python scripts/train_local.py --backend auto`);
+    }
+  } else {
+    logger.info('Run local training:');
+    logger.newline();
+    console.log(`  cd vendor/babylon/packages/training/python`);
+    console.log(`  source venv/bin/activate`);
+    console.log(`  python scripts/train_local.py --backend auto`);
+  }
+}
+
+async function listArchetypes(): Promise<void> {
+  logger.header('BABYLON ARCHETYPES');
+
+  const archetypes = [
+    { id: 'trader', desc: 'Disciplined profit-focused trader', metrics: ['P&L', 'Win Rate', 'Risk Management'] },
+    { id: 'degen', desc: 'High-risk YOLO trader', metrics: ['Position Size', 'Leverage', 'Volatility'] },
+    { id: 'scammer', desc: 'Manipulative, spreads misinformation', metrics: ['Deception Success', 'Victim Count'] },
+    { id: 'researcher', desc: 'Analytical, data-driven', metrics: ['Analysis Depth', 'Prediction Accuracy'] },
+    { id: 'social-butterfly', desc: 'Community engagement focused', metrics: ['Connections', 'Engagement', 'Influence'] },
+    { id: 'information-trader', desc: 'News/signal-based', metrics: ['Signal Speed', 'Information Edge'] },
+    { id: 'perps-trader', desc: 'Perpetual futures specialist', metrics: ['Funding Rate', 'Leverage Efficiency'] },
+    { id: 'super-predictor', desc: 'Prediction market expert', metrics: ['Calibration', 'Brier Score'] },
+    { id: 'infosec', desc: 'Security-conscious', metrics: ['Security Score', 'Risk Avoidance'] },
+    { id: 'goody-twoshoes', desc: 'Helpful, ethical', metrics: ['Helpfulness', 'Ethical Score'] },
+    { id: 'ass-kisser', desc: 'Follows crowd consensus', metrics: ['Conformity', 'Social Proof'] },
+    { id: 'liar', desc: 'Consistently misleading', metrics: ['Deception Rate', 'Plausibility'] },
+  ];
+
+  logger.info(`${archetypes.length} archetypes available:\n`);
+
+  for (const arch of archetypes) {
+    console.log(`  🎭 ${arch.id}`);
+    console.log(`     ${arch.desc}`);
+    console.log(`     Metrics: ${arch.metrics.join(', ')}`);
+    console.log('');
+  }
+
+  logger.newline();
+  logger.info('Generate data: jeju training babylon generate --archetype trader');
+  logger.info('Train model:   jeju training babylon train --archetype trader');
 }
 

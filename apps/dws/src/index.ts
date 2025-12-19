@@ -34,4 +34,8 @@ export * from './solver/metrics';
 export * from './solver/contracts';
 export * from './solver/external';
 
-// Note: Chains are exported from './rpc' - don't re-export from './shared/chains' to avoid duplicates
+// Shared chains
+export * from './shared/chains';
+
+// Proof-of-Cloud
+export * from './poc';

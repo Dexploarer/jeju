@@ -48,6 +48,9 @@ export interface ContractAddresses {
   lpLocker?: Address;
   gitRegistry?: Address;
   packageRegistry?: Address;
+  modelRegistry?: Address;
+  datasetRegistry?: Address;
+  vpnRegistry?: Address;
 
   // DeFi contracts
   routerV3?: Address;
@@ -102,6 +105,9 @@ export function getContractAddresses(network: NetworkType): ContractAddresses {
     lpLocker: tryGetContract("launchpad", "LPLocker"),
     gitRegistry: tryGetContract("developer", "GitRegistry"),
     packageRegistry: tryGetContract("developer", "PackageRegistry"),
+    modelRegistry: tryGetContract("models", "ModelRegistry"),
+    datasetRegistry: tryGetContract("models", "DatasetRegistry"),
+    vpnRegistry: tryGetContract("vpn", "VPNRegistry"),
 
     // DeFi
     routerV3: tryGetContract("defi", "RouterV3"),

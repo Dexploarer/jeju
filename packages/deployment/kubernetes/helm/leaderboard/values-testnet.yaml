@@ -38,7 +38,7 @@ env:
   - name: SITE_NAME
     value: "Jeju Network Leaderboard - Testnet"
   - name: LARGE_MODEL
-    value: "openai/gpt-4o-mini"
+    value: "openai/gpt-5"
   - name: RPC_URL
     value: "https://testnet-rpc.jejunetwork.org"
 

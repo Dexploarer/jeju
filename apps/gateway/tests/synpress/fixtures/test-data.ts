@@ -6,7 +6,7 @@ export const GATEWAY_URL = process.env.GATEWAY_URL || 'http://localhost:4001';
 export const RPC_URL = 'http://127.0.0.1:9545';
 
 /**
- * Test wallet (Hardhat default account #0)
+ * Test wallet (Anvil default account #0)
  */
 export const TEST_WALLET = {
   address: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
@@ -14,7 +14,7 @@ export const TEST_WALLET = {
 };
 
 /**
- * Secondary test wallet (Hardhat account #1)
+ * Secondary test wallet (Anvil account #1)
  */
 export const TEST_WALLET_2 = {
   address: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',

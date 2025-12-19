@@ -1,30 +1,4 @@
-import { describe, it, expect, mock } from 'bun:test';
-
-// Mock dependencies before importing
-const mockPublicClient = {
-  readContract: mock(async () => true),
-  getGasPrice: mock(async () => 1000000000n),
-  waitForTransactionReceipt: mock(async () => ({ status: 'success' })),
-};
-
-const mockWalletClient = {
-  account: { address: '0x1234567890123456789012345678901234567890' as const },
-  writeContract: mock(async () => '0xtxhash' as const),
-};
-
-mock.module('viem', () => ({
-  createPublicClient: mock(() => mockPublicClient),
-  createWalletClient: mock(() => mockWalletClient),
-  http: mock(() => ({})),
-}));
-
-mock.module('viem/accounts', () => ({
-  privateKeyToAccount: mock(() => ({ address: '0x1234567890123456789012345678901234567890' })),
-}));
-
-mock.module('../lib/chains.js', () => ({
-  getChain: mock(() => ({ id: 1, name: 'Ethereum' })),
-}));
+import { describe, it, expect } from 'bun:test';
 
 describe('Settlement Flow', () => {
   describe('PendingSettlement tracking', () => {

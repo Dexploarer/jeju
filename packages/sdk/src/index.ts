@@ -54,6 +54,14 @@ export * from "./otc";
 export * from "./messaging";
 export * from "./distributor";
 export * from "./training";
+export * from "./perps";
+export * from "./amm";
+export * from "./agents";
+export * from "./bridge";
+export * from "./oracle";
+export * from "./sequencer";
+export * from "./cdn";
+export * from "./prediction";
 
 // Developer tools
 export * from "./git";
@@ -61,6 +69,22 @@ export * from "./packages";
 
 // VPN
 export * from "./vpn";
+export * from "./vpn-module";
+
+// Models (HuggingFace-like)
+export * from "./models";
+
+// Datasets (training data)
+export * from "./datasets";
+
+// CI/CD
+export * from "./cicd";
+
+// Social Feed (Farcaster)
+export * from "./feed";
+
+// MCP (Model Context Protocol)
+export * from "./mcp";
 
 // Wallet utilities
 export * from "./wallet";

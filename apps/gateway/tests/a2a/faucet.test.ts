@@ -6,7 +6,7 @@
 import { expect, test, describe } from 'bun:test';
 
 const A2A_BASE_URL = 'http://localhost:4003';
-const TEST_ADDRESS = '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266'; // Standard hardhat test address
+const TEST_ADDRESS = '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266'; // Anvil default test address
 
 describe('Faucet Agent Card Skills', () => {
   test('should list faucet skills in agent card', async () => {

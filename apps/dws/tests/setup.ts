@@ -8,9 +8,28 @@
  */
 
 import { beforeAll, afterAll } from 'bun:test';
-import { setup, teardown, isReady, getStatus } from '@jejunetwork/tests/bun-global-setup';
 
-// Export for manual use
+// Try to load global setup, gracefully skip if not available
+let setup: () => Promise<void> = async () => {};
+let teardown: () => Promise<void> = async () => {};
+let isReady: () => boolean = () => true;
+let getStatus: () => Promise<{ rpc: boolean; dws: boolean; rpcUrl: string; dwsUrl: string }> = async () => ({
+  rpc: false,
+  dws: false,
+  rpcUrl: process.env.L2_RPC_URL || 'http://127.0.0.1:9545',
+  dwsUrl: process.env.DWS_URL || 'http://127.0.0.1:4030',
+});
+
+try {
+  const globalSetup = await import('@jejunetwork/tests/bun-global-setup');
+  setup = globalSetup.setup;
+  teardown = globalSetup.teardown;
+  isReady = globalSetup.isReady;
+  getStatus = globalSetup.getStatus;
+} catch {
+  console.warn('[DWS Tests] Running without global setup - infrastructure must be started manually');
+}
+
 export { setup, teardown, isReady, getStatus };
 
 // Default ports for this app

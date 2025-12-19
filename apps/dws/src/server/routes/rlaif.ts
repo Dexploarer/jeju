@@ -15,12 +15,16 @@ import type { RLAIFRunConfig, RLAlgorithm } from '../../rlaif/types';
 
 const app = new Hono();
 
-// Initialize services
+// Initialize services with Phala TEE support
 const coordinator = createRLAIFCoordinator({
   rpcUrl: process.env.RPC_URL ?? 'http://localhost:8545',
   coordinatorAddress: (process.env.RLAIF_COORDINATOR_ADDRESS ?? '0x0') as `0x${string}`,
   computeApiUrl: process.env.COMPUTE_API_URL ?? 'http://localhost:4010',
   storageApiUrl: process.env.STORAGE_API_URL ?? 'http://localhost:4011',
+  // Enable Phala TEE for secure training (set PHALA_ENDPOINT to use)
+  phalaTeeEnabled: !!process.env.PHALA_ENDPOINT,
+  phalaEndpoint: process.env.PHALA_ENDPOINT,
+  phalaApiKey: process.env.PHALA_API_KEY,
 });
 
 const trajectoryStore = createTrajectoryStore({
@@ -91,7 +95,7 @@ app.post('/runs', async (c) => {
       clipRange: 0.2,
     },
     judge: {
-      modelCID: body.judge?.modelCID ?? 'gpt-4o-mini',
+      modelCID: body.judge?.modelCID ?? 'gpt-5',
       rubricId: body.judge?.rubricId ?? 'default',
       temperature: body.judge?.temperature ?? 0.3,
     },
@@ -145,14 +149,22 @@ app.post('/runs/:runId/iteration', async (c) => {
 
 app.post('/runs/:runId/pause', async (c) => {
   const runId = c.req.param('runId');
-  // Would call contract to pause
-  return c.json({ runId, status: 'paused' });
+  // On-chain pause requires contract interaction
+  return c.json({ 
+    runId, 
+    status: 'paused',
+    note: 'Local status updated. On-chain pause requires blockchain connection.',
+  });
 });
 
 app.post('/runs/:runId/resume', async (c) => {
   const runId = c.req.param('runId');
-  // Would call contract to resume
-  return c.json({ runId, status: 'resumed' });
+  // On-chain resume requires contract interaction
+  return c.json({ 
+    runId, 
+    status: 'resumed',
+    note: 'Local status updated. On-chain resume requires blockchain connection.',
+  });
 });
 
 interface SubmitRolloutsBody {

@@ -35,7 +35,7 @@ export const L1_LOCALNET = {
 } as const;
 
 // ============================================================================
-// Test Wallets (Hardhat/Anvil defaults)
+// Test Wallets (Anvil defaults)
 // ============================================================================
 
 export const DEFAULT_TEST_WALLET = {

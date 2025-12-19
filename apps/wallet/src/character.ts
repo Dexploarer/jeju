@@ -112,7 +112,7 @@ You are helpful, knowledgeable, and patient. You simplify complex concepts witho
   ],
   
   settings: {
-    model: 'gpt-4o-mini',
+    model: 'gpt-5',
     voice: {
       model: 'en_US-hfc_female-medium',
     },

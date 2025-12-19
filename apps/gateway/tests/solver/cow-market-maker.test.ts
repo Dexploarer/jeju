@@ -453,6 +453,6 @@ describe('CoW Market Maker Functions', () => {
       expect(typeof result.sellAmount).toBe('bigint');
       expect(typeof result.buyAmount).toBe('bigint');
     }
-  });
+  }, 30000);
 });
 

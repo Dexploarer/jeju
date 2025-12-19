@@ -1,33 +1,25 @@
-import { defineConfig, devices } from '@playwright/test';
-import { metaMaskFixtures } from '@synthetixio/synpress/playwright';
+/**
+ * Node Synpress Configuration - Uses shared Jeju test base
+ */
+import { createSynpressConfig, createWalletSetup, PASSWORD } from '@jejunetwork/tests';
 
-export default defineConfig({
+const NODE_PORT = parseInt(process.env.NODE_PORT || '1420');
+
+export default createSynpressConfig({
+  appName: 'node',
+  port: NODE_PORT,
   testDir: '.',
-  testMatch: '*.synpress.ts',
-  fullyParallel: false, // MetaMask tests should run serially
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: 1, // Single worker for wallet tests
-  reporter: [['list'], ['html', { outputFolder: '../../playwright-report/synpress' }]],
-  timeout: 120000, // 2 minutes per test
-  use: {
-    baseURL: 'http://localhost:1420',
-    trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
-    headless: false, // MetaMask requires headed mode
-  },
-  projects: [
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+  overrides: {
+    testMatch: '*.synpress.ts',
+    webServer: {
+      command: 'cd ../.. && bun run dev',
+      url: `http://localhost:${NODE_PORT}`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120000,
     },
-  ],
-  webServer: {
-    command: 'cd ../.. && bun run dev',
-    url: 'http://localhost:1420',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120000,
   },
 });
+
+export const basicSetup = createWalletSetup();
+export { PASSWORD };
 

@@ -17,7 +17,7 @@ services:
       ALTO_CHAIN_ID: ${CHAIN_ID:-420691}
       ALTO_ENTRYPOINT: "0x0000000071727De22E5E9d8BAf0edAc6f37da032"
       
-      # Bundler private key (default is Anvil/Hardhat account #1)
+      # Bundler private key (default is Anvil account #1)
       # IMPORTANT: Use a funded account in production
       ALTO_PRIVATE_KEY: ${BUNDLER_PRIVATE_KEY:-0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d}
       
