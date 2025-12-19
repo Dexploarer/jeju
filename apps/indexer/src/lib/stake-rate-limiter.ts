@@ -4,7 +4,7 @@ import { loadNetworkConfig } from '../network-config';
 import { inferChainFromRpcUrl } from './chain-utils';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function readContract<T>(client: { readContract: (params: unknown) => Promise<unknown> }, params: { address: Address; abi: readonly unknown[]; functionName: string; args?: readonly unknown[] }): Promise<T> {
+async function readContract<T>(client: any, params: { address: Address; abi: readonly unknown[]; functionName: string; args?: readonly unknown[] }): Promise<T> {
   return client.readContract(params) as Promise<T>;
 }
 
@@ -26,8 +26,9 @@ const STAKING_ABI = parseAbi([
   'function positions(address) view returns (uint256,uint256,uint256)',
 ]);
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let contracts: {
-  publicClient: { readContract: (params: unknown) => Promise<unknown> };
+  publicClient: any;
   identityAddress: Address | null;
   banAddress: Address | null;
   stakingAddress: Address | null;

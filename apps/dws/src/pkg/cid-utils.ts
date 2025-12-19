@@ -63,3 +63,4 @@ export function cidToHex(cid: string): string {
 export function getCidFromBytes32(bytes32: Hex, cidMap: Map<Hex, string>): string | null {
   return cidMap.get(bytes32) || null;
 }
+

@@ -37,8 +37,6 @@ abstract contract ProviderRegistryBase is Ownable, Pausable, ReentrancyGuard {
     error TransferFailed();
     error WithdrawalWouldBreachMinimum();
 
-    // ============ Constructor ============
-
     constructor(
         address _owner,
         address _identityRegistry,
@@ -68,21 +66,14 @@ abstract contract ProviderRegistryBase is Ownable, Pausable, ReentrancyGuard {
     }
 
     function _registerProviderInternal(address provider, uint256 agentId) internal {
-        if (msg.value < minProviderStake) {
-            revert InsufficientStake(msg.value, minProviderStake);
-        }
+        if (msg.value < minProviderStake) revert InsufficientStake(msg.value, minProviderStake);
         _onProviderRegistered(provider, agentId, msg.value);
         providerList.push(provider);
-        providerCount++;
+        unchecked { providerCount++; }
         emit ProviderRegistered(provider, agentId, msg.value, block.timestamp);
     }
 
     function _onProviderRegistered(address provider, uint256 agentId, uint256 stake) internal virtual;
-
-    function deactivateProvider(address provider) external virtual {}
-    function reactivateProvider(address provider) external virtual {}
-    function addStake(address provider) external payable virtual {}
-    function withdrawStake(address provider, uint256 amount) external virtual {}
 
     function getProviderByAgent(uint256 agentId) external view returns (address) {
         return erc8004.getProviderByAgent(agentId);
@@ -97,42 +88,31 @@ abstract contract ProviderRegistryBase is Ownable, Pausable, ReentrancyGuard {
     }
 
     function isProviderBanned(address provider) external view returns (bool) {
-        uint256 agentId = erc8004.getAgentByProvider(provider);
-        return moderation.isProviderBanned(provider, agentId);
+        return moderation.isProviderBanned(provider, erc8004.getAgentByProvider(provider));
     }
 
     function getActiveProviders() external view virtual returns (address[] memory) {
         return providerList;
     }
 
-    function getProviderCount() external view returns (uint256) {
-        return providerCount;
-    }
-
     function setMinProviderStake(uint256 newMinStake) external onlyOwner {
-        uint256 oldStake = minProviderStake;
+        emit MinStakeUpdated(minProviderStake, newMinStake);
         minProviderStake = newMinStake;
-        emit MinStakeUpdated(oldStake, newMinStake);
     }
 
-    function setIdentityRegistry(address _identityRegistry) external onlyOwner {
-        erc8004.setIdentityRegistry(_identityRegistry);
-        moderation.setIdentityRegistry(_identityRegistry);
+    function setIdentityRegistry(address registry) external onlyOwner {
+        erc8004.setIdentityRegistry(registry);
+        moderation.setIdentityRegistry(registry);
     }
 
     function setRequireAgentRegistration(bool required) external onlyOwner {
         erc8004.setRequireAgentRegistration(required);
     }
 
-    function setBanManager(address _banManager) external onlyOwner {
-        moderation.setBanManager(_banManager);
+    function setBanManager(address manager) external onlyOwner {
+        moderation.setBanManager(manager);
     }
 
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    function unpause() external onlyOwner {
-        _unpause();
-    }
+    function pause() external onlyOwner { _pause(); }
+    function unpause() external onlyOwner { _unpause(); }
 }

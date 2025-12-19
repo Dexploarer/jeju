@@ -22,6 +22,21 @@ const MIN_QUOTE_SIZE = 128;
 const INTEL_VENDOR_ID = '939a7233f79c4ca9940a0db3957f0607';
 const SEV_SNP_MIN_SIZE = 0x2A0;
 
+/**
+ * Minimum acceptable TCB Security Version Numbers (SVN).
+ * These thresholds determine if TEE firmware is up-to-date.
+ * 
+ * Sources:
+ * - Intel TDX: Intel TDX Module 1.5 requires CPU SVN >= 2, TCB SVN >= 3
+ *   See: Intel TDX Module Base Architecture Specification, Section 3.4
+ * - Intel SGX: SGX DCAP 1.16+ requires CPU SVN >= 2, TCB SVN >= 3
+ *   See: Intel SGX SDK Release Notes
+ * - AMD SEV-SNP: SNP API 1.51+ requires Guest SVN >= 10 (0x0a)
+ *   See: AMD SEV-SNP ABI Specification, Table 3
+ * 
+ * NOTE: These values should be updated when new security advisories are released.
+ * Check Intel/AMD security bulletins quarterly for TCB recovery updates.
+ */
 const MIN_TCB_SVN = {
   intel_tdx: { cpu: 0x02, tcb: 0x03 },
   intel_sgx: { cpu: 0x02, tcb: 0x03 },
@@ -618,4 +633,19 @@ function readUint64LE(bytes: Uint8Array, offset: number): bigint {
 export {
   parseDCAPQuote, parseSEVSNPQuote, parseDCAPHeader, parseTDXReportBody,
   extractCertChain, verifyCertificateChain, verifyQuoteSignature, checkTCBStatus,
+};
+
+// Testing utilities - export for unit testing internal functions
+export const _testUtils = {
+  pemToDer,
+  parseX509Basic,
+  parseASN1Time,
+  extractPublicKeyFromCert,
+  extractSPKIFromCert,
+  extractSubjectCN,
+  verifyX509Signature,
+  parseASN1Length,
+  ecdsaRawToDer,
+  hexToBytes,
+  bytesToHex,
 };

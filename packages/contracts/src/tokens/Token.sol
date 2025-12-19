@@ -62,10 +62,6 @@ interface IInterchainGasPaymaster {
 contract Token is ERC20, ERC20Burnable, ERC20Permit, Ownable2Step, ReentrancyGuard {
     using ECDSA for bytes32;
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    //                              CONSTANTS
-    // ═══════════════════════════════════════════════════════════════════════════
-
     uint256 public constant BPS_DENOMINATOR = 10000;
     uint256 public constant MAX_TOTAL_FEE_BPS = 2500; // 25% max
     uint256 public constant BRIDGE_GAS_LIMIT = 300_000;
@@ -76,10 +72,6 @@ contract Token is ERC20, ERC20Burnable, ERC20Permit, Ownable2Step, ReentrancyGua
     );
     bytes32 public constant CANCEL_AUTHORIZATION_TYPEHASH =
         keccak256("CancelAuthorization(address authorizer,bytes32 nonce)");
-
-    // ═══════════════════════════════════════════════════════════════════════════
-    //                              CONFIGURATION
-    // ═══════════════════════════════════════════════════════════════════════════
 
     struct TokenConfig {
         uint256 maxSupply;           // 0 = unlimited
@@ -105,61 +97,22 @@ contract Token is ERC20, ERC20Burnable, ERC20Permit, Ownable2Step, ReentrancyGua
     TokenConfig public config;
     FeeConfig public fees;
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    //                              STATE
-    // ═══════════════════════════════════════════════════════════════════════════
-
-    /// @notice Ban manager for moderation
     IBanManager public banManager;
-
-    /// @notice Hyperlane mailbox
     IHyperlaneMailbox public mailbox;
-
-    /// @notice Hyperlane gas paymaster
     IInterchainGasPaymaster public igp;
-
-    /// @notice Hyperlane home chain domain
     uint32 public homeChainDomain;
-
-    /// @notice Remote router addresses for cross-chain
     mapping(uint32 => bytes32) public remoteRouters;
-
-    /// @notice Fee exempt addresses
     mapping(address => bool) public feeExempt;
-
-    /// @notice Limit exempt addresses
     mapping(address => bool) public limitExempt;
-
-    /// @notice Ban exempt addresses
     mapping(address => bool) public banExempt;
-
-    /// @notice EIP-3009 authorization state
     mapping(address => mapping(bytes32 => bool)) public authorizationState;
-
-    /// @notice Faucet cooldowns
     mapping(address => uint256) public lastFaucetClaim;
-
-    /// @notice Cross-chain message replay protection
     mapping(bytes32 => bool) public processedMessages;
-
-    /// @notice Total tokens locked (home chain)
     uint256 public totalLocked;
-
-    /// @notice Total burned
     uint256 public totalBurned;
-
-    /// @notice Total fees collected
     uint256 public totalFeesCollected;
-
-    /// @notice Faucet amount
     uint256 public faucetAmount = 10_000 * 10 ** 18;
-
-    /// @notice Faucet cooldown
     uint256 public faucetCooldown = 1 hours;
-
-    // ═══════════════════════════════════════════════════════════════════════════
-    //                              EVENTS
-    // ═══════════════════════════════════════════════════════════════════════════
 
     event FeesCollected(uint256 creator, uint256 holder, uint256 treasury, uint256 burned);
     event CrossChainTransfer(bytes32 indexed messageId, address indexed sender, uint32 destination, uint256 amount);
@@ -169,10 +122,6 @@ contract Token is ERC20, ERC20Burnable, ERC20Permit, Ownable2Step, ReentrancyGua
     event AuthorizationCanceled(address indexed authorizer, bytes32 indexed nonce);
     event ConfigUpdated();
     event FeesUpdated();
-
-    // ═══════════════════════════════════════════════════════════════════════════
-    //                              ERRORS
-    // ═══════════════════════════════════════════════════════════════════════════
 
     error BannedUser(address user);
     error ExceedsMaxSupply();
@@ -227,12 +176,7 @@ contract Token is ERC20, ERC20Burnable, ERC20Permit, Ownable2Step, ReentrancyGua
         banExempt[owner_] = true;
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    //                              TRANSFER LOGIC
-    // ═══════════════════════════════════════════════════════════════════════════
-
     function _update(address from, address to, uint256 amount) internal virtual override {
-        // Pause check (skip for mint/burn)
         if (config.transfersPaused && from != address(0) && to != address(0)) {
             revert TransfersPaused();
         }
@@ -243,13 +187,11 @@ contract Token is ERC20, ERC20Burnable, ERC20Permit, Ownable2Step, ReentrancyGua
             return;
         }
 
-        // Ban enforcement
         if (config.banEnforcementEnabled && address(banManager) != address(0)) {
             if (!banExempt[to] && banManager.isAddressBanned(from)) revert BannedUser(from);
             if (banManager.isAddressBanned(to)) revert BannedUser(to);
         }
 
-        // Max transaction check
         if (config.maxTxBps > 0 && !limitExempt[from] && !limitExempt[to]) {
             uint256 maxTx = (totalSupply() * config.maxTxBps) / BPS_DENOMINATOR;
             if (amount > maxTx) revert ExceedsMaxTx(amount, maxTx);
@@ -263,7 +205,6 @@ contract Token is ERC20, ERC20Burnable, ERC20Permit, Ownable2Step, ReentrancyGua
 
         uint256 transferAmount = amount - feeAmount;
 
-        // Max wallet check
         if (config.maxWalletBps > 0 && !limitExempt[to]) {
             uint256 maxWalletLimit = (totalSupply() * config.maxWalletBps) / BPS_DENOMINATOR;
             uint256 newBalance = balanceOf(to) + transferAmount;
@@ -300,10 +241,6 @@ contract Token is ERC20, ERC20Burnable, ERC20Permit, Ownable2Step, ReentrancyGua
 
         emit FeesCollected(creatorFee, holderFee, treasuryFee, burnFee);
     }
-
-    // ═══════════════════════════════════════════════════════════════════════════
-    //                              MINTING
-    // ═══════════════════════════════════════════════════════════════════════════
 
     function mint(address to, uint256 amount) external onlyOwner {
         if (config.maxSupply > 0 && totalSupply() + amount > config.maxSupply) {
@@ -366,10 +303,6 @@ contract Token is ERC20, ERC20Burnable, ERC20Permit, Ownable2Step, ReentrancyGua
         gasPayment = igp.quoteGasPayment(destination, BRIDGE_GAS_LIMIT);
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    //                              EIP-3009 GASLESS TRANSFERS
-    // ═══════════════════════════════════════════════════════════════════════════
-
     function transferWithAuthorization(
         address from,
         address to,
@@ -414,10 +347,6 @@ contract Token is ERC20, ERC20Burnable, ERC20Permit, Ownable2Step, ReentrancyGua
         authorizationState[authorizer][nonce] = true;
         emit AuthorizationUsed(authorizer, nonce);
     }
-
-    // ═══════════════════════════════════════════════════════════════════════════
-    //                              FAUCET (TESTNET)
-    // ═══════════════════════════════════════════════════════════════════════════
 
     function faucet() external {
         _claimFaucet(msg.sender);
@@ -471,7 +400,6 @@ contract Token is ERC20, ERC20Burnable, ERC20Permit, Ownable2Step, ReentrancyGua
             treasury: treasury_
         });
 
-        // Auto-exempt fee recipients
         if (creatorWallet_ != address(0)) { feeExempt[creatorWallet_] = true; limitExempt[creatorWallet_] = true; }
         if (holderRewardPool_ != address(0)) { feeExempt[holderRewardPool_] = true; limitExempt[holderRewardPool_] = true; }
         if (treasury_ != address(0)) { feeExempt[treasury_] = true; limitExempt[treasury_] = true; }
@@ -521,10 +449,6 @@ contract Token is ERC20, ERC20Burnable, ERC20Permit, Ownable2Step, ReentrancyGua
         faucetCooldown = _cooldown;
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    //                              VIEW FUNCTIONS
-    // ═══════════════════════════════════════════════════════════════════════════
-
     function totalFeeBps() external view returns (uint256) {
         return uint256(fees.creatorFeeBps) + fees.holderFeeBps + fees.treasuryFeeBps + fees.burnFeeBps;
     }
@@ -550,9 +474,6 @@ contract Token is ERC20, ERC20Burnable, ERC20Permit, Ownable2Step, ReentrancyGua
         if (!config.banEnforcementEnabled || address(banManager) == address(0)) return false;
         return banManager.isAddressBanned(account);
     }
-
-    // Note: DOMAIN_SEPARATOR is inherited from ERC20Permit
-    // Use EIP712's built-in DOMAIN_SEPARATOR via eip712Domain()
 
     function version() external pure returns (string memory) {
         return "1.0.0";

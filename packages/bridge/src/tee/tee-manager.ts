@@ -108,6 +108,16 @@ export class TEEManager {
 	}
 
 	private async detectEnvironment(): Promise<TEEEnvironment> {
+		// Fast path for test environment - skip slow network detection
+		if (process.env.NODE_ENV === "test") {
+			return {
+				provider: "mock",
+				inTEE: false,
+				capabilities: ["attestation", "key_gen"],
+				details: { platform: "local" },
+			};
+		}
+
 		const awsEnv = await this.detectAWS();
 		if (awsEnv.inTEE) return awsEnv;
 

@@ -4,37 +4,36 @@ pragma solidity ^0.8.26;
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../registry/IdentityRegistry.sol";
 
 /**
  * @title ModelRegistry
  * @author Jeju Network
- * @notice Decentralized model hub (like HuggingFace) with on-chain provenance
- * @dev Features:
- *      - Model registration with IPFS storage
- *      - Version management
- *      - Training provenance (dataset links, training config)
- *      - Inference integration with compute marketplace
- *      - Download/usage tracking for monetization
- *      - License management
- *      - Data encryption hooks for future monetization
+ * @notice Decentralized ML model registry - HuggingFace Hub on-chain
+ * @dev Stores model metadata on-chain, weights in IPFS/Arweave
+ *
+ * Features:
+ * - HuggingFace Hub compatible API (via DWS)
+ * - Multi-version model management
+ * - Access control (public/gated/private)
+ * - Model licensing on-chain
+ * - Download/inference tracking
+ * - Model verification and signing
+ * - Organization management
  */
 contract ModelRegistry is ReentrancyGuard, Pausable, Ownable {
-    using SafeERC20 for IERC20;
 
     // ============ Enums ============
 
     enum ModelType {
-        LLM,                // Large Language Model
-        VISION,             // Computer Vision
-        AUDIO,              // Audio/Speech
-        MULTIMODAL,         // Multi-modal
-        EMBEDDING,          // Embedding model
-        CLASSIFIER,         // Classification
-        REGRESSION,         // Regression
-        RL,                 // Reinforcement Learning
+        LLM,
+        VISION,
+        AUDIO,
+        MULTIMODAL,
+        EMBEDDING,
+        CLASSIFIER,
+        REGRESSION,
+        RL,
         OTHER
     }
 
@@ -43,16 +42,16 @@ contract ModelRegistry is ReentrancyGuard, Pausable, Ownable {
         APACHE_2,
         GPL_3,
         CC_BY_4,
-        CC_BY_NC_4,         // Non-commercial
-        LLAMA_2,            // Meta's Llama license
+        CC_BY_NC_4,
+        LLAMA_2,
         CUSTOM,
         PROPRIETARY
     }
 
     enum AccessLevel {
-        PUBLIC,             // Fully public
-        GATED,              // Requires approval
-        ENCRYPTED           // Encrypted, requires payment/key
+        PUBLIC,
+        GATED,
+        ENCRYPTED
     }
 
     // ============ Structs ============
@@ -60,108 +59,89 @@ contract ModelRegistry is ReentrancyGuard, Pausable, Ownable {
     struct Model {
         bytes32 modelId;
         string name;
-        string organization;        // Organization or username
+        string organization;
         address owner;
-        uint256 ownerAgentId;       // ERC-8004 agent ID
+        uint256 ownerAgentId;
         ModelType modelType;
         LicenseType license;
-        string licenseUri;          // Custom license URI if CUSTOM
+        string licenseUri;
         AccessLevel accessLevel;
         string description;
         string[] tags;
         uint256 createdAt;
         uint256 updatedAt;
-        bool isPublic;
-        bool isVerified;            // Verified by guardians
+        uint256 downloadCount;
+        uint256 starCount;
+        bool isVerified;
+        bool isActive;
     }
 
     struct ModelVersion {
         bytes32 versionId;
         bytes32 modelId;
-        string version;             // Semver string
-        string weightsUri;          // IPFS CID for weights
-        bytes32 weightsHash;        // SHA256 of weights file
-        uint256 weightsSize;        // Size in bytes
-        string configUri;           // IPFS CID for config.json
-        string tokenizerUri;        // IPFS CID for tokenizer
-        uint256 parameterCount;     // Number of parameters
-        string precision;           // "fp32", "fp16", "int8", "int4"
+        string version;
+        string weightsUri;           // IPFS/Arweave CID
+        bytes32 weightsHash;         // SHA256 of weights
+        uint256 weightsSize;
+        string configUri;            // config.json CID
+        string tokenizerUri;         // tokenizer CID
+        uint256 parameterCount;
+        string precision;            // fp16, bf16, fp32, int8, int4
         uint256 publishedAt;
+        address publisher;
         bool isLatest;
     }
 
-    struct TrainingProvenance {
-        bytes32 modelId;
-        bytes32 versionId;
-        string[] datasetIds;        // References to dataset registry
-        string trainingConfigUri;   // IPFS CID for training config
-        bytes32 trainingConfigHash;
-        uint256 trainingStarted;
-        uint256 trainingCompleted;
-        string computeProviderUri;  // Reference to compute job
-        bytes32 computeJobId;       // Compute marketplace job ID
-        string frameworkVersion;    // "pytorch-2.0", "jax-0.4", etc.
-        string[] baseModels;        // Base models used (for fine-tuning)
-        address trainer;            // Who trained this
-        bool verified;              // Verified by guardian review
+    struct ModelFile {
+        string filename;
+        string cid;
+        uint256 size;
+        bytes32 sha256Hash;
+        string fileType;             // weights, config, tokenizer, other
     }
 
-    struct ModelMetrics {
+    struct GateRequest {
+        bytes32 requestId;
         bytes32 modelId;
-        uint256 totalDownloads;
-        uint256 totalInferences;
-        uint256 totalStars;
-        uint256 totalForks;
-        uint256 weeklyDownloads;
-        uint256 lastUpdated;
-    }
-
-    struct InferenceEndpoint {
-        bytes32 endpointId;
-        bytes32 modelId;
-        bytes32 versionId;
-        address provider;           // Compute provider
-        string endpointUrl;
-        uint256 pricePerRequest;    // In wei
-        address paymentToken;       // address(0) for ETH
-        bool isActive;
-        uint256 createdAt;
+        address requester;
+        uint256 requestedAt;
+        bool approved;
+        bool rejected;
+        string reason;
     }
 
     // ============ State ============
 
     IdentityRegistry public immutable identityRegistry;
-    address public computeRegistry;         // For inference integration
-    address public datasetRegistry;         // For dataset references
     address public treasury;
 
     mapping(bytes32 => Model) public models;
-    mapping(bytes32 => ModelVersion[]) public modelVersions;
-    mapping(bytes32 => TrainingProvenance) public provenance;
-    mapping(bytes32 => ModelMetrics) public metrics;
-    mapping(bytes32 => InferenceEndpoint[]) public endpoints;
-    
-    // Organization models
-    mapping(string => bytes32[]) public organizationModels;
-    
-    // User downloads (for gated models)
+    mapping(bytes32 => ModelVersion[]) public versions;
+    mapping(bytes32 => mapping(string => uint256)) public versionIndex; // modelId => version => index
+    mapping(bytes32 => ModelFile[]) public files;
+    mapping(bytes32 => GateRequest[]) public gateRequests;
+
+    // Access control
     mapping(bytes32 => mapping(address => bool)) public hasAccess;
-    mapping(bytes32 => mapping(address => uint256)) public downloadCount;
+    mapping(bytes32 => mapping(address => bool)) public isCollaborator;
     
-    // Stars/likes
+    // Stars
     mapping(bytes32 => mapping(address => bool)) public hasStarred;
+
+    // Organization ownership
+    mapping(string => address) public organizationOwner;
     
-    // Model name uniqueness
-    mapping(bytes32 => bool) public modelNameTaken; // keccak256(org/name) => taken
-    
+    // Name uniqueness: keccak256(org/name)
+    mapping(bytes32 => bool) public modelNameTaken;
+
     bytes32[] public allModels;
     uint256 private _nextModelId = 1;
     uint256 private _nextVersionId = 1;
-    uint256 private _nextEndpointId = 1;
+    uint256 private _nextRequestId = 1;
 
     // Fees
-    uint256 public uploadFee = 0;               // Can be set for spam prevention
-    uint256 public inferenceFeePercentage = 500; // 5% fee on inference
+    uint256 public publishFee = 0;
+    uint256 public storageFeePerGB = 0;
 
     // ============ Events ============
 
@@ -172,44 +152,44 @@ contract ModelRegistry is ReentrancyGuard, Pausable, Ownable {
         address indexed owner,
         ModelType modelType
     );
-    event ModelUpdated(bytes32 indexed modelId, string description);
+
+    event ModelUpdated(bytes32 indexed modelId);
+
     event VersionPublished(
         bytes32 indexed modelId,
         bytes32 indexed versionId,
         string version,
-        string weightsUri
+        address indexed publisher
     );
-    event ProvenanceRecorded(
+
+    event FileUploaded(
         bytes32 indexed modelId,
-        bytes32 indexed versionId,
-        bytes32 indexed computeJobId
+        string filename,
+        string cid,
+        uint256 size
     );
-    event ModelDownloaded(bytes32 indexed modelId, address indexed user);
+
+    event ModelDownloaded(bytes32 indexed modelId, address indexed downloader);
     event ModelStarred(bytes32 indexed modelId, address indexed user, bool starred);
-    event InferenceEndpointCreated(
-        bytes32 indexed endpointId,
-        bytes32 indexed modelId,
-        address indexed provider
-    );
-    event InferenceRequest(
-        bytes32 indexed endpointId,
-        address indexed requester,
-        uint256 price
-    );
     event AccessGranted(bytes32 indexed modelId, address indexed user);
-    event ModelVerified(bytes32 indexed modelId, address indexed verifier);
+    event AccessRevoked(bytes32 indexed modelId, address indexed user);
+    event GateRequestCreated(bytes32 indexed modelId, bytes32 indexed requestId, address indexed requester);
+    event GateRequestApproved(bytes32 indexed modelId, bytes32 indexed requestId);
+    event GateRequestRejected(bytes32 indexed modelId, bytes32 indexed requestId, string reason);
+    event OrganizationClaimed(string indexed organization, address indexed owner);
 
     // ============ Errors ============
 
     error ModelNotFound();
     error NotModelOwner();
     error ModelNameTaken();
+    error OrganizationNotOwned();
     error VersionNotFound();
     error AccessDenied();
-    error InvalidLicense();
-    error EndpointNotFound();
     error InsufficientPayment();
-    error EndpointInactive();
+    error InvalidVersion();
+    error RequestNotFound();
+    error RequestAlreadyProcessed();
 
     // ============ Modifiers ============
 
@@ -220,6 +200,14 @@ contract ModelRegistry is ReentrancyGuard, Pausable, Ownable {
 
     modifier onlyModelOwner(bytes32 modelId) {
         if (models[modelId].owner != msg.sender) revert NotModelOwner();
+        _;
+    }
+
+    modifier canPublish(bytes32 modelId) {
+        Model storage model = models[modelId];
+        if (model.owner != msg.sender && !isCollaborator[modelId][msg.sender]) {
+            revert AccessDenied();
+        }
         _;
     }
 
@@ -234,39 +222,61 @@ contract ModelRegistry is ReentrancyGuard, Pausable, Ownable {
         treasury = _treasury;
     }
 
+    // ============ Organization Management ============
+
+    /**
+     * @notice Claim an organization namespace
+     */
+    function claimOrganization(string calldata organization) external {
+        if (organizationOwner[organization] != address(0)) revert OrganizationNotOwned();
+        organizationOwner[organization] = msg.sender;
+        emit OrganizationClaimed(organization, msg.sender);
+    }
+
+    /**
+     * @notice Transfer organization ownership
+     */
+    function transferOrganization(string calldata organization, address newOwner) external {
+        if (organizationOwner[organization] != msg.sender) revert OrganizationNotOwned();
+        organizationOwner[organization] = newOwner;
+    }
+
     // ============ Model Management ============
 
     /**
-     * @notice Create a new model entry
-     * @param name Model name (must be unique within organization)
-     * @param organization Organization or username
+     * @notice Create a new model
+     * @param name Model name (e.g., "llama-3-70b")
+     * @param organization Organization namespace (e.g., "jeju")
      * @param modelType Type of model
      * @param license License type
-     * @param licenseUri Custom license URI (for CUSTOM license)
-     * @param accessLevel Access level
+     * @param accessLevel Access control level
      * @param description Model description
-     * @param tags Array of tags
+     * @param tags Search tags
+     * @return modelId The unique model identifier
      */
     function createModel(
         string calldata name,
         string calldata organization,
         ModelType modelType,
         LicenseType license,
-        string calldata licenseUri,
         AccessLevel accessLevel,
         string calldata description,
         string[] calldata tags
     ) external payable nonReentrant whenNotPaused returns (bytes32 modelId) {
+        // Check organization ownership
+        if (organizationOwner[organization] != address(0) && organizationOwner[organization] != msg.sender) {
+            revert OrganizationNotOwned();
+        }
+
         // Check uniqueness
         bytes32 nameHash = keccak256(abi.encodePacked(organization, "/", name));
         if (modelNameTaken[nameHash]) revert ModelNameTaken();
 
-        // Collect upload fee if set
-        if (uploadFee > 0 && msg.value < uploadFee) revert InsufficientPayment();
+        // Collect fee if set
+        if (publishFee > 0 && msg.value < publishFee) revert InsufficientPayment();
 
-        modelId = keccak256(abi.encodePacked(_nextModelId++, msg.sender, name, block.timestamp));
+        modelId = keccak256(abi.encodePacked(_nextModelId++, msg.sender, organization, name, block.timestamp));
 
-        // Get agent ID if available
         uint256 agentId = _getAgentIdForAddress(msg.sender);
 
         Model storage model = models[modelId];
@@ -277,22 +287,40 @@ contract ModelRegistry is ReentrancyGuard, Pausable, Ownable {
         model.ownerAgentId = agentId;
         model.modelType = modelType;
         model.license = license;
-        model.licenseUri = licenseUri;
         model.accessLevel = accessLevel;
         model.description = description;
         model.tags = tags;
         model.createdAt = block.timestamp;
         model.updatedAt = block.timestamp;
-        model.isPublic = accessLevel == AccessLevel.PUBLIC;
+        model.isActive = true;
 
         modelNameTaken[nameHash] = true;
         allModels.push(modelId);
-        organizationModels[organization].push(modelId);
 
-        // Initialize metrics
-        metrics[modelId].modelId = modelId;
+        // Auto-claim organization if not claimed
+        if (organizationOwner[organization] == address(0)) {
+            organizationOwner[organization] = msg.sender;
+        }
 
         emit ModelCreated(modelId, organization, name, msg.sender, modelType);
+    }
+
+    /**
+     * @notice Update model metadata
+     */
+    function updateModel(
+        bytes32 modelId,
+        string calldata description,
+        string[] calldata tags,
+        AccessLevel accessLevel
+    ) external modelExists(modelId) onlyModelOwner(modelId) {
+        Model storage model = models[modelId];
+        model.description = description;
+        model.tags = tags;
+        model.accessLevel = accessLevel;
+        model.updatedAt = block.timestamp;
+
+        emit ModelUpdated(modelId);
     }
 
     /**
@@ -308,16 +336,28 @@ contract ModelRegistry is ReentrancyGuard, Pausable, Ownable {
         string calldata tokenizerUri,
         uint256 parameterCount,
         string calldata precision
-    ) external nonReentrant modelExists(modelId) onlyModelOwner(modelId) returns (bytes32 versionId) {
+    ) external payable nonReentrant modelExists(modelId) canPublish(modelId) returns (bytes32 versionId) {
+        // Validate version format (simple check)
+        if (bytes(version).length == 0) revert InvalidVersion();
+
+        // Collect fee if set
+        if (publishFee > 0 && msg.value < publishFee) revert InsufficientPayment();
+
         versionId = keccak256(abi.encodePacked(_nextVersionId++, modelId, version, block.timestamp));
 
-        // Mark previous latest as not latest
-        ModelVersion[] storage versions = modelVersions[modelId];
-        for (uint256 i = 0; i < versions.length; i++) {
-            versions[i].isLatest = false;
+        // Mark previous versions as not latest
+        ModelVersion[] storage modelVersions = versions[modelId];
+        for (uint256 i = 0; i < modelVersions.length; i++) {
+            modelVersions[i].isLatest = false;
         }
 
-        versions.push(ModelVersion({
+        // Check if version already exists
+        uint256 existingIndex = versionIndex[modelId][version];
+        bool versionExists = modelVersions.length > 0 && 
+            existingIndex < modelVersions.length &&
+            keccak256(bytes(modelVersions[existingIndex].version)) == keccak256(bytes(version));
+
+        ModelVersion memory newVersion = ModelVersion({
             versionId: versionId,
             modelId: modelId,
             version: version,
@@ -329,225 +369,231 @@ contract ModelRegistry is ReentrancyGuard, Pausable, Ownable {
             parameterCount: parameterCount,
             precision: precision,
             publishedAt: block.timestamp,
+            publisher: msg.sender,
             isLatest: true
+        });
+
+        if (versionExists) {
+            modelVersions[existingIndex] = newVersion;
+        } else {
+            versionIndex[modelId][version] = modelVersions.length;
+            modelVersions.push(newVersion);
+        }
+
+        models[modelId].updatedAt = block.timestamp;
+
+        emit VersionPublished(modelId, versionId, version, msg.sender);
+    }
+
+    /**
+     * @notice Upload a file associated with a model
+     */
+    function uploadFile(
+        bytes32 modelId,
+        string calldata filename,
+        string calldata cid,
+        uint256 size,
+        bytes32 sha256Hash,
+        string calldata fileType
+    ) external nonReentrant modelExists(modelId) canPublish(modelId) {
+        files[modelId].push(ModelFile({
+            filename: filename,
+            cid: cid,
+            size: size,
+            sha256Hash: sha256Hash,
+            fileType: fileType
         }));
 
         models[modelId].updatedAt = block.timestamp;
 
-        emit VersionPublished(modelId, versionId, version, weightsUri);
+        emit FileUploaded(modelId, filename, cid, size);
     }
 
     /**
-     * @notice Record training provenance for a version
+     * @notice Record a download (called by DWS nodes)
      */
-    function recordProvenance(
-        bytes32 modelId,
-        bytes32 versionId,
-        string[] calldata datasetIds,
-        string calldata trainingConfigUri,
-        bytes32 trainingConfigHash,
-        uint256 trainingStarted,
-        uint256 trainingCompleted,
-        string calldata computeProviderUri,
-        bytes32 computeJobId,
-        string calldata frameworkVersion,
-        string[] calldata baseModels
-    ) external nonReentrant modelExists(modelId) onlyModelOwner(modelId) {
-        provenance[versionId] = TrainingProvenance({
-            modelId: modelId,
-            versionId: versionId,
-            datasetIds: datasetIds,
-            trainingConfigUri: trainingConfigUri,
-            trainingConfigHash: trainingConfigHash,
-            trainingStarted: trainingStarted,
-            trainingCompleted: trainingCompleted,
-            computeProviderUri: computeProviderUri,
-            computeJobId: computeJobId,
-            frameworkVersion: frameworkVersion,
-            baseModels: baseModels,
-            trainer: msg.sender,
-            verified: false
-        });
-
-        emit ProvenanceRecorded(modelId, versionId, computeJobId);
-    }
-
-    // ============ Access & Downloads ============
-
-    /**
-     * @notice Download/access a model (tracks downloads)
-     */
-    function downloadModel(bytes32 modelId) external nonReentrant modelExists(modelId) {
+    function recordDownload(bytes32 modelId) external nonReentrant modelExists(modelId) {
         Model storage model = models[modelId];
 
-        // Check access
-        if (model.accessLevel == AccessLevel.GATED && !hasAccess[modelId][msg.sender]) {
-            revert AccessDenied();
-        }
-        if (model.accessLevel == AccessLevel.ENCRYPTED && !hasAccess[modelId][msg.sender]) {
-            revert AccessDenied();
+        // Check access for gated/private models
+        if (model.accessLevel == AccessLevel.GATED || model.accessLevel == AccessLevel.ENCRYPTED) {
+            if (!hasAccess[modelId][msg.sender] && model.owner != msg.sender) {
+                revert AccessDenied();
+            }
         }
 
-        // Track download
-        downloadCount[modelId][msg.sender]++;
-        metrics[modelId].totalDownloads++;
-        metrics[modelId].weeklyDownloads++;
-        metrics[modelId].lastUpdated = block.timestamp;
-
+        model.downloadCount++;
         emit ModelDownloaded(modelId, msg.sender);
     }
 
+    // ============ Access Control ============
+
     /**
-     * @notice Grant access to a gated model
+     * @notice Request access to a gated model
      */
-    function grantAccess(bytes32 modelId, address user) 
+    function requestAccess(bytes32 modelId) external nonReentrant modelExists(modelId) returns (bytes32 requestId) {
+        Model storage model = models[modelId];
+        if (model.accessLevel != AccessLevel.GATED) revert AccessDenied();
+        if (hasAccess[modelId][msg.sender]) revert AccessDenied(); // Already has access
+
+        requestId = keccak256(abi.encodePacked(_nextRequestId++, modelId, msg.sender, block.timestamp));
+
+        gateRequests[modelId].push(GateRequest({
+            requestId: requestId,
+            modelId: modelId,
+            requester: msg.sender,
+            requestedAt: block.timestamp,
+            approved: false,
+            rejected: false,
+            reason: ""
+        }));
+
+        emit GateRequestCreated(modelId, requestId, msg.sender);
+    }
+
+    /**
+     * @notice Approve access request
+     */
+    function approveAccess(bytes32 modelId, bytes32 requestId) 
         external 
         modelExists(modelId) 
         onlyModelOwner(modelId) 
     {
+        GateRequest[] storage requests = gateRequests[modelId];
+        
+        for (uint256 i = 0; i < requests.length; i++) {
+            if (requests[i].requestId == requestId) {
+                if (requests[i].approved || requests[i].rejected) revert RequestAlreadyProcessed();
+                
+                requests[i].approved = true;
+                hasAccess[modelId][requests[i].requester] = true;
+                
+                emit GateRequestApproved(modelId, requestId);
+                emit AccessGranted(modelId, requests[i].requester);
+                return;
+            }
+        }
+        
+        revert RequestNotFound();
+    }
+
+    /**
+     * @notice Reject access request
+     */
+    function rejectAccess(bytes32 modelId, bytes32 requestId, string calldata reason) 
+        external 
+        modelExists(modelId) 
+        onlyModelOwner(modelId) 
+    {
+        GateRequest[] storage requests = gateRequests[modelId];
+        
+        for (uint256 i = 0; i < requests.length; i++) {
+            if (requests[i].requestId == requestId) {
+                if (requests[i].approved || requests[i].rejected) revert RequestAlreadyProcessed();
+                
+                requests[i].rejected = true;
+                requests[i].reason = reason;
+                
+                emit GateRequestRejected(modelId, requestId, reason);
+                return;
+            }
+        }
+        
+        revert RequestNotFound();
+    }
+
+    /**
+     * @notice Grant access directly
+     */
+    function grantAccess(bytes32 modelId, address user) external modelExists(modelId) onlyModelOwner(modelId) {
         hasAccess[modelId][user] = true;
         emit AccessGranted(modelId, user);
     }
 
     /**
-     * @notice Star/unstar a model
+     * @notice Revoke access
+     */
+    function revokeAccess(bytes32 modelId, address user) external modelExists(modelId) onlyModelOwner(modelId) {
+        hasAccess[modelId][user] = false;
+        emit AccessRevoked(modelId, user);
+    }
+
+    /**
+     * @notice Add collaborator
+     */
+    function addCollaborator(bytes32 modelId, address user) external modelExists(modelId) onlyModelOwner(modelId) {
+        isCollaborator[modelId][user] = true;
+        hasAccess[modelId][user] = true;
+    }
+
+    /**
+     * @notice Remove collaborator
+     */
+    function removeCollaborator(bytes32 modelId, address user) external modelExists(modelId) onlyModelOwner(modelId) {
+        isCollaborator[modelId][user] = false;
+    }
+
+    /**
+     * @notice Star/unstar model
      */
     function toggleStar(bytes32 modelId) external nonReentrant modelExists(modelId) {
         bool starred = !hasStarred[modelId][msg.sender];
         hasStarred[modelId][msg.sender] = starred;
 
+        Model storage model = models[modelId];
         if (starred) {
-            metrics[modelId].totalStars++;
-        } else {
-            if (metrics[modelId].totalStars > 0) {
-                metrics[modelId].totalStars--;
-            }
+            model.starCount++;
+        } else if (model.starCount > 0) {
+            model.starCount--;
         }
 
         emit ModelStarred(modelId, msg.sender, starred);
     }
 
-    // ============ Inference Endpoints ============
-
-    /**
-     * @notice Register an inference endpoint for a model
-     */
-    function createInferenceEndpoint(
-        bytes32 modelId,
-        bytes32 versionId,
-        string calldata endpointUrl,
-        uint256 pricePerRequest,
-        address paymentToken
-    ) external nonReentrant modelExists(modelId) returns (bytes32 endpointId) {
-        endpointId = keccak256(abi.encodePacked(_nextEndpointId++, modelId, msg.sender, block.timestamp));
-
-        endpoints[modelId].push(InferenceEndpoint({
-            endpointId: endpointId,
-            modelId: modelId,
-            versionId: versionId,
-            provider: msg.sender,
-            endpointUrl: endpointUrl,
-            pricePerRequest: pricePerRequest,
-            paymentToken: paymentToken,
-            isActive: true,
-            createdAt: block.timestamp
-        }));
-
-        emit InferenceEndpointCreated(endpointId, modelId, msg.sender);
-    }
-
-    /**
-     * @notice Request inference (pay and track)
-     */
-    function requestInference(bytes32 modelId, uint256 endpointIndex) 
-        external 
-        payable 
-        nonReentrant 
-        modelExists(modelId) 
-    {
-        InferenceEndpoint[] storage modelEndpoints = endpoints[modelId];
-        if (endpointIndex >= modelEndpoints.length) revert EndpointNotFound();
-
-        InferenceEndpoint storage endpoint = modelEndpoints[endpointIndex];
-        if (!endpoint.isActive) revert EndpointInactive();
-
-        // Check payment
-        if (endpoint.paymentToken == address(0)) {
-            if (msg.value < endpoint.pricePerRequest) revert InsufficientPayment();
-
-            // Split payment
-            uint256 protocolFee = (msg.value * inferenceFeePercentage) / 10000;
-            uint256 providerPayment = msg.value - protocolFee;
-
-            (bool success1,) = endpoint.provider.call{value: providerPayment}("");
-            require(success1, "Provider payment failed");
-
-            if (protocolFee > 0) {
-                (bool success2,) = treasury.call{value: protocolFee}("");
-                require(success2, "Treasury payment failed");
-            }
-        } else {
-            IERC20 token = IERC20(endpoint.paymentToken);
-            uint256 protocolFee = (endpoint.pricePerRequest * inferenceFeePercentage) / 10000;
-            uint256 providerPayment = endpoint.pricePerRequest - protocolFee;
-
-            token.safeTransferFrom(msg.sender, endpoint.provider, providerPayment);
-            if (protocolFee > 0) {
-                token.safeTransferFrom(msg.sender, treasury, protocolFee);
-            }
-        }
-
-        metrics[modelId].totalInferences++;
-
-        emit InferenceRequest(endpoint.endpointId, msg.sender, endpoint.pricePerRequest);
-    }
-
     // ============ View Functions ============
 
     function _getAgentIdForAddress(address addr) internal view returns (uint256) {
-        // Would query indexer or iterate in production
-        return 0;
+        return 0; // Would query indexer in production
     }
 
     function getModel(bytes32 modelId) external view returns (Model memory) {
         return models[modelId];
     }
 
-    function getModelVersions(bytes32 modelId) external view returns (ModelVersion[] memory) {
-        return modelVersions[modelId];
+    function getVersions(bytes32 modelId) external view returns (ModelVersion[] memory) {
+        return versions[modelId];
     }
 
     function getLatestVersion(bytes32 modelId) external view returns (ModelVersion memory) {
-        ModelVersion[] storage versions = modelVersions[modelId];
-        for (uint256 i = versions.length; i > 0; i--) {
-            if (versions[i - 1].isLatest) {
-                return versions[i - 1];
+        ModelVersion[] storage modelVersions = versions[modelId];
+        for (uint256 i = modelVersions.length; i > 0; i--) {
+            if (modelVersions[i - 1].isLatest) {
+                return modelVersions[i - 1];
             }
         }
         revert VersionNotFound();
     }
 
-    function getProvenance(bytes32 versionId) external view returns (TrainingProvenance memory) {
-        return provenance[versionId];
+    function getVersion(bytes32 modelId, string calldata version) external view returns (ModelVersion memory) {
+        uint256 idx = versionIndex[modelId][version];
+        ModelVersion[] storage modelVersions = versions[modelId];
+        if (idx >= modelVersions.length) revert VersionNotFound();
+        return modelVersions[idx];
     }
 
-    function getMetrics(bytes32 modelId) external view returns (ModelMetrics memory) {
-        return metrics[modelId];
+    function getFiles(bytes32 modelId) external view returns (ModelFile[] memory) {
+        return files[modelId];
     }
 
-    function getEndpoints(bytes32 modelId) external view returns (InferenceEndpoint[] memory) {
-        return endpoints[modelId];
-    }
-
-    function getOrganizationModels(string calldata org) external view returns (bytes32[] memory) {
-        return organizationModels[org];
+    function getGateRequests(bytes32 modelId) external view returns (GateRequest[] memory) {
+        return gateRequests[modelId];
     }
 
     function getTotalModels() external view returns (uint256) {
         return allModels.length;
     }
 
-    function getAllModelIds(uint256 offset, uint256 limit) external view returns (bytes32[] memory) {
+    function getModelIds(uint256 offset, uint256 limit) external view returns (bytes32[] memory) {
         uint256 end = offset + limit;
         if (end > allModels.length) end = allModels.length;
         if (offset >= end) return new bytes32[](0);
@@ -559,32 +605,75 @@ contract ModelRegistry is ReentrancyGuard, Pausable, Ownable {
         return result;
     }
 
+    function getModelsByType(ModelType modelType, uint256 offset, uint256 limit) 
+        external 
+        view 
+        returns (bytes32[] memory) 
+    {
+        // Count matching models
+        uint256 count = 0;
+        for (uint256 i = 0; i < allModels.length; i++) {
+            if (models[allModels[i]].modelType == modelType) {
+                count++;
+            }
+        }
+
+        // Collect matching models
+        bytes32[] memory matching = new bytes32[](count);
+        uint256 j = 0;
+        for (uint256 i = 0; i < allModels.length; i++) {
+            if (models[allModels[i]].modelType == modelType) {
+                matching[j++] = allModels[i];
+            }
+        }
+
+        // Apply pagination
+        uint256 end = offset + limit;
+        if (end > matching.length) end = matching.length;
+        if (offset >= end) return new bytes32[](0);
+
+        bytes32[] memory result = new bytes32[](end - offset);
+        for (uint256 i = offset; i < end; i++) {
+            result[i - offset] = matching[i];
+        }
+        return result;
+    }
+
+    function checkAccess(bytes32 modelId, address user) external view returns (bool) {
+        Model storage model = models[modelId];
+        if (model.accessLevel == AccessLevel.PUBLIC) return true;
+        if (model.owner == user) return true;
+        return hasAccess[modelId][user];
+    }
+
     // ============ Admin ============
-
-    function setComputeRegistry(address _computeRegistry) external onlyOwner {
-        computeRegistry = _computeRegistry;
-    }
-
-    function setDatasetRegistry(address _datasetRegistry) external onlyOwner {
-        datasetRegistry = _datasetRegistry;
-    }
 
     function setTreasury(address _treasury) external onlyOwner {
         treasury = _treasury;
     }
 
-    function setUploadFee(uint256 _fee) external onlyOwner {
-        uploadFee = _fee;
+    function setPublishFee(uint256 _fee) external onlyOwner {
+        publishFee = _fee;
     }
 
-    function setInferenceFeePercentage(uint256 _percentage) external onlyOwner {
-        require(_percentage <= 2000, "Max 20%");
-        inferenceFeePercentage = _percentage;
+    function setStorageFeePerGB(uint256 _fee) external onlyOwner {
+        storageFeePerGB = _fee;
     }
 
     function verifyModel(bytes32 modelId) external onlyOwner modelExists(modelId) {
         models[modelId].isVerified = true;
-        emit ModelVerified(modelId, msg.sender);
+    }
+
+    function unverifyModel(bytes32 modelId) external onlyOwner modelExists(modelId) {
+        models[modelId].isVerified = false;
+    }
+
+    function deactivateModel(bytes32 modelId) external onlyOwner modelExists(modelId) {
+        models[modelId].isActive = false;
+    }
+
+    function activateModel(bytes32 modelId) external onlyOwner modelExists(modelId) {
+        models[modelId].isActive = true;
     }
 
     function pause() external onlyOwner {
@@ -595,10 +684,17 @@ contract ModelRegistry is ReentrancyGuard, Pausable, Ownable {
         _unpause();
     }
 
+    function withdrawFees() external onlyOwner {
+        uint256 balance = address(this).balance;
+        if (balance > 0) {
+            (bool success, ) = treasury.call{value: balance}("");
+            require(success, "Transfer failed");
+        }
+    }
+
     function version() external pure returns (string memory) {
         return "1.0.0";
     }
 
     receive() external payable {}
 }
-

@@ -3,18 +3,9 @@ pragma solidity ^0.8.26;
 
 /**
  * @title IProviderRegistry
- * @notice Standard interface for all provider registries
+ * @notice Standard interface for provider registries
  */
 interface IProviderRegistry {
-    struct ProviderInfo {
-        address provider;
-        uint256 agentId;
-        uint256 stake;
-        uint256 registeredAt;
-        bool active;
-        bool verified;
-    }
-
     event ProviderRegistered(address indexed provider, uint256 indexed agentId, uint256 stake, uint256 registeredAt);
     event ProviderUpdated(address indexed provider);
     event ProviderDeactivated(address indexed provider);
@@ -37,7 +28,6 @@ interface IProviderRegistry {
     function getAgentByProvider(address provider) external view returns (uint256);
     function hasValidAgent(address provider) external view returns (bool);
     function isProviderBanned(address provider) external view returns (bool);
-    function getProviderCount() external view returns (uint256);
 }
 
 /**

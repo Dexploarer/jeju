@@ -77,7 +77,7 @@ export class CQLServer {
     `);
     
     // Get current block height
-    const result = this.registry.query<{ height: number }>('SELECT MAX(height) as height FROM blocks').get();
+    const result = this.registry.query('SELECT MAX(height) as height FROM blocks').get() as { height: number } | null;
     this.blockHeight = result?.height || 0;
     
     // Add genesis block if needed
@@ -90,7 +90,7 @@ export class CQLServer {
   }
 
   private loadDatabases(): void {
-    const dbs = this.registry.query<DatabaseRecord>('SELECT * FROM databases WHERE status = ?').all('active');
+    const dbs = this.registry.query('SELECT * FROM databases WHERE status = ?').all('active') as DatabaseRecord[];
     for (const db of dbs) {
       this.openDatabase(db.id);
     }
@@ -246,13 +246,13 @@ export class CQLServer {
           let dbs: DatabaseRecord[];
           
           if (owner) {
-            dbs = self.registry.query<DatabaseRecord>(
+            dbs = self.registry.query(
               'SELECT * FROM databases WHERE owner = ? AND status = ?'
-            ).all(owner, 'active');
+            ).all(owner, 'active') as DatabaseRecord[];
           } else {
-            dbs = self.registry.query<DatabaseRecord>(
+            dbs = self.registry.query(
               'SELECT * FROM databases WHERE status = ?'
-            ).all('active');
+            ).all('active') as DatabaseRecord[];
           }
           
           return Response.json({
@@ -270,9 +270,9 @@ export class CQLServer {
         const dbMatch = url.pathname.match(/^\/api\/v1\/databases\/([^/]+)$/);
         if (dbMatch && method === 'GET') {
           const dbId = dbMatch[1];
-          const db = self.registry.query<DatabaseRecord>(
+          const db = self.registry.query(
             'SELECT * FROM databases WHERE id = ?'
-          ).get(dbId);
+          ).get(dbId) as DatabaseRecord | null;
           
           if (!db) {
             return Response.json({ error: 'Database not found' }, { status: 404 });
@@ -331,9 +331,9 @@ export class CQLServer {
         const aclListMatch = url.pathname.match(/^\/api\/v1\/databases\/([^/]+)\/acl$/);
         if (aclListMatch && method === 'GET') {
           const dbId = aclListMatch[1];
-          const rules = self.registry.query<{ address: string; permissions: string; created_at: number }>(
+          const rules = self.registry.query(
             'SELECT address, permissions, created_at FROM acl WHERE database_id = ?'
-          ).all(dbId);
+          ).all(dbId) as { address: string; permissions: string; created_at: number }[];
           
           return Response.json({
             rules: rules.map(r => ({

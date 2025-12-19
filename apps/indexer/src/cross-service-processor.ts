@@ -208,10 +208,7 @@ export async function processCrossServiceEvents(ctx: ProcessorContext<Store>): P
         }
 
         // Get rental if exists
-        let rental: ComputeRental | null = null;
-        if (rentalId) {
-          rental = await ctx.store.get(ComputeRental, rentalId);
-        }
+        const rental = rentalId ? await ctx.store.get(ComputeRental, rentalId) : undefined;
 
         // Create requester account (use compute provider address as requester)
         const requesterAccount = accountFactory.getOrCreate(computeProviderAddr, header.height, blockTimestamp);
@@ -253,7 +250,7 @@ export async function processCrossServiceEvents(ctx: ProcessorContext<Store>): P
         );
 
         const cid = decoded[0];
-        const computeProviderAddr = decoded[1];
+        // decoded[1] is computeProviderAddr - unused currently
 
         // Link the rental to the container file
         let file = containerFiles.get(cid);

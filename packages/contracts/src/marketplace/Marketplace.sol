@@ -148,8 +148,6 @@ contract Marketplace is ReentrancyGuard, Ownable {
         feeRecipient = _feeRecipient;
     }
 
-    // ============ External Functions ============
-
     function createListing(
         AssetType assetType,
         address assetContract,
@@ -269,8 +267,6 @@ contract Marketplace is ReentrancyGuard, Ownable {
         emit ListingCancelled(listingId, msg.sender, listing.assetType);
     }
 
-    // ============ Admin Functions ============
-
     function setPlatformFee(uint256 newFeeBps) external onlyOwner {
         if (newFeeBps > MAX_PLATFORM_FEE_BPS) revert InvalidFee();
         platformFeeBps = newFeeBps;
@@ -371,8 +367,6 @@ contract Marketplace is ReentrancyGuard, Ownable {
     function version() external pure returns (string memory) {
         return "2.0.0";
     }
-
-    // ============ Internal Functions ============
 
     function _buildAsset(
         AssetType assetType,

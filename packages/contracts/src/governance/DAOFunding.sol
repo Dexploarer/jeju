@@ -31,8 +31,6 @@ import {IDAORegistry} from "./interfaces/IDAORegistry.sol";
 contract DAOFunding is ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20;
 
-    // ============ Enums ============
-
     enum ProjectType {
         PACKAGE,
         REPO
@@ -46,8 +44,6 @@ contract DAOFunding is ReentrancyGuard, Pausable {
         COMPLETED,
         REJECTED
     }
-
-    // ============ Structs ============
 
     struct FundingProject {
         bytes32 projectId;
@@ -96,48 +92,19 @@ contract DAOFunding is ReentrancyGuard, Pausable {
         uint256 ceoWeightCap; // Max CEO weight per project (basis points)
     }
 
-    // ============ State Variables ============
-
-    /// @notice DAO registry contract
     IDAORegistry public immutable daoRegistry;
-
-    /// @notice Funding token (ETH for address(0), or ERC20)
     IERC20 public immutable fundingToken;
-
-    /// @notice Contract owner
     address public owner;
-
-    /// @notice Funding projects by ID
     mapping(bytes32 => FundingProject) private _projects;
-
-    /// @notice All project IDs per DAO
     mapping(bytes32 => bytes32[]) private _daoProjects;
-
-    /// @notice Registry ID to project ID mapping
     mapping(bytes32 => bytes32) private _registryToProject;
-
-    /// @notice Funding epochs per DAO
     mapping(bytes32 => FundingEpoch[]) private _epochs;
-
-    /// @notice Current epoch ID per DAO
     mapping(bytes32 => uint256) private _currentEpoch;
-
-    /// @notice User stakes per project per epoch
     mapping(bytes32 => mapping(uint256 => mapping(address => StakeInfo))) private _userStakes;
-
-    /// @notice Total stakes per project per epoch
     mapping(bytes32 => mapping(uint256 => uint256)) private _projectEpochStakes;
-
-    /// @notice Number of stakers per project per epoch (for quadratic)
     mapping(bytes32 => mapping(uint256 => uint256)) private _projectEpochStakers;
-
-    /// @notice DAO funding configurations
     mapping(bytes32 => DAOFundingConfig) private _daoConfigs;
-
-    /// @notice Default funding config
     DAOFundingConfig public defaultConfig;
-
-    // ============ Events ============
 
     event ProjectProposed(bytes32 indexed projectId, bytes32 indexed daoId, ProjectType projectType, address proposer);
     event ProjectAccepted(bytes32 indexed projectId, bytes32 indexed daoId);
@@ -150,8 +117,6 @@ contract DAOFunding is ReentrancyGuard, Pausable {
     event EpochFinalized(bytes32 indexed daoId, uint256 indexed epochId, uint256 totalDistributed);
     event FundsDistributed(bytes32 indexed projectId, uint256 indexed epochId, uint256 amount);
     event ConfigUpdated(bytes32 indexed daoId);
-
-    // ============ Errors ============
 
     error NotAuthorized();
     error ProjectNotFound();
@@ -167,8 +132,6 @@ contract DAOFunding is ReentrancyGuard, Pausable {
     error InvalidShares();
     error DAONotActive();
     error TransferFailed();
-
-    // ============ Modifiers ============
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert NotAuthorized();
@@ -191,8 +154,6 @@ contract DAOFunding is ReentrancyGuard, Pausable {
         _;
     }
 
-    // ============ Constructor ============
-
     constructor(address _daoRegistry, address _fundingToken, address _owner) {
         daoRegistry = IDAORegistry(_daoRegistry);
         fundingToken = IERC20(_fundingToken);
@@ -209,19 +170,6 @@ contract DAOFunding is ReentrancyGuard, Pausable {
         });
     }
 
-    // ============ Project Management ============
-
-    /**
-     * @notice Propose a package or repo for funding
-     * @param daoId DAO to propose to
-     * @param projectType Type of project (PACKAGE or REPO)
-     * @param registryId ID in PackageRegistry or RepoRegistry
-     * @param name Project name
-     * @param description Project description
-     * @param primaryRecipient Primary funding recipient
-     * @param additionalRecipients Additional recipients
-     * @param recipientShares Share splits in basis points
-     */
     function proposeProject(
         bytes32 daoId,
         ProjectType projectType,
@@ -272,10 +220,6 @@ contract DAOFunding is ReentrancyGuard, Pausable {
         emit ProjectProposed(projectId, daoId, projectType, msg.sender);
     }
 
-    /**
-     * @notice Accept a proposed project for funding
-     * @param projectId Project to accept
-     */
     function acceptProject(bytes32 projectId) external projectExists(projectId) onlyDAOAdmin(_projects[projectId].daoId) {
         FundingProject storage project = _projects[projectId];
         if (project.status != FundingStatus.PROPOSED) revert InvalidProject();
@@ -287,11 +231,6 @@ contract DAOFunding is ReentrancyGuard, Pausable {
         emit ProjectStatusChanged(projectId, oldStatus, FundingStatus.ACTIVE);
     }
 
-    /**
-     * @notice Reject a proposed project
-     * @param projectId Project to reject
-     * @param reason Rejection reason
-     */
     function rejectProject(bytes32 projectId, string calldata reason)
         external
         projectExists(projectId)
@@ -307,11 +246,6 @@ contract DAOFunding is ReentrancyGuard, Pausable {
         emit ProjectStatusChanged(projectId, oldStatus, FundingStatus.REJECTED);
     }
 
-    /**
-     * @notice Set CEO weight for a project
-     * @param projectId Project to set weight for
-     * @param weight Weight in basis points (0-10000)
-     */
     function setCEOWeight(bytes32 projectId, uint256 weight) external projectExists(projectId) onlyCEO(_projects[projectId].daoId) {
         FundingProject storage project = _projects[projectId];
         if (project.status != FundingStatus.ACTIVE) revert ProjectNotActive();
@@ -327,10 +261,6 @@ contract DAOFunding is ReentrancyGuard, Pausable {
         emit CEOWeightSet(projectId, oldWeight, weight);
     }
 
-    /**
-     * @notice Pause a project
-     * @param projectId Project to pause
-     */
     function pauseProject(bytes32 projectId) external projectExists(projectId) onlyDAOAdmin(_projects[projectId].daoId) {
         FundingProject storage project = _projects[projectId];
         FundingStatus oldStatus = project.status;
@@ -339,10 +269,6 @@ contract DAOFunding is ReentrancyGuard, Pausable {
         emit ProjectStatusChanged(projectId, oldStatus, FundingStatus.PAUSED);
     }
 
-    /**
-     * @notice Unpause a project
-     * @param projectId Project to unpause
-     */
     function unpauseProject(bytes32 projectId) external projectExists(projectId) onlyDAOAdmin(_projects[projectId].daoId) {
         FundingProject storage project = _projects[projectId];
         FundingStatus oldStatus = project.status;
@@ -351,13 +277,6 @@ contract DAOFunding is ReentrancyGuard, Pausable {
         emit ProjectStatusChanged(projectId, oldStatus, FundingStatus.ACTIVE);
     }
 
-    // ============ Staking ============
-
-    /**
-     * @notice Stake tokens to support a project
-     * @param projectId Project to stake to
-     * @param amount Amount to stake
-     */
     function stake(bytes32 projectId, uint256 amount) external payable projectExists(projectId) whenNotPaused nonReentrant {
         FundingProject storage project = _projects[projectId];
         if (project.status != FundingStatus.ACTIVE) revert ProjectNotActive();
@@ -401,11 +320,6 @@ contract DAOFunding is ReentrancyGuard, Pausable {
         emit UserStaked(projectId, epochId, msg.sender, amount);
     }
 
-    /**
-     * @notice Unstake tokens from a project
-     * @param projectId Project to unstake from
-     * @param epochId Epoch to unstake from
-     */
     function unstake(bytes32 projectId, uint256 epochId) external nonReentrant {
         StakeInfo storage stakeInfo = _userStakes[projectId][epochId][msg.sender];
         if (stakeInfo.amount == 0) revert StakeNotFound();
@@ -446,10 +360,6 @@ contract DAOFunding is ReentrancyGuard, Pausable {
         _createEpoch(daoId, budget, matchingPool);
     }
 
-    /**
-     * @notice Finalize an epoch and distribute funds
-     * @param daoId DAO to finalize epoch for
-     */
     function finalizeEpoch(bytes32 daoId) external nonReentrant onlyDAOAdmin(daoId) {
         uint256 epochId = _currentEpoch[daoId];
         if (epochId == 0) revert EpochNotActive();
@@ -467,31 +377,15 @@ contract DAOFunding is ReentrancyGuard, Pausable {
         emit EpochFinalized(daoId, epochId, totalDistributed);
     }
 
-    // ============ Configuration ============
-
-    /**
-     * @notice Set DAO funding configuration
-     * @param daoId DAO to configure
-     * @param config Configuration to set
-     */
     function setDAOConfig(bytes32 daoId, DAOFundingConfig calldata config) external onlyDAOAdmin(daoId) {
         _daoConfigs[daoId] = config;
         emit ConfigUpdated(daoId);
     }
 
-    /**
-     * @notice Set default configuration
-     * @param config Configuration to set
-     */
     function setDefaultConfig(DAOFundingConfig calldata config) external onlyOwner {
         defaultConfig = config;
     }
 
-    /**
-     * @notice Deposit matching funds to a DAO's epoch
-     * @param daoId DAO to deposit to
-     * @param amount Amount to deposit
-     */
     function depositMatchingFunds(bytes32 daoId, uint256 amount) external payable nonReentrant {
         uint256 epochId = _currentEpoch[daoId];
         if (epochId == 0) revert EpochNotActive();
@@ -509,28 +403,14 @@ contract DAOFunding is ReentrancyGuard, Pausable {
         epoch.totalBudget += amount;
     }
 
-    // ============ View Functions ============
-
-    /**
-     * @notice Get project details
-     * @param projectId Project to get
-     */
     function getProject(bytes32 projectId) external view returns (FundingProject memory) {
         return _projects[projectId];
     }
 
-    /**
-     * @notice Get all projects for a DAO
-     * @param daoId DAO to get projects for
-     */
     function getDAOProjects(bytes32 daoId) external view returns (bytes32[] memory) {
         return _daoProjects[daoId];
     }
 
-    /**
-     * @notice Get active projects for a DAO
-     * @param daoId DAO to get projects for
-     */
     function getActiveProjects(bytes32 daoId) external view returns (FundingProject[] memory) {
         bytes32[] memory projectIds = _daoProjects[daoId];
         uint256 activeCount = 0;
@@ -554,10 +434,6 @@ contract DAOFunding is ReentrancyGuard, Pausable {
         return result;
     }
 
-    /**
-     * @notice Get current epoch for a DAO
-     * @param daoId DAO to get epoch for
-     */
     function getCurrentEpoch(bytes32 daoId) external view returns (FundingEpoch memory) {
         uint256 epochId = _currentEpoch[daoId];
         if (epochId == 0) {
@@ -574,12 +450,6 @@ contract DAOFunding is ReentrancyGuard, Pausable {
         return _epochs[daoId];
     }
 
-    /**
-     * @notice Get user stake for a project in an epoch
-     * @param projectId Project to check
-     * @param epochId Epoch to check
-     * @param user User to check
-     */
     function getUserStake(bytes32 projectId, uint256 epochId, address user) external view returns (StakeInfo memory) {
         return _userStakes[projectId][epochId][user];
     }
@@ -593,18 +463,10 @@ contract DAOFunding is ReentrancyGuard, Pausable {
         return (_projectEpochStakes[projectId][epochId], _projectEpochStakers[projectId][epochId]);
     }
 
-    /**
-     * @notice Get DAO funding configuration
-     * @param daoId DAO to get config for
-     */
     function getDAOConfig(bytes32 daoId) external view returns (DAOFundingConfig memory) {
         return _getConfig(daoId);
     }
 
-    /**
-     * @notice Calculate expected allocation for a project in current epoch
-     * @param projectId Project to calculate for
-     */
     function calculateAllocation(bytes32 projectId) external view returns (uint256) {
         FundingProject memory project = _projects[projectId];
         uint256 epochId = _currentEpoch[project.daoId];
@@ -613,10 +475,6 @@ contract DAOFunding is ReentrancyGuard, Pausable {
         return _calculateProjectAllocation(project.daoId, projectId, epochId);
     }
 
-    /**
-     * @notice Get project by registry ID
-     * @param registryId Registry ID to look up
-     */
     function getProjectByRegistryId(bytes32 registryId) external view returns (FundingProject memory) {
         bytes32 projectId = _registryToProject[registryId];
         return _projects[projectId];
@@ -632,26 +490,14 @@ contract DAOFunding is ReentrancyGuard, Pausable {
         owner = newOwner;
     }
 
-    /**
-     * @notice Pause contract
-     */
     function pause() external onlyOwner {
         _pause();
     }
 
-    /**
-     * @notice Unpause contract
-     */
     function unpause() external onlyOwner {
         _unpause();
     }
 
-    /**
-     * @notice Emergency withdraw
-     * @param token Token to withdraw (address(0) for ETH)
-     * @param to Recipient address
-     * @param amount Amount to withdraw
-     */
     function emergencyWithdraw(address token, address to, uint256 amount) external onlyOwner {
         if (token == address(0)) {
             (bool success,) = to.call{value: amount}("");
@@ -661,9 +507,6 @@ contract DAOFunding is ReentrancyGuard, Pausable {
         }
     }
 
-    /**
-     * @notice Contract version
-     */
     function version() external pure returns (string memory) {
         return "1.0.0";
     }
@@ -681,9 +524,6 @@ contract DAOFunding is ReentrancyGuard, Pausable {
         return config;
     }
 
-    /**
-     * @notice Create a new epoch
-     */
     function _createEpoch(bytes32 daoId, uint256 budget, uint256 matchingPool) internal {
         DAOFundingConfig memory config = _getConfig(daoId);
         uint256 newEpochId = _currentEpoch[daoId] + 1;
@@ -706,9 +546,6 @@ contract DAOFunding is ReentrancyGuard, Pausable {
         emit EpochCreated(daoId, newEpochId, budget, matchingPool);
     }
 
-    /**
-     * @notice Distribute funds for an epoch
-     */
     function _distributeFunds(bytes32 daoId, uint256 epochId) internal returns (uint256 totalDistributed) {
         bytes32[] memory projectIds = _daoProjects[daoId];
         FundingEpoch memory epoch = _epochs[daoId][epochId - 1];
@@ -752,27 +589,20 @@ contract DAOFunding is ReentrancyGuard, Pausable {
 
         uint256 communityWeight;
         if (config.quadraticEnabled && stakers > 0) {
-            // Quadratic: sqrt(stake) * sqrt(stakers) for better distribution
-            communityWeight = _sqrt(stake) * _sqrt(stakers);
+                communityWeight = _sqrt(stake) * _sqrt(stakers);
         } else {
             communityWeight = stake;
         }
 
-        // Combine CEO weight and community weight
-        // CEO weight is used as a multiplier (basis points)
-        uint256 ceoMultiplier = 10000 + project.ceoWeight; // 100% base + CEO bonus
+        uint256 ceoMultiplier = 10000 + project.ceoWeight;
         uint256 totalWeight = (communityWeight * ceoMultiplier) / 10000;
 
         return totalWeight;
     }
 
-    /**
-     * @notice Distribute funds to a project's recipients
-     */
     function _distributeToProject(bytes32 projectId, uint256 amount) internal {
         FundingProject storage project = _projects[projectId];
 
-        // Calculate primary recipient share
         uint256 primaryShare = 10000;
         for (uint256 i = 0; i < project.recipientShares.length; i++) {
             primaryShare -= project.recipientShares[i];
@@ -792,9 +622,6 @@ contract DAOFunding is ReentrancyGuard, Pausable {
         project.lastFundedAt = block.timestamp;
     }
 
-    /**
-     * @notice Transfer funds
-     */
     function _transferFunds(address to, uint256 amount) internal {
         if (amount == 0) return;
 
@@ -820,9 +647,6 @@ contract DAOFunding is ReentrancyGuard, Pausable {
         return y;
     }
 
-    /**
-     * @notice Receive ETH
-     */
     receive() external payable {}
 }
 

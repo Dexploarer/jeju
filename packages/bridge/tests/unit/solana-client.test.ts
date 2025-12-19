@@ -18,9 +18,9 @@ import {
 	toHash32,
 } from "../../src/index.js";
 
-// Mock program IDs
-const MOCK_BRIDGE_PROGRAM = new PublicKey("Bridge1111111111111111111111111111111111111");
-const MOCK_LIGHT_CLIENT_PROGRAM = new PublicKey("LightC111111111111111111111111111111111111");
+// Mock program IDs (using valid Base58-encoded 32-byte public keys)
+const MOCK_BRIDGE_PROGRAM = new PublicKey("11111111111111111111111111111111"); // System program (32 bytes = valid)
+const MOCK_LIGHT_CLIENT_PROGRAM = new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111"); // BPF Upgradeable loader
 
 describe("SolanaClient", () => {
 	describe("Client Creation", () => {

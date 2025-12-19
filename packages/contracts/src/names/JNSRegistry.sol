@@ -36,14 +36,6 @@ contract JNSRegistry is IJNS {
         _setResolverAndTTL(node, nodeResolver, nodeTtl);
     }
 
-    /**
-     * @notice Set all record data for a subnode
-     * @param node The parent node
-     * @param label The hash of the label specifying the subnode
-     * @param nodeOwner The address of the new owner
-     * @param nodeResolver The address of the resolver
-     * @param nodeTtl The TTL in seconds
-     */
     function setSubnodeRecord(bytes32 node, bytes32 label, address nodeOwner, address nodeResolver, uint64 nodeTtl)
         external
         override

@@ -46,7 +46,7 @@ const X402_ENABLED = process.env.X402_ENABLED !== 'false';
 export const RPC_PRICING = { standard: 100n, archive: 500n, trace: 1000n } as const;
 
 // Initialize state on module load (non-blocking)
-initializeState().catch((err) => {
+initializeDWSState().catch((err: Error) => {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('[X402 Payments] Running without CQL:', err.message);
   }

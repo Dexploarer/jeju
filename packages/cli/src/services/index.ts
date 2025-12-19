@@ -10,4 +10,5 @@ export { createDockerOrchestrator, DockerOrchestrator, type TestProfile } from '
 export { createLocalnetOrchestrator, LocalnetOrchestrator } from './localnet-orchestrator';
 export { createAppOrchestrator, AppOrchestrator } from './app-orchestrator';
 export { createTestOrchestrator, TestOrchestrator } from './test-orchestrator';
+export { createInfrastructureService, InfrastructureService, type InfrastructureStatus, type ServiceHealth } from './infrastructure';
 

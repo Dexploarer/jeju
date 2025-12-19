@@ -359,7 +359,7 @@ function SequencerCard({ address: addr }: { address: Address }) {
 
   if (!sequencer) return null;
 
-  const seq = sequencer as SequencerInfo;
+  const seq = sequencer as unknown as SequencerInfo;
   const uptime = seq.blocksProposed > 0n 
     ? (Number(seq.blocksProposed) / (Number(seq.blocksProposed) + Number(seq.blocksMissed)) * 100).toFixed(1)
     : '100.0';

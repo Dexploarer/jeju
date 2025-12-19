@@ -171,3 +171,4 @@ describe.skipIf(SKIP)('Package Registry On-Chain Integration', () => {
     ).rejects.toThrow();
   });
 });
+

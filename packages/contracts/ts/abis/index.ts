@@ -59,6 +59,12 @@ import ICOPresaleAbiJson from '../../abis/ICOPresale.json';
 import LPLockerAbiJson from '../../abis/LPLocker.json';
 import LaunchpadTokenAbiJson from '../../abis/LaunchpadToken.json';
 
+// Chainlink ABIs
+import VRFCoordinatorV2_5AbiJson from '../../abis/VRFCoordinatorV2_5.json';
+import AutomationRegistryAbiJson from '../../abis/AutomationRegistry.json';
+import OracleRouterAbiJson from '../../abis/OracleRouter.json';
+import ChainlinkGovernanceAbiJson from '../../abis/ChainlinkGovernance.json';
+
 import type { Abi } from 'viem';
 
 // Extract and type the ABIs
@@ -117,6 +123,12 @@ export const ICOPresaleAbi = ICOPresaleAbiJson.abi as Abi;
 export const LPLockerAbi = LPLockerAbiJson.abi as Abi;
 export const LaunchpadTokenAbi = LaunchpadTokenAbiJson.abi as Abi;
 
+// Chainlink ABIs
+export const VRFCoordinatorV2_5Abi = VRFCoordinatorV2_5AbiJson as Abi;
+export const AutomationRegistryAbi = AutomationRegistryAbiJson as Abi;
+export const OracleRouterAbi = OracleRouterAbiJson as Abi;
+export const ChainlinkGovernanceAbi = ChainlinkGovernanceAbiJson as Abi;
+
 // Export the full JSON files for those who need address + abi
 export { ERC20AbiJson, ERC20FactoryAbiJson, BazaarAbiJson, IdentityRegistryAbiJson, ReputationRegistryAbiJson, ValidationRegistryAbiJson };
 export { InputSettlerAbiJson, OutputSettlerAbiJson, SolverRegistryAbiJson };
@@ -129,6 +141,7 @@ export { TokenRegistryAbiJson, PaymasterFactoryAbiJson, LiquidityVaultAbiJson, A
 export { GoldAbiJson, ItemsAbiJson, GameIntegrationAbiJson, PlayerTradeEscrowAbiJson };
 export { SponsoredPaymasterAbiJson };
 export { TokenLaunchpadAbiJson, BondingCurveAbiJson, ICOPresaleAbiJson, LPLockerAbiJson, LaunchpadTokenAbiJson };
+export { VRFCoordinatorV2_5AbiJson, AutomationRegistryAbiJson, OracleRouterAbiJson, ChainlinkGovernanceAbiJson };
 
 // Common ABI fragments for convenience
 export const ERC20ReadAbi = [

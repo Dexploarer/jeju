@@ -7,7 +7,7 @@
  * Note: indexed parameters don't affect the signature - all param types are included.
  */
 
-import { keccak256, toBytes, stringToHex } from 'viem';
+import { keccak256, stringToHex } from 'viem';
 
 // Helper to calculate event signatures
 export function eventSig(signature: string): string {

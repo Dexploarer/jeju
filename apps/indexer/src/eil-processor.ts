@@ -258,15 +258,15 @@ async function processVoucherIssued(
 async function processVoucherFulfilled(
     ctx: ProcessorContext<Store>,
     log: LogData,
-    header: BlockHeader,
+    _header: BlockHeader,
     timestamp: Date,
     xlps: Map<string, XLP>,
     vouchers: Map<string, CrossChainVoucher>,
     transfers: Map<string, EILTransfer>
 ): Promise<void> {
     const voucherId = log.topics[1]
-    const recipientAddr = '0x' + log.topics[2].slice(26)
-    const amount = BigInt(log.data)
+    const _recipientAddr = '0x' + log.topics[2].slice(26)
+    const _amount = BigInt(log.data)
 
     let voucher = vouchers.get(voucherId) || await ctx.store.get(CrossChainVoucher, voucherId)
     if (voucher) {
@@ -342,7 +342,7 @@ async function processFundsRefunded(
 async function processXLPDeposit(
     ctx: ProcessorContext<Store>,
     log: LogData,
-    header: BlockHeader,
+    _header: BlockHeader,
     timestamp: Date,
     xlps: Map<string, XLP>,
     xlpDeposits: Map<string, XLPLiquidityDeposit>
@@ -383,7 +383,7 @@ async function processXLPDeposit(
 async function processXLPWithdraw(
     ctx: ProcessorContext<Store>,
     log: LogData,
-    header: BlockHeader,
+    _header: BlockHeader,
     timestamp: Date,
     xlps: Map<string, XLP>,
     xlpDeposits: Map<string, XLPLiquidityDeposit>
@@ -408,13 +408,13 @@ async function processXLPWithdraw(
 }
 
 async function processSourceFundsClaimed(
-    ctx: ProcessorContext<Store>,
+    _ctx: ProcessorContext<Store>,
     log: LogData,
-    header: BlockHeader,
+    _header: BlockHeader,
     xlps: Map<string, XLP>,
-    vouchers: Map<string, CrossChainVoucher>
+    _vouchers: Map<string, CrossChainVoucher>
 ): Promise<void> {
-    const requestId = log.topics[1]
+    const _requestId = log.topics[1]
     const xlpAddr = '0x' + log.topics[2].slice(26)
     
     // Decode amount and fee from data
@@ -422,7 +422,7 @@ async function processSourceFundsClaimed(
         [{ type: 'uint256' }, { type: 'uint256' }],
         log.data as `0x${string}`
     )
-    const amount = decoded[0]
+    const _amount = decoded[0]
     const fee = decoded[1]
 
     // Find voucher by request ID and update XLP earnings
@@ -436,7 +436,7 @@ async function processSourceFundsClaimed(
 async function processXLPRegistered(
     ctx: ProcessorContext<Store>,
     log: LogData,
-    header: BlockHeader,
+    _header: BlockHeader,
     timestamp: Date,
     xlps: Map<string, XLP>
 ): Promise<void> {
@@ -458,7 +458,7 @@ async function processXLPRegistered(
 }
 
 async function processStakeDeposited(
-    ctx: ProcessorContext<Store>,
+    _ctx: ProcessorContext<Store>,
     log: LogData,
     xlps: Map<string, XLP>
 ): Promise<void> {
@@ -479,7 +479,7 @@ async function processStakeDeposited(
 }
 
 async function processUnbondingStarted(
-    ctx: ProcessorContext<Store>,
+    _ctx: ProcessorContext<Store>,
     log: LogData,
     header: BlockHeader,
     xlps: Map<string, XLP>
@@ -492,7 +492,7 @@ async function processUnbondingStarted(
         log.data as `0x${string}`
     )
     const amount = decoded[0]
-    const unbondingComplete = decoded[1]
+    const _unbondingComplete = decoded[1]
 
     const xlp = xlps.get(xlpAddr.toLowerCase())
     if (xlp) {
@@ -503,12 +503,12 @@ async function processUnbondingStarted(
 }
 
 async function processStakeWithdrawn(
-    ctx: ProcessorContext<Store>,
+    _ctx: ProcessorContext<Store>,
     log: LogData,
     xlps: Map<string, XLP>
 ): Promise<void> {
     const xlpAddr = '0x' + log.topics[1].slice(26)
-    const amount = BigInt(log.data)
+    const _amount = BigInt(log.data)
 
     const xlp = xlps.get(xlpAddr.toLowerCase())
     if (xlp) {
@@ -520,9 +520,9 @@ async function processStakeWithdrawn(
 }
 
 async function processXLPSlashed(
-    ctx: ProcessorContext<Store>,
+    _ctx: ProcessorContext<Store>,
     log: LogData,
-    header: BlockHeader,
+    _header: BlockHeader,
     timestamp: Date,
     xlps: Map<string, XLP>,
     slashEvents: XLPSlashEvent[],

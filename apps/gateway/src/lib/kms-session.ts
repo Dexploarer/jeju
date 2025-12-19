@@ -7,7 +7,7 @@
 
 import type { Address, Hex } from 'viem';
 import { keccak256, toBytes, toHex } from 'viem';
-import { getKMS } from '@jejunetwork/kms';
+import { getKMS, ConditionOperator } from '@jejunetwork/kms';
 import type { AuthSignature, EncryptedPayload, KMSService } from '@jejunetwork/kms';
 
 export interface GatewaySession {
@@ -65,19 +65,21 @@ export class SessionManager {
     
     // Encrypt session data
     const sessionBytes = toBytes(JSON.stringify(session));
-    const encryptedData = await this.kms!.encrypt({
+    const encryptedPayload = await this.kms!.encrypt({
       data: toHex(sessionBytes),
-      accessControlConditions: [{
-        conditionType: 'evmBasic',
-        chain: 'ethereum',
-        method: 'eth_getBalance',
-        parameters: [':userAddress'],
-        returnValueTest: { comparator: '>=', value: '0' },
-      }],
+      policy: {
+        conditions: [{
+          type: 'balance',
+          chain: 'base-sepolia',
+          comparator: ConditionOperator.GREATER_THAN_OR_EQUAL,
+          value: '0',
+        }],
+        operator: 'and',
+      },
     });
     
     return {
-      encryptedData,
+      encryptedData: encryptedPayload,
       sessionId,
       expiresAt,
     };
@@ -99,12 +101,12 @@ export class SessionManager {
     
     try {
       const decrypted = await this.kms!.decrypt({
-        encryptedData: encryptedSession.encryptedData,
+        payload: encryptedSession.encryptedData,
         authSig,
       });
       
       const session: GatewaySession = JSON.parse(
-        Buffer.from(decrypted.data.slice(2), 'hex').toString()
+        Buffer.from(decrypted.slice(2), 'hex').toString()
       );
       
       // Verify session ID matches
@@ -161,19 +163,21 @@ export class SessionManager {
     
     // Re-encrypt with new expiration
     const sessionBytes = toBytes(JSON.stringify(extendedSession));
-    const encryptedData = await this.kms!.encrypt({
+    const encryptedPayload = await this.kms!.encrypt({
       data: toHex(sessionBytes),
-      accessControlConditions: [{
-        conditionType: 'evmBasic',
-        chain: 'ethereum',
-        method: 'eth_getBalance',
-        parameters: [':userAddress'],
-        returnValueTest: { comparator: '>=', value: '0' },
-      }],
+      policy: {
+        conditions: [{
+          type: 'balance',
+          chain: 'base-sepolia',
+          comparator: ConditionOperator.GREATER_THAN_OR_EQUAL,
+          value: '0',
+        }],
+        operator: 'and',
+      },
     });
     
     return {
-      encryptedData,
+      encryptedData: encryptedPayload,
       sessionId: result.session.sessionId,
       expiresAt: newExpiresAt,
     };

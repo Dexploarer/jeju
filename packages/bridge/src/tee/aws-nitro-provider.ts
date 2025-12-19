@@ -172,6 +172,11 @@ export class AWSNitroProvider implements ITEEProvider {
 	// =============================================================================
 
 	private async detectNitroEnvironment(): Promise<boolean> {
+		// Fast path: check environment variables first (no I/O)
+		if (process.env.AWS_ENCLAVE_ID) {
+			return true;
+		}
+		
 		// Check for Nitro-specific files/devices
 		try {
 			// Check for NSM device
@@ -180,20 +185,27 @@ export class AWSNitroProvider implements ITEEProvider {
 				return true;
 			}
 
-			// Check for enclave environment variable
-			if (process.env.AWS_ENCLAVE_ID) {
-				return true;
+			// Skip IMDS check in test environment to avoid slow timeouts
+			if (process.env.NODE_ENV === "test" || process.env.AWS_NITRO_SIMULATE === "true") {
+				return false;
 			}
 
-			// Check IMDS for instance identity
-			const response = await fetch(
-				"http://169.254.169.254/latest/meta-data/instance-id",
-				{ signal: AbortSignal.timeout(1000) },
-			);
-			if (response.ok) {
-				// Check if instance supports enclaves
-				const instanceType = await this.getInstanceType();
-				return this.isEnclaveCapableInstance(instanceType);
+			// Check IMDS for instance identity (with short timeout)
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), 500);
+			try {
+				const response = await fetch(
+					"http://169.254.169.254/latest/meta-data/instance-id",
+					{ signal: controller.signal },
+				);
+				clearTimeout(timeoutId);
+				if (response.ok) {
+					// Check if instance supports enclaves
+					const instanceType = await this.getInstanceType();
+					return this.isEnclaveCapableInstance(instanceType);
+				}
+			} finally {
+				clearTimeout(timeoutId);
 			}
 		} catch {
 			// Not in AWS or no access to IMDS
@@ -204,12 +216,19 @@ export class AWSNitroProvider implements ITEEProvider {
 
 	private async getInstanceType(): Promise<string> {
 		try {
-			const response = await fetch(
-				"http://169.254.169.254/latest/meta-data/instance-type",
-				{ signal: AbortSignal.timeout(1000) },
-			);
-			if (response.ok) {
-				return await response.text();
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), 500);
+			try {
+				const response = await fetch(
+					"http://169.254.169.254/latest/meta-data/instance-type",
+					{ signal: controller.signal },
+				);
+				clearTimeout(timeoutId);
+				if (response.ok) {
+					return await response.text();
+				}
+			} finally {
+				clearTimeout(timeoutId);
 			}
 		} catch {
 			// Ignore

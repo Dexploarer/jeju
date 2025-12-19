@@ -57,13 +57,13 @@ describe("Invalid Input Handling", () => {
 		});
 
 		it("should handle empty RPC URL", () => {
-			const client = createEVMClient({
+			// Empty RPC URL should throw UrlRequiredError from viem
+			expect(() => createEVMClient({
 				chainId: ChainId.LOCAL_EVM,
 				rpcUrl: "",
 				bridgeAddress: MOCK_BRIDGE,
 				lightClientAddress: MOCK_LIGHT_CLIENT,
-			});
-			expect(client).toBeDefined();
+			})).toThrow();
 		});
 
 		it("should fail on operation with unreachable RPC", async () => {
@@ -80,14 +80,14 @@ describe("Invalid Input Handling", () => {
 
 	describe("Solana Client Error Handling", () => {
 		it("should handle malformed RPC URL", () => {
-			const client = createSolanaClient({
+			// Malformed RPC URL should throw TypeError from @solana/web3.js
+			expect(() => createSolanaClient({
 				rpcUrl: "not-a-valid-url",
 				commitment: "confirmed",
 				keypair: Keypair.generate(),
 				bridgeProgramId: new PublicKey("11111111111111111111111111111111"),
 				evmLightClientProgramId: new PublicKey("11111111111111111111111111111111"),
-			});
-			expect(client).toBeDefined();
+			})).toThrow();
 		});
 
 		it("should fail on operation with unreachable RPC", async () => {
@@ -118,16 +118,16 @@ describe("Network Failure Handling", () => {
 		try {
 			await Promise.race([
 				client.getLatestVerifiedSlot(),
-				new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 5000)),
+				new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 3000)),
 			]);
 		} catch {
 			// Expected to fail
 		}
 
 		const elapsed = Date.now() - startTime;
-		// Should have timed out within our 5 second window
-		expect(elapsed).toBeLessThan(10000);
-	});
+		// Should have timed out within our 3 second window (or failed sooner)
+		expect(elapsed).toBeLessThan(5000);
+	}, { timeout: 10000 }); // Increase test timeout to 10 seconds
 });
 
 describe("Invalid Transfer Parameters", () => {

@@ -96,6 +96,11 @@ export {
   ICOPresaleAbi,
   LPLockerAbi,
   LaunchpadTokenAbi,
+  // Chainlink ABIs (VRF, Automation, Oracle)
+  VRFCoordinatorV2_5Abi,
+  AutomationRegistryAbi,
+  OracleRouterAbi,
+  ChainlinkGovernanceAbi,
   // Full JSON exports
   ERC20AbiJson,
   ERC20FactoryAbiJson,
@@ -119,6 +124,10 @@ export {
   ICOPresaleAbiJson,
   LPLockerAbiJson,
   LaunchpadTokenAbiJson,
+  VRFCoordinatorV2_5AbiJson,
+  AutomationRegistryAbiJson,
+  OracleRouterAbiJson,
+  ChainlinkGovernanceAbiJson,
 } from './abis';
 
 // ============================================================================

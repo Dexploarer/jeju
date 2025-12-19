@@ -1,0 +1,244 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.26;
+
+import {Test, console2} from "forge-std/Test.sol";
+import {OracleRouter, IOracleConsumer, OracleJobs} from "../../src/chainlink/OracleRouter.sol";
+
+contract MockOracleConsumer is IOracleConsumer {
+    bytes32 public lastRequestId;
+    bytes public lastResponse;
+    bool public callbackCalled;
+
+    function oracleCallback(bytes32 requestId, bytes calldata response) external override {
+        lastRequestId = requestId;
+        lastResponse = response;
+        callbackCalled = true;
+    }
+}
+
+contract OracleRouterTest is Test {
+    OracleRouter public router;
+    MockOracleConsumer public consumer;
+
+    address public owner = address(0x1001);
+    address public user = address(0x1002);
+    address public oracle = address(0x1003);
+    address public governance = address(0x1004);
+
+    bytes32 public httpGetJob = keccak256("http-get");
+    bytes32 public priceFeedJob = keccak256("price-feed");
+
+    function setUp() public {
+        vm.startPrank(owner);
+        router = new OracleRouter(governance);
+        vm.stopPrank();
+
+        consumer = new MockOracleConsumer();
+
+        // Register jobs
+        vm.startPrank(governance);
+        router.registerJob(httpGetJob, "HTTP GET", "Fetch HTTP data", address(0), 0.001 ether);
+        router.registerJob(priceFeedJob, "Price Feed", "Get price data", address(0), 0.0005 ether);
+        vm.stopPrank();
+
+        // Register and approve oracle
+        vm.deal(oracle, 1 ether);
+        vm.prank(oracle);
+        router.registerOracle{value: 0.01 ether}();
+
+        vm.prank(governance);
+        router.approveOracle(oracle);
+    }
+
+    function test_RegisterJob() public {
+        bytes32 newJob = keccak256("new-job");
+        
+        vm.prank(governance);
+        router.registerJob(newJob, "New Job", "Description", address(0), 0.002 ether);
+
+        OracleRouter.Job memory job = router.getJob(newJob);
+        assertEq(job.name, "New Job");
+        assertEq(job.minPayment, 0.002 ether);
+        assertTrue(job.active);
+    }
+
+    function test_RequestData() public {
+        vm.deal(user, 1 ether);
+        
+        bytes memory requestData = abi.encode("https://api.example.com/data");
+        
+        vm.prank(user);
+        bytes32 requestId = router.requestData{value: 0.001 ether}(
+            httpGetJob,
+            requestData,
+            address(consumer),
+            IOracleConsumer.oracleCallback.selector
+        );
+
+        assertNotEq(requestId, bytes32(0));
+
+        // Verify request stored
+        (
+            bytes32 jobId,
+            address requester,
+            address callbackAddress,
+            ,
+            uint96 payment,
+            ,
+            OracleRouter.RequestStatus status
+        ) = router.getRequest(requestId);
+
+        assertEq(jobId, httpGetJob);
+        assertEq(requester, user);
+        assertEq(callbackAddress, address(consumer));
+        assertEq(payment, 0.001 ether);
+        assertEq(uint8(status), uint8(OracleRouter.RequestStatus.PENDING));
+    }
+
+    function test_FulfillRequest() public {
+        vm.deal(user, 1 ether);
+        
+        bytes memory requestData = abi.encode("https://api.example.com/price");
+        
+        vm.prank(user);
+        bytes32 requestId = router.requestData{value: 0.001 ether}(
+            priceFeedJob,
+            requestData,
+            address(consumer),
+            IOracleConsumer.oracleCallback.selector
+        );
+
+        // Oracle fulfills
+        bytes memory response = abi.encode(uint256(2000e8));  // $2000 with 8 decimals
+        
+        uint256 oracleBalanceBefore = oracle.balance;
+        
+        vm.prank(oracle);
+        router.fulfillRequest(requestId, response);
+
+        // Verify callback was made
+        assertTrue(consumer.callbackCalled());
+        assertEq(consumer.lastRequestId(), requestId);
+        assertEq(consumer.lastResponse(), response);
+
+        // Verify oracle got paid
+        assertGt(oracle.balance, oracleBalanceBefore);
+
+        // Verify request status
+        (,,,,,, OracleRouter.RequestStatus status) = router.getRequest(requestId);
+        assertEq(uint8(status), uint8(OracleRouter.RequestStatus.FULFILLED));
+    }
+
+    function test_CancelExpiredRequest() public {
+        vm.deal(user, 1 ether);
+        
+        vm.prank(user);
+        bytes32 requestId = router.requestData{value: 0.001 ether}(
+            httpGetJob,
+            "",
+            address(consumer),
+            IOracleConsumer.oracleCallback.selector
+        );
+
+        // Skip past timeout (default 5 minutes)
+        skip(301);
+
+        // User can cancel and get refund
+        uint256 balanceBefore = user.balance;
+        
+        vm.prank(user);
+        router.cancelRequest(requestId);
+
+        assertEq(user.balance - balanceBefore, 0.001 ether);
+    }
+
+    function test_UpdateJob() public {
+        vm.prank(governance);
+        router.updateJob(httpGetJob, 0.005 ether, true);
+
+        OracleRouter.Job memory job = router.getJob(httpGetJob);
+        assertEq(job.minPayment, 0.005 ether);
+    }
+
+    function test_RemoveJob() public {
+        vm.prank(governance);
+        router.removeJob(httpGetJob);
+
+        // Job should be empty
+        OracleRouter.Job memory job = router.getJob(httpGetJob);
+        assertEq(job.jobId, bytes32(0));
+    }
+
+    function test_GetStats() public {
+        vm.deal(user, 1 ether);
+        
+        // Make a request
+        vm.prank(user);
+        bytes32 requestId = router.requestData{value: 0.001 ether}(
+            httpGetJob,
+            "",
+            address(0),
+            bytes4(0)
+        );
+
+        // Fulfill it
+        vm.prank(oracle);
+        router.fulfillRequest(requestId, "");
+
+        (
+            uint256 totalRequests,
+            uint256 totalFulfilled,
+            uint256 totalFeesCollected,
+            uint256 activeJobs,
+            uint256 activeOracles
+        ) = router.getStats();
+
+        assertEq(totalRequests, 1);
+        assertEq(totalFulfilled, 1);
+        assertGt(totalFeesCollected, 0);
+        assertEq(activeJobs, 2);  // httpGet and priceFeed
+        assertEq(activeOracles, 1);
+    }
+
+    function testFail_InsufficientPayment() public {
+        vm.deal(user, 1 ether);
+        
+        // Try to pay less than minimum
+        vm.prank(user);
+        router.requestData{value: 0.0001 ether}(  // Less than 0.001 minimum
+            httpGetJob,
+            "",
+            address(0),
+            bytes4(0)
+        );
+    }
+
+    function testFail_UnapprovedOracleCantFulfill() public {
+        address badOracle = address(5);
+        
+        vm.deal(user, 1 ether);
+        vm.prank(user);
+        bytes32 requestId = router.requestData{value: 0.001 ether}(
+            httpGetJob,
+            "",
+            address(0),
+            bytes4(0)
+        );
+
+        // Unapproved oracle tries to fulfill
+        vm.prank(badOracle);
+        router.fulfillRequest(requestId, "");
+    }
+
+    function test_GetAllJobs() public {
+        bytes32[] memory jobs = router.getAllJobs();
+        assertEq(jobs.length, 2);
+    }
+
+    function test_GetActiveOracles() public {
+        address[] memory oracles = router.getActiveOracles();
+        assertEq(oracles.length, 1);
+        assertEq(oracles[0], oracle);
+    }
+}
+

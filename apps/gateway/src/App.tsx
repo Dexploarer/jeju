@@ -1,4 +1,7 @@
-import { WagmiProvider, http } from 'wagmi';
+import { WagmiProvider as WagmiProviderBase, http } from 'wagmi';
+
+// Type assertion to work around React 19 JSX component type incompatibility
+const WagmiProvider = WagmiProviderBase as React.FC<React.PropsWithChildren<{ config: ReturnType<typeof getDefaultConfig> }>>;
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RainbowKitProvider, getDefaultConfig, darkTheme, lightTheme } from '@rainbow-me/rainbowkit';
 import '@rainbow-me/rainbowkit/styles.css';

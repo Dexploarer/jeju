@@ -77,7 +77,7 @@ type EILConfig = {
 
 // Helper to get chain config based on current network
 function getNetworkConfig(): EILNetworkConfig {
-  const config = eilConfig as EILConfig;
+  const config = eilConfig as unknown as EILConfig;
   if (NETWORK === 'testnet') return config.testnet;
   if (NETWORK === 'mainnet') return config.mainnet;
   return config.localnet;
@@ -111,7 +111,7 @@ export function useEILConfig() {
     appTokenPreference: appTokenPreferenceAddr || undefined,
     supportedChains: configuredChains,
     l1StakeManager: (networkConfig.hub.l1StakeManager || undefined) as Address | undefined,
-    supportedTokens: (eilConfig as EILConfig).supportedTokens as Address[],
+    supportedTokens: (eilConfig as unknown as EILConfig).supportedTokens as Address[],
   };
 }
 

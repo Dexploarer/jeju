@@ -1,14 +1,3 @@
-/**
- * Chainlink Configuration
- * 
- * Central configuration for all Chainlink integrations:
- * - Data Feeds (price oracles)
- * - VRF (verifiable randomness)
- * - Automation (keepers)
- * - Node operation
- * - LINK staking
- */
-
 import feeds from './feeds.json';
 import staking from './staking.json';
 import vrf from './vrf.json';
@@ -22,14 +11,6 @@ export interface ChainlinkFeed {
   address: string;
   decimals: number;
   heartbeatSeconds: number;
-}
-
-export interface ChainlinkStakingConfig {
-  contractAddress: string;
-  minStake: string;
-  maxStake: string;
-  unbondingPeriodDays: number;
-  estimatedApy: number;
 }
 
 export interface VRFConfig {
@@ -56,22 +37,14 @@ export function getChainlinkFeeds(chainId: number): ChainlinkFeed[] {
   }));
 }
 
-export function getVRFConfig(chainId: number): VRFConfig | null {
-  const config = vrf.chains[chainId.toString() as keyof typeof vrf.chains];
-  return config ?? null;
+export function getVRFConfig(chainId: number): VRFConfig | undefined {
+  return vrf.chains[chainId.toString() as keyof typeof vrf.chains];
 }
 
-export function getAutomationConfig(chainId: number): AutomationConfig | null {
-  const config = automation.chains[chainId.toString() as keyof typeof automation.chains];
-  return config ?? null;
+export function getAutomationConfig(chainId: number): AutomationConfig | undefined {
+  return automation.chains[chainId.toString() as keyof typeof automation.chains];
 }
 
-export function getStakingConfig(): ChainlinkStakingConfig {
-  return staking.ethereum;
+export function getLinkTokenAddress(chainId: number): string | undefined {
+  return feeds.linkToken[chainId.toString() as keyof typeof feeds.linkToken];
 }
-
-export function getLinkTokenAddress(chainId: number): string | null {
-  const token = feeds.linkToken[chainId.toString() as keyof typeof feeds.linkToken];
-  return token ?? null;
-}
-
