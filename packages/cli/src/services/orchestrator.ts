@@ -1035,7 +1035,7 @@ class ServicesOrchestrator {
               id: 'local-dev',
               address: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
               available: true,
-              models: ['gpt-5.2', 'gpt-4o-mini', 'claude-opus-4-5-20251101'],
+              models: ['gpt-5.2', 'gpt-5', 'claude-opus-4-5-20251101'],
               pricing: { perToken: '0.0001' },
             }],
           });

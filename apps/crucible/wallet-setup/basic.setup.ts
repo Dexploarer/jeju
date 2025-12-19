@@ -1,22 +1,21 @@
 /**
- * Basic Wallet Setup for Synpress Tests
+ * Crucible Wallet Setup - Uses shared Jeju test configuration
  */
-
 import { defineWalletSetup } from '@synthetixio/synpress';
 import { MetaMask } from '@synthetixio/synpress/playwright';
-
-// Test wallet - DO NOT USE IN PRODUCTION
-const SEED_PHRASE = 'test test test test test test test test test test test junk';
-const PASSWORD = 'Tester@1234';
+import { PASSWORD, SEED_PHRASE, JEJU_CHAIN } from '@jejunetwork/tests';
 
 export default defineWalletSetup(PASSWORD, async (context, walletPage) => {
   const metamask = new MetaMask(context, walletPage, PASSWORD);
-  
-  // Import test wallet
   await metamask.importWallet(SEED_PHRASE);
-  
-  // Add localhost network for local development
-  // Note: MetaMask usually has localhost already configured
+  await metamask.addNetwork({
+    name: JEJU_CHAIN.name,
+    rpcUrl: JEJU_CHAIN.rpcUrl,
+    chainId: JEJU_CHAIN.chainId,
+    symbol: JEJU_CHAIN.symbol,
+  });
+  await metamask.switchNetwork(JEJU_CHAIN.name);
 });
 
-export const walletPassword = PASSWORD;
+export { PASSWORD, SEED_PHRASE, JEJU_CHAIN };
+export { PASSWORD as walletPassword };

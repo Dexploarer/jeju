@@ -47,7 +47,7 @@ export class RulerScorer {
 
   constructor(config: RulerScorerConfig) {
     this.config = {
-      judgeModel: 'gpt-4o-mini',
+      judgeModel: 'gpt-5',
       judgeTemperature: 0.3,
       maxTokens: 2000,
       ...config,

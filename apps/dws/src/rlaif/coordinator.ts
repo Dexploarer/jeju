@@ -113,6 +113,10 @@ export interface RLAIFCoordinatorConfig {
   storageApiUrl: string;
   psycheEnabled?: boolean;
   psycheRpcUrl?: string;
+  /** Phala TEE configuration for secure training */
+  phalaTeeEnabled?: boolean;
+  phalaEndpoint?: string;
+  phalaApiKey?: string;
 }
 
 export class RLAIFCoordinator {
@@ -344,6 +348,11 @@ export class RLAIFCoordinator {
   private async trainPolicy(config: TrainingJobConfig): Promise<ComputeJobResult> {
     console.log(`[RLAIF] Training policy for iteration ${config.iteration}`);
 
+    // Use Phala TEE if enabled (for secure GPU training on remote infrastructure)
+    if (this.config.phalaTeeEnabled && this.config.phalaEndpoint) {
+      return this.trainWithPhalaTee(config);
+    }
+
     const response = await fetch(`${this.config.computeApiUrl}/jobs/train`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -367,6 +376,108 @@ export class RLAIFCoordinator {
 
     const result = (await response.json()) as ComputeJobResult;
     return this.waitForJob(result.jobId);
+  }
+
+  /**
+   * Train policy using Phala TEE for secure remote execution
+   */
+  private async trainWithPhalaTee(config: TrainingJobConfig): Promise<ComputeJobResult> {
+    console.log(`[RLAIF] Training with Phala TEE for iteration ${config.iteration}`);
+
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (this.config.phalaApiKey) {
+      headers['X-API-Key'] = this.config.phalaApiKey;
+    }
+
+    // Submit training job to Phala TEE endpoint
+    const response = await fetch(`${this.config.phalaEndpoint}/training/submit`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        type: 'GRPO_TRAINING',
+        input: {
+          trajectoryManifestCID: config.trajectoryManifestCID,
+          rewardsManifestCID: config.rewardsManifestCID,
+          policyModelCID: config.policyModelCID,
+          referenceModelCID: config.referenceModelCID,
+        },
+        config: {
+          algorithm: config.rlConfig.algorithm,
+          learningRate: config.rlConfig.learningRate,
+          batchSize: config.rlConfig.batchSize,
+          epochs: config.rlConfig.epochs,
+          klCoefficient: config.rlConfig.klCoefficient,
+        },
+        attestation: {
+          required: true,
+          minMeasurement: true,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Phala TEE training job failed: ${response.status} - ${errorText}`);
+    }
+
+    const result = (await response.json()) as { jobId: string; enclaveId: string };
+    console.log(`[RLAIF] Phala TEE job submitted: ${result.jobId}, enclave: ${result.enclaveId}`);
+
+    // Poll for completion
+    return this.waitForPhalaJob(result.jobId);
+  }
+
+  private async waitForPhalaJob(jobId: string, timeoutMs = 7200000): Promise<ComputeJobResult> {
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < timeoutMs) {
+      const headers: Record<string, string> = {};
+      if (this.config.phalaApiKey) {
+        headers['X-API-Key'] = this.config.phalaApiKey;
+      }
+
+      const response = await fetch(`${this.config.phalaEndpoint}/training/status/${jobId}`, {
+        headers,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to get Phala job status: ${response.status}`);
+      }
+
+      const status = (await response.json()) as {
+        status: 'pending' | 'running' | 'completed' | 'failed';
+        outputCID?: string;
+        attestation?: {
+          quote: string;
+          mrEnclave: string;
+          timestamp: number;
+        };
+        metrics?: Record<string, number>;
+        error?: string;
+      };
+
+      if (status.status === 'completed') {
+        console.log(`[RLAIF] Phala TEE job completed with attestation: ${status.attestation?.mrEnclave}`);
+        return {
+          jobId,
+          status: 'completed',
+          outputCID: status.outputCID,
+          metrics: status.metrics,
+        };
+      }
+
+      if (status.status === 'failed') {
+        return {
+          jobId,
+          status: 'failed',
+          error: status.error ?? 'Phala TEE job failed',
+        };
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 10000)); // Poll every 10s
+    }
+
+    throw new Error(`Phala TEE job ${jobId} timed out after ${timeoutMs}ms`);
   }
 
   private async evaluatePolicy(config: EvaluationJobConfig): Promise<ComputeJobResult> {
@@ -493,6 +604,14 @@ export class RLAIFCoordinator {
 }
 
 export function createRLAIFCoordinator(config: RLAIFCoordinatorConfig): RLAIFCoordinator {
-  return new RLAIFCoordinator(config);
+  // Auto-enable Phala TEE from environment
+  const enhancedConfig: RLAIFCoordinatorConfig = {
+    ...config,
+    phalaTeeEnabled: config.phalaTeeEnabled ?? process.env.PHALA_ENDPOINT !== undefined,
+    phalaEndpoint: config.phalaEndpoint ?? process.env.PHALA_ENDPOINT,
+    phalaApiKey: config.phalaApiKey ?? process.env.PHALA_API_KEY,
+  };
+
+  return new RLAIFCoordinator(enhancedConfig);
 }
 

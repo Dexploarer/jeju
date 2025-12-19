@@ -7,14 +7,13 @@ version = 1
 # Read the description carefully and uncomment the examples in each paragraph should you consider using them.
 
 # Base path for resolving remappings and compiling smart contracts, relative to workspace-root (directory in which the editor is open)
-# Most of the time, you want to point it to the directory containing foundry.toml or hardhat.config.js/ts.
+# Point this to the directory containing foundry.toml.
 root = "."
 
 # Path of source directory containing the contracts, relative to root (above)
 # Aderyn will traverse all the nested files inside to scan and report vulnerabilities found inside.
-# - If not specified, Aderyn will try to extract it from the framework that is being used. (Foundry / Hardhat). 
-#   That would be "contracts/" in case of Hardhat and in case of Foundry, it depends on foundry.toml and
-#   many other factors like FOUNDRY_PROFILE environment variable, etc.
+# - If not specified, Aderyn will try to extract it from Foundry configuration (foundry.toml).
+#   The source directory depends on foundry.toml and FOUNDRY_PROFILE environment variable.
 # - If specified, Aderyn will override the above found `src`.
 # Example:
 # src = "src/"

@@ -141,11 +141,59 @@ jobs:
         run: bun run scripts/test-helm-charts.ts
         # ALL charts MUST validate
 
+  # E2E Smoke Tests - Quick wallet connection validation
+  e2e-smoke:
+    name: E2E Smoke Tests
+    runs-on: ubuntu-latest
+    needs: [contracts, typescript-tests]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Install Playwright browsers
+        run: bunx playwright install chromium --with-deps
+
+      - name: Start Anvil
+        run: |
+          anvil --chain-id 1337 --port 9545 --block-time 1 --accounts 10 --balance 10000 &
+          sleep 5
+          curl -s -X POST http://127.0.0.1:9545 \
+            -H "Content-Type: application/json" \
+            -d '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}'
+
+      - name: Run chain preflight checks
+        run: bun run test:preflight
+        env:
+          L2_RPC_URL: http://127.0.0.1:9545
+          CHAIN_ID: "1337"
+
+      - name: Run E2E smoke test
+        run: |
+          cd packages/tests
+          bunx playwright test smoke/chain-preflight.spec.ts --config smoke/playwright.config.ts
+        env:
+          L2_RPC_URL: http://127.0.0.1:9545
+          CHAIN_ID: "1337"
+        continue-on-error: true
+
   # FINAL CHECK - ALL MUST PASS
   all-tests-passed:
     name: ✅ All Tests Passed
     runs-on: ubuntu-latest
-    needs: [config-and-types, contracts, typescript-tests, infrastructure]
+    needs: [config-and-types, contracts, typescript-tests, infrastructure, e2e-smoke]
     if: success()
     steps:
       - name: Success
@@ -160,7 +208,7 @@ jobs:
   test-failed:
     name: ❌ Tests Failed
     runs-on: ubuntu-latest
-    needs: [config-and-types, contracts, typescript-tests, infrastructure]
+    needs: [config-and-types, contracts, typescript-tests, infrastructure, e2e-smoke]
     if: failure()
     steps:
       - name: Report Failure
@@ -176,5 +224,6 @@ jobs:
           echo "  Contracts: ${{ needs.contracts.result }}"
           echo "  TypeScript: ${{ needs.typescript-tests.result }}"
           echo "  Infrastructure: ${{ needs.infrastructure.result }}"
+          echo "  E2E Smoke: ${{ needs.e2e-smoke.result }}"
           echo ""
           exit 1

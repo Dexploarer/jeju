@@ -1,6 +1,8 @@
 /**
  * Container Scheduler - Intelligent workload distribution across compute nodes
  * Implements best-fit scheduling with affinity, anti-affinity, and geographic awareness
+ * 
+ * Enhanced with Proof-of-Cloud verification for high-risk TEE workloads
  */
 
 import type { Address } from 'viem';
@@ -10,6 +12,7 @@ import type {
   ExecutionRequest,
   ContainerImage,
 } from './types';
+import { isAgentPoCVerified, getAgentPoCStatus } from '../poc';
 
 // ============================================================================
 // Node Registry
@@ -102,6 +105,14 @@ export function checkNodeHealth(): { healthy: string[]; unhealthy: string[] } {
 
 export type SchedulingStrategy = 'best-fit' | 'worst-fit' | 'first-fit' | 'round-robin';
 
+/**
+ * Risk level for task scheduling
+ * - low: No special requirements
+ * - medium: Prefer PoC-verified nodes but allow unverified
+ * - high: Require PoC-verified nodes (TEE attestation + cloud verification)
+ */
+export type TaskRiskLevel = 'low' | 'medium' | 'high';
+
 interface SchedulingContext {
   request: ExecutionRequest;
   image: ContainerImage;
@@ -109,38 +120,201 @@ interface SchedulingContext {
   preferredRegion?: string;
   antiAffinity?: string[]; // Node IDs to avoid
   affinity?: string[];     // Preferred node IDs
+  riskLevel?: TaskRiskLevel; // Risk level for PoC requirements
+  agentId?: bigint;         // Agent ID for PoC lookup
 }
 
 interface ScheduleResult {
   nodeId: string;
   score: number;
   reason: string;
+  pocVerified?: boolean;
+}
+
+// ============================================================================
+// PoC Verification Cache
+// ============================================================================
+
+interface PoCCache {
+  verified: boolean;
+  level: number | null;
+  checkedAt: number;
+}
+
+const pocCache = new Map<string, PoCCache>();
+const POC_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+async function getNodePoCStatus(nodeId: string, agentId?: bigint): Promise<PoCCache> {
+  const cacheKey = `${nodeId}:${agentId?.toString() ?? 'none'}`;
+  const cached = pocCache.get(cacheKey);
+  
+  if (cached && Date.now() - cached.checkedAt < POC_CACHE_TTL) {
+    return cached;
+  }
+
+  // If no agentId, can't check PoC
+  if (!agentId) {
+    const status: PoCCache = { verified: false, level: null, checkedAt: Date.now() };
+    pocCache.set(cacheKey, status);
+    return status;
+  }
+
+  // Check PoC status
+  const pocStatus = await getAgentPoCStatus(agentId);
+  const status: PoCCache = {
+    verified: pocStatus.verified,
+    level: pocStatus.level,
+    checkedAt: Date.now(),
+  };
+  
+  pocCache.set(cacheKey, status);
+  return status;
+}
+
+/**
+ * Clear PoC cache for a specific node/agent
+ */
+export function clearPoCCache(nodeId?: string, agentId?: bigint): void {
+  if (nodeId && agentId) {
+    pocCache.delete(`${nodeId}:${agentId.toString()}`);
+  } else if (nodeId) {
+    for (const key of pocCache.keys()) {
+      if (key.startsWith(`${nodeId}:`)) {
+        pocCache.delete(key);
+      }
+    }
+  } else {
+    pocCache.clear();
+  }
 }
 
 let roundRobinIndex = 0;
 
-export function scheduleExecution(
+/**
+ * Schedule execution with PoC-aware node selection
+ */
+export async function scheduleExecution(
+  context: SchedulingContext,
+  strategy: SchedulingStrategy = 'best-fit'
+): Promise<ScheduleResult | null> {
+  const eligibleNodes = await getEligibleNodes(context);
+  if (eligibleNodes.length === 0) {
+    // If high-risk and no PoC nodes, return helpful error
+    if (context.riskLevel === 'high') {
+      console.warn('[Scheduler] No PoC-verified nodes available for high-risk task');
+    }
+    return null;
+  }
+
+  let result: ScheduleResult;
+  
+  switch (strategy) {
+    case 'best-fit':
+      result = await scheduleBestFit(eligibleNodes, context);
+      break;
+    case 'worst-fit':
+      result = await scheduleWorstFit(eligibleNodes, context);
+      break;
+    case 'first-fit':
+      result = await scheduleFirstFit(eligibleNodes, context);
+      break;
+    case 'round-robin':
+      result = await scheduleRoundRobin(eligibleNodes, context);
+      break;
+    default:
+      result = await scheduleBestFit(eligibleNodes, context);
+  }
+
+  // Add PoC status to result if agentId provided
+  if (context.agentId) {
+    const pocStatus = await getNodePoCStatus(result.nodeId, context.agentId);
+    result.pocVerified = pocStatus.verified;
+  }
+
+  return result;
+}
+
+/**
+ * Synchronous version for backwards compatibility (doesn't check PoC)
+ */
+export function scheduleExecutionSync(
   context: SchedulingContext,
   strategy: SchedulingStrategy = 'best-fit'
 ): ScheduleResult | null {
-  const eligibleNodes = getEligibleNodes(context);
+  const eligibleNodes = getEligibleNodesSync(context);
   if (eligibleNodes.length === 0) return null;
 
   switch (strategy) {
     case 'best-fit':
-      return scheduleBestFit(eligibleNodes, context);
+      return scheduleBestFitSync(eligibleNodes, context);
     case 'worst-fit':
-      return scheduleWorstFit(eligibleNodes, context);
+      return scheduleWorstFitSync(eligibleNodes, context);
     case 'first-fit':
-      return scheduleFirstFit(eligibleNodes, context);
+      return scheduleFirstFitSync(eligibleNodes, context);
     case 'round-robin':
-      return scheduleRoundRobin(eligibleNodes, context);
+      return scheduleRoundRobinSync(eligibleNodes, context);
     default:
-      return scheduleBestFit(eligibleNodes, context);
+      return scheduleBestFitSync(eligibleNodes, context);
   }
 }
 
-function getEligibleNodes(context: SchedulingContext): ComputeNode[] {
+async function getEligibleNodes(context: SchedulingContext): Promise<ComputeNode[]> {
+  const resources = context.request.resources;
+  const riskLevel = context.riskLevel ?? 'low';
+  const allNodes = [...nodes.values()];
+
+  // First pass: basic resource filtering
+  const resourceEligible = allNodes.filter((node) => {
+    // Must be online
+    if (node.status !== 'online') return false;
+
+    // Must have enough resources
+    if (node.resources.availableCpu < resources.cpuCores) return false;
+    if (node.resources.availableMemoryMb < resources.memoryMb) return false;
+    if (node.resources.availableStorageMb < resources.storageMb) return false;
+
+    // GPU requirements
+    if (resources.gpuType && !node.resources.gpuTypes.includes(resources.gpuType)) return false;
+
+    // Anti-affinity check
+    if (context.antiAffinity?.includes(node.nodeId)) return false;
+
+    return true;
+  });
+
+  // If low risk, return all resource-eligible nodes
+  if (riskLevel === 'low') {
+    return resourceEligible;
+  }
+
+  // For medium/high risk, check PoC status
+  const pocChecks = await Promise.all(
+    resourceEligible.map(async (node) => {
+      const status = await getNodePoCStatus(node.nodeId, context.agentId);
+      return { node, pocStatus: status };
+    })
+  );
+
+  if (riskLevel === 'high') {
+    // High risk: only PoC-verified nodes
+    return pocChecks
+      .filter(({ pocStatus }) => pocStatus.verified)
+      .map(({ node }) => node);
+  }
+
+  // Medium risk: prefer PoC-verified but allow others
+  // Sort so PoC-verified come first
+  pocChecks.sort((a, b) => {
+    if (a.pocStatus.verified && !b.pocStatus.verified) return -1;
+    if (!a.pocStatus.verified && b.pocStatus.verified) return 1;
+    // Higher level is better
+    return (b.pocStatus.level ?? 0) - (a.pocStatus.level ?? 0);
+  });
+
+  return pocChecks.map(({ node }) => node);
+}
+
+function getEligibleNodesSync(context: SchedulingContext): ComputeNode[] {
   const resources = context.request.resources;
 
   return [...nodes.values()].filter((node) => {
@@ -162,11 +336,12 @@ function getEligibleNodes(context: SchedulingContext): ComputeNode[] {
   });
 }
 
-// Best-fit: Choose node with least wasted resources
-function scheduleBestFit(nodes: ComputeNode[], context: SchedulingContext): ScheduleResult {
+// Best-fit: Choose node with least wasted resources (async version with PoC bonus)
+async function scheduleBestFit(nodes: ComputeNode[], context: SchedulingContext): Promise<ScheduleResult> {
   const resources = context.request.resources;
+  const riskLevel = context.riskLevel ?? 'low';
 
-  const scored = nodes.map((node) => {
+  const scored = await Promise.all(nodes.map(async (node) => {
     let score = 0;
 
     // Resource efficiency (higher is better - less waste)
@@ -189,9 +364,47 @@ function scheduleBestFit(nodes: ComputeNode[], context: SchedulingContext): Sche
       score += 5;
     }
 
+    // PoC verification bonus (significant for medium/high risk)
+    if (riskLevel !== 'low' && context.agentId) {
+      const pocStatus = await getNodePoCStatus(node.nodeId, context.agentId);
+      if (pocStatus.verified) {
+        // Big bonus for PoC verification
+        score += 50;
+        // Additional bonus for higher levels
+        if (pocStatus.level === 2) score += 10;
+        if (pocStatus.level === 3) score += 20;
+      }
+    }
+
     // Reputation
     score += node.reputation / 10;
 
+    return { node, score };
+  }));
+
+  scored.sort((a, b) => b.score - a.score);
+  const best = scored[0]!;
+
+  return {
+    nodeId: best.node.nodeId,
+    score: best.score,
+    reason: `Best fit with score ${best.score.toFixed(1)}`,
+  };
+}
+
+// Sync version without PoC
+function scheduleBestFitSync(nodes: ComputeNode[], context: SchedulingContext): ScheduleResult {
+  const resources = context.request.resources;
+
+  const scored = nodes.map((node) => {
+    let score = 0;
+    const cpuUtilization = resources.cpuCores / node.resources.availableCpu;
+    const memUtilization = resources.memoryMb / node.resources.availableMemoryMb;
+    score += cpuUtilization * 30 + memUtilization * 30;
+    if (node.cachedImages.has(context.image.digest)) score += 25;
+    if (context.preferredRegion && node.region === context.preferredRegion) score += 10;
+    if (context.affinity?.includes(node.nodeId)) score += 5;
+    score += node.reputation / 10;
     return { node, score };
   });
 
@@ -206,8 +419,10 @@ function scheduleBestFit(nodes: ComputeNode[], context: SchedulingContext): Sche
 }
 
 // Worst-fit: Choose node with most available resources (spread load)
-function scheduleWorstFit(nodes: ComputeNode[], context: SchedulingContext): ScheduleResult {
-  const scored = nodes.map((node) => {
+async function scheduleWorstFit(nodes: ComputeNode[], context: SchedulingContext): Promise<ScheduleResult> {
+  const riskLevel = context.riskLevel ?? 'low';
+
+  const scored = await Promise.all(nodes.map(async (node) => {
     const availableScore =
       node.resources.availableCpu * 10 +
       node.resources.availableMemoryMb / 100;
@@ -216,6 +431,33 @@ function scheduleWorstFit(nodes: ComputeNode[], context: SchedulingContext): Sch
     if (node.cachedImages.has(context.image.digest)) bonus += 50;
     if (context.preferredRegion && node.region === context.preferredRegion) bonus += 20;
 
+    // PoC bonus for medium/high risk
+    if (riskLevel !== 'low' && context.agentId) {
+      const pocStatus = await getNodePoCStatus(node.nodeId, context.agentId);
+      if (pocStatus.verified) bonus += 100;
+    }
+
+    return { node, score: availableScore + bonus };
+  }));
+
+  scored.sort((a, b) => b.score - a.score);
+  const best = scored[0]!;
+
+  return {
+    nodeId: best.node.nodeId,
+    score: best.score,
+    reason: `Worst fit (most resources available)`,
+  };
+}
+
+function scheduleWorstFitSync(nodes: ComputeNode[], context: SchedulingContext): ScheduleResult {
+  const scored = nodes.map((node) => {
+    const availableScore =
+      node.resources.availableCpu * 10 +
+      node.resources.availableMemoryMb / 100;
+    let bonus = 0;
+    if (node.cachedImages.has(context.image.digest)) bonus += 50;
+    if (context.preferredRegion && node.region === context.preferredRegion) bonus += 20;
     return { node, score: availableScore + bonus };
   });
 
@@ -230,7 +472,17 @@ function scheduleWorstFit(nodes: ComputeNode[], context: SchedulingContext): Sch
 }
 
 // First-fit: Choose first eligible node
-function scheduleFirstFit(nodes: ComputeNode[], context: SchedulingContext): ScheduleResult {
+async function scheduleFirstFit(nodes: ComputeNode[], context: SchedulingContext): Promise<ScheduleResult> {
+  // For high-risk, prefer first PoC-verified node
+  if (context.riskLevel === 'high' && context.agentId) {
+    for (const node of nodes) {
+      const pocStatus = await getNodePoCStatus(node.nodeId, context.agentId);
+      if (pocStatus.verified) {
+        return { nodeId: node.nodeId, score: 100, reason: 'First PoC-verified node', pocVerified: true };
+      }
+    }
+  }
+
   // Prefer nodes with cached image
   const withCache = nodes.find((n) => n.cachedImages.has(context.image.digest));
   if (withCache) {
@@ -240,8 +492,38 @@ function scheduleFirstFit(nodes: ComputeNode[], context: SchedulingContext): Sch
   return { nodeId: nodes[0]!.nodeId, score: 50, reason: 'First eligible node' };
 }
 
+function scheduleFirstFitSync(nodes: ComputeNode[], context: SchedulingContext): ScheduleResult {
+  const withCache = nodes.find((n) => n.cachedImages.has(context.image.digest));
+  if (withCache) {
+    return { nodeId: withCache.nodeId, score: 100, reason: 'First fit with cache hit' };
+  }
+  return { nodeId: nodes[0]!.nodeId, score: 50, reason: 'First eligible node' };
+}
+
 // Round-robin: Distribute evenly
-function scheduleRoundRobin(nodes: ComputeNode[], _context: SchedulingContext): ScheduleResult {
+async function scheduleRoundRobin(nodes: ComputeNode[], context: SchedulingContext): Promise<ScheduleResult> {
+  // For high-risk, filter to PoC-verified first
+  let eligibleNodes = nodes;
+  
+  if (context.riskLevel === 'high' && context.agentId) {
+    const pocNodes: ComputeNode[] = [];
+    for (const node of nodes) {
+      const pocStatus = await getNodePoCStatus(node.nodeId, context.agentId);
+      if (pocStatus.verified) {
+        pocNodes.push(node);
+      }
+    }
+    if (pocNodes.length > 0) {
+      eligibleNodes = pocNodes;
+    }
+  }
+
+  roundRobinIndex = (roundRobinIndex + 1) % eligibleNodes.length;
+  const node = eligibleNodes[roundRobinIndex]!;
+  return { nodeId: node.nodeId, score: 50, reason: `Round robin selection` };
+}
+
+function scheduleRoundRobinSync(nodes: ComputeNode[], _context: SchedulingContext): ScheduleResult {
   roundRobinIndex = (roundRobinIndex + 1) % nodes.length;
   const node = nodes[roundRobinIndex]!;
   return { nodeId: node.nodeId, score: 50, reason: `Round robin selection` };
@@ -400,10 +682,20 @@ export interface SchedulerStats {
   availableMemoryMb: number;
   activeReservations: number;
   nodesByRegion: Record<string, number>;
+  pocStats: {
+    cachedVerifications: number;
+    cacheHitRate: number;
+  };
 }
 
 export function getSchedulerStats(): SchedulerStats {
   const allNodes = [...nodes.values()];
+
+  // Calculate PoC cache stats
+  const pocCacheSize = pocCache.size;
+  const validCacheEntries = [...pocCache.values()].filter(
+    entry => Date.now() - entry.checkedAt < POC_CACHE_TTL
+  ).length;
 
   const stats: SchedulerStats = {
     totalNodes: allNodes.length,
@@ -416,6 +708,10 @@ export function getSchedulerStats(): SchedulerStats {
     availableMemoryMb: allNodes.reduce((sum, n) => sum + n.resources.availableMemoryMb, 0),
     activeReservations: reservations.size,
     nodesByRegion: {},
+    pocStats: {
+      cachedVerifications: pocCacheSize,
+      cacheHitRate: pocCacheSize > 0 ? validCacheEntries / pocCacheSize : 0,
+    },
   };
 
   for (const [region, nodeIds] of nodesByRegion) {
@@ -423,6 +719,49 @@ export function getSchedulerStats(): SchedulerStats {
   }
 
   return stats;
+}
+
+// ============================================================================
+// PoC-Specific Queries
+// ============================================================================
+
+/**
+ * Get all nodes that are PoC-verified for a given agent
+ */
+export async function getPoCVerifiedNodes(agentId: bigint): Promise<ComputeNode[]> {
+  const allNodes = [...nodes.values()].filter(n => n.status === 'online');
+  const verified: ComputeNode[] = [];
+
+  for (const node of allNodes) {
+    const pocStatus = await getNodePoCStatus(node.nodeId, agentId);
+    if (pocStatus.verified) {
+      verified.push(node);
+    }
+  }
+
+  return verified;
+}
+
+/**
+ * Check if there are enough PoC-verified nodes for high-risk workloads
+ */
+export async function hasEnoughPoCNodes(
+  agentId: bigint,
+  minNodes: number = 1,
+  minLevel: number = 1
+): Promise<boolean> {
+  const allNodes = [...nodes.values()].filter(n => n.status === 'online');
+  let count = 0;
+
+  for (const node of allNodes) {
+    const pocStatus = await getNodePoCStatus(node.nodeId, agentId);
+    if (pocStatus.verified && (pocStatus.level ?? 0) >= minLevel) {
+      count++;
+      if (count >= minNodes) return true;
+    }
+  }
+
+  return false;
 }
 
 // ============================================================================
@@ -438,4 +777,6 @@ setInterval(() => {
 setInterval(() => {
   checkNodeHealth();
 }, 15000);
+
+
 

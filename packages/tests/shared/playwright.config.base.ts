@@ -109,7 +109,7 @@ export function getTestEnv(): Record<string, string> {
 }
 
 /**
- * Test accounts (Hardhat/Anvil defaults)
+ * Test accounts (Anvil defaults)
  */
 export const TEST_ACCOUNTS = {
   deployer: {

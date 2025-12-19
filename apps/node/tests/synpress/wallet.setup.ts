@@ -1,31 +1,21 @@
+/**
+ * Node Wallet Setup - Uses shared Jeju test configuration
+ */
 import { defineWalletSetup } from '@synthetixio/synpress';
 import { MetaMask } from '@synthetixio/synpress/playwright';
-
-// Test seed phrase - DO NOT use in production
-const SEED_PHRASE = 'test test test test test test test test test test test junk';
-const PASSWORD = 'TestPassword123!';
+import { PASSWORD, SEED_PHRASE, JEJU_CHAIN } from '@jejunetwork/tests';
 
 export default defineWalletSetup(PASSWORD, async (context, walletPage) => {
   const metamask = new MetaMask(context, walletPage, PASSWORD);
-  
-  // Import wallet using seed phrase
   await metamask.importWallet(SEED_PHRASE);
-  
-  // Add networks
   await metamask.addNetwork({
-    name: 'Testnet',
-    rpcUrl: 'https://testnet-rpc.jejunetwork.org',
-    chainId: 420691,
-    symbol: 'JEJU',
-    blockExplorerUrl: 'https://testnet-explorer.jejunetwork.org',
+    name: JEJU_CHAIN.name,
+    rpcUrl: JEJU_CHAIN.rpcUrl,
+    chainId: JEJU_CHAIN.chainId,
+    symbol: JEJU_CHAIN.symbol,
   });
-  
-  await metamask.addNetwork({
-    name: 'Jeju Localnet',
-    rpcUrl: 'http://localhost:8545',
-    chainId: 1337,
-    symbol: 'ETH',
-    blockExplorerUrl: 'http://localhost:4000',
-  });
+  await metamask.switchNetwork(JEJU_CHAIN.name);
 });
+
+export { PASSWORD, SEED_PHRASE, JEJU_CHAIN };
 

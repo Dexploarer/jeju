@@ -2,49 +2,7 @@
  * Tests for the real quote-service.ts
  * These tests exercise actual service logic, not mocks
  */
-import { describe, it, expect, mock } from 'bun:test';
-
-// Mock viem's createPublicClient to avoid real RPC calls
-const mockReadContract = mock(() => Promise.resolve({
-  solver: '0x1234567890123456789012345678901234567890' as const,
-  stakedAmount: 1000000000000000000n,
-  slashedAmount: 0n,
-  totalFills: 100n,
-  successfulFills: 95n,
-  supportedChains: [1n, 42161n, 10n, 8453n],
-  isActive: true,
-  registeredAt: 1700000000n,
-}));
-
-const mockGetGasPrice = mock(() => Promise.resolve(20000000000n));
-
-const mockGetLogs = mock(() => Promise.resolve([]));
-
-const mockPublicClient = {
-  readContract: mockReadContract,
-  getGasPrice: mockGetGasPrice,
-  getLogs: mockGetLogs,
-};
-
-mock.module('viem', () => ({
-  createPublicClient: () => mockPublicClient,
-  http: () => ({}),
-  keccak256: (data: Uint8Array | string) => {
-    // Simple deterministic hash for testing
-    const str = typeof data === 'string' ? data : Array.from(data).join('');
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash = ((hash << 5) - hash) + str.charCodeAt(i);
-      hash = hash & hash;
-    }
-    return ('0x' + Math.abs(hash).toString(16).padStart(64, '0')) as `0x${string}`;
-  },
-  encodePacked: (_types: string[], values: (string | bigint)[]) => {
-    return '0x' + values.map(v => v.toString()).join('');
-  },
-}));
-
-// Import the real service after mocking viem
+import { describe, it, expect } from 'bun:test';
 import { getQuotes, type QuoteParams } from '../../src/services/quote-service';
 
 describe('Quote Service (Real)', () => {
