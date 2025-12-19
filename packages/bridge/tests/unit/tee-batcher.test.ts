@@ -96,10 +96,8 @@ describe("TEE Batcher", () => {
 			const transfer = createMockTransfer(1);
 			const result = await batcher.addTransfer(transfer);
 
-			const batchId = Array.from(result.batchId)
-				.map((b) => b.toString(16).padStart(2, "0"))
-				.join("");
-			const status = batcher.getBatchStatus(batchId);
+			// batchId is now a hex string, use it directly
+			const status = batcher.getBatchStatus(result.batchId);
 
 			expect(status).not.toBeNull();
 			expect(status?.status).toBe("accumulating");

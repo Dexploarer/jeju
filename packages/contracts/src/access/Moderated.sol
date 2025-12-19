@@ -12,12 +12,7 @@ import {ModerationMixin} from "../moderation/ModerationMixin.sol";
 abstract contract Moderated is AgentGated {
     using ModerationMixin for ModerationMixin.Data;
 
-    // ============ State ============
-
-    /// @notice Moderation data (ban checking)
     ModerationMixin.Data public moderation;
-
-    // ============ Errors ============
 
     error AddressIsBanned(address account);
     error AgentIdIsBanned(uint256 agentId);

@@ -3,6 +3,7 @@ pragma solidity ^0.8.26;
 
 import {ProviderRegistryBase} from "../registry/ProviderRegistryBase.sol";
 import {ERC8004ProviderMixin} from "../registry/ERC8004ProviderMixin.sol";
+import {ModerationMixin} from "../moderation/ModerationMixin.sol";
 import {ICDNTypes} from "./ICDNTypes.sol";
 
 /**
@@ -11,6 +12,7 @@ import {ICDNTypes} from "./ICDNTypes.sol";
  */
 contract CDNRegistry is ICDNTypes, ProviderRegistryBase {
     using ERC8004ProviderMixin for ERC8004ProviderMixin.Data;
+    using ModerationMixin for ModerationMixin.Data;
 
     uint256 public minNodeStake = 0.001 ether;
     mapping(address => Provider) private _providers;
@@ -32,11 +34,7 @@ contract CDNRegistry is ICDNTypes, ProviderRegistryBase {
     uint256 public nodeCount;
     uint256 public siteCount;
 
-    event ProviderRegistered(
-        address indexed provider, string name, ProviderType providerType, uint256 stake, uint256 agentId
-    );
     event CDNProviderUpdated(address indexed provider);
-    event StakeSlashed(address indexed provider, uint256 amount, string reason);
 
     error NodeNotFound();
     error SiteNotFound();
@@ -104,8 +102,6 @@ contract CDNRegistry is ICDNTypes, ProviderRegistryBase {
             active: true,
             verified: false
         });
-
-        emit ProviderRegistered(provider, name, providerType, msg.value, agentId);
     }
 
     function _onProviderRegistered(address provider, uint256 agentId, uint256 stake) internal override {
@@ -139,7 +135,6 @@ contract CDNRegistry is ICDNTypes, ProviderRegistryBase {
         ProviderType providerType,
         uint256 agentId
     ) internal returns (bytes32 nodeId) {
-        // Check ban status
         moderation.requireNotBanned(msg.sender);
 
         if (bytes(endpoint).length == 0) revert InvalidEndpoint();

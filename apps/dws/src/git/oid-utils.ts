@@ -40,3 +40,4 @@ export function decodeBytes32ToOid(bytes32: Hex): string {
   }
   return oid.padStart(40, '0');
 }
+

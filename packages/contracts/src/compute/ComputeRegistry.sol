@@ -8,8 +8,6 @@ import {ProviderRegistryBase} from "../registry/ProviderRegistryBase.sol";
  * @notice Provider registry for decentralized AI compute marketplace
  */
 contract ComputeRegistry is ProviderRegistryBase {
-    // ============ Structs ============
-
     struct Provider {
         address owner;
         string name;
@@ -165,15 +163,6 @@ contract ComputeRegistry is ProviderRegistryBase {
         emit StakeWithdrawn(msg.sender, amount);
     }
 
-    // ============ Capabilities ============
-
-    /**
-     * @notice Add a model capability
-     * @param model Model identifier (e.g., "llama-3.1-8b")
-     * @param pricePerInputToken Price per input token in wei
-     * @param pricePerOutputToken Price per output token in wei
-     * @param maxContextLength Maximum context length supported
-     */
     function addCapability(
         string calldata model,
         uint256 pricePerInputToken,

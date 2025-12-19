@@ -1,9 +1,4 @@
-/**
- * @fileoverview Permissionless Farcaster Hub Client
- * 
- * Connects directly to Farcaster Hub (Hubble) nodes without API keys.
- * This is the permissionless alternative to Neynar.
- */
+// Permissionless Farcaster Hub Client - connects directly to Hubble nodes
 
 import type { Address, Hex } from 'viem';
 import type {
@@ -24,22 +19,6 @@ const DEFAULT_HUB_URL = 'nemes.farcaster.xyz:2283';
 const DEFAULT_HTTP_URL = 'https://nemes.farcaster.xyz:2281';
 const DEFAULT_TIMEOUT = 10000;
 
-/**
- * Permissionless Farcaster Hub Client
- * 
- * @example
- * ```typescript
- * // Use self-hosted hub (recommended)
- * const client = new FarcasterClient({
- *   hubUrl: 'hub.jejunetwork.org:2283',
- * });
- * 
- * // Or use public hub
- * const client = new FarcasterClient();
- * 
- * const profile = await client.getProfile(123);
- * ```
- */
 export class FarcasterClient {
   private hubUrl: string;
   private httpUrl: string;
@@ -84,28 +63,14 @@ export class FarcasterClient {
     }
   }
 
-  // ============ Hub Info ============
-
-  /**
-   * Get hub info (version, sync status, stats)
-   */
   async getHubInfo(): Promise<HubInfoResponse> {
     return this.fetch<HubInfoResponse>('/v1/info');
   }
 
-  /**
-   * Check if hub is syncing
-   */
   async isSyncing(): Promise<boolean> {
-    const info = await this.getHubInfo();
-    return info.isSyncing;
+    return (await this.getHubInfo()).isSyncing;
   }
 
-  // ============ Profiles ============
-
-  /**
-   * Get profile by FID
-   */
   async getProfile(fid: number): Promise<FarcasterProfile> {
     const userData = await this.getUserDataByFid(fid);
     const verifications = await this.getVerificationsByFid(fid);
@@ -161,9 +126,6 @@ export class FarcasterClient {
     return profile;
   }
 
-  /**
-   * Get profile by username
-   */
   async getProfileByUsername(username: string): Promise<FarcasterProfile | null> {
     try {
       const response = await this.fetch<{ proofs: Array<{ fid: number }> }>(
@@ -179,9 +141,6 @@ export class FarcasterClient {
     }
   }
 
-  /**
-   * Get profile by verified address
-   */
   async getProfileByVerifiedAddress(address: Address): Promise<FarcasterProfile | null> {
     try {
       const response = await this.fetch<{ 
@@ -199,11 +158,6 @@ export class FarcasterClient {
     }
   }
 
-  // ============ User Data ============
-
-  /**
-   * Get all user data for FID
-   */
   async getUserDataByFid(fid: number): Promise<UserData[]> {
     const response = await this.fetch<{
       messages: Array<{
@@ -235,11 +189,6 @@ export class FarcasterClient {
     return typeMap[type] || 'username';
   }
 
-  // ============ Casts ============
-
-  /**
-   * Get casts by FID
-   */
   async getCastsByFid(
     fid: number,
     options: CastFilter = {}
@@ -290,9 +239,6 @@ export class FarcasterClient {
     };
   }
 
-  /**
-   * Get casts by channel (parent URL)
-   */
   async getCastsByChannel(
     channelUrl: string,
     options: CastFilter = {}
@@ -336,9 +282,6 @@ export class FarcasterClient {
     };
   }
 
-  /**
-   * Get cast by hash
-   */
   async getCast(fid: number, hash: Hex): Promise<FarcasterCast | null> {
     try {
       const response = await this.fetch<{
@@ -374,11 +317,6 @@ export class FarcasterClient {
     }
   }
 
-  // ============ Reactions ============
-
-  /**
-   * Get reactions by FID
-   */
   async getReactionsByFid(fid: number): Promise<PaginatedResponse<FarcasterReaction>> {
     const response = await this.fetch<{
       messages: Array<{
@@ -406,11 +344,6 @@ export class FarcasterClient {
     };
   }
 
-  // ============ Links (Follows) ============
-
-  /**
-   * Get links (follows) by FID
-   */
   async getLinksByFid(fid: number): Promise<PaginatedResponse<FarcasterLink>> {
     const response = await this.fetch<{
       messages: Array<{
@@ -434,9 +367,6 @@ export class FarcasterClient {
     };
   }
 
-  /**
-   * Get followers (links targeting FID)
-   */
   async getLinksByTargetFid(targetFid: number): Promise<PaginatedResponse<FarcasterLink>> {
     const response = await this.fetch<{
       messages: Array<{
@@ -460,11 +390,6 @@ export class FarcasterClient {
     };
   }
 
-  // ============ Verifications ============
-
-  /**
-   * Get verifications by FID
-   */
   async getVerificationsByFid(fid: number): Promise<FarcasterVerification[]> {
     const response = await this.fetch<{
       messages: Array<{
@@ -492,11 +417,6 @@ export class FarcasterClient {
     }));
   }
 
-  // ============ Events ============
-
-  /**
-   * Subscribe to hub events (via HTTP long-polling)
-   */
   async *subscribeToEvents(fromEventId?: number): AsyncGenerator<HubEvent> {
     let currentEventId = fromEventId || 0;
 

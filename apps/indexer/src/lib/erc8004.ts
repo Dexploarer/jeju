@@ -6,7 +6,7 @@ import { createPublicClient, http, parseAbi, type Address } from 'viem';
 import { inferChainFromRpcUrl } from './chain-utils';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function readContract<T>(client: { readContract: (params: unknown) => Promise<unknown> }, params: { address: Address; abi: readonly unknown[]; functionName: string; args?: readonly unknown[] }): Promise<T> {
+async function readContract<T>(client: any, params: { address: Address; abi: readonly unknown[]; functionName: string; args?: readonly unknown[] }): Promise<T> {
   return client.readContract(params) as Promise<T>;
 }
 

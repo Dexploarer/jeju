@@ -15,7 +15,17 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, './src')
+      '@': resolve(__dirname, './src'),
+      // Work around zod/mini import issue in wagmi
+      'zod/mini': 'zod'
+    }
+  },
+  optimizeDeps: {
+    include: ['zod'],
+    esbuildOptions: {
+      define: {
+        global: 'globalThis'
+      }
     }
   }
 });

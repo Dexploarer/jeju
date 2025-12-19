@@ -5,7 +5,7 @@
  * IMPORTANT: Event signatures must match EXACTLY what's in the Solidity contracts
  */
 
-import { keccak256, stringToHex, parseAbi, decodeEventLog, decodeAbiParameters } from 'viem';
+import { keccak256, stringToHex, decodeAbiParameters } from 'viem';
 import { Store } from '@subsquid/typeorm-store';
 import { ProcessorContext } from './processor';
 import { 
@@ -58,50 +58,7 @@ const STAKE_ADDED_STAKING = keccak256(stringToHex('StakeAdded(address,uint256,ui
 const UNSTAKED = keccak256(stringToHex('Unstaked(address,uint256)'));
 const SLASHED = keccak256(stringToHex('Slashed(address,uint256,string)'));
 
-// Correct ABI interfaces matching the actual contracts
-const computeRegistryInterface = parseAbi([
-  // ProviderRegistered(address indexed provider, string name, string endpoint, bytes32 attestationHash, uint256 stake, uint256 agentId)
-  'event ProviderRegistered(address indexed provider, string name, string endpoint, bytes32 attestationHash, uint256 stake, uint256 agentId)',
-  'event ProviderUpdated(address indexed provider, string endpoint, bytes32 attestationHash)',
-  'event ProviderDeactivated(address indexed provider)',
-  'event ProviderReactivated(address indexed provider)',
-  'event StakeAdded(address indexed provider, uint256 amount, uint256 newTotal)',
-  'event StakeWithdrawn(address indexed provider, uint256 amount)',
-  'event CapabilityAdded(address indexed provider, string model, uint256 pricePerInputToken, uint256 pricePerOutputToken, uint256 maxContextLength)',
-  'event CapabilityUpdated(address indexed provider, uint256 index, bool active)',
-]);
-
-const computeRentalInterface = parseAbi([
-  // RentalCreated(bytes32 indexed rentalId, address indexed user, address indexed provider, uint256 durationHours, uint256 totalCost)
-  'event RentalCreated(bytes32 indexed rentalId, address indexed user, address indexed provider, uint256 durationHours, uint256 totalCost)',
-  'event RentalStarted(bytes32 indexed rentalId, string sshHost, uint16 sshPort, string containerId)',
-  'event RentalCompleted(bytes32 indexed rentalId, uint256 actualDuration, uint256 refundAmount)',
-  'event RentalCancelled(bytes32 indexed rentalId, uint256 refundAmount)',
-  'event RentalExtended(bytes32 indexed rentalId, uint256 additionalHours, uint256 additionalCost)',
-  'event RentalRated(bytes32 indexed rentalId, address indexed rater, uint8 score, string comment)',
-  'event DisputeCreated(bytes32 indexed disputeId, bytes32 indexed rentalId, address indexed initiator, uint8 reason, string evidenceUri)',
-  'event DisputeResolved(bytes32 indexed disputeId, bool inFavorOfInitiator, uint256 slashAmount)',
-  'event UserBanned(address indexed user, string reason, uint256 bannedAt)',
-  'event ProviderBanned(address indexed provider, string reason)',
-]);
-
-const inferenceServingInterface = parseAbi([
-  // ServiceRegistered(address indexed provider, uint256 serviceIndex, string model, string endpoint, uint256 pricePerInputToken, uint256 pricePerOutputToken)
-  'event ServiceRegistered(address indexed provider, uint256 serviceIndex, string model, string endpoint, uint256 pricePerInputToken, uint256 pricePerOutputToken)',
-  'event ServiceDeactivated(address indexed provider, uint256 serviceIndex)',
-  // Settled(address indexed user, address indexed provider, bytes32 requestHash, uint256 inputTokens, uint256 outputTokens, uint256 fee, uint256 nonce)
-  'event Settled(address indexed user, address indexed provider, bytes32 requestHash, uint256 inputTokens, uint256 outputTokens, uint256 fee, uint256 nonce)',
-  'event AgentSettled(uint256 indexed agentId, address indexed user, uint256 inputTokens, uint256 outputTokens, uint256 fee)',
-]);
-
-const computeStakingInterface = parseAbi([
-  'event StakedAsUser(address indexed account, uint256 amount)',
-  'event StakedAsProvider(address indexed account, uint256 amount)',
-  'event StakedAsGuardian(address indexed account, uint256 amount)',
-  'event StakeAdded(address indexed account, uint256 amount, uint256 newTotal)',
-  'event Unstaked(address indexed account, uint256 amount)',
-  'event Slashed(address indexed account, uint256 amount, string reason)',
-]);
+// ABI interfaces removed - using direct decodeAbiParameters instead
 
 const COMPUTE_EVENT_SIGNATURES = new Set([
   PROVIDER_REGISTERED, PROVIDER_UPDATED, PROVIDER_DEACTIVATED, PROVIDER_REACTIVATED,

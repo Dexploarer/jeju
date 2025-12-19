@@ -19,7 +19,6 @@ contract TokenLaunchpad is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using ModerationMixin for ModerationMixin.Data;
 
-    /// @notice Moderation integration for ban enforcement
     ModerationMixin.Data public moderation;
 
     enum LaunchType {
@@ -111,7 +110,6 @@ contract TokenLaunchpad is Ownable, ReentrancyGuard {
         defaultCommunityVault = _defaultCommunityVault;
     }
 
-    /// @notice Launch token with bonding curve (pump.fun style)
     function launchBondingCurve(
         string calldata name,
         string calldata symbol,
@@ -161,7 +159,6 @@ contract TokenLaunchpad is Ownable, ReentrancyGuard {
         emit LaunchCreated(launchId, msg.sender, tokenAddress, LaunchType.BONDING_CURVE, creatorFeeBps, communityFeeBps);
     }
 
-    /// @notice Launch token with ICO-style presale
     function launchICO(
         string calldata name,
         string calldata symbol,
@@ -201,8 +198,8 @@ contract TokenLaunchpad is Ownable, ReentrancyGuard {
         // Authorize presale to lock LP tokens
         locker.setAuthorizedLocker(address(presale), true);
 
-        IERC20(address(token)).safeTransfer(address(presale), presaleTokens + lpTokens);
-        IERC20(address(token)).safeTransfer(msg.sender, creatorTokens);
+        IERC20(tokenAddress).safeTransfer(address(presale), presaleTokens + lpTokens);
+        IERC20(tokenAddress).safeTransfer(msg.sender, creatorTokens);
 
         launchId = nextLaunchId++;
         FeeConfig memory feeConfig = FeeConfig({

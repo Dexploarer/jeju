@@ -245,20 +245,6 @@ interface ICDNTypes {
         uint256 completedAt;
     }
 
-    // ============ Events ============
-
-    event ProviderRegistered(
-        address indexed provider,
-        string name,
-        ProviderType providerType,
-        uint256 stake,
-        uint256 agentId
-    );
-
-    event ProviderUpdated(address indexed provider);
-    event ProviderDeactivated(address indexed provider);
-    event ProviderReactivated(address indexed provider);
-
     event EdgeNodeRegistered(
         bytes32 indexed nodeId,
         address indexed operator,
@@ -316,8 +302,6 @@ interface ICDNTypes {
         uint256 amount
     );
 
-    event StakeAdded(address indexed provider, uint256 amount);
-    event StakeWithdrawn(address indexed provider, uint256 amount);
     event StakeSlashed(address indexed provider, uint256 amount, string reason);
 }
 

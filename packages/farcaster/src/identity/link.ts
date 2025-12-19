@@ -1,9 +1,4 @@
-/**
- * @fileoverview Farcaster Identity Linking
- * 
- * Links Farcaster IDs (FIDs) with Jeju Agent IDs (ERC-8004).
- * Enables cross-platform identity verification.
- */
+// Links Farcaster IDs with Jeju Agent IDs
 
 import type { Address, Hex } from 'viem';
 import { FarcasterClient } from '../hub/client';
@@ -23,13 +18,6 @@ export interface LinkVerificationResult {
   error?: string;
 }
 
-/**
- * Verify that an address can be linked to a Farcaster ID
- * 
- * @param fid - Farcaster ID to verify
- * @param address - Ethereum address to check
- * @param client - Farcaster client instance
- */
 export async function verifyAddressCanLink(
   fid: number,
   address: Address,
@@ -72,9 +60,6 @@ export async function verifyAddressCanLink(
   }
 }
 
-/**
- * Look up Farcaster profile by Ethereum address
- */
 export async function lookupFidByAddress(
   address: Address,
   client: FarcasterClient = new FarcasterClient()
@@ -83,9 +68,6 @@ export async function lookupFidByAddress(
   return profile?.fid ?? null;
 }
 
-/**
- * Generate identity link proof message for signing
- */
 export function generateLinkProofMessage(params: {
   fid: number;
   jejuAddress: Address;
@@ -104,9 +86,6 @@ export function generateLinkProofMessage(params: {
   ].join('\n');
 }
 
-/**
- * Parse identity link proof message
- */
 export function parseLinkProofMessage(message: string): {
   fid: number;
   jejuAddress: Address;
@@ -143,9 +122,6 @@ export function parseLinkProofMessage(message: string): {
   }
 }
 
-/**
- * Verify identity link proof signature
- */
 export async function verifyLinkProof(
   message: string,
   signature: Hex,

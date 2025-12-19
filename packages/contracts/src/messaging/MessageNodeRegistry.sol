@@ -95,8 +95,6 @@ contract MessageNodeRegistry is Ownable, Pausable, ReentrancyGuard {
     event OracleDeregistered(address indexed oracle);
     event SlashedStakeRecovered(bytes32 indexed nodeId, address indexed operator, uint256 amount);
 
-    // ============ Errors ============
-
     error InsufficientStake(uint256 provided, uint256 required);
     error NodeNotFound(bytes32 nodeId);
     error Unauthorized();
@@ -184,8 +182,6 @@ contract MessageNodeRegistry is Ownable, Pausable, ReentrancyGuard {
         emit NodeRegistered(nodeId, msg.sender, endpoint, region, stakeAmount);
     }
 
-    /// @notice Deregister node and return stake (after minimum staking period)
-    /// @dev Timestamp comparison intentional for minimum staking enforcement
     // slither-disable-next-line timestamp
     function deregisterNode(bytes32 nodeId) external nonReentrant {
         NodeInfo storage node = nodes[nodeId];
@@ -334,7 +330,6 @@ contract MessageNodeRegistry is Ownable, Pausable, ReentrancyGuard {
 
         protocolFees += slashAmount;
 
-        // Transfer pending fees to protocol as well
         uint256 pendingNodeFees = pendingFees[nodeId];
         if (pendingNodeFees > 0) {
             protocolFees += pendingNodeFees;

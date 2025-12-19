@@ -133,13 +133,8 @@ contract PredictionMarket is ReentrancyGuard, Pausable, Ownable {
     mapping(bytes32 => Market) public markets;
     mapping(bytes32 => mapping(address => Position)) public positions;
 
-    /// @notice Supported payment tokens (elizaOS, CLANKER, VIRTUAL, CLANKERMON)
     mapping(address => bool) public supportedTokens;
-
-    /// @notice Authorized market creators (for moderation system)
     mapping(address => bool) public authorizedCreators;
-
-    /// @notice Moderation metadata per market
     mapping(bytes32 => ModerationMetadata) public moderationMetadata;
 
     bytes32[] public allMarketIds;
@@ -192,20 +187,12 @@ contract PredictionMarket is ReentrancyGuard, Pausable, Ownable {
         supportedTokens[_defaultToken] = true;
     }
 
-    /**
-     * @notice Add support for a new payment token (CLANKER, VIRTUAL, CLANKERMON, etc)
-     * @param token Token address to enable/disable
-     * @param supported Whether token should be accepted
-     */
     function setTokenSupport(address token, bool supported) external onlyOwner {
         require(token != address(0), "Invalid token address");
         supportedTokens[token] = supported;
         emit TokenSupportUpdated(token, supported);
     }
 
-    /**
-     * @notice Get immutable elizaOS address for backwards compatibility
-     */
     function elizaOS() external view returns (address) {
         return address(paymentToken);
     }
@@ -222,14 +209,6 @@ contract PredictionMarket is ReentrancyGuard, Pausable, Ownable {
         );
     }
 
-    /**
-     * @notice Create moderation market (authorized creators only)
-     * @param sessionId Market ID
-     * @param question Market question
-     * @param liquidityParameter LMSR liquidity parameter
-     * @param category Moderation category
-     * @param metadata Moderation metadata
-     */
     function createModerationMarket(
         bytes32 sessionId,
         string calldata question,
@@ -344,9 +323,6 @@ contract PredictionMarket is ReentrancyGuard, Pausable, Ownable {
         emit SharesPurchased(sessionId, msg.sender, outcome, shares, tokenAmount, token);
     }
 
-    /**
-     * @notice Buy shares with default payment token (simple 4-param version)
-     */
     function buy(bytes32 sessionId, bool outcome, uint256 tokenAmount, uint256 minShares)
         external
         nonReentrant
@@ -358,10 +334,8 @@ contract PredictionMarket is ReentrancyGuard, Pausable, Ownable {
         if (market.resolved) revert MarketAlreadyResolved();
         if (_isTradingFrozen(market)) revert TradingFrozen();
 
-        // Use default payment token
         address token = address(paymentToken);
 
-        // Calculate shares received
         shares = calculateSharesReceived(sessionId, outcome, tokenAmount);
         if (shares < minShares) revert SlippageTooHigh();
 
@@ -391,16 +365,6 @@ contract PredictionMarket is ReentrancyGuard, Pausable, Ownable {
         emit SharesPurchased(sessionId, msg.sender, outcome, shares, tokenAmount, token);
     }
 
-    /**
-     * @notice Sell shares back to the market in any supported token
-     * @param sessionId Market ID
-     * @param outcome true for YES, false for NO
-     * @param shareAmount Number of shares to sell
-     * @param minPayout Minimum payout to receive (slippage protection)
-     * @param token Token to receive payout in
-     * @param deadline Transaction must execute before this timestamp (anti-MEV)
-     * @return payout Amount of tokens received
-     */
     function sell(
         bytes32 sessionId,
         bool outcome,
@@ -442,10 +406,8 @@ contract PredictionMarket is ReentrancyGuard, Pausable, Ownable {
         }
         position.totalReceived += payout;
 
-        // Update market deposits (track withdrawals)
         marketTokenDeposits[sessionId][token] -= payout;
 
-        // Transfer payout in requested token
         IERC20(token).safeTransfer(msg.sender, payout);
 
         emit SharesSold(sessionId, msg.sender, outcome, shareAmount, payout, token);
@@ -465,27 +427,22 @@ contract PredictionMarket is ReentrancyGuard, Pausable, Ownable {
         if (market.resolved) revert MarketAlreadyResolved();
         if (_isTradingFrozen(market)) revert TradingFrozen();
 
-        // Use default payment token
         address token = address(paymentToken);
 
         Position storage position = positions[sessionId][msg.sender];
 
-        // Check user has enough shares
         if (outcome && position.yesShares < shareAmount) revert InsufficientShares();
         if (!outcome && position.noShares < shareAmount) revert InsufficientShares();
 
-        // Calculate payout
         payout = calculatePayout(sessionId, outcome, shareAmount);
         if (payout < minPayout) revert SlippageTooHigh();
 
-        // Update market state
         if (outcome) {
             market.yesShares -= shareAmount;
         } else {
             market.noShares -= shareAmount;
         }
 
-        // Update user position
         if (outcome) {
             position.yesShares -= shareAmount;
         } else {
@@ -493,10 +450,8 @@ contract PredictionMarket is ReentrancyGuard, Pausable, Ownable {
         }
         position.totalReceived += payout;
 
-        // Update market deposits (track withdrawals)
         marketTokenDeposits[sessionId][token] -= payout;
 
-        // Transfer payout to user
         IERC20(token).safeTransfer(msg.sender, payout);
 
         emit SharesSold(sessionId, msg.sender, outcome, shareAmount, payout, token);
@@ -520,12 +475,6 @@ contract PredictionMarket is ReentrancyGuard, Pausable, Ownable {
         emit MarketResolved(sessionId, oracleOutcome);
     }
 
-    /**
-     * @notice Claim winnings after market resolution in any supported token
-     * @param sessionId Market ID
-     * @param token Token to receive payout in
-     * @return payout Amount claimed
-     */
     function claimPayout(bytes32 sessionId, address token) external nonReentrant returns (uint256 payout) {
         Market storage market = markets[sessionId];
         if (!market.resolved) revert MarketNotResolved();
@@ -560,26 +509,20 @@ contract PredictionMarket is ReentrancyGuard, Pausable, Ownable {
         emit PayoutClaimed(sessionId, msg.sender, payout);
     }
 
-    /**
-     * @notice Claim with default payment token (backwards compatibility)
-     */
     function claimPayout(bytes32 sessionId) external nonReentrant returns (uint256 payout) {
         Market storage market = markets[sessionId];
         if (!market.resolved) revert MarketNotResolved();
 
-        // Use default payment token
         address token = address(paymentToken);
 
         Position storage position = positions[sessionId][msg.sender];
         if (position.hasClaimed) revert AlreadyClaimed();
 
-        // Calculate payout based on winning shares
         uint256 winningShares = market.outcome ? position.yesShares : position.noShares;
         if (winningShares == 0) revert NoWinningShares();
 
         uint256 totalWinningShares = market.outcome ? market.yesShares : market.noShares;
 
-        // Use market-specific pool instead of entire contract balance
         uint256 marketPool = marketTokenDeposits[sessionId][token];
         uint256 platformFeeAmount = (marketPool * PLATFORM_FEE) / BASIS_POINTS;
         uint256 payoutPool = marketPool - platformFeeAmount;
@@ -587,25 +530,14 @@ contract PredictionMarket is ReentrancyGuard, Pausable, Ownable {
         payout = (payoutPool * winningShares) / totalWinningShares;
         position.hasClaimed = true;
 
-        // Update market deposits
         marketTokenDeposits[sessionId][token] -= (payout + platformFeeAmount);
 
-        // Transfer platform fee to treasury
         IERC20(token).safeTransfer(treasury, platformFeeAmount);
-
-        // Transfer payout to user
         IERC20(token).safeTransfer(msg.sender, payout);
 
         emit PayoutClaimed(sessionId, msg.sender, payout);
     }
 
-    /**
-     * @notice Calculate shares received for a given elizaOS amount (LMSR)
-     * @param sessionId Market ID
-     * @param outcome true for YES, false for NO
-     * @param elizaOSAmount Amount to spend
-     * @return shares Number of shares received
-     */
     function calculateSharesReceived(bytes32 sessionId, bool outcome, uint256 elizaOSAmount)
         public
         view
@@ -616,10 +548,8 @@ contract PredictionMarket is ReentrancyGuard, Pausable, Ownable {
         uint256 qYes = market.yesShares;
         uint256 qNo = market.noShares;
 
-        // Cost function: C(q) = b * ln(e^(q_yes/b) + e^(q_no/b))
         uint256 costBefore = _costFunction(qYes, qNo, b);
 
-        // Binary search to find shares that match the cost
         uint256 low = 0;
         uint256 high = elizaOSAmount * 10; // Upper bound estimate
         uint256 targetCost = costBefore + elizaOSAmount;
@@ -640,13 +570,6 @@ contract PredictionMarket is ReentrancyGuard, Pausable, Ownable {
         shares = low;
     }
 
-    /**
-     * @notice Calculate payout for selling shares (LMSR)
-     * @param sessionId Market ID
-     * @param outcome true for YES, false for NO
-     * @param shareAmount Number of shares to sell
-     * @return payout Amount of elizaOS received
-     */
     function calculatePayout(bytes32 sessionId, bool outcome, uint256 shareAmount)
         public
         view
@@ -666,75 +589,41 @@ contract PredictionMarket is ReentrancyGuard, Pausable, Ownable {
         payout = costBefore - costAfter;
     }
 
-    /**
-     * @notice Get current market prices (probability percentages)
-     * @param sessionId Market ID
-     * @return yesPrice Price of YES in basis points (10000 = 100%)
-     * @return noPrice Price of NO in basis points (10000 = 100%)
-     */
     function getMarketPrices(bytes32 sessionId) external view returns (uint256 yesPrice, uint256 noPrice) {
         Market storage market = markets[sessionId];
         uint256 b = market.liquidityParameter;
         uint256 qYes = market.yesShares;
         uint256 qNo = market.noShares;
 
-        // Use JejuMath.lmsrPrice for accurate probability calculation
         yesPrice = JejuMath.lmsrPrice(qYes, qNo, b, true);
         noPrice = JejuMath.lmsrPrice(qYes, qNo, b, false);
     }
 
-    /**
-     * @notice Get market details
-     */
     function getMarket(bytes32 sessionId) external view returns (Market memory) {
         return markets[sessionId];
     }
 
-    /**
-     * @notice Get user position in a market
-     */
     function getPosition(bytes32 sessionId, address trader) external view returns (Position memory) {
         return positions[sessionId][trader];
     }
 
-    /**
-     * @notice Check if a market is resolved and get outcome
-     * @param sessionId Market ID
-     * @return resolved Whether market is resolved
-     * @return outcome The outcome if resolved
-     */
     function isMarketResolved(bytes32 sessionId) external view returns (bool resolved, bool outcome) {
         Market storage market = markets[sessionId];
         return (market.resolved, market.outcome);
     }
 
-    /**
-     * @notice Get total number of markets
-     */
     function getMarketCount() external view returns (uint256) {
         return allMarketIds.length;
     }
 
-    /**
-     * @notice Get market ID by index
-     */
     function getMarketIdAt(uint256 index) external view returns (bytes32) {
         return allMarketIds[index];
     }
 
-    // ============ Internal LMSR Math (uses JejuMath library) ============
-
-    /**
-     * @notice LMSR cost function: C(q) = b * ln(e^(q_yes/b) + e^(q_no/b))
-     * @dev Uses JejuMath for exp/ln calculations
-     */
     function _costFunction(uint256 qYes, uint256 qNo, uint256 b) internal pure returns (uint256) {
         return JejuMath.lmsrCost(qYes, qNo, b);
     }
 
-    /**
-     * @notice Wrapper for JejuMath.exp
-     */
     function _exp(uint256 x) internal pure returns (uint256) {
         if (x == 0) return JejuMath.PRECISION;
         if (x > JejuMath.MAX_EXP_INPUT) return type(uint256).max / JejuMath.PRECISION;
@@ -748,8 +637,6 @@ contract PredictionMarket is ReentrancyGuard, Pausable, Ownable {
         return JejuMath.ln(x);
     }
 
-    // ============ Admin Functions ============
-
     function pause() external onlyOwner {
         _pause();
     }
@@ -762,14 +649,8 @@ contract PredictionMarket is ReentrancyGuard, Pausable, Ownable {
         return "2.0.0";
     }
 
-    /**
-     * @notice Get markets filtered by game type
-     * @param gameType The game type to filter by
-     * @return Market IDs matching the game type
-     */
     function getMarketsByGameType(GameType gameType) external view returns (bytes32[] memory) {
         uint256 count = 0;
-        // Gas optimized: cache array length and market
         uint256 length = allMarketIds.length;
         for (uint256 i = 0; i < length; i++) {
             if (markets[allMarketIds[i]].gameType == gameType) {
@@ -788,11 +669,6 @@ contract PredictionMarket is ReentrancyGuard, Pausable, Ownable {
         return filtered;
     }
 
-    /**
-     * @notice Get markets for a specific game contract
-     * @param gameContract Address of the game contract
-     * @return Market IDs for this game
-     */
     function getMarketsByGame(address gameContract) external view returns (bytes32[] memory) {
         uint256 count = 0;
         for (uint256 i = 0; i < allMarketIds.length; i++) {
@@ -812,11 +688,6 @@ contract PredictionMarket is ReentrancyGuard, Pausable, Ownable {
         return filtered;
     }
 
-    /**
-     * @notice Get markets by category (e.g., all moderation markets)
-     * @param category Market category
-     * @return Market IDs matching category
-     */
     function getMarketsByCategory(MarketCategory category) external view returns (bytes32[] memory) {
         uint256 count = 0;
         for (uint256 i = 0; i < allMarketIds.length; i++) {
@@ -836,27 +707,14 @@ contract PredictionMarket is ReentrancyGuard, Pausable, Ownable {
         return filtered;
     }
 
-    /**
-     * @notice Add authorized market creator (for moderation system)
-     * @param creator Address to authorize
-     */
     function addAuthorizedCreator(address creator) external onlyOwner {
         authorizedCreators[creator] = true;
     }
 
-    /**
-     * @notice Remove authorized market creator
-     * @param creator Address to remove
-     */
     function removeAuthorizedCreator(address creator) external onlyOwner {
         authorizedCreators[creator] = false;
     }
 
-    /**
-     * @notice Get moderation metadata for a market
-     * @param sessionId Market ID
-     * @return Moderation metadata
-     */
     function getModerationMetadata(bytes32 sessionId) external view returns (ModerationMetadata memory) {
         return moderationMetadata[sessionId];
     }

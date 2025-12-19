@@ -12,3 +12,6 @@ export { BanVotingInterface } from './moderation/BanVotingInterface'
 export { LabelProposalInterface } from './moderation/LabelProposalInterface'
 export { ReportSubmissionForm } from './moderation/ReportSubmissionForm'
 export { ReputationViewer } from './moderation/ReputationViewer'
+
+// Chainlink components
+export { ChainlinkDashboard } from './chainlink/ChainlinkDashboard'

@@ -120,7 +120,6 @@ contract BanManager is Ownable, Pausable {
         appBans[agentId][appId] =
             BanRecord({isBanned: true, bannedAt: block.timestamp, reason: reason, proposalId: proposalId});
 
-        // Track app ban for querying
         _agentAppBans[agentId].push(appId);
 
         emit AppBanApplied(agentId, appId, reason, proposalId, block.timestamp);
@@ -250,72 +249,30 @@ contract BanManager is Ownable, Pausable {
         emit AddressBanRemoved(target);
     }
 
-    /**
-     * @notice Check if address is banned (any type)
-     * @param target Address to check
-     * @return True if banned
-     */
     function isAddressBanned(address target) external view returns (bool) {
         return addressBans[target].isBanned;
     }
 
-    /**
-     * @notice Check if address is on notice
-     * @param target Address to check
-     * @return True if on notice
-     */
     function isOnNotice(address target) external view returns (bool) {
         ExtendedBanRecord storage ban = addressBans[target];
         return ban.isBanned && ban.banType == BanType.ON_NOTICE;
     }
 
-    /**
-     * @notice Check if address has permanent ban
-     * @param target Address to check
-     * @return True if permanently banned
-     */
     function isPermanentlyBanned(address target) external view returns (bool) {
         ExtendedBanRecord storage ban = addressBans[target];
         return ban.isBanned && ban.banType == BanType.PERMANENT;
     }
 
-    /**
-     * @notice Get extended ban record for address
-     * @param target Address to query
-     * @return ban Extended ban record
-     */
     function getAddressBan(address target) external view returns (ExtendedBanRecord memory ban) {
         return addressBans[target];
     }
 
-    /**
-     * @notice Check if address has access (not banned at all)
-     * @param target Address to check
-     * @param appId App ID (for app-specific check)
-     * @return True if access allowed
-     */
     function isAddressAccessAllowed(address target, bytes32 appId) external view returns (bool) {
-        // Check address ban first
-        if (addressBans[target].isBanned) {
-            return false;
-        }
-
-        // If appId provided, could also check app-specific bans
-        // For now, address bans are network-wide
-        if (appId != bytes32(0)) {
-            // Future: check address-based app bans
-        }
-
+        if (addressBans[target].isBanned) return false;
+        if (appId != bytes32(0)) {}
         return true;
     }
 
-    // ============ Admin Functions ============
-
-    /**
-     * @notice Add or remove authorized moderator
-     * @param moderator Moderator address (e.g., ModerationMarketplace)
-     * @param authorized Whether to authorize or deauthorize
-     */
     function setModerator(address moderator, bool authorized) external onlyOwner {
         require(moderator != address(0), "Invalid moderator");
         authorizedModerators[moderator] = authorized;

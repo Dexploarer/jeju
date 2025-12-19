@@ -189,7 +189,9 @@
     "zod": "3.25.76"
   },
   "devDependencies": {
+    "@aws-sdk/client-secrets-manager": "^3.955.0",
     "@eslint/js": "^9.17.0",
+    "@google-cloud/secret-manager": "^6.1.1",
     "@playwright/test": "1.57.0",
     "@synthetixio/synpress": "4.1.1",
     "@types/bun": "latest",

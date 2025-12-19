@@ -30,9 +30,6 @@ contract Treasury is AccessControl, ReentrancyGuard, Pausable {
     event CouncilMemberRemoved(address indexed member);
     event EmergencyWithdrawal(address indexed token, address indexed to, uint256 amount);
 
-    // =========================================================================
-    // Errors
-    // =========================================================================
     error ZeroAmount();
     error ZeroAddress();
     error InsufficientBalance(uint256 available, uint256 requested);
@@ -105,9 +102,6 @@ contract Treasury is AccessControl, ReentrancyGuard, Pausable {
             revert InsufficientBalance(balance, amount);
         }
 
-        // Note: Rate limit applies to ETH-equivalent value
-        // Subclasses can override for token-specific limits
-
         IERC20(token).safeTransfer(to, amount);
 
         emit FundsWithdrawn(to, token, amount);
@@ -149,9 +143,6 @@ contract Treasury is AccessControl, ReentrancyGuard, Pausable {
         emit OperatorRemoved(operator);
     }
 
-    /**
-     * @notice Add council member
-     */
     function addCouncilMember(address member) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (member == address(0)) revert ZeroAddress();
         _grantRole(COUNCIL_ROLE, member);

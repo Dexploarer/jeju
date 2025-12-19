@@ -21,7 +21,6 @@ contract OTC is IOTC, Ownable, Pausable, ReentrancyGuard {
     using Math for uint256;
     using ModerationMixin for ModerationMixin.Data;
 
-    /// @notice Moderation integration for ban enforcement
     ModerationMixin.Data public moderation;
 
     enum PaymentCurrency {

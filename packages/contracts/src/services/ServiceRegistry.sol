@@ -11,8 +11,6 @@ import {IIdentityRegistry} from "../registry/interfaces/IIdentityRegistry.sol";
  * @notice Generic registry for service pricing, usage tracking, and volume discounts
  */
 contract ServiceRegistry is Ownable, Pausable, ReentrancyGuard {
-    // ============ Structs ============
-
     struct ServiceConfig {
         string category; // Service category (e.g., "ai", "compute", "storage", "game")
         uint256 basePrice; // Base price in payment tokens (18 decimals)
@@ -93,8 +91,6 @@ contract ServiceRegistry is Ownable, Pausable, ReentrancyGuard {
     error AgentRequired();
     error InvalidAgentId();
 
-    // ============ Constructor ============
-
     constructor(address _treasury) Ownable(msg.sender) {
         if (_treasury == address(0)) revert InvalidTreasuryAddress();
         treasury = _treasury;
@@ -122,15 +118,6 @@ contract ServiceRegistry is Ownable, Pausable, ReentrancyGuard {
         _registerServiceInternal(serviceName, category, basePrice, minPrice, maxPrice, provider, 0);
     }
 
-    /**
-     * @notice Register a new service type with ERC-8004 agent verification
-     * @param serviceName Unique service name (e.g., "chat-completion", "game-server-hosting")
-     * @param category Service category (e.g., "ai", "compute", "storage", "game", "api")
-     * @param basePrice Base price in payment tokens
-     * @param minPrice Minimum price floor
-     * @param maxPrice Maximum price ceiling
-     * @param providerAgentId ERC-8004 agent ID of the provider
-     */
     function registerServiceWithAgent(
         string calldata serviceName,
         string calldata category,
@@ -166,7 +153,6 @@ contract ServiceRegistry is Ownable, Pausable, ReentrancyGuard {
         if (basePrice < minPrice || basePrice > maxPrice) revert InvalidPrice(basePrice);
         if (bytes(category).length == 0) revert InvalidCategory();
 
-        // If agent registration is required and no agent provided, revert
         if (requireAgentRegistration && providerAgentId == 0) revert AgentRequired();
 
         services[serviceName] = ServiceConfig({
@@ -205,11 +191,6 @@ contract ServiceRegistry is Ownable, Pausable, ReentrancyGuard {
         emit ServicePriceUpdated(serviceName, oldPrice, newPrice);
     }
 
-    /**
-     * @notice Update demand multiplier for dynamic pricing
-     * @param serviceName Service to update
-     * @param newMultiplier New multiplier in basis points
-     */
     function updateDemandMultiplier(string calldata serviceName, uint256 newMultiplier) external onlyOwner {
         ServiceConfig storage service = services[serviceName];
         if (service.basePrice == 0) revert ServiceNotFound(serviceName);
@@ -223,25 +204,12 @@ contract ServiceRegistry is Ownable, Pausable, ReentrancyGuard {
         emit DemandMultiplierUpdated(serviceName, oldMultiplier, newMultiplier);
     }
 
-    /**
-     * @notice Activate or deactivate a service
-     * @param serviceName Service to update
-     * @param isActive New active status
-     */
     function setServiceActive(string calldata serviceName, bool isActive) external onlyOwner {
         ServiceConfig storage service = services[serviceName];
         if (service.basePrice == 0) revert ServiceNotFound(serviceName);
         service.isActive = isActive;
     }
 
-    // ============ Usage Tracking ============
-
-    /**
-     * @notice Record service usage (called by authorized paymaster)
-     * @param user User who used the service
-     * @param serviceName Service that was used
-     * @param cost Cost charged to user
-     */
     function recordUsage(address user, string calldata serviceName, uint256 cost) external nonReentrant whenNotPaused {
         if (!authorizedCallers[msg.sender]) revert UnauthorizedCaller();
 
@@ -278,14 +246,6 @@ contract ServiceRegistry is Ownable, Pausable, ReentrancyGuard {
         emit ServiceUsageRecorded(user, serviceName, cost, sessionId, usage.volumeDiscount);
     }
 
-    // ============ Pricing Queries ============
-
-    /**
-     * @notice Get current cost for a service including user discounts
-     * @param serviceName Service to check
-     * @param user User requesting the service
-     * @return cost Final cost in payment tokens
-     */
     function getServiceCost(string calldata serviceName, address user) external view returns (uint256 cost) {
         ServiceConfig storage service = services[serviceName];
         if (service.basePrice == 0) revert ServiceNotFound(serviceName);
@@ -309,31 +269,15 @@ contract ServiceRegistry is Ownable, Pausable, ReentrancyGuard {
         return baseCost;
     }
 
-    /**
-     * @notice Check if service is available
-     * @param serviceName Service to check
-     * @return available True if service exists and is active
-     */
     function isServiceAvailable(string calldata serviceName) external view returns (bool available) {
         ServiceConfig storage service = services[serviceName];
         return service.basePrice != 0 && service.isActive;
     }
 
-    /**
-     * @notice Get all services in a category
-     * @param category Category to query
-     * @return services Array of service names
-     */
     function getServicesByCategory(string calldata category) external view returns (string[] memory) {
         return servicesByCategory[category];
     }
 
-    /**
-     * @notice Get user's total usage across all services
-     * @param user User to query
-     * @return totalSpent Total tokens spent
-     * @return totalRequests Total service requests
-     */
     function getUserTotalUsage(address user) external view returns (uint256 totalSpent, uint256 totalRequests) {
         for (uint256 i = 0; i < serviceNames.length; i++) {
             UserUsage storage usage = userUsage[user][serviceNames[i]];
@@ -343,13 +287,6 @@ contract ServiceRegistry is Ownable, Pausable, ReentrancyGuard {
         return (totalSpent, totalRequests);
     }
 
-    // ============ Admin Functions ============
-
-    /**
-     * @notice Update volume discount tiers
-     * @param newTiers New spending thresholds
-     * @param newDiscounts New discount rates (basis points)
-     */
     function updateVolumeTiers(uint256[] calldata newTiers, uint256[] calldata newDiscounts) external onlyOwner {
         if (newTiers.length != newDiscounts.length) revert InvalidTierArrays();
         if (newTiers.length == 0) revert InvalidTierArrays();
@@ -371,19 +308,11 @@ contract ServiceRegistry is Ownable, Pausable, ReentrancyGuard {
         emit TreasuryUpdated(oldTreasury, newTreasury);
     }
 
-    /**
-     * @notice Authorize or deauthorize a caller (paymaster)
-     * @param caller Address to update
-     * @param authorized New authorization status
-     */
     function setAuthorizedCaller(address caller, bool authorized) external onlyOwner {
         authorizedCallers[caller] = authorized;
         emit AuthorizedCallerUpdated(caller, authorized);
     }
 
-    /**
-     * @notice Pause/unpause the registry
-     */
     function pause() external onlyOwner {
         _pause();
     }
@@ -392,13 +321,6 @@ contract ServiceRegistry is Ownable, Pausable, ReentrancyGuard {
         _unpause();
     }
 
-    // ============ Internal Functions ============
-
-    /**
-     * @notice Calculate volume discount based on total spent
-     * @param totalSpent Total amount spent by user
-     * @return discount Discount rate in basis points
-     */
     function _calculateVolumeDiscount(uint256 totalSpent) internal view returns (uint256 discount) {
         for (uint256 i = volumeTiers.length - 1; i > 0; i--) {
             if (totalSpent >= volumeTiers[i]) {
@@ -408,11 +330,6 @@ contract ServiceRegistry is Ownable, Pausable, ReentrancyGuard {
         return 0;
     }
 
-    // ============ View Functions ============
-
-    /**
-     * @notice Get total number of registered services
-     */
     function getServiceCount() external view returns (uint256) {
         return serviceNames.length;
     }
@@ -424,50 +341,25 @@ contract ServiceRegistry is Ownable, Pausable, ReentrancyGuard {
         return serviceNames[index];
     }
 
-    // ============ ERC-8004 Integration ============
-
-    /**
-     * @notice Set the ERC-8004 Identity Registry
-     * @param _identityRegistry Address of the IdentityRegistry contract
-     */
     function setIdentityRegistry(address _identityRegistry) external onlyOwner {
         address oldRegistry = address(identityRegistry);
         identityRegistry = IIdentityRegistry(_identityRegistry);
         emit IdentityRegistryUpdated(oldRegistry, _identityRegistry);
     }
 
-    /**
-     * @notice Set whether agent registration is required for providers
-     * @param required True to require agent registration
-     */
     function setRequireAgentRegistration(bool required) external onlyOwner {
         requireAgentRegistration = required;
         emit AgentRegistrationRequirementUpdated(required);
     }
 
-    /**
-     * @notice Get all services provided by an ERC-8004 agent
-     * @param agentId The agent ID to query
-     * @return Array of service names
-     */
     function getServicesByAgent(uint256 agentId) external view returns (string[] memory) {
         return agentServices[agentId];
     }
 
-    /**
-     * @notice Get provider's agent ID for a service (if registered)
-     * @param serviceName Service to query
-     * @return agentId The provider's agent ID (0 if not linked to agent)
-     */
     function getServiceProviderAgent(string calldata serviceName) external view returns (uint256 agentId) {
         return services[serviceName].providerAgentId;
     }
 
-    /**
-     * @notice Check if a service provider is a verified ERC-8004 agent
-     * @param serviceName Service to check
-     * @return True if provider is registered as an agent
-     */
     function isVerifiedAgent(string calldata serviceName) external view returns (bool) {
         uint256 agentId = services[serviceName].providerAgentId;
         if (agentId == 0) return false;

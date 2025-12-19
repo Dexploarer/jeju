@@ -142,7 +142,8 @@ async function getGCPClient(): Promise<GCPSecretsClient | null> {
     const client = new SecretManagerServiceClient();
     gcpClient = {
       async accessSecretVersion(params: { name: string }) {
-        return client.accessSecretVersion(params) as Promise<[{ payload?: { data?: Buffer | string } }]>;
+        const [response] = await client.accessSecretVersion(params);
+        return [response] as [{ payload?: { data?: Buffer | string } }];
       }
     };
     return gcpClient;
@@ -414,4 +415,5 @@ export function initSecretsDirectory(): void {
     writeFileSync(gitignorePath, '*\n!.gitignore\n');
   }
 }
+
 
