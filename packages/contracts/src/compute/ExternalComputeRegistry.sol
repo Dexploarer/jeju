@@ -24,7 +24,7 @@ import {IIdentityRegistry} from "../registry/interfaces/IIdentityRegistry.sol";
  * - Slashing parameters adjustable by DAO
  * - Provider types can be added/removed by DAO
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract ExternalComputeRegistry is Ownable, Pausable, ReentrancyGuard {
     // ============ Types ============

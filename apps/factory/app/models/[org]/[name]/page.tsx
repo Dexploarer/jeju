@@ -89,7 +89,7 @@ const mockModel: ModelData = {
   isVerified: true,
   tags: ['llm', 'code', 'jeju', 'fine-tuned', 'web3', 'solidity', 'ethereum'],
   hasInference: true,
-  inferenceEndpoint: 'https://inference.jeju.network/v1/models/jeju/llama-3-jeju-ft',
+  inferenceEndpoint: 'https://inference.jejunetwork.org/v1/models/jeju/llama-3-jeju-ft',
   files: [
     { name: 'model.safetensors', size: '15.2 GB', type: 'model' },
     { name: 'config.json', size: '1.2 KB', type: 'config' },
@@ -481,7 +481,7 @@ This contract provides basic deposit and withdraw functionality with proper even
                     <div className="bg-factory-900 rounded-lg p-3 font-mono text-xs">
                       <pre className="text-factory-400">{`jeju-hub login
 # or set endpoint
-export HF_ENDPOINT=https://models.jeju.network`}</pre>
+export HF_ENDPOINT=https://models.jejunetwork.org`}</pre>
                     </div>
                   </div>
 
@@ -505,7 +505,7 @@ export HF_ENDPOINT=https://models.jeju.network`}</pre>
 
 model = AutoModelForCausalLM.from_pretrained(
     "${fullName}",
-    endpoint="https://models.jeju.network"
+    endpoint="https://models.jejunetwork.org"
 )`}</pre>
                       <button
                         onClick={() => copyToClipboard(installCommand)}

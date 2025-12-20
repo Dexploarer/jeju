@@ -205,7 +205,7 @@ contract AutomationRegistryTest is Test {
         assertEq(infoAfter.stake, stakeBefore - 0.05 ether);
     }
 
-    function testFail_NonKeeperCantPerform() public {
+    function test_RevertWhen_NonKeeperCantPerform() public {
         vm.deal(user, 1 ether);
         vm.prank(user);
         uint256 upkeepId = registry.registerUpkeep{value: 0.1 ether}(
@@ -219,6 +219,7 @@ contract AutomationRegistryTest is Test {
         skip(120);
 
         // Non-keeper tries to perform - should fail
+        vm.expectRevert();
         vm.prank(user);
         registry.performUpkeep(upkeepId, "");
     }

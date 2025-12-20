@@ -41,7 +41,7 @@ interface IElizaOSToken {
  * - Pausable for emergencies
  * - Non-custodial (immediate minting)
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract CreditPurchaseContract is Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;

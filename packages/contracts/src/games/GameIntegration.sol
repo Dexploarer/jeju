@@ -26,7 +26,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
  * Games deploy one GameIntegration contract and reference it from all game systems.
  * This avoids duplicating integration code across multiple systems.
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract GameIntegration is Ownable {
     // ============ State Variables ============

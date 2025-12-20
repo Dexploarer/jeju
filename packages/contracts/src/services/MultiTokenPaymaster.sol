@@ -34,7 +34,7 @@ import {ICreditManager, IServiceRegistry} from "../interfaces/IServices.sol";
  * - elizaOS (18 decimals)
  * - ETH (18 decimals)
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract MultiTokenPaymaster is BasePaymaster, Pausable {
     using SafeERC20 for IERC20;

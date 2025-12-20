@@ -87,17 +87,85 @@ const CROSS_CHAIN_PAYMASTER_ABI = parseAbi([
   'event VoucherFulfilled(bytes32 indexed voucherId, address indexed recipient, uint256 amount)',
 ]);
 
-const L1_STAKE_MANAGER_ABI = parseAbi([
-  'function register(uint256[] chains) external payable',
-  'function addStake() external payable',
-  'function startUnbonding(uint256 amount) external',
-  'function completeUnbonding() external',
-  'function getStake(address xlp) external view returns (tuple(uint256 stakedAmount, uint256 unbondingAmount, uint256 unbondingStartTime, uint256 slashedAmount, bool isActive, uint256 registeredAt))',
-  'function getXLPChains(address xlp) external view returns (uint256[])',
-  'function isXLPActive(address xlp) external view returns (bool)',
-  'function getEffectiveStake(address xlp) external view returns (uint256)',
-  'function supportsChain(address xlp, uint256 chainId) external view returns (bool)',
-]);
+const L1_STAKE_MANAGER_ABI = [
+  {
+    name: 'register',
+    type: 'function',
+    stateMutability: 'payable',
+    inputs: [{ name: 'chains', type: 'uint256[]' }],
+    outputs: [],
+  },
+  {
+    name: 'addStake',
+    type: 'function',
+    stateMutability: 'payable',
+    inputs: [],
+    outputs: [],
+  },
+  {
+    name: 'startUnbonding',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [{ name: 'amount', type: 'uint256' }],
+    outputs: [],
+  },
+  {
+    name: 'completeUnbonding',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [],
+    outputs: [],
+  },
+  {
+    name: 'getStake',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'xlp', type: 'address' }],
+    outputs: [{
+      name: '',
+      type: 'tuple',
+      components: [
+        { name: 'stakedAmount', type: 'uint256' },
+        { name: 'unbondingAmount', type: 'uint256' },
+        { name: 'unbondingStartTime', type: 'uint256' },
+        { name: 'slashedAmount', type: 'uint256' },
+        { name: 'isActive', type: 'bool' },
+        { name: 'registeredAt', type: 'uint256' },
+      ],
+    }],
+  },
+  {
+    name: 'getXLPChains',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'xlp', type: 'address' }],
+    outputs: [{ name: '', type: 'uint256[]' }],
+  },
+  {
+    name: 'isXLPActive',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'xlp', type: 'address' }],
+    outputs: [{ name: '', type: 'bool' }],
+  },
+  {
+    name: 'getEffectiveStake',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'xlp', type: 'address' }],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
+  {
+    name: 'supportsChain',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'xlp', type: 'address' },
+      { name: 'chainId', type: 'uint256' },
+    ],
+    outputs: [{ name: '', type: 'bool' }],
+  },
+] as const;
 
 // ============ EIL Client ============
 
@@ -537,14 +605,13 @@ export class EILClient {
    * Sign a multi-chain batch (single signature over merkle root)
    */
   async signMultiChainBatch(merkleRoot: `0x${string}`): Promise<`0x${string}`> {
-    const message = keccak256(
-      encodePacked(
-        ['bytes32', 'address', 'uint256'],
-        [merkleRoot, this.account.address, BigInt(this.config.l2ChainId)]
-      )
+    const packed = encodePacked(
+      ['bytes32', 'address', 'uint256'],
+      [merkleRoot, this.account.address, BigInt(this.config.l2ChainId)]
     );
+    const messageHash = viemKeccak256(packed);
 
-    return this.account.signMessage({ message });
+    return this.account.signMessage({ message: { raw: messageHash } });
   }
 
   /**

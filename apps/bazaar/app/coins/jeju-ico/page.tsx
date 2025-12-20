@@ -101,7 +101,7 @@ export default function JejuICOPage() {
           💻 GitHub
         </a>
         <a 
-          href="https://docs.jeju.network" 
+          href="https://docs.jejunetwork.org" 
           target="_blank"
           rel="noopener noreferrer"
           className="btn-secondary px-6 py-3"

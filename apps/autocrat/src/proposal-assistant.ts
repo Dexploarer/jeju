@@ -14,18 +14,10 @@ import { AutocratBlockchain } from './blockchain';
 import { indexProposal, findSimilarProposals } from './local-services';
 import { checkDWSCompute, dwsGenerate } from './agents/runtime';
 import { parseJson } from './utils';
-import type { CEOPersona, GovernanceParams } from './types';
+import { CasualProposalCategory, type CEOPersona, type GovernanceParams } from './types';
 
-// Re-export for convenience
-export type CasualProposalCategory =
-  | 'opinion'
-  | 'suggestion'
-  | 'proposal'
-  | 'member_application'
-  | 'package_funding'
-  | 'repo_funding'
-  | 'parameter_change'
-  | 'ceo_model_change';
+// Re-export the enum for convenience
+export { CasualProposalCategory };
 
 // ============ Types ============
 

@@ -347,7 +347,7 @@ describe('LockManager - Concurrent Access', () => {
 
     // Pre-create the lock file to simulate race
     writeFileSync(lockPath, JSON.stringify({
-      pid: process.pid + 1,
+      pid: process.pid,
       timestamp: Date.now(),
       hostname: 'other',
       command: 'other',

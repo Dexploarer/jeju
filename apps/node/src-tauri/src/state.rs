@@ -87,7 +87,7 @@ impl AppState {
                 network_info: NetworkInfo {
                     network: "mainnet".to_string(),
                     chain_id: 420690,
-                    rpc_url: "https://rpc.jeju.network".to_string(),
+                    rpc_url: "https://rpc.jejunetwork.org".to_string(),
                     connected: false,
                     block_number: 0,
                     gas_price_gwei: 0.0,

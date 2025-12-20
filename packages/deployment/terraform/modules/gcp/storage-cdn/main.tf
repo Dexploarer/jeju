@@ -33,13 +33,13 @@ variable "enable_storage_cdn" {
 variable "storage_gateway_origin" {
   type        = string
   description = "Origin URL for storage gateway"
-  default     = "gateway.jeju.network"
+  default     = "gateway.jejunetwork.org"
 }
 
 variable "jns_resolver_origin" {
   type        = string
   description = "JNS resolver API endpoint"
-  default     = "jns-resolver.jeju.network"
+  default     = "jns-resolver.jejunetwork.org"
 }
 
 variable "cache_ttl_default" {

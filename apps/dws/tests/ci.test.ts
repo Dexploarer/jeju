@@ -46,7 +46,7 @@ describe('WorkflowEngine', () => {
 
   beforeEach(() => {
     engine = new WorkflowEngine(
-      { rpcUrl: 'http://localhost:8545', dwsUrl: 'http://localhost:4030' },
+      { rpcUrl: 'http://localhost:6546', dwsUrl: 'http://localhost:4030' },
       mockBackend as never,
       mockRepoManager as never
     );
@@ -128,7 +128,7 @@ jobs:
     runs-on: jeju-compute
     environment:
       name: production
-      url: https://app.jeju.network
+      url: https://app.jejunetwork.org
     steps:
       - run: echo "deploy"
 `;
@@ -137,7 +137,7 @@ jobs:
     expect(config.jobs.deploy.environment).toBeDefined();
     if (typeof config.jobs.deploy.environment === 'object') {
       expect(config.jobs.deploy.environment.name).toBe('production');
-      expect(config.jobs.deploy.environment.url).toBe('https://app.jeju.network');
+      expect(config.jobs.deploy.environment.url).toBe('https://app.jejunetwork.org');
     }
   });
 
@@ -255,7 +255,7 @@ describe('CISecretsStore', () => {
 
   test('creates environment with protection rules', async () => {
     const env = await store.createEnvironment(TEST_REPO_ID, 'staging', TEST_ADDRESS, {
-      url: 'https://staging.jeju.network',
+      url: 'https://staging.jejunetwork.org',
       protectionRules: {
         requiredReviewers: [TEST_ADDRESS],
         waitTimer: 5,
@@ -263,7 +263,7 @@ describe('CISecretsStore', () => {
     });
 
     expect(env.name).toBe('staging');
-    expect(env.url).toBe('https://staging.jeju.network');
+    expect(env.url).toBe('https://staging.jejunetwork.org');
     expect(env.protectionRules.requiredReviewers).toContain(TEST_ADDRESS);
     expect(env.protectionRules.waitTimer).toBe(5);
   });
@@ -306,7 +306,7 @@ describe('CIScheduler', () => {
   beforeEach(() => {
     resetCIScheduler();
     engine = new WorkflowEngine(
-      { rpcUrl: 'http://localhost:8545' },
+      { rpcUrl: 'http://localhost:6546' },
       mockBackend as never,
       mockRepoManager as never
     );
@@ -564,7 +564,7 @@ describe('CIEventBus', () => {
   beforeEach(() => {
     resetCIEventBus();
     engine = new WorkflowEngine(
-      { rpcUrl: 'http://localhost:8545' },
+      { rpcUrl: 'http://localhost:6546' },
       mockBackend as never,
       mockRepoManager as never
     );
@@ -688,7 +688,7 @@ describe('Expression Evaluation', () => {
 
   beforeEach(() => {
     engine = new WorkflowEngine(
-      { rpcUrl: 'http://localhost:8545' },
+      { rpcUrl: 'http://localhost:6546' },
       mockBackend as never,
       mockRepoManager as never
     );
@@ -721,7 +721,7 @@ describe('Matrix Expansion', () => {
 
   beforeEach(() => {
     engine = new WorkflowEngine(
-      { rpcUrl: 'http://localhost:8545' },
+      { rpcUrl: 'http://localhost:6546' },
       mockBackend as never,
       mockRepoManager as never
     );
@@ -760,7 +760,7 @@ describe('Workflow Concurrency', () => {
 
   beforeEach(() => {
     engine = new WorkflowEngine(
-      { rpcUrl: 'http://localhost:8545' },
+      { rpcUrl: 'http://localhost:6546' },
       mockBackend as never,
       mockRepoManager as never
     );
@@ -808,7 +808,7 @@ describe('Workflow Triggers', () => {
 
   beforeEach(() => {
     engine = new WorkflowEngine(
-      { rpcUrl: 'http://localhost:8545' },
+      { rpcUrl: 'http://localhost:6546' },
       mockBackend as never,
       mockRepoManager as never
     );

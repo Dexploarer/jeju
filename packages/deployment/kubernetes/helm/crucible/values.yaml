@@ -97,7 +97,7 @@ affinity: {}
 
 config:
   network: localnet
-  rpcUrl: http://127.0.0.1:8545
+  rpcUrl: http://127.0.0.1:6546
   logLevel: info
   logFormat: json
   contracts:

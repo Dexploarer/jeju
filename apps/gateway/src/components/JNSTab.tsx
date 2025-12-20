@@ -576,8 +576,8 @@ function RegisteredAppsCard() {
   
   const getAppUrl = (name: string) => {
     if (NETWORK === 'localnet') return `http://localhost:4001/${name}`;
-    if (NETWORK === 'testnet') return `https://testnet-${name}.jeju.network`;
-    return `https://${name}.jeju.network`;
+    if (NETWORK === 'testnet') return `https://testnet-${name}.jejunetwork.org`;
+    return `https://${name}.jejunetwork.org`;
   };
 
   return (

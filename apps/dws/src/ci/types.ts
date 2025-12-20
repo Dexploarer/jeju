@@ -412,3 +412,71 @@ export interface WebhookDelivery {
   responseStatus?: number;
   responseBody?: string;
 }
+
+// ============ Built-in Actions ============
+
+/** Built-in CI/CD actions available without external dependencies */
+export const BUILTIN_ACTIONS: Record<string, Action> = {
+  'actions/checkout@v4': {
+    name: 'Checkout',
+    description: 'Checkout a Git repository',
+    inputs: {
+      repository: { description: 'Repository name with owner', required: false, default: '' },
+      ref: { description: 'The branch, tag or SHA to checkout', required: false, default: '' },
+      token: { description: 'Personal access token', required: false, default: '' },
+      path: { description: 'Relative path under $GITHUB_WORKSPACE', required: false, default: '' },
+      'fetch-depth': { description: 'Number of commits to fetch', required: false, default: '1' },
+    },
+    outputs: {},
+    runs: { using: 'node20', main: 'dist/index.js' },
+  },
+  'actions/setup-node@v4': {
+    name: 'Setup Node.js',
+    description: 'Set up Node.js environment',
+    inputs: {
+      'node-version': { description: 'Version Spec of the version to use', required: false },
+      'node-version-file': { description: 'File containing version spec', required: false },
+      cache: { description: 'Package manager for caching', required: false },
+    },
+    outputs: {
+      'node-version': { description: 'The installed node version' },
+    },
+    runs: { using: 'node20', main: 'dist/setup/index.js' },
+  },
+  'actions/cache@v4': {
+    name: 'Cache',
+    description: 'Cache dependencies and build outputs',
+    inputs: {
+      path: { description: 'List of files/directories to cache', required: true },
+      key: { description: 'Key for restoring and saving the cache', required: true },
+      'restore-keys': { description: 'Ordered list of keys for restoring stale cache', required: false },
+    },
+    outputs: {
+      'cache-hit': { description: 'Whether an exact match was found for the key' },
+    },
+    runs: { using: 'node20', main: 'dist/restore/index.js', post: 'dist/save/index.js' },
+  },
+  'actions/upload-artifact@v4': {
+    name: 'Upload Artifact',
+    description: 'Upload a build artifact',
+    inputs: {
+      name: { description: 'Artifact name', required: true },
+      path: { description: 'Path to upload', required: true },
+      'retention-days': { description: 'Number of days to retain', required: false },
+    },
+    outputs: {
+      'artifact-id': { description: 'ID of uploaded artifact' },
+    },
+    runs: { using: 'node20', main: 'dist/index.js' },
+  },
+  'actions/download-artifact@v4': {
+    name: 'Download Artifact',
+    description: 'Download a build artifact',
+    inputs: {
+      name: { description: 'Artifact name', required: true },
+      path: { description: 'Destination path', required: false, default: '.' },
+    },
+    outputs: {},
+    runs: { using: 'node20', main: 'dist/index.js' },
+  },
+};

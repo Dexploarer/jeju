@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeAll } from "bun:test";
-import { ethers } from 'ethers';
+import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 
 /**
  * Integration tests for Node Explorer
@@ -23,13 +23,15 @@ try {
 }
 
 describe.skipIf(!apiAvailable)("Node Explorer Integration Tests", () => {
-  let testWallet: ethers.HDNodeWallet;
+  let testPrivateKey: `0x${string}`;
+  let testAccount: ReturnType<typeof privateKeyToAccount>;
   let testNodeId: string;
   
   beforeAll(async () => {
     // Create test wallet
-    testWallet = ethers.Wallet.createRandom();
-    console.log(`Test wallet: ${testWallet.address}`);
+    testPrivateKey = generatePrivateKey();
+    testAccount = privateKeyToAccount(testPrivateKey);
+    console.log(`Test wallet: ${testAccount.address}`);
   });
   
   describe("API Health", () => {
@@ -47,13 +49,13 @@ describe.skipIf(!apiAvailable)("Node Explorer Integration Tests", () => {
     test("should register a new node with valid signature", async () => {
       const rpcUrl = "https://test-node.example.com:8545";
       const message = `Register node: ${rpcUrl}`;
-      const signature = await testWallet.signMessage(message);
+      const signature = await testAccount.signMessage({ message });
       
       const response = await fetch(`${API_URL}/nodes/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          operator_address: testWallet.address,
+          operator_address: testAccount.address,
           rpc_url: rpcUrl,
           ws_url: "wss://test-node.example.com:8546",
           location: "Test Region",
@@ -79,7 +81,7 @@ describe.skipIf(!apiAvailable)("Node Explorer Integration Tests", () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          operator_address: testWallet.address,
+          operator_address: testAccount.address,
           rpc_url: "https://test2.example.com:8545",
           signature: "0xinvalid",
         }),
@@ -98,7 +100,7 @@ describe.skipIf(!apiAvailable)("Node Explorer Integration Tests", () => {
       }
       
       const message = `Heartbeat: ${testNodeId}:${Date.now()}`;
-      const signature = await testWallet.signMessage(message);
+      const signature = await testAccount.signMessage({ message });
       
       const response = await fetch(`${API_URL}/nodes/heartbeat`, {
         method: 'POST',
@@ -124,7 +126,7 @@ describe.skipIf(!apiAvailable)("Node Explorer Integration Tests", () => {
     test("should reject heartbeat for non-existent node", async () => {
       const fakeNodeId = "0xfake123456";
       const message = `Heartbeat: ${fakeNodeId}:${Date.now()}`;
-      const signature = await testWallet.signMessage(message);
+      const signature = await testAccount.signMessage({ message });
       
       const response = await fetch(`${API_URL}/nodes/heartbeat`, {
         method: 'POST',
@@ -248,7 +250,7 @@ describe.skipIf(!apiAvailable)("Node Explorer Integration Tests", () => {
       // Submit multiple heartbeats
       for (let i = 0; i < 5; i++) {
         const message = `Heartbeat: ${testNodeId}:${Date.now()}`;
-        const signature = await testWallet.signMessage(message);
+        const signature = await testAccount.signMessage({ message });
         
         await fetch(`${API_URL}/nodes/heartbeat`, {
           method: 'POST',

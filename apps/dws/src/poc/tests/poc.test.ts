@@ -1941,3 +1941,140 @@ describe('Metrics Server', () => {
     expect(m1).toBe(m2);
   });
 });
+
+// ============================================================================
+// Decentralized Registry Client Tests
+// ============================================================================
+
+import { PoCRegistryClient, createRegistryClient } from '../registry-client';
+
+describe('Decentralized Registry Client', () => {
+  const TEST_RPC = 'https://sepolia.base.org';
+  const TEST_VALIDATOR = '0x1234567890123456789012345678901234567890' as Address;
+
+  test('creates client with required config', () => {
+    const client = new PoCRegistryClient({
+      validatorAddress: TEST_VALIDATOR,
+      rpcUrl: TEST_RPC,
+    });
+    const info = client.getDataSourceInfo();
+    
+    expect(info).toHaveProperty('validatorAddress');
+    expect(info).toHaveProperty('offChainEndpoints');
+    expect(info.validatorAddress).toBe(TEST_VALIDATOR);
+  });
+  
+  test('creates client with custom off-chain endpoints', () => {
+    const client = new PoCRegistryClient({
+      validatorAddress: TEST_VALIDATOR,
+      rpcUrl: TEST_RPC,
+      offChainEndpoints: ['https://api1.poc.example', 'https://api2.poc.example'],
+    });
+    
+    const info = client.getDataSourceInfo();
+    expect(info.offChainEndpoints).toHaveLength(2);
+    expect(info.offChainEndpoints[0]).toBe('https://api1.poc.example');
+  });
+  
+  test('uses config defaults when no explicit config provided', () => {
+    // This test verifies config-first approach: values come from packages/config
+    // When config has valid values, no env vars are needed
+    const client = createRegistryClient();
+    const info = client.getDataSourceInfo();
+    
+    // Should have validator address from contracts.json
+    expect(info.validatorAddress).toMatch(/^0x[a-fA-F0-9]{40}$/);
+  });
+  
+  test('explicit config overrides defaults', () => {
+    const customValidator = '0x1111111111111111111111111111111111111111' as Address;
+    const customRpc = 'https://custom-rpc.example.com';
+    
+    const client = new PoCRegistryClient({
+      validatorAddress: customValidator,
+      rpcUrl: customRpc,
+    });
+    
+    const info = client.getDataSourceInfo();
+    expect(info.validatorAddress).toBe(customValidator);
+  });
+  
+  test('mock client cache works across multiple calls', async () => {
+    const mockClient = new MockPoCRegistryClient();
+    const entry = createMockEntry({ hardwareIdHash: '0xcached123' as Hex });
+    mockClient.addMockEntry(entry);
+    
+    const result1 = await mockClient.checkHardware('0xcached123' as Hex);
+    expect(result1).not.toBeNull();
+    
+    const result2 = await mockClient.checkHardware('0xcached123' as Hex);
+    expect(result2).toEqual(result1);
+  });
+  
+  test('getRevocations throws when no endpoints configured', async () => {
+    const client = new PoCRegistryClient({
+      validatorAddress: TEST_VALIDATOR,
+      rpcUrl: TEST_RPC,
+      offChainEndpoints: [],
+    });
+    
+    await expect(client.getRevocations()).rejects.toThrow('No off-chain endpoints configured');
+  });
+  
+  test('subscribeToRevocations throws when no endpoints configured', () => {
+    const client = new PoCRegistryClient({
+      validatorAddress: TEST_VALIDATOR,
+      rpcUrl: TEST_RPC,
+      offChainEndpoints: [],
+    });
+    
+    expect(() => client.subscribeToRevocations(() => {})).toThrow('No off-chain endpoints configured');
+  });
+  
+  test('mock client getAgentStatus throws for unknown agent', async () => {
+    const mockClient = new MockPoCRegistryClient();
+    
+    await expect(mockClient.getAgentStatus(999n)).rejects.toThrow('Agent 999 not found');
+  });
+  
+  test('mock client needsReverification returns true for unknown agent', async () => {
+    const mockClient = new MockPoCRegistryClient();
+    
+    const needs = await mockClient.needsReverification(999n);
+    expect(needs).toBe(true);
+  });
+  
+  test('mock client tracks agent status', async () => {
+    const mockClient = new MockPoCRegistryClient();
+    mockClient.addMockAgentStatus(1n, {
+      verified: true,
+      level: 2 as PoCVerificationLevel,
+      hardwareIdHash: '0xabc123' as Hex,
+      expiresAt: Date.now() + 86400000,
+    });
+    
+    const status = await mockClient.getAgentStatus(1n);
+    expect(status.verified).toBe(true);
+    expect(status.level).toBe(2);
+  });
+  
+  test('clearCache does not affect mock data', async () => {
+    const mockClient = new MockPoCRegistryClient();
+    const entry = createMockEntry({ hardwareIdHash: '0xcleartest' as Hex });
+    mockClient.addMockEntry(entry);
+    
+    await mockClient.checkHardware('0xcleartest' as Hex);
+    mockClient.clearCache();
+    
+    const result = await mockClient.checkHardware('0xcleartest' as Hex);
+    expect(result).not.toBeNull();
+  });
+  
+  test('mock client getDataSourceInfo returns expected shape', () => {
+    const mockClient = new MockPoCRegistryClient();
+    const info = mockClient.getDataSourceInfo();
+    
+    expect(info.validatorAddress).toBe('0x0000000000000000000000000000000000000000');
+    expect(info.offChainEndpoints).toEqual([]);
+  });
+});

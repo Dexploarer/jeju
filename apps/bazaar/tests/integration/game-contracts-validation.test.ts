@@ -21,7 +21,7 @@ import {
 import { useGameItems, useMintItem, useBurnItem } from '@/hooks/nft/useGameItems'
 import { getGameContracts } from '@/config/contracts'
 
-const LOCALNET_RPC = process.env.LOCALNET_RPC || 'http://localhost:8545'
+const LOCALNET_RPC = process.env.LOCALNET_RPC || 'http://localhost:6546'
 const CHAIN_ID = 1337
 
 // Skip if no localnet

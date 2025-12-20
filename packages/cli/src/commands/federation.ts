@@ -11,7 +11,8 @@
  */
 
 import { Command } from 'commander';
-import { Wallet, JsonRpcProvider, Contract, formatEther, parseEther } from 'ethers';
+import { createPublicClient, createWalletClient, http, formatEther, parseEther, getContract } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
 import chalk from 'chalk';
 import { logger } from '../lib/logger';
 import { getNetworkName } from '@jejunetwork/config';
@@ -86,15 +87,14 @@ federationCommand
       process.exit(1);
     }
 
-    const provider = new JsonRpcProvider(parent.hubRpc);
-    const wallet = new Wallet(options.privateKey, provider);
+    const publicClient = createPublicClient({ transport: http(parent.hubRpc) });
+    const account = privateKeyToAccount(options.privateKey as `0x${string}`);
+    const walletClient = createWalletClient({ account, transport: http(parent.hubRpc) });
     
     const registryAddress = parent.networkRegistry || DEFAULT_NETWORK_REGISTRY;
     if (registryAddress === DEFAULT_NETWORK_REGISTRY) {
       console.log(chalk.yellow('Warning: Using default NetworkRegistry address. Deploy contracts first.'));
     }
-
-    const registry = new Contract(registryAddress, NETWORK_REGISTRY_ABI, wallet);
 
     const stakeAmount = parseEther(options.stake);
     const tierName = parseFloat(options.stake) >= 10 ? 'VERIFIED' : 
@@ -131,19 +131,24 @@ federationCommand
 
     console.log(chalk.cyan('Sending transaction...'));
 
-    const tx = await registry.registerNetwork(
-      options.chainId,
-      options.name,
-      options.rpc,
-      options.explorer || '',
-      options.ws || '',
-      contracts,
-      genesisHash,
-      { value: stakeAmount }
-    );
+    const hash = await walletClient.writeContract({
+      address: registryAddress as `0x${string}`,
+      abi: NETWORK_REGISTRY_ABI,
+      functionName: 'registerNetwork',
+      args: [
+        BigInt(options.chainId),
+        options.name,
+        options.rpc,
+        options.explorer || '',
+        options.ws || '',
+        contracts,
+        genesisHash,
+      ],
+      value: stakeAmount,
+    });
 
-    console.log(`  Transaction: ${tx.hash}`);
-    await tx.wait();
+    console.log(`  Transaction: ${hash}`);
+    await publicClient.waitForTransactionReceipt({ hash });
 
     console.log(chalk.green('\nSuccessfully joined the Jeju Federation!'));
     console.log(`\nNext steps:`);
@@ -164,7 +169,7 @@ federationCommand
     logger.header('FEDERATION STATUS');
 
     const parent = federationCommand.opts();
-    const provider = new JsonRpcProvider(parent.hubRpc);
+    const publicClient = createPublicClient({ transport: http(parent.hubRpc) });
     
     const registryAddress = parent.networkRegistry || DEFAULT_NETWORK_REGISTRY;
     const hubAddress = parent.registryHub || DEFAULT_REGISTRY_HUB;
@@ -175,12 +180,12 @@ federationCommand
       return;
     }
 
-    const registry = new Contract(registryAddress, NETWORK_REGISTRY_ABI, provider);
-    const hub = new Contract(hubAddress, REGISTRY_HUB_ABI, provider);
+    const registry = getContract({ address: registryAddress as `0x${string}`, abi: NETWORK_REGISTRY_ABI, client: publicClient });
+    const hub = getContract({ address: hubAddress as `0x${string}`, abi: REGISTRY_HUB_ABI, client: publicClient });
 
     if (options.chainId) {
       // Show specific network
-      const network = await registry.getNetwork(options.chainId);
+      const network = await registry.read.getNetwork([BigInt(options.chainId)]) as { chainId: bigint; name: string; rpcUrl: string; operator: string; stake: bigint; trustTier: number; isActive: boolean; isVerified: boolean; isSuperchain: boolean; registeredAt: bigint };
       
       console.log(chalk.cyan('\nNetwork Details:'));
       console.log(`  Chain ID: ${network.chainId}`);
@@ -194,17 +199,17 @@ federationCommand
       console.log(`  Superchain: ${network.isSuperchain}`);
       console.log(`  Registered: ${new Date(Number(network.registeredAt) * 1000).toISOString()}`);
 
-      const canConsensus = await registry.canParticipateInConsensus(options.chainId);
-      const canSequence = await registry.isSequencerEligible(options.chainId);
+      const canConsensus = await registry.read.canParticipateInConsensus([BigInt(options.chainId)]) as boolean;
+      const canSequence = await registry.read.isSequencerEligible([BigInt(options.chainId)]) as boolean;
 
       console.log(chalk.cyan('\nCapabilities:'));
       console.log(`  Consensus Participation: ${canConsensus ? chalk.green('Yes') : chalk.red('No')}`);
       console.log(`  Sequencer Eligible: ${canSequence ? chalk.green('Yes') : chalk.red('No')}`);
     } else {
       // Show overall stats
-      const totalNetworks = await registry.totalNetworks();
-      const activeNetworks = await registry.activeNetworks();
-      const verifiedNetworks = await registry.verifiedNetworks();
+      const totalNetworks = await registry.read.totalNetworks() as bigint;
+      const activeNetworks = await registry.read.activeNetworks() as bigint;
+      const verifiedNetworks = await registry.read.verifiedNetworks() as bigint;
 
       console.log(chalk.cyan('\nFederation Overview:'));
       console.log(`  Total Networks: ${totalNetworks}`);
@@ -212,9 +217,9 @@ federationCommand
       console.log(`  Verified Networks: ${verifiedNetworks}`);
 
       if (hubAddress !== DEFAULT_REGISTRY_HUB) {
-        const totalChains = await hub.totalChains();
-        const totalRegistries = await hub.totalRegistries();
-        const totalStaked = await hub.totalStaked();
+        const totalChains = await hub.read.totalChains() as bigint;
+        const totalRegistries = await hub.read.totalRegistries() as bigint;
+        const totalStaked = await hub.read.totalStaked() as bigint;
 
         console.log(chalk.cyan('\nRegistry Hub:'));
         console.log(`  Chains Tracked: ${totalChains}`);
@@ -237,7 +242,7 @@ federationCommand
     logger.header('FEDERATED NETWORKS');
 
     const parent = federationCommand.opts();
-    const provider = new JsonRpcProvider(parent.hubRpc);
+    const publicClient = createPublicClient({ transport: http(parent.hubRpc) });
     
     const registryAddress = parent.networkRegistry || DEFAULT_NETWORK_REGISTRY;
     if (registryAddress === DEFAULT_NETWORK_REGISTRY) {
@@ -245,14 +250,14 @@ federationCommand
       return;
     }
 
-    const registry = new Contract(registryAddress, NETWORK_REGISTRY_ABI, provider);
+    const registry = getContract({ address: registryAddress as `0x${string}`, abi: NETWORK_REGISTRY_ABI, client: publicClient });
 
-    const chainIds = await registry.getAllNetworkIds();
+    const chainIds = await registry.read.getAllNetworkIds() as readonly bigint[];
 
     console.log(chalk.cyan(`\nFound ${chainIds.length} networks:\n`));
 
     for (const chainId of chainIds) {
-      const network = await registry.getNetwork(chainId);
+      const network = await registry.read.getNetwork([chainId]) as { chainId: bigint; name: string; rpcUrl: string; stake: bigint; trustTier: number; isActive: boolean };
       
       const tier = TRUST_TIERS[network.trustTier];
       if (options.stakedOnly && network.trustTier < 1) continue;
@@ -282,11 +287,11 @@ federationCommand
     logger.header('ADD FEDERATION STAKE');
 
     const parent = federationCommand.opts();
-    const provider = new JsonRpcProvider(parent.hubRpc);
-    const wallet = new Wallet(options.privateKey, provider);
+    const publicClient = createPublicClient({ transport: http(parent.hubRpc) });
+    const account = privateKeyToAccount(options.privateKey as `0x${string}`);
+    const walletClient = createWalletClient({ account, transport: http(parent.hubRpc) });
     
     const registryAddress = parent.networkRegistry || DEFAULT_NETWORK_REGISTRY;
-    const registry = new Contract(registryAddress, NETWORK_REGISTRY_ABI, wallet);
 
     const amount = parseEther(options.amount);
 
@@ -294,9 +299,15 @@ federationCommand
     console.log(`  Chain ID: ${options.chainId}`);
     console.log(`  Amount: ${options.amount} ETH`);
 
-    const tx = await registry.addStake(options.chainId, { value: amount });
-    console.log(`  Transaction: ${tx.hash}`);
-    await tx.wait();
+    const hash = await walletClient.writeContract({
+      address: registryAddress as `0x${string}`,
+      abi: NETWORK_REGISTRY_ABI,
+      functionName: 'addStake',
+      args: [BigInt(options.chainId)],
+      value: amount,
+    });
+    console.log(`  Transaction: ${hash}`);
+    await publicClient.waitForTransactionReceipt({ hash });
 
     console.log(chalk.green('\nStake added successfully!'));
     console.log(`Run 'jeju federation status --chain-id ${options.chainId}' to see your new tier.`);
@@ -315,7 +326,7 @@ federationCommand
     logger.header('FEDERATED REGISTRIES');
 
     const parent = federationCommand.opts();
-    const provider = new JsonRpcProvider(parent.hubRpc);
+    const publicClient = createPublicClient({ transport: http(parent.hubRpc) });
     
     const hubAddress = parent.registryHub || DEFAULT_REGISTRY_HUB;
     if (hubAddress === DEFAULT_REGISTRY_HUB) {
@@ -323,9 +334,9 @@ federationCommand
       return;
     }
 
-    const hub = new Contract(hubAddress, REGISTRY_HUB_ABI, provider);
+    const hub = getContract({ address: hubAddress as `0x${string}`, abi: REGISTRY_HUB_ABI, client: publicClient });
 
-    let registryIds: string[];
+    let registryIds: readonly `0x${string}`[];
     
     if (options.type) {
       const typeIndex = REGISTRY_TYPES.findIndex(t => t.toLowerCase() === options.type.toLowerCase());
@@ -333,15 +344,15 @@ federationCommand
         console.log(chalk.red(`Invalid type. Choose from: ${REGISTRY_TYPES.join(', ')}`));
         return;
       }
-      registryIds = await hub.getRegistriesByType(typeIndex);
+      registryIds = await hub.read.getRegistriesByType([typeIndex]) as readonly `0x${string}`[];
     } else {
-      registryIds = await hub.getAllRegistryIds();
+      registryIds = await hub.read.getAllRegistryIds() as readonly `0x${string}`[];
     }
 
     console.log(chalk.cyan(`\nFound ${registryIds.length} registries:\n`));
 
     for (const registryId of registryIds) {
-      const registry = await hub.getRegistry(registryId);
+      const registry = await hub.read.getRegistry([registryId]) as { chainId: bigint; name: string; registryType: number; contractAddress: string; entryCount: bigint; lastSyncBlock: bigint };
       
       if (options.chain && registry.chainId.toString() !== options.chain) continue;
 

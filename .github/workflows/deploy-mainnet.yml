@@ -198,7 +198,7 @@ jobs:
 
       - name: Health checks
         run: |
-          cast block latest --rpc-url https://rpc.jeju.network
+          cast block latest --rpc-url https://rpc.jejunetwork.org
           echo "✅ Mainnet RPC responding"
 
       - name: Notify success

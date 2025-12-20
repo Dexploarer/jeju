@@ -33,7 +33,7 @@ pub struct DWSConfig {
 impl Default for DWSConfig {
     fn default() -> Self {
         Self {
-            gateway_url: "https://dws.jeju.network".to_string(),
+            gateway_url: "https://dws.jejunetwork.org".to_string(),
             cache_size_mb: 1024, // 1GB default cache
             serve_static: true,
             edge_cache: true,

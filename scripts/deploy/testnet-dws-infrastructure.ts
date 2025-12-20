@@ -22,6 +22,8 @@ import {
   type Hex,
   formatEther,
   parseEther,
+  keccak256,
+  toBytes,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { baseSepolia } from 'viem/chains';
@@ -311,8 +313,7 @@ class DWSInfrastructureDeployer {
 
     // Root node is 0x0
     const ROOT_NODE = '0x0000000000000000000000000000000000000000000000000000000000000000' as Hex;
-    // Label hash of "jeju"
-    const JEJU_LABEL = this.keccak256('jeju');
+    const JEJU_LABEL = this.labelHash('jeju');
 
     const hash = await this.walletClient.writeContract({
       address: registryAddress,
@@ -325,12 +326,8 @@ class DWSInfrastructureDeployer {
     console.log(`  ✅ .jeju TLD configured: ${hash}`);
   }
 
-  private keccak256(input: string): Hex {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(input);
-    return `0x${Buffer.from(
-      Bun.hash(data, 'keccak256') as ArrayBuffer
-    ).toString('hex')}` as Hex;
+  private labelHash(label: string): Hex {
+    return keccak256(toBytes(label));
   }
 
   private saveDeployment(): void {

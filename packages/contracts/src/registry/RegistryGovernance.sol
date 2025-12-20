@@ -49,7 +49,7 @@ interface IPredimarket {
  * - Appeal mechanism prevents false positives
  * - Guardian system for rapid response
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract RegistryGovernance is Ownable, Pausable, ReentrancyGuard {
     // ============ Enums ============

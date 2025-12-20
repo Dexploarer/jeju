@@ -73,19 +73,19 @@ contract TrainingE2ETest is Test {
         vm.prank(provider1);
         computeRegistry.register{value: 0.1 ether}(
             "provider1",
-            "node1.jeju.network",
+            "node1.jejunetwork.org",
             keccak256("gpu-123")
         );
         vm.prank(provider2);
         computeRegistry.register{value: 0.1 ether}(
             "provider2",
-            "node2.jeju.network",
+            "node2.jejunetwork.org",
             keccak256("gpu-456")
         );
         vm.prank(provider3);
         computeRegistry.register{value: 0.1 ether}(
             "provider3",
-            "node3.jeju.network",
+            "node3.jejunetwork.org",
             keccak256("gpu-789")
         );
 

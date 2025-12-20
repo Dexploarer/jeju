@@ -16,7 +16,7 @@ import {INFTModeration, INFTModerationHooks} from "./interfaces/INFTModeration.s
  * - Supports token-level bans (for reported content)
  * - Integrates with IdentityRegistry for agent checks
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract NFTModerationAdapter is INFTModeration, INFTModerationHooks, Ownable {
     // =========================================================================

@@ -5,7 +5,7 @@
   
   "localnet": {
     "rpc": {
-      "l1": "http://127.0.0.1:8545",
+      "l1": "http://127.0.0.1:6545",
       "l2": "http://127.0.0.1:9545",
       "ws": "ws://127.0.0.1:9546"
     },
@@ -72,66 +72,66 @@
   "testnet": {
     "rpc": {
       "l1": "https://ethereum-sepolia-rpc.publicnode.com",
-      "l2": "https://testnet-rpc.jejunetwork.org",
-      "ws": "wss://testnet-ws.jejunetwork.org"
+      "l2": "https://testnet-rpc.jeju.network",
+      "ws": "wss://testnet-ws.jeju.network"
     },
-    "explorer": "https://testnet-explorer.jejunetwork.org",
+    "explorer": "https://explorer.testnet.jeju.network",
     "indexer": {
-      "graphql": "https://testnet-indexer.jejunetwork.org/graphql",
-      "websocket": "wss://testnet-indexer.jejunetwork.org/graphql"
+      "graphql": "https://indexer.testnet.jeju.network/graphql",
+      "websocket": "wss://indexer.testnet.jeju.network/graphql"
     },
     "gateway": {
-      "ui": "https://testnet-gateway.jejunetwork.org",
-      "api": "https://testnet-api.jejunetwork.org",
-      "a2a": "https://testnet-a2a.jejunetwork.org",
-      "mcp": "https://testnet-api.jejunetwork.org/mcp",
-      "ws": "wss://testnet-ws.jejunetwork.org"
+      "ui": "https://gateway.testnet.jeju.network",
+      "api": "https://api.testnet.jeju.network",
+      "a2a": "https://a2a.testnet.jeju.network",
+      "mcp": "https://api.testnet.jeju.network/mcp",
+      "ws": "wss://testnet-ws.jeju.network"
     },
-    "rpcGateway": "https://testnet-rpc-gateway.jejunetwork.org",
-    "bazaar": "https://testnet-bazaar.jejunetwork.org",
+    "rpcGateway": "https://testnet-rpc.jeju.network",
+    "bazaar": "https://bazaar.testnet.jeju.network",
     "storage": {
-      "api": "https://testnet-storage.jejunetwork.org",
-      "ipfsGateway": "https://testnet-ipfs.jejunetwork.org"
+      "api": "https://storage.testnet.jeju.network",
+      "ipfsGateway": "https://ipfs.testnet.jeju.network"
     },
     "compute": {
-      "marketplace": "https://testnet-compute.jejunetwork.org",
-      "nodeApi": "https://testnet-compute-api.jejunetwork.org"
+      "marketplace": "https://compute.testnet.jeju.network",
+      "nodeApi": "https://compute.testnet.jeju.network"
     },
     "oif": {
-      "aggregator": "https://testnet-oif.jejunetwork.org/api"
+      "aggregator": "https://oif.testnet.jeju.network/api"
     },
     "leaderboard": {
-      "api": "https://leaderboard.jejunetwork.org/api",
-      "ui": "https://leaderboard.jejunetwork.org"
+      "api": "https://leaderboard.testnet.jeju.network/api",
+      "ui": "https://leaderboard.testnet.jeju.network"
     },
     "monitoring": {
-      "prometheus": "https://testnet-prometheus.jejunetwork.org",
-      "grafana": "https://testnet-grafana.jejunetwork.org"
+      "prometheus": "https://prometheus.testnet.jeju.network",
+      "grafana": "https://grafana.testnet.jeju.network"
     },
     "crucible": {
-      "api": "https://testnet-crucible.jejunetwork.org",
-      "executor": "https://testnet-crucible-executor.jejunetwork.org"
+      "api": "https://crucible.testnet.jeju.network",
+      "executor": "https://crucible.testnet.jeju.network"
     },
     "cql": {
-      "blockProducer": "https://testnet-cql.jejunetwork.org",
-      "miner": "https://testnet-cql-miner.jejunetwork.org"
+      "blockProducer": "https://cql.testnet.jeju.network",
+      "miner": "https://cql-miner.testnet.jeju.network"
     },
     "dws": {
-      "api": "https://testnet-dws.jejunetwork.org",
-      "compute": "https://testnet-dws.jejunetwork.org/compute"
+      "api": "https://dws.testnet.jeju.network",
+      "compute": "https://dws.testnet.jeju.network/compute"
     },
     "autocrat": {
-      "api": "https://testnet-autocrat.jejunetwork.org",
-      "a2a": "https://testnet-autocrat.jejunetwork.org/a2a"
+      "api": "https://autocrat.testnet.jeju.network",
+      "a2a": "https://autocrat.testnet.jeju.network/a2a"
     },
     "kms": {
-      "api": "https://testnet-kms.jejunetwork.org",
-      "mpc": "https://testnet-kms.jejunetwork.org/mpc"
+      "api": "https://kms.testnet.jeju.network",
+      "mpc": "https://kms.testnet.jeju.network/mpc"
     },
     "factory": {
-      "ui": "https://testnet-factory.jejunetwork.org",
-      "api": "https://testnet-factory.jejunetwork.org",
-      "mcp": "https://testnet-factory.jejunetwork.org/api/mcp"
+      "ui": "https://factory.testnet.jeju.network",
+      "api": "https://factory.testnet.jeju.network",
+      "mcp": "https://factory.testnet.jeju.network/api/mcp"
     },
     "externalRpcs": {
       "ethSepolia": "https://ethereum-sepolia-rpc.publicnode.com",

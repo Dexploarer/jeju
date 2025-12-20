@@ -16,7 +16,7 @@ on:
 
 env:
   # JejuPkg is now part of DWS at /npm endpoint
-  JEJUPKG_URL: ${{ secrets.JEJUPKG_URL || 'https://dws.jeju.network/npm' }}
+  JEJUPKG_URL: ${{ secrets.JEJUPKG_URL || 'https://dws.jejunetwork.org/npm' }}
 
 jobs:
   publish-to-jejupkg:

@@ -76,10 +76,10 @@ pub struct ContributionConfig {
 impl Default for VPNConfig {
     fn default() -> Self {
         Self {
-            rpc_url: "https://rpc.jeju.network".to_string(),
+            rpc_url: "https://rpc.jejunetwork.org".to_string(),
             chain_id: 420691,
             vpn_registry: "0x0000000000000000000000000000000000000000".to_string(),
-            coordinator_url: "wss://vpn-coordinator.jeju.network".to_string(),
+            coordinator_url: "wss://vpn-coordinator.jejunetwork.org".to_string(),
             dns_servers: vec!["1.1.1.1".to_string(), "8.8.8.8".to_string()],
             kill_switch: true,
             auto_connect: false,

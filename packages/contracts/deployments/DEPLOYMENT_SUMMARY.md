@@ -40,7 +40,7 @@
 
 ## Jeju Testnet (Chain ID: 420690) ⏳ PENDING
 
-**Status**: RPC not live yet (`testnet-rpc.jeju.network`)  
+**Status**: RPC not live yet (`testnet-rpc.jejunetwork.org`)  
 **When Live**: Deploy same contracts as Base Sepolia
 
 ## How Bridgeless OIF Works

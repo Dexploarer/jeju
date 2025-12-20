@@ -19,7 +19,7 @@ import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
  * - Auto-refund on low balance (optional)
  * - Full audit trail of all transactions
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract AgentVault is Ownable, ReentrancyGuard, Pausable {
     // ============ Structs ============

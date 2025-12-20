@@ -24,7 +24,7 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { getNetworkName, getRpcUrl } from '@jejunetwork/config';
+import { getNetworkName } from '@jejunetwork/config';
 import { createAutocratA2AServer } from './a2a-server';
 import { createAutocratMCPServer } from './mcp-server';
 import { getBlockchain } from './blockchain';
@@ -35,7 +35,7 @@ import { autocratAgentRuntime } from './agents';
 import { registerAutocratTriggers, startLocalCron, getComputeTriggerClient, type OrchestratorTriggerResult } from './compute-trigger';
 import { getProposalAssistant, type ProposalDraft, type QualityAssessment } from './proposal-assistant';
 import { getResearchAgent, type ResearchRequest } from './research-agent';
-import { getERC8004Client, type ERC8004Config } from './erc8004';
+import { ERC8004Client, getERC8004Client, type ERC8004Config } from './erc8004';
 import { getFutarchyClient, type FutarchyConfig } from './futarchy';
 import { getModerationSystem, initModeration, FlagType } from './moderation';
 import { getRegistryIntegrationClient, type RegistryIntegrationConfig } from './registry-integration';
@@ -43,7 +43,6 @@ import type { CouncilConfig } from './types';
 import { DAOService, createDAOService } from './dao-service';
 import { getFundingOracle, type FundingOracle } from './funding-oracle';
 import type { CasualSubmission, CasualProposalCategory } from './proposal-assistant';
-import { bugBountyRouter } from './bug-bounty-routes';
 
 const ZERO_ADDR = '0x0000000000000000000000000000000000000000' as `0x${string}`;
 const addr = (key: string) => (process.env[key] ?? ZERO_ADDR) as `0x${string}`;
@@ -51,7 +50,7 @@ const agent = (id: string, name: string, prompt: string) => ({ id, name, model: 
 
 function getConfig(): CouncilConfig {
   return {
-    rpcUrl: process.env.RPC_URL ?? process.env.JEJU_RPC_URL ?? getRpcUrl(),
+    rpcUrl: process.env.RPC_URL ?? process.env.JEJU_RPC_URL ?? 'http://localhost:6546',
     daoId: process.env.DEFAULT_DAO ?? 'jeju',
     contracts: {
       council: addr('COUNCIL_ADDRESS'),
@@ -135,7 +134,6 @@ const a2aServer = createAutocratA2AServer(config, blockchain);
 const mcpServer = createAutocratMCPServer(config, blockchain);
 app.route('/a2a', a2aServer.getRouter());
 app.route('/mcp', mcpServer.getRouter());
-app.route('/api/bug-bounty', bugBountyRouter);
 app.get('/.well-known/agent-card.json', (c) => c.redirect('/a2a/.well-known/agent-card.json'));
 
 app.get('/api/v1/proposals', async (c) => c.json(await callA2AInternal(app, 'list-proposals', { activeOnly: c.req.query('active') === 'true' })));
@@ -159,7 +157,6 @@ let orchestrator: AutocratOrchestrator | null = null;
 
 app.post('/api/v1/orchestrator/start', async (c) => {
   if (orchestrator?.getStatus().running) return c.json({ error: 'Already running' }, 400);
-  // @ts-expect-error CouncilConfig is compatible with AutocratConfig
   orchestrator = createOrchestrator(config, blockchain);
   await orchestrator.start();
   return c.json({ status: 'started', ...orchestrator.getStatus() });
@@ -653,7 +650,7 @@ app.get('/api/v1/registry/voting-power/:address', async (c) => {
   const address = c.req.param('address');
   const agentId = BigInt(c.req.query('agentId') ?? '0');
   const baseVotes = BigInt(c.req.query('baseVotes') ?? '1000000000000000000'); // Default 1 token
-  const power = await registryIntegration.getVotingPower(address as `0x${string}`, agentId, baseVotes);
+  const power = await registryIntegration.getVotingPower(address, agentId, baseVotes);
   return c.json({
     ...power,
     baseVotes: power.baseVotes.toString(),
@@ -748,7 +745,7 @@ app.get('/api/v1/registry/eligibility/:agentId', async (c) => {
 
 // Delegation endpoints
 app.get('/api/v1/registry/delegate/:address', async (c) => {
-  const delegate = await registryIntegration.getDelegate(c.req.param('address') as `0x${string}`);
+  const delegate = await registryIntegration.getDelegate(c.req.param('address'));
   if (!delegate) return c.json({ error: 'Not a registered delegate' }, 404);
   return c.json({
     ...delegate,
@@ -780,14 +777,13 @@ app.get('/api/v1/registry/security-council', async (c) => {
 });
 
 app.get('/api/v1/registry/is-council-member/:address', async (c) => {
-  const isMember = await registryIntegration.isSecurityCouncilMember(c.req.param('address') as `0x${string}`);
+  const isMember = await registryIntegration.isSecurityCouncilMember(c.req.param('address'));
   return c.json({ isMember });
 });
 
 async function runOrchestratorCycle(): Promise<OrchestratorTriggerResult> {
   const start = Date.now();
   if (!orchestrator) {
-    // @ts-expect-error CouncilConfig is compatible with AutocratConfig
     orchestrator = createOrchestrator(config, blockchain);
     await orchestrator.start();
   }
@@ -808,7 +804,7 @@ app.get('/health', (c) => c.json({
   erc8004: { identity: erc8004.identityDeployed, reputation: erc8004.reputationDeployed, validation: erc8004.validationDeployed },
   futarchy: { council: futarchy.councilDeployed, predimarket: futarchy.predimarketDeployed },
   registry: { integration: !!registryConfig.integrationContract, delegation: !!registryConfig.delegationRegistry },
-  endpoints: { a2a: '/a2a', mcp: '/mcp', rest: '/api/v1', dao: '/api/v1/dao', agents: '/api/v1/agents', futarchy: '/api/v1/futarchy', moderation: '/api/v1/moderation', registry: '/api/v1/registry', bugBounty: '/api/bug-bounty' },
+  endpoints: { a2a: '/a2a', mcp: '/mcp', rest: '/api/v1', dao: '/api/v1/dao', agents: '/api/v1/agents', futarchy: '/api/v1/futarchy', moderation: '/api/v1/moderation', registry: '/api/v1/registry' },
 }));
 
 // Prometheus metrics (excludes /metrics and /health from request count)
@@ -912,7 +908,6 @@ async function start() {
 `);
 
   if (autoStart && blockchain.councilDeployed) {
-    // @ts-expect-error CouncilConfig is compatible with AutocratConfig
     orchestrator = createOrchestrator(config, blockchain);
     await orchestrator.start();
     if (triggerMode === 'local') startLocalCron(runOrchestratorCycle);
@@ -940,8 +935,3 @@ export { getERC8004Client, ERC8004Client, type ERC8004Config, type AgentIdentity
 export { getFutarchyClient, FutarchyClient, type FutarchyConfig, type FutarchyMarket } from './futarchy';
 export { getModerationSystem, ModerationSystem, FlagType, type ProposalFlag, type TrustRelation, type ModerationScore, type ModeratorStats } from './moderation';
 export { getRegistryIntegrationClient, RegistryIntegrationClient, resetRegistryIntegrationClient, type RegistryIntegrationConfig, type AgentProfile, type ProviderReputation, type VotingPower, type SearchResult, type EligibilityResult } from './registry-integration';
-export { getBugBountyService, BugBountyService, assessSubmission } from './bug-bounty-service';
-export { validateSubmission, securityValidationAgent } from './security-validation-agent';
-export { validatePoCInSandbox, createSandboxConfig, executeInSandbox, getSandboxStats } from './sandbox-executor';
-export { bugBountyRouter, createBugBountyServer } from './bug-bounty-routes';
-export { BountySeverity, VulnerabilityType, BountySubmissionStatus, ValidationResult, SEVERITY_REWARDS, type BountySubmission, type BountySubmissionDraft, type BountyAssessment, type BountyGuardianVote, type ResearcherStats, type BountyPoolStats } from './types';

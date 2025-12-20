@@ -74,6 +74,16 @@ export const testCommand = new Command('test')
       process.exit(1);
     }
 
+    // Fail fast on invalid app selection (before any setup)
+    if (options.app) {
+      const apps = discoverApps(rootDir);
+      const exists = apps.some((a) => a.name === options.app);
+      if (!exists) {
+        logger.error(`App not found: ${options.app}`);
+        process.exit(1);
+      }
+    }
+
     // Create test orchestrator
     const testOrchestrator = createTestOrchestrator({
       mode,
@@ -339,23 +349,24 @@ async function runBunTests(
   const start = Date.now();
   logger.step(`Running Bun tests (${type})...`);
 
-  // Only test our core directories
-  const testDirs = type === 'unit'
-    ? ['packages/', 'apps/']
-    : ['packages/tests/integration/'];
-
-  const existingDirs = testDirs.filter(d => existsSync(join(rootDir, d)));
-  if (existingDirs.length === 0) {
-    return { name: type, passed: true, duration: 0, skipped: true };
-  }
-
   try {
-    const args = ['test', ...existingDirs];
+    // Intentionally run tests from `packages/tests` only.
+    // Running `bun test` at repo root or across workspaces pulls in vendor workspaces
+    // (e.g. `vendor/babylon`) which is not part of Jeju’s CI surface.
+    const testsRoot = join(rootDir, 'packages', 'tests');
+    if (!existsSync(testsRoot)) {
+      return { name: type, passed: true, duration: 0, skipped: true };
+    }
+
+    const args = type === 'unit'
+      ? ['test', 'unit/', 'shared/']
+      : ['test', 'integration/'];
+
     if (options.coverage) args.push('--coverage');
     if (options.watch) args.push('--watch');
 
     await execa('bun', args, {
-      cwd: rootDir,
+      cwd: testsRoot,
       stdio: 'inherit',
       env: { ...process.env, ...env },
     });

@@ -1,67 +1,85 @@
 {
   "name": "@jejunetwork/shared",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Shared hooks, components, APIs, services, protocols, database layer, auth, and cryptography for Jeju apps",
+  "license": "MIT",
   "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./auth": "./src/auth/index.ts",
-    "./auth/siwe": "./src/auth/siwe.ts",
-    "./auth/siwf": "./src/auth/siwf.ts",
-    "./auth/passkeys": "./src/auth/passkeys.ts",
-    "./auth/provider": "./src/auth/provider.tsx",
-    "./auth/hooks": "./src/auth/hooks.ts",
-    "./hooks/useBanStatus": "./src/hooks/useBanStatus.ts",
-    "./components/BanBanner": "./src/components/BanBanner.tsx",
-    "./api/moderation": "./src/api/moderation.ts",
-    "./health-middleware": "./src/health-middleware.ts",
-    "./db": "./src/db/index.ts",
-    "./db/covenant-sql": "./src/db/covenant-sql.ts",
-    "./db/migration": "./src/db/migration.ts",
-    "./db/typeorm-driver": "./src/db/typeorm-driver.ts",
-    "./crypto": "./src/crypto/index.ts",
-    "./crypto/mpc-custody": "./src/crypto/mpc-custody.ts",
-    "./crypto/hsm-integration": "./src/crypto/hsm-integration.ts",
-    "./chains": "./src/chains/index.ts",
-    "./services": "./src/services/index.ts",
-    "./services/database": "./src/services/database.ts",
-    "./services/cache": "./src/services/cache.ts",
-    "./services/storage": "./src/services/storage.ts",
-    "./services/kms": "./src/services/kms.ts",
-    "./services/cron": "./src/services/cron.ts",
-    "./services/jns": "./src/services/jns.ts",
-    "./services/deploy": "./src/services/deploy.ts",
-    "./protocols": "./src/protocols/index.ts",
-    "./protocols/server": "./src/protocols/server.ts",
-    "./protocols/a2a": "./src/protocols/a2a.ts",
-    "./protocols/mcp": "./src/protocols/mcp.ts",
-    "./protocols/middleware": "./src/protocols/middleware.ts",
-    "./service-worker": "./src/service-worker/index.ts",
-    "./service-worker/sw": "./src/service-worker/sw.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./auth": {
+      "types": "./dist/auth/index.d.ts",
+      "import": "./dist/auth/index.js"
+    },
+    "./chains": {
+      "types": "./dist/chains/index.d.ts",
+      "import": "./dist/chains/index.js"
+    },
+    "./services": {
+      "types": "./dist/services/index.d.ts",
+      "import": "./dist/services/index.js"
+    },
+    "./protocols": {
+      "types": "./dist/protocols/index.d.ts",
+      "import": "./dist/protocols/index.js"
+    },
+    "./crypto": {
+      "types": "./dist/crypto/index.d.ts",
+      "import": "./dist/crypto/index.js"
+    },
+    "./db": {
+      "types": "./dist/db/index.d.ts",
+      "import": "./dist/db/index.js"
+    }
   },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "bun run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/elizaos/jeju.git",
+    "directory": "packages/shared"
+  },
+  "keywords": [
+    "jeju",
+    "shared",
+    "auth",
+    "siwe",
+    "protocols",
+    "services"
+  ],
   "dependencies": {
     "@jejunetwork/db": "workspace:*",
+    "@jejunetwork/kms": "workspace:*",
     "@jejunetwork/config": "workspace:*",
-    "hono": "4.7.0",
-    "viem": "2.41.2"
+    "hono": "^4.7.0",
+    "viem": "^2.21.0",
+    "wagmi": "^2.12.0"
   },
   "peerDependencies": {
-    "react": ">=18.0.0",
-    "wagmi": ">=2.0.0"
-  },
-  "scripts": {
-    "typecheck": "tsc --noEmit"
-  },
-  "peerDependenciesMeta": {
-    "react": { "optional": true },
-    "wagmi": { "optional": true }
+    "react": "^18.0.0 || ^19.0.0"
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "@types/node": "22.15.30",
-    "@types/react": "19.0.0",
-    "typescript": "5.7.3"
+    "@types/node": "^25.0.2",
+    "@types/react": "^18.2.0 || ^19.0.0",
+    "typescript": "^5.7.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

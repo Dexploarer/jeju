@@ -23,7 +23,7 @@ interface Account {
 
 interface HDAccount extends Account {
   type: 'hd';
-  hdPath: string;
+  hdPath: `m/44'/60'/${string}`;
   index: number;
 }
 

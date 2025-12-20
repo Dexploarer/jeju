@@ -46,7 +46,7 @@ variable "node_count" {
 variable "jeju_rpc_url" {
   description = "Jeju L2 RPC URL"
   type        = string
-  default     = "https://testnet-rpc.jeju.network"
+  default     = "https://testnet-rpc.jejunetwork.org"
 }
 
 variable "node_registry_address" {

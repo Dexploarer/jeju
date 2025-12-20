@@ -46,7 +46,6 @@ contract ModelRegistryTest is Test {
             "jeju-labs",
             ModelRegistry.ModelType.LLM,
             ModelRegistry.LicenseType.MIT,
-            "",
             ModelRegistry.AccessLevel.PUBLIC,
             "LLaMA 3 fine-tuned on Jeju documentation",
             tags
@@ -85,7 +84,7 @@ contract ModelRegistryTest is Test {
         assertTrue(versionId != bytes32(0));
         
         // Get versions
-        ModelRegistry.ModelVersion[] memory versions = modelRegistry.getModelVersions(modelId);
+        ModelRegistry.ModelVersion[] memory versions = modelRegistry.getVersions(modelId);
         assertEq(versions.length, 1);
         assertEq(versions[0].version, "1.0.0");
     }
@@ -109,11 +108,11 @@ contract ModelRegistryTest is Test {
         
         // Download as user
         vm.prank(user);
-        modelRegistry.downloadModel(modelId);
+        modelRegistry.recordDownload(modelId);
         
-        // Verify download count via metrics
-        ModelRegistry.ModelMetrics memory modelMetrics = modelRegistry.getMetrics(modelId);
-        assertEq(modelMetrics.totalDownloads, 1);
+        // Verify download count via getModel
+        ModelRegistry.Model memory model = modelRegistry.getModel(modelId);
+        assertEq(model.downloadCount, 1);
     }
     
     function test_StarModel() public {
@@ -123,15 +122,15 @@ contract ModelRegistryTest is Test {
         vm.prank(user);
         modelRegistry.toggleStar(modelId);
         
-        ModelRegistry.ModelMetrics memory modelMetrics = modelRegistry.getMetrics(modelId);
-        assertEq(modelMetrics.totalStars, 1);
+        ModelRegistry.Model memory model = modelRegistry.getModel(modelId);
+        assertEq(model.starCount, 1);
         
         // Unstar
         vm.prank(user);
         modelRegistry.toggleStar(modelId);
         
-        modelMetrics = modelRegistry.getMetrics(modelId);
-        assertEq(modelMetrics.totalStars, 0);
+        model = modelRegistry.getModel(modelId);
+        assertEq(model.starCount, 0);
     }
     
     function test_CreateMultipleModels() public {
@@ -145,7 +144,6 @@ contract ModelRegistryTest is Test {
             "org1",
             ModelRegistry.ModelType.LLM,
             ModelRegistry.LicenseType.MIT,
-            "",
             ModelRegistry.AccessLevel.PUBLIC,
             "First model",
             tags1
@@ -158,7 +156,6 @@ contract ModelRegistryTest is Test {
             "org1",
             ModelRegistry.ModelType.VISION,
             ModelRegistry.LicenseType.APACHE_2,
-            "",
             ModelRegistry.AccessLevel.PUBLIC,
             "Second model",
             tags2
@@ -188,7 +185,6 @@ contract ModelRegistryTest is Test {
             "test-org",
             ModelRegistry.ModelType.LLM,
             ModelRegistry.LicenseType.MIT,
-            "",
             ModelRegistry.AccessLevel.PUBLIC,
             "A test model",
             tags

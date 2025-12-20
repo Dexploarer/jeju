@@ -48,7 +48,7 @@ import "./IGitHubReputationProvider.sol";
  * - Protocol treasury gets 5%
  * - Market makers get 5%
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract ModerationMarketplace is Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;

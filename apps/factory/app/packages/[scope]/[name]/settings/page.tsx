@@ -172,7 +172,7 @@ export default function PackageSettingsPage() {
                   <label className="block text-sm font-medium text-factory-300 mb-2">Homepage URL</label>
                   <input
                     type="url"
-                    defaultValue="https://jeju.network"
+                    defaultValue="https://jejunetwork.org"
                     className="input"
                   />
                 </div>
@@ -181,7 +181,7 @@ export default function PackageSettingsPage() {
                   <label className="block text-sm font-medium text-factory-300 mb-2">Repository URL</label>
                   <input
                     type="url"
-                    defaultValue="https://git.jeju.network/jeju/sdk"
+                    defaultValue="https://git.jejunetwork.org/jeju/sdk"
                     className="input"
                   />
                 </div>

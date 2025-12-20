@@ -316,6 +316,7 @@ releases:
     installed: {{ ne .Environment.Name "localnet" }}
     values:
       - ../helm/blockscout/values.yaml
+      - ../helm/blockscout/values-{{ .Environment.Name }}.yaml
 
   # Faucet (Testnet only)
   - name: faucet

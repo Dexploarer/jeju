@@ -64,19 +64,11 @@ service:
     port: 8050
 
 ingress:
-  enabled: true
-  className: "nginx"
-  annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
-  hosts:
-    - host: explorer.testnet.jejunetwork.org
-      paths:
-        - path: /
-          pathType: Prefix
-  tls:
-    - secretName: blockscout-tls
-      hosts:
-        - explorer.testnet.jejunetwork.org
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts: []
+  tls: []
 
 # External PostgreSQL (RDS)
 externalDatabase:
@@ -88,13 +80,13 @@ externalDatabase:
 
 config:
   network: "Jeju"
-  subnetwork: "Mainnet"
-  chainId: 420691
+  subnetwork: ""
+  chainId: 0
   
   ethereum:
-    jsonRpcUrl: "http://reth-archive:8545"
-    traceUrl: "http://reth-archive:8545"
-    wsUrl: "ws://reth-archive:8546"
+    jsonRpcUrl: ""
+    traceUrl: ""
+    wsUrl: ""
   
   # OP Stack specific
   rollup:
@@ -128,6 +120,7 @@ config:
 nodeSelector: {}
 tolerations: []
 affinity: {}
+
 
 
 

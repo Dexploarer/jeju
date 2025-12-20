@@ -31,7 +31,7 @@ interface ILedgerManager {
  * - Overpayments don't require refunds
  * - Works across all services (Cloud, MCP, Caliguland, etc.)
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract CreditManager is Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;

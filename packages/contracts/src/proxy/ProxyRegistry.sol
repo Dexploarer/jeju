@@ -18,7 +18,7 @@ import {IProxyRegistry} from "./interfaces/IProxyRegistry.sol";
  * - Session tracking for reputation
  * - Slashing for misbehavior
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract ProxyRegistry is IProxyRegistry, Ownable, Pausable, ReentrancyGuard {
     // ============ State Variables ============

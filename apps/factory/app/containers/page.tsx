@@ -121,7 +121,7 @@ export default function ContainersPage() {
   };
 
   const copyPull = (name: string) => {
-    navigator.clipboard.writeText(`docker pull registry.jeju.network/${name}`);
+    navigator.clipboard.writeText(`docker pull registry.jejunetwork.org/${name}`);
     setCopiedImage(name);
     setTimeout(() => setCopiedImage(null), 2000);
   };

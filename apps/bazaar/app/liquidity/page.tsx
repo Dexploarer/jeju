@@ -152,7 +152,7 @@ export default function LiquidityPage() {
               Ready to start earning from cross-chain transfers?
             </p>
             <a 
-              href="https://gateway.jeju.network?tab=xlp" 
+              href="https://gateway.jejunetwork.org?tab=xlp" 
               target="_blank"
               rel="noopener noreferrer"
               className="btn-primary inline-block px-8 py-3"

@@ -32,7 +32,7 @@ import {IIdentityRegistry} from "../registry/interfaces/IIdentityRegistry.sol";
  * - app.a2a: A2A endpoint for agent communication
  * - app.mcp: MCP endpoint
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract JNSResolver is IJNSResolver {
     // ============ Structs ============
@@ -415,6 +415,7 @@ contract JNSResolver is IJNSResolver {
         return interfaceId == type(IJNSResolver).interfaceId || interfaceId == 0x01ffc9a7; // EIP-165
     }
 }
+
 
 
 

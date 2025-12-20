@@ -407,8 +407,8 @@ export function printConfigSummary(network: NetworkType): void {
   
   console.log(`Contracts: ${configured}/${total} configured`);
   
-  // Services
-  const services = JSON.parse(readFileSync(join(CONFIG_DIR, 'services.json'), 'utf-8'));
+  // Services - just verify file exists
+  JSON.parse(readFileSync(join(CONFIG_DIR, 'services.json'), 'utf-8'));
   console.log(`Services: Configured for ${network}`);
   
   console.log('─'.repeat(60));

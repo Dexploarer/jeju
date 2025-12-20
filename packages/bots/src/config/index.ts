@@ -56,7 +56,7 @@ export function getChainConfig(chainId: EVMChainId): ChainRpcConfig {
   
   return {
     ...base,
-    rpcUrl: getEnv(rpcEnvKey, 'http://localhost:8545'),
+    rpcUrl: getEnv(rpcEnvKey, 'http://localhost:6546'),
     wsUrl: process.env[`${rpcEnvKey.replace('_RPC_', '_WS_')}`],
   };
 }

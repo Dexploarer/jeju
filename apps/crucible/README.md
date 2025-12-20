@@ -54,7 +54,7 @@ bun install
 ```bash
 # Required
 export PRIVATE_KEY=0x...
-export RPC_URL=http://127.0.0.1:8545
+export RPC_URL=http://127.0.0.1:6546
 
 # Contract addresses (after deployment)
 export AGENT_VAULT_ADDRESS=0x...

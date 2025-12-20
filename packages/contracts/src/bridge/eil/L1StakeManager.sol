@@ -24,7 +24,7 @@ import {ICrossDomainMessenger} from "./ICrossDomainMessenger.sol";
  * - Slash evidence must be provable via L1 messages from L2
  * - 8-day unbonding matches rollup challenge period
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract L1StakeManager is Ownable, ReentrancyGuard, Pausable {
     // ============ Constants ============

@@ -11,6 +11,7 @@ import {
   type Chain,
 } from 'viem';
 import { base, baseSepolia } from 'viem/chains';
+import { getPoCConfig, getCurrentNetwork } from '@jejunetwork/config';
 import { type PoCRevocation, type PoCVerificationEvent, type PoCEventListener } from './types';
 import { PoCVerifier } from './verifier';
 import { createRegistryClient, type PoCRegistryClient } from './registry-client';
@@ -364,24 +365,27 @@ export class PoCMonitor {
     };
   }
 
+  /**
+   * Create monitor from config
+   * 
+   * Config values from packages/config:
+   * - validatorAddress: contracts.json -> external.baseSepolia.poc.validator
+   * - identityRegistryAddress: contracts.json -> external.baseSepolia.poc.identityRegistry
+   * - rpcUrl: contracts.json -> external.baseSepolia.rpcUrl
+   */
   static fromEnv(verifier?: PoCVerifier): PoCMonitor {
-    const network = process.env.NETWORK ?? 'testnet';
+    const network = getCurrentNetwork();
     const chain = network === 'mainnet' ? base : baseSepolia;
-    const rpcUrl = process.env.RPC_URL ?? (network === 'mainnet'
-      ? 'https://mainnet.base.org'
-      : 'https://sepolia.base.org');
+    const pocConfig = getPoCConfig();
 
-    const validatorAddress = process.env.POC_VALIDATOR_ADDRESS;
-    if (!validatorAddress) throw new Error('POC_VALIDATOR_ADDRESS required');
-
-    const identityRegistryAddress = process.env.IDENTITY_REGISTRY_ADDRESS;
-    if (!identityRegistryAddress) throw new Error('IDENTITY_REGISTRY_ADDRESS required');
+    if (!pocConfig.validatorAddress) throw new Error('PoC validator not configured');
+    if (!pocConfig.identityRegistryAddress) throw new Error('PoC identity registry not configured');
 
     return new PoCMonitor({
       chain,
-      rpcUrl,
-      validatorAddress: validatorAddress as Address,
-      identityRegistryAddress: identityRegistryAddress as Address,
+      rpcUrl: pocConfig.rpcUrl,
+      validatorAddress: pocConfig.validatorAddress as Address,
+      identityRegistryAddress: pocConfig.identityRegistryAddress as Address,
       checkInterval: Number(process.env.POC_CHECK_INTERVAL) || 60 * 60 * 1000,
       reverificationThreshold: Number(process.env.POC_REVERIFY_THRESHOLD) || 24 * 60 * 60 * 1000,
       enableRevocationWatch: process.env.POC_REVOCATION_WATCH !== 'false',

@@ -20,7 +20,7 @@ import {IIdentityRegistry} from "../registry/interfaces/IIdentityRegistry.sol";
  * - Integrity hashes for tamper detection (SHA-512)
  * - Multi-maintainer support with granular permissions
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract PackageRegistry is IPackageRegistry, Ownable, Pausable, ReentrancyGuard {
     // ============ State Variables ============

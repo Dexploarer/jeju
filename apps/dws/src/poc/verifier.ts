@@ -18,6 +18,7 @@ import {
 } from 'viem';
 import { privateKeyToAccount, type PrivateKeyAccount } from 'viem/accounts';
 import { base, baseSepolia } from 'viem/chains';
+import { getPoCConfig, getCurrentNetwork } from '@jejunetwork/config';
 import {
   type TEEQuote,
   type TEEPlatform,
@@ -281,27 +282,36 @@ export class PoCVerifier {
     return this.walletClient.writeContract(request);
   }
 
+  /**
+   * Create verifier from config with optional env overrides
+   * 
+   * Config values from packages/config:
+   * - validatorAddress: contracts.json -> external.baseSepolia.poc.validator
+   * - identityRegistryAddress: contracts.json -> external.baseSepolia.poc.identityRegistry
+   * - rpcUrl: contracts.json -> external.baseSepolia.rpcUrl
+   * 
+   * Required env vars (secrets):
+   * - POC_SIGNER_KEY: Oracle signer private key
+   */
   static fromEnv(): PoCVerifier {
-    const network = process.env.NETWORK ?? 'testnet';
+    const network = getCurrentNetwork();
     const chain = network === 'mainnet' ? base : baseSepolia;
-    const rpcUrl = process.env.RPC_URL ?? (network === 'mainnet' ? 'https://mainnet.base.org' : 'https://sepolia.base.org');
+    const pocConfig = getPoCConfig();
 
     const signerKey = process.env.POC_SIGNER_KEY;
     if (!signerKey) throw new Error('POC_SIGNER_KEY required');
 
-    const validatorAddress = process.env.POC_VALIDATOR_ADDRESS;
-    if (!validatorAddress) throw new Error('POC_VALIDATOR_ADDRESS required');
-
-    const identityRegistryAddress = process.env.IDENTITY_REGISTRY_ADDRESS;
-    if (!identityRegistryAddress) throw new Error('IDENTITY_REGISTRY_ADDRESS required');
+    if (!pocConfig.validatorAddress) throw new Error('PoC validator not configured');
+    if (!pocConfig.identityRegistryAddress) throw new Error('PoC identity registry not configured');
 
     const hardwareIdSalt = process.env.HARDWARE_ID_SALT ?? keccak256(toBytes('jeju-poc-salt'));
 
     return new PoCVerifier({
-      chain, rpcUrl,
+      chain,
+      rpcUrl: pocConfig.rpcUrl,
       signerKey: signerKey as Hex,
-      validatorAddress: validatorAddress as Address,
-      identityRegistryAddress: identityRegistryAddress as Address,
+      validatorAddress: pocConfig.validatorAddress as Address,
+      identityRegistryAddress: pocConfig.identityRegistryAddress as Address,
       registryEndpoint: process.env.POC_REGISTRY_ENDPOINT,
       hardwareIdSalt: hardwareIdSalt as Hex,
     });

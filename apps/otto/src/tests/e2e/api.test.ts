@@ -87,7 +87,7 @@ const createTestApp = () => {
 <html>
 <head>
   <meta property="fc:frame" content="vNext" />
-  <meta property="fc:frame:image" content="https://otto.jeju.network/frame/image" />
+  <meta property="fc:frame:image" content="https://otto.jejunetwork.org/frame/image" />
 </head>
 <body>Otto Frame</body>
 </html>`);

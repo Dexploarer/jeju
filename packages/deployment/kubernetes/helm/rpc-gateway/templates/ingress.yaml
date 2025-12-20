@@ -36,7 +36,7 @@ spec:
               service:
                 name: {{ include "rpc-gateway.fullname" $ }}
                 port:
-                  {{- if or (eq $host "ws.jejunetwork.org") (eq $host "testnet-ws.jejunetwork.org") }}
+                  {{- if or (hasPrefix "ws." $host) (contains "-ws." $host) }}
                   number: {{ $.Values.service.ws.port }}
                   {{- else }}
                   number: {{ $.Values.service.http.port }}

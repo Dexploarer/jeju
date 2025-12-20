@@ -191,7 +191,7 @@ jobs:
         working-directory: packages/contracts
         env:
           PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
-          RPC_URL: https://testnet-rpc.jeju.network
+          RPC_URL: https://testnet-rpc.jejunetwork.org
         run: |
           forge script script/DeployCompute.s.sol:DeployComputeScript \
             --rpc-url $RPC_URL \
@@ -202,7 +202,7 @@ jobs:
         working-directory: packages/contracts
         env:
           PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
-          RPC_URL: https://testnet-rpc.jeju.network
+          RPC_URL: https://testnet-rpc.jejunetwork.org
         run: |
           forge create src/compute/WorkerRegistry.sol:WorkerRegistry \
             --rpc-url $RPC_URL \
@@ -226,7 +226,7 @@ jobs:
           PROVIDER_PRIVATE_KEY: ${{ secrets.PROVIDER_PRIVATE_KEY }}
           TESTNET_COMPUTE_REGISTRY_ADDRESS: ${{ secrets.TESTNET_COMPUTE_REGISTRY_ADDRESS }}
           TESTNET_WORKER_REGISTRY_ADDRESS: ${{ secrets.TESTNET_WORKER_REGISTRY_ADDRESS }}
-          TESTNET_RPC_URL: https://testnet-rpc.jeju.network
+          TESTNET_RPC_URL: https://testnet-rpc.jejunetwork.org
         run: bun scripts/seed-providers.ts --network testnet
 
   verify:
@@ -240,10 +240,10 @@ jobs:
 
       - name: Health checks
         run: |
-          cast block latest --rpc-url https://testnet-rpc.jeju.network
+          cast block latest --rpc-url https://testnet-rpc.jejunetwork.org
           echo "✅ Testnet RPC responding"
 
       - name: Verify compute infrastructure
         run: |
-          cast call ${{ secrets.TESTNET_COMPUTE_REGISTRY_ADDRESS }} "getProviderCount()(uint256)" --rpc-url https://testnet-rpc.jeju.network
+          cast call ${{ secrets.TESTNET_COMPUTE_REGISTRY_ADDRESS }} "getProviderCount()(uint256)" --rpc-url https://testnet-rpc.jejunetwork.org
           echo "✅ ComputeRegistry responding"

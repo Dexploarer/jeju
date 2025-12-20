@@ -43,7 +43,7 @@ import "../interfaces/IReputationProvider.sol";
  * - For serious violations, calls requestBanViaGovernance()
  * - Delegates all ban decisions to RegistryGovernance futarchy
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract CloudReputationProvider is IReputationProvider, Ownable, Pausable, ReentrancyGuard {
     // ============ State Variables ============

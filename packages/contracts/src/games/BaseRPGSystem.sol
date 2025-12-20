@@ -20,7 +20,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
  * - Player allowed/blocked hooks
  * - Standard events for indexing
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 abstract contract BaseRPGSystem is Ownable, ReentrancyGuard {
     // ============ State Variables ============

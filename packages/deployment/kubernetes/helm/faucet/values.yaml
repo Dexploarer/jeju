@@ -22,19 +22,22 @@ service:
 
 ingress:
   enabled: true
-  className: "nginx"
+  className: alb
   annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    nginx.ingress.kubernetes.io/limit-rpm: "10"
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-1:502713364895:certificate/0a915a42-9da2-4133-af16-ac7080d23308"
   hosts:
-    - host: faucet.testnet.jejunetwork.org
+    - host: faucet.testnet.jeju.network
       paths:
         - path: /
           pathType: Prefix
   tls:
     - secretName: faucet-tls
       hosts:
-        - faucet.testnet.jejunetwork.org
+        - faucet.testnet.jeju.network
 
 resources:
   limits:
@@ -76,6 +79,7 @@ config:
 nodeSelector: {}
 tolerations: []
 affinity: {}
+
 
 
 

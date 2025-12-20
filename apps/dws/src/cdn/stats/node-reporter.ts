@@ -7,7 +7,8 @@
  * - Regional coordinator (for routing decisions)
  */
 
-import { Contract, JsonRpcProvider, Wallet } from 'ethers';
+import { createPublicClient, createWalletClient, http, getContract, type Address } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
 import type { EdgeCache } from '../cache/edge-cache';
 import type { RegionalCacheCoordinator } from '../cache/regional-coordinator';
 import type { CDNRegion } from '@jejunetwork/types';
@@ -165,9 +166,9 @@ export class NodeStatsReporter {
   private coordinator: RegionalCacheCoordinator | null;
   
   // Contract integration
-  private provider: JsonRpcProvider | null = null;
-  private wallet: Wallet | null = null;
-  private statsContract: Contract | null = null;
+  private publicClient: ReturnType<typeof createPublicClient> | null = null;
+  private walletClient: ReturnType<typeof createWalletClient> | null = null;
+  private statsContractAddress: Address | null = null;
   
   // Stats tracking
   private startTime: number = Date.now();
@@ -189,7 +190,7 @@ export class NodeStatsReporter {
     this.config = {
       nodeId: config.nodeId ?? `node-${Math.random().toString(36).slice(2, 10)}`,
       region: config.region ?? 'us-east',
-      rpcUrl: config.rpcUrl ?? process.env.RPC_URL ?? 'http://localhost:8545',
+      rpcUrl: config.rpcUrl ?? process.env.RPC_URL ?? 'http://localhost:6546',
       privateKey: config.privateKey ?? process.env.NODE_PRIVATE_KEY,
       statsContractAddress: config.statsContractAddress ?? process.env.CDN_STATS_CONTRACT,
       reportIntervalMs: config.reportIntervalMs ?? 3600000, // 1 hour
@@ -198,13 +199,13 @@ export class NodeStatsReporter {
 
     // Initialize contract if configured
     if (this.config.rpcUrl && this.config.privateKey && this.config.statsContractAddress) {
-      this.provider = new JsonRpcProvider(this.config.rpcUrl);
-      this.wallet = new Wallet(this.config.privateKey, this.provider);
-      this.statsContract = new Contract(
-        this.config.statsContractAddress,
-        CDN_STATS_ABI,
-        this.wallet
-      );
+      this.publicClient = createPublicClient({ transport: http(this.config.rpcUrl) });
+      const account = privateKeyToAccount(this.config.privateKey as `0x${string}`);
+      this.walletClient = createWalletClient({ 
+        account, 
+        transport: http(this.config.rpcUrl) 
+      });
+      this.statsContractAddress = this.config.statsContractAddress as Address;
     }
   }
 
@@ -431,7 +432,7 @@ export class NodeStatsReporter {
     }
 
     // Submit to contract if configured
-    if (this.statsContract && this.wallet) {
+    if (this.statsContractAddress && this.walletClient) {
       await this.submitToContract(report);
     }
 
@@ -446,22 +447,27 @@ export class NodeStatsReporter {
    * Submit report to smart contract via oracle
    */
   private async submitToContract(report: NodeReport): Promise<void> {
-    if (!this.statsContract || !this.wallet) return;
+    if (!this.statsContractAddress || !this.walletClient || !this.publicClient) return;
 
     // Get oracle attestation (no self-signing)
     const attestation = await this.getOracleAttestation(report);
 
     // Submit to contract
-    const tx = await this.statsContract.reportStats(
-      `0x${this.config.nodeId.padStart(64, '0')}`,
-      BigInt(attestation.bytesServed),
-      BigInt(attestation.requestsServed),
-      BigInt(Math.floor(attestation.cacheHitRate * 10000)), // Basis points
-      attestation.signature
-    );
+    const hash = await this.walletClient.writeContract({
+      address: this.statsContractAddress,
+      abi: [{ name: 'reportStats', type: 'function', stateMutability: 'nonpayable', inputs: [{ name: 'nodeId', type: 'bytes32' }, { name: 'bytesServed', type: 'uint256' }, { name: 'requestsServed', type: 'uint256' }, { name: 'cacheHitRate', type: 'uint256' }, { name: 'signature', type: 'bytes' }], outputs: [] }],
+      functionName: 'reportStats',
+      args: [
+        `0x${this.config.nodeId.padStart(64, '0')}` as `0x${string}`,
+        BigInt(attestation.bytesServed),
+        BigInt(attestation.requestsServed),
+        BigInt(Math.floor(attestation.cacheHitRate * 10000)),
+        attestation.signature as `0x${string}`,
+      ],
+    });
 
-    await tx.wait();
-    console.log(`[NodeStatsReporter] On-chain report submitted: ${tx.hash}`);
+    await this.publicClient.waitForTransactionReceipt({ hash });
+    console.log(`[NodeStatsReporter] On-chain report submitted: ${hash}`);
   }
 
   /**
@@ -501,37 +507,51 @@ export class NodeStatsReporter {
    * Get pending rewards
    */
   async getPendingRewards(): Promise<bigint> {
-    if (!this.statsContract) return 0n;
+    if (!this.statsContractAddress || !this.publicClient) return 0n;
 
-    const stats = await this.statsContract.getNodeStats(
-      `0x${this.config.nodeId.padStart(64, '0')}`
-    );
-    return stats.pendingRewards as bigint;
+    const stats = await this.publicClient.readContract({
+      address: this.statsContractAddress,
+      abi: [{ name: 'getNodeStats', type: 'function', stateMutability: 'view', inputs: [{ name: 'nodeId', type: 'bytes32' }], outputs: [{ name: 'bytesServed', type: 'uint256' }, { name: 'requestsServed', type: 'uint256' }, { name: 'cacheHitRate', type: 'uint256' }, { name: 'lastReport', type: 'uint256' }, { name: 'pendingRewards', type: 'uint256' }] }],
+      functionName: 'getNodeStats',
+      args: [`0x${this.config.nodeId.padStart(64, '0')}` as `0x${string}`],
+    }) as [bigint, bigint, bigint, bigint, bigint];
+    return stats[4];
   }
 
   /**
    * Claim rewards
    */
   async claimRewards(): Promise<string> {
-    if (!this.statsContract) {
+    if (!this.statsContractAddress || !this.walletClient || !this.publicClient) {
       throw new Error('Stats contract not configured');
     }
 
-    const tx = await this.statsContract.claimRewards();
-    await tx.wait();
+    const hash = await this.walletClient.writeContract({
+      address: this.statsContractAddress,
+      abi: [{ name: 'claimRewards', type: 'function', stateMutability: 'nonpayable', inputs: [], outputs: [] }],
+      functionName: 'claimRewards',
+      args: [],
+    });
+
+    await this.publicClient.waitForTransactionReceipt({ hash });
 
     const pending = await this.getPendingRewards();
     cdnRewardsPending.set({ region: this.config.region }, Number(pending));
 
-    return tx.hash;
+    return hash;
   }
 
   /**
    * Get current reward rate
    */
   async getRewardRate(): Promise<bigint> {
-    if (!this.statsContract) return 0n;
-    return await this.statsContract.getRewardRate() as bigint;
+    if (!this.statsContractAddress || !this.publicClient) return 0n;
+    return await this.publicClient.readContract({
+      address: this.statsContractAddress,
+      abi: [{ name: 'getRewardRate', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ name: 'perGBServed', type: 'uint256' }] }],
+      functionName: 'getRewardRate',
+      args: [],
+    }) as bigint;
   }
 
   // ============================================================================

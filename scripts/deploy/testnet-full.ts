@@ -237,7 +237,7 @@ async function deployBundler() {
 }
 
 async function verifyDeployment() {
-  const rpcUrl = process.env.JEJU_TESTNET_RPC_URL || 'https://testnet-rpc.jeju.network';
+  const rpcUrl = process.env.JEJU_TESTNET_RPC_URL || 'https://testnet-rpc.jejunetwork.org';
   
   const rpcResponse = await fetch(rpcUrl, {
     method: 'POST',

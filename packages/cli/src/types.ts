@@ -2,6 +2,22 @@
  * Network CLI Types
  */
 
+// Import and re-export port config from @jejunetwork/config
+import { 
+  INFRA_PORTS as CONFIG_INFRA_PORTS, 
+  CORE_PORTS as CONFIG_CORE_PORTS 
+} from '@jejunetwork/config/ports';
+
+export { 
+  INFRA_PORTS, 
+  CORE_PORTS, 
+  getL1RpcUrl, 
+  getL2RpcUrl, 
+  getL2WsUrl, 
+  getJejuRpcUrl,
+  isLocalnet 
+} from '@jejunetwork/config/ports';
+
 export type NetworkType = 'localnet' | 'testnet' | 'mainnet';
 
 export interface CLIContext {
@@ -150,22 +166,22 @@ export const WELL_KNOWN_KEYS = {
 } as const;
 
 export const DEFAULT_PORTS = {
-  // Chain
-  l1Rpc: 8545,
-  l2Rpc: 9545,
-  l2Ws: 9546,
+  // Chain (from @jejunetwork/config - 6xxx range to avoid conflicts)
+  l1Rpc: CONFIG_INFRA_PORTS.L1_RPC.DEFAULT,
+  l2Rpc: CONFIG_INFRA_PORTS.L2_RPC.DEFAULT,
+  l2Ws: CONFIG_INFRA_PORTS.L2_WS.DEFAULT,
   
-  // Apps
-  gateway: 4001,
-  bazaar: 4006,
-  compute: 4007,
+  // Apps (from @jejunetwork/config)
+  gateway: CONFIG_CORE_PORTS.GATEWAY.DEFAULT,
+  bazaar: CONFIG_CORE_PORTS.BAZAAR.DEFAULT,
+  compute: CONFIG_CORE_PORTS.COMPUTE.DEFAULT,
   wallet: 4015,
   
   // Infrastructure
-  indexerGraphQL: 4350,
-  prometheus: 9090,
-  grafana: 4010,
-  kurtosisUI: 9711,
+  indexerGraphQL: CONFIG_CORE_PORTS.INDEXER_GRAPHQL.DEFAULT,
+  prometheus: CONFIG_INFRA_PORTS.PROMETHEUS.DEFAULT,
+  grafana: CONFIG_INFRA_PORTS.GRAFANA.DEFAULT,
+  kurtosisUI: CONFIG_INFRA_PORTS.KURTOSIS_UI.DEFAULT,
   
   // Development Services
   inference: 4100,
@@ -177,11 +193,13 @@ export const DEFAULT_PORTS = {
   jns: 4302,
 } as const;
 
+// Note: localnet rpcUrl is dynamically built from INFRA_PORTS
+// Use getL2RpcUrl() for runtime URL resolution with env var support
 export const CHAIN_CONFIG = {
   localnet: {
     chainId: 1337,
     name: 'Network Localnet',
-    rpcUrl: 'http://127.0.0.1:9545',
+    rpcUrl: `http://127.0.0.1:${CONFIG_INFRA_PORTS.L2_RPC.DEFAULT}`,
   },
   testnet: {
     chainId: 420691,

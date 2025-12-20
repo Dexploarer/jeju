@@ -32,7 +32,7 @@ import {ICloudServiceRegistry} from "../interfaces/IServices.sol";
  * 5. After execution, paymaster collects: gasCost + serviceCost
  * 6. Fees distributed to app revenue wallet
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract CloudPaymaster is BasePaymaster, Pausable {
     using SafeERC20 for IERC20;

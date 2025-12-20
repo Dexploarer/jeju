@@ -69,7 +69,7 @@ Localnet uses `packages/config/chain/localnet.json`:
   "wsUrl": "ws://127.0.0.1:9546",
   "l1": {
     "chainId": 900,
-    "rpcUrl": "http://127.0.0.1:8545"
+    "rpcUrl": "http://127.0.0.1:6546"
   }
 }
 ```

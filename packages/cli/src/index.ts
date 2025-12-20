@@ -202,9 +202,11 @@ program.action(() => {
   console.log('  ' + chalk.cyan(`${cliName} superchain register`) + ' Prepare registry submission\n');
   
   console.log(chalk.bold('DWS (Decentralized Web Services):\n'));
+  console.log('  ' + chalk.cyan(`${cliName} dws dev`) + '           Start DWS in dev mode (auto-infra)');
   console.log('  ' + chalk.cyan(`${cliName} dws status`) + '        Check all DWS services');
   console.log('  ' + chalk.cyan(`${cliName} dws start`) + '         Start DWS server');
   console.log('  ' + chalk.cyan(`${cliName} dws upload <file>`) + ' Upload to storage');
+  console.log('  ' + chalk.cyan(`${cliName} dws seed`) + '          Seed dev environment');
   console.log('  ' + chalk.cyan(`${cliName} dws repos`) + '         List Git repositories');
   console.log('  ' + chalk.cyan(`${cliName} dws pkg-search`) + '    Search packages\n');
   

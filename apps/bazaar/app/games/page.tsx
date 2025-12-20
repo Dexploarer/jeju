@@ -115,7 +115,7 @@ export default function GamesPage() {
             </div>
 
             <Link
-              href={`https://jeju.network/agent/${game.agentId}`}
+              href={`https://jejunetwork.org/agent/${game.agentId}`}
               target="_blank"
               className="btn-primary w-full text-center"
             >

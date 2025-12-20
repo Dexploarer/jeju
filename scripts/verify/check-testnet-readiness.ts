@@ -414,7 +414,9 @@ async function checkNetworkInfrastructure(network: string) {
   // CloudFront CDN check
   const cdnCheck = await $`aws cloudfront list-distributions --query "DistributionList.Items[?contains(Aliases.Items, 'cdn.jejunetwork.org')]"`.quiet().nothrow();
   if (cdnCheck.exitCode === 0) {
-    const dists = JSON.parse(cdnCheck.stdout.toString() || '[]');
+    type CloudFrontQueryResult = Array<Record<string, string>> | null;
+    const parsed = JSON.parse(cdnCheck.stdout.toString() || '[]') as CloudFrontQueryResult;
+    const dists = Array.isArray(parsed) ? parsed : [];
     if (dists.length > 0) {
       addResult(category, 'CloudFront CDN', 'pass', `${dists.length} distribution(s) configured`);
     } else {

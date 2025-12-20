@@ -43,7 +43,7 @@ const MODE_NEEDS_LOCALNET: Record<TestMode, boolean> = {
   e2e: true,
   full: true,
   infra: false,
-  smoke: true,
+  smoke: false,
 };
 
 const MODE_NEEDS_DOCKER: Record<TestMode, boolean> = {
@@ -156,7 +156,7 @@ export class TestOrchestrator {
         const envVars = this.getEnvVars();
         const { runPreflightChecks } = await import('@jejunetwork/tests/preflight');
         const preflightResult = await runPreflightChecks({
-          rpcUrl: envVars.L2_RPC_URL || envVars.JEJU_RPC_URL || 'http://localhost:9545',
+          rpcUrl: envVars.L2_RPC_URL || envVars.JEJU_RPC_URL || 'http://localhost:6546',
           chainId: parseInt(envVars.CHAIN_ID || '1337'),
         });
 

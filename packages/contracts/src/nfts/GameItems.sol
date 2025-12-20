@@ -31,7 +31,7 @@ import {INFTModerationHooks} from "./interfaces/INFTModeration.sol";
  * - Pausable for emergency stops
  * - Rate limiting on mints
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract GameItems is
     ERC1155Supply,

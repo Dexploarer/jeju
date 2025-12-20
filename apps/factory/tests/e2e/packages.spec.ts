@@ -158,7 +158,7 @@ test.describe('Packages', () => {
       
       // Should show .npmrc config
       await expect(page.getByText(/configure registry/i)).toBeVisible();
-      await expect(page.getByText(/pkg.jeju.network/i).first()).toBeVisible();
+      await expect(page.getByText(/pkg.jejunetwork.org/i).first()).toBeVisible();
     });
 
     test('should show authentication instructions', async ({ page }) => {

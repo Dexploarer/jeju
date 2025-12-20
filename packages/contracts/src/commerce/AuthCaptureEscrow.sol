@@ -35,7 +35,7 @@ import {
  * - Partial captures and refunds
  * - Time-limited authorizations
  * 
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract AuthCaptureEscrow is Ownable, ReentrancyGuard, EIP712, ICommerceEvents {
     using SafeERC20 for IERC20;

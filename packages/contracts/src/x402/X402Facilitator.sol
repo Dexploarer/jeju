@@ -44,7 +44,7 @@ interface IFeeConfigX402 {
  * - This contract is network-specific to Jeju (chainId 420691)
  * - For multi-network support, deploy separate contracts per network
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract X402Facilitator is Ownable, ReentrancyGuard, EIP712 {
     using SafeERC20 for IERC20;

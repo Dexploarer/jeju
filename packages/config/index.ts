@@ -72,6 +72,7 @@ export interface ExternalChainContracts {
   oif?: ContractCategory;
   eil?: ContractCategory;
   tokens?: ContractCategory;
+  poc?: ContractCategory;
 }
 
 export interface ContractsConfig {
@@ -209,11 +210,67 @@ export function getConstant(name: keyof ContractsConfig['constants']): string {
 /** Get external chain contract */
 export function getExternalContract(
   chain: string,
-  category: 'oif' | 'eil' | 'tokens',
+  category: 'oif' | 'eil' | 'tokens' | 'poc' | 'payments',
   name: string
 ): string {
   const contracts = loadContracts();
-  return contracts.external[chain]?.[category]?.[name] || '';
+  const chainContracts = contracts.external[chain];
+  if (!chainContracts) return '';
+  const categoryContracts = chainContracts[category as keyof typeof chainContracts];
+  if (!categoryContracts || typeof categoryContracts !== 'object') return '';
+  return (categoryContracts as Record<string, string>)[name] || '';
+}
+
+// ============================================================================
+// Proof-of-Cloud (PoC) Configuration
+// ============================================================================
+
+export interface PoCConfig {
+  validatorAddress: string;
+  identityRegistryAddress: string;
+  rpcUrl: string;
+  chainId: number;
+}
+
+// Fallback RPC URLs for when Jeju's node is unavailable
+const FALLBACK_RPCS: Record<string, string> = {
+  baseSepolia: 'https://sepolia.base.org',
+  base: 'https://mainnet.base.org',
+};
+
+/** Get PoC configuration for the default chain (Base Sepolia for testnet) */
+export function getPoCConfig(network?: NetworkType): PoCConfig {
+  const net = network || getCurrentNetwork();
+  const chain = net === 'mainnet' ? 'base' : 'baseSepolia';
+  const contracts = loadContracts();
+  const chainConfig = contracts.external[chain];
+  
+  const pocContracts = chainConfig?.poc as Record<string, string> | undefined;
+  
+  // Use Jeju's RPC if available, otherwise fall back to public endpoint
+  const rpcUrl = chainConfig?.rpcUrl || FALLBACK_RPCS[chain] || '';
+  
+  return {
+    validatorAddress: pocContracts?.validator || '',
+    identityRegistryAddress: pocContracts?.identityRegistry || '',
+    rpcUrl,
+    chainId: chainConfig?.chainId || 0,
+  };
+}
+
+/** Get PoC validator address */
+export function getPoCValidatorAddress(network?: NetworkType): string {
+  return getPoCConfig(network).validatorAddress;
+}
+
+/** Get PoC identity registry address */
+export function getPoCIdentityRegistryAddress(network?: NetworkType): string {
+  return getPoCConfig(network).identityRegistryAddress;
+}
+
+/** Get PoC RPC URL (Base Sepolia or Base mainnet) */
+export function getPoCRpcUrl(network?: NetworkType): string {
+  return getPoCConfig(network).rpcUrl;
 }
 
 /** Get external chain RPC URL */

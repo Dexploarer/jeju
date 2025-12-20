@@ -15,7 +15,7 @@ Create `.env` for local development or configure for production:
 
 ### Required
 ```bash
-VITE_RPC_URL=https://rpc.jeju.network
+VITE_RPC_URL=https://rpc.jejunetwork.org
 VITE_CHAIN_ID=420691
 VITE_WALLETCONNECT_PROJECT_ID=your_project_id
 ```
@@ -31,10 +31,10 @@ VITE_JEJU_TOKEN_ADDRESS=0x...
 
 ### Services
 ```bash
-VITE_INDEXER_URL=https://indexer.jeju.network/graphql
-VITE_LEADERBOARD_API_URL=https://leaderboard.jeju.network
-VITE_OIF_AGGREGATOR_URL=https://intents.jeju.network/api
-VITE_JEJU_IPFS_GATEWAY=https://ipfs.jeju.network
+VITE_INDEXER_URL=https://indexer.jejunetwork.org/graphql
+VITE_LEADERBOARD_API_URL=https://leaderboard.jejunetwork.org
+VITE_OIF_AGGREGATOR_URL=https://intents.jejunetwork.org/api
+VITE_JEJU_IPFS_GATEWAY=https://ipfs.jejunetwork.org
 ```
 
 ### JNS (Jeju Name Service)

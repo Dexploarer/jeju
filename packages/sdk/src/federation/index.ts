@@ -25,7 +25,8 @@
  * ```
  */
 
-import { Contract, JsonRpcProvider, Wallet, parseEther, formatEther } from 'ethers';
+import { createPublicClient, createWalletClient, http, parseEther, formatEther, getContract } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
 
 // ============================================================================
 // Types
@@ -201,20 +202,21 @@ const REGISTRY_HUB_ABI = [
 export async function createFederationClient(
   config: FederationClientConfig
 ): Promise<FederationClient> {
-  const provider = new JsonRpcProvider(config.hubRpc);
-  const wallet = config.privateKey ? new Wallet(config.privateKey, provider) : null;
+  const publicClient = createPublicClient({ transport: http(config.hubRpc) });
+  const account = config.privateKey ? privateKeyToAccount(config.privateKey as `0x${string}`) : null;
+  const walletClient = account ? createWalletClient({ account, transport: http(config.hubRpc) }) : null;
   
-  const networkRegistry = new Contract(
-    config.networkRegistry,
-    NETWORK_REGISTRY_ABI,
-    wallet || provider
-  );
+  const networkRegistry = getContract({
+    address: config.networkRegistry as `0x${string}`,
+    abi: NETWORK_REGISTRY_ABI,
+    client: publicClient,
+  });
   
-  const registryHub = new Contract(
-    config.registryHub,
-    REGISTRY_HUB_ABI,
-    wallet || provider
-  );
+  const registryHub = getContract({
+    address: config.registryHub as `0x${string}`,
+    abi: REGISTRY_HUB_ABI,
+    client: publicClient,
+  });
 
   // Helper to parse network info
   function parseNetworkInfo(raw: unknown[]): NetworkInfo {
@@ -283,144 +285,164 @@ export async function createFederationClient(
   return {
     // Network Registry methods
     async getNetwork(chainId: number): Promise<NetworkInfo> {
-      const raw = await networkRegistry.getNetwork(chainId);
-      return parseNetworkInfo(raw);
+      const raw = await networkRegistry.read.getNetwork([BigInt(chainId)]);
+      return parseNetworkInfo(raw as unknown[]);
     },
 
     async getAllNetworks(): Promise<NetworkInfo[]> {
-      const ids = await networkRegistry.getAllNetworkIds();
+      const ids = await networkRegistry.read.getAllNetworkIds() as readonly bigint[];
       const networks = await Promise.all(
-        ids.map((id: bigint) => networkRegistry.getNetwork(id))
+        ids.map((id) => networkRegistry.read.getNetwork([id]))
       );
-      return networks.map(parseNetworkInfo);
+      return networks.map((n) => parseNetworkInfo(n as unknown[]));
     },
 
     async getStakedNetworks(): Promise<NetworkInfo[]> {
-      const ids = await networkRegistry.getAllNetworkIds();
+      const ids = await networkRegistry.read.getAllNetworkIds() as readonly bigint[];
       const networks = await Promise.all(
-        ids.map((id: bigint) => networkRegistry.getNetwork(id))
+        ids.map((id) => networkRegistry.read.getNetwork([id]))
       );
-      return networks.map(parseNetworkInfo).filter((n: NetworkInfo) => n.trustTier >= TrustTier.STAKED && n.isActive);
+      return networks.map((n) => parseNetworkInfo(n as unknown[])).filter((n: NetworkInfo) => n.trustTier >= TrustTier.STAKED && n.isActive);
     },
 
     async getVerifiedNetworks(): Promise<NetworkInfo[]> {
-      const ids = await networkRegistry.getVerifiedNetworks();
+      const ids = await networkRegistry.read.getVerifiedNetworks() as readonly bigint[];
       const networks = await Promise.all(
-        ids.map((id: bigint) => networkRegistry.getNetwork(id))
+        ids.map((id) => networkRegistry.read.getNetwork([id]))
       );
-      return networks.map(parseNetworkInfo);
+      return networks.map((n) => parseNetworkInfo(n as unknown[]));
     },
 
     async canParticipateInConsensus(chainId: number): Promise<boolean> {
-      return networkRegistry.canParticipateInConsensus(chainId);
+      return networkRegistry.read.canParticipateInConsensus([BigInt(chainId)]) as Promise<boolean>;
     },
 
     async isSequencerEligible(chainId: number): Promise<boolean> {
-      return networkRegistry.isSequencerEligible(chainId);
+      return networkRegistry.read.isSequencerEligible([BigInt(chainId)]) as Promise<boolean>;
     },
 
     // Registry Hub methods
     async getChain(chainId: number): Promise<ChainInfo> {
-      const raw = await registryHub.getChain(chainId);
-      return parseChainInfo(raw);
+      const raw = await registryHub.read.getChain([BigInt(chainId)]);
+      return parseChainInfo(raw as unknown[]);
     },
 
     async getAllChains(): Promise<ChainInfo[]> {
-      const ids = await registryHub.getAllChainIds();
+      const ids = await registryHub.read.getAllChainIds() as readonly bigint[];
       const chains = await Promise.all(
-        ids.map((id: bigint) => registryHub.getChain(id))
+        ids.map((id) => registryHub.read.getChain([id]))
       );
-      return chains.map(parseChainInfo);
+      return chains.map((c) => parseChainInfo(c as unknown[]));
     },
 
     async getRegistry(registryId: string): Promise<RegistryInfo> {
-      const raw = await registryHub.getRegistry(registryId);
-      return parseRegistryInfo(raw);
+      const raw = await registryHub.read.getRegistry([registryId as `0x${string}`]);
+      return parseRegistryInfo(raw as unknown[]);
     },
 
     async getAllRegistries(): Promise<RegistryInfo[]> {
-      const ids = await registryHub.getAllRegistryIds();
+      const ids = await registryHub.read.getAllRegistryIds() as readonly `0x${string}`[];
       const registries = await Promise.all(
-        ids.map((id: string) => registryHub.getRegistry(id))
+        ids.map((id) => registryHub.read.getRegistry([id]))
       );
-      return registries.map(parseRegistryInfo);
+      return registries.map((r) => parseRegistryInfo(r as unknown[]));
     },
 
     async getRegistriesByType(type: RegistryType): Promise<RegistryInfo[]> {
-      const ids = await registryHub.getRegistriesByType(type);
+      const ids = await registryHub.read.getRegistriesByType([type]) as readonly `0x${string}`[];
       const registries = await Promise.all(
-        ids.map((id: string) => registryHub.getRegistry(id))
+        ids.map((id) => registryHub.read.getRegistry([id]))
       );
-      return registries.map(parseRegistryInfo);
+      return registries.map((r) => parseRegistryInfo(r as unknown[]));
     },
 
     async getRegistriesByChain(chainId: number): Promise<RegistryInfo[]> {
-      const ids = await registryHub.getRegistriesByChain(chainId);
+      const ids = await registryHub.read.getRegistriesByChain([BigInt(chainId)]) as readonly `0x${string}`[];
       const registries = await Promise.all(
-        ids.map((id: string) => registryHub.getRegistry(id))
+        ids.map((id) => registryHub.read.getRegistry([id]))
       );
-      return registries.map(parseRegistryInfo);
+      return registries.map((r) => parseRegistryInfo(r as unknown[]));
     },
 
     async isTrustedForConsensus(chainId: number): Promise<boolean> {
-      return registryHub.isTrustedForConsensus(chainId);
+      return registryHub.read.isTrustedForConsensus([BigInt(chainId)]) as Promise<boolean>;
     },
 
     // Write methods
     async joinFederation(params: JoinFederationParams): Promise<string> {
-      if (!wallet) throw new Error('Private key required for write operations');
+      if (!walletClient) throw new Error('Private key required for write operations');
       
-      const contracts = {
-        identityRegistry: '0x0000000000000000000000000000000000000000',
-        solverRegistry: '0x0000000000000000000000000000000000000000',
-        inputSettler: '0x0000000000000000000000000000000000000000',
-        outputSettler: '0x0000000000000000000000000000000000000000',
-        liquidityVault: '0x0000000000000000000000000000000000000000',
-        governance: '0x0000000000000000000000000000000000000000',
-        oracle: '0x0000000000000000000000000000000000000000',
-        registryHub: '0x0000000000000000000000000000000000000000',
-      };
+      const contracts = [
+        '0x0000000000000000000000000000000000000000',
+        '0x0000000000000000000000000000000000000000',
+        '0x0000000000000000000000000000000000000000',
+        '0x0000000000000000000000000000000000000000',
+        '0x0000000000000000000000000000000000000000',
+        '0x0000000000000000000000000000000000000000',
+        '0x0000000000000000000000000000000000000000',
+        '0x0000000000000000000000000000000000000000',
+      ] as const;
       
-      const tx = await networkRegistry.registerNetwork(
-        params.chainId,
-        params.name,
-        params.rpcUrl,
-        params.explorerUrl || '',
-        params.wsUrl || '',
-        Object.values(contracts),
-        '0x0000000000000000000000000000000000000000000000000000000000000000',
-        { value: params.stake || 0n }
-      );
+      const hash = await walletClient.writeContract({
+        address: config.networkRegistry as `0x${string}`,
+        abi: NETWORK_REGISTRY_ABI,
+        functionName: 'registerNetwork',
+        args: [
+          BigInt(params.chainId),
+          params.name,
+          params.rpcUrl,
+          params.explorerUrl || '',
+          params.wsUrl || '',
+          contracts,
+          '0x0000000000000000000000000000000000000000000000000000000000000000',
+        ],
+        value: params.stake || 0n,
+        chain: null,
+      });
       
-      const receipt = await tx.wait();
-      return receipt.hash;
+      await publicClient.waitForTransactionReceipt({ hash });
+      return hash;
     },
 
     async addStake(chainId: number, amount: bigint): Promise<string> {
-      if (!wallet) throw new Error('Private key required for write operations');
+      if (!walletClient) throw new Error('Private key required for write operations');
       
-      const tx = await networkRegistry.addStake(chainId, { value: amount });
-      const receipt = await tx.wait();
-      return receipt.hash;
+      const hash = await walletClient.writeContract({
+        address: config.networkRegistry as `0x${string}`,
+        abi: NETWORK_REGISTRY_ABI,
+        functionName: 'addStake',
+        args: [BigInt(chainId)],
+        value: amount,
+        chain: null,
+      });
+      
+      await publicClient.waitForTransactionReceipt({ hash });
+      return hash;
     },
 
     async registerRegistry(params: RegisterRegistryParams): Promise<string> {
-      if (!wallet) throw new Error('Private key required for write operations');
+      if (!walletClient) throw new Error('Private key required for write operations');
       
       // Pad address to bytes32
-      const addressBytes32 = '0x' + params.contractAddress.slice(2).padStart(64, '0');
+      const addressBytes32 = ('0x' + params.contractAddress.slice(2).padStart(64, '0')) as `0x${string}`;
       
-      const tx = await registryHub.registerRegistry(
-        params.chainId,
-        params.registryType,
-        addressBytes32,
-        params.name,
-        params.version || '1.0.0',
-        params.metadataUri || ''
-      );
+      const hash = await walletClient.writeContract({
+        address: config.registryHub as `0x${string}`,
+        abi: REGISTRY_HUB_ABI,
+        functionName: 'registerRegistry',
+        args: [
+          BigInt(params.chainId),
+          params.registryType,
+          addressBytes32,
+          params.name,
+          params.version || '1.0.0',
+          params.metadataUri || '',
+        ],
+        chain: null,
+      });
       
-      const receipt = await tx.wait();
-      return receipt.hash;
+      await publicClient.waitForTransactionReceipt({ hash });
+      return hash;
     },
   };
 }

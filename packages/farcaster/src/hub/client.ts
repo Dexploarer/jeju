@@ -16,7 +16,6 @@ import type {
 } from './types';
 
 const DEFAULT_HUB_URL = 'nemes.farcaster.xyz:2283';
-const DEFAULT_HTTP_URL = 'https://nemes.farcaster.xyz:2281';
 const DEFAULT_TIMEOUT = 10000;
 
 export class HubError extends Error {

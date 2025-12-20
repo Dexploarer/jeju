@@ -20,7 +20,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
  * - Insurance fund (for bad debt coverage)
  * - Operator rewards (bot operators)
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract ProfitTreasury is Treasury {
     using SafeERC20 for IERC20;
@@ -383,6 +383,7 @@ contract ProfitTreasury is Treasury {
         return "1.0.0";
     }
 }
+
 
 
 

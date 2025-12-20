@@ -14,7 +14,7 @@ on:
 
 env:
   # JejuGit is now part of DWS at /git endpoint
-  JEJUGIT_URL: ${{ secrets.JEJUGIT_URL || 'https://dws.jeju.network/git' }}
+  JEJUGIT_URL: ${{ secrets.JEJUGIT_URL || 'https://dws.jejunetwork.org/git' }}
 
 jobs:
   mirror-to-jejugit:

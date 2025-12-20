@@ -24,7 +24,7 @@ import {IIdentityRegistry} from "../registry/interfaces/IIdentityRegistry.sol";
  *      - RPCStakingManager: RPC access tier-based staking
  *      - ComputeStaking: Compute marketplace staking
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 abstract contract BaseStaking is Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;

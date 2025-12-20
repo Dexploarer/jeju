@@ -12,7 +12,7 @@ const CONFIG = {
   NODE_ID: process.env.NODE_ID || '',
   OPERATOR_PRIVATE_KEY: process.env.OPERATOR_PRIVATE_KEY || '',
   NODE_EXPLORER_API: process.env.NODE_EXPLORER_API || 'https://nodes.jejunetwork.org/api',
-  RPC_URL: process.env.RPC_URL || 'http://localhost:8545',
+  RPC_URL: process.env.RPC_URL || 'http://localhost:6546',
   INTERVAL: parseInt(process.env.HEARTBEAT_INTERVAL || '300000'), // 5 minutes
 };
 

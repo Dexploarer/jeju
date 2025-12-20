@@ -64,14 +64,14 @@ stringData:
   DATABASE_URL: "postgresql://chainlink:password@chainlink-db:5432/chainlink?sslmode=disable"
   
   # Ethereum/Jeju RPC
-  ETH_URL: "wss://mainnet.jeju.network/ws"
-  ETH_HTTP_URL: "https://mainnet.jeju.network"
+  ETH_URL: "wss://mainnet.jejunetwork.org/ws"
+  ETH_HTTP_URL: "https://mainnet.jejunetwork.org"
   
   # Additional chains (for cross-chain operations)
   ETH_SECONDARY_URLS: "wss://eth-mainnet.g.alchemy.com/v2/YOUR_KEY,wss://base-mainnet.g.alchemy.com/v2/YOUR_KEY"
   
   # Node credentials (generate with: chainlink admin login)
-  CHAINLINK_ADMIN_EMAIL: "admin@jeju.network"
+  CHAINLINK_ADMIN_EMAIL: "admin@jejunetwork.org"
   CHAINLINK_ADMIN_PASSWORD: "CHANGE_ME_SECURE_PASSWORD"
   
   # VRF Key (generate with: chainlink keys vrf create)
@@ -357,10 +357,10 @@ metadata:
 spec:
   tls:
   - hosts:
-    - chainlink.internal.jeju.network
+    - chainlink.internal.jejunetwork.org
     secretName: chainlink-tls
   rules:
-  - host: chainlink.internal.jeju.network
+  - host: chainlink.internal.jejunetwork.org
     http:
       paths:
       - path: /

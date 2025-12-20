@@ -1,6 +1,5 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "ui": "tui",
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -70,7 +69,7 @@
     "packages/contracts/deployments/testnet.json",
     "packages/contracts/deployments/mainnet.json"
   ],
-  "globalPassThroughEnv": [
+  "globalEnv": [
     "NODE_ENV",
     "CI",
     "VERCEL",

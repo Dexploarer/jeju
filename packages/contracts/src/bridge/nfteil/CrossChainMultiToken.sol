@@ -53,7 +53,7 @@ interface IInterchainGasPaymaster {
  * - Supports batch transfers for gas efficiency
  * - Implements ERC-2981 royalties
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 abstract contract CrossChainMultiToken is 
     ERC1155Supply,

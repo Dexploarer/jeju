@@ -43,7 +43,7 @@ interface IPredimarketLabel {
  * 4. If YES wins: label applied, proposer rewarded
  * 5. If NO wins: proposer slashed, target agent compensated
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract ReputationLabelManager is Ownable, Pausable, ReentrancyGuard {
     // ============ Enums ============

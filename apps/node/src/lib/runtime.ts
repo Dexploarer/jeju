@@ -125,7 +125,7 @@ export interface BotState {
 
 const DEFAULT_CONFIG: RuntimeConfig = {
   network: 'localnet',
-  rpcUrl: 'http://127.0.0.1:8545',
+  rpcUrl: 'http://127.0.0.1:6546',
   chainId: 1337,
   autoClaim: true,
   autoStake: false,

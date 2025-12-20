@@ -11,7 +11,8 @@
  * - Graceful shutdown
  */
 
-import { ethers } from 'ethers';
+import { createPublicClient, createWalletClient, http as httpTransport, keccak256, toBytes, type Address } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
 import { z } from 'zod';
 import { Registry, Counter, Gauge, Histogram } from 'prom-client';
 import * as http from 'http';
@@ -149,15 +150,16 @@ const DEFAULT_RECORDS: DNSRecord[] = [
 ];
 
 // ============================================================================
-// Endpoint Registry ABI
+// Endpoint Registry ABI (reference - inline ABIs used in writeContract calls)
 // ============================================================================
 
-const ENDPOINT_REGISTRY_ABI = [
+const _ENDPOINT_REGISTRY_ABI = [
   'function setEndpoint(bytes32 service, string url, string region, uint256 priority) external',
   'function removeEndpoint(bytes32 service, string url) external',
   'function getEndpoints(bytes32 service) view returns (tuple(string url, string region, uint256 priority, bool active)[])',
   'event EndpointUpdated(bytes32 indexed service, string url, string region, uint256 priority)',
 ];
+void _ENDPOINT_REGISTRY_ABI; // Suppress unused warning - kept for reference
 
 // ============================================================================
 // Prometheus Metrics
@@ -229,7 +231,9 @@ export class DNSSyncService {
   private route53Client: any = null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private cloudDnsClient: any = null;
-  private endpointRegistry: ethers.Contract | null = null;
+  private publicClient: ReturnType<typeof createPublicClient> | null = null;
+  private walletClient: ReturnType<typeof createWalletClient> | null = null;
+  private endpointRegistryAddress: Address | null = null;
   private healthResults = new Map<string, HealthCheckResult>();
   private auditLog: AuditLogEntry[] = [];
   private syncInterval: ReturnType<typeof setInterval> | null = null;
@@ -266,13 +270,13 @@ export class DNSSyncService {
 
     // Initialize on-chain registry
     if (this.config.providers.onChain) {
-      const provider = new ethers.JsonRpcProvider(this.config.providers.onChain.rpcUrl);
-      const wallet = new ethers.Wallet(this.config.providers.onChain.privateKey, provider);
-      this.endpointRegistry = new ethers.Contract(
-        this.config.providers.onChain.registryAddress,
-        ENDPOINT_REGISTRY_ABI,
-        wallet
-      );
+      this.publicClient = createPublicClient({ transport: httpTransport(this.config.providers.onChain.rpcUrl) });
+      const account = privateKeyToAccount(this.config.providers.onChain.privateKey as `0x${string}`);
+      this.walletClient = createWalletClient({ 
+        account, 
+        transport: httpTransport(this.config.providers.onChain.rpcUrl) 
+      });
+      this.endpointRegistryAddress = this.config.providers.onChain.registryAddress as Address;
     }
 
     this.running = true;
@@ -605,13 +609,13 @@ export class DNSSyncService {
   // ============================================================================
 
   private async syncToOnChain(records: DNSRecord[]): Promise<void> {
-    if (!this.endpointRegistry) return;
+    if (!this.endpointRegistryAddress || !this.walletClient || !this.publicClient) return;
 
     const timer = dnsSyncDuration.startTimer({ provider: 'on-chain' });
 
     try {
       for (const record of records.filter((r) => r.values.length > 0)) {
-        const serviceKey = ethers.id(record.name);
+        const serviceKey = keccak256(toBytes(record.name));
 
         for (let i = 0; i < record.values.length; i++) {
           const ip = record.values[i];
@@ -619,7 +623,16 @@ export class DNSSyncService {
           const region = this.guessRegion(ip);
 
           await withRetry(
-            () => this.endpointRegistry!.setEndpoint(serviceKey, url, region, i),
+            async () => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const hash = await (this.walletClient as any).writeContract({
+                address: this.endpointRegistryAddress!,
+                abi: [{ name: 'setEndpoint', type: 'function', stateMutability: 'nonpayable', inputs: [{ name: 'service', type: 'bytes32' }, { name: 'url', type: 'string' }, { name: 'region', type: 'string' }, { name: 'priority', type: 'uint256' }], outputs: [] }] as const,
+                functionName: 'setEndpoint',
+                args: [serviceKey, url, region, BigInt(i)],
+              });
+              await this.publicClient!.waitForTransactionReceipt({ hash });
+            },
             this.config.retryAttempts,
             this.config.retryDelayMs
           );
@@ -789,7 +802,7 @@ export class DNSSyncService {
 // Uses require.main for Node.js compatibility, Bun.main for Bun
 function checkIsMain(): boolean {
   if (typeof Bun !== 'undefined') {
-    return Bun.main;
+    return Boolean(Bun.main);
   }
   // Node.js fallback
   return typeof require !== 'undefined' && require.main === module;
@@ -828,6 +841,9 @@ if (isMainModule) {
         : undefined,
     },
     syncIntervalMs: parseInt(process.env.SYNC_INTERVAL_MS ?? '300000', 10),
+    healthCheckIntervalMs: parseInt(process.env.HEALTH_CHECK_INTERVAL_MS ?? '60000', 10),
+    retryAttempts: parseInt(process.env.RETRY_ATTEMPTS ?? '3', 10),
+    retryDelayMs: parseInt(process.env.RETRY_DELAY_MS ?? '1000', 10),
     metricsPort: process.env.METRICS_PORT
       ? parseInt(process.env.METRICS_PORT, 10)
       : undefined,

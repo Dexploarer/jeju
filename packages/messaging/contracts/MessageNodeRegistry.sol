@@ -19,7 +19,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
  * - Geographic diversity tracking
  * - x402 micropayment integration
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract MessageNodeRegistry is Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;

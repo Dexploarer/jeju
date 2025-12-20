@@ -57,9 +57,9 @@ contract NetworkRegistryTest is Test {
         registry.registerNetwork(
             JEJU_CHAIN_ID,
             "Jeju Network",
-            "https://rpc.jeju.network",
-            "https://explorer.jeju.network",
-            "wss://ws.jeju.network",
+            "https://rpc.jejunetwork.org",
+            "https://explorer.jejunetwork.org",
+            "wss://ws.jejunetwork.org",
             contracts,
             keccak256("genesis")
         );

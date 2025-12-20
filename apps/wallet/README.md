@@ -188,7 +188,7 @@ bun run synpress:cache:ci   # Create cache with virtual display
 ├──────────────────────────────────────────────────────────────┤
 │  JEJU INFRASTRUCTURE  (No External APIs)                     │
 │  ┌──────────────────────────────────────────────────────────┐│
-│  │  RPC:     rpc.jeju.network/{eth,base,arbitrum,optimism}  ││
+│  │  RPC:     rpc.jejunetwork.org/{eth,base,arbitrum,optimism}  ││
 │  │  Oracle:  On-chain Jeju Oracle Network                   ││
 │  │  Indexer: Self-hosted GraphQL indexer                    ││
 │  │  Solver:  OIF decentralized solver network               ││
@@ -434,9 +434,9 @@ VITE_ELIZA_AGENT_ID=jeju-wallet             # Agent ID to connect to
 VITE_ELIZA_WS_URL=http://localhost:3000     # WebSocket for real-time updates
 
 # Jeju Infrastructure (default RPC, no API keys needed)
-VITE_JEJU_RPC_URL=https://rpc.jeju.network
-VITE_JEJU_GATEWAY_URL=https://compute.jeju.network
-VITE_JEJU_INDEXER_URL=https://indexer.jeju.network
+VITE_JEJU_RPC_URL=https://rpc.jejunetwork.org
+VITE_JEJU_GATEWAY_URL=https://compute.jejunetwork.org
+VITE_JEJU_INDEXER_URL=https://indexer.jejunetwork.org
 ```
 
 ### Running with ElizaOS
@@ -487,12 +487,12 @@ bun run jeju dev  # or: anvil --chain-id 1337 --port 9545
 
 ### Testnet (Base Sepolia)
 ```bash
-export VITE_JEJU_RPC_URL=https://rpc.testnet.jeju.network
+export VITE_JEJU_RPC_URL=https://rpc.testnet.jejunetwork.org
 ```
 
 ### Production (Base Mainnet)
 ```bash
-export VITE_JEJU_RPC_URL=https://rpc.jeju.network
+export VITE_JEJU_RPC_URL=https://rpc.jejunetwork.org
 ```
 
 ---

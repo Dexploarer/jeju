@@ -19,7 +19,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
  * - Allowlist/denylist support
  * - Funded by depositing tokens
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract Faucet is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;

@@ -258,10 +258,13 @@ export class TEEGPUProvider {
       completedJobs.set(request.jobId, {
         ...result,
         attestation,
-        metrics: {
-          ...result.metrics,
+        metrics: result.metrics ? {
+          trainingLoss: result.metrics.trainingLoss,
+          evalScore: result.metrics.evalScore,
+          gpuUtilization: result.metrics.gpuUtilization,
+          vramUsedGb: result.metrics.vramUsedGb,
           durationSeconds: (Date.now() - startTime) / 1000,
-        },
+        } : undefined,
       });
     } finally {
       // Release resources
@@ -284,7 +287,7 @@ export class TEEGPUProvider {
     if (this.config.teeProvider === TEEProvider.LOCAL) {
       // Local development mode - simulate TEE execution
       console.log(`[TEE-GPU] Simulating TEE execution for job ${request.jobId}`);
-      await new Promise((resolve) => setTimeout(resolve, 5000));
+      await new Promise((resolve) => setTimeout(resolve, 100)); // Fast for testing
 
       return {
         jobId: request.jobId,
@@ -295,7 +298,7 @@ export class TEEGPUProvider {
           evalScore: 0.85,
           gpuUtilization: 95,
           vramUsedGb: 70,
-          durationSeconds: 5,
+          durationSeconds: 0.1,
         },
       };
     }
@@ -432,67 +435,87 @@ export class TEEGPUProvider {
 // Factory Functions
 // ============================================================================
 
-/**
- * Create a TEE GPU provider for H200 training
- */
-export function createH200Provider(config: {
+/** GPU specifications by type */
+const GPU_SPECS: Record<GPUType, Omit<GPUCapabilities, 'gpuCount'>> = {
+  [GPUType.H200]: {
+    gpuType: GPUType.H200,
+    vramGb: 141,
+    cudaVersion: '12.4',
+    tensorCoreSupport: true,
+    fp8Support: true,
+    nvlinkSupport: true,
+  },
+  [GPUType.H100]: {
+    gpuType: GPUType.H100,
+    vramGb: 80,
+    cudaVersion: '12.4',
+    tensorCoreSupport: true,
+    fp8Support: true,
+    nvlinkSupport: true,
+  },
+  [GPUType.A100]: {
+    gpuType: GPUType.A100,
+    vramGb: 80,
+    cudaVersion: '12.0',
+    tensorCoreSupport: true,
+    fp8Support: false,
+    nvlinkSupport: true,
+  },
+  [GPUType.A10G]: {
+    gpuType: GPUType.A10G,
+    vramGb: 24,
+    cudaVersion: '12.0',
+    tensorCoreSupport: true,
+    fp8Support: false,
+    nvlinkSupport: false,
+  },
+  [GPUType.L4]: {
+    gpuType: GPUType.L4,
+    vramGb: 24,
+    cudaVersion: '12.0',
+    tensorCoreSupport: true,
+    fp8Support: true,
+    nvlinkSupport: false,
+  },
+  [GPUType.T4]: {
+    gpuType: GPUType.T4,
+    vramGb: 16,
+    cudaVersion: '11.8',
+    tensorCoreSupport: true,
+    fp8Support: false,
+    nvlinkSupport: false,
+  },
+};
+
+export interface CreateTEEGPUProviderConfig {
+  gpuType: GPUType;
   nodeId?: string;
   address: Address;
   endpoint: string;
   region?: string;
+  zone?: string;
   teeProvider?: TEEProvider;
   teeEndpoint?: string;
   teeApiKey?: string;
   gpuCount?: number;
-}): TEEGPUProvider {
-  return new TEEGPUProvider({
-    nodeId: config.nodeId ?? `h200-${Date.now()}`,
-    address: config.address,
-    endpoint: config.endpoint,
-    region: config.region ?? 'us-west-2',
-    zone: 'gpu-zone-1',
-    gpu: {
-      gpuType: GPUType.H200,
-      gpuCount: config.gpuCount ?? 8,
-      vramGb: 80,
-      cudaVersion: '12.4',
-      tensorCoreSupport: true,
-      fp8Support: true,
-      nvlinkSupport: true,
-    },
-    teeProvider: config.teeProvider ?? TEEProvider.PHALA,
-    teeEndpoint: config.teeEndpoint ?? process.env.PHALA_ENDPOINT,
-    teeApiKey: config.teeApiKey ?? process.env.PHALA_API_KEY,
-  });
 }
 
 /**
- * Create a TEE GPU provider for H100 training
+ * Create a TEE GPU provider for training
  */
-export function createH100Provider(config: {
-  nodeId?: string;
-  address: Address;
-  endpoint: string;
-  region?: string;
-  teeProvider?: TEEProvider;
-  teeEndpoint?: string;
-  teeApiKey?: string;
-  gpuCount?: number;
-}): TEEGPUProvider {
+export function createTEEGPUProvider(config: CreateTEEGPUProviderConfig): TEEGPUProvider {
+  const gpuSpec = GPU_SPECS[config.gpuType];
+  const gpuName = config.gpuType.replace('nvidia-', '');
+
   return new TEEGPUProvider({
-    nodeId: config.nodeId ?? `h100-${Date.now()}`,
+    nodeId: config.nodeId ?? `${gpuName}-${Date.now()}`,
     address: config.address,
     endpoint: config.endpoint,
     region: config.region ?? 'us-west-2',
-    zone: 'gpu-zone-1',
+    zone: config.zone ?? 'gpu-zone-1',
     gpu: {
-      gpuType: GPUType.H100,
+      ...gpuSpec,
       gpuCount: config.gpuCount ?? 8,
-      vramGb: 80,
-      cudaVersion: '12.4',
-      tensorCoreSupport: true,
-      fp8Support: true,
-      nvlinkSupport: true,
     },
     teeProvider: config.teeProvider ?? TEEProvider.PHALA,
     teeEndpoint: config.teeEndpoint ?? process.env.PHALA_ENDPOINT,

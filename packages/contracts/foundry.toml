@@ -30,10 +30,8 @@ skip = [
     "src/work/**",
     "src/containers/**",
     
-    # Paymaster contracts need ERC-4337 integration work
-    "src/services/MultiTokenPaymaster.sol",
-    "src/services/ServicePaymaster.sol",
-    "src/paymaster/**",
+    # Paymaster factory and liquidity paymaster need more work
+    "src/paymaster/LiquidityPaymaster.sol",
     
     # Deploy scripts for disabled features
     "deploy/DeployCompute.s.sol",
@@ -110,7 +108,7 @@ base_sepolia = "https://sepolia.base.org"
 arbitrum_sepolia = "https://sepolia-rollup.arbitrum.io/rpc"
 optimism_sepolia = "https://sepolia.optimism.io"
 jeju_testnet = "https://testnet-rpc.jejunetwork.org"
-local = "http://127.0.0.1:8545"
+local = "http://127.0.0.1:6546"
 
 # Etherscan API keys
 [etherscan]

@@ -77,8 +77,8 @@ export class AppOrchestrator {
     const appEnv: Record<string, string> = {
       ...process.env as Record<string, string>,
       ...this.serviceEnv,
-      JEJU_RPC_URL: this.serviceEnv.L2_RPC_URL || this.serviceEnv.JEJU_RPC_URL || 'http://localhost:9545',
-      RPC_URL: this.serviceEnv.L2_RPC_URL || this.serviceEnv.JEJU_RPC_URL || 'http://localhost:9545',
+      JEJU_RPC_URL: this.serviceEnv.L2_RPC_URL || this.serviceEnv.JEJU_RPC_URL || 'http://localhost:6546',
+      RPC_URL: this.serviceEnv.L2_RPC_URL || this.serviceEnv.JEJU_RPC_URL || 'http://localhost:6546',
       CHAIN_ID: '1337',
     };
 

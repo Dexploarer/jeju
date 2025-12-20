@@ -639,7 +639,7 @@ export function createCDNClientFromEnv(): CDNClient {
 
   return new CDNClient({
     privateKey,
-    rpcUrl: process.env.RPC_URL ?? 'http://localhost:8545',
+    rpcUrl: process.env.RPC_URL ?? 'http://localhost:6546',
     registryAddress: process.env.CDN_REGISTRY_ADDRESS as Address | undefined,
     billingAddress: process.env.CDN_BILLING_ADDRESS as Address | undefined,
     coordinatorUrl: process.env.CDN_COORDINATOR_URL,

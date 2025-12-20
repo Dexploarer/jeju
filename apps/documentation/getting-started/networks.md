@@ -6,7 +6,7 @@ Jeju runs on three networks: localnet for development, testnet for staging, and 
 
 Local development network running on chain ID 1337. Starts with `bun run dev`.
 
-The L2 RPC is at `http://127.0.0.1:9545` with WebSocket at `ws://127.0.0.1:9546`. The L1 RPC runs at `http://127.0.0.1:8545`. The Indexer GraphQL is at `http://127.0.0.1:4350/graphql`.
+The L2 RPC is at `http://127.0.0.1:6546` with WebSocket at `ws://127.0.0.1:6547`. The L1 RPC runs at `http://127.0.0.1:6545`. The Indexer GraphQL is at `http://127.0.0.1:4350/graphql`.
 
 Localnet features instant 2-second block times, pre-funded test accounts, all contracts deployed, and no gas costs since you're using test ETH.
 

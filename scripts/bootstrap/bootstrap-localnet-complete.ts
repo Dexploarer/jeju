@@ -105,7 +105,7 @@ class CompleteBootstrapper {
   ];
 
   constructor() {
-    this.rpcUrl = process.env.JEJU_RPC_URL || 'http://127.0.0.1:9545';
+    this.rpcUrl = process.env.JEJU_RPC_URL || 'http://127.0.0.1:6546';
     this.deployerKey = process.env.PRIVATE_KEY || this.TEST_ACCOUNTS[0].key;
     this.deployerAddress = this.getAddress(this.deployerKey);
   }
@@ -156,6 +156,7 @@ class CompleteBootstrapper {
     console.log('💳 STEP 3: Deploying MultiTokenPaymaster');
     console.log('-'.repeat(70));
     result.contracts.universalPaymaster = await this.deployMultiTokenPaymaster(
+      result.contracts.entryPoint,
       result.contracts.usdc,
       result.contracts.elizaOS,
       result.contracts.creditManager,
@@ -178,29 +179,21 @@ class CompleteBootstrapper {
     result.contracts.paymasterFactory = paymasterSystem.paymasterFactory;
     console.log('');
 
-    // Step 5.5: Deploy Node Staking System
-    console.log('🔗 STEP 5.5: Deploying Node Staking System');
-    console.log('-'.repeat(70));
-    const nodeStaking = await this.deployNodeStaking(result.contracts);
-    result.contracts.nodeStakingManager = nodeStaking.manager;
-    result.contracts.nodePerformanceOracle = nodeStaking.performanceOracle;
-    console.log('');
-
-    // Step 5.6: Deploy Moderation System
-    console.log('🛡️  STEP 5.6: Deploying Moderation System');
+    // Step 5.5: Deploy Moderation System (needed for JEJU token)
+    console.log('🛡️  STEP 5.5: Deploying Moderation System');
     console.log('-'.repeat(70));
     const moderation = await this.deployModeration(result.contracts);
     result.contracts.banManager = moderation.banManager;
     result.contracts.reputationLabelManager = moderation.reputationLabelManager;
     console.log('');
 
-    // Step 5.6.1: Deploy JEJU Token
-    console.log('🏝️  STEP 5.6.1: Deploying JEJU Token');
+    // Step 5.6: Deploy JEJU Token
+    console.log('🏝️  STEP 5.6: Deploying JEJU Token');
     console.log('-'.repeat(70));
     result.contracts.jeju = await this.deployNetworkToken(result.contracts.banManager);
     console.log('');
 
-    // Step 5.7: Deploy Compute Marketplace
+    // Step 5.7: Deploy Compute Marketplace (needed for Node Staking)
     console.log('🖥️  STEP 5.7: Deploying Compute Marketplace');
     console.log('-'.repeat(70));
     const compute = await this.deployComputeMarketplace(result.contracts);
@@ -208,6 +201,14 @@ class CompleteBootstrapper {
     result.contracts.ledgerManager = compute.ledgerManager;
     result.contracts.inferenceServing = compute.inferenceServing;
     result.contracts.computeStaking = compute.computeStaking;
+    console.log('');
+
+    // Step 5.8: Deploy Node Staking System
+    console.log('🔗 STEP 5.8: Deploying Node Staking System');
+    console.log('-'.repeat(70));
+    const nodeStaking = await this.deployNodeStaking(result.contracts);
+    result.contracts.nodeStakingManager = nodeStaking.manager;
+    result.contracts.nodePerformanceOracle = nodeStaking.performanceOracle;
     console.log('');
 
     // Step 6: Authorize Services
@@ -328,17 +329,17 @@ class CompleteBootstrapper {
     }
 
     return this.deployContract(
-      'src/ElizaOSToken.sol:ElizaOSToken',
-      ['elizaOS', 'elizaOS', this.deployerAddress, '100000000000000000000000000'],
+      'src/tokens/Token.sol:Token',
+      ['elizaOS', 'elizaOS', '100000000000000000000000000', this.deployerAddress, '0', 'true'],
       'elizaOS Token'
     );
   }
 
   private async deployPriceOracle(): Promise<string> {
     return this.deployContract(
-      'src/oracle/MockPriceOracle.sol:MockPriceOracle',
+      'src/oracle/PriceOracle.sol:PriceOracle',
       [],
-      'MockPriceOracle'
+      'PriceOracle'
     );
   }
 
@@ -368,17 +369,17 @@ class CompleteBootstrapper {
   }
 
   private async deployMultiTokenPaymaster(
+    entryPoint: string,
     usdc: string,
     elizaOS: string,
     creditManager: string,
     serviceRegistry: string,
     priceOracle: string
   ): Promise<string> {
-    const entryPoint = '0x0000000071727De22E5E9d8BAf0edAc6f37da032';
-    
+    // Constructor: (entryPoint, usdc, elizaOS, creditManager, serviceRegistry, priceOracle, revenueWallet, owner)
     const address = this.deployContract(
       'src/services/MultiTokenPaymaster.sol:MultiTokenPaymaster',
-      [entryPoint, elizaOS, usdc, creditManager, serviceRegistry, priceOracle, this.deployerAddress],
+      [entryPoint, usdc, elizaOS, creditManager, serviceRegistry, priceOracle, this.deployerAddress, this.deployerAddress],
       'MultiTokenPaymaster (Multi-Token AA)'
     );
 
@@ -395,7 +396,7 @@ class CompleteBootstrapper {
   private async deployEntryPoint(): Promise<string> {
     // Deploy mock EntryPoint for localnet (on mainnet, use standard address)
     return this.deployContract(
-      'script/DeployLiquiditySystem.s.sol:MockEntryPoint',
+      'test/mocks/MockEntryPoint.sol:MockEntryPoint',
       [],
       'MockEntryPoint (ERC-4337)'
     );
@@ -454,7 +455,8 @@ class CompleteBootstrapper {
         // Register in TokenRegistry (0.1 ETH registration fee)
         this.sendTx(
           tokenRegistry,
-          `registerToken(address,address,uint256,uint256) ${token.address} ${contracts.priceOracle} ${token.minFee} ${token.maxFee}`,
+          'registerToken(address,address,uint256,uint256)',
+          [token.address, contracts.priceOracle ?? '0x0000000000000000000000000000000000000000', String(token.minFee), String(token.maxFee)],
           `${token.symbol} registered (${token.minFee}-${token.maxFee} bps fee range)`
         );
       } catch (error: unknown) {
@@ -468,21 +470,24 @@ class CompleteBootstrapper {
 
   private async deployNodeStaking(contracts: Partial<BootstrapResult['contracts']>): Promise<{ manager: string; performanceOracle: string }> {
     try {
-      // Deploy NodePerformanceOracle first
+      // Deploy NodePerformanceOracle first (coordinator, computeRegistry, initialOwner)
       const performanceOracle = this.deployContract(
-        'src/node-staking/NodePerformanceOracle.sol:NodePerformanceOracle',
-        [this.deployerAddress],
+        'src/training/NodePerformanceOracle.sol:NodePerformanceOracle',
+        [
+          this.deployerAddress, // coordinator (placeholder)
+          contracts.computeRegistry || this.deployerAddress, // computeRegistry
+          this.deployerAddress // initialOwner
+        ],
         'NodePerformanceOracle'
       );
 
-      // Deploy NodeStakingManager
+      // Deploy NodeStakingManager (tokenRegistry, paymasterFactory, priceOracle, performanceOracle, initialOwner)
       const manager = this.deployContract(
-        'src/node-staking/NodeStakingManager.sol:NodeStakingManager',
+        'src/staking/NodeStakingManager.sol:NodeStakingManager',
         [
-          contracts.tokenRegistry || '0x0000000000000000000000000000000000000000',
-          contracts.paymasterFactory || '0x0000000000000000000000000000000000000000',
-          contracts.priceOracle ?? '0x0000000000000000000000000000000000000000',
-          contracts.elizaOS ?? '0x0000000000000000000000000000000000000000',
+          contracts.tokenRegistry || '0x0000000000000000000000000000000000000001',
+          contracts.paymasterFactory || '0x0000000000000000000000000000000000000001',
+          contracts.priceOracle ?? '0x0000000000000000000000000000000000000001',
           performanceOracle,
           this.deployerAddress
         ],
@@ -493,6 +498,7 @@ class CompleteBootstrapper {
       return { manager, performanceOracle };
     } catch (error: unknown) {
       console.log('  ⚠️  Node staking deployment skipped (contracts may not exist)');
+      console.log('     Error:', error);
       return { manager: '0x0000000000000000000000000000000000000000', performanceOracle: '0x0000000000000000000000000000000000000000' };
     }
   }
@@ -521,12 +527,17 @@ class CompleteBootstrapper {
 
   private async deployNetworkToken(banManager: string): Promise<string> {
     try {
-      // Deploy JEJU token with faucet enabled
+      // Deploy JEJU token using Token.sol with faucet enabled
+      // Token constructor: (name, symbol, initialSupply, owner, maxSupply, isHomeChain)
       const jeju = this.deployContractFromPackages(
-        'src/tokens/NetworkToken.sol:NetworkToken',
-        [this.deployerAddress, banManager, 'true'],
-        'NetworkToken'
+        'src/tokens/Token.sol:Token',
+        ['Jeju Network', 'JEJU', '1000000000000000000000000000', this.deployerAddress, '0', 'true'],
+        'JEJU Token'
       );
+
+      // Enable faucet and set ban manager
+      this.sendTx(jeju, 'setConfig(uint256,uint256,bool,bool,bool)', ['0', '0', 'true', 'false', 'true'], null);
+      this.sendTx(jeju, 'setBanManager(address)', [banManager], null);
 
       console.log('     ✨ Faucet enabled (10,000 JEJU per claim)');
       
@@ -589,27 +600,33 @@ class CompleteBootstrapper {
   }
 
   private deployContractFromPackages(path: string, args: string[], name: string): string {
-    const argsStr = args.join(' ');
+    // Quote each argument individually for proper shell handling
+    const argsStr = args.map(a => `"${a}"`).join(' ');
     const cmd = `cd packages/contracts && forge create ${path} \
       --rpc-url ${this.rpcUrl} \
       --private-key ${this.deployerKey} \
-      ${args.length > 0 ? `--constructor-args ${argsStr}` : ''} \
-      --json`;
+      --broadcast \
+      ${args.length > 0 ? `--constructor-args ${argsStr}` : ''}`;
 
     const output = execSync(cmd, { encoding: 'utf-8', maxBuffer: 50 * 1024 * 1024 });
-    const result = JSON.parse(output);
     
-    console.log(`  ✅ ${name}: ${result.deployedTo}`);
-    return result.deployedTo;
+    // Parse deployment output (format: "Deployed to: 0x...")
+    const match = output.match(/Deployed to: (0x[a-fA-F0-9]{40})/);
+    if (!match) {
+      throw new Error(`Failed to parse deployment output for ${name}: ${output}`);
+    }
+    
+    console.log(`  ✅ ${name}: ${match[1]}`);
+    return match[1];
   }
 
   private async setOraclePrices(oracle: string, usdc: string, elizaOS: string): Promise<void> {
     const ETH_ADDRESS = '0x0000000000000000000000000000000000000000';
 
-    // Set prices (price, decimals)
-    this.sendTx(oracle, `setPrice(address,uint256,uint256) ${ETH_ADDRESS} 3000000000000000000000 18`, 'ETH = $3000');
-    this.sendTx(oracle, `setPrice(address,uint256,uint256) ${usdc} 1000000000000000000 18`, 'USDC = $1.00');
-    this.sendTx(oracle, `setPrice(address,uint256,uint256) ${elizaOS} 100000000000000000 18`, 'elizaOS = $0.10');
+    // Set prices (token, price, decimals)
+    this.sendTx(oracle, 'setPrice(address,uint256,uint256)', [ETH_ADDRESS, '3000000000000000000000', '18'], 'ETH = $3000');
+    this.sendTx(oracle, 'setPrice(address,uint256,uint256)', [usdc, '1000000000000000000', '18'], 'USDC = $1.00');
+    this.sendTx(oracle, 'setPrice(address,uint256,uint256)', [elizaOS, '100000000000000000', '18'], 'elizaOS = $0.10');
     
     console.log('  ✅ Oracle prices initialized');
   }
@@ -624,7 +641,7 @@ class CompleteBootstrapper {
     ];
 
     for (const service of services) {
-      this.sendTx(creditManager, `setServiceAuthorization(address,bool) ${service.addr} true`, service.name);
+      this.sendTx(creditManager, 'setServiceAuthorization(address,bool)', [service.addr, 'true'], service.name);
     }
 
     console.log(`  ✅ Authorized ${services.length} services to deduct credits`);
@@ -639,14 +656,14 @@ class CompleteBootstrapper {
       console.log(`    Address: ${address}`);
 
       // USDC: 10,000 USDC
-      this.sendTx(usdc, `transfer(address,uint256) ${address} 10000000000`, null);
+      this.sendTx(usdc, 'transfer(address,uint256)', [address, '10000000000'], null);
 
       // elizaOS: 100,000 elizaOS
-      this.sendTx(elizaOS, `transfer(address,uint256) ${address} 100000000000000000000000`, null);
+      this.sendTx(elizaOS, 'transfer(address,uint256)', [address, '100000000000000000000000'], null);
 
       // JEJU: 100,000 JEJU
       if (jeju && jeju !== '0x0000000000000000000000000000000000000000') {
-        this.sendTx(jeju, `transfer(address,uint256) ${address} 100000000000000000000000`, null);
+        this.sendTx(jeju, 'transfer(address,uint256)', [address, '100000000000000000000000'], null);
       }
 
       // ETH: 1000 ETH
@@ -769,9 +786,9 @@ class CompleteBootstrapper {
       --rpc-url ${this.rpcUrl} \
       --private-key ${this.deployerKey} \
       --broadcast \
-      ${args.length > 0 ? `--constructor-args ${argsStr}` : ''} 2>/dev/null`;
+      ${args.length > 0 ? `--constructor-args ${argsStr}` : ''}`;
 
-    const output = execSync(cmd, { encoding: 'utf-8', maxBuffer: 50 * 1024 * 1024 });
+    const output = execSync(cmd, { encoding: 'utf-8', maxBuffer: 50 * 1024 * 1024, stdio: ['pipe', 'pipe', 'pipe'] });
     
     // Parse deployment output (format: "Deployed to: 0x...")
     const match = output.match(/Deployed to: (0x[a-fA-F0-9]{40})/);
@@ -783,8 +800,9 @@ class CompleteBootstrapper {
     return match[1];
   }
 
-  private sendTx(to: string, signature: string, label: string | null): void {
-    const cmd = `cast send ${to} "${signature}" --rpc-url ${this.rpcUrl} --private-key ${this.deployerKey}`;
+  private sendTx(to: string, sig: string, args: string[], label: string | null): void {
+    const argsStr = args.map(a => `"${a}"`).join(' ');
+    const cmd = `cast send ${to} "${sig}" ${argsStr} --rpc-url ${this.rpcUrl} --private-key ${this.deployerKey}`;
     execSync(cmd, { stdio: 'pipe' });
     if (label) console.log(`     ${label}`);
   }

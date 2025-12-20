@@ -60,7 +60,7 @@ interface IInterchainGasPaymaster {
  * - Call _initializeCrossChain in constructor
  * - Override _isHomeChain() if needed
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 abstract contract CrossChainNFT is 
     ERC721URIStorage, 

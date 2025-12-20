@@ -402,7 +402,7 @@ contract OAuth3Test is Test {
     function test_fullOAuth3Flow() public {
         // 1. Register OAuth3 app
         string[] memory redirectUris = new string[](1);
-        redirectUris[0] = "https://app.jeju.network/callback";
+        redirectUris[0] = "https://app.jejunetwork.org/callback";
 
         IOAuth3IdentityRegistry.AuthProvider[] memory providers = new IOAuth3IdentityRegistry.AuthProvider[](2);
         providers[0] = IOAuth3IdentityRegistry.AuthProvider.WALLET;
@@ -412,10 +412,10 @@ contract OAuth3Test is Test {
             redirectUris: redirectUris,
             allowedProviders: providers,
             jnsName: "cloud.jeju",
-            logoUri: "https://jeju.network/logo.png",
-            policyUri: "https://jeju.network/privacy",
-            termsUri: "https://jeju.network/terms",
-            webhookUrl: "https://api.jeju.network/webhooks"
+            logoUri: "https://jejunetwork.org/logo.png",
+            policyUri: "https://jejunetwork.org/privacy",
+            termsUri: "https://jejunetwork.org/terms",
+            webhookUrl: "https://api.jejunetwork.org/webhooks"
         });
 
         bytes32 appId = appRegistry.registerApp("Jeju Cloud", "Official Jeju Cloud app", council, config);
@@ -423,9 +423,9 @@ contract OAuth3Test is Test {
         // 2. Create identity for user
         IOAuth3IdentityRegistry.IdentityMetadata memory metadata = IOAuth3IdentityRegistry.IdentityMetadata({
             name: "Jeju User",
-            avatar: "https://jeju.network/avatar.png",
+            avatar: "https://jejunetwork.org/avatar.png",
             bio: "A Jeju Network user",
-            url: "https://jeju.network",
+            url: "https://jejunetwork.org",
             jnsName: "user.jeju"
         });
 
