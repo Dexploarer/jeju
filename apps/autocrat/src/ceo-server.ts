@@ -17,17 +17,8 @@ import { makeTEEDecision, getTEEMode } from './tee';
 // ============================================================================
 
 const CEO_PORT = parseInt(process.env.CEO_PORT ?? '8004', 10);
-// Note: These URLs are loaded from env first, then fall back to network config
-// In a fully decentralized setup, autocrat runs on the same network-aware endpoints
-import { getAutocratA2AUrl, getAutocratUrl } from '@jejunetwork/config';
-
-function getAutocratA2A(): string {
-  return process.env.getAutocratA2A() ?? getAutocratA2AUrl();
-}
-
-function getAutocratMCP(): string {
-  return process.env.getAutocratMCP() ?? `${getAutocratUrl()}/mcp`;
-}
+const AUTOCRAT_A2A_URL = process.env.AUTOCRAT_A2A_URL ?? 'http://localhost:8010/a2a';
+const AUTOCRAT_MCP_URL = process.env.AUTOCRAT_MCP_URL ?? 'http://localhost:8010/mcp';
 
 // Model settings
 function getModelSettings(): Record<string, string> {
@@ -303,7 +294,7 @@ app.post('/mcp/resources/read', async (c) => {
 - Legal Agent: Compliance review`;
   } else if (uri === 'autocrat://stats') {
     // Fetch from autocrat A2A
-    const response = await fetch(getAutocratA2A(), {
+    const response = await fetch(AUTOCRAT_A2A_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -389,7 +380,7 @@ async function makeDecision(
 }
 
 async function getDashboard(): Promise<{ text: string; data: Record<string, unknown> }> {
-  const response = await fetch(getAutocratA2A(), {
+  const response = await fetch(AUTOCRAT_A2A_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -409,7 +400,7 @@ async function getDashboard(): Promise<{ text: string; data: Record<string, unkn
 }
 
 async function getActiveProposals(): Promise<{ text: string; data: Record<string, unknown> }> {
-  const response = await fetch(getAutocratA2A(), {
+  const response = await fetch(AUTOCRAT_A2A_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -429,7 +420,7 @@ async function getActiveProposals(): Promise<{ text: string; data: Record<string
 }
 
 async function getAutocratVotes(proposalId: string): Promise<{ text: string; data: Record<string, unknown> }> {
-  const response = await fetch(getAutocratA2A(), {
+  const response = await fetch(AUTOCRAT_A2A_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -551,8 +542,8 @@ app.get('/health', async (c) => {
       agentCard: '/.well-known/agent-card.json',
     },
     upstream: {
-      autocrat: getAutocratA2A(),
-      autocratMcp: getAutocratMCP(),
+      autocrat: AUTOCRAT_A2A_URL,
+      autocratMcp: AUTOCRAT_MCP_URL,
     },
   });
 });
@@ -594,7 +585,7 @@ async function start() {
 ║  • MCP:  http://localhost:${CEO_PORT}/mcp                              ║
 ║                                                                 ║
 ║  Upstream:                                                      ║
-║  • Autocrat: ${getAutocratA2A().padEnd(42)}║
+║  • Autocrat: ${AUTOCRAT_A2A_URL.padEnd(42)}║
 ║                                                                 ║
 ╚═══════════════════════════════════════════════════════════════╝
 `);

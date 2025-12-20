@@ -105,7 +105,7 @@ const DAO_CONFIGS = {
     name: 'Jeju DAO',
     ceoPersona: {
       name: 'Jeju',
-      pfp: 'https://jeju.network/assets/jeju-ceo.png',
+      pfp: 'https://jejunetwork.org/assets/jeju-ceo.png',
       description: 'Autonomous CEO of Jeju DAO, governing the Jeju network infrastructure and chain-level decisions.',
       personality: 'Strategic, analytical, focused on long-term network health and decentralization.',
       voiceStyle: 'Professional yet approachable, with a focus on clarity and transparency.',
@@ -152,10 +152,10 @@ function getChain(network: NetworkType) {
 
 function getRpcUrl(network: NetworkType): string {
   switch (network) {
-    case 'localnet': return process.env.RPC_URL ?? 'http://localhost:8545';
+    case 'localnet': return process.env.RPC_URL ?? 'http://localhost:6546';
     case 'testnet': return process.env.RPC_URL ?? 'https://sepolia.base.org';
     case 'mainnet': return process.env.RPC_URL ?? 'https://mainnet.base.org';
-    default: return 'http://localhost:8545';
+    default: return 'http://localhost:6546';
   }
 }
 

@@ -13,7 +13,7 @@ pragma solidity ^0.8.26;
  *
  * Used by Gold.sol, Items.sol, and MUD game contracts.
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 library RPGStats {
     // ============ Constants ============

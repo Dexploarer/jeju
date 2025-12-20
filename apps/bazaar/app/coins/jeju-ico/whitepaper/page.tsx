@@ -190,8 +190,8 @@ export default function WhitepaperPage() {
       <Section id="section-9" title="9. Contact">
         <ul className="list-disc pl-6 space-y-2" style={{ color: 'var(--text-secondary)' }}>
           <li><strong>Code:</strong> <a href="https://github.com/elizaos/jeju" className="text-bazaar-primary hover:underline">github.com/elizaos/jeju</a></li>
-          <li><strong>Security:</strong> security@jeju.network</li>
-          <li><strong>Legal:</strong> legal@jeju.network</li>
+          <li><strong>Security:</strong> security@jejunetwork.org</li>
+          <li><strong>Legal:</strong> legal@jejunetwork.org</li>
         </ul>
       </Section>
       

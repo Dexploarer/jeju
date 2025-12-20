@@ -65,7 +65,7 @@
       "jnsName": "indexer.jeju",
       "buildDir": "public",
       "spa": false,
-      "fallbackOrigins": ["https://indexer.jeju.network"]
+      "fallbackOrigins": ["https://indexer.jejunetwork.org"]
     },
     "robustness": {
       "multiOrigin": true,

@@ -4,32 +4,34 @@
  */
 
 import { describe, test, expect, beforeAll } from 'bun:test';
-import { ethers } from 'ethers';
+import { createPublicClient, http, getContract, keccak256, toBytes } from 'viem';
 
 describe('Moderation Load Tests', () => {
-  let provider: ethers.JsonRpcProvider;
-  let banManagerAddress: string;
-  let labelManagerAddress: string;
+  let publicClient: ReturnType<typeof createPublicClient>;
+  let banManagerAddress: `0x${string}`;
 
   beforeAll(() => {
-    provider = new ethers.JsonRpcProvider(process.env.RPC_URL || 'http://localhost:8545');
-    banManagerAddress = process.env.BAN_MANAGER_ADDRESS || '';
-    labelManagerAddress = process.env.LABEL_MANAGER_ADDRESS || '';
+    publicClient = createPublicClient({ transport: http(process.env.RPC_URL || 'http://localhost:6546') });
+    banManagerAddress = (process.env.BAN_MANAGER_ADDRESS || '0x0000000000000000000000000000000000000000') as `0x${string}`;
   });
 
   test('1000 concurrent ban checks complete in <1s', async () => {
-    const banManager = new ethers.Contract(
-      banManagerAddress,
-      ['function isAccessAllowed(uint256 agentId, bytes32 appId) view returns (bool)'],
-      provider
-    );
+    const banManagerAbi = [
+      { name: 'isAccessAllowed', type: 'function', stateMutability: 'view', inputs: [{ name: 'agentId', type: 'uint256' }, { name: 'appId', type: 'bytes32' }], outputs: [{ type: 'bool' }] },
+    ] as const;
 
-    const appId = ethers.keccak256(ethers.toUtf8Bytes('testapp'));
+    const banManager = getContract({
+      address: banManagerAddress,
+      abi: banManagerAbi,
+      client: publicClient,
+    });
+
+    const appId = keccak256(toBytes('testapp'));
     const startTime = Date.now();
 
     // 1000 concurrent checks
     const promises = Array.from({ length: 1000 }, (_, i) =>
-      banManager.isAccessAllowed(i + 1, appId)
+      banManager.read.isAccessAllowed([BigInt(i + 1), appId])
     );
 
     await Promise.all(promises);

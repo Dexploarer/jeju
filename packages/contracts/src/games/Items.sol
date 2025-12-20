@@ -44,7 +44,7 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
  * - Burnable to remove from circulation
  * - Registry integration for player verification
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract Items is ERC1155, ERC1155Burnable, ERC1155Supply, Ownable {
     using ECDSA for bytes32;

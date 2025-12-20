@@ -171,7 +171,7 @@ test.describe('Repositories', () => {
       await page.goto('/git/new');
       
       await expect(page.getByText(/git remote configuration/i)).toBeVisible();
-      await expect(page.getByText(/git.jeju.network/i).first()).toBeVisible();
+      await expect(page.getByText(/git.jejunetwork.org/i).first()).toBeVisible();
     });
 
     test('should show readme and license options', async ({ page }) => {

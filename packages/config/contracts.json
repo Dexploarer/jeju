@@ -323,6 +323,10 @@
         "x402Facilitator": "0x478C844b1Ee90F9668c1F7945cb16981eCBa23c3",
         "authCaptureEscrow": "0x75165D5EF5e35A511D70DecFE8A4c30B8D2a14Af"
       },
+      "poc": {
+        "identityRegistry": "0x7324287d2587D75496C4aB0030610223A5bf28D2",
+        "validator": "0xF866a84615c33Fa6a3e97084E67f3E355CBf6De1"
+      },
       "tokens": {
         "usdc": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
         "elizaOS": "0x7af64e6aE21076DE21EFe71F243A75664a17C34b"

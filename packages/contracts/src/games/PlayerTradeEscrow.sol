@@ -36,7 +36,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
  * - Assets locked in escrow during trade
  * - Reentrancy protection
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract PlayerTradeEscrow is IERC721Receiver, IERC1155Receiver, ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;

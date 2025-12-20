@@ -54,7 +54,7 @@ const mockPosts: PostData[] = [
       avatar: 'https://avatars.githubusercontent.com/u/1?v=4',
       fid: 12345,
     },
-    content: 'Just deployed a new model to the Factory model hub! 🚀 Fine-tuned LLaMA 3 on the jeju documentation corpus. Try it out: factory.jeju.network/models/alice/llama-3-jeju',
+    content: 'Just deployed a new model to the Factory model hub! 🚀 Fine-tuned LLaMA 3 on the jeju documentation corpus. Try it out: factory.jejunetwork.org/models/alice/llama-3-jeju',
     timestamp: Date.now() - 2 * 60 * 60 * 1000,
     likes: 42,
     recasts: 12,

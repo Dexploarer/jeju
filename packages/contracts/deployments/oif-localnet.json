@@ -11,7 +11,7 @@
     "oracle": "",
     "oracleType": "simple"
   },
-  "notes": "Deploy with: forge script script/DeployOIF.s.sol --rpc-url http://localhost:8545 --broadcast"
+  "notes": "Deploy with: forge script script/DeployOIF.s.sol --rpc-url http://localhost:6546 --broadcast"
 }
 
 

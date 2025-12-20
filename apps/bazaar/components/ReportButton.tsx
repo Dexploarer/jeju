@@ -50,7 +50,7 @@ export default function ReportButton({ targetAddress, context, variant = 'icon' 
       context: context || 'Reported from Bazaar',
     });
 
-    window.open(`https://gateway.jeju.network/moderation/report?${params.toString()}`, '_blank');
+    window.open(`https://gateway.jejunetwork.org/moderation/report?${params.toString()}`, '_blank');
   };
 
   if (variant === 'icon') {

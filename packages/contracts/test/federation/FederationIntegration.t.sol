@@ -113,9 +113,9 @@ contract FederationIntegrationTest is Test {
         networkRegistry.registerNetwork{value: 10 ether}(
             JEJU_CHAIN_ID,
             "Jeju Network",
-            "https://rpc.jeju.network",
-            "https://explorer.jeju.network",
-            "wss://ws.jeju.network",
+            "https://rpc.jejunetwork.org",
+            "https://explorer.jejunetwork.org",
+            "wss://ws.jejunetwork.org",
             jejuContracts,
             keccak256("jeju-genesis")
         );
@@ -193,7 +193,7 @@ contract FederationIntegrationTest is Test {
             JEJU_CHAIN_ID,
             RegistryHub.ChainType.EVM,
             "Jeju Network",
-            "https://rpc.jeju.network"
+            "https://rpc.jejunetwork.org"
         );
 
         vm.prank(fork1Operator);
@@ -543,7 +543,7 @@ contract FederationIntegrationTest is Test {
             JEJU_CHAIN_ID,
             RegistryHub.ChainType.EVM,
             "Jeju Network",
-            "https://rpc.jeju.network"
+            "https://rpc.jejunetwork.org"
         );
 
         vm.prank(fork1Operator);

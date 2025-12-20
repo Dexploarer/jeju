@@ -88,8 +88,8 @@ contract FederationGovernanceTest is Test {
         registry.registerNetwork{value: 1 ether}(
             JEJU_CHAIN_ID,
             "Jeju Network",
-            "https://rpc.jeju.network",
-            "https://explorer.jeju.network",
+            "https://rpc.jejunetwork.org",
+            "https://explorer.jejunetwork.org",
             "",
             contracts,
             bytes32(0)
@@ -112,8 +112,8 @@ contract FederationGovernanceTest is Test {
         registry.registerNetwork{value: 10 ether}(
             JEJU_CHAIN_ID,
             "Jeju Network",
-            "https://rpc.jeju.network",
-            "https://explorer.jeju.network",
+            "https://rpc.jejunetwork.org",
+            "https://explorer.jejunetwork.org",
             "",
             contracts,
             bytes32(0)
@@ -139,7 +139,7 @@ contract FederationGovernanceTest is Test {
         registry.registerNetwork{value: 10 ether}(
             JEJU_CHAIN_ID,
             "Jeju Network",
-            "https://rpc.jeju.network",
+            "https://rpc.jejunetwork.org",
             "",
             "",
             contracts,

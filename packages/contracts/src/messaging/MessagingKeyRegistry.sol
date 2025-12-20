@@ -21,7 +21,7 @@ import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/Messa
  * - AES-256-GCM for message encryption
  * - ED25519 for signatures (same curve, different encoding)
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract MessagingKeyRegistry is ReentrancyGuard {
     using ECDSA for bytes32;

@@ -59,7 +59,7 @@ interface IL2OutputOracle {
  * 2. Output Root Match: Verifies computed outputRoot matches oracle (requires full preimage)
  * 3. State Proof: MPT proof against stateRoot (requires separate merkle verifier)
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract L2OutputVerifier is Ownable {
     // ============ Constants ============

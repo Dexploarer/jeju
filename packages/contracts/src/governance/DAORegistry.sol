@@ -24,7 +24,7 @@ import {IDAORegistry} from "./interfaces/IDAORegistry.sol";
  * - DAO Admin: Can manage their specific DAO (set via council contract)
  * - Council Members: Can vote on DAO proposals
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract DAORegistry is IDAORegistry, Ownable, Pausable, ReentrancyGuard {
     // ============ State Variables ============

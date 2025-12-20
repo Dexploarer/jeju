@@ -16,18 +16,18 @@ ingress:
     kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/certificate-arn: ${ACM_CERTIFICATE_ARN}
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-1:502713364895:certificate/0a915a42-9da2-4133-af16-ac7080d23308"
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
     alb.ingress.kubernetes.io/ssl-redirect: "443"
   hosts:
-    - host: testnet-crucible.jejunetwork.org
+    - host: crucible.testnet.jeju.network
       paths:
         - path: /
           pathType: Prefix
   tls:
     - secretName: crucible-tls
       hosts:
-        - testnet-crucible.jejunetwork.org
+        - crucible.testnet.jeju.network
 
 config:
   network: testnet
@@ -40,12 +40,12 @@ config:
     serviceRegistry: "0x0000000000000000000000000000000000000000"
     autocratTreasury: "0x0000000000000000000000000000000000000000"
   services:
-    computeMarketplace: https://testnet-compute.jejunetwork.org
-    storageApi: https://testnet-storage.jejunetwork.org
-    ipfsGateway: https://testnet-ipfs.jejunetwork.org
-    indexerGraphql: https://testnet-indexer.jejunetwork.org/graphql
-    cqlEndpoint: https://testnet-cql.jejunetwork.org
-    dexCacheUrl: https://testnet-storage.jejunetwork.org/cache
+    computeMarketplace: https://compute.testnet.jeju.network
+    storageApi: https://storage.testnet.jeju.network
+    ipfsGateway: https://ipfs.testnet.jeju.network
+    indexerGraphql: https://indexer.testnet.jeju.network/graphql
+    cqlEndpoint: https://cql.testnet.jeju.network
+    dexCacheUrl: https://storage.testnet.jeju.network/cache
 
 # MEV + LP Bot configuration for testnet
 bot:

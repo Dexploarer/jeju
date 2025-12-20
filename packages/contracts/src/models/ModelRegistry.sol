@@ -120,20 +120,20 @@ contract ModelRegistry is ReentrancyGuard, Pausable, Ownable {
     mapping(bytes32 => mapping(string => uint256)) public versionIndex; // modelId => version => index
     mapping(bytes32 => ModelFile[]) public files;
     mapping(bytes32 => GateRequest[]) public gateRequests;
-
+    
     // Access control
     mapping(bytes32 => mapping(address => bool)) public hasAccess;
     mapping(bytes32 => mapping(address => bool)) public isCollaborator;
     
     // Stars
     mapping(bytes32 => mapping(address => bool)) public hasStarred;
-
+    
     // Organization ownership
     mapping(string => address) public organizationOwner;
     
     // Name uniqueness: keccak256(org/name)
     mapping(bytes32 => bool) public modelNameTaken;
-
+    
     bytes32[] public allModels;
     uint256 private _nextModelId = 1;
     uint256 private _nextVersionId = 1;
@@ -624,7 +624,7 @@ contract ModelRegistry is ReentrancyGuard, Pausable, Ownable {
         for (uint256 i = 0; i < allModels.length; i++) {
             if (models[allModels[i]].modelType == modelType) {
                 matching[j++] = allModels[i];
-            }
+    }
         }
 
         // Apply pagination

@@ -30,7 +30,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
  * - Unlimited supply (in-game economy determines scarcity)
  * - Burnable for in-game purchases
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract Gold is ERC20, Ownable {
     using ECDSA for bytes32;

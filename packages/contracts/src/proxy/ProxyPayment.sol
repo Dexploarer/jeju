@@ -18,7 +18,7 @@ import {IProxyRegistry} from "./interfaces/IProxyRegistry.sol";
  * 3. Session is closed with actual usage
  * 4. Node claims payment, excess refunded to client
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract ProxyPayment is Ownable, Pausable, ReentrancyGuard {
     // ============ Structs ============

@@ -15,7 +15,6 @@ import type { Address, Hex } from 'viem';
 import type { Context, Next } from 'hono';
 import type { ServiceHealth } from '../types';
 import { createStorageRouter } from './routes/storage';
-import { createStorageRouterV2 } from './routes/storage-v2';
 import { createComputeRouter } from './routes/compute';
 import { createCDNRouter } from './routes/cdn';
 import { createA2ARouter } from './routes/a2a';
@@ -33,9 +32,6 @@ import { createVPNRouter } from './routes/vpn';
 import { createScrapingRouter } from './routes/scraping';
 import { createRPCRouter } from './routes/rpc';
 import { createEdgeRouter, handleEdgeWebSocket } from './routes/edge';
-import rlaifRoutes from './routes/rlaif';
-import { createModelsRouter } from './routes/models';
-import { createDatasetsRouter } from './routes/datasets';
 import { createBackendManager } from '../storage/backends';
 import { initializeMarketplace } from '../api-marketplace';
 import { initializeContainerSystem } from '../containers';
@@ -121,7 +117,7 @@ const backendManager = createBackendManager();
 // Environment validation - require addresses in production
 const isProduction = process.env.NODE_ENV === 'production';
 const LOCALNET_DEFAULTS = {
-  rpcUrl: 'http://localhost:8545',
+  rpcUrl: 'http://localhost:6546',
   repoRegistry: '0x5FbDB2315678afecb367f032d93F642f64180aa3',
   packageRegistry: '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
   triggerRegistry: '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
@@ -205,8 +201,6 @@ app.get('/health', async (c) => {
       git: { status: 'healthy' },
       pkg: { status: 'healthy' },
       ci: { status: 'healthy' },
-      models: { status: 'healthy' },
-      datasets: { status: 'healthy' },
       oauth3: { status: process.env.OAUTH3_AGENT_URL ? 'available' : 'not-configured' },
       s3: { status: 'healthy' },
       workers: { status: 'healthy' },
@@ -225,9 +219,9 @@ app.get('/', (c) => {
     description: 'Decentralized Web Services',
     version: '1.0.0',
     services: [
-      'storage', 'compute', 'cdn', 'git', 'pkg', 'ci', 'models', 'datasets',
-      'oauth3', 'api-marketplace', 'containers', 's3', 'workers', 'kms', 
-      'vpn', 'scraping', 'rpc', 'edge', 'rlaif'
+      'storage', 'compute', 'cdn', 'git', 'pkg', 'ci', 'oauth3', 
+      'api-marketplace', 'containers', 's3', 'workers', 'kms', 
+      'vpn', 'scraping', 'rpc', 'edge'
     ],
     endpoints: {
       storage: '/storage/*',
@@ -236,8 +230,6 @@ app.get('/', (c) => {
       git: '/git/*',
       pkg: '/pkg/*',
       ci: '/ci/*',
-      models: '/models/*',
-      datasets: '/datasets/*',
       oauth3: '/oauth3/*',
       api: '/api/*',
       containers: '/containers/*',
@@ -250,13 +242,11 @@ app.get('/', (c) => {
       scraping: '/scraping/*',
       rpc: '/rpc/*',
       edge: '/edge/*',
-      rlaif: '/rlaif/*',
     },
   });
 });
 
 app.route('/storage', createStorageRouter(backendManager));
-app.route('/storage/v2', createStorageRouterV2());
 app.route('/compute', createComputeRouter());
 app.route('/cdn', createCDNRouter());
 app.route('/git', createGitRouter({ repoManager, backend: backendManager }));
@@ -276,25 +266,10 @@ app.route('/vpn', createVPNRouter());
 app.route('/scraping', createScrapingRouter());
 app.route('/rpc', createRPCRouter());
 app.route('/edge', createEdgeRouter());
-app.route('/rlaif', rlaifRoutes);
 
-// Model Hub (HuggingFace-compatible)
-const modelsConfig = {
-  backend: backendManager,
-  rpcUrl: getEnvOrDefault('RPC_URL', LOCALNET_DEFAULTS.rpcUrl),
-  modelRegistryAddress: getEnvOrDefault('MODEL_REGISTRY_ADDRESS', '0x5FC8d32690cc91D4c39d9d3abcBD16989F875707') as Address,
-  privateKey: process.env.DWS_PRIVATE_KEY as Hex | undefined,
-};
-app.route('/models', createModelsRouter(modelsConfig));
-
-// Datasets Registry (HuggingFace-compatible)
-app.route('/datasets', createDatasetsRouter({ backend: backendManager }));
-
-// Initialize services (deferred to startup)
-async function initializeServices(): Promise<void> {
-  await initializeMarketplace();
-  initializeContainerSystem();
-}
+// Initialize services
+initializeMarketplace();
+initializeContainerSystem();
 
 // Serve frontend - from IPFS when configured, fallback to local
 app.get('/app', async (c) => {
@@ -390,10 +365,8 @@ app.get('/.well-known/agent-card.json', (c) => {
       { name: 'compute', endpoint: `${baseUrl}/compute` },
       { name: 'cdn', endpoint: `${baseUrl}/cdn` },
       { name: 'git', endpoint: `${baseUrl}/git` },
-      { name: 'pkg', endpoint: `${baseUrl}/pkg`, description: 'npm-compatible package registry' },
+      { name: 'pkg', endpoint: `${baseUrl}/pkg` },
       { name: 'ci', endpoint: `${baseUrl}/ci` },
-      { name: 'models', endpoint: `${baseUrl}/models`, description: 'HuggingFace-compatible model registry' },
-      { name: 'datasets', endpoint: `${baseUrl}/datasets`, description: 'HuggingFace-compatible dataset registry' },
       { name: 'oauth3', endpoint: `${baseUrl}/oauth3` },
       { name: 's3', endpoint: `${baseUrl}/s3`, description: 'S3-compatible object storage' },
       { name: 'workers', endpoint: `${baseUrl}/workers`, description: 'Serverless functions' },
@@ -426,41 +399,33 @@ function shutdown(signal: string) {
 }
 
 if (import.meta.main) {
-  (async () => {
-    const baseUrl = process.env.DWS_BASE_URL || `http://localhost:${PORT}`;
-    
-    // Initialize services before starting server
-    await initializeServices();
-    
-    console.log(`[DWS] Running at ${baseUrl}`);
-    console.log(`[DWS] Environment: ${isProduction ? 'production' : 'development'}`);
-    console.log(`[DWS] Git registry: ${gitConfig.repoRegistryAddress}`);
-    console.log(`[DWS] Package registry: ${pkgConfig.packageRegistryAddress}`);
-    console.log(`[DWS] Identity registry (ERC-8004): ${decentralizedConfig.identityRegistryAddress}`);
-    
-    if (decentralizedConfig.frontendCid) {
-      console.log(`[DWS] Frontend CID: ${decentralizedConfig.frontendCid}`);
-    } else {
-      console.log(`[DWS] Frontend: local filesystem (set DWS_FRONTEND_CID for decentralized)`);
-    }
-    
-    server = Bun.serve({ port: PORT, fetch: app.fetch });
+  const baseUrl = process.env.DWS_BASE_URL || `http://localhost:${PORT}`;
+  
+  console.log(`[DWS] Running at ${baseUrl}`);
+  console.log(`[DWS] Environment: ${isProduction ? 'production' : 'development'}`);
+  console.log(`[DWS] Git registry: ${gitConfig.repoRegistryAddress}`);
+  console.log(`[DWS] Package registry: ${pkgConfig.packageRegistryAddress}`);
+  console.log(`[DWS] Identity registry (ERC-8004): ${decentralizedConfig.identityRegistryAddress}`);
+  
+  if (decentralizedConfig.frontendCid) {
+    console.log(`[DWS] Frontend CID: ${decentralizedConfig.frontendCid}`);
+  } else {
+    console.log(`[DWS] Frontend: local filesystem (set DWS_FRONTEND_CID for decentralized)`);
+  }
+  
+  server = Bun.serve({ port: PORT, fetch: app.fetch });
 
-    // Start P2P coordination if enabled
-    if (process.env.DWS_P2P_ENABLED === 'true') {
-      p2pCoordinator = decentralized.createP2P(baseUrl);
-      distributedRateLimiter = decentralized.createRateLimiter(p2pCoordinator);
-      p2pCoordinator.start().then(() => {
-        console.log(`[DWS] P2P coordination started`);
-      }).catch(console.error);
-    }
-    
-    process.on('SIGINT', () => shutdown('SIGINT'));
-    process.on('SIGTERM', () => shutdown('SIGTERM'));
-  })().catch((err) => {
-    console.error('[DWS] Startup failed:', err);
-    process.exit(1);
-  });
+  // Start P2P coordination if enabled
+  if (process.env.DWS_P2P_ENABLED === 'true') {
+    p2pCoordinator = decentralized.createP2P(baseUrl);
+    distributedRateLimiter = decentralized.createRateLimiter(p2pCoordinator);
+    p2pCoordinator.start().then(() => {
+      console.log(`[DWS] P2P coordination started`);
+    }).catch(console.error);
+  }
+  
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
 }
 
 export { app, backendManager, repoManager, registryManager, workflowEngine };

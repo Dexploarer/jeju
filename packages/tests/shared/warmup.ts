@@ -4,7 +4,7 @@
 
 import { spawn } from 'bun';
 import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
-import { join } from 'path';
+import { join, resolve } from 'path';
 import { chromium, type Browser } from 'playwright';
 
 export interface AppConfig {
@@ -39,8 +39,37 @@ export interface AppWarmupResult {
 
 const DEFAULT_ROUTES = ['/', '/about', '/settings'];
 
+function findJejuWorkspaceRoot(startDir: string): string | null {
+  let dir = startDir;
+  while (dir !== '/') {
+    const pkgPath = join(dir, 'package.json');
+    if (existsSync(pkgPath)) {
+      try {
+        const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8')) as { name?: string };
+        if (pkg.name === 'jeju') return dir;
+      } catch {
+        // keep walking up
+      }
+    }
+    const parent = resolve(dir, '..');
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return null;
+}
+
 export function discoverAppsForWarmup(rootDir = process.cwd()): AppConfig[] {
-  const appsDir = join(rootDir, 'apps');
+  // Allow being called from deep within the workspace (e.g. `packages/tests`)
+  // while still discovering apps from the repo root.
+  let resolvedRoot = rootDir;
+  let appsDir = join(resolvedRoot, 'apps');
+  if (!existsSync(appsDir)) {
+    const workspaceRoot = findJejuWorkspaceRoot(rootDir);
+    if (workspaceRoot) {
+      resolvedRoot = workspaceRoot;
+      appsDir = join(resolvedRoot, 'apps');
+    }
+  }
   if (!existsSync(appsDir)) return [];
 
   const apps: AppConfig[] = [];

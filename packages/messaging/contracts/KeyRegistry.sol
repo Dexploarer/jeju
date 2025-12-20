@@ -28,7 +28,7 @@ interface IIdentityRegistry {
  * - AES-256-GCM for message encryption
  * - ED25519 for signatures (same curve, different encoding)
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract KeyRegistry is ReentrancyGuard {
     

@@ -20,7 +20,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
  * - Identity verification (prove you own a name)
  * - Primary name selection (when owning multiple names)
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract JNSReverseRegistrar is Ownable {
     // ============ Constants ============

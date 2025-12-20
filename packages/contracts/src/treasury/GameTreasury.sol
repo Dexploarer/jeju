@@ -21,7 +21,7 @@ import {Treasury} from "./Treasury.sol";
  * - Anyone can take over after operator timeout
  * - On-chain state anchoring via IPFS CIDs
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract GameTreasury is Treasury {
     // =========================================================================
@@ -378,6 +378,7 @@ contract GameTreasury is Treasury {
         return "1.0.0";
     }
 }
+
 
 
 

@@ -382,10 +382,10 @@ async function main() {
   console.log('🌐 Checking local development DNS...');
   
   if (hasJejuHostsBlock()) {
-    console.log('   ✅ Hosts file configured for local.jeju.network\n');
+    console.log('   ✅ Hosts file configured for local.jejunetwork.org\n');
   } else {
     console.log('   ℹ️  Hosts file not configured for local development');
-    console.log('   ℹ️  This enables clean URLs like http://gateway.local.jeju.network\n');
+    console.log('   ℹ️  This enables clean URLs like http://gateway.local.jejunetwork.org\n');
     
     // Check if running interactively
     const isInteractive = process.stdin.isTTY && !process.env.CI;

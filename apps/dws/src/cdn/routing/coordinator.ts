@@ -490,7 +490,7 @@ export async function startCoordinator(): Promise<CDNCoordinator> {
     port: parseInt(process.env.CDN_COORDINATOR_PORT ?? '4021', 10),
     registryAddress: (process.env.CDN_REGISTRY_ADDRESS ?? '0x0000000000000000000000000000000000000000') as Address,
     billingAddress: (process.env.CDN_BILLING_ADDRESS ?? '0x0000000000000000000000000000000000000000') as Address,
-    rpcUrl: process.env.RPC_URL ?? 'http://localhost:8545',
+    rpcUrl: process.env.RPC_URL ?? 'http://localhost:6546',
     healthCheckInterval: parseInt(process.env.CDN_HEALTH_CHECK_INTERVAL ?? '60000', 10),
     maxNodesPerRegion: parseInt(process.env.CDN_MAX_NODES_PER_REGION ?? '100', 10),
     settlementInterval: parseInt(process.env.CDN_SETTLEMENT_INTERVAL ?? '3600000', 10),

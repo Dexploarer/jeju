@@ -18,16 +18,15 @@ import {
   http,
   type Address,
   type Hex,
-  encodeFunctionData,
   keccak256,
   toBytes,
   parseEther,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { baseSepolia, base } from 'viem/chains';
-import { readFileSync, readdirSync, statSync, existsSync, writeFileSync } from 'fs';
-import { join, relative, basename } from 'path';
-import { execSync, spawn } from 'child_process';
+import { readFileSync, readdirSync, existsSync, writeFileSync } from 'fs';
+import { join, relative } from 'path';
+import { execSync } from 'child_process';
 import { createHash } from 'crypto';
 
 // ============================================================================
@@ -222,39 +221,6 @@ const JNS_REGISTRAR_ABI = [
   },
 ] as const;
 
-const JNS_RESOLVER_ABI = [
-  {
-    name: 'setAddr',
-    type: 'function',
-    inputs: [
-      { name: 'node', type: 'bytes32' },
-      { name: 'addr', type: 'address' },
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    name: 'setContenthash',
-    type: 'function',
-    inputs: [
-      { name: 'node', type: 'bytes32' },
-      { name: 'hash', type: 'bytes' },
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    name: 'setText',
-    type: 'function',
-    inputs: [
-      { name: 'node', type: 'bytes32' },
-      { name: 'key', type: 'string' },
-      { name: 'value', type: 'string' },
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-] as const;
 
 // ============================================================================
 // Bootstrap Class
@@ -384,10 +350,8 @@ class SelfHostingBootstrap {
         args: ['jeju', 'Jeju Network - A modern EVM chain for agents and humans', 0], // 0 = public
       });
       
-      const receipt = await this.publicClient.waitForTransactionReceipt({ hash });
+      await this.publicClient.waitForTransactionReceipt({ hash });
       console.log(`  Repository created: ${hash}`);
-      
-      // Extract repoId from logs (simplified - in production would decode event)
       repoId = keccak256(toBytes(`${this.account.address}:jeju`));
     }
 
@@ -405,6 +369,9 @@ class SelfHostingBootstrap {
     const commitMessage = execSync('git log -1 --pretty=%B', { cwd: this.rootDir, encoding: 'utf-8' }).trim();
     const parentHash = execSync('git rev-parse HEAD~1', { cwd: this.rootDir, encoding: 'utf-8' }).trim();
 
+    const commitHashBytes32 = this.gitSha1ToBytes32(commitHash);
+    const parentHashBytes32 = this.gitSha1ToBytes32(parentHash);
+
     const pushHash = await this.walletClient.writeContract({
       address: this.config.contracts.repoRegistry,
       abi: REPO_REGISTRY_ABI,
@@ -412,8 +379,8 @@ class SelfHostingBootstrap {
       args: [
         repoId,
         'main',
-        `0x${commitHash}` as Hex,
-        `0x${parentHash}` as Hex,
+        commitHashBytes32,
+        parentHashBytes32,
         treeCid,
         commitMessage.slice(0, 256),
       ],
@@ -427,6 +394,14 @@ class SelfHostingBootstrap {
       commitHash,
       pushed: true,
     };
+  }
+
+  private gitSha1ToBytes32(sha: string): Hex {
+    const trimmed = sha.trim();
+    if (!/^[0-9a-fA-F]{40}$/.test(trimmed)) {
+      throw new Error(`Invalid git SHA1 (expected 40 hex chars): ${sha}`);
+    }
+    return keccak256(toBytes(`0x${trimmed}` as Hex));
   }
 
   private async uploadGitTree(): Promise<string> {
@@ -572,9 +547,7 @@ class SelfHostingBootstrap {
         value: 0n,
       });
       
-      const createReceipt = await this.publicClient.waitForTransactionReceipt({ hash: createHash });
-      
-      // Extract repoId (simplified)
+      await this.publicClient.waitForTransactionReceipt({ hash: createHash });
       const repoId = keccak256(toBytes(`jeju/${app}`));
 
       // Push image manifest
@@ -803,21 +776,14 @@ class SelfHostingBootstrap {
         value: price,
       });
 
-      const receipt = await this.publicClient.waitForTransactionReceipt({ hash: registerHash });
-      
-      // Compute namehash
+      await this.publicClient.waitForTransactionReceipt({ hash: registerHash });
       const node = this.namehash(`${name}.jeju`);
       
       console.log(`  ✅ Registered: ${registerHash}`);
       console.log(`  Node: ${node}`);
 
-      // Set content hash if we have a CID
       if (cid) {
-        // Encode CID as content hash (IPFS CIDv1)
-        const contenthash = this.encodeContenthash(cid);
-        
-        // Note: In production, would also set resolver and contenthash
-        console.log(`  Content hash set to: ${cid}`);
+        console.log(`  Content hash: ${cid}`);
       }
 
       this.result.jns.push({ name: `${name}.jeju`, node, registered: true });
@@ -834,12 +800,6 @@ class SelfHostingBootstrap {
       }
     }
     return node as Hex;
-  }
-
-  private encodeContenthash(cid: string): Hex {
-    // Simplified IPFS content hash encoding
-    // In production, would properly encode CIDv1
-    return `0xe3010170${Buffer.from(cid).toString('hex')}` as Hex;
   }
 
   // ==========================================================================
@@ -932,6 +892,30 @@ class SelfHostingBootstrap {
 async function main() {
   const network = (process.argv[2] || 'testnet') as 'testnet' | 'mainnet';
 
+  type DwsAddressesFile = {
+    identityRegistry: Address;
+    repoRegistry: Address;
+    packageRegistry: Address;
+    containerRegistry: Address;
+    modelRegistry: Address;
+    jnsRegistry: Address;
+    jnsRegistrar: Address;
+    storageManager: Address;
+  };
+
+  type DwsDeploymentFile = {
+    contracts: {
+      identityRegistry: { address: Address };
+      repoRegistry: { address: Address };
+      packageRegistry: { address: Address };
+      containerRegistry: { address: Address };
+      modelRegistry: { address: Address };
+      jnsRegistry: { address: Address };
+      jnsRegistrar: { address: Address };
+      storageManager: { address: Address };
+    };
+  };
+
   // Load configuration from environment
   const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
   if (!privateKey) {
@@ -943,30 +927,42 @@ async function main() {
   const deploymentsPath = join(import.meta.dir, '../../packages/contracts/deployments', network);
   let contracts: DeploymentConfig['contracts'];
 
+  const addressesFile = join(deploymentsPath, 'addresses.json');
   const deploymentFile = join(deploymentsPath, 'deployment.json');
-  if (existsSync(deploymentFile)) {
-    const deployment = JSON.parse(readFileSync(deploymentFile, 'utf-8'));
+  if (existsSync(addressesFile)) {
+    const addresses = JSON.parse(readFileSync(addressesFile, 'utf-8')) as DwsAddressesFile;
+    contracts = addresses;
+  } else if (existsSync(deploymentFile)) {
+    const deployment = JSON.parse(readFileSync(deploymentFile, 'utf-8')) as DwsDeploymentFile;
     contracts = {
-      identityRegistry: deployment.identityRegistry,
-      repoRegistry: deployment.repoRegistry,
-      packageRegistry: deployment.packageRegistry,
-      containerRegistry: deployment.containerRegistry,
-      jnsRegistrar: deployment.jnsRegistrar,
-      jnsRegistry: deployment.jnsRegistry,
-      modelRegistry: deployment.modelRegistry,
-      storageManager: deployment.storageManager,
+      identityRegistry: deployment.contracts.identityRegistry.address,
+      repoRegistry: deployment.contracts.repoRegistry.address,
+      packageRegistry: deployment.contracts.packageRegistry.address,
+      containerRegistry: deployment.contracts.containerRegistry.address,
+      jnsRegistrar: deployment.contracts.jnsRegistrar.address,
+      jnsRegistry: deployment.contracts.jnsRegistry.address,
+      modelRegistry: deployment.contracts.modelRegistry.address,
+      storageManager: deployment.contracts.storageManager.address,
     };
   } else {
     // Use environment variables as fallback
+    const requireAddress = (key: string): Address => {
+      const value = process.env[key];
+      if (!value) {
+        throw new Error(`Missing ${key}. Deploy contracts first or set env vars.`);
+      }
+      return value as Address;
+    };
+
     contracts = {
-      identityRegistry: (process.env.IDENTITY_REGISTRY_ADDRESS || '') as Address,
-      repoRegistry: (process.env.REPO_REGISTRY_ADDRESS || '') as Address,
-      packageRegistry: (process.env.PACKAGE_REGISTRY_ADDRESS || '') as Address,
-      containerRegistry: (process.env.CONTAINER_REGISTRY_ADDRESS || '') as Address,
-      jnsRegistrar: (process.env.JNS_REGISTRAR_ADDRESS || '') as Address,
-      jnsRegistry: (process.env.JNS_REGISTRY_ADDRESS || '') as Address,
-      modelRegistry: (process.env.MODEL_REGISTRY_ADDRESS || '') as Address,
-      storageManager: (process.env.STORAGE_MANAGER_ADDRESS || '') as Address,
+      identityRegistry: requireAddress('IDENTITY_REGISTRY_ADDRESS'),
+      repoRegistry: requireAddress('REPO_REGISTRY_ADDRESS'),
+      packageRegistry: requireAddress('PACKAGE_REGISTRY_ADDRESS'),
+      containerRegistry: requireAddress('CONTAINER_REGISTRY_ADDRESS'),
+      jnsRegistrar: requireAddress('JNS_REGISTRAR_ADDRESS'),
+      jnsRegistry: requireAddress('JNS_REGISTRY_ADDRESS'),
+      modelRegistry: requireAddress('MODEL_REGISTRY_ADDRESS'),
+      storageManager: requireAddress('STORAGE_MANAGER_ADDRESS'),
     };
   }
 
@@ -977,8 +973,8 @@ async function main() {
       : process.env.TESTNET_RPC_URL || 'https://sepolia.base.org',
     privateKey: privateKey as Hex,
     contracts,
-    dwsEndpoint: process.env.DWS_ENDPOINT || 'https://dws.testnet.jejunetwork.org',
-    ipfsGateway: process.env.IPFS_GATEWAY || 'https://ipfs.testnet.jejunetwork.org',
+    dwsEndpoint: process.env.DWS_ENDPOINT || (network === 'mainnet' ? 'https://dws.jejunetwork.org' : 'https://dws.testnet.jejunetwork.org'),
+    ipfsGateway: process.env.IPFS_GATEWAY || (network === 'mainnet' ? 'https://ipfs.jejunetwork.org' : 'https://ipfs.testnet.jejunetwork.org'),
   };
 
   const bootstrap = new SelfHostingBootstrap(config);

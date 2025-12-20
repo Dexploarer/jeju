@@ -26,7 +26,7 @@ interface IBanManager {
  * - PRO:       $100  → 1,000 req/min
  * - UNLIMITED: $1000 → unlimited
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract RPCStakingManager is IRPCStakingManager, Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;

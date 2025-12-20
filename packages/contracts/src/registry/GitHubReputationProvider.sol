@@ -14,7 +14,7 @@ import "./IdentityRegistry.sol";
  * @dev Acts as a bridge between off-chain GitHub data and on-chain reputation
  *
  * Flow:
- * 1. User links GitHub to wallet via leaderboard.jeju.network
+ * 1. User links GitHub to wallet via leaderboard.jejunetwork.org
  * 2. Leaderboard oracle signs attestation of their reputation score
  * 3. User submits attestation to this contract
  * 4. Contract verifies signature and creates ValidationRegistry entry
@@ -24,7 +24,7 @@ import "./IdentityRegistry.sol";
  * - High GitHub reputation can reduce staking requirements
  * - Verified contributors get faster reputation tier upgrades
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract GitHubReputationProvider is Ownable {
     using ECDSA for bytes32;

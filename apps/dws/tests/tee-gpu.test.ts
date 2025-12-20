@@ -6,8 +6,7 @@
 import { describe, test, expect, beforeAll, afterAll } from 'bun:test';
 import {
   TEEGPUProvider,
-  createH200Provider,
-  createH100Provider,
+  createTEEGPUProvider,
   getTEEGPUNodes,
   getTEEGPUNode,
   getAvailableGPUNodes,
@@ -29,7 +28,8 @@ describe('TEE GPU Provider', () => {
 
   describe('Initialization', () => {
     test('creates H200 provider', () => {
-      provider = createH200Provider({
+      provider = createTEEGPUProvider({
+        gpuType: GPUType.H200,
         nodeId: `test-h200-${Date.now()}`,
         address: TEST_ADDRESS,
         endpoint: TEST_ENDPOINT,
@@ -40,7 +40,8 @@ describe('TEE GPU Provider', () => {
     });
 
     test('creates H100 provider', () => {
-      const h100Provider = createH100Provider({
+      const h100Provider = createTEEGPUProvider({
+        gpuType: GPUType.H100,
         nodeId: `test-h100-${Date.now()}`,
         address: TEST_ADDRESS,
         endpoint: TEST_ENDPOINT,
@@ -81,7 +82,7 @@ describe('TEE GPU Provider', () => {
       expect(node).toBeDefined();
       expect(node?.gpu.gpuType).toBe(GPUType.H200);
       expect(node?.gpu.gpuCount).toBe(8);
-      expect(node?.gpu.vramGb).toBe(80);
+      expect(node?.gpu.vramGb).toBe(141); // H200 has 141GB HBM3e
       expect(node?.gpu.tensorCoreSupport).toBe(true);
       expect(node?.gpu.fp8Support).toBe(true);
     });
@@ -98,7 +99,8 @@ describe('TEE GPU Provider', () => {
     let provider2: TEEGPUProvider;
 
     beforeAll(async () => {
-      provider2 = createH200Provider({
+      provider2 = createTEEGPUProvider({
+        gpuType: GPUType.H200,
         nodeId: `test-job-${Date.now()}`,
         address: TEST_ADDRESS,
         endpoint: TEST_ENDPOINT,
@@ -164,8 +166,8 @@ describe('TEE GPU Provider', () => {
 
       await provider2.submitJob(request);
 
-      // Wait for completion (local mode is fast)
-      await new Promise((r) => setTimeout(r, 6000));
+      // Wait for completion (local mode is fast - 100ms simulation)
+      await new Promise((r) => setTimeout(r, 500));
 
       const status = provider2.getJobStatus(jobId);
       expect(status.status).toBe('completed');
@@ -198,7 +200,7 @@ describe('TEE GPU Provider', () => {
       };
 
       await provider2.submitJob(request);
-      await new Promise((r) => setTimeout(r, 6000));
+      await new Promise((r) => setTimeout(r, 500));
 
       const status = provider2.getJobStatus(jobId);
       if (status.status === 'completed' && status.result?.metrics) {
@@ -218,7 +220,8 @@ describe('TEE GPU Provider', () => {
 
     test('getTEEGPUNode returns specific node', async () => {
       const nodeId = `lookup-${Date.now()}`;
-      const p = createH200Provider({
+      const p = createTEEGPUProvider({
+        gpuType: GPUType.H200,
         nodeId,
         address: TEST_ADDRESS,
         endpoint: TEST_ENDPOINT,
@@ -235,7 +238,8 @@ describe('TEE GPU Provider', () => {
 
     test('shutdown removes node from registry', async () => {
       const nodeId = `shutdown-${Date.now()}`;
-      const p = createH200Provider({
+      const p = createTEEGPUProvider({
+        gpuType: GPUType.H200,
         nodeId,
         address: TEST_ADDRESS,
         endpoint: TEST_ENDPOINT,

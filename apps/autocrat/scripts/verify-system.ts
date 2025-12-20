@@ -116,7 +116,7 @@ async function verifyInfrastructure(): Promise<void> {
     }
   }
   
-  if (!rpcUrl) rpcUrl = 'http://localhost:8545';
+  if (!rpcUrl) rpcUrl = 'http://localhost:6546';
   
   // Store detected RPC URL for other checks
   if (rpcUp) {
@@ -178,7 +178,7 @@ async function verifyDAORegistry(): Promise<void> {
   console.log('═══════════════════════════════════════════\n');
 
   const daoRegistryAddr = process.env.DAO_REGISTRY_ADDRESS;
-  const rpcUrl = detectedRpcUrl || process.env.RPC_URL || 'http://localhost:8545';
+  const rpcUrl = detectedRpcUrl || process.env.RPC_URL || 'http://localhost:6546';
 
   if (!daoRegistryAddr || daoRegistryAddr === '0x0000000000000000000000000000000000000000') {
     log({
@@ -325,7 +325,7 @@ async function verifyFeeIntegration(): Promise<void> {
   }
 
   // Check if FeeConfig has council set
-  const rpcUrl = detectedRpcUrl || process.env.RPC_URL || 'http://localhost:8545';
+  const rpcUrl = detectedRpcUrl || process.env.RPC_URL || 'http://localhost:6546';
   try {
     // Call council()
     const response = await fetch(rpcUrl, {
@@ -441,7 +441,7 @@ async function printSummary(): Promise<void> {
   if (!results.some(r => r.component.includes('REGISTRY') && r.status === 'PASS')) {
     console.log('  2. Deploy contracts:');
     console.log('     cd packages/contracts');
-    console.log('     forge script script/DeployDAO.s.sol --rpc-url http://localhost:8545 --broadcast\n');
+    console.log('     forge script script/DeployDAO.s.sol --rpc-url http://localhost:6546 --broadcast\n');
   }
 
   if (results.some(r => r.component === 'Multi-DAO' && r.status === 'WARN')) {

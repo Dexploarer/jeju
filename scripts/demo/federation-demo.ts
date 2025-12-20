@@ -13,7 +13,8 @@
  *   bun run scripts/demo/federation-demo.ts
  */
 
-import { Wallet, JsonRpcProvider, Contract, ContractFactory, parseEther, formatEther } from 'ethers';
+import { createPublicClient, createWalletClient, http, parseEther, formatEther, type Address } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
 
@@ -44,15 +45,19 @@ function getArtifact(contractName: string): ContractArtifact {
 }
 
 async function deployContract(
-  wallet: Wallet,
+  walletClient: ReturnType<typeof createWalletClient>,
+  publicClient: ReturnType<typeof createPublicClient>,
   contractName: string,
   args: unknown[] = []
-): Promise<Contract> {
+): Promise<{ address: Address; abi: unknown[] }> {
   const { abi, bytecode } = getArtifact(contractName);
-  const factory = new ContractFactory(abi, bytecode, wallet);
-  const contract = await factory.deploy(...args);
-  await contract.waitForDeployment();
-  return new Contract(await contract.getAddress(), abi, wallet);
+  const hash = await walletClient.deployContract({
+    abi,
+    bytecode: bytecode as `0x${string}`,
+    args,
+  });
+  const receipt = await publicClient.waitForTransactionReceipt({ hash });
+  return { address: receipt.contractAddress as Address, abi };
 }
 
 function log(emoji: string, message: string) {
@@ -69,17 +74,22 @@ async function main() {
   console.log('\n🌐 JEJU FEDERATION DEMO\n');
 
   // Setup
-  const rpcUrl = process.env.RPC_URL || 'http://localhost:9545';
-  const provider = new JsonRpcProvider(rpcUrl);
+  const rpcUrl = process.env.RPC_URL || 'http://localhost:6546';
+  const publicClient = createPublicClient({ transport: http(rpcUrl) });
   
-  const deployer = new Wallet(DEPLOYER_KEY, provider);
-  const operator1 = new Wallet(OPERATOR1_KEY, provider);
-  const operator2 = new Wallet(OPERATOR2_KEY, provider);
+  const deployerAccount = privateKeyToAccount(DEPLOYER_KEY as `0x${string}`);
+  const operator1Account = privateKeyToAccount(OPERATOR1_KEY as `0x${string}`);
+  const operator2Account = privateKeyToAccount(OPERATOR2_KEY as `0x${string}`);
+  
+  const deployerWallet = createWalletClient({ account: deployerAccount, transport: http(rpcUrl) });
+  const operator1Wallet = createWalletClient({ account: operator1Account, transport: http(rpcUrl) });
+  const operator2Wallet = createWalletClient({ account: operator2Account, transport: http(rpcUrl) });
 
-  const chainId = Number((await provider.getNetwork()).chainId);
+  const chainId = await publicClient.getChainId();
+  const balance = await publicClient.getBalance({ address: deployerAccount.address });
   
   log('🔗', `Connected to chain ${chainId} at ${rpcUrl}`);
-  log('💰', `Deployer balance: ${formatEther(await provider.getBalance(deployer.address))} ETH`);
+  log('💰', `Deployer balance: ${formatEther(balance)} ETH`);
 
   // ============================================================================
   // STEP 1: Deploy Federation Contracts
@@ -87,23 +97,23 @@ async function main() {
   section('STEP 1: Deploy Federation Contracts');
 
   log('📦', 'Deploying NetworkRegistry...');
-  const networkRegistry = await deployContract(deployer, 'NetworkRegistry', [deployer.address]);
-  log('✓', `NetworkRegistry: ${await networkRegistry.getAddress()}`);
+  const networkRegistry = await deployContract(deployerWallet, publicClient, 'NetworkRegistry', [deployerAccount.address]);
+  log('✓', `NetworkRegistry: ${networkRegistry.address}`);
 
   log('📦', 'Deploying RegistryHub...');
-  const registryHub = await deployContract(deployer, 'RegistryHub', [deployer.address]);
-  log('✓', `RegistryHub: ${await registryHub.getAddress()}`);
+  const registryHub = await deployContract(deployerWallet, publicClient, 'RegistryHub', [deployerAccount.address]);
+  log('✓', `RegistryHub: ${registryHub.address}`);
 
   log('📦', 'Deploying RegistrySyncOracle...');
-  const syncOracle = await deployContract(deployer, 'RegistrySyncOracle', []);
-  log('✓', `RegistrySyncOracle: ${await syncOracle.getAddress()}`);
+  const syncOracle = await deployContract(deployerWallet, publicClient, 'RegistrySyncOracle', []);
+  log('✓', `RegistrySyncOracle: ${syncOracle.address}`);
 
   log('📦', 'Deploying SolanaVerifier...');
-  const solanaVerifier = await deployContract(deployer, 'SolanaVerifier', [
-    deployer.address,
+  const solanaVerifier = await deployContract(deployerWallet, publicClient, 'SolanaVerifier', [
+    deployerAccount.address,
     '0x0000000000000000000000000000000000000000000000000000000000000000'
   ]);
-  log('✓', `SolanaVerifier: ${await solanaVerifier.getAddress()}`);
+  log('✓', `SolanaVerifier: ${solanaVerifier.address}`);
 
   // ============================================================================
   // STEP 2: Register Networks
@@ -112,57 +122,74 @@ async function main() {
 
   // Network 1: Jeju (VERIFIED - 10 ETH)
   log('📝', 'Registering Jeju Network (VERIFIED tier - 10 ETH stake)...');
-  const contracts1 = {
-    identityRegistry: '0x0000000000000000000000000000000000000001',
-    solverRegistry: '0x0000000000000000000000000000000000000002',
-    inputSettler: '0x0000000000000000000000000000000000000003',
-    outputSettler: '0x0000000000000000000000000000000000000004',
-    liquidityVault: '0x0000000000000000000000000000000000000005',
-    governance: '0x0000000000000000000000000000000000000006',
-    oracle: '0x0000000000000000000000000000000000000007',
-    registryHub: await registryHub.getAddress(),
-  };
+  const contracts1 = [
+    '0x0000000000000000000000000000000000000001',
+    '0x0000000000000000000000000000000000000002',
+    '0x0000000000000000000000000000000000000003',
+    '0x0000000000000000000000000000000000000004',
+    '0x0000000000000000000000000000000000000005',
+    '0x0000000000000000000000000000000000000006',
+    '0x0000000000000000000000000000000000000007',
+    registryHub.address,
+  ] as const;
   
-  await networkRegistry.registerNetwork(
-    420690, // Jeju Testnet
-    'Jeju Network',
-    'https://testnet-rpc.jejunetwork.org',
-    'https://testnet-explorer.jejunetwork.org',
-    'wss://testnet-ws.jejunetwork.org',
-    Object.values(contracts1),
-    '0x0000000000000000000000000000000000000000000000000000000000000001',
-    { value: parseEther('10') }
-  );
+  const tx1 = await deployerWallet.writeContract({
+    address: networkRegistry.address,
+    abi: networkRegistry.abi,
+    functionName: 'registerNetwork',
+    args: [
+      420690n, // Jeju Testnet
+      'Jeju Network',
+      'https://testnet-rpc.jejunetwork.org',
+      'https://testnet-explorer.jejunetwork.org',
+      'wss://testnet-ws.jejunetwork.org',
+      contracts1,
+      '0x0000000000000000000000000000000000000000000000000000000000000001',
+    ],
+    value: parseEther('10'),
+  });
+  await publicClient.waitForTransactionReceipt({ hash: tx1 });
   log('✓', 'Jeju Network registered as VERIFIED');
 
   // Network 2: Fork Network (STAKED - 1 ETH)
   log('📝', 'Registering Fork Network (STAKED tier - 1 ETH stake)...');
-  const networkRegistry2 = networkRegistry.connect(operator1);
-  await networkRegistry2.registerNetwork(
-    420691, // Fork network
-    'My Fork Network',
-    'https://rpc.myfork.network',
-    'https://explorer.myfork.network',
-    'wss://ws.myfork.network',
-    Object.values(contracts1).map(() => '0x0000000000000000000000000000000000000000'),
-    '0x0000000000000000000000000000000000000000000000000000000000000002',
-    { value: parseEther('1') }
-  );
+  const zeroContracts = contracts1.map(() => '0x0000000000000000000000000000000000000000') as unknown as readonly Address[];
+  const tx2 = await operator1Wallet.writeContract({
+    address: networkRegistry.address,
+    abi: networkRegistry.abi,
+    functionName: 'registerNetwork',
+    args: [
+      420691n, // Fork network
+      'My Fork Network',
+      'https://rpc.myfork.network',
+      'https://explorer.myfork.network',
+      'wss://ws.myfork.network',
+      zeroContracts,
+      '0x0000000000000000000000000000000000000000000000000000000000000002',
+    ],
+    value: parseEther('1'),
+  });
+  await publicClient.waitForTransactionReceipt({ hash: tx2 });
   log('✓', 'Fork Network registered as STAKED');
 
   // Network 3: Test Network (UNSTAKED - 0 ETH)
   log('📝', 'Registering Test Network (UNSTAKED tier - 0 ETH stake)...');
-  const networkRegistry3 = networkRegistry.connect(operator2);
-  await networkRegistry3.registerNetwork(
-    420692, // Test network
-    'Test Network',
-    'https://rpc.test.network',
-    'https://explorer.test.network',
-    '',
-    Object.values(contracts1).map(() => '0x0000000000000000000000000000000000000000'),
-    '0x0000000000000000000000000000000000000000000000000000000000000003',
-    { value: 0 }
-  );
+  const tx3 = await operator2Wallet.writeContract({
+    address: networkRegistry.address,
+    abi: networkRegistry.abi,
+    functionName: 'registerNetwork',
+    args: [
+      420692n, // Test network
+      'Test Network',
+      'https://rpc.test.network',
+      'https://explorer.test.network',
+      '',
+      zeroContracts,
+      '0x0000000000000000000000000000000000000000000000000000000000000003',
+    ],
+    value: 0n,
+  });
+  await publicClient.waitForTransactionReceipt({ hash: tx3 });
   log('✓', 'Test Network registered as UNSTAKED');
 
   // ============================================================================
@@ -172,36 +199,49 @@ async function main() {
 
   // Register chains in hub
   log('📝', 'Registering Jeju in RegistryHub...');
-  await registryHub.registerChain(
-    420690,
-    0, // EVM
-    'Jeju Network',
-    'https://testnet-rpc.jejunetwork.org',
-    { value: parseEther('10') }
-  );
+  const tx4 = await deployerWallet.writeContract({
+    address: registryHub.address,
+    abi: registryHub.abi,
+    functionName: 'registerChain',
+    args: [420690n, 0, 'Jeju Network', 'https://testnet-rpc.jejunetwork.org'],
+    value: parseEther('10'),
+  });
+  await publicClient.waitForTransactionReceipt({ hash: tx4 });
   log('✓', 'Jeju registered in hub as VERIFIED');
 
   // Register Solana
   log('📝', 'Registering Solana in RegistryHub...');
-  await registryHub.registerSolanaRegistry(
-    '0x0000000000000000000000000000000000000000000000000000000000000001', // Fake program ID
-    0, // IDENTITY type
-    'Solana Identity Registry',
-    'ipfs://QmSolanaRegistry',
-    { value: parseEther('1') }
-  );
+  const tx5 = await deployerWallet.writeContract({
+    address: registryHub.address,
+    abi: registryHub.abi,
+    functionName: 'registerSolanaRegistry',
+    args: [
+      '0x0000000000000000000000000000000000000000000000000000000000000001', // Fake program ID
+      0, // IDENTITY type
+      'Solana Identity Registry',
+      'ipfs://QmSolanaRegistry',
+    ],
+    value: parseEther('1'),
+  });
+  await publicClient.waitForTransactionReceipt({ hash: tx5 });
   log('✓', 'Solana identity registry registered');
 
   // Register a registry for Jeju
   log('📝', 'Registering Jeju IdentityRegistry in hub...');
-  await registryHub.registerRegistry(
-    420690,
-    0, // IDENTITY
-    '0x' + '00'.repeat(31) + '01', // Padded address
-    'Jeju Identity Registry',
-    '1.0.0',
-    'ipfs://QmJejuIdentity'
-  );
+  const tx6 = await deployerWallet.writeContract({
+    address: registryHub.address,
+    abi: registryHub.abi,
+    functionName: 'registerRegistry',
+    args: [
+      420690n,
+      0, // IDENTITY
+      '0x' + '00'.repeat(31) + '01', // Padded address
+      'Jeju Identity Registry',
+      '1.0.0',
+      'ipfs://QmJejuIdentity',
+    ],
+  });
+  await publicClient.waitForTransactionReceipt({ hash: tx6 });
   log('✓', 'Jeju IdentityRegistry registered');
 
   // ============================================================================
@@ -210,14 +250,34 @@ async function main() {
   section('STEP 4: Query Federation Data');
 
   // Get all networks
-  const networkIds = await networkRegistry.getAllNetworkIds();
+  const networkIds = await publicClient.readContract({
+    address: networkRegistry.address,
+    abi: networkRegistry.abi,
+    functionName: 'getAllNetworkIds',
+  }) as bigint[];
   log('📊', `Total networks registered: ${networkIds.length}`);
 
+  type NetworkResult = { name: string; trustTier: number; stake: bigint };
   for (const id of networkIds) {
-    const network = await networkRegistry.getNetwork(id);
+    const network = await publicClient.readContract({
+      address: networkRegistry.address,
+      abi: networkRegistry.abi,
+      functionName: 'getNetwork',
+      args: [id],
+    }) as NetworkResult;
     const tierNames = ['UNSTAKED', 'STAKED', 'VERIFIED'];
-    const canVote = await networkRegistry.canParticipateInConsensus(id);
-    const canSequence = await networkRegistry.isSequencerEligible(id);
+    const canVote = await publicClient.readContract({
+      address: networkRegistry.address,
+      abi: networkRegistry.abi,
+      functionName: 'canParticipateInConsensus',
+      args: [id],
+    }) as boolean;
+    const canSequence = await publicClient.readContract({
+      address: networkRegistry.address,
+      abi: networkRegistry.abi,
+      functionName: 'isSequencerEligible',
+      args: [id],
+    }) as boolean;
     
     console.log(`\n  Network: ${network.name} (${id})`);
     console.log(`    Tier: ${tierNames[network.trustTier]}`);
@@ -227,9 +287,21 @@ async function main() {
   }
 
   // Get hub stats
-  const totalChains = await registryHub.totalChains();
-  const totalRegistries = await registryHub.totalRegistries();
-  const totalStaked = await registryHub.totalStaked();
+  const totalChains = await publicClient.readContract({
+    address: registryHub.address,
+    abi: registryHub.abi,
+    functionName: 'totalChains',
+  }) as bigint;
+  const totalRegistries = await publicClient.readContract({
+    address: registryHub.address,
+    abi: registryHub.abi,
+    functionName: 'totalRegistries',
+  }) as bigint;
+  const totalStaked = await publicClient.readContract({
+    address: registryHub.address,
+    abi: registryHub.abi,
+    functionName: 'totalStaked',
+  }) as bigint;
 
   console.log(`\n  Registry Hub Stats:`);
   console.log(`    Total Chains: ${totalChains}`);
@@ -267,11 +339,27 @@ async function main() {
   section('STEP 6: Upgrade Trust Tier');
 
   log('📈', 'Upgrading Test Network from UNSTAKED to STAKED...');
-  const networkRegistry3Connected = networkRegistry.connect(operator2);
-  await networkRegistry3Connected.addStake(420692, { value: parseEther('1') });
+  const tx7 = await operator2Wallet.writeContract({
+    address: networkRegistry.address,
+    abi: networkRegistry.abi,
+    functionName: 'addStake',
+    args: [420692n],
+    value: parseEther('1'),
+  });
+  await publicClient.waitForTransactionReceipt({ hash: tx7 });
   
-  const upgraded = await networkRegistry.getNetwork(420692);
-  const canVoteNow = await networkRegistry.canParticipateInConsensus(420692);
+  const upgraded = await publicClient.readContract({
+    address: networkRegistry.address,
+    abi: networkRegistry.abi,
+    functionName: 'getNetwork',
+    args: [420692n],
+  }) as NetworkResult;
+  const canVoteNow = await publicClient.readContract({
+    address: networkRegistry.address,
+    abi: networkRegistry.abi,
+    functionName: 'canParticipateInConsensus',
+    args: [420692n],
+  }) as boolean;
   log('✓', `Test Network upgraded to ${['UNSTAKED', 'STAKED', 'VERIFIED'][upgraded.trustTier]}`);
   log('✓', `Can now participate in consensus: ${canVoteNow}`);
 
@@ -281,12 +369,12 @@ async function main() {
   section('DEPLOYMENT SUMMARY');
 
   const deployment = {
-    networkRegistry: await networkRegistry.getAddress(),
-    registryHub: await registryHub.getAddress(),
-    registrySyncOracle: await syncOracle.getAddress(),
-    solanaVerifier: await solanaVerifier.getAddress(),
+    networkRegistry: networkRegistry.address,
+    registryHub: registryHub.address,
+    registrySyncOracle: syncOracle.address,
+    solanaVerifier: solanaVerifier.address,
     deployedAt: new Date().toISOString(),
-    chainId,
+    chainId: Number(chainId),
   };
 
   // Ensure deployments directory exists

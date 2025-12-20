@@ -71,7 +71,7 @@ contract MessageNodeRegistryTest is Test {
 
     uint256 public constant MIN_STAKE = 1000 ether;
     uint256 public constant ORACLE_STAKE = 10000 ether;
-    string public constant ENDPOINT = "https://relay1.jeju.network";
+    string public constant ENDPOINT = "https://relay1.jejunetwork.org";
     string public constant REGION = "us-west-2";
 
     function setUp() public {
@@ -367,7 +367,7 @@ contract MessageNodeRegistryTest is Test {
         registry.registerNode(ENDPOINT, REGION, MIN_STAKE);
 
         vm.prank(operator2);
-        registry.registerNode("https://relay2.jeju.network", "eu-west-1", MIN_STAKE);
+        registry.registerNode("https://relay2.jejunetwork.org", "eu-west-1", MIN_STAKE);
 
         bytes32[] memory activeNodes = registry.getActiveNodes();
         assertEq(activeNodes.length, 2);
@@ -378,7 +378,7 @@ contract MessageNodeRegistryTest is Test {
         registry.registerNode(ENDPOINT, "us-west-2", MIN_STAKE);
 
         vm.prank(operator2);
-        registry.registerNode("https://relay2.jeju.network", "us-west-2", MIN_STAKE);
+        registry.registerNode("https://relay2.jejunetwork.org", "us-west-2", MIN_STAKE);
 
         bytes32[] memory usWestNodes = registry.getNodesByRegion("us-west-2");
         assertEq(usWestNodes.length, 2);

@@ -33,7 +33,7 @@ contract GameItemsTest is Test {
         treasury = address(0x4);
 
         // Deploy contracts
-        items = new GameItems("Game Items", "ITEM", "https://api.jeju.network/items/", owner);
+        items = new GameItems("Game Items", "ITEM", "https://api.jejunetwork.org/items/", owner);
         moderation = new NFTModerationAdapter(owner);
 
         // Configure game

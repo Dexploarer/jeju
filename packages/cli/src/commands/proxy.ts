@@ -2,8 +2,8 @@
  * jeju proxy - Local development proxy and hosts management
  * 
  * Manages the reverse proxy for clean local development URLs:
- * - gateway.local.jeju.network -> localhost:4001
- * - bazaar.local.jeju.network -> localhost:4006
+ * - gateway.local.jejunetwork.org -> localhost:4001
+ * - bazaar.local.jejunetwork.org -> localhost:4006
  * - etc.
  */
 
@@ -170,5 +170,6 @@ proxyCommand
     const proxy = await loadProxyModule();
     console.log(proxy.generateCaddyfile());
   });
+
 
 

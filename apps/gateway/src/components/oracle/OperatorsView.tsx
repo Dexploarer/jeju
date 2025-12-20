@@ -474,7 +474,7 @@ function OperatorRequirements() {
 
       <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
         <a
-          href="https://docs.jeju.network/oracle/operators"
+          href="https://docs.jejunetwork.org/oracle/operators"
           target="_blank"
           rel="noopener noreferrer"
           className="text-sm text-purple-500 hover:text-purple-600"

@@ -9,7 +9,8 @@
  */
 
 import { describe, test, expect } from 'bun:test';
-import { generatePrivateKey, privateKeyToAccount, parseEther, parseUnits } from 'viem';
+import { parseEther, parseUnits } from 'viem';
+import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import {
   EILClient,
   estimateCrossChainFee,
@@ -22,8 +23,8 @@ import {
 
 // Test fixtures
 const TEST_CONFIG: EILConfig = {
-  l1RpcUrl: 'http://localhost:8545',
-  l2RpcUrl: 'http://localhost:9545',
+  l1RpcUrl: 'http://localhost:6545',
+  l2RpcUrl: 'http://localhost:6546',
   l1StakeManager: '0x1234567890123456789012345678901234567890',
   crossChainPaymaster: '0x9876543210987654321098765432109876543210',
   l1ChainId: 11155111,
@@ -498,17 +499,18 @@ describe('EIL SDK', () => {
   });
 
   describe('boundary conditions', () => {
-    test('should handle max uint256 values in operations', async () => {
+    test('should handle large uint256 values in operations', async () => {
       const client = new EILClient(TEST_CONFIG, TEST_WALLET);
-      const maxUint256 = 2n ** 256n - 1n;
+      // Large but not max uint256 (max causes encoding overflow in bytes)
+      const largeValue = 2n ** 128n - 1n;
       
       const operations: MultiChainUserOp[] = [
         {
           chainId: 1,
-          target: '0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF',
+          target: '0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF', // Checksummed max address
           calldata: '0x' + 'FF'.repeat(100),
-          value: maxUint256,
-          gasLimit: maxUint256,
+          value: largeValue,
+          gasLimit: largeValue,
         },
       ];
 

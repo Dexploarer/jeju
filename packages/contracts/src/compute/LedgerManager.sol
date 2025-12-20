@@ -24,7 +24,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
  * 4. InferenceServing settles from sub-account
  * 5. User can request refunds with timelock
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract LedgerManager is Ownable, Pausable, ReentrancyGuard {
     // ============ Structs ============

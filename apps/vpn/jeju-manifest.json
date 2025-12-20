@@ -5,7 +5,7 @@
   "description": "Free, decentralized VPN powered by the community. Unlimited VPN access in exchange for contributing bandwidth to the network.",
   "category": "infrastructure",
   "repository": "https://github.com/jejunetwork/jeju",
-  "homepage": "https://vpn.jeju.network",
+  "homepage": "https://vpn.jejunetwork.org",
   "license": "MIT",
   "features": [
     "wireguard",

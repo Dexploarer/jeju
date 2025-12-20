@@ -16,13 +16,26 @@
  */
 
 import { Store } from '@subsquid/typeorm-store';
-import { ethers } from 'ethers';
+import { 
+  createPublicClient, 
+  http, 
+  decodeAbiParameters, 
+  parseEther, 
+  keccak256, 
+  encodePacked, 
+  pad, 
+  toHex,
+  toEventSelector,
+  zeroAddress,
+  getContract,
+  type PublicClient,
+} from 'viem';
 
-// Event signatures
-const NETWORK_REGISTERED = ethers.id('NetworkRegistered(uint256,string,address,uint256)');
-const REGISTRY_REGISTERED = ethers.id('RegistryRegistered(bytes32,uint256,uint8,bytes32,string)');
-const ENTRY_FEDERATED = ethers.id('EntryFederated(bytes32,bytes32,bytes32,string)');
-const AGENT_REGISTERED = ethers.id('Registered(uint256,address,uint8,uint256,string)');
+// Event signatures (keccak256 hash of event signature)
+const NETWORK_REGISTERED = toEventSelector('NetworkRegistered(uint256,string,address,uint256)');
+const REGISTRY_REGISTERED = toEventSelector('RegistryRegistered(bytes32,uint256,uint8,bytes32,string)');
+const ENTRY_FEDERATED = toEventSelector('EntryFederated(bytes32,bytes32,bytes32,string)');
+const AGENT_REGISTERED = toEventSelector('Registered(uint256,address,uint8,uint256,string)');
 
 // Trust tiers
 enum TrustTier {
@@ -91,13 +104,13 @@ const federatedRegistries = new Map<string, FederatedRegistry>();
 const federatedEntries = new Map<string, FederatedEntry>();
 
 // Chain providers for multi-chain queries
-const chainProviders = new Map<number, ethers.JsonRpcProvider>();
+const chainProviders = new Map<number, PublicClient>();
 
 /**
  * Initialize providers for all federated networks
  */
 export async function initializeFederationProviders(hubRpc: string): Promise<void> {
-  const hubProvider = new ethers.JsonRpcProvider(hubRpc);
+  const hubProvider = createPublicClient({ transport: http(hubRpc) });
   
   // Query NetworkRegistry for all networks
   // In production, this would be event-driven
@@ -119,16 +132,16 @@ export function processNetworkRegistryEvent(
   const chainId = parseInt(log.topics[1], 16);
   const operator = '0x' + log.topics[2].slice(26);
   
-  const decoded = ethers.AbiCoder.defaultAbiCoder().decode(
-    ['string', 'uint256'],
-    log.data
+  const decoded = decodeAbiParameters(
+    [{ type: 'string' }, { type: 'uint256' }],
+    log.data as `0x${string}`
   );
   
   const name = decoded[0] as string;
   const stake = decoded[1] as bigint;
 
-  const trustTier = stake >= ethers.parseEther('10') ? TrustTier.VERIFIED :
-                    stake >= ethers.parseEther('1') ? TrustTier.STAKED :
+  const trustTier = stake >= parseEther('10') ? TrustTier.VERIFIED :
+                    stake >= parseEther('1') ? TrustTier.STAKED :
                     TrustTier.UNSTAKED;
 
   const network: FederatedNetwork = {
@@ -142,10 +155,10 @@ export function processNetworkRegistryEvent(
     isSuperchain: false,
     registeredAt: new Date(block.timestamp * 1000),
     contracts: {
-      identityRegistry: ethers.ZeroAddress,
-      solverRegistry: ethers.ZeroAddress,
-      inputSettler: ethers.ZeroAddress,
-      outputSettler: ethers.ZeroAddress,
+      identityRegistry: zeroAddress,
+      solverRegistry: zeroAddress,
+      inputSettler: zeroAddress,
+      outputSettler: zeroAddress,
     }
   };
 
@@ -167,12 +180,12 @@ export function processRegistryHubEvent(
   const registryId = log.topics[1];
   const chainId = parseInt(log.topics[2], 16);
   
-  const decoded = ethers.AbiCoder.defaultAbiCoder().decode(
-    ['uint8', 'bytes32', 'string'],
-    log.data
+  const decoded = decodeAbiParameters(
+    [{ type: 'uint8' }, { type: 'bytes32' }, { type: 'string' }],
+    log.data as `0x${string}`
   );
   
-  const registryType = decoded[0] as number;
+  const registryType = Number(decoded[0]);
   const contractAddress = decoded[1] as string;
   const name = decoded[2] as string;
 
@@ -206,9 +219,9 @@ export function processEntryFederatedEvent(
   const entryId = log.topics[1];
   const registryId = log.topics[2];
   
-  const decoded = ethers.AbiCoder.defaultAbiCoder().decode(
-    ['bytes32', 'string'],
-    log.data
+  const decoded = decodeAbiParameters(
+    [{ type: 'bytes32' }, { type: 'string' }],
+    log.data as `0x${string}`
   );
   
   const originId = decoded[0] as string;
@@ -249,19 +262,19 @@ export async function syncChainRegistries(chainId: number): Promise<void> {
 
   let provider = chainProviders.get(chainId);
   if (!provider) {
-    provider = new ethers.JsonRpcProvider(network.rpcUrl);
+    provider = createPublicClient({ transport: http(network.rpcUrl) });
     chainProviders.set(chainId, provider);
   }
 
   console.log(`[Federation] Syncing registries from ${network.name}...`);
 
   // Sync IdentityRegistry
-  if (network.contracts.identityRegistry !== ethers.ZeroAddress) {
+  if (network.contracts.identityRegistry !== zeroAddress) {
     await syncIdentityRegistry(chainId, network.contracts.identityRegistry, provider);
   }
 
   // Sync SolverRegistry
-  if (network.contracts.solverRegistry !== ethers.ZeroAddress) {
+  if (network.contracts.solverRegistry !== zeroAddress) {
     await syncSolverRegistry(chainId, network.contracts.solverRegistry, provider);
   }
 }
@@ -272,17 +285,15 @@ export async function syncChainRegistries(chainId: number): Promise<void> {
 async function syncIdentityRegistry(
   chainId: number,
   address: string,
-  provider: ethers.JsonRpcProvider
+  provider: PublicClient
 ): Promise<void> {
   const abi = [
-    'function totalAgents() view returns (uint256)',
-    'function agents(uint256) view returns (uint256 agentId, address owner, uint8 tier, address stakedToken, uint256 stakedAmount, uint256 registeredAt, uint256 lastActivityAt, bool isBanned, bool isSlashed)',
-    'event Registered(uint256 indexed agentId, address indexed owner, uint8 tier, uint256 stakedAmount, string tokenURI)'
-  ];
+    { name: 'totalAgents', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
+  ] as const;
 
-  const contract = new ethers.Contract(address, abi, provider);
+  const contract = getContract({ address: address as `0x${string}`, abi, client: provider });
 
-  const totalAgents = await contract.totalAgents();
+  const totalAgents = await contract.read.totalAgents();
   console.log(`[Federation] Chain ${chainId} IdentityRegistry: ${totalAgents} agents`);
 
   // Update registry entry count
@@ -290,7 +301,7 @@ async function syncIdentityRegistry(
   const registry = federatedRegistries.get(registryId);
   if (registry) {
     registry.entryCount = Number(totalAgents);
-    registry.lastSyncBlock = await provider.getBlockNumber();
+    registry.lastSyncBlock = Number(await provider.getBlockNumber());
   }
 }
 
@@ -300,16 +311,15 @@ async function syncIdentityRegistry(
 async function syncSolverRegistry(
   chainId: number,
   address: string,
-  provider: ethers.JsonRpcProvider
+  provider: PublicClient
 ): Promise<void> {
   const abi = [
-    'function getSolvers() view returns (address[])',
-    'function solverInfo(address) view returns (bool isActive, uint256 stake, uint256 fills, uint256 slashes)'
-  ];
+    { name: 'getSolvers', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'address[]' }] },
+  ] as const;
 
-  const contract = new ethers.Contract(address, abi, provider);
+  const contract = getContract({ address: address as `0x${string}`, abi, client: provider });
 
-  const solvers = await contract.getSolvers();
+  const solvers = await contract.read.getSolvers();
   console.log(`[Federation] Chain ${chainId} SolverRegistry: ${solvers.length} solvers`);
 
   // Update registry entry count
@@ -317,7 +327,7 @@ async function syncSolverRegistry(
   const registry = federatedRegistries.get(registryId);
   if (registry) {
     registry.entryCount = solvers.length;
-    registry.lastSyncBlock = await provider.getBlockNumber();
+    registry.lastSyncBlock = Number(await provider.getBlockNumber());
   }
 }
 
@@ -325,10 +335,10 @@ async function syncSolverRegistry(
  * Compute registry ID (matches contract)
  */
 function computeRegistryId(chainId: number, registryType: RegistryType, address: string): string {
-  return ethers.keccak256(
-    ethers.solidityPacked(
+  return keccak256(
+    encodePacked(
       ['string', 'uint256', 'string', 'uint8', 'string', 'bytes32'],
-      ['jeju:registry:', chainId, ':', registryType, ':', ethers.zeroPadValue(address, 32)]
+      ['jeju:registry:', BigInt(chainId), ':', registryType, ':', pad(address as `0x${string}`, { size: 32 })]
     )
   );
 }

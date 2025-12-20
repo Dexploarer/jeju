@@ -9,7 +9,7 @@
  */
 
 import { describe, test, expect, beforeAll, afterAll } from 'bun:test';
-import { ethers } from 'ethers';
+import { createPublicClient, http, getContract, toHex, zeroHash } from 'viem';
 import { Logger } from '../../scripts/shared/logger';
 
 const logger = new Logger('cloud-a2a-e2e');
@@ -67,45 +67,47 @@ describe('Cloud A2A E2E - Agent Discovery', () => {
     logger.info('🔍 Discovering cloud agent...');
     
     // Query IdentityRegistry for cloud agent
-    const provider = new ethers.JsonRpcProvider('http://localhost:8545');
-    const identityRegistry = new ethers.Contract(
-      '0x5FbDB2315678afecb367f032d93F642f64180aa3',
-      [
-        'function totalAgents() external view returns (uint256)',
-        'function getAgent(uint256 agentId) external view returns (tuple(uint256 agentId, address owner, uint8 tier, address stakedToken, uint256 stakedAmount, uint256 registeredAt, uint256 lastActivityAt, bool isBanned, bool isSlashed))',
-        'function getMetadata(uint256 agentId, string calldata key) external view returns (bytes memory)'
-      ],
-      provider
-    );
+    const publicClient = createPublicClient({ transport: http('http://localhost:6546') });
+    const identityRegistryAbi = [
+      { name: 'totalAgents', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
+      { name: 'getAgent', type: 'function', stateMutability: 'view', inputs: [{ name: 'agentId', type: 'uint256' }], outputs: [{ type: 'tuple', components: [{ name: 'agentId', type: 'uint256' }, { name: 'owner', type: 'address' }, { name: 'tier', type: 'uint8' }, { name: 'stakedToken', type: 'address' }, { name: 'stakedAmount', type: 'uint256' }, { name: 'registeredAt', type: 'uint256' }, { name: 'lastActivityAt', type: 'uint256' }, { name: 'isBanned', type: 'bool' }, { name: 'isSlashed', type: 'bool' }] }] },
+      { name: 'getMetadata', type: 'function', stateMutability: 'view', inputs: [{ name: 'agentId', type: 'uint256' }, { name: 'key', type: 'string' }], outputs: [{ type: 'bytes' }] },
+    ] as const;
     
-    const totalAgents = await identityRegistry.totalAgents();
+    const identityRegistry = getContract({
+      address: '0x5FbDB2315678afecb367f032d93F642f64180aa3',
+      abi: identityRegistryAbi,
+      client: publicClient,
+    });
+    
+    const totalAgents = await identityRegistry.read.totalAgents();
     expect(totalAgents).toBeGreaterThan(0n);
     
     logger.info(`✓ Found ${totalAgents} agents in registry`);
     
     // Find cloud agent by checking metadata
     for (let i = 1; i <= Number(totalAgents); i++) {
-      const agent = await identityRegistry.getAgent(i);
+      const agent = await identityRegistry.read.getAgent([BigInt(i)]);
       if (agent.isBanned) continue;
       
       try {
-        const typeBytes = await identityRegistry.getMetadata(i, 'type');
-        const type = ethers.toUtf8String(typeBytes);
+        const typeBytes = await identityRegistry.read.getMetadata([BigInt(i), 'type']);
+        const type = new TextDecoder().decode(typeBytes);
         
         if (type === 'cloud-service') {
           logger.success(`✓ Found cloud agent at ID: ${i}`);
           
-          const nameBytes = await identityRegistry.getMetadata(i, 'name');
-          const name = ethers.toUtf8String(nameBytes);
+          const nameBytes = await identityRegistry.read.getMetadata([BigInt(i), 'name']);
+          const name = new TextDecoder().decode(nameBytes);
           logger.info(`  Name: ${name}`);
           
-          const endpointBytes = await identityRegistry.getMetadata(i, 'endpoint');
-          const endpoint = ethers.toUtf8String(endpointBytes);
+          const endpointBytes = await identityRegistry.read.getMetadata([BigInt(i), 'endpoint']);
+          const endpoint = new TextDecoder().decode(endpointBytes);
           logger.info(`  A2A Endpoint: ${endpoint}`);
           
           return;
         }
-      } catch (e) {
+      } catch {
         // No metadata, skip
       }
     }
@@ -250,14 +252,16 @@ describe('Cloud A2A E2E - Reputation Integration', () => {
   test('should update reputation after successful A2A request', async () => {
     logger.info('⭐ Testing reputation update...');
     
-    const provider = new ethers.JsonRpcProvider('http://localhost:8545');
-    const reputationRegistry = new ethers.Contract(
-      '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
-      [
-        'function getSummary(uint256 agentId, address[] calldata clientAddresses, bytes32 tag1, bytes32 tag2) external view returns (uint64 count, uint8 averageScore)'
-      ],
-      provider
-    );
+    const publicClient = createPublicClient({ transport: http('http://localhost:6546') });
+    const reputationRegistryAbi = [
+      { name: 'getSummary', type: 'function', stateMutability: 'view', inputs: [{ name: 'agentId', type: 'uint256' }, { name: 'clientAddresses', type: 'address[]' }, { name: 'tag1', type: 'bytes32' }, { name: 'tag2', type: 'bytes32' }], outputs: [{ name: 'count', type: 'uint64' }, { name: 'averageScore', type: 'uint8' }] },
+    ] as const;
+    
+    const reputationRegistry = getContract({
+      address: '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
+      abi: reputationRegistryAbi,
+      client: publicClient,
+    });
     
     // Send A2A request
     const a2aRequest = {
@@ -293,19 +297,19 @@ describe('Cloud A2A E2E - Reputation Integration', () => {
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     try {
-      const [count, score] = await reputationRegistry.getSummary(
-        1, // agent ID
+      const [count, score] = await reputationRegistry.read.getSummary([
+        1n, // agent ID
         [],
-        ethers.ZeroHash,
-        ethers.ZeroHash
-      );
+        zeroHash,
+        zeroHash,
+      ]);
       
       if (count > 0n) {
         logger.success(`✓ Reputation updated: ${score}/100 (${count} reviews)`);
       } else {
         logger.info('  No reputation data yet (may need setup)');
       }
-    } catch (e) {
+    } catch {
       logger.info('  Reputation check skipped (contract not ready)');
     }
   });

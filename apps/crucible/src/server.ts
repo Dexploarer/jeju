@@ -32,7 +32,7 @@ const metrics = {
 };
 
 const config: CrucibleConfig = {
-  rpcUrl: process.env.RPC_URL ?? 'http://127.0.0.1:8545',
+  rpcUrl: process.env.RPC_URL ?? 'http://127.0.0.1:6546',
   privateKey: process.env.PRIVATE_KEY,
   contracts: {
     agentVault: (process.env.AGENT_VAULT_ADDRESS ?? '0x0000000000000000000000000000000000000000') as `0x${string}`,

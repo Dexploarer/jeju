@@ -15,6 +15,7 @@ import { join } from 'path';
 import { platform } from 'os';
 import { logger } from '../lib/logger';
 import { checkDocker } from '../lib/system';
+import { DEFAULT_PORTS } from '../types';
 
 export interface ServiceHealth {
   name: string;
@@ -38,7 +39,7 @@ const REQUIRED_SERVICES = {
   da: { port: 4010, healthPath: '/health', name: 'DA Server', container: 'jeju-da' },
 } as const;
 
-const LOCALNET_PORT = 9545;
+const LOCALNET_PORT = DEFAULT_PORTS.l2Rpc;
 
 export class InfrastructureService {
   private rootDir: string;

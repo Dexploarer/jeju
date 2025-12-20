@@ -49,7 +49,7 @@ interface IFeeDistributorV2 {
  * 4. User (or anyone) calls settle() with signature
  * 5. LedgerManager transfers funds
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract InferenceServing is Ownable, Pausable, ReentrancyGuard {
     using ECDSA for bytes32;

@@ -82,7 +82,7 @@ interface IReputationRegistry {
  * - Excessive reverts (>20% failure rate)
  * - Collusion detected via on-chain analysis
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract BlockBuilderMarketplace is Ownable, ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20;

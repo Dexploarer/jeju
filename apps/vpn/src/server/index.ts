@@ -63,7 +63,7 @@ export function createVPNServer(config: VPNServerConfig): Hono {
     url: config.publicUrl,
     provider: {
       organization: 'Jeju Network',
-      url: 'https://jeju.network',
+      url: 'https://jejunetwork.org',
     },
     version: '1.0.0',
     capabilities: {

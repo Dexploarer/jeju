@@ -67,11 +67,11 @@ contract TrainingE2ETest is Test {
         vm.deal(provider3, 1 ether);
 
         vm.prank(provider1);
-        computeRegistry.register{value: 0.01 ether}("provider1", "node1.jeju.network", bytes32(0));
+        computeRegistry.register{value: 0.01 ether}("provider1", "node1.jejunetwork.org", bytes32(0));
         vm.prank(provider2);
-        computeRegistry.register{value: 0.01 ether}("provider2", "node2.jeju.network", bytes32(0));
+        computeRegistry.register{value: 0.01 ether}("provider2", "node2.jejunetwork.org", bytes32(0));
         vm.prank(provider3);
-        computeRegistry.register{value: 0.01 ether}("provider3", "node3.jeju.network", bytes32(0));
+        computeRegistry.register{value: 0.01 ether}("provider3", "node3.jejunetwork.org", bytes32(0));
 
         console.log("Setup complete");
     }

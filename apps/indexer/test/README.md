@@ -157,7 +157,7 @@ npm run db:migrate
 
 ### No Data Indexed
 - Check RPC_ETH_HTTP in .env
-- Verify localnet is running: `curl http://localhost:8545`
+- Verify localnet is running: `curl http://localhost:6546`
 - Check indexer logs: `docker logs squid-processor-1`
 
 ### Tests Fail

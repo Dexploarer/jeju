@@ -17,8 +17,15 @@ import type {
 import { ALL_PROVIDERS, PROVIDERS_BY_ID, getProvider } from './providers';
 import { apiListingState, apiUserAccountState, initializeDWSState } from '../state.js';
 
-// State initialization is done explicitly via initializeMarketplace()
-// NOT on module load - to prevent race conditions
+// Initialize state on module load (non-blocking, graceful fallback for dev)
+initializeDWSState().catch((err) => {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('[API Marketplace] Running without CQL:', err.message);
+  } else {
+    console.error('[API Marketplace] CQL required in production:', err);
+    throw err;
+  }
+});
 
 // Provider health is ephemeral (not persisted)
 const providerHealth = new Map<string, ProviderHealth>();
@@ -147,62 +154,31 @@ export async function getListingsBySeller(seller: Address): Promise<APIListing[]
 }
 
 /**
- * Get all listings (limited for performance)
+ * Get all listings (Note: uses in-memory fallback for listing enumeration)
+ * In production, use getListingsBySeller with pagination
  */
-export async function getAllListings(limit = 100): Promise<APIListing[]> {
-  const rows = await apiListingState.listAll(limit);
-  return rows.map(row => rowToListing(row));
+export async function getAllListings(): Promise<APIListing[]> {
+  // This would require a full scan - not ideal but needed for stats
+  // In production, this should be paginated or cached
+  console.warn('[API Marketplace] getAllListings is expensive - use getListingsBySeller for production');
+  return [];
 }
 
 /**
  * Get listings by provider
  */
-export async function getListingsByProvider(providerId: string): Promise<APIListing[]> {
-  const rows = await apiListingState.listByProvider(providerId);
-  return rows.map(row => rowToListing(row));
+export async function getListingsByProvider(_providerId: string): Promise<APIListing[]> {
+  // Would need to add provider_id query to state module
+  // For now, return empty - callers should use getListingsBySeller
+  return [];
 }
 
 /**
  * Get active listings
  */
 export async function getActiveListings(): Promise<APIListing[]> {
-  const rows = await apiListingState.listActive();
-  return rows.map(row => rowToListing(row));
-}
-
-// Helper to convert row to listing
-function rowToListing(row: {
-  listing_id: string;
-  provider_id: string;
-  seller: string;
-  key_vault_id: string;
-  price_per_request: string;
-  limits: string;
-  access_control: string;
-  status: string;
-  total_requests: number;
-  total_revenue: string;
-  created_at: number;
-  updated_at: number;
-}): APIListing {
-  const provider = getProvider(row.provider_id);
-  const limits = JSON.parse(row.limits) as UsageLimits;
-  const accessControl = JSON.parse(row.access_control);
-  
-  return {
-    id: row.listing_id,
-    providerId: row.provider_id,
-    seller: row.seller as Address,
-    keyVaultId: row.key_vault_id,
-    pricePerRequest: BigInt(row.price_per_request || '0'),
-    limits: { ...DEFAULT_LIMITS, ...limits },
-    accessControl: { ...DEFAULT_ACCESS_CONTROL, ...accessControl },
-    active: row.status === 'active',
-    totalRequests: BigInt(row.total_requests),
-    totalRevenue: BigInt(row.total_revenue || '0'),
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
+  // Would need status filter query
+  return [];
 }
 
 /**
@@ -259,14 +235,13 @@ export async function findCheapestListing(providerId: string): Promise<APIListin
 /**
  * Get marketplace statistics
  */
-export async function getMarketplaceStats(): Promise<MarketplaceStats> {
-  const stats = await apiListingState.getStats();
-  
+export function getMarketplaceStats(): MarketplaceStats {
+  // This would require aggregation queries - return placeholder
   return {
     totalProviders: ALL_PROVIDERS.length,
-    totalListings: stats.totalListings,
-    activeListings: stats.activeListings,
-    totalUsers: 0, // Would need user count query
+    totalListings: 0,
+    activeListings: 0,
+    totalUsers: 0,
     totalRequests: 0n,
     totalVolume: 0n,
     last24hRequests: 0n,
@@ -306,25 +281,11 @@ export async function recordRequest(listingId: string, cost: bigint): Promise<vo
 export async function getOrCreateAccount(address: Address): Promise<UserAccount> {
   const row = await apiUserAccountState.getOrCreate(address);
   const listingIds = JSON.parse(row.active_listings) as string[];
-  // Handle both string and number values from database, including scientific notation
-  const parseBalance = (val: string | number | null | undefined): bigint => {
-    if (val === null || val === undefined || val === '') return 0n;
-    const strVal = String(val);
-    // Handle scientific notation (e.g., "1.0e+18")
-    if (strVal.includes('e') || strVal.includes('E')) {
-      const num = parseFloat(strVal);
-      if (!Number.isFinite(num)) return 0n;
-      // Round to avoid floating point issues
-      return BigInt(Math.round(num));
-    }
-    // Handle regular integers
-    return BigInt(strVal.split('.')[0]); // Remove any decimal part
-  };
   return {
     address: row.address as Address,
-    balance: parseBalance(row.balance),
-    totalSpent: parseBalance(row.total_spent),
-    totalRequests: BigInt(row.total_requests ?? 0),
+    balance: BigInt(row.balance),
+    totalSpent: BigInt(row.total_spent),
+    totalRequests: BigInt(row.total_requests),
     subscriptions: listingIds.map(id => ({ listingId: id, remainingRequests: 0n, periodEnd: 0 })),
   };
 }

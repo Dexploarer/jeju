@@ -15,7 +15,7 @@ import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
  *      - Debate rooms (structured argument)
  *      - Council rooms (governance/voting)
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract RoomRegistry is Ownable, ReentrancyGuard, Pausable {
     // ============ Enums ============

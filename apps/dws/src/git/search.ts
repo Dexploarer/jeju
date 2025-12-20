@@ -95,9 +95,9 @@ export interface UserSearchOptions extends SearchOptions {
 export class SearchManager {
   private repoManager: GitRepoManager;
   private issuesManager: IssuesManager;
-  // Reserved for future social search
+  // @ts-expect-error Reserved for future social search
   private _socialManager: SocialManager;
-  // Reserved for future storage search
+  // @ts-expect-error Reserved for future storage search
   private _backend: BackendManager;
 
   // In-memory index for search (suitable for small deployments)
@@ -347,16 +347,13 @@ export class SearchManager {
 
   /**
    * Search users
-   * Note: User search requires an identity registry integration.
-   * Returns empty results when not configured.
    */
   async searchUsers(
     _query: string,
     _options: UserSearchOptions = {}
   ): Promise<UserSearchResult> {
-    // User search requires on-chain identity registry integration
-    // which is handled by the IdentityRegistry contract
-    console.debug('[GitSearch] User search not available - requires identity registry');
+    // TODO: Implement user search when proper indexing is available
+    // For now, return empty results as user search requires proper indexing
     return { totalCount: 0, items: [] };
   }
 

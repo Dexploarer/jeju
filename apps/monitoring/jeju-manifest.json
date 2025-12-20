@@ -61,7 +61,7 @@
       "jnsName": "monitoring.jeju",
       "buildDir": "dist",
       "spa": true,
-      "fallbackOrigins": ["https://monitoring.jeju.network"]
+      "fallbackOrigins": ["https://monitoring.jejunetwork.org"]
     },
     "robustness": {
       "multiOrigin": true,

@@ -262,8 +262,8 @@ interface OAuth3Client {
 | Network | Chain ID | RPC URL |
 |---------|----------|---------|
 | Localnet | 420691 | `http://localhost:9545` |
-| Testnet | 420690 | `https://testnet.jeju.network` |
-| Mainnet | 420692 | `https://mainnet.jeju.network` |
+| Testnet | 420690 | `https://testnet.jejunetwork.org` |
+| Mainnet | 420692 | `https://mainnet.jejunetwork.org` |
 
 ## Security Considerations
 
@@ -443,7 +443,7 @@ See [CONTRIBUTING.md](../../CONTRIBUTING.md) for guidelines.
 
 ## Links
 
-- [Jeju Network](https://jeju.network)
-- [Documentation](https://docs.jeju.network/oauth3)
+- [Jeju Network](https://jejunetwork.org)
+- [Documentation](https://docs.jejunetwork.org/oauth3)
 - [GitHub](https://github.com/elizaos/jeju)
 - [Discord](https://discord.gg/jeju)

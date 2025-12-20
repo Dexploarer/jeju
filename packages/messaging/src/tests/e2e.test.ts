@@ -6,7 +6,6 @@ import { describe, test, expect, beforeAll, afterAll } from 'bun:test';
 import {
   generateKeyPair,
   encryptMessage,
-  decryptMessage,
   decryptMessageToString,
   serializeEncryptedMessage,
   deserializeEncryptedMessage,
@@ -52,7 +51,6 @@ describe('Crypto', () => {
   });
   
   test('serializes and deserializes encrypted messages', () => {
-    const alice = generateKeyPair();
     const bob = generateKeyPair();
     
     const message = 'Test serialization';
@@ -108,7 +106,6 @@ describe('Crypto', () => {
   });
   
   test('handles unicode and emoji in messages', () => {
-    const alice = generateKeyPair();
     const bob = generateKeyPair();
     
     const messages = [
@@ -126,7 +123,6 @@ describe('Crypto', () => {
   });
   
   test('handles large messages', () => {
-    const alice = generateKeyPair();
     const bob = generateKeyPair();
     
     // 1KB message

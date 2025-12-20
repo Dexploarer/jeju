@@ -26,7 +26,7 @@ import {IDAORegistry} from "./interfaces/IDAORegistry.sol";
  * 3. CEO sets funding weights based on AI analysis
  * 4. At epoch end, funds distributed proportionally
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract DAOFunding is ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20;

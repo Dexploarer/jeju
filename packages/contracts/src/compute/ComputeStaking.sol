@@ -26,7 +26,7 @@ interface IBanManager {
  * - Provider: 0.1 ETH minimum (for service accountability)
  * - Guardian: 1 ETH minimum (for moderation privileges)
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract ComputeStaking is Ownable, Pausable, ReentrancyGuard {
     // ============ Enums ============

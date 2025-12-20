@@ -37,7 +37,7 @@ import {IIdentityRegistry} from "../registry/interfaces/IIdentityRegistry.sol";
  * - No leading/trailing hyphens
  * - No consecutive hyphens
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract JNSRegistrar is ERC721, Ownable, ReentrancyGuard, IJNSRegistrar {
     // ============ Constants ============
@@ -554,7 +554,7 @@ contract JNSRegistrar is ERC721, Ownable, ReentrancyGuard, IJNSRegistrar {
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         _requireOwned(tokenId);
         string memory name = _labelNames[bytes32(tokenId)];
-        return string(abi.encodePacked("https://names.jeju.network/metadata/", name, ".json"));
+        return string(abi.encodePacked("https://names.jejunetwork.org/metadata/", name, ".json"));
     }
 
     /**

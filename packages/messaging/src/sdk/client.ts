@@ -8,7 +8,6 @@
 import { createPublicClient, createWalletClient, http, type PublicClient, type WalletClient, type Address, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import {
-  generateKeyPair,
   deriveKeyPairFromWallet,
   encryptMessage,
   decryptMessage,
@@ -18,7 +17,6 @@ import {
   bytes32ToPublicKey,
   KEY_DERIVATION_MESSAGE,
   type KeyPair,
-  type SerializedEncryptedMessage,
 } from './crypto';
 import {
   type MessagingClientConfig,

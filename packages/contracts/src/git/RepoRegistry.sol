@@ -26,7 +26,7 @@ import {IIdentityRegistry} from "../registry/interfaces/IIdentityRegistry.sol";
  * - Write: Can push to unprotected branches
  * - Read: Can clone (only meaningful for private repos)
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract RepoRegistry is IRepoRegistry, Ownable, Pausable, ReentrancyGuard {
     // ============ State Variables ============

@@ -107,7 +107,7 @@ export default function RepoDetailPage() {
   const [copied, setCopied] = useState(false);
 
   const fullName = `${owner}/${repo}`;
-  const cloneUrl = `https://git.jeju.network/${fullName}.git`;
+  const cloneUrl = `https://git.jejunetwork.org/${fullName}.git`;
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(cloneUrl);

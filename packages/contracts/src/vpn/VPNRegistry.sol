@@ -15,7 +15,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
  *      - Capability flags (VPN relay, CDN, SOCKS5)
  *      - Fair contribution tracking
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract VPNRegistry is Ownable, Pausable, ReentrancyGuard {
     // ============ Structs ============

@@ -104,7 +104,7 @@ export default function PackagesPage() {
             </p>
           </div>
           <a
-            href="https://docs.jeju.network/packages"
+            href="https://docs.jejunetwork.org/packages"
             target="_blank"
             rel="noopener noreferrer"
             className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg font-medium transition-colors flex items-center gap-2"

@@ -45,11 +45,11 @@ logger.error('Failed!');
 import { FailoverProvider, checkRPC } from './shared/rpc';
 
 const provider = new FailoverProvider([
-  'https://rpc.jeju.network',
-  'https://backup.jeju.network'
+  'https://rpc.jejunetwork.org',
+  'https://backup.jejunetwork.org'
 ], 'Jeju');
 
-const isHealthy = await checkRPC('http://localhost:9545');
+const isHealthy = await checkRPC('http://localhost:6546');
 ```
 
 ### Notifications (`notifications.ts`)

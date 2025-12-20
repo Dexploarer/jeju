@@ -60,7 +60,7 @@
       "jnsName": "crucible.jeju",
       "buildDir": "dist",
       "spa": true,
-      "fallbackOrigins": ["https://crucible.jeju.network"]
+      "fallbackOrigins": ["https://crucible.jejunetwork.org"]
     },
     "robustness": {
       "multiOrigin": true,

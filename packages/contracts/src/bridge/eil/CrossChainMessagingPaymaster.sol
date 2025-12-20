@@ -31,7 +31,7 @@ import {ICrossDomainMessenger} from "./ICrossDomainMessenger.sol";
  * - Slower: Waits for L1 finality and challenge periods
  * - Liquidity: Requires pre-funded pools (LPs earn fees)
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract CrossChainMessagingPaymaster is Ownable, ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20;

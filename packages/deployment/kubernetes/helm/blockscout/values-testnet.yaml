@@ -1,0 +1,30 @@
+# Blockscout - Testnet Overrides
+
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-1:502713364895:certificate/0a915a42-9da2-4133-af16-ac7080d23308"
+  hosts:
+    - host: explorer.testnet.jeju.network
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: blockscout-testnet-tls
+      hosts:
+        - explorer.testnet.jeju.network
+
+config:
+  subnetwork: "Testnet"
+  chainId: 420690
+  ethereum:
+    jsonRpcUrl: "http://reth-archive.rpc.svc.cluster.local:8545"
+    traceUrl: "http://reth-archive.rpc.svc.cluster.local:8545"
+    wsUrl: "ws://reth-archive.rpc.svc.cluster.local:8546"
+  rollup:
+    l1RpcUrl: "http://geth-l1.l1.svc.cluster.local:8545"

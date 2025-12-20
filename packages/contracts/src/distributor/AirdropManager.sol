@@ -52,7 +52,7 @@ interface IFeeDistributor {
  * 3. Calculates weighted shares for all contributors
  * 4. Bob claims: 500 shares / 10,000 total = 5% = 500 USDC
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract AirdropManager is ReentrancyGuard, Ownable, Pausable {
     using SafeERC20 for IERC20;

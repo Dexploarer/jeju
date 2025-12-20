@@ -27,7 +27,7 @@ import {ModerationMixin} from "../moderation/ModerationMixin.sol";
  * - PRO:       $100  → 1,000 req/min
  * - UNLIMITED: $1000 → unlimited
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract RPCProviderRegistry is ProviderRegistryBase {
     using SafeERC20 for IERC20;

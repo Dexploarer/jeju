@@ -75,37 +75,31 @@ export {
   getNodesByRegion,
   checkNodeHealth,
   scheduleExecution,
-  scheduleExecutionSync,
   reserveResources,
   releaseReservation,
   cleanupExpiredReservations,
   findNearestRegion,
   getRegionsOrderedByDistance,
   getSchedulerStats,
-  clearPoCCache,
-  getPoCVerifiedNodes,
-  hasEnoughPoCNodes,
   type SchedulingStrategy,
-  type TaskRiskLevel,
   type SchedulerStats,
 } from './scheduler';
 
 // TEE GPU Provider
 export {
   TEEGPUProvider,
-  createH200Provider,
-  createH100Provider,
+  createTEEGPUProvider,
   getTEEGPUNodes,
   getTEEGPUNode,
   getAvailableGPUNodes,
   GPUType,
   TEEProvider,
+  GPU_SPECS,
+  type TEEGPUNode,
+  type TEEGPUNodeConfig,
   type GPUCapabilities,
   type TEEAttestation,
-  type TEEGPUNodeConfig,
-  type TEEGPUNode,
-  type GPUJobRequest,
-  type GPUJobResult,
+  type CreateTEEGPUProviderConfig,
 } from './tee-gpu-provider';
 
 // ============================================================================
@@ -191,5 +185,3 @@ export function shutdownContainerSystem(): void {
   executor.cleanup();
   console.log('[Containers] System shutdown complete');
 }
-
-

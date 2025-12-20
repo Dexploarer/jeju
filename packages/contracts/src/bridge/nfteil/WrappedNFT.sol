@@ -22,7 +22,7 @@ import {IWrappedNFT, WrappedNFTInfo, ProvenanceEntry, INFTRoyaltyEnforcer} from 
  * This is deployed once per chain by the protocol.
  * Each wrapped NFT stores info about its original (home chain, collection, tokenId).
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract WrappedNFT is 
     ERC721URIStorage,

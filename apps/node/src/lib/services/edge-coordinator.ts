@@ -20,7 +20,7 @@ import * as http from 'http';
 import { z } from 'zod';
 import { Registry, Counter, Gauge, Histogram } from 'prom-client';
 import { LRUCache } from 'lru-cache';
-import { Contract, JsonRpcProvider } from 'ethers';
+import { createPublicClient, http, getContract } from 'viem';
 
 // ============================================================================
 // Configuration Schema
@@ -176,8 +176,8 @@ export class EdgeCoordinator {
   private running = false;
 
   // On-chain integration
-  private provider: JsonRpcProvider | null = null;
-  private nodeRegistry: Contract | null = null;
+  private publicClient: ReturnType<typeof createPublicClient> | null = null;
+  private nodeRegistryAddress: string | null = null;
   private registeredOperators = new LRUCache<string, boolean>({
     max: 10000,
     ttl: 5 * 60 * 1000, // Cache registration status for 5 min
@@ -191,12 +191,8 @@ export class EdgeCoordinator {
 
     // Setup on-chain integration
     if (this.config.rpcUrl && this.config.nodeRegistryAddress) {
-      this.provider = new JsonRpcProvider(this.config.rpcUrl);
-      this.nodeRegistry = new Contract(
-        this.config.nodeRegistryAddress,
-        NODE_REGISTRY_ABI,
-        this.provider
-      );
+      this.publicClient = createPublicClient({ transport: http(this.config.rpcUrl) });
+      this.nodeRegistryAddress = this.config.nodeRegistryAddress;
     }
   }
 
@@ -385,10 +381,15 @@ export class EdgeCoordinator {
     const cached = this.registeredOperators.get(operator);
     if (cached !== undefined) return cached;
 
-    if (!this.nodeRegistry) return true; // Skip if no registry configured
+    if (!this.publicClient || !this.nodeRegistryAddress) return true; // Skip if no registry configured
 
     try {
-      const isRegistered = await this.nodeRegistry.isRegistered(operator);
+      const isRegistered = await this.publicClient.readContract({
+        address: this.nodeRegistryAddress as `0x${string}`,
+        abi: [{ name: 'isRegistered', type: 'function', stateMutability: 'view', inputs: [{ name: 'operator', type: 'address' }], outputs: [{ type: 'bool' }] }],
+        functionName: 'isRegistered',
+        args: [operator as `0x${string}`],
+      }) as boolean;
       this.registeredOperators.set(operator, isRegistered);
       return isRegistered;
     } catch (error) {

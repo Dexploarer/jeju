@@ -63,9 +63,9 @@ impl Default for NetworkConfig {
         Self {
             network: "mainnet".to_string(),
             chain_id: 420690,
-            rpc_url: "https://rpc.jeju.network".to_string(),
-            ws_url: Some("wss://ws.jeju.network".to_string()),
-            explorer_url: "https://explorer.jeju.network".to_string(),
+            rpc_url: "https://rpc.jejunetwork.org".to_string(),
+            ws_url: Some("wss://ws.jejunetwork.org".to_string()),
+            explorer_url: "https://explorer.jejunetwork.org".to_string(),
         }
     }
 }

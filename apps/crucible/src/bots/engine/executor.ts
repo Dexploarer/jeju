@@ -58,7 +58,7 @@ const localnet: Chain = {
   id: 1337,
   name: 'Localnet',
   nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-  rpcUrls: { default: { http: ['http://localhost:8545'] } },
+  rpcUrls: { default: { http: ['http://localhost:6546'] } },
 };
 
 export class TransactionExecutor {

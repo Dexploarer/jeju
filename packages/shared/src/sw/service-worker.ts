@@ -513,9 +513,9 @@ async function handleContentRequest(peer: P2PPeer, contentHash: string): Promise
   }
 }
 
-function handleContentChunk(peerId: string, data: ArrayBuffer): void {
+function handleContentChunk(_peerId: string, data: ArrayBuffer): void {
   // Find active request for this peer
-  for (const [contentHash, pending] of pendingRequests) {
+  for (const [_hash, pending] of pendingRequests) {
     if (pending.chunks.length * P2P_CONFIG.chunkSize < pending.expectedSize) {
       pending.chunks.push(data);
       break;

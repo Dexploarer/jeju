@@ -248,7 +248,7 @@ export function SettingsPanel() {
             <span>Jeju Mainnet</span>
           </div>
           <a 
-            href="https://jeju.network" 
+            href="https://jejunetwork.org" 
             target="_blank" 
             rel="noopener noreferrer"
             className="flex items-center justify-between text-[#00ff88] hover:underline"

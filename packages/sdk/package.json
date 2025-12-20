@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "description": "Network SDK - Full protocol access for compute, storage, DeFi, governance, and cross-chain",
+  "license": "MIT",
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -13,7 +14,11 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist",
+    "src"
+  ],
+  "sideEffects": false,
   "scripts": {
     "build": "bun build.ts",
     "dev": "bun --watch build.ts",
@@ -26,8 +31,25 @@
     "test:all": "bun test",
     "test:live": "START_SERVICES=1 JEJU_NETWORK=localnet bun test test/integration/full-sdk.integration.test.ts",
     "lint": "prettier --write ./src",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "bun run build"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/elizaos/jeju.git",
+    "directory": "packages/sdk"
+  },
+  "keywords": [
+    "jeju",
+    "sdk",
+    "ethereum",
+    "l2",
+    "defi",
+    "compute",
+    "storage",
+    "governance"
+  ],
   "dependencies": {
     "viem": "2.41.2",
     "permissionless": "0.2.34",

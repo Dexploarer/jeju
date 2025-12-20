@@ -103,7 +103,7 @@ export const FACTORY_AGENT_CARD = {
   preferredTransport: 'http',
   provider: {
     organization: NETWORK_NAME,
-    url: 'https://jeju.network',
+    url: 'https://jejunetwork.org',
   },
   version: '1.0.0',
   capabilities: {
@@ -125,8 +125,8 @@ async function executeSkill(skillId: string, params: Record<string, unknown>): P
         message: 'Git repositories',
         data: {
           repositories: [
-            { name: 'jeju/protocol', stars: 1250, language: 'Solidity', url: 'https://git.jeju.network/jeju/protocol' },
-            { name: 'jeju/sdk', stars: 890, language: 'TypeScript', url: 'https://git.jeju.network/jeju/sdk' },
+            { name: 'jeju/protocol', stars: 1250, language: 'Solidity', url: 'https://git.jejunetwork.org/jeju/protocol' },
+            { name: 'jeju/sdk', stars: 890, language: 'TypeScript', url: 'https://git.jejunetwork.org/jeju/sdk' },
           ],
           total: 2,
         },
@@ -145,7 +145,7 @@ async function executeSkill(skillId: string, params: Record<string, unknown>): P
           issues: 23,
           pullRequests: 5,
           defaultBranch: 'main',
-          cloneUrl: `https://git.jeju.network/${repo}.git`,
+          cloneUrl: `https://git.jejunetwork.org/${repo}.git`,
         },
       };
     }
@@ -156,11 +156,11 @@ async function executeSkill(skillId: string, params: Record<string, unknown>): P
         message: `Created repository ${name}`,
         data: {
           name,
-          url: `https://git.jeju.network/${name}`,
-          cloneUrl: `https://git.jeju.network/${name}.git`,
-          sshUrl: `git@git.jeju.network:${name}.git`,
+          url: `https://git.jejunetwork.org/${name}`,
+          cloneUrl: `https://git.jejunetwork.org/${name}.git`,
+          sshUrl: `git@git.jejunetwork.org:${name}.git`,
           setupCommands: [
-            `git clone https://git.jeju.network/${name}.git`,
+            `git clone https://git.jejunetwork.org/${name}.git`,
             `cd ${name}`,
             'git add .',
             'git commit -m "Initial commit"',
@@ -190,7 +190,7 @@ async function executeSkill(skillId: string, params: Record<string, unknown>): P
         data: {
           number: Math.floor(Math.random() * 1000),
           title,
-          url: `https://factory.jeju.network/git/${repo}/issues/${Math.floor(Math.random() * 1000)}`,
+          url: `https://factory.jejunetwork.org/git/${repo}/issues/${Math.floor(Math.random() * 1000)}`,
         },
       };
     }
@@ -230,11 +230,11 @@ async function executeSkill(skillId: string, params: Record<string, unknown>): P
         data: {
           steps: [
             '1. Configure .npmrc:',
-            '   @jeju:registry=https://pkg.jeju.network',
-            '   //pkg.jeju.network/:_authToken=${JEJU_TOKEN}',
+            '   @jeju:registry=https://pkg.jejunetwork.org',
+            '   //pkg.jejunetwork.org/:_authToken=${JEJU_TOKEN}',
             '2. Run: bun publish',
           ],
-          registryUrl: 'https://pkg.jeju.network',
+          registryUrl: 'https://pkg.jejunetwork.org',
         },
       };
     }
@@ -275,7 +275,7 @@ async function executeSkill(skillId: string, params: Record<string, unknown>): P
         data: {
           cli: `jeju-hub download ${modelId}`,
           python: `from jeju_hub import snapshot_download\nsnapshot_download("${modelId}")`,
-          url: `https://hub.jeju.network/${modelId}`,
+          url: `https://hub.jejunetwork.org/${modelId}`,
         },
       };
     }
@@ -315,7 +315,7 @@ async function executeSkill(skillId: string, params: Record<string, unknown>): P
           title,
           reward,
           status: 'open',
-          url: `https://factory.jeju.network/bounties/${Date.now()}`,
+          url: `https://factory.jejunetwork.org/bounties/${Date.now()}`,
           transactionRequired: true,
           estimatedGas: '150000',
         },
@@ -342,7 +342,7 @@ async function executeSkill(skillId: string, params: Record<string, unknown>): P
         data: {
           runId: `run-${Date.now()}`,
           status: 'queued',
-          url: `https://factory.jeju.network/ci/runs/${Date.now()}`,
+          url: `https://factory.jejunetwork.org/ci/runs/${Date.now()}`,
         },
       };
     }

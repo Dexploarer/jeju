@@ -144,6 +144,31 @@ export const dwsCommand = new Command('dws')
         await getRunDetails(runId);
       })
   )
+  // Seeding and setup
+  .addCommand(
+    new Command('seed')
+      .description('Seed development environment with test data')
+      .action(async () => {
+        await seedDev();
+      })
+  )
+  .addCommand(
+    new Command('self-host')
+      .description('Upload DWS to DWS storage (self-hosting)')
+      .action(async () => {
+        await selfHost();
+      })
+  )
+  .addCommand(
+    new Command('build-runner')
+      .description('Build CI runner Docker images (ARM64 + AMD64)')
+      .option('--push', 'Push images to registry')
+      .option('--version <version>', 'Image version tag', 'latest')
+      .option('--registry <url>', 'Docker registry URL', 'ghcr.io/jeju-labs')
+      .action(async (options) => {
+        await buildRunner(options);
+      })
+  )
   // CDN subcommands
   .addCommand(
     new Command('cdn-status')
@@ -282,7 +307,7 @@ async function startDwsDev(options: { port: string; bootstrap?: boolean }): Prom
   // Get environment from infrastructure service
   const infraEnv = infra.getEnvVars();
   
-  const proc = spawn({
+  const proc = Bun.spawn({
     cmd: ['bun', 'run', 'src/server/index.ts'],
     cwd: dwsDir,
     stdout: 'inherit',
@@ -345,7 +370,7 @@ async function startDws(options: { network: string; port: string }): Promise<voi
     infraEnv = infra.getEnvVars();
   }
 
-  const proc = spawn({
+  const proc = Bun.spawn({
     cmd: ['bun', 'run', 'src/server/index.ts'],
     cwd: dwsDir,
     stdout: 'inherit',
@@ -928,3 +953,281 @@ async function checkCdnStatus(): Promise<void> {
   }
 }
 
+/**
+ * Seed development environment with test data
+ */
+async function seedDev(): Promise<void> {
+  const dwsUrl = getDwsUrl();
+  const testAddress = getDefaultAddress();
+
+  logger.header('DWS SEED');
+  logger.keyValue('DWS URL', dwsUrl);
+  logger.keyValue('Test Address', testAddress);
+  logger.newline();
+
+  // Wait for DWS
+  logger.step('Waiting for DWS...');
+  for (let i = 0; i < 30; i++) {
+    try {
+      const res = await fetch(`${dwsUrl}/health`, { signal: AbortSignal.timeout(2000) });
+      if (res.ok) break;
+    } catch {
+      // Retry
+    }
+    if (i === 29) {
+      logger.error('DWS not available');
+      logger.info('  Start DWS first: jeju dws dev');
+      process.exit(1);
+    }
+    await new Promise(r => setTimeout(r, 1000));
+  }
+  logger.success('DWS ready');
+
+  // Seed storage
+  logger.subheader('Storage');
+  const files = [
+    { name: 'readme.txt', content: 'Welcome to DWS - Decentralized Web Services' },
+    { name: 'config.json', content: JSON.stringify({ version: '1.0.0', network: 'localnet' }) },
+    { name: 'sample.html', content: '<html><body><h1>Hello DWS</h1></body></html>' },
+  ];
+
+  for (const file of files) {
+    try {
+      const res = await fetch(`${dwsUrl}/storage/upload`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain',
+          'x-jeju-address': testAddress,
+          'x-filename': file.name,
+        },
+        body: file.content,
+      });
+      if (res.ok) {
+        const { cid } = await res.json() as { cid: string };
+        logger.success(`${file.name} -> ${cid.slice(0, 16)}...`);
+      }
+    } catch {
+      logger.warn(`Failed to upload ${file.name}`);
+    }
+  }
+
+  // Seed S3 buckets
+  logger.subheader('S3 Buckets');
+  const buckets = ['dev-assets', 'dev-uploads', 'dev-cache'];
+  for (const bucket of buckets) {
+    try {
+      const res = await fetch(`${dwsUrl}/s3/${bucket}`, {
+        method: 'PUT',
+        headers: { 'x-jeju-address': testAddress },
+      });
+      if (res.ok || res.status === 409) {
+        logger.success(`Bucket: ${bucket}`);
+      }
+    } catch {
+      logger.warn(`Failed to create bucket ${bucket}`);
+    }
+  }
+
+  // Verify services
+  logger.subheader('Services');
+  const services = [
+    { name: 'Storage', endpoint: '/storage/health' },
+    { name: 'Compute', endpoint: '/compute/health' },
+    { name: 'CDN', endpoint: '/cdn/health' },
+    { name: 'KMS', endpoint: '/kms/health' },
+    { name: 'Git', endpoint: '/git/health' },
+    { name: 'Pkg', endpoint: '/pkg/health' },
+    { name: 'CI', endpoint: '/ci/health' },
+  ];
+
+  let healthy = 0;
+  for (const service of services) {
+    try {
+      const res = await fetch(`${dwsUrl}${service.endpoint}`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      if (res.ok) {
+        logger.success(service.name);
+        healthy++;
+      } else {
+        logger.warn(`${service.name} (${res.status})`);
+      }
+    } catch {
+      logger.error(`${service.name} (unreachable)`);
+    }
+  }
+
+  logger.newline();
+  logger.success(`Seeded. ${healthy}/${services.length} services healthy.`);
+}
+
+/**
+ * Self-host DWS on DWS storage
+ */
+async function selfHost(): Promise<void> {
+  const dwsUrl = getDwsUrl();
+  const testAddress = getDefaultAddress();
+
+  logger.header('DWS SELF-HOST');
+  logger.keyValue('DWS URL', dwsUrl);
+  logger.keyValue('Deployer', testAddress);
+  logger.newline();
+
+  // Check DWS health
+  try {
+    const res = await fetch(`${dwsUrl}/health`, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) throw new Error('DWS not healthy');
+    logger.success('DWS running');
+  } catch {
+    logger.error('DWS not available');
+    logger.info('  Start DWS first: jeju dws dev');
+    process.exit(1);
+  }
+
+  // Create DWS repository on DWS Git
+  logger.step('Creating DWS repository...');
+  try {
+    const res = await fetch(`${dwsUrl}/git/repos`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-jeju-address': testAddress,
+      },
+      body: JSON.stringify({
+        name: 'dws',
+        description: 'Decentralized Web Services - Storage, Compute, CDN, Git, and NPM',
+        visibility: 'public',
+      }),
+    });
+
+    if (res.ok) {
+      const { repoId, cloneUrl } = await res.json() as { repoId: string; cloneUrl: string };
+      logger.success('Repository created');
+      logger.keyValue('Repo ID', repoId);
+      logger.keyValue('Clone URL', cloneUrl);
+    } else if (res.status === 409) {
+      logger.info('Repository already exists');
+    } else {
+      const err = await res.text();
+      logger.warn(`Failed to create repo: ${err}`);
+    }
+  } catch (e) {
+    logger.error(`Failed to create repo: ${e}`);
+  }
+
+  // Upload sample frontend
+  logger.step('Uploading sample frontend...');
+  const sampleHtml = `<!DOCTYPE html>
+<html>
+<head><title>DWS</title></head>
+<body>
+<h1>Decentralized Web Services</h1>
+<p>Running on Jeju Network</p>
+</body>
+</html>`;
+
+  try {
+    const res = await fetch(`${dwsUrl}/storage/upload`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/html',
+        'x-jeju-address': testAddress,
+        'x-filename': 'index.html',
+      },
+      body: sampleHtml,
+    });
+
+    if (res.ok) {
+      const { cid } = await res.json() as { cid: string };
+      logger.success('Frontend uploaded');
+      logger.keyValue('Frontend CID', cid);
+      logger.newline();
+      logger.info('To run DWS with decentralized frontend:');
+      logger.info(`  DWS_FRONTEND_CID=${cid} jeju dws dev`);
+    }
+  } catch (e) {
+    logger.error(`Failed to upload frontend: ${e}`);
+  }
+
+  logger.newline();
+  logger.success('Self-hosting setup complete');
+}
+
+/**
+ * Build CI runner Docker images
+ */
+async function buildRunner(options: { push?: boolean; version: string; registry: string }): Promise<void> {
+  const rootDir = findMonorepoRoot();
+  const dockerDir = join(rootDir, 'apps/dws/docker');
+  const imageName = 'jeju-runner';
+
+  logger.header('BUILD CI RUNNER');
+  logger.keyValue('Registry', options.registry);
+  logger.keyValue('Version', options.version);
+  logger.keyValue('Push', options.push ? 'Yes' : 'No');
+  logger.newline();
+
+  // Create buildx builder
+  logger.step('Setting up Docker buildx...');
+  const createBuilder = Bun.spawn(['docker', 'buildx', 'create', '--use', '--name', 'jeju-builder'], {
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+  await createBuilder.exited;
+
+  const inspectBuilder = Bun.spawn(['docker', 'buildx', 'inspect', '--bootstrap'], {
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+  await inspectBuilder.exited;
+  logger.success('Buildx ready');
+
+  // Build image
+  logger.step('Building images...');
+  const platforms = options.push ? 'linux/amd64,linux/arm64' : `linux/${process.arch === 'arm64' ? 'arm64' : 'amd64'}`;
+
+  const buildArgs = [
+    'docker', 'buildx', 'build',
+    '--platform', platforms,
+    '-f', join(dockerDir, 'Dockerfile.runner'),
+    '-t', `${options.registry}/${imageName}:${options.version}`,
+    '-t', `${options.registry}/${imageName}:latest`,
+  ];
+
+  if (options.push) {
+    buildArgs.push('--push');
+  } else {
+    buildArgs.push('--load');
+  }
+
+  buildArgs.push(dockerDir);
+
+  const build = Bun.spawn(buildArgs, {
+    stdout: 'inherit',
+    stderr: 'inherit',
+  });
+
+  const exitCode = await build.exited;
+  if (exitCode !== 0) {
+    logger.error('Build failed');
+    process.exit(1);
+  }
+
+  logger.success('Build complete');
+  logger.newline();
+
+  if (options.push) {
+    logger.info('Images pushed:');
+    logger.info(`  ${options.registry}/${imageName}:${options.version}`);
+    logger.info(`  ${options.registry}/${imageName}:latest`);
+  } else {
+    logger.info('Image loaded locally:');
+    logger.info(`  ${options.registry}/${imageName}:latest`);
+  }
+
+  logger.newline();
+  logger.info('To test the runner locally:');
+  logger.info(`  docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \\`);
+  logger.info(`    -e JEJU_WORKFLOW=$(echo '{"runId":"test","jobId":"build","job":{"steps":[{"run":"echo hello"}]}}' | base64) \\`);
+  logger.info(`    ${options.registry}/${imageName}:latest`);
+}

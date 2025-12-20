@@ -5,7 +5,7 @@ pragma solidity ^0.8.26;
  * @title ICommerceTypes
  * @notice Type definitions for Coinbase Commerce Protocol implementation
  * @dev Based on the open-source Coinbase Commerce Payments Protocol
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 
 /// @notice Payment status enum

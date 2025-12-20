@@ -79,7 +79,7 @@
       "jnsName": "dws.jeju",
       "buildDir": "frontend",
       "spa": true,
-      "fallbackOrigins": ["https://dws.jeju.network"]
+      "fallbackOrigins": ["https://dws.jejunetwork.org"]
     },
     "robustness": {
       "multiOrigin": true,

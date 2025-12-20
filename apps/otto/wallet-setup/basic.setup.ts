@@ -18,7 +18,7 @@ export default defineWalletSetup(PASSWORD, async (context, walletPage) => {
   // Add Jeju Network
   await metamask.addNetwork({
     name: 'Jeju Network',
-    rpcUrl: process.env.JEJU_RPC_URL ?? 'http://localhost:8545',
+    rpcUrl: process.env.JEJU_RPC_URL ?? 'http://localhost:6546',
     chainId: 420691,
     symbol: 'JEJU',
   });

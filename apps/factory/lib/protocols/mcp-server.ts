@@ -450,9 +450,9 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
       result = {
         id: `repo-${Date.now()}`,
         name: args.name,
-        url: `https://git.jeju.network/${args.name}`,
-        cloneUrl: `https://git.jeju.network/${args.name}.git`,
-        sshUrl: `git@git.jeju.network:${args.name}.git`,
+        url: `https://git.jejunetwork.org/${args.name}`,
+        cloneUrl: `https://git.jejunetwork.org/${args.name}.git`,
+        sshUrl: `git@git.jejunetwork.org:${args.name}.git`,
       };
       break;
 
@@ -460,7 +460,7 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
       result = {
         number: Math.floor(Math.random() * 1000),
         title: args.title,
-        url: `https://factory.jeju.network/git/${args.repo}/issues/${Math.floor(Math.random() * 1000)}`,
+        url: `https://factory.jejunetwork.org/git/${args.repo}/issues/${Math.floor(Math.random() * 1000)}`,
       };
       break;
 
@@ -510,7 +510,7 @@ snapshot_download("${args.modelId}")`,
         title: args.title,
         reward: args.reward,
         status: 'open',
-        url: `https://factory.jeju.network/bounties/${Date.now()}`,
+        url: `https://factory.jejunetwork.org/bounties/${Date.now()}`,
       };
       break;
 
@@ -518,7 +518,7 @@ snapshot_download("${args.modelId}")`,
       result = {
         runId: `run-${Date.now()}`,
         status: 'queued',
-        url: `https://factory.jeju.network/ci/runs/${Date.now()}`,
+        url: `https://factory.jejunetwork.org/ci/runs/${Date.now()}`,
       };
       break;
 
@@ -527,7 +527,7 @@ snapshot_download("${args.modelId}")`,
         agentId: `agent-${Date.now()}`,
         name: args.name,
         status: 'deploying',
-        url: `https://factory.jeju.network/agents/${Date.now()}`,
+        url: `https://factory.jejunetwork.org/agents/${Date.now()}`,
       };
       break;
 

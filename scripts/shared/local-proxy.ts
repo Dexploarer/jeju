@@ -2,23 +2,23 @@
  * Local Development Proxy
  * 
  * Manages a Caddy reverse proxy for local development
- * Routes *.local.jeju.network to localhost ports
+ * Routes *.local.jejunetwork.org to localhost ports
  * 
  * Automatically configures:
  * - Hosts file entries (with sudo prompt if needed)
  * - Caddy reverse proxy for clean URLs without ports
  * 
  * Available services:
- * - gateway.local.jeju.network -> localhost:4001
- * - bazaar.local.jeju.network -> localhost:4006
- * - docs.local.jeju.network -> localhost:4004
- * - rpc.local.jeju.network -> localhost:9545
+ * - gateway.local.jejunetwork.org -> localhost:4001
+ * - bazaar.local.jejunetwork.org -> localhost:4006
+ * - docs.local.jejunetwork.org -> localhost:4004
+ * - rpc.local.jejunetwork.org -> localhost:6546
  */
 
 import { existsSync, mkdirSync, writeFileSync, unlinkSync, readFileSync } from 'fs';
 import { $ } from 'bun';
 
-const DOMAIN = 'local.jeju.network';
+const DOMAIN = 'local.jejunetwork.org';
 const CADDY_DIR = '.jeju/caddy';
 const CADDYFILE_PATH = `${CADDY_DIR}/Caddyfile`;
 const PID_FILE = `${CADDY_DIR}/caddy.pid`;
@@ -33,8 +33,8 @@ const SERVICES: Record<string, number> = {
   bazaar: 4006,
   docs: 4004,
   indexer: 4350,
-  rpc: 9545,
-  ws: 9546,
+  rpc: 6546,
+  ws: 6547,
   crucible: 4003,
   compute: 4007,
   storage: 4010,
@@ -120,23 +120,26 @@ export function getHostsBlockStatus(): { exists: boolean; current: string; expec
 
 export async function ensureHostsFile(config: ProxyConfig = {}): Promise<boolean> {
   const hostsPath = getHostsFilePath();
+  
+  // Check hosts file status (no sudo needed - just reading)
   const status = getHostsBlockStatus();
+  const expectedBlock = generateHostsBlock(config);
   
   // Check if block already exists and is up to date
+  if (status.exists && status.current.trim() === expectedBlock.trim()) {
+    console.log('   ✅ Hosts file already configured');
+    return true;
+  }
+  
+  // Need to update - explain what will happen
   if (status.exists) {
-    const expectedBlock = generateHostsBlock(config);
-    if (status.current.trim() === expectedBlock.trim()) {
-      console.log('   ✅ Hosts file already configured');
-      return true;
-    }
-    console.log('   🔄 Updating hosts file entries...');
+    console.log('   🔄 Hosts file needs update');
   } else {
-    console.log('   📝 Adding Jeju entries to hosts file...');
+    console.log('   📝 Jeju entries not found in hosts file');
   }
   
   // Read current content
   let content = readHostsFile();
-  const newBlock = generateHostsBlock(config);
   
   // Remove existing block if present
   if (status.exists) {
@@ -146,7 +149,7 @@ export async function ensureHostsFile(config: ProxyConfig = {}): Promise<boolean
   }
   
   // Add new block at end
-  content = content.trimEnd() + '\n\n' + newBlock + '\n';
+  content = content.trimEnd() + '\n\n' + expectedBlock + '\n';
   
   // Write to temp file first
   const tempFile = '/tmp/jeju-hosts-update';
@@ -162,12 +165,12 @@ export async function ensureHostsFile(config: ProxyConfig = {}): Promise<boolean
     console.log(`   Copy-Item "${tempFile}" -Destination "${hostsPath}"`);
     console.log('');
     console.log('   Or manually add these lines to your hosts file:');
-    console.log(newBlock);
+    console.log(expectedBlock);
     return false;
   }
   
-  // macOS / Linux - use sudo
-  console.log('   🔐 Requesting sudo access to update hosts file...');
+  // macOS / Linux - use sudo to write
+  console.log('   🔐 Requesting sudo access to write hosts file...');
   
   const result = await $`sudo cp ${tempFile} ${hostsPath}`.nothrow();
   
@@ -175,7 +178,7 @@ export async function ensureHostsFile(config: ProxyConfig = {}): Promise<boolean
     console.error('   ❌ Failed to update hosts file');
     console.log('');
     console.log('   To fix manually, add these lines to ' + hostsPath + ':');
-    console.log(newBlock);
+    console.log(expectedBlock);
     return false;
   }
   
@@ -293,6 +296,8 @@ export async function installCaddy(): Promise<boolean> {
 export function generateCaddyfile(config: ProxyConfig = {}): string {
   const domain = config.domain || DOMAIN;
   const services = { ...SERVICES, ...config.services };
+  // Use port 8080 to avoid needing root privileges (port 80 requires sudo)
+  const proxyPort = 8080;
   
   const entries: string[] = [
     '# Auto-generated Caddyfile for local development',
@@ -310,15 +315,15 @@ export function generateCaddyfile(config: ProxyConfig = {}): string {
   
   // Root landing page
   entries.push(`# Landing page at local.${domain.replace('local.', '')}`);
-  entries.push(`:80 {`);
-  entries.push(`    respond "Jeju Local Development\\n\\nAvailable services:\\n${Object.keys(services).map(s => `- http://${s}.${domain}`).join('\\n')}" 200`);
+  entries.push(`:${proxyPort} {`);
+  entries.push(`    respond "Jeju Local Development\\n\\nAvailable services:\\n${Object.keys(services).map(s => `- http://${s}.${domain}:${proxyPort}`).join('\\n')}" 200`);
   entries.push(`}`);
   entries.push('');
   
   // Service routes
   for (const [service, port] of Object.entries(services)) {
     entries.push(`# ${service}`);
-    entries.push(`${service}.${domain}:80 {`);
+    entries.push(`${service}.${domain}:${proxyPort} {`);
     entries.push(`    reverse_proxy localhost:${port}`);
     entries.push(`}`);
     entries.push('');
@@ -332,7 +337,7 @@ export async function startProxy(config: ProxyConfig = {}): Promise<boolean> {
   
   console.log(`🌐 Setting up local proxy for ${domain}...\n`);
   
-  // Step 1: Ensure hosts file is configured
+  // Step 1: Check hosts file (reading doesn't need sudo)
   console.log('1. Checking hosts file...');
   const hostsOk = await ensureHostsFile(config);
   if (!hostsOk) {
@@ -424,10 +429,11 @@ export async function stopProxy(): Promise<void> {
 export function getLocalUrls(config: ProxyConfig = {}): Record<string, string> {
   const domain = config.domain || DOMAIN;
   const services = { ...SERVICES, ...config.services };
+  const proxyPort = 8080;
   
   const urls: Record<string, string> = {};
   for (const service of Object.keys(services)) {
-    urls[service] = `http://${service}.${domain}`;
+    urls[service] = `http://${service}.${domain}:${proxyPort}`;
   }
   return urls;
 }

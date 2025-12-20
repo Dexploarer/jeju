@@ -136,9 +136,9 @@ contract RegisterJejuNetwork is Script {
         registry.registerNetwork{value: 10 ether}(
             420690,  // Jeju testnet chain ID
             "Jeju Network",
-            "https://testnet-rpc.jeju.network",
-            "https://testnet-explorer.jeju.network",
-            "wss://testnet-ws.jeju.network",
+            "https://testnet-rpc.jejunetwork.org",
+            "https://testnet-explorer.jejunetwork.org",
+            "wss://testnet-ws.jejunetwork.org",
             contracts,
             bytes32(0)  // genesis hash
         );

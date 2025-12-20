@@ -194,7 +194,7 @@ contract VRFCoordinatorTest is Test {
         assertEq(coordinator.maxGasLimit(), 3000000);
     }
 
-    function testFail_NonOracleCantFulfill() public {
+    function test_RevertWhen_NonOracleCantFulfill() public {
         // Setup subscription and request
         vm.startPrank(user);
         uint64 subId = coordinator.createSubscription();
@@ -210,6 +210,7 @@ contract VRFCoordinatorTest is Test {
         uint256[] memory randomWords = new uint256[](1);
         randomWords[0] = 12345;
 
+        vm.expectRevert();
         vm.prank(user);  // Not an oracle
         coordinator.fulfillRandomWords(requestId, randomWords, address(consumer));
     }

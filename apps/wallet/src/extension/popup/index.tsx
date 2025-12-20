@@ -17,7 +17,7 @@ import App from '../../App';
 import '../../index.css';
 
 // Network RPC - open API, no keys required
-const JEJU_RPC = 'https://rpc.jeju.network';
+const JEJU_RPC = 'https://rpc.jejunetwork.org';
 
 // Wagmi config for extension - fully permissionless
 const config = createConfig({

@@ -15,7 +15,8 @@
  *   bun run scripts/deploy-federation.ts [--network localnet|testnet|mainnet]
  */
 
-import { Wallet, JsonRpcProvider, ContractFactory, Contract, parseEther } from 'ethers';
+import { createPublicClient, createWalletClient, http, parseEther, getContract, formatEther, type Address } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
@@ -53,20 +54,25 @@ function getArtifact(contractName: string): { abi: unknown[]; bytecode: string }
 }
 
 async function deployContract(
-  wallet: Wallet,
+  walletClient: ReturnType<typeof createWalletClient>,
+  publicClient: ReturnType<typeof createPublicClient>,
   contractName: string,
   args: unknown[] = []
-): Promise<Contract> {
+): Promise<{ address: Address; abi: unknown[] }> {
   const { abi, bytecode } = getArtifact(contractName);
-  const factory = new ContractFactory(abi, bytecode, wallet);
   
   console.log(`  Deploying ${contractName}...`);
-  const contract = await factory.deploy(...args);
-  await contract.waitForDeployment();
-  const address = await contract.getAddress();
+  const hash = await walletClient.deployContract({
+    abi,
+    bytecode: bytecode as `0x${string}`,
+    args,
+  });
+  
+  const receipt = await publicClient.waitForTransactionReceipt({ hash });
+  const address = receipt.contractAddress as Address;
   console.log(`  ✓ ${contractName}: ${address}`);
   
-  return contract;
+  return { address, abi };
 }
 
 async function main() {
@@ -74,7 +80,7 @@ async function main() {
 
   // Get RPC URL based on network
   const rpcUrls: Record<string, string> = {
-    localnet: 'http://localhost:9545',
+    localnet: 'http://localhost:6546',
     testnet: process.env.TESTNET_RPC_URL || 'https://testnet-rpc.jejunetwork.org',
     mainnet: process.env.MAINNET_RPC_URL || 'https://rpc.jejunetwork.org',
   };
@@ -84,75 +90,77 @@ async function main() {
     throw new Error(`Unknown network: ${NETWORK}`);
   }
 
-  const provider = new JsonRpcProvider(rpcUrl);
-  const chainId = Number((await provider.getNetwork()).chainId);
+  const publicClient = createPublicClient({ transport: http(rpcUrl) });
+  const chainId = await publicClient.getChainId();
   
   // Get deployer wallet
   const privateKey = process.env.DEPLOYER_PRIVATE_KEY || 
     '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'; // Default Anvil key
-  const wallet = new Wallet(privateKey, provider);
+  const account = privateKeyToAccount(privateKey as `0x${string}`);
+  const walletClient = createWalletClient({ account, transport: http(rpcUrl) });
   
+  const balance = await publicClient.getBalance({ address: account.address });
   console.log(`Network: ${NETWORK} (chainId: ${chainId})`);
   console.log(`RPC: ${rpcUrl}`);
-  console.log(`Deployer: ${wallet.address}`);
-  console.log(`Balance: ${await provider.getBalance(wallet.address)}\n`);
+  console.log(`Deployer: ${account.address}`);
+  console.log(`Balance: ${formatEther(balance)}\n`);
 
   // Deploy contracts
   console.log('Deploying federation contracts...\n');
 
   // 1. NetworkRegistry
-  const networkRegistry = await deployContract(wallet, 'NetworkRegistry', [wallet.address]);
+  const networkRegistry = await deployContract(walletClient, publicClient, 'NetworkRegistry', [account.address]);
 
   // 2. RegistryHub
-  const registryHub = await deployContract(wallet, 'RegistryHub', [wallet.address]);
+  const registryHub = await deployContract(walletClient, publicClient, 'RegistryHub', [account.address]);
 
   // 3. RegistrySyncOracle
-  const registrySyncOracle = await deployContract(wallet, 'RegistrySyncOracle', []);
+  const registrySyncOracle = await deployContract(walletClient, publicClient, 'RegistrySyncOracle', []);
 
   // 4. SolanaVerifier
-  const solanaVerifier = await deployContract(wallet, 'SolanaVerifier', [
-    wallet.address, // wormhole relayer (deployer for now)
+  const solanaVerifier = await deployContract(walletClient, publicClient, 'SolanaVerifier', [
+    account.address, // wormhole relayer (deployer for now)
     '0x0000000000000000000000000000000000000000000000000000000000000000', // trusted emitter
   ]);
 
   // 5. FederatedIdentity
-  const federatedIdentity = await deployContract(wallet, 'FederatedIdentity', [
-    chainId,
-    wallet.address, // oracle
-    wallet.address, // governance
-    await networkRegistry.getAddress(),
+  const federatedIdentity = await deployContract(walletClient, publicClient, 'FederatedIdentity', [
+    BigInt(chainId),
+    account.address, // oracle
+    account.address, // governance
+    networkRegistry.address,
     '0x0000000000000000000000000000000000000000', // local identity registry
   ]);
 
   // 6. FederatedLiquidity
-  const federatedLiquidity = await deployContract(wallet, 'FederatedLiquidity', [
-    chainId,
-    wallet.address, // oracle
-    wallet.address, // governance
-    await networkRegistry.getAddress(),
+  const federatedLiquidity = await deployContract(walletClient, publicClient, 'FederatedLiquidity', [
+    BigInt(chainId),
+    account.address, // oracle
+    account.address, // governance
+    networkRegistry.address,
     '0x0000000000000000000000000000000000000000', // local vault
   ]);
 
   // 7. FederatedSolver
-  const federatedSolver = await deployContract(wallet, 'FederatedSolver', [
-    chainId,
-    wallet.address, // oracle
-    wallet.address, // governance
-    await networkRegistry.getAddress(),
+  const federatedSolver = await deployContract(walletClient, publicClient, 'FederatedSolver', [
+    BigInt(chainId),
+    account.address, // oracle
+    account.address, // governance
+    networkRegistry.address,
     '0x0000000000000000000000000000000000000000', // local solver registry
   ]);
 
   // Save deployment addresses
   const deployment: FederationDeployment = {
-    networkRegistry: await networkRegistry.getAddress(),
-    registryHub: await registryHub.getAddress(),
-    registrySyncOracle: await registrySyncOracle.getAddress(),
-    solanaVerifier: await solanaVerifier.getAddress(),
-    federatedIdentity: await federatedIdentity.getAddress(),
-    federatedLiquidity: await federatedLiquidity.getAddress(),
-    federatedSolver: await federatedSolver.getAddress(),
+    networkRegistry: networkRegistry.address,
+    registryHub: registryHub.address,
+    registrySyncOracle: registrySyncOracle.address,
+    solanaVerifier: solanaVerifier.address,
+    federatedIdentity: federatedIdentity.address,
+    federatedLiquidity: federatedLiquidity.address,
+    federatedSolver: federatedSolver.address,
     deployedAt: new Date().toISOString(),
-    deployer: wallet.address,
+    deployer: account.address,
     chainId,
   };
 
@@ -186,46 +194,50 @@ async function main() {
   if (NETWORK === 'localnet') {
     console.log('\n📝 Registering Jeju Network in federation...\n');
     
-    const contracts = {
-      identityRegistry: '0x0000000000000000000000000000000000000000',
-      solverRegistry: '0x0000000000000000000000000000000000000000',
-      inputSettler: '0x0000000000000000000000000000000000000000',
-      outputSettler: '0x0000000000000000000000000000000000000000',
-      liquidityVault: '0x0000000000000000000000000000000000000000',
-      governance: '0x0000000000000000000000000000000000000000',
-      oracle: '0x0000000000000000000000000000000000000000',
-      registryHub: deployment.registryHub,
-    };
+    const contracts = [
+      '0x0000000000000000000000000000000000000000',
+      '0x0000000000000000000000000000000000000000',
+      '0x0000000000000000000000000000000000000000',
+      '0x0000000000000000000000000000000000000000',
+      '0x0000000000000000000000000000000000000000',
+      '0x0000000000000000000000000000000000000000',
+      '0x0000000000000000000000000000000000000000',
+      deployment.registryHub,
+    ] as const;
 
-    const tx = await networkRegistry.registerNetwork(
-      chainId,
-      'Jeju Localnet',
-      rpcUrl,
-      'http://localhost:4000',
-      'ws://localhost:9546',
-      contracts,
-      '0x0000000000000000000000000000000000000000000000000000000000000000',
-      { value: parseEther('10') } // VERIFIED stake
-    );
-    await tx.wait();
+    const hash = await walletClient.writeContract({
+      address: networkRegistry.address,
+      abi: networkRegistry.abi,
+      functionName: 'registerNetwork',
+      args: [
+        BigInt(chainId),
+        'Jeju Localnet',
+        rpcUrl,
+        'http://localhost:4000',
+        'ws://localhost:6547',
+        contracts,
+        '0x0000000000000000000000000000000000000000000000000000000000000000',
+      ],
+      value: parseEther('10'), // VERIFIED stake
+    });
+    await publicClient.waitForTransactionReceipt({ hash });
     
     console.log('✓ Jeju Network registered with VERIFIED status (10 ETH stake)');
     
     // Register the network in RegistryHub too
-    const registryHubContract = new Contract(
-      deployment.registryHub,
-      getArtifact('RegistryHub').abi,
-      wallet
-    );
-    
-    const tx2 = await registryHubContract.registerChain(
-      chainId,
-      0, // ChainType.EVM
-      'Jeju Localnet',
-      rpcUrl,
-      { value: parseEther('10') }
-    );
-    await tx2.wait();
+    const hash2 = await walletClient.writeContract({
+      address: registryHub.address as Address,
+      abi: registryHub.abi,
+      functionName: 'registerChain',
+      args: [
+        BigInt(chainId),
+        0, // ChainType.EVM
+        'Jeju Localnet',
+        rpcUrl,
+      ],
+      value: parseEther('10'),
+    });
+    await publicClient.waitForTransactionReceipt({ hash: hash2 });
     
     console.log('✓ Jeju registered in RegistryHub with VERIFIED tier');
   }

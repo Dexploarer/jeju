@@ -70,7 +70,7 @@ export function BanWarning() {
             )}
             
             <a 
-              href="https://gateway.jeju.network/moderation" 
+              href="https://gateway.jejunetwork.org/moderation" 
               target="_blank" 
               rel="noopener noreferrer"
               className="btn-secondary text-sm flex items-center gap-2"

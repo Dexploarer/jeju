@@ -9,7 +9,7 @@ environment = "testnet"
 node_count = 3
 
 # Jeju Network Configuration
-jeju_rpc_url = "https://testnet-rpc.jeju.network"
+jeju_rpc_url = "https://testnet-rpc.jejunetwork.org"
 
 # Contract Addresses (deploy first)
 node_registry_address = "0x..."

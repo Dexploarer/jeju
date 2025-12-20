@@ -52,7 +52,7 @@ interface IPredimarketReport {
  * 5. If YES: trigger ban/label via governance
  * 6. If NO: refund reporter, maybe slash for false report
  *
- * @custom:security-contact security@jeju.network
+ * @custom:security-contact security@jejunetwork.org
  */
 contract ReportingSystem is Ownable, Pausable, ReentrancyGuard {
     // ============ Enums ============

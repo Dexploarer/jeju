@@ -1,29 +1,36 @@
 {
   "name": "@jejunetwork/bots",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "type": "module",
   "description": "MEV, arbitrage, liquidity management, and TFMM bots for Jeju Network",
-  "main": "src/index.ts",
-  "types": "src/index.ts",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./src/index.ts",
-      "types": "./src/index.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./strategies": {
-      "import": "./src/strategies/index.ts",
-      "types": "./src/strategies/index.ts"
+      "types": "./dist/strategies/index.d.ts",
+      "import": "./dist/strategies/index.js"
     },
     "./engine": {
-      "import": "./src/engine/index.ts",
-      "types": "./src/engine/index.ts"
+      "types": "./dist/engine/index.d.ts",
+      "import": "./dist/engine/index.js"
     },
     "./simulation": {
-      "import": "./src/simulation/index.ts",
-      "types": "./src/simulation/index.ts"
+      "types": "./dist/simulation/index.d.ts",
+      "import": "./dist/simulation/index.js"
     }
   },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "sideEffects": false,
   "scripts": {
+    "build": "tsc",
     "dev": "bun run src/cli.ts",
     "test": "bun test src/",
     "test:watch": "bun test --watch src/",
@@ -31,8 +38,24 @@
     "backtest": "bun run src/cli.ts backtest",
     "simulate": "bun run src/cli.ts simulate",
     "analyze": "bun run src/analyze.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "bun run build"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/elizaos/jeju.git",
+    "directory": "packages/bots"
+  },
+  "keywords": [
+    "jeju",
+    "mev",
+    "arbitrage",
+    "liquidity",
+    "trading",
+    "bots",
+    "defi"
+  ],
   "dependencies": {
     "@jejunetwork/config": "workspace:*",
     "@jejunetwork/contracts": "workspace:*",
@@ -43,5 +66,8 @@
   "devDependencies": {
     "@types/bun": "latest",
     "typescript": "5.7.3"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

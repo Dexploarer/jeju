@@ -162,13 +162,13 @@ export default function PublishPackagePage() {
               </p>
               <div className="bg-factory-900 rounded-lg p-4 font-mono text-sm mb-3">
                 <pre className="text-factory-300"># For scoped packages (@jeju/*)
-@jeju:registry=https://pkg.jeju.network
+@jeju:registry=https://pkg.jejunetwork.org
 
 # Or for all packages
-registry=https://pkg.jeju.network</pre>
+registry=https://pkg.jejunetwork.org</pre>
               </div>
               <button
-                onClick={() => copyToClipboard('@jeju:registry=https://pkg.jeju.network', 'npmrc')}
+                onClick={() => copyToClipboard('@jeju:registry=https://pkg.jejunetwork.org', 'npmrc')}
                 className="btn btn-secondary text-sm"
               >
                 {copied === 'npmrc' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
@@ -190,7 +190,7 @@ registry=https://pkg.jeju.network</pre>
 bun jeju login
 
 # Or using npm with wallet auth
-npm login --registry=https://pkg.jeju.network</pre>
+npm login --registry=https://pkg.jejunetwork.org</pre>
               </div>
               <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
                 <div className="flex items-start gap-3">
@@ -216,7 +216,7 @@ npm login --registry=https://pkg.jeju.network</pre>
 bun publish
 
 # Using npm
-npm publish --registry=https://pkg.jeju.network
+npm publish --registry=https://pkg.jejunetwork.org
 
 # Using Jeju CLI (with signing)
 bun jeju publish</pre>
@@ -251,7 +251,7 @@ bun jeju publish</pre>
   "author": "your-name.eth",
   "repository": {
     "type": "git",
-    "url": "https://git.jeju.network/username/my-package"
+    "url": "https://git.jejunetwork.org/username/my-package"
   }
 }`}</pre>
               </div>
