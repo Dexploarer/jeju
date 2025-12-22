@@ -37,6 +37,7 @@ import {
   getSessionDuration,
   verifySessionOwnership,
 } from './utils/sessions'
+import { validateProxyUrlWithDNS } from './utils/proxy-validation'
 import { verifyX402Payment } from './x402'
 
 // Infer types from Zod schemas
@@ -324,7 +325,6 @@ async function handleProxyRequest(
   )
 
   // SECURITY: Validate URL with DNS resolution to prevent SSRF and DNS rebinding attacks
-  const { validateProxyUrlWithDNS } = await import('./utils/proxy-validation')
   await validateProxyUrlWithDNS(proxyRequest.url)
 
   // Add timeout to prevent hanging connections

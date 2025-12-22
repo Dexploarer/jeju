@@ -60,12 +60,6 @@ interface SignerProcess {
   url: string
 }
 
-interface SignResponse {
-  signature: string
-  signer: string
-  error?: string
-}
-
 class P2PSigningTest {
   private publicClient: PublicClient
   private walletClient: WalletClient
@@ -216,7 +210,8 @@ class P2PSigningTest {
         }),
       })
 
-      const result = (await response.json()) as SignResponse
+      const resultRaw = await response.json()
+      const result = expectValid(SignResponseSchema, resultRaw, 'sign response')
 
       if (result.error) {
         throw new Error(result.error)

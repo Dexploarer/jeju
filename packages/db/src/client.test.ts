@@ -616,11 +616,7 @@ describe('CQLClient', () => {
 
   describe('Block Producer', () => {
     it('should get block producer info', async () => {
-      const mockInfo = {
-        nodeCount: 10,
-        blockHeight: 1000,
-        pendingTransactions: 5,
-      }
+      const mockInfo = createMockBlockProducerInfo()
       mockFetch.mockImplementationOnce(() =>
         Promise.resolve({
           ok: true,
@@ -629,7 +625,7 @@ describe('CQLClient', () => {
       )
 
       const result = await client.getBlockProducerInfo()
-      expect(result.nodeCount).toBe(10)
+      expect(result.blockHeight).toBe(1000)
     })
   })
 

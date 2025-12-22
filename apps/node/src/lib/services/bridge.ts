@@ -371,6 +371,7 @@ class BridgeServiceImpl implements BridgeService {
 
     const { createWalletClient, createPublicClient, http, encodeFunctionData } =
       await import('viem')
+    // Dynamic import: viem/accounts only needed when private key is present
     const { privateKeyToAccount } = await import('viem/accounts')
 
     const account = privateKeyToAccount(this.config.privateKey)
@@ -448,6 +449,7 @@ class BridgeServiceImpl implements BridgeService {
     const { createWalletClient, http, encodeFunctionData } = await import(
       'viem'
     )
+    // Dynamic import: viem/accounts only needed when private key is present
     const { privateKeyToAccount } = await import('viem/accounts')
 
     const account = privateKeyToAccount(this.config.privateKey)

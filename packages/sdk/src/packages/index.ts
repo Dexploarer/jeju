@@ -432,7 +432,8 @@ export class JejuPkgSDK {
     if (!response.ok) {
       throw new Error(`Failed to get package version: ${response.statusText}`)
     }
-    return response.json() as Promise<PackageVersion>
+    const rawData: unknown = await response.json()
+    return PackageVersionInfoSchema.parse(rawData)
   }
 
   async searchPackages(
@@ -782,7 +783,8 @@ export class JejuPkgSDK {
     if (!response.ok) {
       throw new Error(`Health check failed: ${response.statusText}`)
     }
-    return response.json() as Promise<{ status: string; service: string }>
+    const rawData: unknown = await response.json()
+    return HealthCheckResponseSchema.parse(rawData)
   }
 
   // Registry URL helper for npm/bun config (compatibility)

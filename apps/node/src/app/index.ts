@@ -18,6 +18,7 @@ import { createInterface } from 'node:readline'
 import { parseArgs } from 'node:util'
 import chalk from 'chalk'
 import { formatEther } from 'viem'
+import { privateKeyToAccount } from 'viem/accounts'
 import { z } from 'zod'
 import { createNodeClient } from '../lib/contracts'
 import { JsonRpcResultResponseSchema } from '../validation'
@@ -375,7 +376,6 @@ async function cmdSetup(): Promise<void> {
             'Invalid private key format: must be 64 hex characters (with or without 0x prefix)',
           )
         }
-        const { privateKeyToAccount } = await import('viem/accounts')
         config.privateKey = normalizedKey
         config.walletAddress = privateKeyToAccount(
           normalizedKey as `0x${string}`,
@@ -505,7 +505,6 @@ async function cmdStart(): Promise<void> {
       )
     }
     config.privateKey = normalizedKey
-    const { privateKeyToAccount } = await import('viem/accounts')
     config.walletAddress = privateKeyToAccount(
       normalizedKey as `0x${string}`,
     ).address

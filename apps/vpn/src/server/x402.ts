@@ -10,7 +10,7 @@
  */
 
 import { Elysia } from 'elysia'
-import { type Address, getAddress, type Hex } from 'viem'
+import { type Address, getAddress, type Hex, recoverMessageAddress } from 'viem'
 import {
   expect,
   expectValid,
@@ -348,7 +348,6 @@ export async function verifyX402Payment(
   let payerAddress: Address
   try {
     // Use recoverMessageAddress to get the actual signer
-    const { recoverMessageAddress } = await import('viem')
     payerAddress = await recoverMessageAddress({
       message,
       signature: payload.signature,

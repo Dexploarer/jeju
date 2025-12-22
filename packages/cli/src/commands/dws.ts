@@ -34,7 +34,6 @@ import {
   ServiceHealthResponseSchema,
   UploadResponseSchema,
   WorkflowListResponseSchema,
-  expectValid,
   validate,
 } from '../schemas'
 import { createInfrastructureService } from '../services/infrastructure'

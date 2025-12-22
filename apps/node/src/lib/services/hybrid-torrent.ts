@@ -24,11 +24,12 @@ interface Wire {
   peerId: string
 }
 
-// WebTorrent is loaded dynamically to handle async module loading
+// WebTorrent is loaded dynamically to handle optional native module dependencies
 let WebTorrent: WebTorrentConstructor | null = null
 
 async function loadWebTorrent(): Promise<WebTorrentConstructor> {
   if (WebTorrent) return WebTorrent
+  // Dynamic import: WebTorrent has native dependencies that may not be available in all environments
   const mod = await import('webtorrent')
   // WebTorrent default export is the constructor
   WebTorrent = mod.default

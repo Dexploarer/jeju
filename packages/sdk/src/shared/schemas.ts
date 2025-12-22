@@ -1631,3 +1631,22 @@ export const CICDQueueStatusSchema = z.object({
   runners: z.number(),
   availableRunners: z.number(),
 })
+
+// ============================================================================
+// DWS ID Response Schemas
+// ============================================================================
+
+/** DWS trigger creation response schema */
+export const DWSCreateTriggerResponseSchema = z.object({
+  triggerId: z.string(),
+})
+
+/** DWS workflow creation response schema */
+export const DWSCreateWorkflowResponseSchema = z.object({
+  workflowId: z.string(),
+})
+
+/** DWS job creation response schema */
+export const DWSJobResponseSchema = z.object({
+  jobId: z.string(),
+})

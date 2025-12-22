@@ -458,6 +458,15 @@ export type JsonRpcBlockNumberResponse = z.infer<
 >
 
 /**
+ * Generic JSON-RPC response (for any method)
+ */
+export const JsonRpcResponseSchema = z.object({
+  result: z.unknown().optional(),
+  error: z.object({ message: z.string() }).optional(),
+})
+export type JsonRpcResponse = z.infer<typeof JsonRpcResponseSchema>
+
+/**
  * JSON-RPC response for eth_getBalance
  */
 export const JsonRpcBalanceResponseSchema = z.object({

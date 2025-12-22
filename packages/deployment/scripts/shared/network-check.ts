@@ -8,6 +8,11 @@
 
 import { getLocalnetChain } from '@jejunetwork/shared'
 import type { JsonValue, NetworkType } from '@jejunetwork/types'
+import {
+  expectValid,
+  JsonRpcBalanceResponseSchema,
+  JsonRpcResponseSchema,
+} from '../../schemas'
 
 interface NetworkCheckResult {
   available: boolean
@@ -111,7 +116,8 @@ async function checkBalance(rpcUrl: string, address: string): Promise<boolean> {
 
     if (!response.ok) return false
 
-    const data = (await response.json()) as { result?: string }
+    const dataRaw = await response.json()
+    const data = expectValid(JsonRpcBalanceResponseSchema, dataRaw, 'eth_getBalance')
     if (!data.result) return false
 
     return BigInt(data.result) > BigInt(0)

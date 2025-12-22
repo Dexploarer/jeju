@@ -41,6 +41,7 @@ import {
   getSessionsForAddress,
   verifySessionOwnership,
 } from './utils/sessions'
+import { validateProxyUrlWithDNS } from './utils/proxy-validation'
 import { verifyX402Payment } from './x402'
 
 // ============================================================================
@@ -651,9 +652,6 @@ async function callTool(
       )
 
       // SECURITY: Validate URL with DNS resolution to prevent SSRF and DNS rebinding attacks
-      const { validateProxyUrlWithDNS } = await import(
-        './utils/proxy-validation'
-      )
       await validateProxyUrlWithDNS(proxyRequest.url)
 
       const controller = new AbortController()

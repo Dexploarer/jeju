@@ -195,6 +195,7 @@ export class CrucibleAgentRuntime {
     // Load jeju plugin actions if not already loaded
     if (!jejuPluginLoaded) {
       try {
+        // Conditional dynamic import: jeju plugin may not be available in all environments
         const jejuPlugin = await import('@jejunetwork/eliza-plugin')
         if (jejuPlugin?.jejuPlugin?.actions) {
           jejuActions = (jejuPlugin.jejuPlugin.actions as JejuAction[]).map(

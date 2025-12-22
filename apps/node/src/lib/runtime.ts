@@ -552,6 +552,7 @@ function createBrowserAPI(): RuntimeAPI {
  * Tauri implementation of RuntimeAPI (wraps Tauri invoke)
  */
 async function createTauriAPI(): Promise<RuntimeAPI> {
+  // Dynamic import: Tauri API only available in Tauri runtime
   const { invoke } = await import('@tauri-apps/api/core')
 
   return {

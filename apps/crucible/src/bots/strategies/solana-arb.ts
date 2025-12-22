@@ -615,6 +615,7 @@ export class SolanaArbStrategy extends EventEmitter {
     const { swapTransaction } = swapData
 
     // Deserialize and sign the transaction
+    // Conditional dynamic import: @solana/web3.js only needed when executing Solana swaps
     const { VersionedTransaction } = await import('@solana/web3.js')
     const txBuffer = Buffer.from(swapTransaction, 'base64')
     const tx = VersionedTransaction.deserialize(txBuffer)

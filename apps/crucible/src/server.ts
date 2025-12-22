@@ -998,6 +998,7 @@ app.post('/api/v1/autonomous/agents', async (c) => {
     return c.json({ error: `Character not found: ${body.characterId}` }, 404)
   }
 
+  // Conditional dynamic import: autonomous/types only needed when autonomous runner is enabled
   const { DEFAULT_AUTONOMOUS_CONFIG } = await import('./autonomous/types')
 
   await autonomousRunner.registerAgent({

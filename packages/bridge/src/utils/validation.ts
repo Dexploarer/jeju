@@ -236,7 +236,7 @@ export const OrchestratorConfigSchema = z.object({
 // =============================================================================
 
 // Jupiter Quote response schema (simplified version for bridge use)
-// Note: The full version is in @jejunetwork/solana if that dependency is added
+// Note: Uses inline route plan schema since full JupiterRoutePlanSchema is defined later
 export const JupiterQuoteResponseSchema = z.object({
   inputMint: z.string(),
   outputMint: z.string(),
@@ -246,7 +246,21 @@ export const JupiterQuoteResponseSchema = z.object({
   swapMode: z.string(),
   slippageBps: z.number(),
   priceImpactPct: z.string(),
-  routePlan: z.array(JupiterRoutePlanSchema),
+  routePlan: z.array(
+    z.object({
+      swapInfo: z.object({
+        ammKey: z.string(),
+        label: z.string(),
+        inputMint: z.string(),
+        outputMint: z.string(),
+        inAmount: z.string(),
+        outAmount: z.string(),
+        feeAmount: z.string(),
+        feeMint: z.string(),
+      }),
+      percent: z.number(),
+    }),
+  ),
   contextSlot: z.number(),
   timeTaken: z.number(),
 })

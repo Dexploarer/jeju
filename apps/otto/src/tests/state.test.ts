@@ -5,8 +5,7 @@ import { existsSync, mkdirSync, rmSync } from 'node:fs'
 const TEST_DATA_DIR = './test-data-state'
 process.env.OTTO_DATA_DIR = TEST_DATA_DIR
 
-// Dynamic import to ensure env is set
-const { getStateManager } = await import('../services/state')
+import { getStateManager } from '../services/state'
 
 describe('StateManager', () => {
   beforeEach(() => {
