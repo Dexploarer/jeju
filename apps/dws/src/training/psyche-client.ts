@@ -116,6 +116,15 @@ export interface TrainingMetrics {
   tokensProcessed: number
 }
 
+export interface RolloutBundle {
+  prompt: string
+  completions: string[]
+  scores: number[]
+  metadata?: Record<string, unknown>
+}
+
+export type RunState = CoordinatorProgress
+
 // ============================================================================
 // Borsh Schema for Solana Instructions
 // ============================================================================
@@ -799,6 +808,8 @@ export class PsycheClient {
         state.clients.length,
         modelHash,
       ],
+      chain: this.evmWalletClient.chain ?? null,
+      account: this.evmWalletClient.account ?? null,
     })
 
     console.log(`[Psyche] Bridged progress to EVM: ${hash}`)

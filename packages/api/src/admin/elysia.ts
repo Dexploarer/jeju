@@ -1,21 +1,17 @@
-/**
- * Elysia Admin Adapter
- *
- * Provides Elysia plugins for admin access control.
- */
-
 import { type Context, Elysia } from 'elysia'
-import { AuthError, AuthErrorCode, type AuthUser } from '../auth/types.js'
+import {
+  AuthError,
+  AuthErrorCode,
+  AuthMethod,
+  type AuthUser,
+} from '../auth/types.js'
 import { requireAdmin, requireRole, validateAdmin } from './core.js'
 import type { AdminConfig, AdminRole, AdminUser } from './types.js'
 
-// ============ Types ============
-
-export interface AdminContext {
+/** Context derived by admin plugin - extends Record for Elysia compatibility */
+export interface AdminContext extends Record<string, unknown> {
   admin?: AdminUser
   isAdmin: boolean
-  /** Index signature for Elysia derive compatibility */
-  [key: string]: AdminUser | boolean | undefined
 }
 
 export interface AdminPluginConfig extends AdminConfig {
@@ -23,24 +19,18 @@ export interface AdminPluginConfig extends AdminConfig {
   skipRoutes?: string[]
 }
 
-// ============ Elysia Plugin ============
-
-/**
- * Create an Elysia plugin for admin access control.
- * Requires auth plugin to be applied first.
- */
 export function adminPlugin(config: AdminPluginConfig) {
   const skipRoutes = new Set(config.skipRoutes ?? [])
 
   return new Elysia({ name: 'admin' })
     .derive((ctx): AdminContext => {
-      const address = (ctx as unknown as { address?: string }).address
+      const address = (ctx as { address?: string }).address
       if (!address) {
         return { isAdmin: false }
       }
 
       const result = validateAdmin(
-        { address: address as `0x${string}`, method: 'oauth3' },
+        { address: address as `0x${string}`, method: AuthMethod.OAUTH3 },
         config,
       )
 
@@ -55,7 +45,7 @@ export function adminPlugin(config: AdminPluginConfig) {
     })
     .onBeforeHandle((ctx) => {
       const { path, set } = ctx
-      const isAdmin = (ctx as unknown as { isAdmin?: boolean }).isAdmin
+      const isAdmin = (ctx as AdminContext).isAdmin
 
       if (skipRoutes.has(path)) {
         return undefined
@@ -73,9 +63,6 @@ export function adminPlugin(config: AdminPluginConfig) {
     })
 }
 
-/**
- * Create a require-admin middleware for specific routes
- */
 export function requireAdminMiddleware(config: AdminConfig) {
   return async ({
     address,
@@ -92,7 +79,7 @@ export function requireAdminMiddleware(config: AdminConfig) {
     }
 
     const result = validateAdmin(
-      { address: address as `0x${string}`, method: 'oauth3' },
+      { address: address as `0x${string}`, method: AuthMethod.OAUTH3 },
       config,
     )
 
@@ -108,9 +95,6 @@ export function requireAdminMiddleware(config: AdminConfig) {
   }
 }
 
-/**
- * Create a role-specific middleware
- */
 export function requireRoleMiddleware(config: AdminConfig, role: AdminRole) {
   return async ({
     address,
@@ -128,7 +112,7 @@ export function requireRoleMiddleware(config: AdminConfig, role: AdminRole) {
 
     const configWithRole: AdminConfig = { ...config, requiredRole: role }
     const result = validateAdmin(
-      { address: address as `0x${string}`, method: 'oauth3' },
+      { address: address as `0x${string}`, method: AuthMethod.OAUTH3 },
       configWithRole,
     )
 
@@ -144,9 +128,6 @@ export function requireRoleMiddleware(config: AdminConfig, role: AdminRole) {
   }
 }
 
-/**
- * Higher-order function for admin-only routes
- */
 export function withAdmin<T>(
   handler: (ctx: Context & { admin: AdminUser }) => T | Promise<T>,
   config: AdminConfig,
@@ -167,9 +148,6 @@ export function withAdmin<T>(
   }
 }
 
-/**
- * Higher-order function for role-specific routes
- */
 export function withRole<T>(
   handler: (ctx: Context & { admin: AdminUser }) => T | Promise<T>,
   config: AdminConfig,

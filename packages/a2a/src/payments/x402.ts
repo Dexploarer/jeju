@@ -5,11 +5,11 @@
  * Supports optional Redis for persistent storage across serverless functions
  */
 
-import { createPublicClient, http } from 'viem'
+import { createPublicClient, http, type PublicClient } from 'viem'
 import { z } from 'zod'
 
 import type {
-  JsonValue,
+  PaymentMetadata,
   PaymentRequest,
   PaymentVerificationParams,
   PaymentVerificationResult,
@@ -50,8 +50,7 @@ const PendingPaymentSchema = z.object({
 const REDIS_PREFIX = 'x402:payment:'
 
 export class X402Manager {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private provider: any
+  private provider: PublicClient
   private config: Required<Omit<X402Config, 'redis'>> & { redis?: RedisClient }
   private readonly DEFAULT_MIN_PAYMENT = '1000000000000000' // 0.001 ETH
   private readonly DEFAULT_TIMEOUT = 5 * 60 * 1000 // 5 minutes
@@ -131,16 +130,7 @@ export class X402Manager {
       return null
     }
 
-    const payment: PendingPayment = {
-      ...validation.data,
-      request: {
-        ...validation.data.request,
-        metadata: validation.data.request.metadata as Record<
-          string,
-          string | number | boolean | null
-        >,
-      },
-    }
+    const payment: PendingPayment = validation.data
 
     // Cache in memory
     this.inMemoryStore.set(requestId, payment)
@@ -193,7 +183,7 @@ export class X402Manager {
     to: string,
     amount: string,
     service: string,
-    metadata?: Record<string, string | number | boolean | null>,
+    metadata?: PaymentMetadata,
   ): Promise<PaymentRequest> {
     // Validate amount meets minimum
     const amountBn = BigInt(amount)
@@ -214,7 +204,7 @@ export class X402Manager {
       to,
       amount,
       service,
-      metadata: metadata as Record<string, JsonValue>,
+      metadata,
       expiresAt,
     }
 

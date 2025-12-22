@@ -217,7 +217,6 @@ export function ChatInterface({
     [],
   )
 
-
   // Handle sending messages - tries ElizaOS first, then inference gateway
   const handleSend = useCallback(async () => {
     if (!inputValue.trim() || isTyping) return

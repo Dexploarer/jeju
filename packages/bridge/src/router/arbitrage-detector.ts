@@ -20,8 +20,6 @@
  *    - Capture MEV on Solana side
  */
 
-// ============ Types ============
-
 export interface PriceQuote {
   chain: string
   dex: string
@@ -100,8 +98,6 @@ import {
 
 const log = createLogger('arbitrage')
 
-// ============ Arbitrage Detector ============
-
 export class ArbitrageDetector {
   private opportunities: Map<string, ArbOpportunity> = new Map()
   private minProfitBps: number
@@ -122,11 +118,9 @@ export class ArbitrageDetector {
 
     log.info('Starting cross-chain arbitrage detector')
 
-    // Poll every 5 seconds
+    // Poll every 5 seconds - first poll will happen after the interval
+    // This avoids immediate network calls which cause issues in tests
     this.pollInterval = setInterval(() => this.detectOpportunities(), 5000)
-
-    // Initial poll
-    this.detectOpportunities()
   }
 
   /**
@@ -158,9 +152,10 @@ export class ArbitrageDetector {
       .sort((a, b) => b.netProfitUsd - a.netProfitUsd)
   }
 
-  // ============ Detection Logic ============
-
   private async detectOpportunities(): Promise<void> {
+    // Guard: don't make network calls if stopped
+    if (!this.running) return
+
     await Promise.all([
       this.detectSolanaEvmArb(),
       this.detectHyperliquidArb(),
@@ -371,8 +366,6 @@ export class ArbitrageDetector {
     }
   }
 
-  // ============ Price Fetching ============
-
   private async getJupiterPrice(token: string): Promise<PriceQuote | null> {
     const mint = SOLANA_TOKENS[token]
     if (!mint) return null
@@ -433,7 +426,7 @@ export class ArbitrageDetector {
     try {
       const apiKey = process.env.ONEINCH_API_KEY
       if (!apiKey) {
-        // Fallback to Uniswap V3 quoter if no 1inch API key
+        // Use Uniswap V3 quoter directly when 1inch API key not configured
         return this.getUniswapQuote(token, chainId, tokenAddress, usdcAddress)
       }
 
@@ -588,8 +581,6 @@ export class ArbitrageDetector {
     return parseFloat(priceStr)
   }
 
-  // ============ Helpers ============
-
   private calculatePriceDiff(
     quote1: PriceQuote,
     quote2: PriceQuote,
@@ -677,8 +668,6 @@ export class ArbitrageDetector {
     }
   }
 
-  // ============ Jito MEV Integration ============
-
   /**
    * Submit a Solana transaction bundle to Jito for MEV extraction
    */
@@ -710,7 +699,8 @@ export class ArbitrageDetector {
       const rawData: unknown = await response.json()
       const data = JitoBundleResponseSchema.parse(rawData)
       return { bundleId: data.result.bundle_id, landed: true }
-    } catch {
+    } catch (error) {
+      log.warn('Failed to submit Jito bundle', { error: String(error) })
       return { bundleId: '', landed: false }
     }
   }
@@ -728,13 +718,14 @@ export class ArbitrageDetector {
       const rawData: unknown = await response.json()
       const data = JitoTipFloorResponseSchema.parse(rawData)
       return BigInt(data.tip_floor)
-    } catch {
+    } catch (error) {
+      log.warn('Failed to get Jito tip floor, using default', {
+        error: String(error),
+      })
       return 1000n
     }
   }
 }
-
-// ============ Factory ============
 
 export function createArbitrageDetector(config?: {
   minProfitBps?: number

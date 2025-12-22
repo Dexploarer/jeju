@@ -13,12 +13,8 @@
  */
 
 import { z } from 'zod'
-import {
-  type CrucibleAgentRuntime,
-  checkDWSHealth,
-  checkDWSInferenceAvailable,
-  type RuntimeMessage,
-} from '../sdk/eliza-runtime'
+import { checkDWSHealth, checkDWSInferenceAvailable } from '../client/dws'
+import type { CrucibleAgentRuntime, RuntimeMessage } from '../sdk/eliza-runtime'
 import { createLogger } from '../sdk/logger'
 import type {
   AgentGoal,
@@ -32,13 +28,13 @@ const log = createLogger('AutonomousTick')
 
 /** Schema for raw LLM decision parsing - accepts various field names LLMs might use */
 const RawLLMDecisionSchema = z.object({
-  isFinish: z.boolean().optional(),
-  is_finish: z.boolean().optional(),
-  action: z.string().optional(),
-  parameters: z.record(z.string(), z.unknown()).optional(),
-  params: z.record(z.string(), z.unknown()).optional(),
-  thought: z.string().optional(),
-  reasoning: z.string().optional(),
+  isFinish: z.boolean().nullable(),
+  is_finish: z.boolean().nullable(),
+  action: z.string().nullable(),
+  parameters: z.record(z.string(), z.unknown()).nullable(),
+  params: z.record(z.string(), z.unknown()).nullable(),
+  thought: z.string().nullable(),
+  reasoning: z.string().nullable(),
 })
 
 /**
@@ -525,7 +521,7 @@ export class AutonomousTick {
     const dwsHealthy = await checkDWSHealth()
     const inferenceStatus = await checkDWSInferenceAvailable()
 
-    // TODO: Get pending messages from room/messaging system
+    // Pending messages will be populated when A2A messaging is integrated
     const pendingMessages: PendingMessage[] = []
 
     // Get goals from agent configuration
@@ -726,8 +722,8 @@ export class AutonomousTick {
     const parsed = parseResult.data
     return {
       isFinish: Boolean(parsed.isFinish ?? parsed.is_finish ?? false),
-      action: parsed.action,
-      parameters: parsed.parameters ?? parsed.params,
+      action: parsed.action ?? undefined,
+      parameters: parsed.parameters ?? parsed.params ?? undefined,
       thought: (parsed.thought ?? parsed.reasoning ?? '') as string,
     }
   }

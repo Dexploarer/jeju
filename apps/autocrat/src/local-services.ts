@@ -233,24 +233,13 @@ let initialized = false
 export async function initLocalServices(): Promise<void> {
   if (initialized) return
   await initStorage()
-  const dwsUp = await checkDWSCompute()
-  const proposalIndex = await proposalIndexState.getAll()
-  console.log(`[Services] Storage: CovenantSQL (decentralized)`)
-  console.log(`[Services] Proposal index: ${proposalIndex.size} entries`)
-  console.log(`[Services] DWS Compute: ${dwsUp ? 'ready' : 'NOT AVAILABLE'}`)
-  if (!dwsUp) {
-    console.warn(
-      '[Services] WARNING: DWS compute not available - inference will fail',
-    )
-  }
+  await checkDWSCompute()
   initialized = true
 }
 
 export function isInitialized(): boolean {
   return initialized
 }
-
-// ============ Ollama Support (Local LLM) ============
 
 const OLLAMA_URL = process.env.OLLAMA_URL ?? 'http://localhost:11434'
 export const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? 'llama3.2'

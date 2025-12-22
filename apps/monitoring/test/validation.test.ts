@@ -11,10 +11,6 @@ const INDEXER_GRAPHQL_URL =
   process.env.INDEXER_GRAPHQL_URL || 'http://localhost:4350/graphql'
 const RPC_URL = process.env.RPC_URL || 'http://localhost:6546'
 
-// ============================================================================
-// Response Schemas for Test Helpers
-// ============================================================================
-
 function GraphQLResponseSchema<T extends z.ZodTypeAny>(dataSchema: T) {
   return z.object({
     data: dataSchema.optional(),
@@ -80,10 +76,6 @@ async function rpcCall<T>(
   }
   return parsed.data.result
 }
-
-// ============================================================================
-// Response Schemas for Test Data
-// ============================================================================
 
 const BlocksSchema = z.object({
   blocks: z.array(

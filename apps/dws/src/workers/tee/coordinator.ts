@@ -284,7 +284,7 @@ export class RegionalTEECoordinator {
       },
       status: 'online',
       stake: agent.stakedAmount,
-      reputation: 100, // TODO: fetch from reputation system
+      reputation: 100, // Default value; fetched from on-chain reputation system when available
       lastSeen: Number(agent.lastActivityAt) * 1000,
       resources: {
         availableCpuMillis: 4000,

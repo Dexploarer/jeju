@@ -63,10 +63,6 @@ class CovenantSQLClient {
 
 import type { DataSource, EntityMetadata } from 'typeorm'
 
-// ============================================================================
-// Configuration
-// ============================================================================
-
 const CQL_ENABLED = process.env.CQL_SYNC_ENABLED === 'true'
 const CQL_DATABASE_ID = process.env.CQL_DATABASE_ID ?? 'indexer-sync'
 const SYNC_INTERVAL_MS = (() => {
@@ -88,10 +84,6 @@ const BATCH_SIZE = (() => {
   return batch
 })()
 
-// ============================================================================
-// Sync State
-// ============================================================================
-
 interface SyncState {
   entity: string
   lastSyncedId: string | null
@@ -100,10 +92,6 @@ interface SyncState {
 }
 
 const syncStates: Map<string, SyncState> = new Map()
-
-// ============================================================================
-// CQL Sync Service
-// ============================================================================
 
 export class CQLSyncService {
   private client: CovenantSQLClient
@@ -449,10 +437,6 @@ export class CQLSyncService {
     }
   }
 }
-
-// ============================================================================
-// Singleton
-// ============================================================================
 
 let cqlSyncService: CQLSyncService | null = null
 

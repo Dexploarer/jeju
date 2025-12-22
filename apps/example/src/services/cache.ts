@@ -1,7 +1,18 @@
+/**
+ * Cache Service
+ *
+ * Type-safe client for the DWS compute cache.
+ * Uses direct fetch with typed responses for reliability.
+ */
+
 const COMPUTE_CACHE_ENDPOINT =
   process.env.COMPUTE_CACHE_ENDPOINT || 'http://localhost:4200/cache'
 const CACHE_TIMEOUT = 5000
 const NETWORK = process.env.NETWORK || 'localnet'
+
+// ============================================================================
+// Types
+// ============================================================================
 
 interface CacheService {
   get<T>(key: string): Promise<T | null>
@@ -11,9 +22,16 @@ interface CacheService {
   isHealthy(): Promise<boolean>
 }
 
-// In-memory fallback cache
-const memoryCache: Map<string, { value: unknown; expiresAt: number }> =
-  new Map()
+// ============================================================================
+// In-memory Fallback Cache
+// ============================================================================
+
+interface CacheEntry {
+  value: unknown
+  expiresAt: number
+}
+
+const memoryCache: Map<string, CacheEntry> = new Map()
 
 function cleanExpired(): void {
   const now = Date.now()
@@ -24,17 +42,100 @@ function cleanExpired(): void {
   }
 }
 
+// ============================================================================
+// Error Types
+// ============================================================================
+
+export class CacheError extends Error {
+  constructor(
+    message: string,
+    public statusCode: number,
+  ) {
+    super(message)
+    this.name = 'CacheError'
+  }
+}
+
+// ============================================================================
+// Typed HTTP Client
+// ============================================================================
+
+class CacheClient {
+  constructor(private baseUrl: string) {}
+
+  private async request<T>(path: string, init?: RequestInit): Promise<T> {
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        ...init?.headers,
+      },
+      signal: AbortSignal.timeout(CACHE_TIMEOUT),
+    })
+
+    if (!response.ok) {
+      throw new CacheError(
+        `Cache request failed: ${response.status}`,
+        response.status,
+      )
+    }
+
+    return response.json() as Promise<T>
+  }
+
+  async get(key: string): Promise<{ value: unknown }> {
+    return this.request('/get', {
+      method: 'POST',
+      body: JSON.stringify({ key }),
+    })
+  }
+
+  async set(
+    key: string,
+    value: unknown,
+    ttlMs?: number,
+  ): Promise<{ success: boolean }> {
+    return this.request('/set', {
+      method: 'POST',
+      body: JSON.stringify({ key, value, ttlMs }),
+    })
+  }
+
+  async delete(key: string): Promise<{ success: boolean }> {
+    return this.request('/delete', {
+      method: 'POST',
+      body: JSON.stringify({ key }),
+    })
+  }
+
+  async clear(): Promise<{ success: boolean }> {
+    return this.request('/clear', { method: 'POST' })
+  }
+
+  async health(): Promise<{ status: string }> {
+    return this.request('/health')
+  }
+}
+
+// ============================================================================
+// Compute Cache Service Implementation
+// ============================================================================
+
 class ComputeCacheService implements CacheService {
+  private client: CacheClient
   private healthLastChecked = 0
   private healthy = false
   private useFallback = false
   private checkedFallback = false
 
+  constructor() {
+    this.client = new CacheClient(COMPUTE_CACHE_ENDPOINT)
+  }
+
   private async checkFallback(): Promise<void> {
     if (this.checkedFallback) return
     this.checkedFallback = true
 
-    // Check if compute cache is available
     const isHealthy = await this.isHealthy()
     if (!isHealthy && (NETWORK === 'localnet' || NETWORK === 'Jeju')) {
       console.log('[Cache] Compute cache unavailable, using in-memory fallback')
@@ -57,29 +158,15 @@ class ComputeCacheService implements CacheService {
     }
 
     try {
-      const response = await fetch(`${COMPUTE_CACHE_ENDPOINT}/get`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key }),
-        signal: AbortSignal.timeout(CACHE_TIMEOUT),
-      })
-
-      if (!response.ok) {
-        if (response.status === 404) return null
-        throw new Error(`Cache get failed: ${response.status}`)
-      }
-
-      const data = (await response.json()) as { value: T | null }
-      return data.value
+      const data = await this.client.get(key)
+      return data.value as T | null
     } catch (error) {
-      // If request fails, use fallback for localnet
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error'
       if (NETWORK === 'localnet' || NETWORK === 'Jeju') {
-        console.warn(`[Cache] Get failed, using fallback: ${errorMsg}`)
+        console.warn(`[Cache] Get failed, using fallback: ${error}`)
         this.useFallback = true
-        return this.get(key)
+        return this.get<T>(key)
       }
-      console.error(`[Cache] Get failed: ${errorMsg}`)
+      console.error(`[Cache] Get failed: ${error}`)
       return null
     }
   }
@@ -88,33 +175,19 @@ class ComputeCacheService implements CacheService {
     await this.checkFallback()
 
     if (this.useFallback) {
-      memoryCache.set(key, {
-        value,
-        expiresAt: Date.now() + ttlMs,
-      })
+      memoryCache.set(key, { value, expiresAt: Date.now() + ttlMs })
       return
     }
 
     try {
-      const response = await fetch(`${COMPUTE_CACHE_ENDPOINT}/set`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key, value, ttlMs }),
-        signal: AbortSignal.timeout(CACHE_TIMEOUT),
-      })
-
-      if (!response.ok) {
-        throw new Error(`Cache set failed: ${response.status}`)
-      }
+      await this.client.set(key, value, ttlMs)
     } catch (error) {
-      // If request fails, use fallback for localnet
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error'
       if (NETWORK === 'localnet' || NETWORK === 'Jeju') {
-        console.warn(`[Cache] Set failed, using fallback: ${errorMsg}`)
+        console.warn(`[Cache] Set failed, using fallback: ${error}`)
         this.useFallback = true
-        await this.set(key, value, ttlMs)
+        memoryCache.set(key, { value, expiresAt: Date.now() + ttlMs })
       } else {
-        console.error(`[Cache] Set failed: ${errorMsg}`)
+        console.error(`[Cache] Set failed: ${error}`)
       }
     }
   }
@@ -128,25 +201,14 @@ class ComputeCacheService implements CacheService {
     }
 
     try {
-      const response = await fetch(`${COMPUTE_CACHE_ENDPOINT}/delete`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key }),
-        signal: AbortSignal.timeout(CACHE_TIMEOUT),
-      })
-
-      if (!response.ok && response.status !== 404) {
-        throw new Error(`Cache delete failed: ${response.status}`)
-      }
+      await this.client.delete(key)
     } catch (error) {
-      // If request fails, use fallback for localnet
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error'
       if (NETWORK === 'localnet' || NETWORK === 'Jeju') {
-        console.warn(`[Cache] Delete failed, using fallback: ${errorMsg}`)
+        console.warn(`[Cache] Delete failed, using fallback: ${error}`)
         this.useFallback = true
         memoryCache.delete(key)
       } else {
-        console.error(`[Cache] Delete failed: ${errorMsg}`)
+        console.error(`[Cache] Delete failed: ${error}`)
       }
     }
   }
@@ -160,51 +222,39 @@ class ComputeCacheService implements CacheService {
     }
 
     try {
-      const response = await fetch(`${COMPUTE_CACHE_ENDPOINT}/clear`, {
-        method: 'POST',
-        signal: AbortSignal.timeout(CACHE_TIMEOUT),
-      })
-
-      if (!response.ok) {
-        throw new Error(`Cache clear failed: ${response.status}`)
-      }
+      await this.client.clear()
     } catch (error) {
-      // If request fails, use fallback for localnet
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error'
       if (NETWORK === 'localnet' || NETWORK === 'Jeju') {
-        console.warn(`[Cache] Clear failed, using fallback: ${errorMsg}`)
+        console.warn(`[Cache] Clear failed, using fallback: ${error}`)
         this.useFallback = true
         memoryCache.clear()
       } else {
-        console.error(`[Cache] Clear failed: ${errorMsg}`)
+        console.error(`[Cache] Clear failed: ${error}`)
       }
     }
   }
 
   async isHealthy(): Promise<boolean> {
-    if (this.useFallback) return true // In-memory fallback is always healthy
+    if (this.useFallback) return true
 
-    // Cache the health check result for 30 seconds
     if (Date.now() - this.healthLastChecked < 30000) {
       return this.healthy
     }
 
     try {
-      const response = await fetch(`${COMPUTE_CACHE_ENDPOINT}/health`, {
-        signal: AbortSignal.timeout(CACHE_TIMEOUT),
-      })
-
-      this.healthy = response.ok
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error'
-      console.debug(`[Cache] Health check failed: ${errorMsg}`)
+      await this.client.health()
+      this.healthy = true
+    } catch {
       this.healthy = false
     }
-
     this.healthLastChecked = Date.now()
     return this.healthy
   }
 }
+
+// ============================================================================
+// Singleton
+// ============================================================================
 
 let cacheService: CacheService | null = null
 
@@ -215,13 +265,15 @@ export function getCache(): CacheService {
   return cacheService
 }
 
-// For testing: reset the cache
 export function resetCache(): void {
   cacheService = null
   memoryCache.clear()
 }
 
-// Cache key helpers
+// ============================================================================
+// Cache Key Helpers
+// ============================================================================
+
 export const cacheKeys = {
   todoList: (owner: string) => `todos:list:${owner.toLowerCase()}`,
   todoItem: (id: string) => `todos:item:${id}`,

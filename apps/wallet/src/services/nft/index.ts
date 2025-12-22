@@ -67,7 +67,7 @@ class NFTService {
       return nfts
     } catch (error) {
       console.warn('Failed to fetch NFTs from indexer:', error)
-      return cached || []
+      throw error
     }
   }
 

@@ -496,3 +496,6 @@ console.log(startupBanner)
 app.listen(PORT)
 
 export default app
+
+// Export App type for Eden client generation
+export type App = typeof app

@@ -1,11 +1,16 @@
 /**
  * Otto Trading Agent - ElizaOS Runtime Server
  * Provides HTTP API and integrates with ElizaOS plugins
+ *
+ * Frontend API Strategy:
+ * - Inline wallet connect JS: Same-origin calls to /api/chat/auth/* (keep fetch)
+ *   These are embedded in HTML templates for the wallet connection modal.
+ *   Uses standard browser fetch to call the local Elysia server.
  */
 
 import { createHmac } from 'node:crypto'
 import { cors } from '@elysiajs/cors'
-import { expectValid } from '@jejunetwork/types'
+import { expectAddress, expectHex, expectValid } from '@jejunetwork/types'
 import { Elysia } from 'elysia'
 import { z } from 'zod'
 import { getConfig } from './config'
@@ -17,11 +22,7 @@ import {
   TwitterWebhookPayloadSchema,
 } from './schemas'
 import { getStateManager } from './services/state'
-import { expectAddress, expectHex } from '@jejunetwork/types'
-import {
-  validateNonce,
-  validatePlatform,
-} from './utils/validation'
+import { validateNonce, validatePlatform } from './utils/validation'
 import { chatApi } from './web/chat-api'
 import { frameApi } from './web/frame'
 import { miniappApi } from './web/miniapp'
@@ -79,11 +80,6 @@ const app = new Elysia()
     chains: config.trading.supportedChains,
   }))
 
-  // ============================================================================
-  // Webhooks
-  // ============================================================================
-
-  // Discord webhook (for interactions API)
   .post('/webhooks/discord', ({ body }) => {
     const payload = expectValid(
       DiscordWebhookPayloadSchema,
@@ -120,9 +116,7 @@ const app = new Elysia()
     return { ok: true }
   })
 
-  // WhatsApp webhook (Twilio)
   .post('/webhooks/whatsapp', async ({ request, set }) => {
-    // Parse form data (Twilio sends as application/x-www-form-urlencoded)
     const formData = await request.formData()
 
     const rawPayload = {
@@ -152,7 +146,6 @@ const app = new Elysia()
     return { ok: true }
   })
 
-  // Twitter webhook (Account Activity API)
   .post('/webhooks/twitter', ({ body }) => {
     expectValid(TwitterWebhookPayloadSchema, body, 'Twitter webhook')
     return { ok: true }
@@ -177,10 +170,6 @@ const app = new Elysia()
 
     return { response_token: responseToken }
   })
-
-  // ============================================================================
-  // API Routes
-  // ============================================================================
 
   .get('/api/chains', () => ({
     chains: config.trading.supportedChains,
@@ -225,7 +214,6 @@ const app = new Elysia()
     set.redirect = '/miniapp'
   })
 
-  // Auth callback
   .get('/auth/callback', ({ query, set }) => {
     const { address, signature, platform, platformId, nonce } = query
 
@@ -266,7 +254,6 @@ const app = new Elysia()
 </html>`
   })
 
-  // Wallet connect page
   .get('/auth/connect', ({ set }) => {
     set.headers['Content-Type'] = 'text/html'
     return `<!DOCTYPE html>
@@ -347,7 +334,6 @@ const app = new Elysia()
 </html>`
   })
 
-// Constant-time string comparison to prevent timing attacks
 function constantTimeCompare(a: string, b: string): boolean {
   if (a.length !== b.length) {
     return false
@@ -358,10 +344,6 @@ function constantTimeCompare(a: string, b: string): boolean {
   }
   return result === 0
 }
-
-// ============================================================================
-// Main
-// ============================================================================
 
 async function main() {
   console.log('========================================')
@@ -394,7 +376,6 @@ async function main() {
   app.listen(port)
 }
 
-// Graceful shutdown
 process.on('SIGINT', async () => {
   console.log('\n[Otto] Shutting down...')
   stateManager.stopLimitOrderMonitor()

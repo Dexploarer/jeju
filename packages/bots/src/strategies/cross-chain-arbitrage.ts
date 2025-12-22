@@ -5,7 +5,7 @@
 import { EventEmitter } from 'node:events'
 import type { EVMChainId, SolanaNetwork } from '@jejunetwork/types'
 import { expectValid } from '@jejunetwork/types'
-import { type Commitment, Connection, type PublicKey } from '@solana/web3.js'
+import type { Commitment, PublicKey } from '@solana/web3.js'
 import {
   type Address,
   createPublicClient,
@@ -15,7 +15,7 @@ import {
   parseAbi,
   parseUnits,
 } from 'viem'
-import { OracleAggregator, TOKEN_SYMBOLS } from '../oracles'
+import { TOKEN_SYMBOLS } from '../oracles'
 import { JupiterQuoteResponseSchema } from '../schemas'
 import type { CrossChainArbOpportunity } from '../types'
 
@@ -313,8 +313,6 @@ const DEFAULT_CONFIG: Omit<CrossChainArbConfig, 'chains'> & {
 
 export class CrossChainArbitrage extends EventEmitter {
   private config: CrossChainArbConfig
-  private oracle: OracleAggregator
-  private solanaConnection: Connection | null = null
   private evmClients: Map<EVMChainId, PublicClient> = new Map()
   private prices: Map<string, ChainPrice[]> = new Map()
   private opportunities: CrossChainArbOpportunity[] = []
@@ -333,15 +331,6 @@ export class CrossChainArbitrage extends EventEmitter {
     const chains = config.chains ?? buildDefaultChains()
     this.config = { ...DEFAULT_CONFIG, chains, ...config }
 
-    // Initialize oracle
-    const rpcUrls: Partial<Record<EVMChainId, string>> = {}
-    for (const chain of this.config.chains) {
-      if (chain.type === 'evm') {
-        rpcUrls[chain.chainId as EVMChainId] = chain.rpcUrl
-      }
-    }
-    this.oracle = new OracleAggregator(rpcUrls)
-
     // Initialize EVM clients
     for (const chain of this.config.chains) {
       if (chain.type === 'evm') {
@@ -349,8 +338,6 @@ export class CrossChainArbitrage extends EventEmitter {
           chain.chainId as EVMChainId,
           createPublicClient({ transport: http(chain.rpcUrl) }),
         )
-      } else if (chain.type === 'solana') {
-        this.solanaConnection = new Connection(chain.rpcUrl, 'confirmed')
       }
     }
   }

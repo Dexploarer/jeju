@@ -11,10 +11,6 @@ import { encodeFunctionData } from 'viem'
 import { getContractAddresses } from './config'
 import type { JejuWallet } from './wallet'
 
-// ============================================================================
-// Types
-// ============================================================================
-
 export const VPNNodeStatus = {
   INACTIVE: 0,
   ACTIVE: 1,
@@ -68,10 +64,6 @@ export interface RegisterVPNNodeParams {
   capabilities?: string[]
 }
 
-// ============================================================================
-// VPN Module Interface
-// ============================================================================
-
 export interface VPNModule {
   // Node Queries
   getAllNodes(): Promise<VPNNodeInfo[]>
@@ -95,10 +87,6 @@ export interface VPNModule {
   withdrawStake(): Promise<{ txHash: Hex }>
 }
 
-// ============================================================================
-// Contract ABIs
-// ============================================================================
-
 const VPN_REGISTRY_ABI = [
   'function getNode(address operator) external view returns (tuple(address operator, bytes2 countryCode, bytes32 regionHash, string endpoint, string wireguardPubKey, uint256 stake, uint256 registeredAt, uint256 lastSeen, bool active, uint256 totalBytesServed, uint256 totalSessions, uint256 successfulSessions))',
   'function getActiveExitNodes() external view returns (address[])',
@@ -110,10 +98,6 @@ const VPN_REGISTRY_ABI = [
   'function totalNodes() external view returns (uint256)',
   'function activeNodeCount() external view returns (uint256)',
 ] as const
-
-// ============================================================================
-// Implementation
-// ============================================================================
 
 export function createVPNModule(
   wallet: JejuWallet,

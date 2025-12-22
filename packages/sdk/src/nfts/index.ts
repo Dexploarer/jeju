@@ -26,8 +26,6 @@ import {
 } from '../shared/schemas'
 import type { JejuWallet } from '../wallet'
 
-// ============ Types ============
-
 export type NFTAssetType = 'ERC721' | 'ERC1155'
 
 export interface NFTInfo {
@@ -167,8 +165,6 @@ export interface NFTModule {
   listMyBridgedNFTs(): Promise<NFTTransferStatus[]>
   listPendingTransfers(): Promise<NFTTransferStatus[]>
 }
-
-// ============ ABIs ============
 
 const CROSS_CHAIN_NFT_ABI = [
   {
@@ -380,8 +376,6 @@ const ERC721_ABI = [
   },
 ] as const
 
-// ============ Constants ============
-
 const CHAIN_DOMAINS: Record<SupportedChain, number> = {
   jeju: 420690,
   base: 8453,
@@ -391,8 +385,6 @@ const CHAIN_DOMAINS: Record<SupportedChain, number> = {
 }
 
 const NFT_TRANSFER_ORDER_TYPE = keccak256(toHex('NFTTransfer'))
-
-// ============ Implementation ============
 
 export function createNFTModule(
   wallet: JejuWallet,

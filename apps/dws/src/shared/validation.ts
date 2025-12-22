@@ -1,9 +1,6 @@
 /**
  * Shared validation utilities and helpers
  * Provides Zod-based validation with fail-fast error handling
- *
- * Base schemas imported from @jejunetwork/types/validation
- * Elysia-specific helpers defined here
  */
 
 import {
@@ -24,6 +21,8 @@ import {
 import type { Address, Hex } from 'viem'
 import { z } from 'zod'
 
+export { z }
+
 /**
  * Elysia context type for validation helpers
  */
@@ -36,32 +35,11 @@ export interface ElysiaContext {
   set: { status: number; headers: Record<string, string> }
 }
 
-// ============ JSON Value Types ============
-
-/**
- * Represents any valid JSON primitive value
- */
 export type JSONPrimitive = string | number | boolean | null
-
-/**
- * Represents any valid JSON array
- */
 export type JSONArray = JSONValue[]
-
-/**
- * Represents any valid JSON object
- */
 export type JSONObject = { [key: string]: JSONValue }
-
-/**
- * Represents any valid JSON value (recursive type)
- * Use this for data that needs to be JSON-serializable but has no specific schema
- */
 export type JSONValue = JSONPrimitive | JSONObject | JSONArray
 
-/**
- * Zod schema for JSON values (recursive)
- */
 const jsonValueSchema: z.ZodType<JSONValue> = z.lazy(() =>
   z.union([
     z.string(),
@@ -80,17 +58,12 @@ export const JSONObjectSchema = z.record(
 ) as z.ZodType<JSONObject>
 export const JSONArraySchema = z.array(jsonValueSchema) as z.ZodType<JSONArray>
 
-// Error response schema
 const ErrorResponseSchema = z.object({
   error: z.string(),
   code: z.string().optional(),
   details: z.record(z.string(), jsonValueSchema).optional(),
 })
 
-/**
- * Validate body directly with fail-fast (no context required)
- * Use when you already have the body parsed
- */
 export function validateBodyDirect<T>(
   schema: z.ZodSchema<T>,
   body: unknown,
@@ -99,10 +72,6 @@ export function validateBodyDirect<T>(
   return expectValid(schema, body ?? {}, context || 'Request body')
 }
 
-/**
- * Validate request body with fail-fast
- * For Elysia: body is already parsed, just validate it
- */
 export function validateBody<T>(
   schema: z.ZodSchema<T>,
   ctx: ElysiaContext,
@@ -111,9 +80,6 @@ export function validateBody<T>(
   return expectValid(schema, ctx.body ?? {}, context || 'Request body')
 }
 
-/**
- * Validate query parameters with fail-fast
- */
 export function validateQuery<T>(
   schema: z.ZodSchema<T>,
   ctx: ElysiaContext,
@@ -126,9 +92,6 @@ export function validateQuery<T>(
   return expectValid(schema, query, context || 'Query parameters')
 }
 
-/**
- * Validate query parameters from object directly (for Elysia routes)
- */
 export function validateQueryFromObj<T>(
   schema: z.ZodSchema<T>,
   queryObj: Record<string, string | undefined>,
@@ -141,9 +104,6 @@ export function validateQueryFromObj<T>(
   return expectValid(schema, query, context || 'Query parameters')
 }
 
-/**
- * Validate path parameters with fail-fast
- */
 export function validateParams<T>(
   schema: z.ZodSchema<T>,
   ctx: ElysiaContext,
@@ -152,9 +112,6 @@ export function validateParams<T>(
   return expectValid(schema, ctx.params, context || 'Path parameters')
 }
 
-/**
- * Validate headers with fail-fast
- */
 export function validateHeaders<T>(
   schema: z.ZodSchema<T>,
   ctx: ElysiaContext,
@@ -167,11 +124,6 @@ export function validateHeaders<T>(
   return expectValid(schema, headers, context || 'Headers')
 }
 
-/**
- * Elysia derive hook for request validation
- * Validates body, query, params, and headers based on provided schemas
- * Throws immediately on validation failure (fail-fast)
- */
 export function createValidationDerive<
   TBody = never,
   TQuery = never,
@@ -228,12 +180,9 @@ export function createValidationDerive<
   }
 }
 
-// ============ Re-exported Schemas with camelCase aliases for backwards compatibility ============
-
-// Core schemas - re-exported with camelCase for backwards compatibility
 export const addressSchema = AddressSchema as z.ZodType<Address>
 export const hexSchema = HexSchema as z.ZodType<Hex>
-export const strictHexSchema = HexSchema as z.ZodType<Hex> // HexSchema already requires 0x prefix
+export const strictHexSchema = HexSchema as z.ZodType<Hex>
 export const cidSchema = CidSchema
 export const positiveIntSchema = PositiveIntSchema
 export const nonNegativeIntSchema = NonNegativeIntSchema
@@ -246,9 +195,6 @@ export const paginationSchema = PaginationSchema
 export const positiveBigIntSchema = PositiveBigIntSchema
 export const errorResponseSchema = ErrorResponseSchema
 
-/**
- * Common header schemas (Elysia/DWS-specific)
- */
 export const jejuAddressHeaderSchema = z.object({
   'x-jeju-address': addressSchema,
 })

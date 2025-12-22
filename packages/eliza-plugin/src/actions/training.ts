@@ -13,6 +13,7 @@ import type {
   State,
 } from '@elizaos/core'
 import { getDWSComputeUrl } from '@jejunetwork/config'
+import { getOptionalMessageText } from '../validation'
 
 interface TrainingJobResponse {
   jobId: string
@@ -109,7 +110,7 @@ export const submitTrajectory: Action = {
     _runtime: IAgentRuntime,
     message: Memory,
   ): Promise<boolean> => {
-    const text = message.content?.text?.toLowerCase() ?? ''
+    const text = getOptionalMessageText(message).toLowerCase()
     return (
       text.includes('submit') &&
       (text.includes('training') || text.includes('trajectory'))
@@ -123,7 +124,7 @@ export const submitTrajectory: Action = {
     _options?: Record<string, unknown>,
     callback?: HandlerCallback,
   ): Promise<void> => {
-    const text = message.content?.text ?? ''
+    const text = getOptionalMessageText(message)
 
     const rewardMatch = text.match(/reward\s*([\d.]+)/i)
     const reward = rewardMatch ? parseFloat(rewardMatch[1]) : 0.5
@@ -184,7 +185,7 @@ export const checkTrainingStatus: Action = {
     _runtime: IAgentRuntime,
     message: Memory,
   ): Promise<boolean> => {
-    const text = message.content?.text?.toLowerCase() ?? ''
+    const text = getOptionalMessageText(message).toLowerCase()
     return text.includes('training') && text.includes('status')
   },
 
@@ -261,7 +262,7 @@ export const startTrainingJob: Action = {
     _runtime: IAgentRuntime,
     message: Memory,
   ): Promise<boolean> => {
-    const text = message.content?.text?.toLowerCase() ?? ''
+    const text = getOptionalMessageText(message).toLowerCase()
     return (
       (text.includes('start') ||
         text.includes('begin') ||
@@ -279,7 +280,7 @@ export const startTrainingJob: Action = {
   ): Promise<void> => {
     const url = getDWSUrl()
 
-    const text = message.content?.text?.toLowerCase() ?? ''
+    const text = getOptionalMessageText(message).toLowerCase()
     let environment = 'tic-tac-toe'
     if (text.includes('prediction')) environment = 'fundamental-prediction'
     if (text.includes('game')) environment = 'tic-tac-toe'

@@ -47,8 +47,6 @@ export class EmailClient {
     this.config = config
   }
 
-  // ============ Authentication ============
-
   /**
    * Set OAuth3 session token
    */
@@ -81,8 +79,6 @@ export class EmailClient {
 
     return headers
   }
-
-  // ============ Mailbox Operations ============
 
   /**
    * Get mailbox overview
@@ -185,8 +181,6 @@ export class EmailClient {
     }
   }
 
-  // ============ Email Operations ============
-
   /**
    * Send email
    */
@@ -195,7 +189,7 @@ export class EmailClient {
       method: 'POST',
       headers: this.getAuthHeaders(),
       body: JSON.stringify({
-        from: `${this.config.address}@jeju.mail`, // TODO: Use actual email from registry
+        from: `${this.config.address}@jeju.mail`,
         ...params,
       }),
     })
@@ -334,8 +328,6 @@ export class EmailClient {
     await this.updateFlags(messageId, { starred: false })
   }
 
-  // ============ Search ============
-
   /**
    * Search emails
    */
@@ -372,8 +364,6 @@ export class EmailClient {
       hasMore: data.hasMore,
     }
   }
-
-  // ============ Filter Rules ============
 
   /**
    * Get filter rules
@@ -421,8 +411,6 @@ export class EmailClient {
     }
   }
 
-  // ============ Data Export (GDPR) ============
-
   /**
    * Export all email data
    */
@@ -452,8 +440,6 @@ export class EmailClient {
       throw new Error(`Delete failed: ${response.status}`)
     }
   }
-
-  // ============ Real-time Updates ============
 
   /**
    * Connect to real-time updates via WebSocket
@@ -581,8 +567,6 @@ export class EmailClient {
     }, delay)
   }
 
-  // ============ IMAP/SMTP Configuration ============
-
   /**
    * Get IMAP configuration for desktop clients
    */
@@ -625,8 +609,6 @@ export class EmailClient {
     }
   }
 }
-
-// ============ Factory ============
 
 export function createEmailClient(config: EmailClientConfig): EmailClient {
   return new EmailClient(config)

@@ -9,10 +9,6 @@ import { AddressSchema } from '../schemas'
 
 const CRUCIBLE_API = process.env.CRUCIBLE_URL || 'http://localhost:4020'
 
-// ============================================================================
-// Zod Schemas for Crucible API Responses
-// ============================================================================
-
 const AgentSchema = z.object({
   agentId: z.union([z.bigint(), z.string()]).transform((v) => BigInt(v)),
   owner: AddressSchema,
@@ -122,10 +118,7 @@ class CrucibleService {
 
     const json: unknown = await response.json()
     const result = AgentsResponseSchema.safeParse(json)
-    if (!result.success) {
-      console.error('Invalid agents response:', result.error.issues)
-      return []
-    }
+    if (!result.success) return []
     return result.data.agents
   }
 

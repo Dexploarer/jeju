@@ -10,10 +10,6 @@ import { readdir, readFile } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 import * as yaml from 'yaml'
 
-// ============================================================================
-// Types
-// ============================================================================
-
 export interface HelmChart {
   apiVersion: string
   name: string
@@ -63,10 +59,6 @@ export interface KubeManifest {
   stringData?: Record<string, string>
   type?: string
 }
-
-// ============================================================================
-// Template Engine
-// ============================================================================
 
 interface TemplateContextType {
   Release: {
@@ -193,10 +185,6 @@ class FilesHelper {
     this.files.set(name, content)
   }
 }
-
-// ============================================================================
-// Template Functions (Sprig-compatible subset)
-// ============================================================================
 
 const templateFuncs: Record<string, (...args: unknown[]) => unknown> = {
   // String functions
@@ -384,10 +372,6 @@ const templateFuncs: Record<string, (...args: unknown[]) => unknown> = {
   tpl: (template: unknown, _ctx: unknown) => String(template), // Simplified
 }
 
-// ============================================================================
-// Template Rendering
-// ============================================================================
-
 function renderTemplate(template: string, context: TemplateContext): string {
   let result = template
 
@@ -397,8 +381,7 @@ function renderTemplate(template: string, context: TemplateContext): string {
   // Extract {{- define "name" }} ... {{- end }}
   const defineRegex =
     /\{\{-?\s*define\s+"([^"]+)"\s*-?\}\}([\s\S]*?)\{\{-?\s*end\s*-?\}\}/g
-  let match
-  while ((match = defineRegex.exec(template)) !== null) {
+  for (const match of template.matchAll(defineRegex)) {
     defines.set(match[1], match[2])
   }
   result = result.replace(defineRegex, '')
@@ -738,10 +721,6 @@ function evaluateSingleExpr(expr: string, context: TemplateContext): unknown {
   return undefined
 }
 
-// ============================================================================
-// Chart Loading
-// ============================================================================
-
 export async function loadChart(chartPath: string): Promise<{
   chart: HelmChart
   templates: Map<string, string>
@@ -793,10 +772,6 @@ export async function loadChart(chartPath: string): Promise<{
 
   return { chart, templates, values, crds }
 }
-
-// ============================================================================
-// Main Render Function
-// ============================================================================
 
 export async function renderChart(
   chartPath: string,
@@ -883,10 +858,6 @@ export async function renderChart(
 
   return manifests
 }
-
-// ============================================================================
-// Utilities
-// ============================================================================
 
 function deepMerge(
   target: Record<string, unknown>,

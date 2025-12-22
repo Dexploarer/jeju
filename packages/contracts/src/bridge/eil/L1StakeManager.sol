@@ -495,7 +495,7 @@ contract L1StakeManager is Ownable, ReentrancyGuard, Pausable {
     }
 
     /**
-     * @notice Simple dispute (for backwards compatibility)
+     * @notice Simple dispute without evidence submission
      * @param slashId Slash ID to dispute
      */
     function disputeSlash(bytes32 slashId) external nonReentrant {

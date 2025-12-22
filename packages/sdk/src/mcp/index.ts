@@ -23,10 +23,6 @@ import {
 import type { JsonRecord, JsonValue } from '../shared/types'
 import type { JejuWallet } from '../wallet'
 
-// ============================================================================
-// Types
-// ============================================================================
-
 export interface MCPServer {
   name: string
   version: string
@@ -111,10 +107,6 @@ export interface MCPSession {
   prompts: MCPPrompt[]
 }
 
-// ============================================================================
-// Module Interface
-// ============================================================================
-
 export interface MCPModule {
   // Server Discovery
   discoverServer(endpoint: string): Promise<MCPServer>
@@ -170,10 +162,6 @@ export interface MCPModule {
     readResource(uri: string): Promise<MCPResourceContent>
   }
 }
-
-// ============================================================================
-// Implementation
-// ============================================================================
 
 export function createMCPModule(
   wallet: JejuWallet,

@@ -38,8 +38,6 @@ import {
 import type { ChainId } from './autocrat-types-source'
 import { UnifiedBot, type UnifiedBotConfig } from './mev-bot'
 
-// ============ Security Configuration ============
-
 // Rate limiting configuration
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>()
 const RATE_LIMIT_WINDOW_MS = 60_000 // 1 minute
@@ -86,8 +84,6 @@ function constantTimeCompare(a: string, b: string): boolean {
   return xor === 0
 }
 
-// ============ Types ============
-
 interface APIConfig {
   restPort: number
   a2aPort: number
@@ -124,8 +120,6 @@ interface MCPResource {
   description: string
   mimeType: string
 }
-
-// ============ REST API ============
 
 function createRestAPI(bot: UnifiedBot): Elysia {
   const app = new Elysia()
@@ -275,8 +269,6 @@ function createRestAPI(bot: UnifiedBot): Elysia {
     return await bot.executeRebalance(action)
   })
 
-  // ============ Yield Farming Endpoints ============
-
   // Yield farming opportunities (ranked by risk-adjusted return)
   app.get('/yield', ({ query }) => {
     const limitStr = query.limit
@@ -380,8 +372,6 @@ function createRestAPI(bot: UnifiedBot): Elysia {
 
   return app
 }
-
-// ============ A2A API ============
 
 function createA2AAPI(bot: UnifiedBot, config: APIConfig): Elysia {
   const app = new Elysia()
@@ -492,10 +482,14 @@ function createA2AAPI(bot: UnifiedBot, config: APIConfig): Elysia {
           ? parseOrThrow(
               z
                 .object({
-                  minTvl: z.number().min(0).optional(),
-                  minApr: z.number().min(0).max(10000).optional(),
+                  minTvl: z.number().min(0).nullish(),
+                  minApr: z.number().min(0).max(10000).nullish(),
                 })
-                .strict(),
+                .strict()
+                .transform((val) => ({
+                  minTvl: val.minTvl ?? undefined,
+                  minApr: val.minApr ?? undefined,
+                })),
               params,
               'Get pools params',
             )
@@ -564,8 +558,6 @@ function createA2AAPI(bot: UnifiedBot, config: APIConfig): Elysia {
 
   return app
 }
-
-// ============ MCP API ============
 
 function createMCPAPI(bot: UnifiedBot): Elysia {
   const app = new Elysia()
@@ -831,7 +823,7 @@ function createMCPAPI(bot: UnifiedBot): Elysia {
     const { name } = params
     const rawBody = body as Record<string, unknown>
     const parsedParams = parseOrThrow(
-      JsonObjectSchema.optional().default({}),
+      JsonObjectSchema.nullable().default({}),
       rawBody,
       'MCP tool params',
     )
@@ -851,10 +843,14 @@ function createMCPAPI(bot: UnifiedBot): Elysia {
           ? parseOrThrow(
               z
                 .object({
-                  minTvl: z.number().min(0).optional(),
-                  minApr: z.number().min(0).max(10000).optional(),
+                  minTvl: z.number().min(0).nullish(),
+                  minApr: z.number().min(0).max(10000).nullish(),
                 })
-                .strict(),
+                .strict()
+                .transform((val) => ({
+                  minTvl: val.minTvl ?? undefined,
+                  minApr: val.minApr ?? undefined,
+                })),
               parsedParams,
               'Pool recommendations params',
             )
@@ -869,14 +865,12 @@ function createMCPAPI(bot: UnifiedBot): Elysia {
       }
 
       case 'execute_rebalance': {
-        expect(parsedParams, 'Rebalance params are required')
-        expect(parsedParams.positionId, 'Position ID is required')
+        const params = expect(parsedParams, 'Rebalance params are required')
+        expect(params.positionId, 'Position ID is required')
         const rebalanceActions = await bot.getRebalanceActions()
         const action = expect(
-          rebalanceActions.find(
-            (a) => a.positionId === parsedParams.positionId,
-          ),
-          `Action not found: ${parsedParams.positionId}`,
+          rebalanceActions.find((a) => a.positionId === params.positionId),
+          `Action not found: ${params.positionId}`,
         )
         const result = await bot.executeRebalance(action)
         return { result }
@@ -994,8 +988,6 @@ function createMCPAPI(bot: UnifiedBot): Elysia {
   return app
 }
 
-// ============ Start Server ============
-
 export async function startBotAPIServer(config: APIConfig): Promise<void> {
   const { bot, restPort, a2aPort, mcpPort } = config
 
@@ -1024,8 +1016,6 @@ export async function startBotAPIServer(config: APIConfig): Promise<void> {
 └─────────────────────────────────────────┘
 `)
 }
-
-// ============ CLI Entry Point ============
 
 export async function main(): Promise<void> {
   const enableYieldFarming =

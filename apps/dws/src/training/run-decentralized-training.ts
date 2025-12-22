@@ -253,6 +253,8 @@ async function main() {
       abi: COORDINATOR_ABI,
       functionName: 'registerClient',
       args: [account.address, solanaKey, 'NVIDIA RTX 4090', 1, 24],
+      chain: walletClient.chain ?? null,
+      account: walletClient.account ?? null,
     })
     await publicClient.waitForTransactionReceipt({ hash: registerHash })
     clientId = 1
@@ -286,6 +288,8 @@ async function main() {
       CONFIG.trainingEpochs,
       trainingConfig,
     ],
+    chain: walletClient.chain ?? null,
+    account: walletClient.account ?? null,
   })
   await publicClient.waitForTransactionReceipt({ hash: createRunHash })
   console.log(`       Run ID: ${runId.slice(0, 18)}...`)
@@ -296,6 +300,8 @@ async function main() {
     abi: COORDINATOR_ABI,
     functionName: 'joinRun',
     args: [runId],
+    chain: walletClient.chain ?? null,
+    account: walletClient.account ?? null,
   })
   await publicClient.waitForTransactionReceipt({ hash: joinHash })
   console.log('       Joined training run')
@@ -306,6 +312,8 @@ async function main() {
     abi: COORDINATOR_ABI,
     functionName: 'startRun',
     args: [runId],
+    chain: walletClient.chain ?? null,
+    account: walletClient.account ?? null,
   })
   await publicClient.waitForTransactionReceipt({ hash: startHash })
   console.log('       Training run started on-chain')
@@ -492,6 +500,8 @@ print("TRAINING_COMPLETE")
       abi: COORDINATOR_ABI,
       functionName: 'reportProgress',
       args: [runId, epoch, BigInt(epoch * 10), 1, modelHash, toHex(signature)],
+      chain: walletClient.chain ?? null,
+      account: walletClient.account ?? null,
     })
     await publicClient.waitForTransactionReceipt({ hash: progressHash })
     console.log(`       Epoch ${epoch} progress recorded on-chain`)
@@ -503,6 +513,8 @@ print("TRAINING_COMPLETE")
     abi: COORDINATOR_ABI,
     functionName: 'finishRun',
     args: [runId],
+    chain: walletClient.chain ?? null,
+    account: walletClient.account ?? null,
   })
   await publicClient.waitForTransactionReceipt({ hash: finishHash })
   console.log('       Training run finished on-chain')

@@ -13,9 +13,9 @@
  */
 
 import {
+  type Chain,
   createPublicClient,
   http,
-  type Chain,
   type PublicClient,
   type Transport,
 } from 'viem'
@@ -147,7 +147,6 @@ const TOKEN_ADDRESSES: Record<number, Record<string, string>> = {
   },
 }
 
-// Bridge costs and times (estimates)
 const BRIDGE_ESTIMATES: Record<
   string,
   { costUsd: number; timeMinutes: number }
@@ -189,7 +188,6 @@ export class MultiChainScanner {
             chain: evmChain.chain,
             transport: http(chainConfig.rpcUrl),
           })
-          // Cast to AnyPublicClient since we only use chain-agnostic methods (getBlockNumber, getGasPrice)
           this.clients.set(chainConfig.chainId, client as AnyPublicClient)
         }
       }
@@ -210,16 +208,9 @@ export class MultiChainScanner {
     try {
       console.log('\n🔍 Starting multi-chain scan...')
 
-      // Fetch prices from all chains
       const prices = await this.fetchAllPrices()
-
-      // Get chain status
       const chainStatus = await this.getChainStatus()
-
-      // Find cross-chain opportunities
       const crossChainOpps = this.findCrossChainOpportunities(prices)
-
-      // Find same-chain opportunities
       const sameChainOpps = await this.findSameChainOpportunities(prices)
 
       const totalValue =
@@ -278,7 +269,6 @@ export class MultiChainScanner {
   private async fetchAllPrices(): Promise<ChainPrice[]> {
     const prices: ChainPrice[] = []
 
-    // Fetch EVM chain prices
     for (const chainConfig of this.config.chains) {
       if (typeof chainConfig.chainId !== 'number') continue
 
@@ -296,7 +286,6 @@ export class MultiChainScanner {
       }
     }
 
-    // Fetch Solana prices if configured
     if (this.config.heliusApiKey) {
       const solanaPrices = await this.fetchSolanaPrices()
       prices.push(...solanaPrices)
@@ -318,11 +307,8 @@ export class MultiChainScanner {
     const dexes = DEX_ROUTERS[chainId]
     if (!dexes) return prices
 
-    // Fetch from each DEX
     for (const [dexName] of Object.entries(dexes)) {
       try {
-        // In production, would call router contracts or use aggregator APIs
-        // For now, simulate with slight variations
         const basePrice = this.getBasePrice(token)
         const variance = (Math.random() - 0.5) * 0.002 // +/- 0.1%
         const price = basePrice * (1 + variance)
@@ -337,7 +323,6 @@ export class MultiChainScanner {
           timestamp: Date.now(),
         })
 
-        // Cache the price
         this.priceCache.set(
           `${chainId}-${token}-${dexName}`,
           prices[prices.length - 1],

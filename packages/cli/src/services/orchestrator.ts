@@ -41,8 +41,10 @@ import { DEFAULT_PORTS } from '../types'
 import { createInferenceServer, type LocalInferenceServer } from './inference'
 
 // Schema for contract addresses from deployment files
-// Accept any object structure - we handle the extraction in code
-const ContractAddressesSchema = z.record(z.string(), z.unknown())
+// Contract values can be either a direct address string or a nested object with address strings
+const ContractAddressValueSchema: z.ZodType<string | Record<string, string>> =
+  z.lazy(() => z.union([z.string(), z.record(z.string(), z.string())]))
+const ContractAddressesSchema = z.record(z.string(), ContractAddressValueSchema)
 
 export interface ServiceConfig {
   inference: boolean

@@ -185,7 +185,9 @@ export class LoadTestSimulator {
 
     const endpointStats: EndpointStats[] = []
     for (const [key, results] of endpointMap) {
-      const [method, endpoint] = key.split(' ')
+      const spaceIndex = key.indexOf(' ')
+      const method = spaceIndex > 0 ? key.slice(0, spaceIndex) : key
+      const endpoint = spaceIndex > 0 ? key.slice(spaceIndex + 1) : '/'
       const latencies = results.map((r) => r.latency)
       const successes = results.filter((r) => r.success).length
 

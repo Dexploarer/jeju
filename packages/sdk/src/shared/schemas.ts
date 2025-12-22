@@ -9,10 +9,6 @@ import type { Address, Hex } from 'viem'
 import { type ZodSchema, z } from 'zod'
 import type { JsonRecord, JsonValue } from './types'
 
-// ============================================================================
-// Validation Helpers
-// ============================================================================
-
 /**
  * Parse and validate JSON string against a schema
  * Returns the validated data or throws
@@ -48,10 +44,6 @@ export function safeParseJson<T>(json: string, schema: ZodSchema<T>): T | null {
   }
 }
 
-// ============================================================================
-// JSON Value Schema
-// ============================================================================
-
 /**
  * Zod schema for JSON values - use instead of z.unknown() for JSON data
  */
@@ -74,10 +66,6 @@ export const JsonRecordSchema: z.ZodType<JsonRecord> = z.record(
   JsonValueSchema,
 )
 
-// ============================================================================
-// Common Schemas
-// ============================================================================
-
 /** Ethereum address schema */
 export const AddressSchema = z
   .string()
@@ -98,10 +86,6 @@ export const OptionalBigIntString = z
   .string()
   .optional()
   .transform((val) => (val ? BigInt(val) : undefined))
-
-// ============================================================================
-// Storage API Schemas
-// ============================================================================
 
 export const StorageStatsSchema = z.object({
   totalPins: z.number(),
@@ -164,10 +148,6 @@ export const TorrentInfoSchema = z.object({
   seeds: z.number(),
 })
 
-// ============================================================================
-// DeFi API Schemas
-// ============================================================================
-
 export const SwapQuoteResponseSchema = z.object({
   amountOut: z.string(),
   priceImpact: z.number(),
@@ -210,10 +190,6 @@ export const PositionsResponseSchema = z.object({
     }),
   ),
 })
-
-// ============================================================================
-// Cross-chain API Schemas
-// ============================================================================
 
 export const CrossChainQuoteResponseSchema = z.object({
   quotes: z.array(
@@ -284,10 +260,6 @@ export const SolverInfoSchema = z.object({
   totalFills: z.number(),
   avgFillTimeMs: z.number(),
 })
-
-// ============================================================================
-// A2A API Schemas
-// ============================================================================
 
 export const AgentSkillSchema = z.object({
   id: z.string(),
@@ -367,10 +339,6 @@ export const A2AResponseSchema = z.object({
     .optional(),
 })
 
-// ============================================================================
-// Governance API Schemas
-// ============================================================================
-
 export const ProposalInfoSchema = z.object({
   proposalId: TxHashSchema,
   proposer: AddressSchema,
@@ -410,10 +378,6 @@ export const GovernanceStatsResponseSchema = z.object({
   totalDelegated: z.string(),
 })
 
-// ============================================================================
-// Identity API Schemas
-// ============================================================================
-
 export const AgentInfoSchema = z.object({
   agentId: BigIntStringSchema,
   owner: AddressSchema,
@@ -443,10 +407,6 @@ export const BanInfoSchema = z.object({
   banType: z.enum(['network', 'app', 'category']),
 })
 
-// ============================================================================
-// Payments API Schemas
-// ============================================================================
-
 export const PaymasterInfoResponseSchema = z.object({
   paymasters: z.array(
     z.object({
@@ -470,10 +430,6 @@ export const LPPositionSchema = z.object({
   tokenShares: z.string(),
 })
 
-// ============================================================================
-// Staking API Schemas
-// ============================================================================
-
 export const StakingStatsResponseSchema = z.object({
   totalStakers: z.number(),
   currentAPY: z.number(),
@@ -490,10 +446,6 @@ export const NodeStakeInfoSchema = z.object({
   uptime: BigIntStringSchema,
   slashCount: z.number(),
 })
-
-// ============================================================================
-// DWS API Schemas
-// ============================================================================
 
 export const TriggerSchema = z.object({
   triggerId: z.string(),
@@ -586,10 +538,6 @@ export const WorkflowMetricsSchema = z.object({
   lastExecuted: z.number(),
 })
 
-// ============================================================================
-// Names API Schemas
-// ============================================================================
-
 export const NameInfoSchema = z.object({
   name: z.string(),
   owner: AddressSchema,
@@ -609,10 +557,6 @@ export const NameRecordsSchema = z.object({
   description: z.string().optional(),
 })
 
-// ============================================================================
-// Inference API Schemas
-// ============================================================================
-
 export const InferenceResponseSchema = z.object({
   id: z.string(),
   model: z.string(),
@@ -629,10 +573,6 @@ export const InferenceResponseSchema = z.object({
     total_tokens: z.number(),
   }),
 })
-
-// ============================================================================
-// List Response Wrappers
-// ============================================================================
 
 export const AgentsListSchema = z.object({
   agents: z.array(DiscoveredAgentSchema),
@@ -666,10 +606,6 @@ export const JobLogsSchema = z.object({ logs: z.array(z.string()) })
 export const NodesListSchema = z.object({
   nodes: z.array(NodeStakeInfoSchema),
 })
-
-// ============================================================================
-// Email API Schemas
-// ============================================================================
 
 export const MailboxResponseSchema = z.object({
   mailbox: z.object({
@@ -787,10 +723,6 @@ export const WebSocketEmailEventSchema = z.object({
   }),
 })
 
-// ============================================================================
-// MCP API Schemas
-// ============================================================================
-
 export const MCPServerSchema = z.object({
   name: z.string(),
   version: z.string(),
@@ -907,10 +839,6 @@ export const MCPPromptGetResponseSchema = z.object({
   messages: z.array(MCPPromptMessageSchema),
 })
 
-// ============================================================================
-// NFT API Schemas
-// ============================================================================
-
 export const NFTInfoResponseSchema = z.object({
   assetType: z.enum(['ERC721', 'ERC1155']),
   collection: AddressSchema,
@@ -1002,10 +930,6 @@ export const NFTNonceResponseSchema = z.object({
   nonce: z.string(),
 })
 
-// ============================================================================
-// A2A Streaming Schema
-// ============================================================================
-
 export const A2AStreamMessageSchema = z.object({
   role: z.enum(['user', 'agent']),
   parts: z.array(
@@ -1024,10 +948,6 @@ export const JNSRecordsResponseSchema = z.object({
   address: AddressSchema.optional(),
 })
 
-// ============================================================================
-// KMS API Schemas
-// ============================================================================
-
 export const KMSEncryptResponseSchema = z.object({
   ciphertext: z.string(),
   keyId: z.string(),
@@ -1036,10 +956,6 @@ export const KMSEncryptResponseSchema = z.object({
 export const KMSDecryptResponseSchema = z.object({
   plaintext: z.string(),
 })
-
-// ============================================================================
-// Enhanced Storage Upload Response
-// ============================================================================
 
 export const EnhancedUploadResultSchema = z.object({
   cid: z.string(),
@@ -1052,10 +968,6 @@ export const EnhancedUploadResultSchema = z.object({
   encrypted: z.boolean().optional(),
   encryptionKeyId: z.string().optional(),
 })
-
-// ============================================================================
-// Package Registry API Schemas
-// ============================================================================
 
 /** Package maintainer schema */
 export const PackageMaintainerSchema = z.object({
@@ -1171,10 +1083,6 @@ export const HealthCheckResponseSchema = z.object({
   service: z.string(),
 })
 
-// ============================================================================
-// Git API Schemas
-// ============================================================================
-
 /** Git repository schema */
 export const GitRepositorySchema = z.object({
   id: z.string(),
@@ -1271,10 +1179,6 @@ export const GitUserSchema = z.object({
   createdAt: z.string(),
 })
 
-// ============================================================================
-// JNS (Names) API Schemas
-// ============================================================================
-
 /** JNS resolve response schema */
 export const JNSResolveResponseSchema = z.object({
   address: AddressSchema,
@@ -1300,10 +1204,6 @@ export const JNSPriceResponseSchema = z.object({
   price: z.string(),
 })
 
-// ============================================================================
-// Governance API Schemas (additional)
-// ============================================================================
-
 /** Governance IPFS upload response schema */
 export const GovernanceIPFSUploadResponseSchema = z.object({
   cid: z.string(),
@@ -1323,10 +1223,6 @@ export const GovernanceStatsRawResponseSchema = z.object({
   totalStaked: z.string(),
   totalDelegated: z.string(),
 })
-
-// ============================================================================
-// Cross-chain API Schemas (additional)
-// ============================================================================
 
 /** Cross-chain quote raw response schema */
 export const CrossChainQuoteRawSchema = z.object({
@@ -1377,10 +1273,6 @@ export const CancelIntentResponseSchema = z.object({
   to: AddressSchema,
 })
 
-// ============================================================================
-// VPN API Schemas
-// ============================================================================
-
 /** VPN A2A result schema */
 export const VPNA2AResultSchema = z.object({
   jsonrpc: z.string(),
@@ -1402,28 +1294,16 @@ export const VPNA2AResultSchema = z.object({
     .optional(),
 })
 
-// ============================================================================
-// Dataset API Schemas
-// ============================================================================
-
 /** Dataset upload response schema */
 export const DatasetUploadResponseSchema = z.object({
   txHash: TxHashSchema,
   datasetId: TxHashSchema,
 })
 
-// ============================================================================
-// Test Setup Schemas
-// ============================================================================
-
 /** RPC eth_getCode response schema */
 export const RPCGetCodeResponseSchema = z.object({
   result: z.string().optional(),
 })
-
-// ============================================================================
-// Feed API Schemas
-// ============================================================================
 
 /** Feed user schema */
 export const FeedUserSchema = z.object({
@@ -1526,10 +1406,6 @@ export const FeedNotificationsResponseSchema = z.object({
 export const FeedLinkedFidResponseSchema = z.object({
   fid: z.number().nullable(),
 })
-
-// ============================================================================
-// CI/CD API Schemas
-// ============================================================================
 
 /** CICD job step schema */
 export const CICDJobStepSchema = z.object({
@@ -1658,10 +1534,6 @@ export const CICDQueueStatusSchema = z.object({
   runners: z.number(),
   availableRunners: z.number(),
 })
-
-// ============================================================================
-// DWS ID Response Schemas
-// ============================================================================
 
 /** DWS trigger creation response schema */
 export const DWSCreateTriggerResponseSchema = z.object({

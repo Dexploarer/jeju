@@ -9,12 +9,14 @@ import { z } from 'zod'
 import { MFAMethod, type MFAStatus } from '../../mfa/index.js'
 import {
   BackupCodesResponseSchema,
+  expectEndpoint,
   extractError,
-  getEndpointWithDevFallback,
   MFAStatusSchema,
   PasskeyListItemSchema,
   PasskeyOptionsResponseSchema,
   TOTPSetupResponseSchema,
+  toWebAuthnCreationOptions,
+  toWebAuthnRequestOptions,
   validateResponse,
 } from '../../validation.js'
 import { useOAuth3 } from '../provider.js'
@@ -69,7 +71,7 @@ export function useMFA(options: UseMFAOptions = {}): UseMFAReturn {
     setIsLoading(true)
 
     const node = client.getCurrentNode()
-    const url = getEndpointWithDevFallback(node)
+    const url = expectEndpoint(node)
     const response = await fetch(`${url}/mfa/status`, {
       headers: { 'x-session-id': session.sessionId },
     })
@@ -104,7 +106,7 @@ export function useMFA(options: UseMFAOptions = {}): UseMFAReturn {
     setError(null)
 
     const node = client.getCurrentNode()
-    const url = getEndpointWithDevFallback(node)
+    const url = expectEndpoint(node)
     const response = await fetch(`${url}/mfa/totp/setup`, {
       method: 'POST',
       headers: { 'x-session-id': session.sessionId },
@@ -135,7 +137,7 @@ export function useMFA(options: UseMFAOptions = {}): UseMFAReturn {
       setError(null)
 
       const node = client.getCurrentNode()
-      const url = getEndpointWithDevFallback(node)
+      const url = expectEndpoint(node)
       const response = await fetch(`${url}/mfa/totp/verify`, {
         method: 'POST',
         headers: {
@@ -168,7 +170,7 @@ export function useMFA(options: UseMFAOptions = {}): UseMFAReturn {
     setIsLoading(true)
 
     const node = client.getCurrentNode()
-    const url = getEndpointWithDevFallback(node)
+    const url = expectEndpoint(node)
     const response = await fetch(`${url}/mfa/totp`, {
       method: 'DELETE',
       headers: { 'x-session-id': session.sessionId },
@@ -192,7 +194,7 @@ export function useMFA(options: UseMFAOptions = {}): UseMFAReturn {
       setError(null)
 
       const node = client.getCurrentNode()
-      const url = getEndpointWithDevFallback(node)
+      const url = expectEndpoint(node)
 
       // Get registration options
       const optionsResponse = await fetch(
@@ -219,8 +221,14 @@ export function useMFA(options: UseMFAOptions = {}): UseMFAReturn {
         'passkey registration options',
       )
       const challengeId = optionsData.challengeId
-      const publicKey =
-        optionsData.publicKey as unknown as PublicKeyCredentialCreationOptions
+
+      // Convert JSON-serialized options to WebAuthn format
+      if (!('user' in optionsData.publicKey)) {
+        setIsLoading(false)
+        setError('Invalid registration options format')
+        return false
+      }
+      const publicKey = toWebAuthnCreationOptions(optionsData.publicKey)
 
       // Create credential using WebAuthn
       const credential = (await navigator.credentials.create({
@@ -277,7 +285,7 @@ export function useMFA(options: UseMFAOptions = {}): UseMFAReturn {
     setError(null)
 
     const node = client.getCurrentNode()
-    const url = getEndpointWithDevFallback(node)
+    const url = expectEndpoint(node)
 
     // Get authentication options
     const optionsResponse = await fetch(
@@ -300,8 +308,14 @@ export function useMFA(options: UseMFAOptions = {}): UseMFAReturn {
       'passkey authentication options',
     )
     const challengeId = authOptionsData.challengeId
-    const publicKey =
-      authOptionsData.publicKey as unknown as PublicKeyCredentialRequestOptions
+
+    // Convert JSON-serialized options to WebAuthn format
+    if ('user' in authOptionsData.publicKey) {
+      setIsLoading(false)
+      setError('Invalid authentication options format')
+      return false
+    }
+    const publicKey = toWebAuthnRequestOptions(authOptionsData.publicKey)
 
     // Get credential using WebAuthn
     const credential = (await navigator.credentials.get({
@@ -362,7 +376,7 @@ export function useMFA(options: UseMFAOptions = {}): UseMFAReturn {
     if (!session) return []
 
     const node = client.getCurrentNode()
-    const url = getEndpointWithDevFallback(node)
+    const url = expectEndpoint(node)
     const response = await fetch(`${url}/mfa/passkey/list`, {
       headers: { 'x-session-id': session.sessionId },
     })
@@ -381,7 +395,7 @@ export function useMFA(options: UseMFAOptions = {}): UseMFAReturn {
       if (!session) return false
 
       const node = client.getCurrentNode()
-      const url = getEndpointWithDevFallback(node)
+      const url = expectEndpoint(node)
       const response = await fetch(`${url}/mfa/passkey/${id}`, {
         method: 'DELETE',
         headers: { 'x-session-id': session.sessionId },
@@ -405,7 +419,7 @@ export function useMFA(options: UseMFAOptions = {}): UseMFAReturn {
     setIsLoading(true)
 
     const node = client.getCurrentNode()
-    const url = getEndpointWithDevFallback(node)
+    const url = expectEndpoint(node)
     const response = await fetch(`${url}/mfa/backup-codes/generate`, {
       method: 'POST',
       headers: { 'x-session-id': session.sessionId },
@@ -434,7 +448,7 @@ export function useMFA(options: UseMFAOptions = {}): UseMFAReturn {
       setIsLoading(true)
 
       const node = client.getCurrentNode()
-      const url = getEndpointWithDevFallback(node)
+      const url = expectEndpoint(node)
       const response = await fetch(`${url}/mfa/backup-codes/verify`, {
         method: 'POST',
         headers: {

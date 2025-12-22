@@ -16,6 +16,7 @@ import { DEFAULT_AUTONOMOUS_CONFIG } from './autonomous/types'
 import { BotInitializer } from './bots/initializer'
 import type { TradingBot } from './bots/trading-bot'
 import { characters, getCharacter, listCharacters } from './characters'
+import { checkDWSHealth } from './client/dws'
 import { banCheckMiddleware } from './middleware/ban-check'
 import {
   AddMemoryRequestSchema,
@@ -38,11 +39,7 @@ import {
 } from './schemas'
 import { createAgentSDK } from './sdk/agent'
 import { createCompute } from './sdk/compute'
-import {
-  checkDWSHealth,
-  type RuntimeMessage,
-  runtimeManager,
-} from './sdk/eliza-runtime'
+import { type RuntimeMessage, runtimeManager } from './sdk/eliza-runtime'
 import { createExecutorSDK } from './sdk/executor'
 import { createLogger } from './sdk/logger'
 import { createRoomSDK } from './sdk/room'
