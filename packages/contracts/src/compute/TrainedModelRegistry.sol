@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
  * @title ModelRegistry
  * @notice On-chain registry for trained AI models
  */
-contract ModelRegistry is Ownable, ReentrancyGuard {
+contract TrainedModelRegistry is Ownable, ReentrancyGuard {
     enum ModelStatus {
         PENDING,
         ACTIVE,

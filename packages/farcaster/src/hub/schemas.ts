@@ -17,9 +17,9 @@ const UserDataTypeRaw = z.enum([
   'USER_DATA_TYPE_LOCATION',
 ]);
 
-const UserDataTypeSchema = z.enum(['pfp', 'display', 'bio', 'url', 'username', 'location']);
+type UserDataType = 'pfp' | 'display' | 'bio' | 'url' | 'username' | 'location';
 
-export const USER_DATA_TYPE_MAP: Record<z.infer<typeof UserDataTypeRaw>, z.infer<typeof UserDataTypeSchema>> = {
+export const USER_DATA_TYPE_MAP: Record<z.infer<typeof UserDataTypeRaw>, UserDataType> = {
   USER_DATA_TYPE_PFP: 'pfp',
   USER_DATA_TYPE_DISPLAY: 'display',
   USER_DATA_TYPE_BIO: 'bio',

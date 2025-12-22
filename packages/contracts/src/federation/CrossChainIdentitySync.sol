@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.33;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import "../registry/IdentityRegistry.sol";
 
 /**
@@ -56,7 +57,7 @@ interface IInterchainSecurityModule {
  * - Only accepts messages from trusted remote contracts
  * - Rate limiting on incoming registrations
  */
-contract CrossChainIdentitySync is Ownable, ReentrancyGuard {
+contract CrossChainIdentitySync is Ownable, ReentrancyGuard, Pausable {
     // ============================================================================
     // Types
     // ============================================================================
@@ -216,7 +217,7 @@ contract CrossChainIdentitySync is Ownable, ReentrancyGuard {
      * @notice Broadcast local agent registration to all connected chains
      * @param agentId The local agent ID to broadcast
      */
-    function broadcastRegistration(uint256 agentId) external payable nonReentrant {
+    function broadcastRegistration(uint256 agentId) external payable nonReentrant whenNotPaused {
         // Verify caller owns the agent
         address agentOwner = identityRegistry.ownerOf(agentId);
         if (msg.sender != agentOwner && !identityRegistry.isApprovedForAll(agentOwner, msg.sender)) {
@@ -286,7 +287,7 @@ contract CrossChainIdentitySync is Ownable, ReentrancyGuard {
         uint32 _origin,
         bytes32 _sender,
         bytes calldata _message
-    ) external {
+    ) external whenNotPaused {
         // Verify caller is mailbox
         require(msg.sender == address(mailbox), "Only mailbox");
 
@@ -340,6 +341,16 @@ contract CrossChainIdentitySync is Ownable, ReentrancyGuard {
      */
     function setISM(address _ism) external onlyOwner {
         ism = IInterchainSecurityModule(_ism);
+    }
+
+    /// @notice Pause cross-chain sync operations
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /// @notice Unpause cross-chain sync operations
+    function unpause() external onlyOwner {
+        _unpause();
     }
 
     // ============================================================================

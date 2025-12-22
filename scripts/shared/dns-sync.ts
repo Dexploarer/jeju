@@ -35,9 +35,7 @@ interface Route53ClientInstance {
   send(command: Route53Command): Promise<Route53Response>;
 }
 
-interface Route53Command {
-  // Marker interface for Route53 commands
-}
+type Route53Command = object;
 
 interface Route53Response {
   ResourceRecordSets?: ResourceRecordSet[];
@@ -79,9 +77,7 @@ interface CloudDNSZone {
   replaceRecords(type: 'a' | 'aaaa' | 'cname', record: CloudDNSRecord): Promise<void>;
 }
 
-interface CloudDNSRecord {
-  // Marker interface for Cloud DNS records
-}
+type CloudDNSRecord = object;
 
 // Dynamic SDK storage with proper types
 let Route53ClientClass: Route53ClientConstructor | null = null;
