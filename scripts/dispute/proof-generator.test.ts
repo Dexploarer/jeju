@@ -7,18 +7,22 @@
  * - MIPS instruction encoding/decoding
  * - Proof generation and verification
  * - Bisection game logic
+ * - Memory Merkle tree construction
+ * - Preimage generation
  */
 
-import { describe, test, expect, beforeAll } from 'bun:test';
-import { keccak256, encodeAbiParameters, pad, type Hex } from 'viem';
+import { describe, test, expect, beforeAll, afterAll } from 'bun:test';
+import { keccak256, encodeAbiParameters, pad, concat, type Hex, type Address } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { FraudProofGenerator } from './proof-generator';
-import { StateFetcher } from './state-fetcher';
+import { StateFetcher, L2_TO_L1_MESSAGE_PASSER, type L2StateSnapshot, type AccountProof } from './state-fetcher';
 import {
   CannonInterface,
   MIPS_REGISTERS,
   MIPS_OPCODES,
   MIPS_FUNCTS,
+  HEAP_START,
+  PREIMAGE_KEY_KECCAK256,
   type MIPSState,
 } from './cannon-interface';
 
@@ -28,6 +32,41 @@ const testAccount = privateKeyToAccount(TEST_PRIVATE_KEY);
 
 // Mock L1 RPC (local anvil)
 const L1_RPC = 'http://127.0.0.1:6545';
+
+// Create mock L2 state snapshot for testing
+function createMockSnapshot(blockNumber: bigint): L2StateSnapshot {
+  const stateRoot = keccak256(encodeAbiParameters([{ type: 'uint256' }], [blockNumber]));
+  const blockHash = keccak256(encodeAbiParameters([{ type: 'string' }, { type: 'uint256' }], ['block', blockNumber]));
+  const messagePasserRoot = keccak256(encodeAbiParameters([{ type: 'string' }], ['mpr']));
+  
+  const mockAccountProof: AccountProof = {
+    address: L2_TO_L1_MESSAGE_PASSER,
+    nonce: 0n,
+    balance: 0n,
+    storageHash: messagePasserRoot,
+    codeHash: keccak256('0x'),
+    accountProof: [
+      keccak256(encodeAbiParameters([{ type: 'string' }], ['proof_node_1'])),
+      keccak256(encodeAbiParameters([{ type: 'string' }], ['proof_node_2'])),
+    ],
+    storageProofs: [],
+  };
+
+  return {
+    blockNumber,
+    blockHash,
+    stateRoot,
+    timestamp: BigInt(Date.now()) / 1000n,
+    messagePasserStorageRoot: messagePasserRoot,
+    outputRoot: keccak256(concat([
+      pad('0x00', { size: 32 }),
+      stateRoot,
+      messagePasserRoot,
+      blockHash,
+    ])),
+    accountProofs: new Map([[L2_TO_L1_MESSAGE_PASSER, mockAccountProof]]),
+  };
+}
 
 describe('CannonInterface', () => {
   let cannon: CannonInterface;
