@@ -1,148 +1,57 @@
 /**
  * Polynomial Commitment Scheme
  * 
- * Implements efficient commitment and verification:
- * - Commit to blob data as polynomial coefficients
- * - Generate opening proofs for individual chunks
+ * Implements cryptographically secure commitment and verification:
+ * - KZG polynomial commitments with trusted setup
+ * - Merkle proofs for chunk inclusion
  * - Batch verification support
  * - Compatible with sampling-based verification
+ * 
+ * Uses kzg-wasm for production-ready cryptographic proofs.
  */
 
 import type { Hex } from 'viem';
 import { keccak256, toBytes, toHex, concatHex } from 'viem';
 import type { BlobCommitment, Chunk, ChunkProof } from './types';
+import { 
+  KZG, 
+  initializeKZG, 
+  isKZGInitialized,
+  createBlob,
+  computeBlobProofSync,
+  verifyBlobProofSync,
+  type KZGCommitment,
+  type KZGProof,
+  BLOB_SIZE,
+} from './crypto/kzg';
 
 // ============================================================================
-// Polynomial Operations (in prime field)
+// Initialization
 // ============================================================================
 
-// Using a 256-bit prime field for cryptographic security
-// p = 2^256 - 2^32 - 977 (secp256k1 field prime)
-const FIELD_PRIME = 
-  0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2Fn;
+let initialized = false;
 
-function modPow(base: bigint, exp: bigint, mod: bigint): bigint {
-  let result = 1n;
-  base = base % mod;
-  while (exp > 0n) {
-    if (exp % 2n === 1n) {
-      result = (result * base) % mod;
-    }
-    exp = exp / 2n;
-    base = (base * base) % mod;
-  }
-  return result;
-}
-
-function modInverse(a: bigint, mod: bigint): bigint {
-  return modPow(a, mod - 2n, mod);
+/**
+ * Initialize the commitment system
+ * Must be called before using commitment functions
+ */
+export async function initializeCommitmentSystem(): Promise<void> {
+  if (initialized) return;
+  
+  await initializeKZG();
+  initialized = true;
 }
 
 /**
- * Evaluate polynomial at point
+ * Check if system is initialized
  */
-function evaluatePolynomial(coeffs: bigint[], x: bigint): bigint {
-  let result = 0n;
-  let power = 1n;
-  
-  for (const coeff of coeffs) {
-    result = (result + (coeff * power) % FIELD_PRIME) % FIELD_PRIME;
-    power = (power * x) % FIELD_PRIME;
-  }
-  
-  return result;
-}
-
-/**
- * Lagrange interpolation to find polynomial from points
- */
-function lagrangeInterpolate(
-  points: Array<{ x: bigint; y: bigint }>
-): bigint[] {
-  const n = points.length;
-  const coeffs: bigint[] = new Array(n).fill(0n);
-  
-  for (let i = 0; i < n; i++) {
-    // Calculate Lagrange basis polynomial
-    let numerator: bigint[] = [1n];
-    let denominator = 1n;
-    
-    for (let j = 0; j < n; j++) {
-      if (i !== j) {
-        // Multiply numerator by (x - x_j)
-        const newNumerator: bigint[] = new Array(numerator.length + 1).fill(0n);
-        for (let k = 0; k < numerator.length; k++) {
-          newNumerator[k] = (newNumerator[k] + numerator[k] * (-points[j].x)) % FIELD_PRIME;
-          newNumerator[k + 1] = (newNumerator[k + 1] + numerator[k]) % FIELD_PRIME;
-        }
-        numerator = newNumerator.map(c => (c + FIELD_PRIME) % FIELD_PRIME);
-        
-        // Multiply denominator by (x_i - x_j)
-        const diff = (points[i].x - points[j].x + FIELD_PRIME) % FIELD_PRIME;
-        denominator = (denominator * diff) % FIELD_PRIME;
-      }
-    }
-    
-    // Scale by y_i / denominator
-    const scale = (points[i].y * modInverse(denominator, FIELD_PRIME)) % FIELD_PRIME;
-    
-    // Add to result
-    for (let k = 0; k < numerator.length; k++) {
-      coeffs[k] = (coeffs[k] + numerator[k] * scale) % FIELD_PRIME;
-    }
-  }
-  
-  return coeffs;
+export function isCommitmentSystemInitialized(): boolean {
+  return initialized && isKZGInitialized();
 }
 
 // ============================================================================
-// Commitment Generation
+// Merkle Tree Operations
 // ============================================================================
-
-/**
- * Generate polynomial commitment from data chunks
- */
-export function createCommitment(
-  chunks: Uint8Array[],
-  chunkSize: number,
-  dataChunkCount: number,
-  parityChunkCount: number
-): BlobCommitment {
-  // Convert chunks to field elements
-  const elements: bigint[] = chunks.map(chunk => {
-    // Hash chunk to get field element
-    const hash = keccak256(chunk);
-    return BigInt(hash) % FIELD_PRIME;
-  });
-  
-  // Create polynomial from elements
-  // Each chunk becomes a point on the polynomial
-  const points = elements.map((y, x) => ({
-    x: BigInt(x + 1), // Use 1-indexed to avoid x=0
-    y,
-  }));
-  
-  // Interpolate polynomial
-  const _coefficients = lagrangeInterpolate(points);
-  
-  // Commitment is hash of polynomial coefficients
-  const coeffHashInput = _coefficients.map(c => c.toString(16).padStart(64, '0')).join('');
-  const commitment = keccak256(toBytes(`0x${coeffHashInput}`));
-  
-  // Compute Merkle root of chunks
-  const leaves = chunks.map(c => keccak256(c));
-  const merkleRoot = computeMerkleRoot(leaves);
-  
-  return {
-    commitment,
-    dataChunkCount,
-    parityChunkCount,
-    totalChunkCount: chunks.length,
-    chunkSize,
-    merkleRoot,
-    timestamp: Date.now(),
-  };
-}
 
 /**
  * Compute Merkle root from leaves
@@ -164,33 +73,6 @@ function computeMerkleRoot(leaves: Hex[]): Hex {
   }
   
   return computeMerkleRoot(nextLevel);
-}
-
-// ============================================================================
-// Proof Generation
-// ============================================================================
-
-/**
- * Generate opening proof for a specific chunk
- */
-export function createOpeningProof(
-  chunks: Uint8Array[],
-  chunkIndex: number,
-  commitment: BlobCommitment
-): ChunkProof {
-  // Compute Merkle proof
-  const leaves = chunks.map(c => keccak256(c));
-  const merkleProof = computeMerkleProof(leaves, chunkIndex);
-  
-  // Create polynomial opening proof
-  // This is a simplified version - production would use KZG proofs
-  const openingProof = createPolynomialOpening(chunks, chunkIndex);
-  
-  return {
-    merkleProof,
-    openingProof,
-    polynomialIndex: chunkIndex,
-  };
 }
 
 /**
@@ -227,55 +109,6 @@ function computeMerkleProof(leaves: Hex[], index: number): Hex[] {
 }
 
 /**
- * Create polynomial opening proof
- * Simplified version - production would use proper KZG setup
- */
-function createPolynomialOpening(chunks: Uint8Array[], index: number): Hex {
-  // Hash all chunks with the index to create deterministic proof
-  const proofData = chunks.map((c, i) => {
-    const chunkHash = keccak256(c);
-    return keccak256(toBytes(`${chunkHash}:${index}:${i}`));
-  });
-  
-  // Aggregate into single proof
-  const aggregated = proofData.reduce(
-    (acc, h) => keccak256(concatHex([acc, h])),
-    keccak256(toBytes(`opening:${index}`))
-  );
-  
-  return aggregated;
-}
-
-// ============================================================================
-// Proof Verification
-// ============================================================================
-
-/**
- * Verify chunk proof against commitment
- */
-export function verifyProof(
-  chunk: Chunk,
-  commitment: BlobCommitment
-): boolean {
-  // Verify Merkle proof
-  const chunkHash = keccak256(chunk.data);
-  const merkleValid = verifyMerkleProof(
-    chunkHash,
-    chunk.proof.merkleProof,
-    commitment.merkleRoot,
-    chunk.index
-  );
-  
-  if (!merkleValid) {
-    return false;
-  }
-  
-  // Verify polynomial opening (simplified)
-  // In production, this would verify against KZG commitment
-  return verifyPolynomialOpening(chunk, commitment);
-}
-
-/**
  * Verify Merkle proof
  */
 function verifyMerkleProof(
@@ -300,41 +133,260 @@ function verifyMerkleProof(
   return hash.toLowerCase() === root.toLowerCase();
 }
 
+// ============================================================================
+// Commitment Generation
+// ============================================================================
+
 /**
- * Verify polynomial opening proof
- * 
- * This implementation verifies:
- * 1. Chunk index bounds
- * 2. Chunk size matches commitment
- * 3. Polynomial index consistency
- * 
- * NOTE: The Merkle proof provides the primary security.
- * For production KZG, implement: e(C - [y]_1, [1]_2) = e(π, [τ - x]_2)
- * using a trusted setup ceremony and pairing-friendly curves.
+ * Generate polynomial commitment from data chunks
+ * Uses KZG for cryptographically secure commitment
  */
-function verifyPolynomialOpening(
+export async function createCommitment(
+  chunks: Uint8Array[],
+  chunkSize: number,
+  dataChunkCount: number,
+  parityChunkCount: number
+): Promise<BlobCommitment> {
+  // Ensure system is initialized
+  if (!initialized) {
+    await initializeCommitmentSystem();
+  }
+  
+  // Concatenate all chunks into a blob
+  const totalSize = chunks.reduce((sum, c) => sum + c.length, 0);
+  const blobData = new Uint8Array(Math.min(totalSize, BLOB_SIZE));
+  
+  let offset = 0;
+  for (const chunk of chunks) {
+    const remaining = BLOB_SIZE - offset;
+    if (remaining <= 0) break;
+    
+    const toCopy = Math.min(chunk.length, remaining);
+    blobData.set(chunk.slice(0, toCopy), offset);
+    offset += toCopy;
+  }
+  
+  // Create KZG blob and compute commitment
+  const blob = createBlob(blobData);
+  const kzgCommitment = KZG.computeCommitmentSync(blob);
+  
+  // Compute Merkle root of chunks for inclusion proofs
+  const leaves = chunks.map(c => keccak256(c));
+  const merkleRoot = computeMerkleRoot(leaves);
+  
+  return {
+    commitment: kzgCommitment,
+    dataChunkCount,
+    parityChunkCount,
+    totalChunkCount: chunks.length,
+    chunkSize,
+    merkleRoot,
+    timestamp: Date.now(),
+  };
+}
+
+/**
+ * Generate polynomial commitment synchronously
+ * Requires prior initialization
+ */
+export function createCommitmentSync(
+  chunks: Uint8Array[],
+  chunkSize: number,
+  dataChunkCount: number,
+  parityChunkCount: number
+): BlobCommitment {
+  if (!initialized) {
+    throw new Error('Commitment system not initialized. Call initializeCommitmentSystem() first');
+  }
+  
+  const totalSize = chunks.reduce((sum, c) => sum + c.length, 0);
+  const blobData = new Uint8Array(Math.min(totalSize, BLOB_SIZE));
+  
+  let offset = 0;
+  for (const chunk of chunks) {
+    const remaining = BLOB_SIZE - offset;
+    if (remaining <= 0) break;
+    
+    const toCopy = Math.min(chunk.length, remaining);
+    blobData.set(chunk.slice(0, toCopy), offset);
+    offset += toCopy;
+  }
+  
+  const blob = createBlob(blobData);
+  const kzgCommitment = KZG.computeCommitmentSync(blob);
+  
+  const leaves = chunks.map(c => keccak256(c));
+  const merkleRoot = computeMerkleRoot(leaves);
+  
+  return {
+    commitment: kzgCommitment,
+    dataChunkCount,
+    parityChunkCount,
+    totalChunkCount: chunks.length,
+    chunkSize,
+    merkleRoot,
+    timestamp: Date.now(),
+  };
+}
+
+// ============================================================================
+// Proof Generation
+// ============================================================================
+
+/**
+ * Generate opening proof for a specific chunk
+ * Combines KZG proof with Merkle inclusion proof
+ */
+export async function createOpeningProof(
+  chunks: Uint8Array[],
+  chunkIndex: number,
+  commitment: BlobCommitment
+): Promise<ChunkProof> {
+  if (!initialized) {
+    await initializeCommitmentSystem();
+  }
+  
+  // Compute Merkle proof for chunk inclusion
+  const leaves = chunks.map(c => keccak256(c));
+  const merkleProof = computeMerkleProof(leaves, chunkIndex);
+  
+  // Create blob for KZG proof
+  const totalSize = chunks.reduce((sum, c) => sum + c.length, 0);
+  const blobData = new Uint8Array(Math.min(totalSize, BLOB_SIZE));
+  
+  let offset = 0;
+  for (const chunk of chunks) {
+    const remaining = BLOB_SIZE - offset;
+    if (remaining <= 0) break;
+    
+    const toCopy = Math.min(chunk.length, remaining);
+    blobData.set(chunk.slice(0, toCopy), offset);
+    offset += toCopy;
+  }
+  
+  const blob = createBlob(blobData);
+  
+  // Compute KZG proof
+  const kzgProof = computeBlobProofSync(blob, commitment.commitment as KZGCommitment);
+  
+  return {
+    merkleProof,
+    openingProof: kzgProof,
+    polynomialIndex: chunkIndex,
+  };
+}
+
+/**
+ * Create opening proof synchronously
+ */
+export function createOpeningProofSync(
+  chunks: Uint8Array[],
+  chunkIndex: number,
+  commitment: BlobCommitment
+): ChunkProof {
+  if (!initialized) {
+    throw new Error('Commitment system not initialized');
+  }
+  
+  const leaves = chunks.map(c => keccak256(c));
+  const merkleProof = computeMerkleProof(leaves, chunkIndex);
+  
+  const totalSize = chunks.reduce((sum, c) => sum + c.length, 0);
+  const blobData = new Uint8Array(Math.min(totalSize, BLOB_SIZE));
+  
+  let offset = 0;
+  for (const chunk of chunks) {
+    const remaining = BLOB_SIZE - offset;
+    if (remaining <= 0) break;
+    
+    const toCopy = Math.min(chunk.length, remaining);
+    blobData.set(chunk.slice(0, toCopy), offset);
+    offset += toCopy;
+  }
+  
+  const blob = createBlob(blobData);
+  const kzgProof = computeBlobProofSync(blob, commitment.commitment as KZGCommitment);
+  
+  return {
+    merkleProof,
+    openingProof: kzgProof,
+    polynomialIndex: chunkIndex,
+  };
+}
+
+// ============================================================================
+// Proof Verification
+// ============================================================================
+
+/**
+ * Verify chunk proof against commitment
+ * Uses both Merkle and KZG verification
+ */
+export function verifyProof(
   chunk: Chunk,
   commitment: BlobCommitment
 ): boolean {
-  // Verify the chunk index is valid
+  // 1. Verify Merkle proof for chunk inclusion
+  const chunkHash = keccak256(chunk.data);
+  const merkleValid = verifyMerkleProof(
+    chunkHash,
+    chunk.proof.merkleProof,
+    commitment.merkleRoot,
+    chunk.index
+  );
+  
+  if (!merkleValid) {
+    return false;
+  }
+  
+  // 2. Verify chunk index bounds
   if (chunk.index < 0 || chunk.index >= commitment.totalChunkCount) {
     return false;
   }
   
-  // Verify chunk size (allow slight variation for padding)
-  if (chunk.data.length > commitment.chunkSize + 32) {
-    return false;
-  }
-  
-  // Verify polynomial index matches chunk index
+  // 3. Verify polynomial index consistency
   if (chunk.proof.polynomialIndex !== chunk.index) {
     return false;
   }
   
-  // The Merkle proof verification (done separately) provides
-  // cryptographic binding between the chunk and commitment.
-  // Opening proof adds polynomial consistency check.
+  // 4. Verify chunk size (allow slight variation for padding)
+  if (chunk.data.length > commitment.chunkSize + 32) {
+    return false;
+  }
+  
+  // Note: KZG proof verification requires the original blob data
+  // For full verification, use verifyProofWithBlob()
+  
   return true;
+}
+
+/**
+ * Verify chunk proof with original blob data
+ * Provides full cryptographic verification including KZG
+ */
+export async function verifyProofWithBlob(
+  chunk: Chunk,
+  commitment: BlobCommitment,
+  blobData: Uint8Array
+): Promise<boolean> {
+  // First do basic verification
+  if (!verifyProof(chunk, commitment)) {
+    return false;
+  }
+  
+  // Then verify KZG proof
+  if (!initialized) {
+    await initializeCommitmentSystem();
+  }
+  
+  const blob = createBlob(blobData);
+  const kzgValid = verifyBlobProofSync(
+    blob,
+    commitment.commitment as KZGCommitment,
+    chunk.proof.openingProof as KZGProof
+  );
+  
+  return kzgValid;
 }
 
 // ============================================================================
@@ -363,6 +415,30 @@ export function verifyBatch(
   };
 }
 
+/**
+ * Verify batch with full KZG verification
+ */
+export async function verifyBatchWithBlob(
+  chunks: Chunk[],
+  commitment: BlobCommitment,
+  blobData: Uint8Array
+): Promise<{ valid: boolean; validCount: number; invalidIndices: number[] }> {
+  const invalidIndices: number[] = [];
+  
+  for (const chunk of chunks) {
+    const valid = await verifyProofWithBlob(chunk, commitment, blobData);
+    if (!valid) {
+      invalidIndices.push(chunk.index);
+    }
+  }
+  
+  return {
+    valid: invalidIndices.length === 0,
+    validCount: chunks.length - invalidIndices.length,
+    invalidIndices,
+  };
+}
+
 // ============================================================================
 // Polynomial Commitment Wrapper
 // ============================================================================
@@ -370,33 +446,53 @@ export function verifyBatch(
 export interface PolynomialCommitment {
   commitment: BlobCommitment;
   chunks: Chunk[];
+  blobData: Uint8Array;
   
   getChunk(index: number): Chunk | null;
   getProof(index: number): ChunkProof | null;
   verify(chunk: Chunk): boolean;
+  verifyFull(chunk: Chunk): Promise<boolean>;
   verifyAll(): boolean;
+  verifyAllFull(): Promise<boolean>;
 }
 
-export function createPolynomialCommitment(
+export async function createPolynomialCommitment(
   data: Uint8Array,
   chunks: Uint8Array[],
   dataChunkCount: number,
   parityChunkCount: number,
   blobId: Hex
-): PolynomialCommitment {
+): Promise<PolynomialCommitment> {
   const chunkSize = chunks[0]?.length ?? 0;
-  const commitment = createCommitment(chunks, chunkSize, dataChunkCount, parityChunkCount);
+  const commitment = await createCommitment(chunks, chunkSize, dataChunkCount, parityChunkCount);
   
-  const chunksWithProofs: Chunk[] = chunks.map((chunk, index) => ({
-    index,
-    data: chunk,
-    blobId,
-    proof: createOpeningProof(chunks, index, commitment),
-  }));
+  // Store blob data for full verification
+  const totalSize = chunks.reduce((sum, c) => sum + c.length, 0);
+  const blobData = new Uint8Array(Math.min(totalSize, BLOB_SIZE));
+  
+  let offset = 0;
+  for (const chunk of chunks) {
+    const remaining = BLOB_SIZE - offset;
+    if (remaining <= 0) break;
+    
+    const toCopy = Math.min(chunk.length, remaining);
+    blobData.set(chunk.slice(0, toCopy), offset);
+    offset += toCopy;
+  }
+  
+  const chunksWithProofs: Chunk[] = await Promise.all(
+    chunks.map(async (chunk, index) => ({
+      index,
+      data: chunk,
+      blobId,
+      proof: await createOpeningProof(chunks, index, commitment),
+    }))
+  );
   
   return {
     commitment,
     chunks: chunksWithProofs,
+    blobData,
     
     getChunk(index: number): Chunk | null {
       return chunksWithProofs[index] ?? null;
@@ -410,8 +506,20 @@ export function createPolynomialCommitment(
       return verifyProof(chunk, commitment);
     },
     
+    async verifyFull(chunk: Chunk): Promise<boolean> {
+      return verifyProofWithBlob(chunk, commitment, blobData);
+    },
+    
     verifyAll(): boolean {
       return chunksWithProofs.every(c => verifyProof(c, commitment));
+    },
+    
+    async verifyAllFull(): Promise<boolean> {
+      for (const chunk of chunksWithProofs) {
+        const valid = await verifyProofWithBlob(chunk, commitment, blobData);
+        if (!valid) return false;
+      }
+      return true;
     },
   };
 }
@@ -433,4 +541,3 @@ export function bytesToCommitmentHex(data: Uint8Array): Hex {
 export function computeBlobId(data: Uint8Array): Hex {
   return keccak256(data);
 }
-

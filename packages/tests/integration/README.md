@@ -67,7 +67,7 @@ bun test tests/integration/ --watch
 ### Configuration
 ```bash
 # .env
-RPC_URL=http://localhost:9545
+RPC_URL=http://localhost:6546
 PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 IDENTITY_REGISTRY_ADDRESS=0x... # Set after deployment
 ELIZAOS_TOKEN_ADDRESS=0x...

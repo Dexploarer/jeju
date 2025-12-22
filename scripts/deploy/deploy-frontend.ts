@@ -19,7 +19,7 @@ import { existsSync, readdirSync, statSync } from 'fs';
 import { join, relative } from 'path';
 import { createPublicClient, createWalletClient, http, type Address, type Hex, keccak256, toBytes } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { base, baseSepolia, localhost } from 'viem/chains';
+import { getJejuChain, jejuLocalnet, type JejuNetwork } from '../shared/viem-chains';
 
 // Configuration
 interface DeployConfig {
@@ -258,9 +258,9 @@ async function uploadToIPFS(buildDir: string, ipfsApiUrl: string): Promise<strin
 async function updateJNS(config: DeployConfig, cid: string): Promise<string | undefined> {
   console.log('🔗 Updating JNS contenthash...');
   
-  const chain = config.network === 'mainnet' ? base
-    : config.network === 'testnet' ? baseSepolia
-    : { ...localhost, id: 9545 };
+  const chain = config.network === 'localnet'
+    ? jejuLocalnet
+    : getJejuChain(config.network as JejuNetwork);
   
   const account = privateKeyToAccount(config.privateKey);
   
@@ -405,13 +405,13 @@ function parseArgs(): DeployConfig {
     },
     testnet: {
       ipfsApiUrl: process.env.IPFS_API_URL ?? 'https://ipfs.infura.io:5001',
-      rpcUrl: process.env.RPC_URL ?? 'https://sepolia.base.org',
+      rpcUrl: process.env.JEJU_TESTNET_RPC_URL ?? 'https://testnet-rpc.jejunetwork.org',
       jnsRegistryAddress: (process.env.JNS_REGISTRY_ADDRESS ?? '0x0000000000000000000000000000000000000000') as Address,
       jnsResolverAddress: (process.env.JNS_RESOLVER_ADDRESS ?? '0x0000000000000000000000000000000000000000') as Address,
     },
     mainnet: {
       ipfsApiUrl: process.env.IPFS_API_URL ?? 'https://ipfs.infura.io:5001',
-      rpcUrl: process.env.RPC_URL ?? 'https://mainnet.base.org',
+      rpcUrl: process.env.JEJU_RPC_URL ?? 'https://rpc.jejunetwork.org',
       jnsRegistryAddress: (process.env.JNS_REGISTRY_ADDRESS ?? '0x0000000000000000000000000000000000000000') as Address,
       jnsResolverAddress: (process.env.JNS_RESOLVER_ADDRESS ?? '0x0000000000000000000000000000000000000000') as Address,
     },

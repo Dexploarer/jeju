@@ -91,7 +91,7 @@ All tests use the standard Anvil test account:
 
 - **Name:** Jeju Local
 - **Chain ID:** 1337
-- **RPC URL:** http://localhost:9545
+- **RPC URL:** http://localhost:6546
 - **Symbol:** ETH
 
 ## Projects Using This Infrastructure

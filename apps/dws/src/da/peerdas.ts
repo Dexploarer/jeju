@@ -4,23 +4,35 @@
  * Full EIP-7594 compatible implementation:
  * - 2D erasure coding (rows + columns)
  * - Column-based custody with subnet distribution
- * - KZG-style polynomial commitments
+ * - KZG polynomial commitments with real pairing verification
  * - Light node sampling protocol
  * - Validator custody requirements
+ * 
+ * Uses kzg-wasm for production-ready cryptographic proofs.
  * 
  * @see https://eips.ethereum.org/EIPS/eip-7594
  */
 
 import type { Address, Hex } from 'viem';
 import { keccak256, toBytes, toHex, concatHex } from 'viem';
-import type { Chunk, BlobCommitment, DAOperatorInfo } from './types';
+import type { DAOperatorInfo } from './types';
 import { 
   gfMul, 
   gfPow, 
   gfAdd, 
-  gfDiv,
-  gfInv,
 } from './crypto/reed-solomon-2d';
+import {
+  KZG,
+  initializeKZG,
+  isKZGInitialized,
+  createBlob,
+  type Cell,
+  type KZGCommitment,
+  type KZGProof,
+  BLOB_SIZE,
+  CELLS_PER_BLOB,
+  BYTES_PER_CELL,
+} from './crypto/kzg';
 
 // ============================================================================
 // PeerDAS Constants (EIP-7594 compliant)
@@ -78,8 +90,14 @@ export interface PeerDASBlob {
   columnCommitments: Hex[];
   /** Row commitments */
   rowCommitments: Hex[];
-  /** Global blob commitment */
-  commitment: Hex;
+  /** Global blob commitment (KZG) */
+  commitment: KZGCommitment;
+  /** KZG proof for the blob */
+  proof: KZGProof;
+  /** Cells and proofs from kzg-wasm */
+  cells?: Cell[];
+  /** Cell proofs from kzg-wasm */
+  cellProofs?: KZGProof[];
 }
 
 /** Column data with proof */
@@ -92,6 +110,18 @@ export interface DataColumn {
   proof: Hex;
   /** Commitment for verification */
   commitment: Hex;
+}
+
+/** Cell data with KZG proof for DAS */
+export interface DataCell {
+  /** Cell index (0-127) */
+  index: number;
+  /** Cell data (2048 bytes) */
+  data: Cell;
+  /** KZG proof for cell */
+  proof: KZGProof;
+  /** Commitment it belongs to */
+  commitment: KZGCommitment;
 }
 
 /** Custody assignment for a node */
@@ -110,6 +140,8 @@ export interface PeerDASSampleRequest {
   blobRoot: Hex;
   /** Requested column indices */
   columnIndices: ColumnIndex[];
+  /** Requested cell indices for KZG verification */
+  cellIndices?: number[];
   /** Slot number */
   slot: bigint;
 }
@@ -118,8 +150,33 @@ export interface PeerDASSampleRequest {
 export interface PeerDASSampleResponse {
   /** Columns with proofs */
   columns: DataColumn[];
+  /** Cells with KZG proofs (if requested) */
+  cells?: DataCell[];
   /** Whether all samples were available */
   available: boolean;
+}
+
+// ============================================================================
+// Initialization
+// ============================================================================
+
+let initialized = false;
+
+/**
+ * Initialize PeerDAS (loads KZG trusted setup)
+ */
+export async function initializePeerDAS(): Promise<void> {
+  if (initialized) return;
+  
+  await initializeKZG();
+  initialized = true;
+}
+
+/**
+ * Check if PeerDAS is initialized
+ */
+export function isPeerDASInitialized(): boolean {
+  return initialized && isKZGInitialized();
 }
 
 // ============================================================================
@@ -157,7 +214,7 @@ export function extendMatrix(matrix: Uint8Array[][]): Uint8Array[][] {
     const row = matrix[r];
     const extendedRow: Uint8Array[] = [...row];
     
-    // Generate parity columns for this row
+    // Generate parity columns for this row using RS encoding
     for (let c = DATA_COLUMN_COUNT; c < EXTENDED_COLUMN_COUNT; c++) {
       const parity = computeRowParity(row, c - DATA_COLUMN_COUNT);
       extendedRow.push(parity);
@@ -176,32 +233,14 @@ export function extendMatrix(matrix: Uint8Array[][]): Uint8Array[][] {
 function computeRowParity(row: Uint8Array[], parityIndex: number): Uint8Array {
   const parity = new Uint8Array(FIELD_ELEMENT_SIZE);
   
-  // Use Reed-Solomon encoding with Vandermonde matrix coefficients
+  // Reed-Solomon encoding with Vandermonde matrix coefficients
   for (let i = 0; i < row.length; i++) {
     // Coefficient = α^(i * (parityIndex + 1)) in GF(2^8)
     const coeff = gfPow((i + 1) % 255 || 1, parityIndex + 1);
     
     for (let j = 0; j < FIELD_ELEMENT_SIZE; j++) {
       const cellByte = row[i]?.[j] ?? 0;
-      // GF multiplication and addition (XOR)
-      parity[j] = gfAdd(parity[j], gfMul(cellByte, coeff));
-    }
-  }
-  
-  return parity;
-}
-
-/**
- * Compute column parity using proper GF(2^8) arithmetic
- */
-function computeColumnParity(column: Uint8Array[], parityIndex: number): Uint8Array {
-  const parity = new Uint8Array(FIELD_ELEMENT_SIZE);
-  
-  for (let i = 0; i < column.length; i++) {
-    const coeff = gfPow((i + 1) % 255 || 1, parityIndex + 1);
-    
-    for (let j = 0; j < FIELD_ELEMENT_SIZE; j++) {
-      const cellByte = column[i]?.[j] ?? 0;
+      // GF multiplication and addition
       parity[j] = gfAdd(parity[j], gfMul(cellByte, coeff));
     }
   }
@@ -248,15 +287,12 @@ export function reconstructFromColumns(
 // ============================================================================
 
 /**
- * Generate column commitment (KZG-style)
+ * Generate column commitment (Merkle-based for column inclusion)
  */
 export function computeColumnCommitment(column: Uint8Array[]): Hex {
-  // Hash all cells together with domain separation
   const cellHashes = column.map((cell, i) => 
     keccak256(concatHex([`0x${i.toString(16).padStart(4, '0')}` as Hex, toHex(cell)]))
   );
-  
-  // Merkle root of cell hashes
   return computeMerkleRoot(cellHashes);
 }
 
@@ -268,6 +304,13 @@ export function computeRowCommitment(row: Uint8Array[]): Hex {
     keccak256(concatHex([`0x${i.toString(16).padStart(4, '0')}` as Hex, toHex(cell)]))
   );
   return computeMerkleRoot(cellHashes);
+}
+
+/**
+ * Compute blob commitment from column commitments
+ */
+export function computeBlobCommitment(columnCommitments: Hex[]): Hex {
+  return computeMerkleRoot(columnCommitments);
 }
 
 /**
@@ -288,10 +331,32 @@ function computeMerkleRoot(leaves: Hex[]): Hex {
 }
 
 /**
- * Generate global blob commitment from column commitments
+ * Compute Merkle proof for leaf at index
  */
-export function computeBlobCommitment(columnCommitments: Hex[]): Hex {
-  return computeMerkleRoot(columnCommitments);
+function computeMerkleProof(leaves: Hex[], index: number): Hex[] {
+  const proof: Hex[] = [];
+  let level = [...leaves];
+  let idx = index;
+  
+  while (level.length > 1) {
+    const siblingIdx = idx % 2 === 0 ? idx + 1 : idx - 1;
+    if (siblingIdx < level.length) {
+      proof.push(level[siblingIdx]);
+    } else {
+      proof.push(level[idx]);
+    }
+    
+    const nextLevel: Hex[] = [];
+    for (let i = 0; i < level.length; i += 2) {
+      const left = level[i];
+      const right = level[i + 1] ?? left;
+      nextLevel.push(keccak256(concatHex([left, right])));
+    }
+    level = nextLevel;
+    idx = Math.floor(idx / 2);
+  }
+  
+  return proof;
 }
 
 // ============================================================================
@@ -367,36 +432,42 @@ export function generateLightSampleRequest(
   slot: bigint,
   nodeId?: Address
 ): PeerDASSampleRequest {
-  // Generate random column indices for sampling
   const seed = nodeId 
     ? keccak256(toBytes(`${blobRoot}:${slot}:${nodeId}`))
     : keccak256(toBytes(`${blobRoot}:${slot}:${Date.now()}`));
   
   const columnIndices: Set<ColumnIndex> = new Set();
+  const cellIndices: Set<number> = new Set();
   let nonce = 0;
   
   while (columnIndices.size < SAMPLES_PER_SLOT) {
     const hash = keccak256(toBytes(`${seed}:${nonce}`));
     const columnIndex = Number(BigInt(hash) % BigInt(EXTENDED_COLUMN_COUNT));
     columnIndices.add(columnIndex);
+    
+    // Also generate cell indices for KZG verification
+    const cellIndex = Number(BigInt(hash) % BigInt(CELLS_PER_BLOB));
+    cellIndices.add(cellIndex);
+    
     nonce++;
   }
   
   return {
     blobRoot,
     columnIndices: Array.from(columnIndices).sort((a, b) => a - b),
+    cellIndices: Array.from(cellIndices).sort((a, b) => a - b),
     slot,
   };
 }
 
 /**
- * Verify sample response
+ * Verify sample response with KZG proofs
  */
-export function verifySampleResponse(
+export async function verifySampleResponse(
   request: PeerDASSampleRequest,
   response: PeerDASSampleResponse,
-  blobCommitment: Hex
-): boolean {
+  blobCommitment: KZGCommitment
+): Promise<boolean> {
   // Check all requested columns are present
   const receivedIndices = new Set(response.columns.map(c => c.index));
   for (const idx of request.columnIndices) {
@@ -409,6 +480,18 @@ export function verifySampleResponse(
   for (const column of response.columns) {
     const computedCommitment = computeColumnCommitment(column.cells);
     if (computedCommitment !== column.commitment) {
+      return false;
+    }
+  }
+  
+  // Verify cell KZG proofs if present
+  if (response.cells && response.cells.length > 0) {
+    const cellIndices = response.cells.map(c => c.index);
+    const cells = response.cells.map(c => c.data);
+    const proofs = response.cells.map(c => c.proof);
+    
+    const valid = await KZG.verifyCellProofs(blobCommitment, cellIndices, cells, proofs);
+    if (!valid) {
       return false;
     }
   }
@@ -437,11 +520,18 @@ export function calculateAvailabilityConfidence(
 export class PeerDASBlobManager {
   private readonly blobs: Map<Hex, PeerDASBlob> = new Map();
   private readonly columns: Map<Hex, Map<ColumnIndex, DataColumn>> = new Map();
+  private readonly cellCache: Map<Hex, DataCell[]> = new Map();
 
   /**
    * Prepare blob for PeerDAS distribution
+   * Uses real KZG commitments and proofs
    */
-  prepare(data: Uint8Array): PeerDASBlob {
+  async prepare(data: Uint8Array): Promise<PeerDASBlob> {
+    // Ensure KZG is initialized
+    if (!initialized) {
+      await initializePeerDAS();
+    }
+    
     // Pad to max size if needed
     const paddedData = new Uint8Array(MAX_BLOB_SIZE);
     paddedData.set(data.slice(0, MAX_BLOB_SIZE));
@@ -452,19 +542,26 @@ export class PeerDASBlobManager {
     // Extend with parity
     const extendedMatrix = extendMatrix(matrix);
     
-    // Compute commitments
+    // Compute column commitments
     const columnCommitments: Hex[] = [];
     for (let c = 0; c < EXTENDED_COLUMN_COUNT; c++) {
       const column = extractColumn(extendedMatrix, c);
       columnCommitments.push(computeColumnCommitment(column));
     }
     
+    // Compute row commitments
     const rowCommitments: Hex[] = [];
     for (let r = 0; r < matrix.length; r++) {
       rowCommitments.push(computeRowCommitment(extendedMatrix[r]));
     }
     
-    const commitment = computeBlobCommitment(columnCommitments);
+    // Create KZG blob and compute real KZG commitment
+    const kzgBlob = createBlob(paddedData);
+    const commitment = KZG.computeCommitmentSync(kzgBlob);
+    const proof = KZG.computeBlobProofSync(kzgBlob, commitment);
+    
+    // Compute cells and proofs for DAS
+    const { cells, proofs } = await KZG.computeCellsAndProofs(kzgBlob);
     
     const blob: PeerDASBlob = {
       data: paddedData,
@@ -473,9 +570,22 @@ export class PeerDASBlobManager {
       columnCommitments,
       rowCommitments,
       commitment,
+      proof,
+      cells,
+      cellProofs: proofs,
     };
     
     this.blobs.set(commitment, blob);
+    
+    // Cache cells for sampling
+    const dataCells: DataCell[] = cells.map((cell, i) => ({
+      index: i,
+      data: cell,
+      proof: proofs[i],
+      commitment,
+    }));
+    this.cellCache.set(commitment, dataCells);
+    
     return blob;
   }
 
@@ -497,7 +607,7 @@ export class PeerDASBlobManager {
       const cells = extractColumn(blob.extendedMatrix, columnIndex);
       const commitment = blob.columnCommitments[columnIndex];
       
-      // Generate proof
+      // Generate Merkle proof for column inclusion
       const proof = this.generateColumnProof(blob, columnIndex);
       
       columns.push({
@@ -512,39 +622,31 @@ export class PeerDASBlobManager {
   }
 
   /**
+   * Get cells with KZG proofs for DAS verification
+   */
+  getCellsForSampling(
+    blobCommitment: Hex,
+    cellIndices: number[]
+  ): DataCell[] {
+    const cachedCells = this.cellCache.get(blobCommitment);
+    if (!cachedCells) return [];
+    
+    return cellIndices
+      .filter(i => i >= 0 && i < cachedCells.length)
+      .map(i => cachedCells[i]);
+  }
+
+  /**
    * Generate column inclusion proof (Merkle path)
-   * Proves column commitment is included in blob commitment
    */
   private generateColumnProof(blob: PeerDASBlob, columnIndex: ColumnIndex): Hex {
-    // Build Merkle proof for column commitment in the blob commitment tree
-    const proofPath: Hex[] = [];
-    let index = columnIndex;
-    let level = blob.columnCommitments;
+    const proofPath = computeMerkleProof(blob.columnCommitments, columnIndex);
     
-    while (level.length > 1) {
-      const siblingIndex = index % 2 === 0 ? index + 1 : index - 1;
-      if (siblingIndex < level.length) {
-        proofPath.push(level[siblingIndex]);
-      } else {
-        proofPath.push(level[index]);
-      }
-      
-      // Move to next level
-      const nextLevel: Hex[] = [];
-      for (let i = 0; i < level.length; i += 2) {
-        const left = level[i];
-        const right = level[i + 1] ?? left;
-        nextLevel.push(keccak256(concatHex([left, right])));
-      }
-      level = nextLevel;
-      index = Math.floor(index / 2);
-    }
-    
-    // Encode proof path as single hex (concatenated hashes)
     if (proofPath.length === 0) {
       return blob.columnCommitments[columnIndex];
     }
     
+    // Encode as concatenated proof
     return keccak256(toBytes(proofPath.join('')));
   }
 
@@ -580,7 +682,6 @@ export class PeerDASBlobManager {
     const columns = this.columns.get(blobCommitment);
     if (!columns) return false;
     
-    // Need at least DATA_COLUMN_COUNT columns
     return columns.size >= DATA_COLUMN_COUNT;
   }
 
@@ -619,8 +720,18 @@ export class PeerDASBlobManager {
       }
     }
     
+    // Include cells with KZG proofs if requested
+    let cells: DataCell[] | undefined;
+    if (request.cellIndices && request.cellIndices.length > 0) {
+      cells = this.getCellsForSampling(request.blobRoot, request.cellIndices);
+      if (cells.length !== request.cellIndices.length) {
+        allAvailable = false;
+      }
+    }
+    
     return {
       columns,
+      cells,
       available: allAvailable,
     };
   }
@@ -633,23 +744,40 @@ export class PeerDASBlobManager {
   }
 
   /**
+   * Verify blob proof using KZG
+   */
+  async verifyBlobProof(commitment: KZGCommitment): Promise<boolean> {
+    const blob = this.blobs.get(commitment);
+    if (!blob) return false;
+    
+    const kzgBlob = createBlob(blob.data);
+    return KZG.verifyBlobProof(kzgBlob, commitment, blob.proof);
+  }
+
+  /**
    * Get statistics
    */
-  getStats(): { blobCount: number; columnCount: number; reconstructable: number } {
+  getStats(): { blobCount: number; columnCount: number; reconstructable: number; cellsCached: number } {
     let columnCount = 0;
     let reconstructable = 0;
+    let cellsCached = 0;
     
-    for (const [commitment, columns] of this.columns) {
+    for (const [, columns] of this.columns) {
       columnCount += columns.size;
       if (columns.size >= DATA_COLUMN_COUNT) {
         reconstructable++;
       }
     }
     
+    for (const [, cells] of this.cellCache) {
+      cellsCached += cells.length;
+    }
+    
     return {
       blobCount: this.blobs.size,
       columnCount,
       reconstructable,
+      cellsCached,
     };
   }
 }
@@ -659,6 +787,10 @@ export class PeerDASBlobManager {
 // ============================================================================
 
 export const PeerDAS = {
+  // Initialization
+  initializePeerDAS,
+  isPeerDASInitialized,
+  
   // Constants
   DATA_COLUMN_COUNT,
   EXTENDED_COLUMN_COUNT,
@@ -701,4 +833,3 @@ export const PeerDAS = {
 export function createPeerDASBlobManager(): PeerDASBlobManager {
   return new PeerDASBlobManager();
 }
-

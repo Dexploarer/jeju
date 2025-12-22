@@ -15,7 +15,7 @@ export { setup, teardown, isReady, getStatus };
 
 // Default ports
 const DWS_PORT = 4030;
-const RPC_PORT = 9545;
+const RPC_PORT = 6546;
 
 interface TestEnv {
   dwsUrl: string;

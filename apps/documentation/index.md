@@ -55,7 +55,7 @@ bun install
 bun run dev
 ```
 
-L2 runs at `http://localhost:9545`. Gateway UI at `http://localhost:4001`.
+L2 runs at `http://localhost:6546`. Gateway UI at `http://localhost:4001`.
 
 ## Who This Documentation Is For
 
@@ -132,7 +132,7 @@ jeju/
 |---------|----------|-----|
 | Mainnet | `420691` | `https://rpc.jejunetwork.org` |
 | Testnet | `420690` | `https://testnet-rpc.jejunetwork.org` |
-| Localnet | `1337` | `http://127.0.0.1:9545` |
+| Localnet | `1337` | `http://127.0.0.1:6546` |
 
 ## Applications
 
@@ -165,7 +165,7 @@ Jeju - Ethereum L2 (OP-Stack + EigenDA)
 Networks:
 - Mainnet: 420691, https://rpc.jejunetwork.org
 - Testnet: 420690, https://testnet-rpc.jejunetwork.org
-- Localnet: 1337, http://127.0.0.1:9545
+- Localnet: 1337, http://127.0.0.1:6546
 
 Quick Start:
 git clone https://github.com/elizaos/jeju && cd jeju

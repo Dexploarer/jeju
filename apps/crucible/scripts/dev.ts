@@ -15,7 +15,7 @@
 import { existsSync } from 'fs';
 import { join } from 'path';
 
-const LOCALNET_PORT = 9545;
+const LOCALNET_PORT = 6546;
 const DWS_PORT = 4030;
 const INFERENCE_PORT = 4031;
 const CRUCIBLE_PORT = parseInt(process.env.PORT ?? '3000');

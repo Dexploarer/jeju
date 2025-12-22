@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { expect } from '@/lib/validation';
 
 const DWS_API_URL = process.env.NEXT_PUBLIC_DWS_URL || 'http://localhost:3456';
-const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || 'http://localhost:9545';
+const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || 'http://localhost:6546';
 
 export async function GET() {
   const services: Record<string, boolean> = {

@@ -18,7 +18,7 @@ bun run dev
 
 ### Chain Infrastructure
 
-L1 RPC (Geth) runs on port 8545 for Ethereum execution. L1 Beacon runs on port 4000 for Ethereum consensus. L2 RPC (op-reth) runs on port 9545 for Jeju execution. L2 WebSocket runs on port 9546 for Jeju subscriptions. Additional services include op-node (L2 consensus), op-batcher (transaction batching), and op-proposer (state root posting).
+L1 RPC (Geth) runs on port 8545 for Ethereum execution. L1 Beacon runs on port 4000 for Ethereum consensus. L2 RPC (op-reth) runs on port 6546 for Jeju execution. L2 WebSocket runs on port 9546 for Jeju subscriptions. Additional services include op-node (L2 consensus), op-batcher (transaction batching), and op-proposer (state root posting).
 
 ### Applications
 
@@ -53,7 +53,7 @@ Create `.env.local` for local overrides:
 
 ```bash
 GATEWAY_PORT=5001
-L2_RPC_PORT=8545
+L2_RPC_PORT=6546
 ENABLE_INDEXER=true
 ENABLE_MONITORING=true
 ```
@@ -65,8 +65,8 @@ Localnet uses `packages/config/chain/localnet.json`:
 ```json
 {
   "chainId": 1337,
-  "rpcUrl": "http://127.0.0.1:9545",
-  "wsUrl": "ws://127.0.0.1:9546",
+  "rpcUrl": "http://127.0.0.1:6546",
+  "wsUrl": "ws://127.0.0.1:6547",
   "l1": {
     "chainId": 900,
     "rpcUrl": "http://127.0.0.1:6546"
@@ -84,12 +84,12 @@ The Deployer at `0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266`, User 1 at `0x70997
 cd packages/contracts
 
 forge create src/MyContract.sol:MyContract \
-  --rpc-url http://127.0.0.1:9545 \
+  --rpc-url http://127.0.0.1:6546 \
   --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 
 # Or via script
 forge script script/DeployMyContract.s.sol \
-  --rpc-url http://127.0.0.1:9545 \
+  --rpc-url http://127.0.0.1:6546 \
   --broadcast
 ```
 
@@ -97,7 +97,7 @@ forge script script/DeployMyContract.s.sol \
 
 **Docker Not Running**: On macOS run `open -a Docker`. On Linux run `sudo systemctl start docker`.
 
-**Port Already in Use**: Run `lsof -i :9545` to find the process, then `kill -9 <PID>` to stop it, or run `bun run cleanup`.
+**Port Already in Use**: Run `lsof -i :6546` to find the process, then `kill -9 <PID>` to stop it, or run `bun run cleanup`.
 
 **Enclave Fails to Start**: Run `kurtosis clean -a` to clean all enclaves, then retry with `bun run dev`.
 

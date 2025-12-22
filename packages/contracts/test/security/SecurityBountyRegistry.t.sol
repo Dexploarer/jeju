@@ -4,38 +4,48 @@ pragma solidity ^0.8.33;
 import {Test} from "forge-std/Test.sol";
 import {SecurityBountyRegistry} from "../../src/security/SecurityBountyRegistry.sol";
 
-// Minimal mock for testing
+// Minimal mock for testing - must match IdentityRegistry interface
 contract MockIdentityRegistry {
-    mapping(uint256 => address) public owners;
-    mapping(uint256 => bool) public exists;
+    enum StakeTier { NONE, SMALL, MEDIUM, HIGH }
+    
+    struct AgentRegistration {
+        uint256 agentId;
+        address owner;
+        StakeTier tier;
+        address stakedToken;
+        uint256 stakedAmount;
+        uint256 registeredAt;
+        uint256 lastActivityAt;
+        bool isBanned;
+        bool isSlashed;
+    }
+    
+    mapping(uint256 => AgentRegistration) public agents;
+    uint256 public _totalAgents;
     
     function setAgent(uint256 agentId, address _owner) external {
-        owners[agentId] = _owner;
-        exists[agentId] = true;
+        agents[agentId] = AgentRegistration({
+            agentId: agentId,
+            owner: _owner,
+            tier: StakeTier.MEDIUM,
+            stakedToken: address(0),
+            stakedAmount: 0.01 ether,
+            registeredAt: block.timestamp,
+            lastActivityAt: block.timestamp,
+            isBanned: false,
+            isSlashed: false
+        });
+        if (agentId > _totalAgents) {
+            _totalAgents = agentId;
+        }
     }
     
-    function ownerOf(uint256 agentId) external view returns (address) {
-        return owners[agentId];
+    function totalAgents() external view returns (uint256) {
+        return _totalAgents;
     }
     
-    function agentExists(uint256 agentId) external view returns (bool) {
-        return exists[agentId];
-    }
-    
-    function getAgentProfile(uint256) external pure returns (
-        string memory name,
-        string memory description,
-        string memory avatarCid,
-        bool nsfw
-    ) {
-        return ("Agent", "Test agent", "", false);
-    }
-    
-    function getAgentByOwner(address _owner) external view returns (uint256) {
-        if (owners[1] == _owner) return 1;
-        if (owners[2] == _owner) return 2;
-        if (owners[3] == _owner) return 3;
-        return 0;
+    function getAgent(uint256 agentId) external view returns (AgentRegistration memory) {
+        return agents[agentId];
     }
 }
 

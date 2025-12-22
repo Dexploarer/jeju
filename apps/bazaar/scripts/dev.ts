@@ -7,7 +7,7 @@
 import { existsSync } from 'fs';
 import { join } from 'path';
 
-const LOCALNET_PORT = 9545;
+const LOCALNET_PORT = 6546;
 const DWS_PORT = 4030;
 const BAZAAR_PORT = parseInt(process.env.PORT ?? '4006');
 

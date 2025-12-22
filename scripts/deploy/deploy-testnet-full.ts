@@ -34,7 +34,7 @@ const ROOT_DIR = join(import.meta.dir, '../..');
 const PHASES: DeploymentPhase[] = [
   {
     name: 'contracts',
-    description: 'Deploy infrastructure contracts to Base Sepolia',
+    description: 'Deploy infrastructure contracts to Jeju Testnet',
     script: 'scripts/deploy/testnet-dws-infrastructure.ts',
   },
   {

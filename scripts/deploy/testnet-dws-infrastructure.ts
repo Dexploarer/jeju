@@ -26,7 +26,7 @@ import {
   toBytes,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { baseSepolia } from 'viem/chains';
+import { jejuTestnet } from '../shared/viem-chains';
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { execSync } from 'child_process';
@@ -80,7 +80,7 @@ class DWSInfrastructureDeployer {
   private result: Partial<DeploymentResult>;
 
   constructor() {
-    this.rpcUrl = process.env.TESTNET_RPC_URL || 'https://sepolia.base.org';
+    this.rpcUrl = process.env.JEJU_TESTNET_RPC_URL || 'https://testnet-rpc.jejunetwork.org';
     this.privateKey = process.env.DEPLOYER_PRIVATE_KEY as Hex;
     
     if (!this.privateKey) {
@@ -89,18 +89,18 @@ class DWSInfrastructureDeployer {
 
     this.account = privateKeyToAccount(this.privateKey);
     this.publicClient = createPublicClient({
-      chain: baseSepolia,
+      chain: jejuTestnet,
       transport: http(this.rpcUrl),
     });
     this.walletClient = createWalletClient({
       account: this.account,
-      chain: baseSepolia,
+      chain: jejuTestnet,
       transport: http(this.rpcUrl),
     });
 
     this.result = {
       network: 'testnet',
-      chainId: baseSepolia.id,
+      chainId: jejuTestnet.id,
       deployer: this.account.address,
       timestamp: new Date().toISOString(),
       contracts: {} as DeploymentResult['contracts'],
@@ -352,7 +352,7 @@ class DWSInfrastructureDeployer {
 # Network
 NETWORK=testnet
 TESTNET_RPC_URL=${this.rpcUrl}
-CHAIN_ID=${baseSepolia.id}
+CHAIN_ID=${jejuTestnet.id}
 
 # Core Registries
 IDENTITY_REGISTRY_ADDRESS=${addresses.identityRegistry}

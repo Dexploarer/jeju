@@ -70,7 +70,7 @@ test.describe('Gateway Smoke Tests', () => {
   });
 
   test('should verify RPC connectivity', async ({ page }) => {
-    const response = await page.request.post('http://127.0.0.1:9545', {
+    const response = await page.request.post('http://127.0.0.1:6546', {
       data: {
         jsonrpc: '2.0',
         method: 'eth_blockNumber',
@@ -83,7 +83,7 @@ test.describe('Gateway Smoke Tests', () => {
     const result = await response.json();
     expect(result.result).toBeDefined();
     
-    console.log('✅ RPC accessible at port 9545');
+    console.log('✅ RPC accessible at port 6546');
   });
 
   test('should verify A2A server', async ({ page }) => {

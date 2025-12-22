@@ -24,6 +24,7 @@ import type {
 } from './types';
 import { SampleVerifier } from './sampling';
 import { verifyProof } from './commitment';
+import { sign, type BLSSecretKey } from './crypto/bls';
 
 // ============================================================================
 // Operator Configuration

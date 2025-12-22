@@ -188,7 +188,7 @@ export async function verifyTransactionOnChain(
   txHash: string
 ): Promise<void> {
   // Make RPC call to verify transaction
-  const response = await page.request.post('http://127.0.0.1:9545', {
+  const response = await page.request.post('http://127.0.0.1:6546', {
     data: {
       jsonrpc: '2.0',
       method: 'eth_getTransactionReceipt',
@@ -210,7 +210,7 @@ export async function verifyTransactionOnChain(
  * Get current block number
  */
 export async function getCurrentBlockNumber(page: Page): Promise<number> {
-  const response = await page.request.post('http://127.0.0.1:9545', {
+  const response = await page.request.post('http://127.0.0.1:6546', {
     data: {
       jsonrpc: '2.0',
       method: 'eth_blockNumber',

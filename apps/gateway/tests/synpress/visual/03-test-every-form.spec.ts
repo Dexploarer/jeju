@@ -140,7 +140,7 @@ test.describe('EVERY FORM TEST - Complete Form Validation', () => {
     await page.getByText('elizaOS').nth(1).click();
     await page.waitForTimeout(500);
 
-    await page.getByPlaceholder(/https:\/\/your-node/i).fill('https://node.example.com:8545');
+    await page.getByPlaceholder(/https:\/\/your-node/i).fill('https://node.example.com:6546');
     await page.waitForTimeout(300);
 
     // Select region

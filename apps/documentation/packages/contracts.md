@@ -131,7 +131,7 @@ const balance = await client.readContract({
 ```bash
 cd packages/contracts
 forge script script/DeployLocalnet.s.sol \
-  --rpc-url http://localhost:9545 \
+  --rpc-url http://localhost:6546 \
   --broadcast
 ```
 

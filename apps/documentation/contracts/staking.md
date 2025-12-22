@@ -76,7 +76,7 @@ The minimum stake is 1,000 JEJU or equivalent. Unstaking cooldown is 7 days. The
 cd packages/contracts
 
 forge script script/DeployNodeStaking.s.sol \
-  --rpc-url http://127.0.0.1:9545 \
+  --rpc-url http://127.0.0.1:6546 \
   --broadcast
 ```
 

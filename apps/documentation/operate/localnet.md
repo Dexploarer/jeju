@@ -16,9 +16,9 @@ Wait ~2 minutes for all services to start.
 
 | Service | Port | Auto-start |
 |---------|------|------------|
-| L2 RPC (op-reth) | 9545 | ✅ |
-| L2 WebSocket | 9546 | ✅ |
-| L1 RPC (Geth) | 8545 | ✅ |
+| L2 RPC (op-reth) | 6546 | ✅ |
+| L2 WebSocket | 6547 | ✅ |
+| L1 RPC (Geth) | 6545 | ✅ |
 | L1 Beacon | 4000 | ✅ |
 | Gateway | 4001 | ✅ |
 | Bazaar | 4006 | ✅ |
@@ -77,7 +77,7 @@ See [Test Accounts](/reference/test-accounts) for full list.
 cd packages/contracts
 
 forge create src/MyContract.sol:MyContract \
-  --rpc-url http://127.0.0.1:9545 \
+  --rpc-url http://127.0.0.1:6546 \
   --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 ```
 
@@ -85,7 +85,7 @@ forge create src/MyContract.sol:MyContract \
 
 ```
 Network Name: Jeju Localnet
-RPC URL: http://127.0.0.1:9545
+RPC URL: http://127.0.0.1:6546
 Chain ID: 1337
 Currency: ETH
 ```
@@ -100,7 +100,7 @@ sudo systemctl start docker  # Linux
 
 **Port in use?**
 ```bash
-lsof -i :9545
+lsof -i :6546
 kill -9 <PID>
 # Or
 bun run cleanup

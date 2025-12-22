@@ -74,7 +74,7 @@ The CLI reads from `.env` in the current directory:
 
 ```bash
 PRIVATE_KEY=0x...
-RPC_URL=http://127.0.0.1:9545
+RPC_URL=http://127.0.0.1:6546
 NETWORK=localnet  # localnet | testnet | mainnet
 ```
 

@@ -19,7 +19,7 @@ const app = new Hono();
 app.use('/*', cors({ origin: '*' }));
 
 const privateKey = process.env.PRIVATE_KEY;
-const rpcUrl = process.env.RPC_URL || 'http://localhost:9545';
+const rpcUrl = process.env.RPC_URL || 'http://localhost:6546';
 const ipfsApiUrl = process.env.IPFS_API_URL || 'http://localhost:5001';
 
 let account: PrivateKeyAccount | null = null;

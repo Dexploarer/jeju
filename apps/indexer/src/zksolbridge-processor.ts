@@ -38,7 +38,7 @@ const TRANSFER_INITIATED_TOPIC = '0x' + bridgeAbi.events.TransferInitiated.topic
 const TRANSFER_COMPLETED_TOPIC = '0x' + bridgeAbi.events.TransferCompleted.topic.slice(2);
 const SLOT_VERIFIED_TOPIC = '0x' + bridgeAbi.events.SlotVerified.topic.slice(2);
 
-const chainId = parseInt(process.env.CHAIN_ID ?? '8453', 10);
+const chainId = parseInt(process.env.CHAIN_ID ?? '420691', 10); // Default to Jeju Mainnet
 const bridgeAddress = BRIDGE_CONTRACTS[chainId];
 const lightClientAddress = LIGHT_CLIENT_CONTRACTS[chainId];
 

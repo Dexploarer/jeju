@@ -12,7 +12,7 @@ Build contracts with `forge build` from the `packages/contracts` directory.
 
 Run tests with `forge test` for all tests, `forge test --match-contract JejuToken` for a specific contract, or `forge test --gas-report` for gas analysis.
 
-Deploy to localnet with `forge script script/DeployLocalnet.s.sol --rpc-url http://127.0.0.1:9545 --broadcast`. Deploy specific systems like OIF with `forge script script/DeployOIF.s.sol --rpc-url http://127.0.0.1:9545 --broadcast`.
+Deploy to localnet with `forge script script/DeployLocalnet.s.sol --rpc-url http://127.0.0.1:6546 --broadcast`. Deploy specific systems like OIF with `forge script script/DeployOIF.s.sol --rpc-url http://127.0.0.1:6546 --broadcast`.
 
 For testnet, add `--verify` and use `DEPLOYER_PRIVATE_KEY` from `.env.testnet`.
 

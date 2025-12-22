@@ -117,6 +117,6 @@ const address = await publicClient.getEnsAddress({
 cd packages/contracts
 
 forge script script/DeployJNS.s.sol \
-  --rpc-url http://127.0.0.1:9545 \
+  --rpc-url http://127.0.0.1:6546 \
   --broadcast
 ```

@@ -83,7 +83,7 @@ contract GaslessNFT is ERC721, Ownable {
 ```bash
 # In contracts directory
 forge script deploy/Deploy.s.sol:DeployGaslessNFT \
-  --rpc-url http://127.0.0.1:9545 \
+  --rpc-url http://127.0.0.1:6546 \
   --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
   --broadcast
 ```
@@ -130,7 +130,7 @@ const account = privateKeyToAccount(process.env.PRIVATE_KEY as `0x${string}`);
 const client = createWalletClient({
   account,
   chain: jeju,
-  transport: http('http://127.0.0.1:9545'),
+  transport: http('http://127.0.0.1:6546'),
 });
 
 async function main() {
@@ -259,7 +259,7 @@ export const jejuLocalnet = defineChain({
   network: 'jeju-localnet',
   nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
   rpcUrls: {
-    default: { http: ['http://127.0.0.1:9545'] },
+    default: { http: ['http://127.0.0.1:6546'] },
   },
 });
 

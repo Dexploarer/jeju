@@ -191,18 +191,18 @@ describe('OAuth3 JNS Integration', () => {
 
   beforeEach(() => {
     resetOAuth3JNSService();
-    jns = createOAuth3JNSService({ rpcUrl: 'http://localhost:9545', chainId: 420691 });
+    jns = createOAuth3JNSService({ rpcUrl: 'http://localhost:6546', chainId: 420691 });
   });
 
   describe('singleton behavior', () => {
     it('should return same instance on repeated calls', () => {
-      const jns2 = createOAuth3JNSService({ rpcUrl: 'http://localhost:9545' });
+      const jns2 = createOAuth3JNSService({ rpcUrl: 'http://localhost:6546' });
       expect(jns).toBe(jns2);
     });
 
     it('should create new instance after reset', () => {
       resetOAuth3JNSService();
-      const jns2 = createOAuth3JNSService({ rpcUrl: 'http://localhost:9545' });
+      const jns2 = createOAuth3JNSService({ rpcUrl: 'http://localhost:6546' });
       expect(jns).not.toBe(jns2);
     });
   });
@@ -441,7 +441,7 @@ describe('OAuth3 Compute Integration', () => {
 
   beforeEach(() => {
     resetOAuth3ComputeService();
-    compute = createOAuth3ComputeService({ rpcUrl: 'http://localhost:9545', chainId: 420691 });
+    compute = createOAuth3ComputeService({ rpcUrl: 'http://localhost:6546', chainId: 420691 });
   });
 
   describe('singleton behavior', () => {
@@ -538,7 +538,7 @@ describe('OAuth3 Decentralized Discovery', () => {
     resetOAuth3StorageService();
     resetOAuth3ComputeService();
     discovery = createDecentralizedDiscovery({
-      rpcUrl: 'http://localhost:9545',
+      rpcUrl: 'http://localhost:6546',
       chainId: 420691,
       ipfsApiEndpoint: 'http://localhost:5001/api/v0',
     });
@@ -833,7 +833,7 @@ describe('Concurrent Operations', () => {
   });
 
   it('should handle parallel JNS lookups', async () => {
-    const jns = createOAuth3JNSService({ rpcUrl: 'http://localhost:9545', chainId: 420691 });
+    const jns = createOAuth3JNSService({ rpcUrl: 'http://localhost:6546', chainId: 420691 });
     
     const lookups = Promise.all([
       jns.isAvailable('app1.jeju').catch(() => null),
@@ -977,7 +977,7 @@ describe('Compute Node Resources', () => {
 
   beforeEach(() => {
     resetOAuth3ComputeService();
-    compute = createOAuth3ComputeService({ rpcUrl: 'http://localhost:9545', chainId: 420691 });
+    compute = createOAuth3ComputeService({ rpcUrl: 'http://localhost:6546', chainId: 420691 });
   });
 
   describe('getNodeResources', () => {

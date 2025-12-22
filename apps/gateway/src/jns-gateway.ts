@@ -527,7 +527,7 @@ export async function startJNSGateway(): Promise<JNSGateway> {
 
   const config: JNSGatewayConfig = {
     port: parseInt(process.env.JNS_GATEWAY_PORT ?? '4005', 10),
-    rpcUrl: process.env.JEJU_RPC_URL ?? process.env.RPC_URL ?? 'http://localhost:9545',
+    rpcUrl: process.env.JEJU_RPC_URL ?? process.env.RPC_URL ?? 'http://localhost:6546',
     jnsRegistryAddress: (jnsRegistryAddress ?? '0x0000000000000000000000000000000000000000') as Address,
     ipfsGatewayUrl,
     defaultResolver: process.env.JNS_RESOLVER_ADDRESS as Address | undefined,

@@ -250,7 +250,7 @@ Located in: `test-results/screenshots/`
 ## ⚠️ Dependencies Required
 
 ### Must Be Running:
-1. **Localnet RPC** on port 9545
+1. **Localnet RPC** on port 6546
 2. **Gateway UI** on port 4001
 3. **A2A Server** on port 4003
 

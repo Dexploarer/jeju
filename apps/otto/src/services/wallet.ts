@@ -20,6 +20,10 @@ import {
 import { getRequiredEnv } from '../utils/validation';
 
 function getOAuth3Api(): string {
+  // Allow test mode
+  if (process.env.NODE_ENV === 'test') {
+    return process.env.OAUTH3_API_URL || 'http://localhost:4025';
+  }
   return getRequiredEnv('OAUTH3_API_URL', 'http://localhost:4025');
 }
 

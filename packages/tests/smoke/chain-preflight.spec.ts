@@ -20,7 +20,7 @@ import {
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 
-const RPC_URL = process.env.L2_RPC_URL || process.env.JEJU_RPC_URL || 'http://localhost:9545';
+const RPC_URL = process.env.L2_RPC_URL || process.env.JEJU_RPC_URL || 'http://localhost:6546';
 const CHAIN_ID = parseInt(process.env.CHAIN_ID || '1337');
 
 // Anvil test account #0

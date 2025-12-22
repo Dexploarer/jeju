@@ -14,7 +14,7 @@
  * - Docker running
  * - Kurtosis installed
  * - Sufficient disk space (~10GB)
- * - Ports 8545, 9545, 4350 available
+ * - Ports 6545, 6546, 4350 available
  * 
  * @example Running the test
  * ```bash

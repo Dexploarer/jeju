@@ -64,11 +64,11 @@ See [Register a Token Guide](/guides/register-token) for the full process.
 cd packages/contracts
 
 forge script script/DeployTokens.s.sol \
-  --rpc-url http://127.0.0.1:9545 \
+  --rpc-url http://127.0.0.1:6546 \
   --broadcast
 
 forge script script/DeployERC20Factory.s.sol \
-  --rpc-url http://127.0.0.1:9545 \
+  --rpc-url http://127.0.0.1:6546 \
   --broadcast
 ```
 

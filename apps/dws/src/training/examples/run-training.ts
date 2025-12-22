@@ -46,7 +46,7 @@ const config = {
   wandbProject: process.env.WANDB_PROJECT,
   usePsyche: process.env.USE_PSYCHE === 'true',
   solanaRpcUrl: process.env.SOLANA_RPC_URL ?? 'https://api.devnet.solana.com',
-  evmRpcUrl: process.env.EVM_RPC_URL ?? 'http://localhost:8545',
+  evmRpcUrl: process.env.EVM_RPC_URL ?? 'http://localhost:6546',
   savePath: process.env.SAVE_PATH ?? './training-checkpoints',
 };
 

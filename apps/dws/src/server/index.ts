@@ -40,6 +40,10 @@ import { createModerationRouter } from './routes/moderation';
 import { createEmailRouter } from '../email/routes';
 import { createFundingRouter } from './routes/funding';
 import { createPkgRegistryProxyRouter } from './routes/pkg-registry-proxy';
+import { createFundingVerifierRouter } from './routes/funding-verifier';
+import { createFeeCollectorRouter, startFeeCollector } from './routes/fee-collector';
+import { createLeaderboardFundingRouter } from './routes/leaderboard-funding';
+import { createDependencyScannerRouter } from './routes/dependency-scanner';
 import { createBackendManager } from '../storage/backends';
 import { initializeMarketplace } from '../api-marketplace';
 import { initializeContainerSystem } from '../containers';
@@ -53,6 +57,8 @@ import {
 } from '../decentralized';
 import { createAgentRouter, initRegistry, initExecutor } from '../agents';
 import { WorkerdExecutor } from '../workers/workerd/executor';
+import { createK3sRouter, createHelmProviderRouter, createTerraformProviderRouter, setDeploymentContext } from '../infrastructure';
+import trainingRoutes from './routes/training';
 
 // Server port - defined early for use in config
 const PORT = parseInt(process.env.DWS_PORT || process.env.PORT || '4030', 10);
@@ -334,6 +340,25 @@ app.route('/email', createEmailRouter());
 // Funding and package registry proxy
 app.route('/funding', createFundingRouter());
 app.route('/registry', createPkgRegistryProxyRouter());
+app.route('/funding/verify', createFundingVerifierRouter());
+app.route('/fees', createFeeCollectorRouter());
+app.route('/funding/leaderboard', createLeaderboardFundingRouter());
+app.route('/funding/scan', createDependencyScannerRouter());
+
+// Start fee collector in background
+startFeeCollector();
+
+// Infrastructure - K3s/K3d, Helm, Terraform providers
+app.route('/k3s', createK3sRouter());
+app.route('/', createHelmProviderRouter());
+app.route('/', createTerraformProviderRouter());
+
+// Initialize deployment context for Helm/Terraform
+setDeploymentContext({
+  localDockerEnabled: true,
+  nodeEndpoints: process.env.DWS_NODE_ENDPOINTS?.split(',') || [],
+  k3sCluster: process.env.DWS_K3S_CLUSTER,
+});
 
 // Data Availability Layer
 const daConfig = {
@@ -348,6 +373,9 @@ app.route('/da', createDARouter(daConfig));
 
 // Agent system - uses workerd for execution
 app.route('/agents', createAgentRouter());
+
+// Training system - Atropos/Psyche distributed training
+app.route('/training', trainingRoutes);
 
 // Initialize services
 initializeMarketplace();

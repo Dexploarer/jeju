@@ -106,6 +106,7 @@ const IDENTITY_REGISTRY_ABI = [
   },
 ] as const;
 
+// Agent-based BAN_MANAGER_ABI (different from address-based ABI in @jejunetwork/types)
 const BAN_MANAGER_ABI = [
   {
     name: 'isNetworkBanned',

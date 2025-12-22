@@ -62,7 +62,7 @@ Trustless cross-chain without traditional bridges. Users deposit on the source c
 
 **Storage** on port 4010 handles IPFS, Arweave, and pinning.
 
-All services connect to the **Jeju L2** on port 9545 through the Smart Contracts Layer.
+All services connect to the **Jeju L2** on port 6546 through the Smart Contracts Layer.
 
 ## Data Flow
 

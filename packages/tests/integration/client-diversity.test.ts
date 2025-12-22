@@ -28,7 +28,7 @@ const L1_CLIENTS: ClientEndpoint[] = [
 ];
 
 const L2_CLIENTS: ClientEndpoint[] = [
-  { name: 'Geth L2 Seq', http: process.env.GETH_L2_HTTP ?? 'http://localhost:9545', clientType: 'geth', layer: 'l2' },
+  { name: 'Geth L2 Seq', http: process.env.GETH_L2_HTTP ?? 'http://localhost:6546', clientType: 'geth', layer: 'l2' },
   { name: 'Reth L2 Seq', http: process.env.RETH_L2_HTTP ?? 'http://localhost:9645', clientType: 'reth', layer: 'l2' },
   { name: 'Nethermind L2 Seq', http: process.env.NETHERMIND_L2_HTTP ?? 'http://localhost:9745', clientType: 'nethermind', layer: 'l2' },
 ];

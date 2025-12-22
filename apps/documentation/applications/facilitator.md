@@ -153,7 +153,7 @@ Install with `cd apps/facilitator && bun install`.
 ```bash
 FACILITATOR_PORT=3402           # HTTP port
 X402_FACILITATOR_ADDRESS=0x...  # Contract address
-JEJU_RPC_URL=http://127.0.0.1:9545
+JEJU_RPC_URL=http://127.0.0.1:6546
 FACILITATOR_PRIVATE_KEY=0x...   # Hot wallet for gas
 PROTOCOL_FEE_BPS=50             # 0.5% fee (50 basis points)
 MAX_PAYMENT_AGE=300             # 5 minute validity window

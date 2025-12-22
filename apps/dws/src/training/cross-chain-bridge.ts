@@ -7,15 +7,13 @@
  * - Reward distribution
  * - Checkpoint coordination
  * - Client registration
+ * - Real Merkle proofs for reward verification
  */
 
 import {
   Connection,
   PublicKey,
   Keypair,
-  Transaction,
-  TransactionInstruction,
-  sendAndConfirmTransaction,
 } from '@solana/web3.js';
 import {
   createPublicClient,
@@ -29,14 +27,16 @@ import {
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { foundry } from 'viem/chains';
-import type { PsycheClient, CoordinatorState, WitnessProof } from './psyche-client';
+import type { PsycheClient, CoordinatorState } from './psyche-client';
 
 // ============================================================================
-// Constants
+// ABI Definitions
 // ============================================================================
 
 const BRIDGE_CONTRACT_ABI = [
   {
+    type: 'function',
+    name: 'reportProgress',
     inputs: [
       { name: 'runId', type: 'bytes32' },
       { name: 'epoch', type: 'uint32' },
@@ -45,24 +45,24 @@ const BRIDGE_CONTRACT_ABI = [
       { name: 'modelHash', type: 'bytes32' },
       { name: 'solanaSignature', type: 'bytes' },
     ],
-    name: 'reportProgress',
     outputs: [],
     stateMutability: 'nonpayable',
-    type: 'function',
   },
   {
+    type: 'function',
+    name: 'submitCheckpoint',
     inputs: [
       { name: 'runId', type: 'bytes32' },
       { name: 'checkpointCid', type: 'string' },
       { name: 'epoch', type: 'uint32' },
       { name: 'merkleRoot', type: 'bytes32' },
     ],
-    name: 'submitCheckpoint',
     outputs: [],
     stateMutability: 'nonpayable',
-    type: 'function',
   },
   {
+    type: 'function',
+    name: 'registerClient',
     inputs: [
       { name: 'clientAddress', type: 'address' },
       { name: 'solanaKey', type: 'bytes32' },
@@ -70,29 +70,32 @@ const BRIDGE_CONTRACT_ABI = [
       { name: 'gpuCount', type: 'uint8' },
       { name: 'memoryGb', type: 'uint16' },
     ],
-    name: 'registerClient',
     outputs: [{ name: 'clientId', type: 'uint32' }],
     stateMutability: 'nonpayable',
-    type: 'function',
   },
   {
+    type: 'function',
+    name: 'distributeRewards',
     inputs: [
       { name: 'runId', type: 'bytes32' },
       { name: 'epoch', type: 'uint32' },
-      { name: 'rewards', type: 'tuple[]', components: [
-        { name: 'client', type: 'address' },
-        { name: 'amount', type: 'uint256' },
-      ]},
+      { 
+        name: 'rewards', 
+        type: 'tuple[]',
+        components: [
+          { name: 'client', type: 'address' },
+          { name: 'amount', type: 'uint256' },
+        ],
+      },
       { name: 'merkleProof', type: 'bytes32[]' },
     ],
-    name: 'distributeRewards',
     outputs: [],
     stateMutability: 'nonpayable',
-    type: 'function',
   },
   {
-    inputs: [{ name: 'runId', type: 'bytes32' }],
+    type: 'function',
     name: 'getRunState',
+    inputs: [{ name: 'runId', type: 'bytes32' }],
     outputs: [
       { name: 'epoch', type: 'uint32' },
       { name: 'step', type: 'uint64' },
@@ -101,11 +104,11 @@ const BRIDGE_CONTRACT_ABI = [
       { name: 'totalRewardsDistributed', type: 'uint256' },
     ],
     stateMutability: 'view',
-    type: 'function',
   },
   {
-    inputs: [{ name: 'clientId', type: 'uint32' }],
+    type: 'function',
     name: 'getClientInfo',
+    inputs: [{ name: 'clientId', type: 'uint32' }],
     outputs: [
       { name: 'evmAddress', type: 'address' },
       { name: 'solanaKey', type: 'bytes32' },
@@ -116,7 +119,67 @@ const BRIDGE_CONTRACT_ABI = [
       { name: 'rewardsClaimed', type: 'uint256' },
     ],
     stateMutability: 'view',
+  },
+  {
     type: 'function',
+    name: 'setRewardMerkleRoot',
+    inputs: [
+      { name: 'runId', type: 'bytes32' },
+      { name: 'epoch', type: 'uint32' },
+      { name: 'merkleRoot', type: 'bytes32' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'claimReward',
+    inputs: [
+      { name: 'runId', type: 'bytes32' },
+      { name: 'epoch', type: 'uint32' },
+      { name: 'amount', type: 'uint256' },
+      { name: 'merkleProof', type: 'bytes32[]' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'event',
+    name: 'ProgressReported',
+    inputs: [
+      { name: 'runId', type: 'bytes32', indexed: true },
+      { name: 'epoch', type: 'uint32', indexed: false },
+      { name: 'step', type: 'uint64', indexed: false },
+      { name: 'clientCount', type: 'uint32', indexed: false },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'CheckpointSubmitted',
+    inputs: [
+      { name: 'runId', type: 'bytes32', indexed: true },
+      { name: 'epoch', type: 'uint32', indexed: false },
+      { name: 'cid', type: 'string', indexed: false },
+      { name: 'merkleRoot', type: 'bytes32', indexed: false },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'ClientRegistered',
+    inputs: [
+      { name: 'clientId', type: 'uint32', indexed: true },
+      { name: 'evmAddress', type: 'address', indexed: true },
+      { name: 'solanaKey', type: 'bytes32', indexed: false },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'RewardsDistributed',
+    inputs: [
+      { name: 'runId', type: 'bytes32', indexed: true },
+      { name: 'epoch', type: 'uint32', indexed: false },
+      { name: 'totalAmount', type: 'uint256', indexed: false },
+    ],
   },
 ] as const;
 
@@ -165,6 +228,96 @@ export interface CheckpointData {
   epoch: number;
   merkleRoot: Hex;
   modelHash: Hex;
+}
+
+// ============================================================================
+// Merkle Tree Implementation
+// ============================================================================
+
+class MerkleTree {
+  private leaves: Hex[];
+  private layers: Hex[][];
+
+  constructor(leaves: Hex[]) {
+    this.leaves = leaves.length > 0 ? leaves : [keccak256('0x00')];
+    this.layers = this.buildTree();
+  }
+
+  private buildTree(): Hex[][] {
+    const layers: Hex[][] = [this.leaves];
+    let currentLayer = this.leaves;
+
+    while (currentLayer.length > 1) {
+      const nextLayer: Hex[] = [];
+      for (let i = 0; i < currentLayer.length; i += 2) {
+        if (i + 1 < currentLayer.length) {
+          const [left, right] = this.sortPair(currentLayer[i], currentLayer[i + 1]);
+          nextLayer.push(this.hashPair(left, right));
+        } else {
+          nextLayer.push(currentLayer[i]);
+        }
+      }
+      layers.push(nextLayer);
+      currentLayer = nextLayer;
+    }
+
+    return layers;
+  }
+
+  private sortPair(a: Hex, b: Hex): [Hex, Hex] {
+    return a.toLowerCase() < b.toLowerCase() ? [a, b] : [b, a];
+  }
+
+  private hashPair(left: Hex, right: Hex): Hex {
+    return keccak256(
+      encodeAbiParameters(
+        [{ type: 'bytes32' }, { type: 'bytes32' }],
+        [left, right]
+      )
+    );
+  }
+
+  getRoot(): Hex {
+    return this.layers[this.layers.length - 1][0];
+  }
+
+  getProof(index: number): Hex[] {
+    const proof: Hex[] = [];
+    let currentIndex = index;
+
+    for (let i = 0; i < this.layers.length - 1; i++) {
+      const layer = this.layers[i];
+      const isLeft = currentIndex % 2 === 0;
+      const siblingIndex = isLeft ? currentIndex + 1 : currentIndex - 1;
+
+      if (siblingIndex < layer.length) {
+        proof.push(layer[siblingIndex]);
+      }
+
+      currentIndex = Math.floor(currentIndex / 2);
+    }
+
+    return proof;
+  }
+
+  static verify(leaf: Hex, proof: Hex[], root: Hex): boolean {
+    let computedHash = leaf;
+
+    for (const proofElement of proof) {
+      const [left, right] = computedHash.toLowerCase() < proofElement.toLowerCase()
+        ? [computedHash, proofElement]
+        : [proofElement, computedHash];
+
+      computedHash = keccak256(
+        encodeAbiParameters(
+          [{ type: 'bytes32' }, { type: 'bytes32' }],
+          [left, right]
+        )
+      );
+    }
+
+    return computedHash.toLowerCase() === root.toLowerCase();
+  }
 }
 
 // ============================================================================
@@ -223,9 +376,7 @@ export class CrossChainTrainingBridge {
       inSync: false,
     };
 
-    // Fetch initial states
     await this.syncRunState(runId, state);
-    
     this.runStates.set(runId, state);
     return state;
   }
@@ -245,22 +396,27 @@ export class CrossChainTrainingBridge {
     }
 
     // Fetch EVM state
-    const runIdBytes = `0x${Buffer.from(runId).toString('hex').padEnd(64, '0')}` as Hex;
+    const runIdBytes = this.runIdToBytes32(runId);
     
-    const evmResult = await this.evmPublicClient.readContract({
-      address: this.config.bridgeContractAddress,
-      abi: BRIDGE_CONTRACT_ABI,
-      functionName: 'getRunState',
-      args: [runIdBytes],
-    });
+    try {
+      const evmResult = await this.evmPublicClient.readContract({
+        address: this.config.bridgeContractAddress,
+        abi: BRIDGE_CONTRACT_ABI,
+        functionName: 'getRunState',
+        args: [runIdBytes],
+      });
 
-    state.evmState = {
-      epoch: evmResult[0],
-      step: evmResult[1],
-      clientCount: evmResult[2],
-      lastCheckpointEpoch: evmResult[3],
-      totalRewardsDistributed: evmResult[4],
-    };
+      state.evmState = {
+        epoch: evmResult[0],
+        step: evmResult[1],
+        clientCount: evmResult[2],
+        lastCheckpointEpoch: evmResult[3],
+        totalRewardsDistributed: evmResult[4],
+      };
+    } catch {
+      // Contract might not have state yet
+      state.evmState = null;
+    }
 
     state.lastSyncedAt = Date.now();
 
@@ -305,11 +461,22 @@ export class CrossChainTrainingBridge {
       throw new Error('EVM wallet required for bridging');
     }
 
-    const runIdBytes = `0x${Buffer.from(runId).toString('hex').padEnd(64, '0')}` as Hex;
-    const modelHash = `0x${Buffer.from(solanaState.model.sha256).toString('hex').padEnd(64, '0')}` as Hex;
+    const runIdBytes = this.runIdToBytes32(runId);
+    const modelHash = this.stringToBytes32(solanaState.model.sha256);
 
-    // Create signature placeholder (in production, this would be a Solana signature)
-    const solanaSignature = new Uint8Array(64);
+    // Create signature from Solana keypair if available
+    let solanaSignature: Hex = '0x' + '00'.repeat(64);
+    if (this.solanaKeypair) {
+      const message = Buffer.concat([
+        Buffer.from(runId),
+        Buffer.from(new Uint32Array([solanaState.currentEpoch]).buffer),
+        Buffer.from(new BigUint64Array([BigInt(solanaState.totalSteps)]).buffer),
+      ]);
+      
+      const { sign } = await import('tweetnacl');
+      const sig = sign.detached(message, this.solanaKeypair.secretKey);
+      solanaSignature = `0x${Buffer.from(sig).toString('hex')}` as Hex;
+    }
 
     const hash = await this.evmWalletClient.writeContract({
       address: this.config.bridgeContractAddress,
@@ -321,7 +488,7 @@ export class CrossChainTrainingBridge {
         BigInt(solanaState.totalSteps),
         solanaState.clients.length,
         modelHash,
-        `0x${Buffer.from(solanaSignature).toString('hex')}` as Hex,
+        solanaSignature,
       ],
     });
 
@@ -337,7 +504,7 @@ export class CrossChainTrainingBridge {
       throw new Error('EVM wallet required for checkpoint submission');
     }
 
-    const runIdBytes = `0x${Buffer.from(runId).toString('hex').padEnd(64, '0')}` as Hex;
+    const runIdBytes = this.runIdToBytes32(runId);
 
     const hash = await this.evmWalletClient.writeContract({
       address: this.config.bridgeContractAddress,
@@ -375,8 +542,16 @@ export class CrossChainTrainingBridge {
     // Wait for transaction and get client ID from logs
     const receipt = await this.evmPublicClient.waitForTransactionReceipt({ hash });
     
-    // Parse client ID from logs (simplified)
-    return 0; // Would parse from receipt.logs
+    // Parse client ID from logs
+    for (const log of receipt.logs) {
+      // Find ClientRegistered event
+      if (log.topics[0] === keccak256('ClientRegistered(uint32,address,bytes32)')) {
+        const clientId = parseInt(log.topics[1] ?? '0', 16);
+        return clientId;
+      }
+    }
+
+    return 0;
   }
 
   async distributeRewards(
@@ -389,7 +564,7 @@ export class CrossChainTrainingBridge {
       throw new Error('EVM wallet required for reward distribution');
     }
 
-    const runIdBytes = `0x${Buffer.from(runId).toString('hex').padEnd(64, '0')}` as Hex;
+    const runIdBytes = this.runIdToBytes32(runId);
 
     const hash = await this.evmWalletClient.writeContract({
       address: this.config.bridgeContractAddress,
@@ -399,6 +574,23 @@ export class CrossChainTrainingBridge {
     });
 
     console.log(`[Bridge] Distributed rewards for ${runId} epoch ${epoch}: ${hash}`);
+    return hash;
+  }
+
+  async setRewardMerkleRoot(runId: string, epoch: number, merkleRoot: Hex): Promise<Hash> {
+    if (!this.evmWalletClient) {
+      throw new Error('EVM wallet required');
+    }
+
+    const runIdBytes = this.runIdToBytes32(runId);
+
+    const hash = await this.evmWalletClient.writeContract({
+      address: this.config.bridgeContractAddress,
+      abi: BRIDGE_CONTRACT_ABI,
+      functionName: 'setRewardMerkleRoot',
+      args: [runIdBytes, epoch, merkleRoot],
+    });
+
     return hash;
   }
 
@@ -416,36 +608,11 @@ export class CrossChainTrainingBridge {
       )
     );
 
-    // Build merkle tree
-    let level = leaves;
-    while (level.length > 1) {
-      const nextLevel: Hex[] = [];
-      for (let i = 0; i < level.length; i += 2) {
-        if (i + 1 < level.length) {
-          // Sort to ensure consistent ordering
-          const [left, right] =
-            level[i] < level[i + 1]
-              ? [level[i], level[i + 1]]
-              : [level[i + 1], level[i]];
-          nextLevel.push(
-            keccak256(
-              encodeAbiParameters([{ type: 'bytes32' }, { type: 'bytes32' }], [left, right])
-            )
-          );
-        } else {
-          nextLevel.push(level[i]);
-        }
-      }
-      level = nextLevel;
-    }
-
-    return level[0] ?? ('0x' + '0'.repeat(64)) as Hex;
+    const tree = new MerkleTree(leaves);
+    return tree.getRoot();
   }
 
-  generateMerkleProof(
-    rewards: RewardDistribution[],
-    index: number
-  ): Hex[] {
+  generateMerkleProof(rewards: RewardDistribution[], index: number): Hex[] {
     const leaves = rewards.map((r) =>
       keccak256(
         encodeAbiParameters(
@@ -455,43 +622,30 @@ export class CrossChainTrainingBridge {
       )
     );
 
-    const proof: Hex[] = [];
-    let currentIndex = index;
-    let level = leaves;
+    const tree = new MerkleTree(leaves);
+    return tree.getProof(index);
+  }
 
-    while (level.length > 1) {
-      const nextLevel: Hex[] = [];
-      for (let i = 0; i < level.length; i += 2) {
-        if (i + 1 < level.length) {
-          const [left, right] =
-            level[i] < level[i + 1]
-              ? [level[i], level[i + 1]]
-              : [level[i + 1], level[i]];
-
-          // Add sibling to proof if this is our path
-          if (i === currentIndex || i + 1 === currentIndex) {
-            proof.push(i === currentIndex ? level[i + 1] : level[i]);
-          }
-
-          nextLevel.push(
-            keccak256(
-              encodeAbiParameters([{ type: 'bytes32' }, { type: 'bytes32' }], [left, right])
-            )
-          );
-        } else {
-          nextLevel.push(level[i]);
-        }
-      }
-      currentIndex = Math.floor(currentIndex / 2);
-      level = nextLevel;
-    }
-
-    return proof;
+  verifyMerkleProof(
+    leaf: Hex,
+    proof: Hex[],
+    root: Hex
+  ): boolean {
+    return MerkleTree.verify(leaf, proof, root);
   }
 
   // ============================================================================
   // Utilities
   // ============================================================================
+
+  private runIdToBytes32(runId: string): Hex {
+    return `0x${Buffer.from(runId).toString('hex').padEnd(64, '0')}` as Hex;
+  }
+
+  private stringToBytes32(str: string): Hex {
+    const hex = Buffer.from(str).toString('hex');
+    return `0x${hex.padEnd(64, '0')}` as Hex;
+  }
 
   async getClientInfo(
     clientId: number
@@ -521,6 +675,14 @@ export class CrossChainTrainingBridge {
       rewardsClaimed: result[6],
     };
   }
+
+  getEvmPublicClient() {
+    return this.evmPublicClient;
+  }
+
+  getEvmWalletClient() {
+    return this.evmWalletClient;
+  }
 }
 
 // ============================================================================
@@ -530,4 +692,3 @@ export class CrossChainTrainingBridge {
 export function createCrossChainBridge(config: BridgeConfig): CrossChainTrainingBridge {
   return new CrossChainTrainingBridge(config);
 }
-

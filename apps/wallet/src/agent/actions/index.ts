@@ -141,7 +141,7 @@ export const swapTokensAction = {
         requiresConfirmation: true, 
         actionType: 'swap',
         ...params,
-        chainId: 8453,
+        chainId: 420691, // Jeju Mainnet
       },
     };
   },
@@ -178,7 +178,7 @@ export const sendTokenAction = {
     }
 
     const analysis = await securityEngine.analyzeTransaction({
-      chainId: 8453,
+      chainId: 420691, // Jeju Mainnet
       from: walletAddress,
       to: params.to as Address,
       value: parseEther(params.amount),
@@ -190,7 +190,7 @@ export const sendTokenAction = {
       details: {
         'To': `${params.to.slice(0, 6)}...${params.to.slice(-4)}`,
         'Amount': `${params.amount} ETH`,
-        'Chain': 'Base',
+        'Chain': 'Jeju',
       },
       riskLevel: analysis.overallRisk,
       gasEstimate: '~$0.10',
@@ -210,7 +210,7 @@ export const sendTokenAction = {
         actionType: 'send',
         riskLevel: analysis.overallRisk,
         ...params,
-        chainId: 8453,
+        chainId: 420691, // Jeju Mainnet
       },
     };
   },

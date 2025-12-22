@@ -209,7 +209,7 @@ cd packages/contracts
 
 # Deploy identity system
 forge script script/DeployIdentityRegistry.s.sol \
-  --rpc-url http://127.0.0.1:9545 \
+  --rpc-url http://127.0.0.1:6546 \
   --broadcast
 ```
 

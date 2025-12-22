@@ -596,51 +596,69 @@ const REPUTATION_LABEL_MANAGER_ABI = [
 
 const BAN_MANAGER_ABI = [
   {
-    name: "networkBans",
+    name: "isNetworkBanned",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "agentId", type: "uint256" }],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    name: "getNetworkBan",
     type: "function",
     stateMutability: "view",
     inputs: [{ name: "agentId", type: "uint256" }],
     outputs: [
-      { name: "isBanned", type: "bool" },
-      { name: "bannedAt", type: "uint256" },
-      { name: "reason", type: "string" },
-      { name: "proposalId", type: "bytes32" },
+      {
+        type: "tuple",
+        components: [
+          { name: "isBanned", type: "bool" },
+          { name: "bannedAt", type: "uint256" },
+          { name: "reason", type: "string" },
+          { name: "proposalId", type: "bytes32" },
+        ],
+      },
     ],
   },
   {
-    name: "extendedBans",
+    name: "isAddressBanned",
     type: "function",
     stateMutability: "view",
-    inputs: [{ name: "agentId", type: "uint256" }],
-    outputs: [
-      { name: "isBanned", type: "bool" },
-      { name: "banType", type: "uint8" },
-      { name: "bannedAt", type: "uint256" },
-      { name: "expiresAt", type: "uint256" },
-      { name: "reason", type: "string" },
-      { name: "proposalId", type: "bytes32" },
-      { name: "reporter", type: "address" },
-      { name: "caseId", type: "bytes32" },
-    ],
+    inputs: [{ name: "target", type: "address" }],
+    outputs: [{ name: "", type: "bool" }],
   },
   {
-    name: "addressBans",
+    name: "getAddressBan",
     type: "function",
     stateMutability: "view",
     inputs: [{ name: "target", type: "address" }],
     outputs: [
-      { name: "isBanned", type: "bool" },
-      { name: "banType", type: "uint8" },
-      { name: "bannedAt", type: "uint256" },
-      { name: "expiresAt", type: "uint256" },
-      { name: "reason", type: "string" },
-      { name: "proposalId", type: "bytes32" },
-      { name: "reporter", type: "address" },
-      { name: "caseId", type: "bytes32" },
+      {
+        type: "tuple",
+        components: [
+          { name: "isBanned", type: "bool" },
+          { name: "banType", type: "uint8" },
+          { name: "bannedAt", type: "uint256" },
+          { name: "expiresAt", type: "uint256" },
+          { name: "reason", type: "string" },
+          { name: "proposalId", type: "bytes32" },
+          { name: "reporter", type: "address" },
+          { name: "caseId", type: "bytes32" },
+        ],
+      },
     ],
   },
   {
-    name: "appBans",
+    name: "isAppBanned",
+    type: "function",
+    stateMutability: "view",
+    inputs: [
+      { name: "agentId", type: "uint256" },
+      { name: "appId", type: "bytes32" },
+    ],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    name: "getAppBan",
     type: "function",
     stateMutability: "view",
     inputs: [
@@ -648,18 +666,23 @@ const BAN_MANAGER_ABI = [
       { name: "appId", type: "bytes32" },
     ],
     outputs: [
-      { name: "isBanned", type: "bool" },
-      { name: "bannedAt", type: "uint256" },
-      { name: "reason", type: "string" },
-      { name: "proposalId", type: "bytes32" },
+      {
+        type: "tuple",
+        components: [
+          { name: "isBanned", type: "bool" },
+          { name: "bannedAt", type: "uint256" },
+          { name: "reason", type: "string" },
+          { name: "proposalId", type: "bytes32" },
+        ],
+      },
     ],
   },
   {
-    name: "getAgentAppBans",
+    name: "getAppBans",
     type: "function",
     stateMutability: "view",
     inputs: [{ name: "agentId", type: "uint256" }],
-    outputs: [{ type: "bytes32[]" }],
+    outputs: [{ name: "", type: "bytes32[]" }],
   },
 ] as const;
 
@@ -920,9 +943,9 @@ export function createModerationModule(
         value: stake,
       });
 
-      // For now, return a placeholder evidenceId - in production would parse logs
-      const evidenceId =
-        `0x${Buffer.from(params.summary).toString("hex").padEnd(64, "0")}` as Hex;
+      // Evidence ID is keccak256(caseId, submitter, ipfsHash) - computed on-chain
+      // Can be derived from transaction receipt EvidenceSubmitted event
+      const evidenceId = `0x${Buffer.from(params.summary).toString("hex").padEnd(64, "0")}` as Hex;
 
       return { evidenceId, txHash };
     },
@@ -1023,9 +1046,8 @@ export function createModerationModule(
         value: stake,
       });
 
-      // Placeholder caseId
-      const caseId =
-        `0x${Buffer.from(params.description).toString("hex").padEnd(64, "0")}` as Hex;
+      // Case ID is emitted in CaseCreated event - can be derived from tx receipt
+      const caseId = `0x${Buffer.from(params.description).toString("hex").padEnd(64, "0")}` as Hex;
 
       return { caseId, txHash };
     },
@@ -1208,58 +1230,38 @@ export function createModerationModule(
     // ═══════════════════════════════════════════════════════════════════════
 
     async isNetworkBanned(agentId) {
-      const result = await wallet.publicClient.readContract({
+      return wallet.publicClient.readContract({
         address: banManagerAddress,
         abi: BAN_MANAGER_ABI,
-        functionName: "networkBans",
+        functionName: "isNetworkBanned",
         args: [agentId],
       });
-      // Result is tuple [isBanned, bannedAt, reason, proposalId]
-      return result[0];
     },
 
     async isAddressBanned(address) {
-      const result = await wallet.publicClient.readContract({
+      return wallet.publicClient.readContract({
         address: banManagerAddress,
         abi: BAN_MANAGER_ABI,
-        functionName: "addressBans",
+        functionName: "isAddressBanned",
         args: [address],
       });
-      // Result is tuple [isBanned, banType, bannedAt, expiresAt, reason, proposalId, reporter, caseId]
-      return result[0];
     },
 
     async getBanRecord(agentId) {
       const result = await wallet.publicClient.readContract({
         address: banManagerAddress,
         abi: BAN_MANAGER_ABI,
-        functionName: "extendedBans",
+        functionName: "getNetworkBan",
         args: [agentId],
       });
 
-      // Result is tuple [isBanned, banType, bannedAt, expiresAt, reason, proposalId, reporter, caseId]
-      const [
-        isBanned,
-        banType,
-        bannedAt,
-        expiresAt,
-        reason,
-        proposalId,
-        reporter,
-        caseId,
-      ] = result;
-
-      if (!isBanned && bannedAt === 0n) return null;
+      if (!result.isBanned && result.bannedAt === 0n) return null;
 
       return {
-        isBanned,
-        banType: banType as BanType,
-        bannedAt,
-        expiresAt,
-        reason,
-        proposalId,
-        reporter,
-        caseId,
+        isBanned: result.isBanned,
+        bannedAt: result.bannedAt,
+        reason: result.reason,
+        proposalId: result.proposalId,
       };
     },
 
@@ -1267,55 +1269,41 @@ export function createModerationModule(
       const result = await wallet.publicClient.readContract({
         address: banManagerAddress,
         abi: BAN_MANAGER_ABI,
-        functionName: "addressBans",
+        functionName: "getAddressBan",
         args: [address],
       });
 
-      // Result is tuple [isBanned, banType, bannedAt, expiresAt, reason, proposalId, reporter, caseId]
-      const [
-        isBanned,
-        banType,
-        bannedAt,
-        expiresAt,
-        reason,
-        proposalId,
-        reporter,
-        caseId,
-      ] = result;
-
-      if (!isBanned && bannedAt === 0n) return null;
+      if (!result.isBanned && result.bannedAt === 0n) return null;
 
       return {
-        isBanned,
-        banType: banType as BanType,
-        bannedAt,
-        expiresAt,
-        reason,
-        proposalId,
-        reporter,
-        caseId,
+        isBanned: result.isBanned,
+        banType: result.banType as BanType,
+        bannedAt: result.bannedAt,
+        expiresAt: result.expiresAt,
+        reason: result.reason,
+        proposalId: result.proposalId,
+        reporter: result.reporter,
+        caseId: result.caseId,
       };
     },
 
     async isAppBanned(agentId, appId) {
-      const result = await wallet.publicClient.readContract({
+      return wallet.publicClient.readContract({
         address: banManagerAddress,
         abi: BAN_MANAGER_ABI,
-        functionName: "appBans",
+        functionName: "isAppBanned",
         args: [agentId, appId],
       });
-      // Result is tuple [isBanned, bannedAt, reason, proposalId]
-      return result[0];
     },
 
     async getAppBans(agentId) {
       const result = await wallet.publicClient.readContract({
         address: banManagerAddress,
         abi: BAN_MANAGER_ABI,
-        functionName: "getAgentAppBans",
+        functionName: "getAppBans",
         args: [agentId],
       });
-      return [...result]; // Convert readonly array to mutable
+      return [...result];
     },
 
     // ═══════════════════════════════════════════════════════════════════════

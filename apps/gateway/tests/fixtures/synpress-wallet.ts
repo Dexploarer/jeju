@@ -24,7 +24,7 @@ export const TEST_WALLET_ADDRESS = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
 export const JEJU_CHAIN_ID = 1337;
 
 /** RPC URL for localnet */
-export const JEJU_RPC_URL = 'http://127.0.0.1:9545';
+export const JEJU_RPC_URL = 'http://127.0.0.1:6546';
 
 /** Localnet chain config for MetaMask */
 export const JEJU_CHAIN = {

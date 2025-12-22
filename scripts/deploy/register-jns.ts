@@ -19,7 +19,7 @@ import {
   toHex,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { baseSepolia, base } from 'viem/chains';
+import { getJejuChain, getJejuRpcUrl, type JejuNetwork } from '../shared/viem-chains';
 import { readFileSync, existsSync, writeFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 
@@ -136,10 +136,8 @@ class JNSRegistrar {
       throw new Error('DEPLOYER_PRIVATE_KEY environment variable required');
     }
 
-    const chain = network === 'mainnet' ? base : baseSepolia;
-    const rpcUrl = network === 'mainnet'
-      ? process.env.MAINNET_RPC_URL || 'https://mainnet.base.org'
-      : process.env.TESTNET_RPC_URL || 'https://sepolia.base.org';
+    const chain = getJejuChain(network as JejuNetwork);
+    const rpcUrl = getJejuRpcUrl(network as JejuNetwork);
 
     this.account = privateKeyToAccount(this.privateKey);
     this.publicClient = createPublicClient({

@@ -324,7 +324,7 @@ testCommand
 
     if (options.setupOnly) {
       logger.success('Infrastructure ready. Run tests with --skip-infra');
-      logger.info('Chain: http://127.0.0.1:9545 (chainId: 1337)');
+      logger.info('Chain: http://127.0.0.1:6546 (chainId: 1337)');
       // Keep Anvil running by not calling cleanup
       return;
     }
@@ -952,7 +952,7 @@ async function setupE2EInfra(rootDir: string, options: Record<string, unknown>):
   logger.step('Setting up E2E infrastructure...');
   
   // E2E test configuration - fixed values for consistency
-  const E2E_PORT = 9545;
+  const E2E_PORT = 6546;
   const E2E_CHAIN_ID = 1337;
   const rpcUrl = `http://127.0.0.1:${E2E_PORT}`;
   let anvilPid: number | null = null;
@@ -1222,7 +1222,7 @@ async function runSynpressTests(rootDir: string, options: Record<string, unknown
   const results: TestResult[] = [];
   
   // E2E test defaults - consistent with setupE2EInfra
-  const E2E_RPC_URL = 'http://127.0.0.1:9545';
+  const E2E_RPC_URL = 'http://127.0.0.1:6546';
   const E2E_CHAIN_ID = '1337';
   const TEST_WALLET = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
   const DEPLOYER_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';

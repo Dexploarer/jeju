@@ -78,11 +78,11 @@ export class BlobSubmission {
   /**
    * Prepare blob for submission
    */
-  prepare(request: BlobSubmissionRequest): {
+  async prepare(request: BlobSubmissionRequest): Promise<{
     blob: Blob;
     chunks: Chunk[];
     commitment: BlobCommitment;
-  } {
+  }> {
     const { data, submitter, namespace } = request;
     
     // Validate size
@@ -109,7 +109,7 @@ export class BlobSubmission {
     const shards = this.codec.encode(data, this.config.erasure.chunkSize);
     
     // Create commitment and chunks with proofs
-    const polyCommitment = createPolynomialCommitment(
+    const polyCommitment = await createPolynomialCommitment(
       data,
       shards,
       this.config.erasure.dataShards,
@@ -169,13 +169,13 @@ export class BlobManager {
   /**
    * Submit a new blob
    */
-  submit(request: BlobSubmissionRequest): {
+  async submit(request: BlobSubmissionRequest): Promise<{
     blob: Blob;
     chunks: Chunk[];
     commitment: BlobCommitment;
     metadata: BlobMetadata;
-  } {
-    const { blob, chunks, commitment } = this.submission.prepare(request);
+  }> {
+    const { blob, chunks, commitment } = await this.submission.prepare(request);
     
     // Store chunks
     const chunkMap = new Map<number, Chunk>();

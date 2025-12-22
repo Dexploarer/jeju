@@ -7,6 +7,7 @@
 
 import { createPublicClient, http, type Address, type Hex, type PublicClient, type Chain, type Transport } from 'viem';
 import { baseSepolia, base } from 'viem/chains';
+import { BAN_MANAGER_ABI } from '@jejunetwork/types';
 
 // ============ Types ============
 
@@ -34,53 +35,6 @@ export interface BanCheckResult {
   error?: string;
 }
 
-// ============ ABIs ============
-
-const BAN_MANAGER_ABI = [
-  {
-    name: 'isAddressBanned',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [{ name: 'target', type: 'address' }],
-    outputs: [{ name: '', type: 'bool' }],
-  },
-  {
-    name: 'isOnNotice',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [{ name: 'target', type: 'address' }],
-    outputs: [{ name: '', type: 'bool' }],
-  },
-  {
-    name: 'isAddressBannedActive',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [{ name: 'target', type: 'address' }],
-    outputs: [{ name: '', type: 'bool' }],
-  },
-  {
-    name: 'getAddressBan',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [{ name: 'target', type: 'address' }],
-    outputs: [
-      {
-        type: 'tuple',
-        components: [
-          { name: 'isBanned', type: 'bool' },
-          { name: 'banType', type: 'uint8' },
-          { name: 'bannedAt', type: 'uint256' },
-          { name: 'expiresAt', type: 'uint256' },
-          { name: 'reason', type: 'string' },
-          { name: 'proposalId', type: 'bytes32' },
-          { name: 'reporter', type: 'address' },
-          { name: 'caseId', type: 'bytes32' },
-        ],
-      },
-    ],
-  },
-] as const;
-
 // ============ Cache ============
 
 interface CacheEntry {
@@ -102,7 +56,7 @@ export class BanChecker {
       ? 'https://mainnet.base.org' 
       : network === 'testnet'
         ? 'https://sepolia.base.org'
-        : 'http://localhost:8545';
+        : 'http://localhost:6546';
 
     this.config = {
       banManagerAddress: config.banManagerAddress,

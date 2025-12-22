@@ -69,7 +69,7 @@ Deploy:
 ```bash
 forge create src/MyTokenOracle.sol:MyTokenOracle \
   --constructor-args 100000000 \  # 1 MTK = 0.01 ETH (8 decimals)
-  --rpc-url http://127.0.0.1:9545 \
+  --rpc-url http://127.0.0.1:6546 \
   --private-key $PRIVATE_KEY
 ```
 
@@ -92,7 +92,7 @@ cast send $TOKEN_REGISTRY \
   $(cast --to-wei 1)   \  # Min fee: 1 token
   $(cast --to-wei 100) \  # Max fee: 100 tokens
   --value 0.1ether \       # Registration fee
-  --rpc-url http://127.0.0.1:9545 \
+  --rpc-url http://127.0.0.1:6546 \
   --private-key $PRIVATE_KEY
 ```
 

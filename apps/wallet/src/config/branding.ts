@@ -11,7 +11,7 @@ const NETWORK_NAME = import.meta.env.VITE_NETWORK_NAME || 'Jeju';
 // URLs from environment or defaults
 const RPC_MAINNET = import.meta.env.VITE_RPC_MAINNET || 'https://rpc.jejunetwork.org';
 const RPC_TESTNET = import.meta.env.VITE_RPC_TESTNET || 'https://rpc.testnet.jejunetwork.org';
-const RPC_LOCALNET = import.meta.env.VITE_RPC_LOCALNET || 'http://localhost:9545';
+const RPC_LOCALNET = import.meta.env.VITE_RPC_LOCALNET || 'http://localhost:6546';
 
 export interface UrlsBranding {
   rpc: {

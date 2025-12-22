@@ -40,7 +40,7 @@ import {
 import { MempoolMonitor, type SwapIntent } from './mempool';
 
 // Chain IDs
-const JEJU_CHAIN_ID = 8453; // Update with actual Jeju chain ID
+const JEJU_CHAIN_ID = 420691; // Jeju Mainnet
 const EXTERNAL_CHAINS = [1, 42161, 10, 8453]; // Mainnet, Arbitrum, Optimism, Base
 
 // ============================================================================

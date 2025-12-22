@@ -216,7 +216,7 @@ See [docker/env.example](./docker/env.example) for all available options, or the
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `CHAIN_ID` | Network chain ID | `420691` (localnet) |
-| `JEJU_RPC_URL` | RPC endpoint | `http://localhost:9545` |
+| `JEJU_RPC_URL` | RPC endpoint | `http://localhost:6546` |
 | `OAUTH3_PORT` | Agent HTTP port | `4200` |
 | `TEE_MODE` | TEE provider (`dstack`, `phala`, `simulated`) | `simulated` |
 
@@ -289,7 +289,7 @@ interface OAuth3Client {
 
 | Network | Chain ID | RPC URL |
 |---------|----------|---------|
-| Localnet | 420691 | `http://localhost:9545` |
+| Localnet | 420691 | `http://localhost:6546` |
 | Testnet | 420690 | `https://testnet.jejunetwork.org` |
 | Mainnet | 420692 | `https://mainnet.jejunetwork.org` |
 

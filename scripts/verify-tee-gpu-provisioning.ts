@@ -12,7 +12,8 @@
 
 import { privateKeyToAccount } from 'viem/accounts';
 import { createPublicClient, createWalletClient, http, type Hex } from 'viem';
-import { localhost, baseSepolia } from 'viem/chains';
+import { localhost } from 'viem/chains';
+import { jejuTestnet, jejuMainnet } from './shared/viem-chains';
 import {
   createTEEGPUProvider,
   TEEProvider,
@@ -75,7 +76,7 @@ if (!privateKey) {
 }
 
 const account = privateKeyToAccount(privateKey);
-const chain = network === 'localnet' ? localhost : baseSepolia;
+const chain = network === 'localnet' ? localhost : network === 'testnet' ? jejuTestnet : jejuMainnet;
 
 const _publicClient = createPublicClient({
   chain,

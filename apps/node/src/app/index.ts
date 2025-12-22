@@ -222,7 +222,7 @@ async function cmdSetup(): Promise<void> {
     ? 'https://rpc.jejunetwork.org' 
     : config.network === 'testnet'
     ? 'https://testnet-rpc.jejunetwork.org'
-    : 'http://localhost:8545';
+    : 'http://localhost:6546';
   config.chainId = config.network === 'mainnet' ? 420690 : config.network === 'testnet' ? 420691 : 1337;
   
   // Wallet
@@ -552,7 +552,7 @@ async function main(): Promise<void> {
       ? 'https://rpc.jejunetwork.org' 
       : config.network === 'testnet'
       ? 'https://testnet-rpc.jejunetwork.org'
-      : 'http://localhost:8545';
+      : 'http://localhost:6546';
     config.chainId = config.network === 'mainnet' ? 420690 : config.network === 'testnet' ? 420691 : 1337;
     saveConfig(config);
   }
@@ -600,7 +600,7 @@ ${chalk.bold('Quick Start:')}
       ? 'https://rpc.jejunetwork.org' 
       : config.network === 'testnet'
       ? 'https://testnet-rpc.jejunetwork.org'
-      : 'http://localhost:8545';
+      : 'http://localhost:6546';
     config.chainId = config.network === 'mainnet' ? 420690 : config.network === 'testnet' ? 420691 : 1337;
     saveConfig(config);
   }
