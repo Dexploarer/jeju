@@ -52,7 +52,7 @@ export interface EVMPosition {
   nftId?: bigint
 }
 
-export interface Position {
+export interface UnifiedPosition {
   id: string
   chain: 'evm' | 'solana'
   chainId: ChainId | 'solana-mainnet' | 'solana-devnet'
@@ -232,20 +232,20 @@ export class LiquidityManager extends EventEmitter {
   }
 
   /**
-   * Get all positions
+   * Get all unified positions
    */
-  getPositions(): Position[] {
-    const positions: Position[] = []
+  getPositions(): UnifiedPosition[] {
+    const unified: UnifiedPosition[] = []
 
     for (const pos of this.evmPositions.values()) {
-      positions.push(this.toPosition(pos, 'evm'))
+      unified.push(this.toUnifiedPosition(pos, 'evm'))
     }
 
     for (const pos of this.solanaPositions.values()) {
-      positions.push(this.toPosition(pos, 'solana'))
+      unified.push(this.toUnifiedPosition(pos, 'solana'))
     }
 
-    return positions.sort((a, b) => b.valueUsd - a.valueUsd)
+    return unified.sort((a, b) => b.valueUsd - a.valueUsd)
   }
 
   /**
@@ -583,10 +583,10 @@ export class LiquidityManager extends EventEmitter {
     return { success: false, error: 'EVM actions not yet implemented' }
   }
 
-  private toPosition(
+  private toUnifiedPosition(
     pos: EVMPosition | SolanaPosition,
     chain: 'evm' | 'solana',
-  ): Position {
+  ): UnifiedPosition {
     if (chain === 'evm') {
       const evmPos = pos as EVMPosition
       return {

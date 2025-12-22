@@ -27,7 +27,7 @@ import type {
   CrossChainArbOpportunity,
   StrategyConfig,
   StrategyType,
-} from './autocrat-types'
+} from './autocrat-types-source'
 // Contract integrations (EIL/XLP/OIF)
 import {
   type LiquidityRequest,
@@ -165,6 +165,9 @@ export class UnifiedBot extends EventEmitter {
   // Stats
   private trades: TradeResult[] = []
   private totalProfitUsd = 0
+
+  // Risk management
+  private riskManager: RiskManager | null = null
 
   constructor(config: UnifiedBotConfig) {
     super()

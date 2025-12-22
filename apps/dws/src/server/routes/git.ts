@@ -1,4 +1,3 @@
-// @ts-nocheck - Elysia route chaining with reassignment pattern causes complex type inference issues
 /**
  * Git HTTP Server - Smart HTTP Protocol and Extended APIs (JejuGit)
  */
@@ -80,7 +79,10 @@ interface GitContext {
   federationManager?: FederationManager
 }
 
-// Note: Using type assertion to allow route chaining with reassignment pattern
+// Elysia accumulates route type information in its generics with each chained method call
+// The reassignment pattern (router = router.get(...)) loses this type chain
+// Since this file has conditional routing (federation), we need reassignment
+// Use type assertion at the end to return proper Elysia instance
 export function createGitRouter(ctx: GitContext) {
   const { repoManager, backend } = ctx
 
@@ -94,7 +96,10 @@ export function createGitRouter(ctx: GitContext) {
     ctx.searchManager ||
     new SearchManager({ repoManager, issuesManager, socialManager, backend })
 
-  let router = new Elysia({ name: 'git', prefix: '/git' })
+  // Create base router - use ReturnType to capture the actual Elysia type
+  const baseRouter = new Elysia({ name: 'git', prefix: '/git' })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Elysia's route accumulation breaks with reassignment pattern
+  let router = baseRouter as ReturnType<typeof Elysia.prototype.get>
 
   router = router.get('/health', () => ({
     service: 'dws-git',

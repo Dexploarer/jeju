@@ -36,7 +36,7 @@ import {
   YieldVerifyParamSchema,
 } from '../schemas'
 import type { ChainId } from './autocrat-types-source'
-import { MevBot, type MevBotConfig } from './mev-bot'
+import { UnifiedBot, type UnifiedBotConfig } from './mev-bot'
 
 // ============ Security Configuration ============
 
@@ -92,7 +92,7 @@ interface APIConfig {
   restPort: number
   a2aPort: number
   mcpPort: number
-  bot: MevBot
+  bot: UnifiedBot
 }
 
 interface AgentCard {
@@ -127,7 +127,7 @@ interface MCPResource {
 
 // ============ REST API ============
 
-function createRestAPI(bot: MevBot): Elysia {
+function createRestAPI(bot: UnifiedBot): Elysia {
   const app = new Elysia()
 
   // CORS - restrict to configured origins in production
@@ -383,7 +383,7 @@ function createRestAPI(bot: MevBot): Elysia {
 
 // ============ A2A API ============
 
-function createA2AAPI(bot: MevBot, config: APIConfig): Elysia {
+function createA2AAPI(bot: UnifiedBot, config: APIConfig): Elysia {
   const app = new Elysia()
 
   // CORS - restrict to configured origins in production
@@ -567,7 +567,7 @@ function createA2AAPI(bot: MevBot, config: APIConfig): Elysia {
 
 // ============ MCP API ============
 
-function createMCPAPI(bot: MevBot): Elysia {
+function createMCPAPI(bot: UnifiedBot): Elysia {
   const app = new Elysia()
 
   // CORS - restrict to configured origins in production
@@ -1052,7 +1052,7 @@ export async function main(): Promise<void> {
     ? process.env.YIELD_AUTO_REBALANCE === 'true'
     : undefined
 
-  const botConfig: MevBotConfig = {
+  const botConfig: UnifiedBotConfig = {
     evmChains: [1, 42161, 10, 8453] as ChainId[], // Ethereum, Arbitrum, Optimism, Base
     solanaNetwork:
       (process.env.SOLANA_NETWORK as 'mainnet-beta' | 'devnet' | 'localnet') ??
@@ -1095,7 +1095,7 @@ export async function main(): Promise<void> {
       : undefined,
   }
 
-  const bot = new MevBot(botConfig)
+  const bot = new UnifiedBot(botConfig)
   await bot.initialize()
   await bot.start()
 

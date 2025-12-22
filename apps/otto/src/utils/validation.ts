@@ -3,7 +3,7 @@
  * Common validation helpers and schemas
  */
 
-import { expectAddress, expectHex, expectValid } from '@jejunetwork/types'
+import { expectValid } from '@jejunetwork/types'
 import { z } from 'zod'
 import { PlatformSchema } from '../schemas'
 
@@ -36,18 +36,6 @@ export const CrcTokenSchema = z.string().min(1)
 // ============================================================================
 // App-Specific Validation Helpers
 // ============================================================================
-
-/**
- * Validate address parameter
- * @deprecated Use expectAddress from @jejunetwork/types/validation instead
- */
-export const validateAddress = expectAddress
-
-/**
- * Validate hex parameter
- * @deprecated Use expectHex from @jejunetwork/types/validation instead
- */
-export const validateHex = expectHex
 
 /**
  * Validate platform parameter

@@ -153,12 +153,12 @@ export {
   XLP_V2_PAIR_ABI,
   ZERO_ADDRESS,
 } from './lib'
-// ============ MEV Bot ============
+// ============ Unified Bot ============
 export {
   type BotStats,
-  MevBot,
-  type MevBotConfig,
   type TradeResult,
+  UnifiedBot,
+  type UnifiedBotConfig,
 } from './mev-bot'
 // ============ Solana DEX Adapters ============
 export {
@@ -181,8 +181,8 @@ export {
   LiquidityManager,
   OracleKeeperStrategy,
   type PoolAnalysis,
-  type Position,
   type RebalanceAction,
+  type UnifiedPosition,
   type RiskLevel,
   SandwichStrategy,
   SolanaArbStrategy,

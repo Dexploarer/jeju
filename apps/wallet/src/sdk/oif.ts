@@ -246,8 +246,7 @@ export class OIFClient {
     })
 
     if (!response.ok) {
-      // Fallback to estimated quote
-      return this.estimateQuote(params)
+      throw new Error(`OIF quote request failed: ${response.status}`)
     }
 
     return expectValid(
@@ -258,9 +257,9 @@ export class OIFClient {
   }
 
   /**
-   * Estimate a quote locally (fallback)
+   * @internal - For testing only
    */
-  private estimateQuote(params: IntentParams): IntentQuote {
+  _estimateQuote(params: IntentParams): IntentQuote {
     // Simple estimate: 0.3% fee, same output as input (assumes 1:1 wrapped tokens)
     const fee = (params.inputAmount * 30n) / 10000n
     const outputAmount = params.inputAmount - fee

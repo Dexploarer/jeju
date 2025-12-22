@@ -203,10 +203,6 @@ export class RollupDAAdapter {
   private batchTimer: ReturnType<typeof setTimeout> | null = null
   protected lastBatchTime = 0
 
-  // Fallback tracking
-  private daFailureCount = 0
-  private lastDAFailure: number | null = null
-
   constructor(config: RollupConfig) {
     this.config = {
       daGateway: config.daGateway,
@@ -453,20 +449,9 @@ export class RollupDAAdapter {
       }
     }
 
-    // Fallback to calldata if DA failed
+    // DA submission is required
     if (!daCommitment) {
-      if (!this.config.enableCalldataFallback) {
-        throw new Error(
-          'DA submission failed and calldata fallback is disabled',
-        )
-      }
-
-      console.warn('DA submission failed, using calldata fallback')
-      usedCalldataFallback = true
-
-      // Post to calldata fallback contract
-      const encodedBatch = this.encodeBatch(batch)
-      daCommitment = await this.postToCalldataFallback(encodedBatch)
+      throw new Error('DA submission failed')
     }
 
     // Generate proof bytes

@@ -5,7 +5,7 @@
  * Supports optional Redis for persistent storage across serverless functions
  */
 
-import { createPublicClient, http, type PublicClient } from 'viem'
+import { createPublicClient, http } from 'viem'
 import { z } from 'zod'
 
 import type {
@@ -50,7 +50,8 @@ const PendingPaymentSchema = z.object({
 const REDIS_PREFIX = 'x402:payment:'
 
 export class X402Manager {
-  private provider: PublicClient
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private provider: any
   private config: Required<Omit<X402Config, 'redis'>> & { redis?: RedisClient }
   private readonly DEFAULT_MIN_PAYMENT = '1000000000000000' // 0.001 ETH
   private readonly DEFAULT_TIMEOUT = 5 * 60 * 1000 // 5 minutes

@@ -383,7 +383,7 @@ export class WorkerdExecutor {
 
       invocation.response = {
         status: response.status,
-        headers: Object.fromEntries(response.headers.entries()),
+        headers: Object.fromEntries([...response.headers] as [string, string][]),
         body,
       }
       invocation.status = 'success'

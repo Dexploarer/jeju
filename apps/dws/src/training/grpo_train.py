@@ -42,8 +42,6 @@ class TrainingConfig:
     atropos_url: str = "http://localhost:8000"
     vllm_port: int = 9001
     vllm_restart_interval: int = 10
-    use_wandb: bool = False
-    wandb_project: str = "jeju-grpo"
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
 
 
@@ -128,8 +126,8 @@ class AtroposClient:
         response = requests.post(
             f"{self.base_url}/register",
             json={
-                "wandb_group": "jeju-grpo",
-                "wandb_project": config.wandb_project,
+                "run_group": "jeju-grpo",
+                "run_project": "distributed-training",
                 "batch_size": config.batch_size * config.gradient_accumulation_steps,
                 "max_token_len": config.max_seq_len,
                 "checkpoint_dir": config.save_path,

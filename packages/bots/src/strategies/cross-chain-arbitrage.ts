@@ -1,15 +1,5 @@
 /**
  * Cross-Chain Arbitrage Strategy
- *
- * Identifies and executes arbitrage opportunities across:
- * - Base, BSC, Arbitrum, Optimism, Mainnet (EVM)
- * - Solana
- *
- * Features:
- * - Multi-DEX price monitoring
- * - Bridge cost calculation
- * - Risk-adjusted profit thresholds
- * - MEV protection
  */
 
 import { EventEmitter } from 'node:events'
@@ -28,8 +18,6 @@ import {
 import { OracleAggregator, TOKEN_SYMBOLS } from '../oracles'
 import { JupiterQuoteResponseSchema } from '../schemas'
 import type { CrossChainArbOpportunity } from '../types'
-
-// ============ Chain Configuration ============
 
 interface ChainConfig {
   chainId: EVMChainId | SolanaNetwork
@@ -59,8 +47,6 @@ interface BridgeConfig {
   baseFeeUsd: number
 }
 
-// ============ ABIs ============
-
 const UNISWAP_V2_ROUTER_ABI = parseAbi([
   'function getAmountsOut(uint256 amountIn, address[] calldata path) external view returns (uint256[] memory amounts)',
   'function factory() external view returns (address)',
@@ -78,8 +64,6 @@ const UNISWAP_V2_PAIR_ABI = parseAbi([
 const UNISWAP_V3_QUOTER_ABI = parseAbi([
   'function quoteExactInputSingle(address tokenIn, address tokenOut, uint24 fee, uint256 amountIn, uint160 sqrtPriceLimitX96) external returns (uint256 amountOut)',
 ])
-
-// ============ Default Configurations ============
 
 function getRequiredEnv(key: string): string {
   const value = process.env[key]
@@ -285,8 +269,6 @@ function buildDefaultChains(): ChainConfig[] {
   ]
 }
 
-// ============ Token Pairs to Monitor ============
-
 const MONITORED_PAIRS = [
   { base: 'WETH', quote: 'USDC' },
   { base: 'WETH', quote: 'USDT' },
@@ -295,8 +277,6 @@ const MONITORED_PAIRS = [
   { base: 'ARB', quote: 'WETH' },
   { base: 'OP', quote: 'WETH' },
 ]
-
-// ============ Price Data ============
 
 interface ChainPrice {
   chainId: EVMChainId | SolanaNetwork
@@ -307,8 +287,6 @@ interface ChainPrice {
   timestamp: number
   blockNumber?: bigint
 }
-
-// ============ Arbitrage Engine ============
 
 export interface CrossChainArbConfig {
   chains: ChainConfig[]
@@ -324,17 +302,19 @@ export interface CrossChainArbConfig {
 const DEFAULT_CONFIG: Omit<CrossChainArbConfig, 'chains'> & {
   chains?: ChainConfig[]
 } = {
-  minProfitBps: 50, // 0.5% minimum profit
-  minProfitUsd: 10, // $10 minimum profit
-  maxSlippageBps: 100, // 1% max slippage
-  maxPositionUsd: 50000, // $50k max position
-  bridgeTimeoutSeconds: 300, // 5 minute timeout
-  gasBuffer: 1.5, // 50% gas buffer
-  enableExecution: false, // Start in monitoring mode
+  minProfitBps: 50,
+  minProfitUsd: 10,
+  maxSlippageBps: 100,
+  maxPositionUsd: 50000,
+  bridgeTimeoutSeconds: 300,
+  gasBuffer: 1.5,
+  enableExecution: false,
 }
 
 export class CrossChainArbitrage extends EventEmitter {
   private config: CrossChainArbConfig
+  private oracle: OracleAggregator
+  private solanaConnection: Connection | null = null
   private evmClients: Map<EVMChainId, PublicClient> = new Map()
   private prices: Map<string, ChainPrice[]> = new Map()
   private opportunities: CrossChainArbOpportunity[] = []
@@ -808,8 +788,6 @@ export class CrossChainArbitrage extends EventEmitter {
   }
 }
 
-// ============ Solana Arbitrage Support ============
-
 export interface SolanaArbConfig {
   rpcUrl: string
   commitment: Commitment
@@ -820,9 +798,6 @@ export interface SolanaArbConfig {
 }
 
 export class SolanaArbitrage {
-  /**
-   * Get quote from Raydium via Jupiter aggregator
-   */
   async getRaydiumQuote(
     inputMint: PublicKey,
     outputMint: PublicKey,
@@ -831,9 +806,6 @@ export class SolanaArbitrage {
     return this.getJupiterQuote(inputMint, outputMint, amount, 'Raydium')
   }
 
-  /**
-   * Get quote from Orca via Jupiter aggregator
-   */
   async getOrcaQuote(
     inputMint: PublicKey,
     outputMint: PublicKey,
@@ -842,9 +814,6 @@ export class SolanaArbitrage {
     return this.getJupiterQuote(inputMint, outputMint, amount, 'Orca')
   }
 
-  /**
-   * Get quote via Jupiter API with optional DEX filter
-   */
   private async getJupiterQuote(
     inputMint: PublicKey,
     outputMint: PublicKey,

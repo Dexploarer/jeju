@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-// @ts-nocheck
 /**
  * Multi-Chain Opportunity Scanner
  *
@@ -14,7 +12,13 @@
  * - Historical opportunity analysis
  */
 
-import { createPublicClient, http } from 'viem'
+import {
+  createPublicClient,
+  http,
+  type Chain,
+  type PublicClient,
+  type Transport,
+} from 'viem'
 import {
   arbitrum,
   avalanche,
@@ -159,8 +163,9 @@ const BRIDGE_ESTIMATES: Record<
 
 // ============ Multi-Chain Scanner ============
 
-// biome-ignore lint: viem types require this flexibility
-type AnyPublicClient = ReturnType<typeof createPublicClient>
+// Generic public client type that works with any chain
+// Using Chain | undefined allows clients from different chains to be stored together
+type AnyPublicClient = PublicClient<Transport, Chain | undefined>
 
 export class MultiChainScanner {
   private config: ScannerConfig
@@ -184,7 +189,8 @@ export class MultiChainScanner {
             chain: evmChain.chain,
             transport: http(chainConfig.rpcUrl),
           })
-          this.clients.set(chainConfig.chainId, client)
+          // Cast to AnyPublicClient since we only use chain-agnostic methods (getBlockNumber, getGasPrice)
+          this.clients.set(chainConfig.chainId, client as AnyPublicClient)
         }
       }
     }

@@ -3,7 +3,7 @@
  * Blockchain integration for agent identity and reputation
  */
 
-import { createPublicClient, http, type PublicClient } from 'viem'
+import { createPublicClient, http } from 'viem'
 
 import type { AgentProfile, AgentReputation } from '../types/a2a'
 import { AgentCapabilitiesSchema, type JsonValue } from '../types/common'
@@ -91,7 +91,8 @@ export interface RegistryConfig {
 }
 
 export class RegistryClient {
-  private readonly client: PublicClient
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private readonly client: any
   private readonly identityRegistryAddress: `0x${string}`
   private readonly reputationSystemAddress: `0x${string}`
 

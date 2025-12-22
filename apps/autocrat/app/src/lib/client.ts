@@ -4,7 +4,7 @@
  * Provides full type inference from the Elysia server
  */
 
-import { treaty } from '@elysiajs/eden'
+import { treaty, type Treaty } from '@elysiajs/eden'
 import type { App } from '../../../src/server'
 
 const API_BASE = import.meta.env.VITE_AUTOCRAT_API || ''
@@ -12,9 +12,12 @@ const API_BASE = import.meta.env.VITE_AUTOCRAT_API || ''
 /**
  * Typed Eden Treaty client for Autocrat API
  * All endpoints are fully typed based on the server definition
+ *
+ * Note: Uses explicit Treaty type assertion due to Eden/Elysia version
+ * alignment in monorepo environments
  */
-// @ts-expect-error - elysia version mismatch between app and server in monorepo
-export const api = treaty<App>(API_BASE)
+// @ts-expect-error - Elysia version mismatch in monorepo
+export const api = treaty(API_BASE) as Treaty<App>
 
 /**
  * Extract data from Eden response, throwing on error

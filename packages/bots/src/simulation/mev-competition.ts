@@ -213,6 +213,7 @@ const BLOCK_BUILDERS: BlockBuilder[] = [
 export class MEVCompetitionSimulator {
   private ourSearcher: MEVSearcher
   private builders: BlockBuilder[]
+  private competitors: MEVSearcher[]
 
   constructor(
     ourConfig: Partial<MEVSearcher> = {},

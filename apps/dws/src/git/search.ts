@@ -136,13 +136,18 @@ export class SearchManager {
     try {
       // Dynamic import: meilisearch is an optional dependency
       // Install with: bun add meilisearch
-      // @ts-expect-error - meilisearch is an optional peer dependency
-      const meilisearchModule = await import('meilisearch')
-      const MeiliSearchClass = meilisearchModule.MeiliSearch as new (config: {
-        host: string
-        apiKey?: string
-      }) => MeilisearchClient
-      this.meilisearchClient = new MeiliSearchClass({
+      // Using Function constructor to avoid TS module resolution for optional deps
+      const dynamicImport = new Function(
+        'specifier',
+        'return import(specifier)',
+      ) as (specifier: string) => Promise<{
+        MeiliSearch: new (config: {
+          host: string
+          apiKey?: string
+        }) => MeilisearchClient
+      }>
+      const meilisearchModule = await dynamicImport('meilisearch')
+      this.meilisearchClient = new meilisearchModule.MeiliSearch({
         host: meilisearchUrl,
         apiKey: meilisearchKey,
       })

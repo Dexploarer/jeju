@@ -17,9 +17,8 @@ import {
   TwitterWebhookPayloadSchema,
 } from './schemas'
 import { getStateManager } from './services/state'
+import { expectAddress, expectHex } from '@jejunetwork/types'
 import {
-  validateAddress,
-  validateHex,
   validateNonce,
   validatePlatform,
 } from './utils/validation'
@@ -236,8 +235,8 @@ const app = new Elysia()
     }
 
     // Validate parameters with fail-fast - this ensures address is a valid 0x hex address
-    validateAddress(address)
-    validateHex(signature)
+    expectAddress(address, 'address parameter')
+    expectHex(signature, 'signature parameter')
     validatePlatform(platform)
     expectValid(z.string().min(1), platformId, 'auth callback platformId')
     validateNonce(nonce)

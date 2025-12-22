@@ -259,10 +259,7 @@ class NodeProvisioner {
       )
     } else {
       const stderr = await new Response(proc.stderr).text()
-      console.error(`[NodeProvisioner] Failed to start container: ${stderr}`)
-      // Fallback to local mode
-      allocation.status = 'ready'
-      allocation.instanceId = 'local-fallback'
+      throw new Error(`[NodeProvisioner] Failed to start container: ${stderr}`)
     }
   }
 

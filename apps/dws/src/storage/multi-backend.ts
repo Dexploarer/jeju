@@ -648,8 +648,7 @@ export class MultiBackendManager {
     keyId: string,
   ): Promise<Buffer> {
     if (!this.kmsEndpoint) {
-      // Fallback: return as-is
-      return content
+      throw new Error('KMS endpoint required for decryption')
     }
 
     const response = await fetch(`${this.kmsEndpoint}/decrypt`, {

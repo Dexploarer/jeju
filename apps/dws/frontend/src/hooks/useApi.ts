@@ -166,7 +166,7 @@ export function useComputeNodes() {
   })
 }
 
-// Legacy fetch-based hooks for routes not yet converted to Elysia
+// Fetch-based hooks for DWS API routes
 
 async function fetchApi<T>(
   endpoint: string,

@@ -6,9 +6,7 @@
 import LedgerEth from '@ledgerhq/hw-app-eth'
 import type Transport from '@ledgerhq/hw-transport'
 import TransportWebHID from '@ledgerhq/hw-transport-webhid'
-import { SignTypedDataVersion, TypedDataUtils } from '@metamask/eth-sig-util'
-import type { Address, Hex } from 'viem'
-import { toHex } from 'viem'
+import { toHex, type Address, type Hex } from 'viem'
 
 export type LedgerHDPathType = 'LedgerLive' | 'BIP44' | 'Legacy'
 
@@ -47,10 +45,6 @@ export interface PartialLedgerSerializedState {
   hdPathType?: LedgerHDPathType
 }
 
-// Ledger error with status text
-interface LedgerError extends Error {
-  statusText?: string
-}
 
 export class LedgerKeyring {
   static type = 'Ledger Hardware'
@@ -267,54 +261,11 @@ export class LedgerKeyring {
       message,
     }
 
-    // Try native EIP-712 signing first (newer Ledger firmware)
-    try {
-      const signature = await this.app.signEIP712Message(
-        details.hdPath,
-        typedData,
-      )
-      const vNum =
-        typeof signature.v === 'string'
-          ? parseInt(signature.v, 16)
-          : signature.v
-      const vHex = vNum.toString(16).padStart(2, '0')
-      return `0x${signature.r}${signature.s}${vHex}` as Hex
-    } catch (e) {
-      // Fall back to hashed method for older firmware
-      const err = e as LedgerError
-      if (err.statusText !== 'INS_NOT_SUPPORTED') {
-        throw err
-      }
-    }
-
-    // Use proper EIP-712 hashing via @metamask/eth-sig-util (like Rabby)
-    const sanitized = TypedDataUtils.sanitizeData(
-      typedData as Parameters<typeof TypedDataUtils.sanitizeData>[0],
-    )
-    const domainSeparatorHex = TypedDataUtils.hashStruct(
-      'EIP712Domain',
-      sanitized.domain,
-      sanitized.types,
-      SignTypedDataVersion.V4,
-    ).toString('hex')
-    const messageHashHex = TypedDataUtils.hashStruct(
-      primaryType,
-      sanitized.message as Record<string, unknown>,
-      sanitized.types,
-      SignTypedDataVersion.V4,
-    ).toString('hex')
-
-    const signature = await this.app.signEIP712HashedMessage(
-      details.hdPath,
-      domainSeparatorHex,
-      messageHashHex,
-    )
-
-    // signature.v can be string or number depending on Ledger lib version
+    // Native EIP-712 signing (requires modern firmware)
+    const signature = await this.app.signEIP712Message(details.hdPath, typedData)
     const vNum =
       typeof signature.v === 'string' ? parseInt(signature.v, 16) : signature.v
     const vHex = vNum.toString(16).padStart(2, '0')
-
     return `0x${signature.r}${signature.s}${vHex}` as Hex
   }
 

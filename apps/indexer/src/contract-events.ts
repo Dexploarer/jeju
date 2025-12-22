@@ -65,9 +65,6 @@ export const CREDITS_PURCHASED = eventSig(
 )
 
 // ============ Game Events (Generic) ============
-// NOTE: Game-specific events like Hyperscape are legacy.
-// New games should use generic GameIntegration events.
-// These are retained for backwards compatibility.
 
 export const PLAYER_REGISTERED = eventSig('PlayerRegistered(address,string)')
 export const PLAYER_MOVED = eventSig('PlayerMoved(address,int32,int32,int32)')
