@@ -92,7 +92,7 @@ export interface EmailSummary {
   labels: string[];
 }
 
-export interface SearchParams {
+export interface EmailSearchParams {
   query?: string;
   folder?: string;
   from?: string;

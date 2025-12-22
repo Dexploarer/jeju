@@ -158,13 +158,14 @@ export async function createWallet(config: WalletConfig): Promise<JejuWallet> {
     chain,
 
     async sendTransaction({ to, value, data }) {
-      if (smartAccountClient) {
+      if (smartAccountClient && smartAccountClient.account) {
         // SmartAccountClient's sendTransaction has compatible signature but different generics
         const hash = await smartAccountClient.sendTransaction({
           to,
           value: value ?? 0n,
           data: data ?? "0x",
           account: smartAccountClient.account,
+          chain,
         });
         return hash;
       }
