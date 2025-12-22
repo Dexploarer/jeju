@@ -236,12 +236,22 @@ const app = new Elysia()
   // Optimized Endpoints with Caching
   // ============================================================================
 
-  // Fast endpoint - no caching needed (already fast)
+  // Fast endpoint - NOW CACHED to eliminate even small DB latency
   .get('/api/fast', async () => {
     const start = performance.now()
+    const cacheKey = 'fast'
+    const cached = statsCache.get(cacheKey)
+
+    if (cached.value) {
+      trackEndpoint('/api/fast', performance.now() - start, true)
+      return { ...cached.value, cached: true }
+    }
+
     await simulateDbQuery(randomDelay(1, 5))
+    const result = { data: 'fast response', latency: 'low', timestamp: Date.now() }
+    statsCache.set(cacheKey, result, 30000) // 30s cache - balances freshness and speed
     trackEndpoint('/api/fast', performance.now() - start, false)
-    return { data: 'fast response', latency: 'low' }
+    return { ...result, cached: false }
   })
 
   // Medium endpoint - cache for repeated requests
