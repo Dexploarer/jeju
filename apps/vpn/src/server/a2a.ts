@@ -339,7 +339,10 @@ async function handleProxyRequest(
     signal: controller.signal,
   }).finally(() => clearTimeout(timeoutId))
 
-  const responseBody = await readResponseBody(response, A2A_MAX_RESPONSE_BODY_SIZE)
+  const responseBody = await readResponseBody(
+    response,
+    A2A_MAX_RESPONSE_BODY_SIZE,
+  )
 
   return {
     jsonrpc: '2.0',

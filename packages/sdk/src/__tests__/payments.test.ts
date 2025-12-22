@@ -96,7 +96,9 @@ describe('X402 payment message format', () => {
 
     const message = `x402:${resource}:${maxAmount.toString()}:${timestamp}`
 
-    expect(message).toBe('x402:/api/v1/compute/job/123:1000000000000000:1703179200')
+    expect(message).toBe(
+      'x402:/api/v1/compute/job/123:1000000000000000:1703179200',
+    )
   })
 
   it('should generate correct payment ID format', () => {
@@ -105,7 +107,9 @@ describe('X402 payment message format', () => {
 
     const paymentId = `${address}-${timestamp}`
 
-    expect(paymentId).toBe('0x1234567890123456789012345678901234567890-1703179200')
+    expect(paymentId).toBe(
+      '0x1234567890123456789012345678901234567890-1703179200',
+    )
   })
 })
 
@@ -123,7 +127,11 @@ describe('Service ID mapping', () => {
   })
 
   it('should cover all service types', () => {
-    const serviceTypes: Array<'compute' | 'storage' | 'inference'> = ['compute', 'storage', 'inference']
+    const serviceTypes: Array<'compute' | 'storage' | 'inference'> = [
+      'compute',
+      'storage',
+      'inference',
+    ]
 
     for (const service of serviceTypes) {
       expect(SERVICE_IDS[service]).toBeDefined()
@@ -131,4 +139,3 @@ describe('Service ID mapping', () => {
     }
   })
 })
-

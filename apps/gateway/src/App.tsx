@@ -1,4 +1,3 @@
-import { WagmiProvider as WagmiProviderBase } from 'wagmi'
 import {
   darkTheme,
   type getDefaultConfig,
@@ -6,6 +5,7 @@ import {
   RainbowKitProvider,
 } from '@rainbow-me/rainbowkit'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { WagmiProvider as WagmiProviderBase } from 'wagmi'
 import '@rainbow-me/rainbowkit/styles.css'
 import { BanCheckWrapper } from './components/BanCheckWrapper'
 import Dashboard from './components/Dashboard'

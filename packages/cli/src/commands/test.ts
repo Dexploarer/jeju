@@ -365,7 +365,9 @@ testCommand
 
 testCommand
   .command('analyze')
-  .description('Analyze codebase for test coverage gaps, complex code, and shared utils')
+  .description(
+    'Analyze codebase for test coverage gaps, complex code, and shared utils',
+  )
   .option('-a, --app <app>', 'Analyze specific app')
   .option('--json', 'Output JSON only')
   .action(async (options) => {
@@ -1448,8 +1450,7 @@ async function setupE2EInfra(
     const apps = discoverApps(rootDir)
     const appManifest = apps.find(
       (a) =>
-        (a._folderName ?? a.slug ?? a.name) === appName ||
-        a.name === appName,
+        (a._folderName ?? a.slug ?? a.name) === appName || a.name === appName,
     )
 
     if (appManifest) {

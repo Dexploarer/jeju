@@ -18,7 +18,7 @@ import {
 } from 'viem'
 
 // Helper to call readContract via client.readContract
-async function readContract(
+async function _readContract(
   client: PublicClient,
   params: {
     address: Address
@@ -32,10 +32,7 @@ async function readContract(
   )
 }
 
-import {
-  type PrivateKeyAccount,
-  privateKeyToAccount,
-} from 'viem/accounts'
+import { type PrivateKeyAccount, privateKeyToAccount } from 'viem/accounts'
 import { foundry } from 'viem/chains'
 
 const RPC_URL =

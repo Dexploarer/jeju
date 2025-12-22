@@ -286,4 +286,3 @@ export const api = {
 }
 
 export type BazaarClient = typeof api
-

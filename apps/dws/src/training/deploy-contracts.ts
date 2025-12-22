@@ -13,9 +13,9 @@
 import {
   createPublicClient,
   createWalletClient,
+  type Hex,
   http,
   parseAbi,
-  type Hex,
 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { foundry } from 'viem/chains'
@@ -163,7 +163,12 @@ async function getCoordinatorBytecode(): Promise<Hex> {
   if (!(await file.exists())) {
     console.log('[Deploy] Compiling contracts with forge...')
     const proc = Bun.spawn(
-      ['forge', 'build', '--root', '/home/shaw/Documents/jeju/packages/contracts'],
+      [
+        'forge',
+        'build',
+        '--root',
+        '/home/shaw/Documents/jeju/packages/contracts',
+      ],
       { stdout: 'inherit', stderr: 'inherit' },
     )
     await proc.exited
@@ -209,7 +214,11 @@ export async function deployTrainingContracts(): Promise<DeployedContracts> {
   const tokenHash = await walletClient.deployContract({
     abi: MOCK_ERC20_ABI,
     bytecode: MOCK_ERC20_BYTECODE,
-    args: ['Training Reward Token', 'TRAIN', BigInt(1000000) * BigInt(10 ** 18)],
+    args: [
+      'Training Reward Token',
+      'TRAIN',
+      BigInt(1000000) * BigInt(10 ** 18),
+    ],
   })
 
   const tokenReceipt = await publicClient.waitForTransactionReceipt({
@@ -248,7 +257,7 @@ export async function deployTrainingContracts(): Promise<DeployedContracts> {
   console.log('       Deployer authorized as bridge')
 
   // Summary
-  console.log('\n' + '='.repeat(70))
+  console.log(`\n${'='.repeat(70)}`)
   console.log('DEPLOYMENT COMPLETE')
   console.log('='.repeat(70))
   console.log(`Reward Token:  ${rewardTokenAddress}`)
@@ -277,4 +286,3 @@ if (import.meta.main) {
       process.exit(1)
     })
 }
-

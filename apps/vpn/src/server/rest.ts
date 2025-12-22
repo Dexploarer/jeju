@@ -334,7 +334,10 @@ export function createRESTRouter(ctx: VPNServiceContext) {
         signal: controller.signal,
       }).finally(() => clearTimeout(timeoutId))
 
-      const responseBody = await readResponseBody(response, MAX_RESPONSE_BODY_SIZE)
+      const responseBody = await readResponseBody(
+        response,
+        MAX_RESPONSE_BODY_SIZE,
+      )
 
       const responseHeaders: Record<string, string> = {}
       response.headers.forEach((v, k) => {

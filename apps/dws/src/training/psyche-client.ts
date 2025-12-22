@@ -15,12 +15,7 @@ import {
   TransactionInstruction,
 } from '@solana/web3.js'
 import * as borsh from 'borsh'
-import {
-  type Address,
-  createWalletClient,
-  type Hex,
-  http,
-} from 'viem'
+import { type Address, createWalletClient, type Hex, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { foundry } from 'viem/chains'
 

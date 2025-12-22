@@ -21,7 +21,9 @@ export function SettingsPanel() {
   const [autoStart, setAutoStart] = useState(false)
 
   useEffect(() => {
-    invoke('get_autostart_enabled', {}, BooleanResponseSchema).then(setAutoStart)
+    invoke('get_autostart_enabled', {}, BooleanResponseSchema).then(
+      setAutoStart,
+    )
   }, [])
 
   const [minimizeToTray, setMinimizeToTray] = useState(true)

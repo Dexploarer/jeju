@@ -685,7 +685,10 @@ async function callTool(
       }).finally(() => clearTimeout(timeoutId))
 
       const MCP_MAX_RESPONSE_SIZE = 10 * 1024 * 1024
-      const responseBody = await readResponseBody(response, MCP_MAX_RESPONSE_SIZE)
+      const responseBody = await readResponseBody(
+        response,
+        MCP_MAX_RESPONSE_SIZE,
+      )
 
       return {
         result: {

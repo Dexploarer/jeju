@@ -234,8 +234,7 @@ export function createMCPServer() {
         }
       }
 
-      const errorObj =
-        error instanceof Error ? error : new Error(String(error))
+      const errorObj = error instanceof Error ? error : new Error(String(error))
       const safeMessage = sanitizeErrorMessage(errorObj, isLocalnet)
       return {
         content: [{ type: 'text', text: `Internal error: ${safeMessage}` }],
