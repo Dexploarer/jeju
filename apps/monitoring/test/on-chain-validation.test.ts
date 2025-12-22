@@ -7,7 +7,7 @@ import { describe, test, expect } from 'bun:test';
 import type { GraphQLResponse, JsonRpcParams, JsonRpcResponse } from '../types';
 
 const INDEXER_GRAPHQL_URL = process.env.INDEXER_GRAPHQL_URL || 'http://localhost:4350/graphql';
-const RPC_URL = process.env.RPC_URL || 'http://localhost:9545';
+const RPC_URL = process.env.RPC_URL || 'http://localhost:6546';
 
 async function graphqlQuery<T>(query: string): Promise<T> {
   const response = await fetch(INDEXER_GRAPHQL_URL, {

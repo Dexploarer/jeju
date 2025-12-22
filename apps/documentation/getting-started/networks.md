@@ -6,7 +6,7 @@
 |---------|----------|-----|--------|
 | Mainnet | `420691` | `https://rpc.jejunetwork.org` | Live |
 | Testnet | `420690` | `https://testnet-rpc.jejunetwork.org` | Live |
-| Localnet | `1337` | `http://127.0.0.1:9545` | Local |
+| Localnet | `1337` | `http://127.0.0.1:6546` | Local |
 
 ## Mainnet
 
@@ -59,7 +59,7 @@ const jeju = await createJejuClient({
 });
 ```
 
-**RPC:** `http://127.0.0.1:9545`
+**RPC:** `http://127.0.0.1:6546`
 
 ## MetaMask Configuration
 
@@ -88,7 +88,7 @@ const jeju = await createJejuClient({
 | Setting | Value |
 |---------|-------|
 | Network Name | Jeju Localnet |
-| RPC URL | `http://127.0.0.1:9545` |
+| RPC URL | `http://127.0.0.1:6546` |
 | Chain ID | `1337` |
 | Currency Symbol | ETH |
 
@@ -120,7 +120,7 @@ const client = createPublicClient({
 
 | Service | Localnet | Testnet | Mainnet |
 |---------|----------|---------|---------|
-| RPC | :9545 | testnet-rpc.jejunetwork.org | rpc.jejunetwork.org |
+| RPC | :6546 | testnet-rpc.jejunetwork.org | rpc.jejunetwork.org |
 | Gateway | :4001 | testnet-gateway.jejunetwork.org | gateway.jejunetwork.org |
 | Bazaar | :4006 | testnet-bazaar.jejunetwork.org | bazaar.jejunetwork.org |
 | Indexer | :4350 | testnet-indexer.jejunetwork.org | indexer.jejunetwork.org |
@@ -135,7 +135,7 @@ Jeju Networks
 
 Mainnet: Chain ID 420691, https://rpc.jejunetwork.org
 Testnet: Chain ID 420690, https://testnet-rpc.jejunetwork.org
-Localnet: Chain ID 1337, http://127.0.0.1:9545
+Localnet: Chain ID 1337, http://127.0.0.1:6546
 
 SDK:
 const jeju = await createJejuClient({ network: 'testnet', privateKey: '0x...' });

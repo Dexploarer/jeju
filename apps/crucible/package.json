@@ -12,6 +12,7 @@
     "dev:server": "bun run src/server.ts",
     "dev:test": "PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 bun run src/server.ts",
     "executor": "bun run src/executor/index.ts",
+    "autonomous": "bun run src/autonomous/daemon.ts",
     "bot": "bun run src/bots/api-server.ts",
     "bot:local": "bun run scripts/start-local-env.ts",
     "bot:local:evm": "bun run scripts/start-local-env.ts --evm-only",
@@ -27,8 +28,8 @@
     "clean": "rm -rf dist out cache test-results"
   },
   "dependencies": {
-    "@elizaos/core": "^1.6.4",
-    "@elizaos/adapter-sqlite": "0.25.6-alpha.1",
+    "@elizaos/core": "workspace:vendor/eliza/packages/core",
+    "@elizaos/plugin-sql": "workspace:vendor/eliza/packages/plugin-sql",
     "@hono/node-server": "^1.19.7",
     "@jejunetwork/config": "workspace:*",
     "@jejunetwork/db": "workspace:*",

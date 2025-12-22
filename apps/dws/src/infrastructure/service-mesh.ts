@@ -19,7 +19,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import type { Address, Hex } from 'viem';
 import { keccak256, toBytes } from 'viem';
-import { validateBody, validateParams } from '../server/routes/shared';
+import { validateBody, validateParams } from '../shared/validation';
 
 // ============================================================================
 // Types
@@ -114,6 +114,79 @@ const serviceMetrics = new Map<string, ServiceMetrics>();
 export class ServiceMesh {
   private selfIdentity: ServiceIdentity | null = null;
   private trustedCAs: string[] = [];
+  private serviceBackends = new Map<string, Array<{ endpoint: string; weight: number }>>();
+
+  /**
+   * Register backends for a service (used by Helm deployments)
+   */
+  registerBackends(config: {
+    name: string;
+    namespace?: string;
+    backends: Array<{ endpoint: string; weight: number }>;
+  }): void {
+    const key = `${config.namespace || 'default'}/${config.name}`;
+    this.serviceBackends.set(key, config.backends);
+    console.log(`[ServiceMesh] Registered backends for ${key}: ${config.backends.length} endpoints`);
+  }
+
+  /**
+   * Get backends for a service
+   */
+  getBackends(name: string, namespace = 'default'): Array<{ endpoint: string; weight: number }> {
+    return this.serviceBackends.get(`${namespace}/${name}`) || [];
+  }
+
+  /**
+   * Route to a backend (load balanced)
+   */
+  async routeToService(name: string, namespace: string, request: Request): Promise<Response> {
+    const backends = this.getBackends(name, namespace);
+    if (backends.length === 0) {
+      return new Response(JSON.stringify({ error: 'No backends available' }), { 
+        status: 503,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Weighted random selection
+    const totalWeight = backends.reduce((sum, b) => sum + b.weight, 0);
+    let random = Math.random() * totalWeight;
+    
+    let selected = backends[0];
+    for (const backend of backends) {
+      random -= backend.weight;
+      if (random <= 0) {
+        selected = backend;
+        break;
+      }
+    }
+
+    // Forward request
+    const url = new URL(request.url);
+    const targetUrl = `${selected.endpoint}${url.pathname}${url.search}`;
+    
+    const startTime = Date.now();
+    
+    const response = await fetch(targetUrl, {
+      method: request.method,
+      headers: request.headers,
+      body: request.body,
+      signal: AbortSignal.timeout(30000),
+    }).catch(err => {
+      return new Response(JSON.stringify({ error: err.message }), {
+        status: 502,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    });
+
+    const latency = Date.now() - startTime;
+    
+    // Record metrics for the service
+    const serviceId = this.generateServiceId(name, namespace);
+    this.recordRequest(serviceId, response.ok, latency);
+
+    return response;
+  }
 
   /**
    * Register this service with the mesh

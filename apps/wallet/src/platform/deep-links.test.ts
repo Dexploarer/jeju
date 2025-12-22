@@ -81,7 +81,7 @@ describe('Deep Links', () => {
         recipient: '0x1234',
         amount: '1.0',
         token: 'ETH',
-        chainId: 8453,
+        chainId: 420691, // Jeju Mainnet
         memo: 'test payment',
       });
 
@@ -89,7 +89,7 @@ describe('Deep Links', () => {
       expect(link).toContain('to=0x1234');
       expect(link).toContain('amount=1.0');
       expect(link).toContain('token=ETH');
-      expect(link).toContain('chainId=8453');
+      expect(link).toContain('chainId=420691');
       expect(link).toContain('memo=test');
     });
 

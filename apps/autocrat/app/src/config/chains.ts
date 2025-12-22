@@ -4,7 +4,7 @@ import { defineChain } from 'viem'
 const networkName = 'Jeju'
 
 export const jejuLocalnet = defineChain({
-  id: 8545,
+  id: 1337,
   name: `${networkName} Localnet`,
   nativeCurrency: {
     decimals: 18,
@@ -12,7 +12,7 @@ export const jejuLocalnet = defineChain({
     symbol: 'ETH',
   },
   rpcUrls: {
-    default: { http: ['http://localhost:9545'] },
+    default: { http: ['http://localhost:6546'] },
   },
 })
 

@@ -49,7 +49,7 @@ export const jejuLocalnet = defineChain({
   name: `${networkName} Localnet`,
   nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
   rpcUrls: {
-    default: { http: [process.env.NEXT_PUBLIC_JEJU_RPC_URL || 'http://localhost:9545'] },
+    default: { http: [process.env.NEXT_PUBLIC_JEJU_RPC_URL || 'http://localhost:6546'] },
   },
   blockExplorers: {
     default: { name: `${networkName} Explorer`, url: 'http://localhost:4004' },
@@ -82,7 +82,7 @@ export const EVM_RPC_URLS: Record<EvmChainIds, string[]> = {
   ],
   [EvmChainIds.mainnetChain]: ['https://rpc.jejunetwork.org'],
   [EvmChainIds.testnetChain]: ['https://testnet-rpc.jejunetwork.org'],
-  [EvmChainIds.localnetChain]: [process.env.NEXT_PUBLIC_JEJU_RPC_URL || 'http://localhost:9545'],
+  [EvmChainIds.localnetChain]: [process.env.NEXT_PUBLIC_JEJU_RPC_URL || 'http://localhost:6546'],
 }
 
 // Solana RPC URLs

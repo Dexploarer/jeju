@@ -2,7 +2,6 @@
   "version": "1.0.0",
   "lastUpdated": "2025-12-10",
   "description": "All contract addresses for Jeju networks. Env overrides use VITE_/NEXT_PUBLIC_ + name (e.g., VITE_BAN_MANAGER_ADDRESS)",
-  
   "constants": {
     "entryPoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
     "entryPointV07": "0x0000000071727De22E5E9d8BAf0edAc6f37da032",
@@ -10,26 +9,22 @@
     "l2StandardBridge": "0x4200000000000000000000000000000000000010",
     "weth": "0x4200000000000000000000000000000000000006"
   },
-
   "localnet": {
     "chainId": 1337,
-    
     "tokens": {
-      "jeju": "",
-      "elizaOS": "",
-      "usdc": "",
+      "jeju": "0xCD8a1C3ba11CF5ECfa6267617243239504a98d90",
+      "elizaOS": "0xf5059a5D33d5853360D16C683c16e67980206f36",
+      "usdc": "0x851356ae760d987E095750cCeb3bC6014560891C",
       "weth": "0x4200000000000000000000000000000000000006"
     },
-    
     "registry": {
-      "identity": "",
+      "identity": "0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf",
       "app": "",
       "node": "",
       "token": "",
-      "reputation": "",
-      "validation": ""
+      "reputation": "0x0E801D84Fa97b50751Dbf25036d067dCf18858bF",
+      "validation": "0x8f86403A4DE0BB5791fa46B8e795C547942fE4Cf"
     },
-    
     "moderation": {
       "banManager": "",
       "moderationMarketplace": "",
@@ -37,38 +32,33 @@
       "reputationLabelManager": "",
       "predimarket": ""
     },
-    
     "security": {
       "bountyRegistry": ""
     },
-    
     "nodeStaking": {
-      "manager": "",
-      "performanceOracle": ""
+      "manager": "0x7bc06c482DEAd17c0e297aFbC32f6e63d3846650",
+      "performanceOracle": "0x7969c5eD335650692Bc04293B07F5BF2e7A673C0"
     },
-    
     "jns": {
       "registry": "",
       "resolver": "",
       "registrar": "",
       "reverseRegistrar": ""
     },
-    
     "payments": {
-      "paymasterFactory": "",
-      "priceOracle": "",
+      "paymasterFactory": "0x5f3f1dBD7B74C6B46e8c44f98792A1dAf8d69154",
+      "priceOracle": "0x95401dc811bb5740090279Ba06cfA8fcF6113778",
       "creditManager": "",
       "serviceRegistry": "",
-      "multiTokenPaymaster": "",
+      "multiTokenPaymaster": "0x9d4454B023096f34B160D6B654540c56A1F81688",
       "x402Facilitator": "",
-      "x402IntentBridge": ""
+      "x402IntentBridge": "",
+      "tokenRegistry": "0x1291Be112d480055DaFd8a610b7d1e203891C274"
     },
-    
     "commerce": {
       "authCaptureEscrow": "",
       "commerceOperator": ""
     },
-    
     "defi": {
       "poolManager": "",
       "positionManager": "",
@@ -76,34 +66,29 @@
       "quoterV4": "",
       "stateView": ""
     },
-    
     "compute": {
       "registry": "",
       "ledgerManager": "",
       "inferenceServing": "",
       "staking": ""
     },
-    
     "governance": {
       "governor": "",
       "timelock": "",
       "futarchyGovernor": "",
       "registryGovernance": ""
     },
-    
     "oif": {
       "solverRegistry": "",
       "inputSettler": "",
       "outputSettler": "",
       "oracleAdapter": ""
     },
-    
     "eil": {
       "l1StakeManager": "",
       "crossChainPaymaster": "0xa7Cd0542a8F4CCa6Dd021C3A0Af0E423Ad7DFfB7",
       "liquidityPaymaster": ""
     },
-    
     "liquidity": {
       "riskSleeve": "",
       "liquidityRouter": "",
@@ -111,24 +96,20 @@
       "liquidityVault": "",
       "federatedLiquidity": ""
     },
-    
     "fees": {
       "feeConfig": "",
       "feeDistributor": "",
       "feeGovernance": ""
     }
   },
-
   "testnet": {
     "chainId": 420690,
-    
     "tokens": {
       "jeju": "",
       "elizaOS": "0x7af64e6aE21076DE21EFe71F243A75664a17C34b",
       "usdc": "0x953F6516E5d2864cE7f13186B45dE418EA665EB2",
       "weth": "0x4200000000000000000000000000000000000006"
     },
-    
     "registry": {
       "identity": "",
       "app": "",
@@ -137,7 +118,6 @@
       "reputation": "",
       "validation": ""
     },
-    
     "moderation": {
       "banManager": "",
       "moderationMarketplace": "",
@@ -145,23 +125,19 @@
       "reputationLabelManager": "",
       "predimarket": ""
     },
-    
     "security": {
       "bountyRegistry": ""
     },
-    
     "nodeStaking": {
       "manager": "",
       "performanceOracle": ""
     },
-    
     "jns": {
       "registry": "",
       "resolver": "",
       "registrar": "",
       "reverseRegistrar": ""
     },
-    
     "payments": {
       "paymasterFactory": "",
       "priceOracle": "",
@@ -170,7 +146,6 @@
       "multiTokenPaymaster": "",
       "x402Facilitator": ""
     },
-    
     "defi": {
       "poolManager": "",
       "positionManager": "",
@@ -178,34 +153,29 @@
       "quoterV4": "",
       "stateView": ""
     },
-    
     "compute": {
       "registry": "",
       "ledgerManager": "",
       "inferenceServing": "",
       "staking": ""
     },
-    
     "governance": {
       "governor": "",
       "timelock": "",
       "futarchyGovernor": "",
       "registryGovernance": ""
     },
-    
     "oif": {
       "solverRegistry": "",
       "inputSettler": "",
       "outputSettler": "",
       "oracleAdapter": ""
     },
-    
     "eil": {
       "l1StakeManager": "0xBf871db95b89Fde7D13b4FAA8b8E47aB5F00C29C",
       "crossChainPaymaster": "",
       "liquidityPaymaster": ""
     },
-    
     "liquidity": {
       "riskSleeve": "",
       "liquidityRouter": "",
@@ -213,24 +183,20 @@
       "liquidityVault": "",
       "federatedLiquidity": ""
     },
-    
     "fees": {
       "feeConfig": "",
       "feeDistributor": "",
       "feeGovernance": ""
     }
   },
-
   "mainnet": {
     "chainId": 420691,
-    
     "tokens": {
       "jeju": "",
       "elizaOS": "",
       "usdc": "",
       "weth": "0x4200000000000000000000000000000000000006"
     },
-    
     "registry": {
       "identity": "",
       "app": "",
@@ -239,7 +205,6 @@
       "reputation": "",
       "validation": ""
     },
-    
     "moderation": {
       "banManager": "",
       "moderationMarketplace": "",
@@ -247,23 +212,19 @@
       "reputationLabelManager": "",
       "predimarket": ""
     },
-    
     "security": {
       "bountyRegistry": ""
     },
-    
     "nodeStaking": {
       "manager": "",
       "performanceOracle": ""
     },
-    
     "jns": {
       "registry": "",
       "resolver": "",
       "registrar": "",
       "reverseRegistrar": ""
     },
-    
     "payments": {
       "paymasterFactory": "",
       "priceOracle": "",
@@ -272,7 +233,6 @@
       "multiTokenPaymaster": "",
       "x402Facilitator": ""
     },
-    
     "defi": {
       "poolManager": "",
       "positionManager": "",
@@ -280,34 +240,29 @@
       "quoterV4": "",
       "stateView": ""
     },
-    
     "compute": {
       "registry": "",
       "ledgerManager": "",
       "inferenceServing": "",
       "staking": ""
     },
-    
     "governance": {
       "governor": "",
       "timelock": "",
       "futarchyGovernor": "",
       "registryGovernance": ""
     },
-    
     "oif": {
       "solverRegistry": "",
       "inputSettler": "",
       "outputSettler": "",
       "oracleAdapter": ""
     },
-    
     "eil": {
       "l1StakeManager": "",
       "crossChainPaymaster": "",
       "liquidityPaymaster": ""
     },
-    
     "liquidity": {
       "riskSleeve": "",
       "liquidityRouter": "",
@@ -315,14 +270,12 @@
       "liquidityVault": "",
       "federatedLiquidity": ""
     },
-    
     "fees": {
       "feeConfig": "",
       "feeDistributor": "",
       "feeGovernance": ""
     }
   },
-
   "external": {
     "sepolia": {
       "chainId": 11155111,

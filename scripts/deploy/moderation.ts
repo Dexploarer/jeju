@@ -11,7 +11,7 @@
 
 import { createPublicClient, createWalletClient, http, type Address, type Hex, parseEther } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { baseSepolia } from 'viem/chains';
+import { jejuTestnet } from '../shared/viem-chains';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
@@ -126,15 +126,15 @@ async function deployModeration() {
   console.log(`📍 Deployer: ${account.address}`);
   
   // Setup clients
-  const rpcUrl = process.env.TESTNET_RPC_URL || 'https://sepolia.base.org';
+  const rpcUrl = process.env.JEJU_TESTNET_RPC_URL || 'https://testnet-rpc.jejunetwork.org';
   const publicClient = createPublicClient({
-    chain: baseSepolia,
+    chain: jejuTestnet,
     transport: http(rpcUrl),
   });
   
   const walletClient = createWalletClient({
     account,
-    chain: baseSepolia,
+    chain: jejuTestnet,
     transport: http(rpcUrl),
   });
   
@@ -145,7 +145,7 @@ async function deployModeration() {
   } else {
     deployment = {
       network: 'testnet',
-      chainId: 84532,
+      chainId: 420690,
       deployer: null,
       moderation: {
         banManager: null,

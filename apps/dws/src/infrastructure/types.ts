@@ -375,7 +375,7 @@ export const NETWORK_CONFIGS: Record<NetworkEnvironment, NetworkConfig> = {
   localnet: {
     environment: 'localnet',
     chainId: 31337,
-    rpcUrl: 'http://127.0.0.1:8545',
+    rpcUrl: 'http://127.0.0.1:6546',
     contracts: {
       identityRegistry: '0x5FbDB2315678afecb367f032d93F642f64180aa3',
       workerRegistry: '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
@@ -397,8 +397,8 @@ export const NETWORK_CONFIGS: Record<NetworkEnvironment, NetworkConfig> = {
   
   testnet: {
     environment: 'testnet',
-    chainId: 84532, // Base Sepolia
-    rpcUrl: 'https://sepolia.base.org',
+    chainId: 420690, // Jeju Testnet
+    rpcUrl: 'https://testnet-rpc.jejunetwork.org',
     contracts: {
       identityRegistry: '0xaB3C2C6A93A88B8dC50a0C3C1DFd2d3bE0a62311',
       workerRegistry: '0x0000000000000000000000000000000000000000', // TBD
@@ -421,8 +421,8 @@ export const NETWORK_CONFIGS: Record<NetworkEnvironment, NetworkConfig> = {
   
   mainnet: {
     environment: 'mainnet',
-    chainId: 8453, // Base
-    rpcUrl: 'https://mainnet.base.org',
+    chainId: 420691, // Jeju Mainnet
+    rpcUrl: 'https://rpc.jejunetwork.org',
     contracts: {
       identityRegistry: '0x0000000000000000000000000000000000000000', // TBD
       workerRegistry: '0x0000000000000000000000000000000000000000',

@@ -32,7 +32,7 @@ describe("Full SDK Integration Tests", () => {
     if (!env.chainRunning) {
       console.log("\n⚠ WARNING: Chain not running");
       console.log("  Start with: jeju dev --localnet");
-      console.log("  Or: anvil --port 9545");
+      console.log("  Or: anvil --port 6546");
       skipTests = true;
       return;
     }

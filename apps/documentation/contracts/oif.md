@@ -98,7 +98,7 @@ Jeju Mainnet (420691) and Jeju Testnet (420690) support both InputSettler and Ou
 cd packages/contracts
 
 forge script script/DeployOIF.s.sol \
-  --rpc-url http://127.0.0.1:9545 \
+  --rpc-url http://127.0.0.1:6546 \
   --broadcast
 
 # Testnet with verification

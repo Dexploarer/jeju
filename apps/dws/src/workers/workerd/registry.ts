@@ -12,7 +12,6 @@ import {
   type WalletClient,
   type Chain,
   encodeFunctionData,
-  decodeFunctionResult,
 } from 'viem';
 import { privateKeyToAccount, type PrivateKeyAccount } from 'viem/accounts';
 import type { WorkerdWorkerDefinition } from './types';
@@ -249,7 +248,6 @@ export class DecentralizedWorkerRegistry {
     });
 
     // Parse agentId from logs (simplified - would need proper event parsing)
-    // @ts-expect-error viem version type mismatch
     const agentId = BigInt(receipt.logs[0]?.topics?.[1] || 0);
 
     // Set metadata
@@ -472,7 +470,6 @@ export class DecentralizedWorkerRegistry {
       hash: registerTx,
     });
 
-    // @ts-expect-error viem version type mismatch
     const agentId = BigInt(receipt.logs[0]?.topics?.[1] || 0);
 
     // Set endpoint and metadata

@@ -26,7 +26,7 @@ import {
   toHex,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { baseSepolia, base, localhost } from 'viem/chains';
+import { getJejuChain, getJejuRpcUrl, type JejuNetwork } from '../shared/viem-chains';
 import { readFileSync, existsSync, writeFileSync, readdirSync, mkdirSync } from 'fs';
 import { join, relative, extname } from 'path';
 
@@ -126,7 +126,7 @@ const JNS_RESOLVER_ABI = [
 // ============================================================================
 
 class DAppDeployer {
-  private network: 'localnet' | 'testnet' | 'mainnet';
+  private network: JejuNetwork;
   private dwsEndpoint: string;
   private privateKey: Hex;
   private account: ReturnType<typeof privateKeyToAccount>;
@@ -137,7 +137,7 @@ class DAppDeployer {
   private domain: string;
   private results: DeployResult[] = [];
 
-  constructor(network: 'localnet' | 'testnet' | 'mainnet' = 'testnet') {
+  constructor(network: JejuNetwork = 'testnet') {
     this.network = network;
     
     // Configure endpoints
@@ -185,24 +185,10 @@ class DAppDeployer {
     }
   }
 
-  private getChainConfig(): { chain: typeof base; rpcUrl: string } {
-    switch (this.network) {
-      case 'mainnet':
-        return {
-          chain: base,
-          rpcUrl: process.env.MAINNET_RPC_URL || 'https://mainnet.base.org',
-        };
-      case 'testnet':
-        return {
-          chain: baseSepolia,
-          rpcUrl: process.env.TESTNET_RPC_URL || 'https://sepolia.base.org',
-        };
-      default:
-        return {
-          chain: localhost,
-          rpcUrl: process.env.RPC_URL || 'http://localhost:8545',
-        };
-    }
+  private getChainConfig() {
+    const chain = getJejuChain(this.network);
+    const rpcUrl = getJejuRpcUrl(this.network);
+    return { chain, rpcUrl };
   }
 
   private getContractAddresses(): { registrar: Address; resolver: Address } {
@@ -641,7 +627,7 @@ async function main() {
   const deployAll = args.includes('--all');
   
   const appName = appIndex !== -1 ? args[appIndex + 1] : undefined;
-  const network = (networkIndex !== -1 ? args[networkIndex + 1] : 'testnet') as 'localnet' | 'testnet' | 'mainnet';
+  const network = (networkIndex !== -1 ? args[networkIndex + 1] : 'testnet') as JejuNetwork;
   
   const deployer = new DAppDeployer(network);
   

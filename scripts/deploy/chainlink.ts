@@ -5,7 +5,8 @@
 
 import { createPublicClient, createWalletClient, http, type Address, type Hex, formatEther } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { base, baseSepolia, foundry } from 'viem/chains';
+import { foundry } from 'viem/chains';
+import { jejuTestnet, jejuMainnet } from '../shared/viem-chains';
 import { parseArgs } from 'util';
 
 import VRFCoordinatorABI from '../../packages/contracts/abis/VRFCoordinatorV2_5.json';
@@ -14,8 +15,8 @@ import OracleRouterABI from '../../packages/contracts/abis/OracleRouter.json';
 import ChainlinkGovernanceABI from '../../packages/contracts/abis/ChainlinkGovernance.json';
 
 const CHAINS = {
-  mainnet: { chain: base, linkToken: '0x0' as Address }, // TODO: Deploy LINK bridge
-  testnet: { chain: baseSepolia, linkToken: '0x0' as Address },
+  mainnet: { chain: jejuMainnet, linkToken: '0x0' as Address }, // TODO: Deploy LINK bridge
+  testnet: { chain: jejuTestnet, linkToken: '0x0' as Address },
   localnet: { chain: foundry, linkToken: '0x0' as Address },
 } as const;
 

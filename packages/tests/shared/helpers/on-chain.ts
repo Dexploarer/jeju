@@ -31,7 +31,7 @@ import {
   type TransactionReceipt,
 } from 'viem';
 
-const DEFAULT_RPC_URL = process.env.L2_RPC_URL || process.env.JEJU_RPC_URL || 'http://localhost:9545';
+const DEFAULT_RPC_URL = process.env.L2_RPC_URL || process.env.JEJU_RPC_URL || 'http://localhost:6546';
 const DEFAULT_CHAIN_ID = parseInt(process.env.CHAIN_ID || '1337');
 const CLIENT_TTL_MS = 30_000; // Cached client TTL - balance staleness vs connection overhead
 

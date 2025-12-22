@@ -57,7 +57,7 @@ bun run dev
 ```
 
 This automatically starts:
-1. **Localnet** (anvil) - Local blockchain on port 9545
+1. **Localnet** (anvil) - Local blockchain on port 6546
 2. **Contracts** - Deploys Crucible smart contracts
 3. **DWS** - Decentralized Workstation Service on port 4030
 4. **Inference Node** - Local AI inference node on port 4031 (registers with DWS)
@@ -88,7 +88,7 @@ If you need to start services individually:
 
 ```bash
 # 1. Start localnet
-anvil --port 9545
+anvil --port 6546
 
 # 2. Start DWS
 cd apps/dws && bun run dev
@@ -227,6 +227,67 @@ docker run -e NETWORK=mainnet \
   -e RPC_URL=https://base-mainnet-rpc.jejunetwork.org \
   crucible
 ```
+
+## Autonomous Agents
+
+Crucible supports autonomous agents that run on configurable tick intervals, similar to Babylon's pattern. Each tick, the agent uses the LLM to decide what actions to take.
+
+### Running Autonomous Agents
+
+**Option 1: Standalone daemon**
+```bash
+# Start the autonomous daemon
+bun run autonomous
+
+# With custom configuration
+TICK_INTERVAL_MS=30000 MAX_CONCURRENT_AGENTS=5 bun run autonomous
+```
+
+**Option 2: Enable via server**
+```bash
+# Start server with autonomous mode enabled
+AUTONOMOUS_ENABLED=true bun run dev:server
+```
+
+### Autonomous API
+
+```bash
+# Get autonomous runner status
+GET /api/v1/autonomous/status
+
+# Start autonomous runner
+POST /api/v1/autonomous/start
+
+# Stop autonomous runner
+POST /api/v1/autonomous/stop
+
+# Register agent for autonomous mode
+POST /api/v1/autonomous/agents
+{ "characterId": "project-manager", "tickIntervalMs": 60000 }
+
+# Remove agent from autonomous mode
+DELETE /api/v1/autonomous/agents/:agentId
+```
+
+### How It Works
+
+1. **Tick Loop**: Each agent runs on its configured tick interval (default: 60 seconds)
+2. **Decision Making**: At each tick, the LLM is prompted with:
+   - Available actions (compute, storage, DeFi, governance, A2A)
+   - Current context (network state, pending messages, goals)
+   - Previous actions taken this tick
+3. **Action Execution**: The LLM decides what action to take (or FINISH)
+4. **Multi-Step**: Up to 5 actions can be taken per tick
+5. **Backoff**: Failed agents get exponential backoff to prevent spam
+
+### Configuration
+
+| Environment Variable | Default | Description |
+|---------------------|---------|-------------|
+| `AUTONOMOUS_ENABLED` | false | Enable autonomous mode in server |
+| `TICK_INTERVAL_MS` | 60000 | Default tick interval (1 minute) |
+| `MAX_CONCURRENT_AGENTS` | 10 | Maximum concurrent agents |
+| `ENABLE_BUILTIN_CHARACTERS` | true | Auto-register built-in characters |
 
 ## Testing
 

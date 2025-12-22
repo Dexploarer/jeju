@@ -19,7 +19,7 @@ import {
   checkContractsDeployed as checkContracts,
 } from './utils';
 
-const LOCALNET_PORT = 9545;
+const LOCALNET_PORT = 6546;
 const DWS_PORT = 4030;
 
 let localnetProcess: Subprocess | null = null;

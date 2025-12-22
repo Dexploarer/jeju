@@ -2,11 +2,12 @@
  * GRPO Trainer for Jeju DWS
  * 
  * Group Relative Policy Optimization trainer with Atropos API integration.
- * Coordinates with vLLM for inference and implements the GRPO algorithm
- * for reinforcement learning from AI feedback.
+ * Coordinates with Python trainer subprocess for real gradient computation.
+ * No simulation - all training is done through the Python backend.
  */
 
 import { spawn, type Subprocess } from 'bun';
+import { join } from 'path';
 
 // ============================================================================
 // Types
@@ -27,6 +28,7 @@ export interface TrainingConfig {
   wandbProject?: string;
   wandbGroup?: string;
   atroposUrl: string;
+  groupSize: number;
 }
 
 export interface BatchData {
@@ -41,11 +43,21 @@ export interface BatchData {
 
 export interface TrainingMetrics {
   loss: number;
-  posLogp: number;
-  negLogp: number;
-  logp: number;
+  policyLoss: number;
+  entropy: number;
   gradNorm: number;
+  posLogProb: number;
+  negLogProb: number;
   learningRate: number;
+  step: number;
+}
+
+export interface TrainerStatus {
+  running: boolean;
+  currentStep: number;
+  totalSteps: number;
+  lastMetrics: TrainingMetrics | null;
+  checkpointPath: string | null;
 }
 
 // ============================================================================
@@ -53,139 +65,58 @@ export interface TrainingMetrics {
 // ============================================================================
 
 const DEFAULT_CONFIG: TrainingConfig = {
-  // Use microsoft/phi-2 - no auth required, 2.7B params, fits in 16GB
-  modelName: 'microsoft/phi-2',
-  learningRate: 1e-5,
-  trainingSteps: 10,
-  batchSize: 2,
-  seqLen: 2048,
-  gradientAccumulationSteps: 16,
+  modelName: 'TinyLlama/TinyLlama-1.1B-Chat-v1.0',
+  learningRate: 5e-6,
+  trainingSteps: 20,
+  batchSize: 1,
+  seqLen: 512,
+  gradientAccumulationSteps: 4,
   device: 'cuda',
-  savePath: 'trained_model_checkpoints',
-  vllmRestartInterval: 5,
+  savePath: './training_checkpoints',
+  vllmRestartInterval: 10,
   vllmPort: 9001,
   useWandb: false,
   atroposUrl: 'http://localhost:8000',
+  groupSize: 8,
 };
 
 // ============================================================================
-// Utility Functions
-// ============================================================================
-
-function padToGoodOffset(
-  data: { batch: BatchData[] },
-  batchSize: number
-): {
-  tokenBatches: number[][][];
-  labelBatches: number[][][];
-  advantageBatches: number[][];
-  temperatureBatches: number[][];
-} {
-  const goodMultiple = 64;
-
-  // Find max token length
-  let maxTokenLen = 0;
-  for (const item of data.batch) {
-    for (const tokens of item.tokens) {
-      if (tokens.length > maxTokenLen) {
-        maxTokenLen = tokens.length;
-      }
-    }
-  }
-
-  // Pad to good multiple
-  if ((maxTokenLen - 1) % goodMultiple !== 0) {
-    maxTokenLen = Math.ceil((maxTokenLen - 1) / goodMultiple) * goodMultiple + 1;
-  }
-
-  const inputIds: number[][] = [];
-  const labels: number[][] = [];
-  const advantages: number[] = [];
-  const temperatures: number[] = [];
-
-  for (const item of data.batch) {
-    // Normalize scores
-    const scores = [...item.scores];
-    if (scores.length > 1) {
-      const mean = scores.reduce((a, b) => a + b, 0) / scores.length;
-      const std = Math.sqrt(
-        scores.reduce((a, b) => a + (b - mean) ** 2, 0) / scores.length
-      );
-      for (let i = 0; i < scores.length; i++) {
-        scores[i] = (scores[i] - mean) / Math.max(std, 1e-8);
-      }
-    }
-
-    // Handle overrides that set advantage to zero
-    if (item.overrides) {
-      for (let i = 0; i < item.overrides.length; i++) {
-        if (item.overrides[i]?.set_advantage_to_zero) {
-          scores[i] = 0;
-        }
-      }
-    }
-
-    for (let i = 0; i < item.tokens.length; i++) {
-      const tokens = item.tokens[i];
-      const masks = item.masks[i];
-
-      // Pad tokens
-      const paddedTokens = new Array(maxTokenLen).fill(0);
-      for (let j = 0; j < tokens.length; j++) {
-        paddedTokens[j] = tokens[j];
-      }
-
-      // Pad masks
-      const paddedMasks = new Array(maxTokenLen).fill(-100);
-      for (let j = 0; j < masks.length; j++) {
-        paddedMasks[j] = masks[j];
-      }
-
-      // Create input/label pairs (causal LM style)
-      inputIds.push(paddedTokens.slice(0, -1));
-      labels.push(paddedMasks.slice(1));
-      advantages.push(scores[i]);
-
-      // Get temperature from overrides
-      let t = 1.0;
-      if (item.overrides?.[i]?.temperature !== undefined) {
-        t = Number(item.overrides[i].temperature);
-      } else if (item.generation_params?.temperature !== undefined) {
-        t = Number(item.generation_params.temperature);
-      } else if (item.group_overrides?.temperature !== undefined) {
-        t = Number(item.group_overrides.temperature);
-      }
-      temperatures.push(t);
-    }
-  }
-
-  // Create batches
-  const tokenBatches: number[][][] = [];
-  const labelBatches: number[][][] = [];
-  const advantageBatches: number[][] = [];
-  const temperatureBatches: number[][] = [];
-
-  for (let i = 0; i < Math.floor(inputIds.length / batchSize); i++) {
-    tokenBatches.push(inputIds.slice(i * batchSize, (i + 1) * batchSize));
-    labelBatches.push(labels.slice(i * batchSize, (i + 1) * batchSize));
-    advantageBatches.push(advantages.slice(i * batchSize, (i + 1) * batchSize));
-    temperatureBatches.push(temperatures.slice(i * batchSize, (i + 1) * batchSize));
-  }
-
-  return { tokenBatches, labelBatches, advantageBatches, temperatureBatches };
-}
-
-// ============================================================================
-// GRPO Trainer
+// GRPO Trainer - Python Backend Integration
 // ============================================================================
 
 export class GRPOTrainer {
   private config: TrainingConfig;
-  private vllmProcess: Subprocess | null = null;
-  private currentStep = 0;
+  private pythonProcess: Subprocess | null = null;
+  private status: TrainerStatus = {
+    running: false,
+    currentStep: 0,
+    totalSteps: 0,
+    lastMetrics: null,
+    checkpointPath: null,
+  };
+  private metricsBuffer: TrainingMetrics[] = [];
+  private onMetrics?: (metrics: TrainingMetrics) => void;
+  private onComplete?: (checkpointPath: string) => void;
 
   constructor(config: Partial<TrainingConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
+    this.status.totalSteps = this.config.trainingSteps;
+  }
+
+  getStatus(): TrainerStatus {
+    return { ...this.status };
+  }
+
+  getConfig(): TrainingConfig {
+    return { ...this.config };
+  }
+
+  onTrainingMetrics(callback: (metrics: TrainingMetrics) => void): void {
+    this.onMetrics = callback;
+  }
+
+  onTrainingComplete(callback: (checkpointPath: string) => void): void {
+    this.onComplete = callback;
   }
 
   async registerWithAtropos(): Promise<void> {
@@ -193,13 +124,13 @@ export class GRPOTrainer {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        wandb_group: this.config.wandbGroup ?? '',
-        wandb_project: this.config.wandbProject ?? '',
+        wandb_group: this.config.wandbGroup ?? 'jeju-grpo',
+        wandb_project: this.config.wandbProject ?? 'jeju-training',
         batch_size: this.config.batchSize * this.config.gradientAccumulationSteps,
         max_token_len: this.config.seqLen,
         starting_step: 0,
         checkpoint_dir: this.config.savePath,
-        save_checkpoint_interval: this.config.trainingSteps,
+        save_checkpoint_interval: this.config.vllmRestartInterval,
         num_steps: this.config.trainingSteps,
       }),
     });
@@ -225,200 +156,143 @@ export class GRPOTrainer {
     return { batch: data.batch };
   }
 
-  async startVllm(modelPath?: string): Promise<void> {
-    if (this.vllmProcess) {
-      await this.stopVllm();
+  /**
+   * Start the Python GRPO trainer subprocess
+   * This runs actual PyTorch training with real gradients
+   */
+  async startTraining(): Promise<void> {
+    if (this.pythonProcess) {
+      throw new Error('Training already in progress');
     }
 
-    const model = modelPath ?? this.config.modelName;
+    this.status.running = true;
+    this.status.currentStep = 0;
 
-    console.log(`[GRPO] Starting vLLM server for model: ${model}`);
+    const scriptPath = join(import.meta.dir, 'grpo_train.py');
 
-    this.vllmProcess = spawn([
+    console.log(`[GRPO] Starting Python trainer: ${scriptPath}`);
+    console.log(`[GRPO] Model: ${this.config.modelName}`);
+    console.log(`[GRPO] Steps: ${this.config.trainingSteps}`);
+    console.log(`[GRPO] Atropos: ${this.config.atroposUrl}`);
+
+    this.pythonProcess = spawn([
       'python',
-      '-m',
-      'vllm.entrypoints.openai.api_server',
-      '--model', model,
-      '--port', String(this.config.vllmPort),
-      '--dtype', 'auto',
-      '--gpu-memory-utilization', '0.45',
-      '--disable-log-requests',
-      ...(modelPath ? ['--served-model-name', this.config.modelName] : []),
+      scriptPath,
+      '--model', this.config.modelName,
+      '--steps', String(this.config.trainingSteps),
+      '--lr', String(this.config.learningRate),
+      '--batch-size', String(this.config.batchSize),
+      '--save-path', this.config.savePath,
+      '--atropos-url', this.config.atroposUrl,
+      '--vllm-port', String(this.config.vllmPort),
     ], {
-      stdout: 'inherit',
-      stderr: 'inherit',
+      stdout: 'pipe',
+      stderr: 'pipe',
+      cwd: import.meta.dir,
     });
 
-    // Wait for server to be ready
-    await this.waitForVllm();
-    console.log('[GRPO] vLLM server ready');
-  }
+    // Stream stdout and parse metrics
+    this.streamOutput(this.pythonProcess);
 
-  private async waitForVllm(timeoutMs = 120000): Promise<void> {
-    const startTime = Date.now();
-
-    while (Date.now() - startTime < timeoutMs) {
-      try {
-        const response = await fetch(`http://localhost:${this.config.vllmPort}/health`);
-        if (response.ok) {
-          return;
-        }
-      } catch {
-        // Server not ready yet
-      }
-      await new Promise((r) => setTimeout(r, 1000));
-    }
-
-    throw new Error('vLLM server failed to start');
-  }
-
-  async stopVllm(): Promise<void> {
-    if (this.vllmProcess) {
-      console.log('[GRPO] Stopping vLLM server');
-      this.vllmProcess.kill();
-      await this.vllmProcess.exited;
-      this.vllmProcess = null;
-    }
-  }
-
-  async saveCheckpoint(step: number): Promise<string> {
-    const checkpointPath = `${this.config.savePath}/step_${step}`;
-    console.log(`[GRPO] Saving checkpoint to ${checkpointPath}`);
+    // Wait for process to complete
+    const exitCode = await this.pythonProcess.exited;
     
-    // In a real implementation, this would save the model weights
-    // For now, create a marker file
-    await Bun.write(`${checkpointPath}/checkpoint.json`, JSON.stringify({
-      step,
-      modelName: this.config.modelName,
-      timestamp: Date.now(),
-    }));
+    this.status.running = false;
+    this.pythonProcess = null;
 
-    return checkpointPath;
-  }
-
-  async trainStep(batches: ReturnType<typeof padToGoodOffset>): Promise<TrainingMetrics> {
-    // This is a placeholder for the actual training step
-    // In production, this would use PyTorch/JAX for actual gradient computation
-    
-    let totalLoss = 0;
-    let totalPosLogp = 0;
-    let totalNegLogp = 0;
-    let totalPos = 0;
-    let totalNeg = 0;
-
-    for (let i = 0; i < batches.tokenBatches.length; i++) {
-      const tokens = batches.tokenBatches[i];
-      const labels = batches.labelBatches[i];
-      const advantages = batches.advantageBatches[i];
-      const temperatures = batches.temperatureBatches[i];
-
-      // Simulate loss computation
-      const batchLoss = Math.random() * 0.5;
-      totalLoss += batchLoss / this.config.gradientAccumulationSteps;
-
-      // Simulate logprob tracking
-      for (let j = 0; j < advantages.length; j++) {
-        const logp = -Math.random() * 2;
-        if (advantages[j] > 0) {
-          totalPosLogp += logp;
-          totalPos++;
-        } else {
-          totalNegLogp += logp;
-          totalNeg++;
-        }
-      }
+    if (exitCode === 0) {
+      const checkpointPath = `${this.config.savePath}/step_${this.config.trainingSteps}`;
+      this.status.checkpointPath = checkpointPath;
+      console.log(`[GRPO] Training complete. Checkpoint: ${checkpointPath}`);
+      this.onComplete?.(checkpointPath);
+    } else {
+      throw new Error(`Python trainer exited with code ${exitCode}`);
     }
-
-    const gradNorm = Math.random() * 2;
-
-    return {
-      loss: totalLoss,
-      posLogp: totalPos > 0 ? totalPosLogp / totalPos : 0,
-      negLogp: totalNeg > 0 ? totalNegLogp / totalNeg : 0,
-      logp: (totalPosLogp + totalNegLogp) / Math.max(totalPos + totalNeg, 1),
-      gradNorm,
-      learningRate: this.config.learningRate,
-    };
   }
 
-  async train(): Promise<void> {
-    console.log(`[GRPO] Starting training for ${this.config.trainingSteps} steps`);
-    console.log(`[GRPO] Model: ${this.config.modelName}`);
-    console.log(`[GRPO] Device: ${this.config.device}`);
+  private async streamOutput(process: Subprocess): Promise<void> {
+    const stdout = process.stdout;
+    const stderr = process.stderr;
 
-    // Create save directory
-    await Bun.write(`${this.config.savePath}/.gitkeep`, '');
-
-    // Register with Atropos
-    await this.registerWithAtropos();
-
-    // Start vLLM
-    await this.startVllm();
-
-    let pendingBatches: ReturnType<typeof padToGoodOffset>[] = [];
-
-    for (let step = 0; step < this.config.trainingSteps; step++) {
-      console.log(`\n[GRPO] Step ${step + 1}/${this.config.trainingSteps}`);
-
-      // Check if we need to restart vLLM
-      if (
-        (step + 1) % this.config.vllmRestartInterval === 0 ||
-        step === this.config.trainingSteps - 1
-      ) {
-        await this.stopVllm();
-      }
-
-      // Get batch from Atropos
-      if (pendingBatches.length === 0) {
+    if (stdout) {
+      const reader = stdout.getReader();
+      const decoder = new TextDecoder();
+      
+      (async () => {
         while (true) {
-          const data = await this.getBatch();
-          if (data) {
-            const processed = padToGoodOffset(data, this.config.batchSize);
-            pendingBatches.push(processed);
-            break;
-          }
-          await new Promise((r) => setTimeout(r, 1000));
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          const text = decoder.decode(value);
+          console.log(text);
+          
+          // Parse metrics from output
+          this.parseMetrics(text);
         }
-      }
-
-      const batches = pendingBatches.shift();
-      if (!batches) {
-        console.log('[GRPO] No batches available');
-        continue;
-      }
-
-      // Train step
-      const metrics = await this.trainStep(batches);
-      console.log(`[GRPO] Loss: ${metrics.loss.toFixed(4)}`);
-      console.log(`[GRPO] Grad Norm: ${metrics.gradNorm.toFixed(4)}`);
-      console.log(`[GRPO] Pos LogP: ${metrics.posLogp.toFixed(4)}`);
-      console.log(`[GRPO] Neg LogP: ${metrics.negLogp.toFixed(4)}`);
-
-      // Save checkpoint and restart vLLM
-      if (
-        (step + 1) % this.config.vllmRestartInterval === 0 ||
-        step === this.config.trainingSteps - 1
-      ) {
-        const checkpointPath = await this.saveCheckpoint(step + 1);
-        await this.startVllm(checkpointPath);
-      }
-
-      this.currentStep = step + 1;
+      })();
     }
 
-    // Final cleanup
-    await this.stopVllm();
+    if (stderr) {
+      const reader = stderr.getReader();
+      const decoder = new TextDecoder();
+      
+      (async () => {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          console.error(decoder.decode(value));
+        }
+      })();
+    }
+  }
 
-    // Save final model
-    const finalPath = `${this.config.savePath}/final_model`;
-    await Bun.write(`${finalPath}/model.json`, JSON.stringify({
-      modelName: this.config.modelName,
-      trainingSteps: this.config.trainingSteps,
-      timestamp: Date.now(),
-    }));
+  private parseMetrics(output: string): void {
+    // Parse step number
+    const stepMatch = output.match(/--- Step (\d+)\/(\d+) ---/);
+    if (stepMatch) {
+      this.status.currentStep = parseInt(stepMatch[1], 10);
+    }
 
-    console.log('\n[GRPO] Training complete');
-    console.log(`[GRPO] Final model saved to ${finalPath}`);
+    // Parse loss metrics
+    const lossMatch = output.match(/\[GRPO\] Loss: ([\d.-]+)/);
+    const gradMatch = output.match(/Grad Norm: ([\d.]+)/);
+    const posLogPMatch = output.match(/Pos LogP: ([\d.-]+)/);
+    const negLogPMatch = output.match(/Neg LogP: ([\d.-]+)/);
+
+    if (lossMatch) {
+      const metrics: TrainingMetrics = {
+        loss: parseFloat(lossMatch[1]),
+        policyLoss: parseFloat(lossMatch[1]),
+        entropy: 0,
+        gradNorm: gradMatch ? parseFloat(gradMatch[1]) : 0,
+        posLogProb: posLogPMatch ? parseFloat(posLogPMatch[1]) : 0,
+        negLogProb: negLogPMatch ? parseFloat(negLogPMatch[1]) : 0,
+        learningRate: this.config.learningRate,
+        step: this.status.currentStep,
+      };
+
+      this.status.lastMetrics = metrics;
+      this.metricsBuffer.push(metrics);
+      this.onMetrics?.(metrics);
+    }
+  }
+
+  async stopTraining(): Promise<void> {
+    if (this.pythonProcess) {
+      console.log('[GRPO] Stopping training...');
+      this.pythonProcess.kill();
+      await this.pythonProcess.exited;
+      this.pythonProcess = null;
+      this.status.running = false;
+    }
+  }
+
+  getMetricsHistory(): TrainingMetrics[] {
+    return [...this.metricsBuffer];
+  }
+
+  async getCheckpoint(): Promise<string | null> {
+    return this.status.checkpointPath;
   }
 }
 
@@ -449,14 +323,15 @@ export class DistributedGRPOTrainer extends GRPOTrainer {
     }
 
     this.runId = runId;
+    const config = this.getConfig();
 
     // Create run on Psyche network
     await this.psycheClient.createRun(
       runId,
       {
         name: `GRPO Training ${runId}`,
-        description: 'Distributed GRPO training run',
-        modelHubRepo: 'jeju/grpo-model',
+        description: 'Distributed GRPO training run via Jeju DWS',
+        modelHubRepo: `jeju/${config.modelName.split('/').pop()}`,
         datasetHubRepo: 'jeju/training-data',
       },
       {
@@ -465,13 +340,13 @@ export class DistributedGRPOTrainer extends GRPOTrainer {
         epochLengthMs: 60000,
         warmupEpochs: 1,
         checkpointIntervalEpochs: 5,
-        learningRate: 1e-5,
-        batchSize: 32,
-        gradientAccumulationSteps: 4,
-        maxSeqLength: 2048,
+        learningRate: config.learningRate,
+        batchSize: config.batchSize,
+        gradientAccumulationSteps: config.gradientAccumulationSteps,
+        maxSeqLength: config.seqLen,
       },
       {
-        hubRepo: 'jeju/grpo-model',
+        hubRepo: `jeju/${config.modelName.split('/').pop()}`,
         revision: 'main',
         sha256: '',
       }
@@ -483,17 +358,19 @@ export class DistributedGRPOTrainer extends GRPOTrainer {
     if (this.bridge) {
       await this.bridge.trackRun(runId);
     }
+
+    // Set up metrics callback to report progress
+    this.onTrainingMetrics(async (metrics) => {
+      await this.reportProgress(metrics.step);
+    });
   }
 
-  async reportProgress(epoch: number, step: number): Promise<void> {
-    if (!this.bridge || !this.runId) {
+  private async reportProgress(step: number): Promise<void> {
+    if (!this.bridge || !this.runId || !this.psycheClient) {
       return;
     }
 
-    const solanaState = this.psycheClient
-      ? await this.psycheClient.getRunState(this.runId)
-      : null;
-
+    const solanaState = await this.psycheClient.getRunState(this.runId);
     if (solanaState) {
       await this.bridge.bridgeProgress(this.runId, solanaState);
     }
@@ -537,15 +414,24 @@ export function createDistributedGRPOTrainer(
 
 if (import.meta.main) {
   const config: Partial<TrainingConfig> = {
-    modelName: process.env.MODEL_NAME ?? 'Qwen/Qwen2.5-1.5B-Instruct',
+    modelName: process.env.MODEL_NAME ?? 'TinyLlama/TinyLlama-1.1B-Chat-v1.0',
     trainingSteps: parseInt(process.env.TRAINING_STEPS ?? '20', 10),
-    vllmRestartInterval: parseInt(process.env.VLLM_RESTART_INTERVAL ?? '3', 10),
+    vllmRestartInterval: parseInt(process.env.VLLM_RESTART_INTERVAL ?? '10', 10),
     useWandb: process.env.USE_WANDB === 'true',
     wandbProject: process.env.WANDB_PROJECT,
     atroposUrl: process.env.ATROPOS_URL ?? 'http://localhost:8000',
   };
 
   const trainer = createGRPOTrainer(config);
-  trainer.train().catch(console.error);
-}
+  
+  trainer.onTrainingMetrics((metrics) => {
+    console.log(`Step ${metrics.step}: loss=${metrics.loss.toFixed(4)}`);
+  });
 
+  trainer.onTrainingComplete((path) => {
+    console.log(`Training complete. Model saved to: ${path}`);
+  });
+
+  await trainer.registerWithAtropos();
+  await trainer.startTraining();
+}

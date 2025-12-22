@@ -410,9 +410,10 @@ export function assessSubmission(draft: BountySubmissionDraft): BountyAssessment
     qualityScore -= 15;
   }
   
-  // Steps to reproduce
-  if (!draft.stepsToReproduce || draft.stepsToReproduce.length < 20) {
-    issues.push('Steps to reproduce too short');
+  // Steps to reproduce (at least 2 steps with meaningful content)
+  const stepsContent = draft.stepsToReproduce?.join(' ') ?? '';
+  if (!draft.stepsToReproduce || draft.stepsToReproduce.length < 2 || stepsContent.length < 20) {
+    issues.push('Steps to reproduce too short (need at least 2 steps with 20+ chars total)');
     qualityScore -= 20;
   }
   
@@ -1145,6 +1146,15 @@ let instance: BugBountyService | null = null;
 
 export function getBugBountyService(): BugBountyService {
   return instance ??= new BugBountyService();
+}
+
+export function resetBugBountyService(): void {
+  instance = null;
+}
+
+export async function clearRateLimitsForTests(): Promise<void> {
+  const client = await getCQLClient();
+  await client.exec('DELETE FROM bounty_rate_limits', [], CQL_DATABASE_ID);
 }
 
 // ============ Initialization ============

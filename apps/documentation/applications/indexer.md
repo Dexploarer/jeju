@@ -202,7 +202,7 @@ GraphQL playground at http://localhost:4350/graphql
 
 ```bash
 DATABASE_URL=postgres://...
-RPC_URL=http://127.0.0.1:9545
+RPC_URL=http://127.0.0.1:6546
 PORT=4350
 ```
 

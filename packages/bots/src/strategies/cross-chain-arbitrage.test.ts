@@ -10,7 +10,7 @@ const mockChains = [
   {
     chainId: 1 as const,
     name: 'Ethereum',
-    rpcUrl: 'http://localhost:8545',
+    rpcUrl: 'http://localhost:6546',
     type: 'evm' as const,
     blockTimeMs: 12000,
     nativeSymbol: 'ETH',

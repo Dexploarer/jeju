@@ -30,15 +30,13 @@ import { createLogger } from '../utils/logger.js';
 const log = createLogger('moderation-sync');
 
 const BAN_MANAGER_ABI = parseAbi([
-  'function isBanned(uint256 agentId) view returns (bool)',
-  'function getBanReason(uint256 agentId) view returns (string)',
-  'function getBanExpiry(uint256 agentId) view returns (uint256)',
-  'function banAgent(uint256 agentId, string reason, uint256 duration) external',
-  'function unbanAgent(uint256 agentId) external',
-  'function syncExternalBan(uint256 agentId, uint256 sourceChainId, string reason, uint256 expiry, bytes proof) external',
-  'event AgentBanned(uint256 indexed agentId, string reason, uint256 expiry)',
-  'event AgentUnbanned(uint256 indexed agentId)',
-  'event BanSynced(uint256 indexed agentId, uint256 indexed sourceChainId)',
+  'function isNetworkBanned(uint256 agentId) view returns (bool)',
+  'function getNetworkBan(uint256 agentId) view returns (bool isBanned, uint256 bannedAt, string reason, bytes32 proposalId)',
+  'function getBanReason(uint256 agentId, bytes32 appId) view returns (string)',
+  'function banFromNetwork(uint256 agentId, string reason, bytes32 proposalId) external',
+  'function unbanFromNetwork(uint256 agentId) external',
+  'event NetworkBanApplied(uint256 indexed agentId, string reason, bytes32 indexed proposalId, uint256 timestamp)',
+  'event NetworkBanRemoved(uint256 indexed agentId, uint256 timestamp)',
 ]);
 
 const REPORTING_SYSTEM_ABI = parseAbi([

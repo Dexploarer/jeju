@@ -33,7 +33,7 @@ export function getLocalnetChain(): Chain {
       decimals: 18,
     },
     rpcUrls: {
-      default: { http: ['http://localhost:9545'] },
+      default: { http: ['http://localhost:6546'] },
     },
     blockExplorers: {
       default: { name: 'Local Explorer', url: 'http://localhost:4000' },

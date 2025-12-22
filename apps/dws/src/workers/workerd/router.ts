@@ -176,7 +176,7 @@ export class DecentralizedWorkerRouter {
   private async healthCheck(): Promise<void> {
     const now = Date.now();
     
-    for (const [nodeId, health] of this.nodeHealth) {
+    for (const [_nodeId, health] of this.nodeHealth) {
       const start = Date.now();
       
       const response = await fetch(`${health.node.endpoint}/health`, {

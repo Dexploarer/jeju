@@ -19,7 +19,7 @@ import { resolve } from 'path';
 
 // Skip if no localnet running
 const L1_RPC = process.env.L1_RPC_URL || 'http://127.0.0.1:6545';
-const L2_RPC = process.env.L2_RPC_URL || 'http://127.0.0.1:9545';
+const L2_RPC = process.env.L2_RPC_URL || 'http://127.0.0.1:6546';
 
 // Load EIL config from JSON files directly to avoid module resolution issues
 function loadEilConfig(): { l1StakeManager: string; crossChainPaymaster: string; entryPoint: string } | null {

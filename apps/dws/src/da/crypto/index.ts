@@ -3,7 +3,7 @@
  * 
  * Production-ready implementations:
  * - BLS12-381 signatures with proper pairing verification
- * - KZG polynomial commitments with trusted setup
+ * - KZG polynomial commitments with Ethereum trusted setup
  * - 2D Reed-Solomon erasure coding
  * - Hash-to-curve per RFC 9380
  */
@@ -39,7 +39,7 @@ export {
   type AggregatedSignature,
 } from './bls';
 
-// KZG Commitments
+// KZG Commitments (with real trusted setup and pairing verification)
 export {
   KZG,
   initializeKZG,
@@ -47,27 +47,38 @@ export {
   createBlob,
   validateBlob,
   computeCommitment,
+  computeCommitmentSync,
   commitToBlob,
   computeCommitments,
   computeProof,
   computeBlobProof,
+  computeBlobProofSync,
+  computeCellsAndProofs,
   computeCellProofs,
+  recoverCells,
   verifyProof as verifyKZGProof,
   verifyBlobProof,
+  verifyBlobProofSync,
   verifyBlobProofBatch,
+  verifyCellProofs,
   verifyCommitmentForData,
   computeVersionedHash,
+  blobToFieldElements,
   FIELD_ELEMENTS_PER_BLOB,
   BYTES_PER_FIELD_ELEMENT,
   BLOB_SIZE,
   COMMITMENT_SIZE,
   PROOF_SIZE,
+  CELLS_PER_BLOB,
+  BYTES_PER_CELL,
   BLS_MODULUS,
   type KZGCommitment,
   type KZGProof,
   type Blob,
   type BlobWithCommitment,
   type CommitmentWithProof,
+  type Cell,
+  type CellWithProof,
 } from './kzg';
 
 // 2D Reed-Solomon
@@ -120,4 +131,3 @@ export {
   type G2Point,
   type DST,
 } from './hash-to-curve';
-

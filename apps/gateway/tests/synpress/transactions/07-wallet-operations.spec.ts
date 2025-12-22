@@ -165,12 +165,12 @@ test.describe('Network Management', () => {
     await page.waitForTimeout(2000);
 
     // Verify network logged
-    const hasNetworkConfig = logs.some((log) => log.includes('1337') || log.includes('9545'));
+    const hasNetworkConfig = logs.some((log) => log.includes('1337') || log.includes('6546'));
     expect(hasNetworkConfig).toBe(true);
 
     console.log('✅ Network Localnet configuration verified');
     console.log(`   Chain ID: 1337`);
-    console.log(`   RPC: http://127.0.0.1:9545`);
+    console.log(`   RPC: http://127.0.0.1:6546`);
   });
 
   test('should warn if wrong network connected', async ({ page, metamask }) => {
@@ -198,7 +198,7 @@ test.describe('Network Management', () => {
     // Switch back to localnet
     await metamask.addNetwork({
       name: 'Network Localnet',
-      rpcUrl: 'http://127.0.0.1:9545',
+      rpcUrl: 'http://127.0.0.1:6546',
       chainId: 1337,
       symbol: 'ETH',
     });

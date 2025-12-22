@@ -56,7 +56,7 @@ Choose one of three supported execution clients:
 docker run -d --name jeju-sequencer-geth \
   -v /data/jeju:/data \
   -v /secrets:/secrets:ro \
-  -p 8545:8545 -p 8546:8546 -p 30303:30303 \
+  -p 8545:6546 -p 8546:8546 -p 30303:30303 \
   us-docker.pkg.dev/oplabs-tools-artifacts/images/op-geth:v1.101315.2 \
   --http --http.addr=0.0.0.0 --http.api=eth,net,web3,debug,txpool \
   --authrpc.addr=0.0.0.0 --authrpc.jwtsecret=/secrets/jwt-secret.txt \
@@ -68,7 +68,7 @@ docker run -d --name jeju-sequencer-geth \
 docker run -d --name jeju-sequencer-reth \
   -v /data/jeju:/data \
   -v /secrets:/secrets:ro \
-  -p 8545:8545 -p 8546:8546 -p 30303:30303 \
+  -p 8545:6546 -p 8546:8546 -p 30303:30303 \
   ghcr.io/paradigmxyz/op-reth:v1.1.2 \
   node --http --http.addr=0.0.0.0 --http.api=eth,net,web3,txpool,trace \
   --authrpc.addr=0.0.0.0 --authrpc.jwtsecret=/secrets/jwt-secret.txt \
@@ -80,7 +80,7 @@ docker run -d --name jeju-sequencer-reth \
 docker run -d --name jeju-sequencer-nethermind \
   -v /data/jeju:/data \
   -v /secrets:/secrets:ro \
-  -p 8545:8545 -p 8546:8546 -p 30303:30303 \
+  -p 8545:6546 -p 8546:8546 -p 30303:30303 \
   nethermind/nethermind:1.28.0 \
   --config=op-mainnet \
   --JsonRpc.Enabled=true --JsonRpc.Host=0.0.0.0 \

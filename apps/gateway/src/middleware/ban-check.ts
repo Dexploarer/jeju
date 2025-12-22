@@ -10,6 +10,7 @@ import { createPublicClient, http, type Address, type Hex } from 'viem';
 import { baseSepolia } from 'viem/chains';
 import { BAN_MANAGER_ADDRESS, MODERATION_MARKETPLACE_ADDRESS } from '../config/contracts.js';
 import { getRpcUrl } from '../config/networks.js';
+import { BAN_MANAGER_ABI } from '@jejunetwork/types';
 
 // ============ Types ============
 
@@ -26,46 +27,6 @@ interface BanCheckOptions {
   cacheTtlMs?: number;
   skipPaths?: string[];
 }
-
-// ============ ABIs ============
-
-const BAN_MANAGER_ABI = [
-  {
-    name: 'isAddressBanned',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [{ name: 'target', type: 'address' }],
-    outputs: [{ name: '', type: 'bool' }],
-  },
-  {
-    name: 'isOnNotice',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [{ name: 'target', type: 'address' }],
-    outputs: [{ name: '', type: 'bool' }],
-  },
-  {
-    name: 'getAddressBan',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [{ name: 'target', type: 'address' }],
-    outputs: [
-      {
-        type: 'tuple',
-        components: [
-          { name: 'isBanned', type: 'bool' },
-          { name: 'banType', type: 'uint8' },
-          { name: 'bannedAt', type: 'uint256' },
-          { name: 'expiresAt', type: 'uint256' },
-          { name: 'reason', type: 'string' },
-          { name: 'proposalId', type: 'bytes32' },
-          { name: 'reporter', type: 'address' },
-          { name: 'caseId', type: 'bytes32' },
-        ],
-      },
-    ],
-  },
-] as const;
 
 // ============ Cache ============
 

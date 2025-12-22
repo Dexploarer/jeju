@@ -27,7 +27,7 @@ let getStatus: () => Promise<InfraStatus> = async () => ({
   rpc: false,
   dws: false,
   docker: {},
-  rpcUrl: process.env.L2_RPC_URL || 'http://127.0.0.1:9545',
+  rpcUrl: process.env.L2_RPC_URL || 'http://127.0.0.1:6546',
   dwsUrl: process.env.DWS_URL || 'http://127.0.0.1:4030',
 });
 
@@ -70,7 +70,7 @@ async function waitForDws(maxAttempts = 30): Promise<boolean> {
 export function getTestEnv(): { dwsUrl: string; rpcUrl: string } {
   return {
     dwsUrl: process.env.DWS_URL || `http://127.0.0.1:${DWS_PORT}`,
-    rpcUrl: process.env.L2_RPC_URL || process.env.JEJU_RPC_URL || 'http://127.0.0.1:9545',
+    rpcUrl: process.env.L2_RPC_URL || process.env.JEJU_RPC_URL || 'http://127.0.0.1:6546',
   };
 }
 

@@ -115,7 +115,7 @@ function getDefaultRpcUrl(): string {
   switch (NETWORK) {
     case 'mainnet': return 'https://rpc.jejunetwork.org';
     case 'testnet': return 'https://testnet-rpc.jejunetwork.org';
-    default: return 'http://127.0.0.1:9545';
+    default: return 'http://127.0.0.1:6546';
   }
 }
 
@@ -123,7 +123,7 @@ function getDefaultWsUrl(): string {
   switch (NETWORK) {
     case 'mainnet': return 'wss://ws.jejunetwork.org';
     case 'testnet': return 'wss://testnet-ws.jejunetwork.org';
-    default: return 'ws://127.0.0.1:9546';
+    default: return 'ws://127.0.0.1:6547';
   }
 }
 

@@ -9,7 +9,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
 import { createPublicClient, createWalletClient, http, type Address, type Hex, namehash } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { base, baseSepolia } from 'viem/chains';
+import { jejuTestnet, jejuMainnet } from '../shared/viem-chains';
 
 const KEEPALIVE_REGISTRY_ABI = [
   {
@@ -433,7 +433,7 @@ async function main() {
 
   // Setup clients
   const account = privateKeyToAccount(privateKey as Hex);
-  const chain = rpcUrl.includes('sepolia') ? baseSepolia : base;
+  const chain = rpcUrl.includes('testnet') || rpcUrl.includes('localhost') ? jejuTestnet : jejuMainnet;
 
   const publicClient = createPublicClient({
     chain,

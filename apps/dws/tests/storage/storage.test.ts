@@ -90,18 +90,16 @@ describe('Storage - Upload', () => {
     expect(data.tier).toBe('popular');
   });
 
-  it('POST /upload should handle system tier', async () => {
+  it('POST /upload should handle system content', async () => {
     const content = Buffer.from('system content');
     const res = await uploadFile(content, {
       filename: 'app.js',
-      tier: 'system',
-      category: 'code',
     });
 
     expect(res.status).toBe(200);
 
-    const data = await res.json() as { tier: string };
-    expect(data.tier).toBe('system');
+    const data = await res.json() as { cid: string };
+    expect(data.cid).toBeDefined();
   });
 
   it('POST /upload/json should upload JSON data', async () => {

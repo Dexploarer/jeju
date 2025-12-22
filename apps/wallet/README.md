@@ -481,7 +481,7 @@ VITE_ELIZA_API_URL=http://your-eliza-server:3000 bun run dev
 # Start local development environment
 bun run jeju dev  # or: anvil --chain-id 1337 --port 9545
 
-# RPC: http://localhost:9545
+# RPC: http://localhost:6546
 # Chain ID: 1337
 ```
 

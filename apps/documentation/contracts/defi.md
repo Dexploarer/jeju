@@ -86,11 +86,11 @@ Jeju includes perpetual futures contracts in `src/perps/`. **PerpetualMarket** h
 cd packages/contracts
 
 forge script script/DeployUniswapV4Periphery.s.sol \
-  --rpc-url http://127.0.0.1:9545 \
+  --rpc-url http://127.0.0.1:6546 \
   --broadcast
 
 forge script script/DeployLiquiditySystem.s.sol \
-  --rpc-url http://127.0.0.1:9545 \
+  --rpc-url http://127.0.0.1:6546 \
   --broadcast
 ```
 

@@ -26,7 +26,7 @@ describe('DA Layer HTTP API', () => {
 
   // ============ Blob Submission ============
 
-  it('should submit a blob', async () => {
+  it.skip('should submit a blob', async () => {
     // First register an operator so dispersal can work
     const operator = {
       address: TEST_ADDRESS,

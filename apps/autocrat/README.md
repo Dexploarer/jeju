@@ -74,7 +74,7 @@ export COMPUTE_MODEL=claude-3-opus
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `RPC_URL` | Yes | `http://localhost:9545` | Blockchain RPC endpoint |
+| `RPC_URL` | Yes | `http://localhost:6546` | Blockchain RPC endpoint |
 | `COUNCIL_ADDRESS` | Yes | - | Deployed Council contract |
 | `CEO_AGENT_ADDRESS` | Yes | - | Deployed CEOAgent contract |
 | `QUALITY_ORACLE_ADDRESS` | Yes | - | Deployed QualityOracle contract |

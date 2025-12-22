@@ -12,7 +12,8 @@
 import { parseArgs } from 'util';
 import { privateKeyToAccount } from 'viem/accounts';
 import { createPublicClient, createWalletClient, http, type Hex } from 'viem';
-import { baseSepolia, localhost } from 'viem/chains';
+import { localhost } from 'viem/chains';
+import { jejuTestnet, jejuMainnet } from './shared/viem-chains';
 import {
   createTEEGPUProvider,
   TEEProvider,
@@ -101,7 +102,7 @@ async function deploy() {
   console.log(`Deployer: ${account.address}`);
 
   // Setup clients
-  const chain = config.network === 'localnet' ? localhost : baseSepolia;
+  const chain = config.network === 'localnet' ? localhost : config.network === 'testnet' ? jejuTestnet : jejuMainnet;
   const rpcUrl = process.env.RPC_URL ?? (config.network === 'localnet' ? 'http://localhost:6546' : undefined);
 
   createPublicClient({

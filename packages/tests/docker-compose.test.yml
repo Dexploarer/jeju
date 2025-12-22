@@ -65,27 +65,27 @@ services:
       geth-l1:
         condition: service_healthy
     ports:
-      - "9545:9545"
-      - "9546:9546"
+      - "6546:6546"
+      - "6547:6547"
     command:
       - --dev
       - --dev.period=2
       - --http
       - --http.addr=0.0.0.0
-      - --http.port=9545
+      - --http.port=6546
       - --http.api=eth,net,web3,debug,txpool,admin
       - --http.corsdomain=*
       - --http.vhosts=*
       - --ws
       - --ws.addr=0.0.0.0
-      - --ws.port=9546
+      - --ws.port=6547
       - --ws.api=eth,net,web3,debug
       - --ws.origins=*
       - --nodiscover
       - --maxpeers=0
     healthcheck:
       <<: *healthcheck-defaults
-      test: ["CMD-SHELL", "wget -qO- http://localhost:9545 || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:6546 || exit 1"]
     networks:
       - jeju-test
 

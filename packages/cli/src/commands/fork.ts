@@ -601,8 +601,8 @@ spec:
       - name: op-geth
         image: ghcr.io/paradigmxyz/op-reth:latest
         ports:
-        - containerPort: 8545
-        - containerPort: 8546
+        - containerPort: 6546
+        - containerPort: 6547
         env:
         - name: CHAIN_ID
           value: "${config.chainId}"
@@ -628,9 +628,9 @@ spec:
     app: sequencer
   ports:
   - name: rpc
-    port: 8545
+    port: 6546
   - name: ws
-    port: 8546
+    port: 6547
 `);
 
   writeFileSync(join(k8sDir, 'op-node.yaml'), `apiVersion: apps/v1
@@ -652,7 +652,7 @@ spec:
       - name: op-node
         image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-node:v1.9.4
         ports:
-        - containerPort: 9545
+        - containerPort: 6547
         env:
         - name: OP_NODE_L2_ENGINE_RPC
           value: "http://sequencer:8551"

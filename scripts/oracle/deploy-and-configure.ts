@@ -31,8 +31,8 @@ interface DeployedAddresses {
 
 const NETWORK_CONFIG: Record<NetworkType, { chainId: number; rpcEnvVar: string; verifyApi?: string }> = {
   localnet: { chainId: 1337, rpcEnvVar: 'RPC_URL' },
-  testnet: { chainId: 84532, rpcEnvVar: 'BASE_SEPOLIA_RPC_URL', verifyApi: 'basescan' },
-  mainnet: { chainId: 8453, rpcEnvVar: 'BASE_MAINNET_RPC_URL', verifyApi: 'basescan' },
+  testnet: { chainId: 420690, rpcEnvVar: 'JEJU_TESTNET_RPC_URL', verifyApi: 'blockscout' },
+  mainnet: { chainId: 420691, rpcEnvVar: 'JEJU_RPC_URL', verifyApi: 'blockscout' },
 };
 
 function parseArgs(): { network: NetworkType; deploy: boolean; configure: boolean; verify: boolean } {

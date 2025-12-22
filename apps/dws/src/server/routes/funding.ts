@@ -75,14 +75,14 @@ const PAYMENT_REQUEST_REGISTRY_ABI = parseAbi([
 ]);
 
 const DEEP_FUNDING_DISTRIBUTOR_ABI = parseAbi([
-  'function getDAOPool(bytes32 daoId) external view returns (tuple(bytes32 daoId, address token, uint256 totalAccumulated, uint256 contributorPool, uint256 dependencyPool, uint256 reservePool, uint256 lastDistributedEpoch, uint256 epochStartTime))',
-  'function getCurrentEpoch(bytes32 daoId) external view returns (tuple(uint256 epochId, bytes32 daoId, uint256 startTime, uint256 endTime, uint256 totalContributorRewards, uint256 totalDependencyRewards, uint256 totalDistributed, bool finalized))',
-  'function getContributorShare(bytes32 daoId, uint256 epochId, bytes32 contributorId) external view returns (tuple(bytes32 contributorId, uint256 weight, uint256 pendingRewards, uint256 claimedRewards, uint256 lastClaimEpoch))',
-  'function getDependencyShare(bytes32 daoId, bytes32 depHash) external view returns (tuple(bytes32 depHash, bytes32 contributorId, uint256 weight, uint256 transitiveDepth, uint256 usageCount, uint256 pendingRewards, uint256 claimedRewards, bool isRegistered))',
-  'function getEpochVotes(bytes32 daoId, uint256 epochId) external view returns (tuple(address voter, bytes32 targetId, int256 weightAdjustment, string reason, uint256 reputation, uint256 votedAt)[])',
+  'function getDAOPool(bytes32 daoId) external view returns (bytes32, address, uint256, uint256, uint256, uint256, uint256, uint256)',
+  'function getCurrentEpoch(bytes32 daoId) external view returns (uint256, bytes32, uint256, uint256, uint256, uint256, uint256, bool)',
+  'function getContributorShare(bytes32 daoId, uint256 epochId, bytes32 contributorId) external view returns (bytes32, uint256, uint256, uint256, uint256)',
+  'function getDependencyShare(bytes32 daoId, bytes32 depHash) external view returns (bytes32, bytes32, uint256, uint256, uint256, uint256, uint256, bool)',
+  'function getEpochVotes(bytes32 daoId, uint256 epochId) external view returns (address[], bytes32[], int256[], string[], uint256[], uint256[])',
   'function getPendingContributorRewards(bytes32 daoId, bytes32 contributorId) external view returns (uint256)',
-  'function getDAOConfig(bytes32 daoId) external view returns (tuple(uint256 treasuryBps, uint256 contributorPoolBps, uint256 dependencyPoolBps, uint256 jejuBps, uint256 burnBps, uint256 reserveBps))',
-  'function defaultConfig() external view returns (tuple(uint256 treasuryBps, uint256 contributorPoolBps, uint256 dependencyPoolBps, uint256 jejuBps, uint256 burnBps, uint256 reserveBps))',
+  'function getDAOConfig(bytes32 daoId) external view returns (uint256, uint256, uint256, uint256, uint256, uint256)',
+  'function defaultConfig() external view returns (uint256, uint256, uint256, uint256, uint256, uint256)',
   'function depositFees(bytes32 daoId, string source) external payable',
   'function voteOnWeight(bytes32 daoId, bytes32 targetId, int256 adjustment, string reason, uint256 reputation) external',
   'function finalizeEpoch(bytes32 daoId) external',
@@ -113,9 +113,13 @@ function getConfig(): FundingConfig {
     deepFundingDistributor: (process.env.DEEP_FUNDING_DISTRIBUTOR_ADDRESS || '0x0000000000000000000000000000000000000000') as Address,
   };
 
+  // Jeju chain IDs - testnet and mainnet are Jeju's own chains, not Base
+  const jejuTestnetChainId = Number(process.env.JEJU_TESTNET_CHAIN_ID || 9999);
+  const jejuMainnetChainId = Number(process.env.JEJU_MAINNET_CHAIN_ID || 10000);
+
   return {
-    rpcUrl: process.env.RPC_URL || 'http://127.0.0.1:8545',
-    chainId: network === 'localnet' ? 31337 : network === 'testnet' ? 84532 : 8453,
+    rpcUrl: process.env.RPC_URL || 'http://127.0.0.1:6546',
+    chainId: network === 'localnet' ? 31337 : network === 'testnet' ? jejuTestnetChainId : jejuMainnetChainId,
     contracts,
   };
 }

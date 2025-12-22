@@ -275,6 +275,9 @@ describe('DWS Services', () => {
         keyId = createData.keyId;
       }
       
+      // Hash the message for signing (KMS expects messageHash, not message)
+      const messageHash = '0x' + Buffer.from('test message to sign').toString('hex').padStart(64, '0');
+      
       const response = await app.request('/kms/sign', {
         method: 'POST',
         headers: {
@@ -283,8 +286,7 @@ describe('DWS Services', () => {
         },
         body: JSON.stringify({
           keyId,
-          message: 'test message to sign',
-          encoding: 'utf8',
+          messageHash,
         }),
       });
       

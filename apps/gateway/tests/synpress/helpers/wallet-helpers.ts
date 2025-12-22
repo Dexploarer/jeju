@@ -78,7 +78,7 @@ export async function switchNetwork(
 export async function setupNetworkChain(metamask: MetaMask): Promise<void> {
   await metamask.addNetwork({
     networkName: 'Jeju Localnet',
-    rpcUrl: 'http://127.0.0.1:9545',
+    rpcUrl: 'http://127.0.0.1:6546',
     chainId: 1337,
     symbol: 'ETH',
   });
@@ -143,7 +143,7 @@ export async function getWalletBalance(
   page: Page,
   address: string
 ): Promise<bigint> {
-  const response = await page.request.post('http://127.0.0.1:9545', {
+  const response = await page.request.post('http://127.0.0.1:6546', {
     data: {
       jsonrpc: '2.0',
       method: 'eth_getBalance',
@@ -166,7 +166,7 @@ export async function getTokenBalance(
 ): Promise<bigint> {
   const data = `0x70a08231000000000000000000000000${walletAddress.slice(2)}`;
 
-  const response = await page.request.post('http://127.0.0.1:9545', {
+  const response = await page.request.post('http://127.0.0.1:6546', {
     data: {
       jsonrpc: '2.0',
       method: 'eth_call',

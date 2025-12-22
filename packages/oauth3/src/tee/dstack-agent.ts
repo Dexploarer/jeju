@@ -1024,7 +1024,7 @@ export async function startAuthAgent(): Promise<DstackAuthAgent> {
       '0x0000000000000000000000000000000000000000') as Address,
     appRegistryAddress: (process.env.APP_REGISTRY_ADDRESS ?? 
       '0x0000000000000000000000000000000000000000') as Address,
-    chainRpcUrl: process.env.JEJU_RPC_URL ?? 'http://localhost:9545',
+    chainRpcUrl: process.env.JEJU_RPC_URL ?? 'http://localhost:6546',
     chainId: parseInt(process.env.CHAIN_ID ?? '420691'),
     jnsGateway: process.env.JNS_GATEWAY ?? process.env.GATEWAY_API ?? 'http://localhost:4020',
     storageEndpoint: process.env.STORAGE_API_ENDPOINT ?? 'http://localhost:4010',

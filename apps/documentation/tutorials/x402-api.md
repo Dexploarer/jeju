@@ -181,7 +181,7 @@ const account = privateKeyToAccount(process.env.CLIENT_PRIVATE_KEY as `0x${strin
 const walletClient = createWalletClient({
   account,
   chain: jejuLocalnet,
-  transport: http('http://127.0.0.1:9545'),
+  transport: http('http://127.0.0.1:6546'),
 });
 
 interface PaymentRequirement {

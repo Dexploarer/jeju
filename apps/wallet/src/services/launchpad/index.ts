@@ -145,7 +145,7 @@ export class LaunchpadService {
   private chainId: number;
   private clientCache = new Map<number, PublicClient>();
   
-  constructor(chainId: number = 8453) {
+  constructor(chainId: number = 420691) {
     this.chainId = chainId;
   }
   

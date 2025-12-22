@@ -90,7 +90,7 @@ When a user creates a UserOperation with paymaster data, the Bundler calls Entry
 cd packages/contracts
 
 forge script script/DeployMultiTokenSystem.s.sol \
-  --rpc-url http://127.0.0.1:9545 \
+  --rpc-url http://127.0.0.1:6546 \
   --broadcast
 ```
 

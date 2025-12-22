@@ -19,7 +19,7 @@ import {
   http,
   type Address,
 } from 'viem';
-import { baseSepolia } from 'viem/chains';
+import { jejuTestnet } from '../shared/viem-chains';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
@@ -61,11 +61,11 @@ class TestnetVerifier {
   private addresses: Record<string, Address> = {};
 
   constructor() {
-    this.rpcUrl = process.env.TESTNET_RPC_URL || 'https://sepolia.base.org';
+    this.rpcUrl = process.env.JEJU_TESTNET_RPC_URL || 'https://testnet-rpc.jejunetwork.org';
     this.dwsEndpoint = process.env.DWS_ENDPOINT || 'https://dws.testnet.jejunetwork.org';
 
     this.publicClient = createPublicClient({
-      chain: baseSepolia,
+      chain: jejuTestnet,
       transport: http(this.rpcUrl),
     });
 
