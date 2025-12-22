@@ -5,9 +5,6 @@ import type {
 } from '@jejunetwork/types'
 import type { Address, Hex } from 'viem'
 
-// Re-export consolidated types
-export type { TransactionStatus, IntentStatus, VoucherStatus }
-
 export interface ChainConfig {
   id: number
   name: string

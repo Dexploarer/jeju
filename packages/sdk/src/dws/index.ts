@@ -13,6 +13,9 @@ import type { Address } from 'viem'
 import { getServicesConfig } from '../config'
 import { generateAuthHeaders } from '../shared/api'
 import {
+  DWSCreateTriggerResponseSchema,
+  DWSCreateWorkflowResponseSchema,
+  DWSJobResponseSchema,
   DWSStatsSchema,
   JobLogsSchema,
   JobSchema,
@@ -290,7 +293,8 @@ export function createDWSModule(
         throw new Error(`Failed to create trigger: ${error}`)
       }
 
-      return response.json() as Promise<{ triggerId: string }>
+      const rawData: unknown = await response.json()
+      return DWSCreateTriggerResponseSchema.parse(rawData)
     },
 
     async getTrigger(triggerId) {
@@ -397,7 +401,8 @@ export function createDWSModule(
         throw new Error('Failed to fire trigger')
       }
 
-      return response.json() as Promise<{ jobId: string }>
+      const rawData: unknown = await response.json()
+      return DWSJobResponseSchema.parse(rawData)
     },
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -417,7 +422,8 @@ export function createDWSModule(
         throw new Error(`Failed to create workflow: ${error}`)
       }
 
-      return response.json() as Promise<{ workflowId: string }>
+      const rawData: unknown = await response.json()
+      return DWSCreateWorkflowResponseSchema.parse(rawData)
     },
 
     async getWorkflow(workflowId) {
@@ -514,7 +520,8 @@ export function createDWSModule(
         throw new Error('Failed to execute workflow')
       }
 
-      return response.json() as Promise<{ jobId: string }>
+      const rawData: unknown = await response.json()
+      return DWSJobResponseSchema.parse(rawData)
     },
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -604,7 +611,8 @@ export function createDWSModule(
         throw new Error('Failed to retry job')
       }
 
-      return response.json() as Promise<{ jobId: string }>
+      const rawData: unknown = await response.json()
+      return DWSJobResponseSchema.parse(rawData)
     },
 
     async getJobLogs(jobId) {

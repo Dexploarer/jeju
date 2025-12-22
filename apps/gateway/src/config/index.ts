@@ -1,5 +1,6 @@
 import type { Address } from 'viem'
-import { ZERO_ADDRESS } from '../lib/contracts'
+import { ZERO_ADDRESS } from '@jejunetwork/ui'
+import { CORE_PORTS, INFRA_PORTS } from '@jejunetwork/config/ports'
 
 // Build-time network selection
 export const NETWORK = (import.meta.env.VITE_NETWORK || 'localnet') as
@@ -169,7 +170,7 @@ function getDefaultRpcUrl(): string {
     case 'testnet':
       return 'https://testnet-rpc.jejunetwork.org'
     default:
-      return 'http://127.0.0.1:6546'
+      return `http://127.0.0.1:${INFRA_PORTS.L2_RPC.DEFAULT}`
   }
 }
 
@@ -180,7 +181,7 @@ function getDefaultWsUrl(): string {
     case 'testnet':
       return 'wss://testnet-ws.jejunetwork.org'
     default:
-      return 'ws://127.0.0.1:9546'
+      return `ws://127.0.0.1:${INFRA_PORTS.L2_WS.DEFAULT}`
   }
 }
 
@@ -191,7 +192,7 @@ function getDefaultIndexerUrl(): string {
     case 'testnet':
       return 'https://testnet-indexer.jejunetwork.org/graphql'
     default:
-      return 'http://127.0.0.1:4350/graphql'
+      return `http://127.0.0.1:${CORE_PORTS.INDEXER_GRAPHQL.DEFAULT}/graphql`
   }
 }
 
@@ -202,7 +203,7 @@ function getDefaultIndexerRestUrl(): string {
     case 'testnet':
       return 'https://testnet-indexer.jejunetwork.org/api'
     default:
-      return 'http://127.0.0.1:4352/api'
+      return `http://127.0.0.1:${CORE_PORTS.INDEXER_REST.DEFAULT}/api`
   }
 }
 
@@ -213,7 +214,7 @@ function getDefaultIndexerA2AUrl(): string {
     case 'testnet':
       return 'https://testnet-indexer.jejunetwork.org/a2a'
     default:
-      return 'http://127.0.0.1:4351/api/a2a'
+      return `http://127.0.0.1:${CORE_PORTS.INDEXER_A2A.DEFAULT}/api/a2a`
   }
 }
 
@@ -224,7 +225,7 @@ function getDefaultIndexerMCPUrl(): string {
     case 'testnet':
       return 'https://testnet-indexer.jejunetwork.org/mcp'
     default:
-      return 'http://127.0.0.1:4353'
+      return `http://127.0.0.1:${CORE_PORTS.INDEXER_MCP.DEFAULT}`
   }
 }
 
@@ -235,7 +236,7 @@ function getDefaultRpcGatewayUrl(): string {
     case 'testnet':
       return 'https://testnet-rpc-gateway.jejunetwork.org'
     default:
-      return 'http://127.0.0.1:4004'
+      return `http://127.0.0.1:${CORE_PORTS.RPC_GATEWAY.DEFAULT}`
   }
 }
 
@@ -246,7 +247,7 @@ function getDefaultIpfsApiUrl(): string {
     case 'testnet':
       return 'https://testnet-storage.jejunetwork.org'
     default:
-      return 'http://127.0.0.1:3100'
+      return `http://127.0.0.1:${CORE_PORTS.IPFS.DEFAULT}`
   }
 }
 
@@ -257,7 +258,7 @@ function getDefaultIpfsGatewayUrl(): string {
     case 'testnet':
       return 'https://testnet-ipfs.jejunetwork.org'
     default:
-      return 'http://127.0.0.1:3100'
+      return `http://127.0.0.1:${CORE_PORTS.IPFS.DEFAULT}`
   }
 }
 
@@ -268,7 +269,7 @@ function getDefaultOifAggregatorUrl(): string {
     case 'testnet':
       return 'https://testnet-oif.jejunetwork.org/api'
     default:
-      return 'http://127.0.0.1:4010/api'
+      return `http://127.0.0.1:${CORE_PORTS.OIF_AGGREGATOR.DEFAULT}/api`
   }
 }
 
@@ -278,7 +279,7 @@ function getDefaultLeaderboardUrl(): string {
     case 'testnet':
       return 'https://leaderboard.jejunetwork.org'
     default:
-      return 'http://127.0.0.1:4005'
+      return `http://127.0.0.1:${CORE_PORTS.LEADERBOARD_API.DEFAULT}`
   }
 }
 
@@ -289,7 +290,7 @@ function getDefaultExplorerUrl(): string {
     case 'testnet':
       return 'https://testnet-explorer.jejunetwork.org'
     default:
-      return 'http://127.0.0.1:4000'
+      return `http://127.0.0.1:${CORE_PORTS.EXPLORER.DEFAULT}`
   }
 }
 
@@ -300,6 +301,6 @@ function getDefaultOAuth3AgentUrl(): string {
     case 'testnet':
       return 'https://testnet-auth.jejunetwork.org'
     default:
-      return 'http://127.0.0.1:4200'
+      return `http://127.0.0.1:${CORE_PORTS.OAUTH3_API.DEFAULT}`
   }
 }

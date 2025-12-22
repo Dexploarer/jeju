@@ -11,6 +11,7 @@
 import { existsSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { $ } from 'bun'
 import { type Address, keccak256 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import {
@@ -82,7 +83,6 @@ async function checkBuild(): Promise<void> {
   for (const file of requiredFiles) {
     if (!existsSync(file)) {
       console.log('Build not found, running build first...')
-      const { $ } = await import('bun')
       await $`bun run scripts/build.ts`
       return
     }

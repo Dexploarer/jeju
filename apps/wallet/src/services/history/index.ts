@@ -11,8 +11,8 @@ import {
   expectChainId,
   expectHex,
   expectNonNegative,
-  requireDefined,
-} from '../../lib/validation'
+} from '@jejunetwork/types'
+import { requireDefined } from '../../lib/validation'
 import * as jeju from '../jeju'
 import { SUPPORTED_CHAINS, type SupportedChainId } from '../rpc'
 
@@ -23,8 +23,6 @@ export type TransactionType =
   | 'approve'
   | 'contract'
   | 'unknown'
-// Re-export consolidated TransactionStatus
-export type { TransactionStatus }
 
 export interface Transaction {
   hash: Hex

@@ -15,11 +15,11 @@
  * - Policies are stored on-chain or via P2P gossip
  */
 
-import { Hono } from 'hono'
+import { Elysia } from 'elysia'
 import type { Address, Hex } from 'viem'
 import { keccak256, toBytes } from 'viem'
 import { z } from 'zod'
-import { validateBody, validateParams } from '../shared'
+import { expectValid } from '@jejunetwork/types'
 
 // ============================================================================
 // Types
@@ -112,6 +112,8 @@ const trafficPolicies = new Map<string, TrafficPolicy>()
 const serviceMetrics = new Map<string, ServiceMetrics>()
 
 export class ServiceMesh {
+  private selfIdentity: ServiceIdentity | null = null
+
   /**
    * Register this service with the mesh
    */
@@ -449,124 +451,126 @@ const trafficPolicySchema = z.object({
     .optional(),
 })
 
-export function createServiceMeshRouter(mesh: ServiceMesh): Hono {
-  const router = new Hono()
-
-  // Health check
-  router.get('/mesh/health', (c) => {
-    return c.json({ status: 'healthy', services: services.size })
+export function createServiceMeshRouter(mesh: ServiceMesh) {
+  const registerServiceSchema = z.object({
+    name: z.string(),
+    namespace: z.string().default('default'),
+    publicKey: z.string(),
+    endpoints: z.array(z.string()),
+    tags: z.array(z.string()).default([]),
   })
 
-  // Register service
-  router.post('/mesh/services', async (c) => {
-    const body = await validateBody(
-      z.object({
-        name: z.string(),
-        namespace: z.string().default('default'),
-        publicKey: z.string(),
-        endpoints: z.array(z.string()),
-        tags: z.array(z.string()).default([]),
-      }),
-      c,
-    )
+  return new Elysia({ prefix: '/mesh' })
+    // Health check
+    .get('/health', () => ({ status: 'healthy', services: services.size }))
 
-    const owner = c.req.header('x-jeju-address') as Address
+    // Register service
+    .post('/services', async ({ body, request, set }) => {
+      const validated = expectValid(
+        registerServiceSchema,
+        body,
+        'Service registration body',
+      )
 
-    const service = await mesh.registerService({
-      name: body.name,
-      namespace: body.namespace,
-      owner,
-      publicKey: body.publicKey as Hex,
-      endpoints: body.endpoints,
-      tags: body.tags,
+      const owner = request.headers.get('x-jeju-address') as Address
+
+      const service = await mesh.registerService({
+        name: validated.name,
+        namespace: validated.namespace,
+        owner,
+        publicKey: validated.publicKey as Hex,
+        endpoints: validated.endpoints,
+        tags: validated.tags,
+      })
+
+      set.status = 201
+      return service
     })
 
-    return c.json(service, 201)
-  })
+    // Discover service
+    .get('/services/:namespace/:name', async ({ params, set }) => {
+      const service = await mesh.discoverService(params.name, params.namespace)
+      if (!service) {
+        set.status = 404
+        return { error: 'Service not found' }
+      }
 
-  // Discover service
-  router.get('/mesh/services/:namespace/:name', async (c) => {
-    const { namespace, name } = validateParams(
-      z.object({
-        namespace: z.string(),
-        name: z.string(),
-      }),
-      c,
-    )
-
-    const service = await mesh.discoverService(name, namespace)
-    if (!service) {
-      return c.json({ error: 'Service not found' }, 404)
-    }
-
-    return c.json(service)
-  })
-
-  // List services
-  router.get('/mesh/services', async (c) => {
-    const namespace = c.req.query('namespace')
-    const tags = c.req.query('tags')?.split(',')
-
-    const serviceList = await mesh.listServices({
-      namespace,
-      tags,
+      return service
     })
 
-    return c.json({ services: serviceList })
-  })
+    // List services
+    .get('/services', async ({ query }) => {
+      const namespace = query.namespace
+      const tags = query.tags?.split(',')
 
-  // Create access policy
-  router.post('/mesh/policies/access', async (c) => {
-    const body = await validateBody(accessPolicySchema, c)
-    const policy = await mesh.createAccessPolicy(
-      body as Omit<AccessPolicy, 'id'>,
-    )
-    return c.json(policy, 201)
-  })
+      const serviceList = await mesh.listServices({
+        namespace,
+        tags,
+      })
 
-  // List access policies
-  router.get('/mesh/policies/access', async (c) => {
-    return c.json({ policies: Array.from(accessPolicies.values()) })
-  })
+      return { services: serviceList }
+    })
 
-  // Create traffic policy
-  router.post('/mesh/policies/traffic', async (c) => {
-    const body = await validateBody(trafficPolicySchema, c)
-    const policy = await mesh.createTrafficPolicy(
-      body as Omit<TrafficPolicy, 'id'>,
-    )
-    return c.json(policy, 201)
-  })
+    // Create access policy
+    .post('/policies/access', async ({ body, set }) => {
+      const validated = expectValid(
+        accessPolicySchema,
+        body,
+        'Access policy body',
+      )
+      const policy = await mesh.createAccessPolicy(
+        validated as Omit<AccessPolicy, 'id'>,
+      )
+      set.status = 201
+      return policy
+    })
 
-  // Get metrics
-  router.get('/mesh/metrics/:serviceId', async (c) => {
-    const { serviceId } = validateParams(z.object({ serviceId: z.string() }), c)
-    const metrics = mesh.getMetrics(serviceId)
-    if (!metrics) {
-      return c.json({ error: 'Service not found' }, 404)
-    }
-    return c.json(metrics)
-  })
+    // List access policies
+    .get('/policies/access', () => ({
+      policies: Array.from(accessPolicies.values()),
+    }))
 
-  // Generate certificate
-  router.post('/mesh/certificates', async (c) => {
-    const body = await validateBody(
-      z.object({
-        serviceId: z.string(),
-      }),
-      c,
-    )
+    // Create traffic policy
+    .post('/policies/traffic', async ({ body, set }) => {
+      const validated = expectValid(
+        trafficPolicySchema,
+        body,
+        'Traffic policy body',
+      )
+      const policy = await mesh.createTrafficPolicy(
+        validated as Omit<TrafficPolicy, 'id'>,
+      )
+      set.status = 201
+      return policy
+    })
 
-    const service = services.get(body.serviceId)
-    if (!service) {
-      return c.json({ error: 'Service not found' }, 404)
-    }
+    // Get metrics
+    .get('/metrics/:serviceId', ({ params, set }) => {
+      const metrics = mesh.getMetrics(params.serviceId)
+      if (!metrics) {
+        set.status = 404
+        return { error: 'Service not found' }
+      }
+      return metrics
+    })
 
-    const cert = await mesh.generateCertificate(service)
-    return c.json(cert)
-  })
+    // Generate certificate
+    .post('/certificates', async ({ body, set }) => {
+      const validated = expectValid(
+        z.object({ serviceId: z.string() }),
+        body,
+        'Certificate request body',
+      )
 
-  return router
+      const service = services.get(validated.serviceId)
+      if (!service) {
+        set.status = 404
+        return { error: 'Service not found' }
+      }
+
+      const cert = await mesh.generateCertificate(service)
+      return cert
+    })
 }
 
 // ============================================================================

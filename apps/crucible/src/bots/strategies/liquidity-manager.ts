@@ -22,7 +22,7 @@ import {
   type PublicClient,
   parseAbi,
 } from 'viem'
-import type { ChainId, StrategyConfig, Token } from '../autocrat-types'
+import type { ChainId, StrategyConfig, Token } from '../autocrat-types-source'
 import {
   type DexSource,
   SolanaDexAggregator,

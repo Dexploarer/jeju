@@ -21,7 +21,7 @@ import {
   todoStatsSchema,
   updateTodoInputSchema,
 } from '../schemas'
-import type { CreateTodoInput, Todo, UpdateTodoInput } from '../types'
+import type { CreateTodoInput, Todo, UpdateTodoInput } from '../schemas'
 import { expectValid, ValidationError } from '../utils/validation'
 import { cacheKeys, getCache } from './cache'
 import { getKMSService } from './kms'

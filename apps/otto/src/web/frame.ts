@@ -5,7 +5,8 @@
 
 import { Elysia } from 'elysia'
 import { getConfig } from '../config'
-import { expectValid, FarcasterFramePayloadSchema } from '../schemas'
+import { expectValid } from '@jejunetwork/types'
+import { FarcasterFramePayloadSchema } from '../schemas'
 
 const BASE_URL = getConfig().baseUrl
 

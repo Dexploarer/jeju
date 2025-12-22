@@ -7,7 +7,7 @@ import {
   useWriteContract,
 } from 'wagmi'
 import { CHAIN_ID, CONTRACTS, LEADERBOARD_API_URL } from '../config'
-import { ZERO_ADDRESS } from '../lib/contracts'
+import { ZERO_ADDRESS } from '@jejunetwork/ui'
 
 const LEADERBOARD_API = LEADERBOARD_API_URL
 // Use CAIP-2 format for chain ID

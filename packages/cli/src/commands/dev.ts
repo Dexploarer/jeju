@@ -389,7 +389,7 @@ function printReady(
         value: 'http://127.0.0.1:4661',
         status: 'ok' as const,
       },
-      { label: 'IPFS', value: 'http://127.0.0.1:5001', status: 'ok' as const },
+      { label: 'IPFS', value: `http://127.0.0.1:${DEFAULT_PORTS.ipfs}`, status: 'ok' as const },
       { label: 'Cache', value: 'http://127.0.0.1:4115', status: 'ok' as const },
       {
         label: 'DA Server',

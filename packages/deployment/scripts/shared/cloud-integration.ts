@@ -25,9 +25,6 @@ import { readContract, waitForTransactionReceipt } from 'viem/actions'
 import { createSignedFeedbackAuth } from './cloud-signing'
 import type { Logger } from './logger'
 
-// Re-export types for backwards compatibility
-// NOTE: New code should import from '@jeju-vendor/cloud' or 'vendor/cloud/src'
-
 /**
  * @deprecated Use CloudConfig from '@jeju-vendor/cloud'
  * Cloud service integration with ERC-8004 registry and services contracts

@@ -285,7 +285,7 @@ export const computeRoutes = new Elysia({ name: 'compute', prefix: '/compute' })
         const modelId = body.model ?? 'amazon.titan-embed-text-v2:0'
         const inputs = Array.isArray(body.input) ? body.input : [body.input]
 
-        // Dynamic import: only needed when Bedrock provider is selected (conditional check)
+        // Optional/conditional: AWS SDK only imported when Bedrock provider is selected
         const { BedrockRuntimeClient, InvokeModelCommand } = await import(
           '@aws-sdk/client-bedrock-runtime'
         )

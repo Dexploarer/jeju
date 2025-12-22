@@ -21,7 +21,7 @@ import BondingCurveAbiJson from '../../abis/BondingCurve.json'
 import ChainlinkGovernanceAbiJson from '../../abis/ChainlinkGovernance.json'
 // Service ABIs
 import CreditManagerAbiJson from '../../abis/CreditManager.json'
-// Re-export ABIs with their types
+// ABI exports with TypeScript types
 import ERC20AbiJson from '../../abis/ERC20.json'
 import ERC20FactoryAbiJson from '../../abis/ERC20Factory.json'
 import GameIntegrationAbiJson from '../../abis/GameIntegration.json'

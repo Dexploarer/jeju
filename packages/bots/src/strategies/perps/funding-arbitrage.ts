@@ -15,7 +15,7 @@ import {
 } from 'viem'
 import type { OracleAggregator } from '../../oracles'
 import { NonceManager, sleep } from '../../shared'
-import type { EVMChainId } from '../../types'
+import type { EVMChainId } from '@jejunetwork/types'
 
 export interface FundingArbConfig {
   chainId: EVMChainId

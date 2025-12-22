@@ -14,8 +14,6 @@ import type {
 import type { Address } from 'viem'
 
 // ============ Chain Types ============
-// Re-export consolidated chain types from @jejunetwork/types
-export type { ChainType, EVMChainId, SolanaNetwork }
 
 /**
  * Bot-specific chain configuration
@@ -74,9 +72,7 @@ export interface Pool {
   lastUpdate?: number
 }
 
-// Re-export consolidated DexProtocol
 import type { DexProtocol } from '@jejunetwork/types'
-export type { DexProtocol }
 
 // ============ TFMM Types ============
 

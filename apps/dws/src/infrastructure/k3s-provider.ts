@@ -13,7 +13,7 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { Hex } from 'viem'
 import { installDWSAgentRequestSchema } from '../shared/schemas'
-import { expectValid } from '../shared/validation'
+import { expectValid } from '@jejunetwork/types'
 
 // ============================================================================
 // Types
@@ -723,12 +723,11 @@ async function waitForKubeApi(
 }
 
 // ============================================================================
-// Hono Router
+// Elysia Router
 // ============================================================================
 
-import { Hono } from 'hono'
+import { Elysia } from 'elysia'
 import { z } from 'zod'
-import { validateBody } from '../shared/validation'
 
 const createClusterSchema = z.object({
   name: z
@@ -749,145 +748,150 @@ const installChartSchema = z.object({
   chart: z.string().min(1),
   release: z.string().min(1),
   namespace: z.string().optional(),
-  values: z.record(z.unknown()).optional(),
-  set: z.record(z.string()).optional(),
+  values: z.record(z.string(), z.unknown()).optional(),
+  set: z.record(z.string(), z.string()).optional(),
   wait: z.boolean().optional(),
   timeout: z.string().optional(),
 })
 
-export function createK3sRouter(): Hono {
-  const router = new Hono()
+export function createK3sRouter() {
+  return new Elysia()
+    // Health check
+    .get('/health', () => ({ status: 'healthy', provider: 'dws-k3s' }))
 
-  // Health check
-  router.get('/health', (c) => {
-    return c.json({ status: 'healthy', provider: 'dws-k3s' })
-  })
-
-  // List clusters
-  router.get('/clusters', (c) => {
-    const clusterList = listClusters().map((cl) => ({
-      name: cl.name,
-      provider: cl.provider,
-      status: cl.status,
-      apiEndpoint: cl.apiEndpoint,
-      nodes: cl.nodes.length,
-      createdAt: cl.createdAt,
-    }))
-    return c.json({ clusters: clusterList })
-  })
-
-  // Create cluster
-  router.post('/clusters', async (c) => {
-    const body = await validateBody(createClusterSchema, c)
-
-    const cluster = await createCluster({
-      name: body.name,
-      provider: body.provider || 'k3d',
-      nodes: body.nodes,
-      cpuCores: body.cpuCores,
-      memoryMb: body.memoryMb,
-      disableTraefik: body.disableTraefik,
-      exposeApi: body.exposeApi,
-      apiPort: body.apiPort,
+    // List clusters
+    .get('/clusters', () => {
+      const clusterList = listClusters().map((cl) => ({
+        name: cl.name,
+        provider: cl.provider,
+        status: cl.status,
+        apiEndpoint: cl.apiEndpoint,
+        nodes: cl.nodes.length,
+        createdAt: cl.createdAt,
+      }))
+      return { clusters: clusterList }
     })
 
-    return c.json(
-      {
+    // Create cluster
+    .post('/clusters', async ({ body, set }) => {
+      const validated = expectValid(
+        createClusterSchema,
+        body,
+        'Create cluster body',
+      )
+
+      const cluster = await createCluster({
+        name: validated.name,
+        provider: validated.provider || 'k3d',
+        nodes: validated.nodes,
+        cpuCores: validated.cpuCores,
+        memoryMb: validated.memoryMb,
+        disableTraefik: validated.disableTraefik,
+        exposeApi: validated.exposeApi,
+        apiPort: validated.apiPort,
+      })
+
+      set.status = 201
+      return {
         name: cluster.name,
         provider: cluster.provider,
         status: cluster.status,
         apiEndpoint: cluster.apiEndpoint,
         kubeconfig: cluster.kubeconfig,
         nodes: cluster.nodes,
-      },
-      201,
-    )
-  })
-
-  // Get cluster
-  router.get('/clusters/:name', (c) => {
-    const name = c.req.param('name')
-    const cluster = getCluster(name)
-
-    if (!cluster) {
-      return c.json({ error: 'Cluster not found' }, 404)
-    }
-
-    return c.json({
-      name: cluster.name,
-      provider: cluster.provider,
-      status: cluster.status,
-      apiEndpoint: cluster.apiEndpoint,
-      kubeconfig: cluster.kubeconfig,
-      nodes: cluster.nodes,
-      createdAt: cluster.createdAt,
+      }
     })
-  })
 
-  // Delete cluster
-  router.delete('/clusters/:name', async (c) => {
-    const name = c.req.param('name')
-    await deleteCluster(name)
-    return c.json({ success: true })
-  })
+    // Get cluster
+    .get('/clusters/:name', ({ params, set }) => {
+      const cluster = getCluster(params.name)
 
-  // Install Helm chart
-  router.post('/clusters/:name/helm', async (c) => {
-    const name = c.req.param('name')
-    const body = await validateBody(installChartSchema, c)
+      if (!cluster) {
+        set.status = 404
+        return { error: 'Cluster not found' }
+      }
 
-    const result = await installHelmChart(name, body)
+      return {
+        name: cluster.name,
+        provider: cluster.provider,
+        status: cluster.status,
+        apiEndpoint: cluster.apiEndpoint,
+        kubeconfig: cluster.kubeconfig,
+        nodes: cluster.nodes,
+        createdAt: cluster.createdAt,
+      }
+    })
 
-    if (!result.success) {
-      return c.json({ error: result.output }, 500)
-    }
+    // Delete cluster
+    .delete('/clusters/:name', async ({ params }) => {
+      await deleteCluster(params.name)
+      return { success: true }
+    })
 
-    return c.json({ success: true, output: result.output })
-  })
+    // Install Helm chart
+    .post('/clusters/:name/helm', async ({ params, body, set }) => {
+      const validated = expectValid(
+        installChartSchema,
+        body,
+        'Install chart body',
+      )
 
-  // Apply manifest
-  router.post('/clusters/:name/apply', async (c) => {
-    const name = c.req.param('name')
-    const manifest = await c.req.json()
+      const result = await installHelmChart(params.name, validated)
 
-    const result = await applyManifest(name, manifest)
+      if (!result.success) {
+        set.status = 500
+        return { error: result.output }
+      }
 
-    if (!result.success) {
-      return c.json({ error: result.output }, 500)
-    }
+      return { success: true, output: result.output }
+    })
 
-    return c.json({ success: true, output: result.output })
-  })
+    // Apply manifest
+    .post('/clusters/:name/apply', async ({ params, body, set }) => {
+      const result = await applyManifest(params.name, body as string | object)
 
-  // Install DWS agent
-  router.post('/clusters/:name/dws-agent', async (c) => {
-    const name = c.req.param('name')
-    const body = expectValid(
-      installDWSAgentRequestSchema,
-      await c.req.json(),
-      'Install DWS agent request',
-    )
+      if (!result.success) {
+        set.status = 500
+        return { error: result.output }
+      }
 
-    await installDWSAgent(name, body)
+      return { success: true, output: result.output }
+    })
 
-    return c.json({ success: true })
-  })
+    // Install DWS agent
+    .post('/clusters/:name/dws-agent', async ({ params, body }) => {
+      const validated = expectValid(
+        installDWSAgentRequestSchema,
+        body,
+        'Install DWS agent request',
+      )
 
-  // Check available providers
-  router.get('/providers', async (c) => {
-    const providers: Array<{
-      name: ClusterProvider
-      available: boolean
-      path?: string
-    }> = []
+      await installDWSAgent(params.name, validated)
 
-    for (const name of ['k3d', 'k3s', 'minikube'] as ClusterProvider[]) {
-      const path = await findBinary(name)
-      providers.push({ name, available: !!path, path: path || undefined })
-    }
+      return { success: true }
+    })
 
-    return c.json({ providers })
-  })
+    // Check available providers
+    .get('/providers', async () => {
+      const providers: Array<{
+        name: ClusterProvider
+        available: boolean
+        path?: string
+      }> = []
 
-  return router
+      for (const providerName of [
+        'k3d',
+        'k3s',
+        'minikube',
+      ] as ClusterProvider[]) {
+        const path = await findBinary(providerName)
+        providers.push({
+          name: providerName,
+          available: !!path,
+          path: path || undefined,
+        })
+      }
+
+      return { providers }
+    })
 }

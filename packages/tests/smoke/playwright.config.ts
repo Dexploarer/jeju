@@ -1,22 +1,16 @@
-import { defineConfig } from '@playwright/test'
-
 /**
- * Playwright config for smoke tests
+ * Playwright config for chain preflight smoke tests
  *
- * These are fast, non-wallet tests that verify chain infrastructure.
- * They run without Synpress and don't need a browser.
+ * Fast, non-wallet tests that verify chain infrastructure.
+ * Run without Synpress.
  */
-export default defineConfig({
+
+import { createAppConfig } from '../shared/playwright.config.base'
+
+export default createAppConfig({
+  name: 'smoke',
+  port: 0, // No web server needed for chain tests
   testDir: '.',
-  testMatch: '**/*.spec.ts',
-  fullyParallel: true,
-  workers: 1,
-  retries: 0,
   timeout: 60000,
-
-  reporter: [['list'], ['json', { outputFile: 'smoke-results.json' }]],
-
-  use: {
-    trace: 'off',
-  },
+  // No webServer - these tests run against existing infrastructure
 })

@@ -5,7 +5,7 @@
 
 import { generateMnemonic, validateMnemonic } from '@scure/bip39'
 import { wordlist } from '@scure/bip39/wordlists/english'
-import { expectJson } from '../../lib/validation'
+import { expectJson } from '@jejunetwork/types'
 import { secureStorage } from '../../platform/secure-storage'
 import { BackupStateSchema } from '../../plugin/schemas'
 

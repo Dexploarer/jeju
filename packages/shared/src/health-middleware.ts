@@ -18,10 +18,8 @@
  *   }));
  */
 
-// Re-export consolidated HealthStatus
-import type { HealthStatus } from '@jejunetwork/types'
+import type { HealthResponse, HealthStatus } from '@jejunetwork/types'
 import { Elysia } from 'elysia'
-export type { HealthStatus }
 type DependencyType =
   | 'database'
   | 'cache'
@@ -61,9 +59,6 @@ interface HealthMiddlewareConfig {
   funding?: FundingConfig
 }
 
-// Re-export consolidated HealthResponse
-import type { HealthResponse } from '@jejunetwork/types'
-export type { HealthResponse }
 
 interface DependencyHealth {
   name: string

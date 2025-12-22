@@ -12,6 +12,11 @@ import { createHash, randomBytes } from 'node:crypto'
 import { Elysia } from 'elysia'
 import { signMessage, signTypedData } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
+import {
+  expectValid,
+  SignResponseSchema,
+  type SignResponse,
+} from '../../schemas'
 
 // ============ Types ============
 
@@ -31,13 +36,6 @@ interface TypedSignRequest extends SignRequest {
   }
   types: Record<string, Array<{ name: string; type: string }>>
   message: Record<string, unknown>
-}
-
-interface SignResponse {
-  requestId: string
-  signature: string
-  signer: string
-  error?: string
 }
 
 // ============ Constants ============
@@ -288,7 +286,8 @@ export class SignatureCollector {
             })
             clearTimeout(tid)
             if (!res.ok) return null
-            const r = (await res.json()) as SignResponse
+            const rRaw = await res.json()
+            const r = expectValid(SignResponseSchema, rRaw, 'sign response')
             return r.error ? null : { signature: r.signature, signer: r.signer }
           } catch {
             return null

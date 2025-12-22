@@ -17,8 +17,9 @@ import {
   X402CreateHeaderRequestSchema,
   X402PaymentPayloadSchema,
   X402VerifyRequestSchema,
+  type VPNServerConfig,
 } from './schemas'
-import type { VPNServerConfig, VPNServiceContext } from './types'
+import type { VPNServiceContext } from './types'
 
 // ============================================================================
 // Types

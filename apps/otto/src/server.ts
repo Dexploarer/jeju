@@ -4,12 +4,13 @@
  */
 
 import { cors } from '@elysiajs/cors'
+import { createHmac } from 'node:crypto'
 import { Elysia } from 'elysia'
 import { z } from 'zod'
 import { getConfig } from './config'
+import { expectValid } from '@jejunetwork/types'
 import {
   DiscordWebhookPayloadSchema,
-  expectValid,
   FarcasterFramePayloadSchema,
   TelegramWebhookPayloadSchema,
   TwilioWebhookPayloadSchema,
@@ -25,9 +26,6 @@ import {
 import { chatApi } from './web/chat-api'
 import { frameApi } from './web/frame'
 import { miniappApi } from './web/miniapp'
-
-// Re-export for use by ElizaOS agents
-export { ottoCharacter, ottoPlugin } from './eliza'
 
 const config = getConfig()
 const stateManager = getStateManager()
@@ -174,9 +172,7 @@ const app = new Elysia()
       throw new Error('TWITTER_API_SECRET is required for CRC verification')
     }
 
-    // Conditional import: only loaded when Twitter webhook verification is needed
-    const crypto = await import('node:crypto')
-    const hmac = crypto.createHmac('sha256', apiSecret)
+    const hmac = createHmac('sha256', apiSecret)
     hmac.update(crcTokenParam)
     const responseToken = `sha256=${hmac.digest('base64')}`
 

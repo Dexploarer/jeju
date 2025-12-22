@@ -13,7 +13,7 @@ import {
   jnsRegisterResponseSchema,
   jnsResolveResponseSchema,
 } from '../schemas'
-import type { JNSRecords } from '../types'
+import type { JNSRecords } from '../schemas'
 import { normalizeJNSName } from '../utils'
 import { expectValid } from '../utils/validation'
 

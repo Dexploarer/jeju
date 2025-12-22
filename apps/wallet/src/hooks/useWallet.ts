@@ -15,10 +15,8 @@ import {
   expectBigInt,
   expectChainId,
   expectHex,
-  expectNonEmpty,
-  expectSchema,
-  requireDefined,
-} from '../lib/validation'
+} from '@jejunetwork/types'
+import { expectNonEmpty, expectSchema, requireDefined } from '../lib/validation'
 import { chains, getChain } from '../sdk/chains'
 import { TransactionSchema, UnifiedAccountSchema } from '../sdk/schemas'
 import type { TokenBalance, Transaction, UnifiedAccount } from '../sdk/types'

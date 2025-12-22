@@ -10,9 +10,9 @@ import {
   parseAbi,
   type Transport,
 } from 'viem'
+import { AddressSchema, validateOrThrow } from '@jejunetwork/types'
 import { loadNetworkConfig } from '../network-config'
 import { inferChainFromRpcUrl } from './chain-utils'
-import { addressSchema, validateOrThrow } from './validation'
 
 type ViemPublicClient = PublicClient<Transport, Chain>
 
@@ -91,7 +91,7 @@ function getContracts() {
 }
 
 async function getStakeTier(address: string): Promise<RateTier> {
-  validateOrThrow(addressSchema, address, 'getStakeTier address')
+  validateOrThrow(AddressSchema, address, 'getStakeTier address')
   const key = address.toLowerCase()
   const cached = stakeCache.get(key)
   if (cached && cached.expiresAt > Date.now()) return cached.tier

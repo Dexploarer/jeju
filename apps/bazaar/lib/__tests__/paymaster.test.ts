@@ -11,7 +11,7 @@ import {
   getPaymasterForToken,
   getPaymasterOptions,
   preparePaymasterData,
-} from '../paymaster'
+} from '@jejunetwork/deployment/scripts/shared/paymaster'
 
 describe('Paymaster Integration', () => {
   test('should get available paymasters', async () => {

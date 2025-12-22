@@ -60,8 +60,4 @@ export const walletProject: Project = {
   agents: [walletAgent],
 }
 
-// Re-export for convenience
-export { jejuWalletCharacter } from '../character'
-export { jejuWalletPlugin } from '../plugin/eliza-plugin'
-
 export default walletProject

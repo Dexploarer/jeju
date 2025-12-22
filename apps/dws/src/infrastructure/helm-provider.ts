@@ -18,10 +18,10 @@
  * - Networking is abstracted via DWS routing
  */
 
-import { Hono } from 'hono'
+import { Elysia } from 'elysia'
 import type { Address } from 'viem'
 import { z } from 'zod'
-import { validateBody, validateParams } from '../shared'
+import { expectValid } from '@jejunetwork/types'
 
 // ============================================================================
 // Kubernetes Manifest Types
@@ -289,7 +289,7 @@ class ManifestParser {
   }
 
   private parseDeployment(manifest: KubeManifest): DWSWorkerConfig[] {
-    const spec = manifest.spec as DeploymentSpec
+    const spec = manifest.spec as unknown as DeploymentSpec
     const workers: DWSWorkerConfig[] = []
 
     for (const container of spec.template.spec.containers) {
@@ -459,31 +459,28 @@ const manifestsSchema = z.object({
       metadata: z.object({
         name: z.string(),
         namespace: z.string().optional(),
-        labels: z.record(z.string()).optional(),
-        annotations: z.record(z.string()).optional(),
+        labels: z.record(z.string(), z.string()).optional(),
+        annotations: z.record(z.string(), z.string()).optional(),
       }),
-      spec: z.record(z.unknown()),
+      spec: z.record(z.string(), z.unknown()),
     }),
   ),
   release: z.string().optional(),
   namespace: z.string().optional(),
-  values: z.record(z.unknown()).optional(),
+  values: z.record(z.string(), z.unknown()).optional(),
 })
 
 const deployments = new Map<string, DWSDeployment>()
 
-export function createHelmProviderRouter(): Hono {
-  const router = new Hono()
+export function createHelmProviderRouter() {
   const parser = new ManifestParser()
 
-  // Health check
-  router.get('/helm/health', (c) => {
-    return c.json({ status: 'healthy', provider: 'dws-helm' })
-  })
+  return new Elysia({ prefix: '/helm' })
+    // Health check
+    .get('/health', () => ({ status: 'healthy', provider: 'dws-helm' }))
 
-  // Schema for Helm deployments
-  router.get('/helm/schema', (c) => {
-    return c.json({
+    // Schema for Helm deployments
+    .get('/schema', () => ({
       schema: {
         manifests: {
           type: 'array',
@@ -530,128 +527,125 @@ export function createHelmProviderRouter(): Hono {
           description: 'Values to pass to Helm templates',
         },
       },
-    })
-  })
-
-  // Apply Helm release / K8s manifests
-  router.post('/helm/apply', async (c) => {
-    const body = await validateBody(manifestsSchema, c)
-    const _owner = c.req.header('x-jeju-address') as Address
-
-    const deployment = parser.parseManifests(body.manifests as KubeManifest[])
-    deployment.name = body.release ?? deployment.name
-    deployment.namespace = body.namespace ?? deployment.namespace
-    deployment.status = 'deploying'
-
-    deployments.set(deployment.id, deployment)
-
-    // Start async deployment
-    deployToNetwork(deployment).catch((err) => {
-      console.error(`[Helm] Deployment ${deployment.id} failed:`, err)
-      deployment.status = 'failed'
-    })
-
-    return c.json({
-      id: deployment.id,
-      name: deployment.name,
-      namespace: deployment.namespace,
-      workers: deployment.workers.length,
-      services: deployment.services.length,
-      status: deployment.status,
-    })
-  })
-
-  // Get deployment status
-  router.get('/helm/deployments/:id', async (c) => {
-    const { id } = validateParams(z.object({ id: z.string() }), c)
-
-    const deployment = deployments.get(id)
-    if (!deployment) {
-      return c.json({ error: 'Deployment not found' }, 404)
-    }
-
-    return c.json({
-      id: deployment.id,
-      name: deployment.name,
-      namespace: deployment.namespace,
-      workers: deployment.workers.map((w) => ({
-        id: w.id,
-        name: w.name,
-        replicas: w.replicas,
-        image: w.image,
-      })),
-      services: deployment.services.map((s) => ({
-        id: s.id,
-        name: s.name,
-        type: s.type,
-        ports: s.ports,
-      })),
-      status: deployment.status,
-      createdAt: deployment.createdAt,
-    })
-  })
-
-  // List deployments
-  router.get('/helm/deployments', async (c) => {
-    const list = Array.from(deployments.values()).map((d) => ({
-      id: d.id,
-      name: d.name,
-      namespace: d.namespace,
-      status: d.status,
-      createdAt: d.createdAt,
     }))
 
-    return c.json({ deployments: list })
-  })
+    // Apply Helm release / K8s manifests
+    .post('/apply', ({ body, request }) => {
+      const validated = expectValid(manifestsSchema, body, 'Helm apply body')
+      const _owner = request.headers.get('x-jeju-address') as Address
 
-  // Delete deployment
-  router.delete('/helm/deployments/:id', async (c) => {
-    const { id } = validateParams(z.object({ id: z.string() }), c)
+      const deployment = parser.parseManifests(
+        validated.manifests as KubeManifest[],
+      )
+      deployment.name = validated.release ?? deployment.name
+      deployment.namespace = validated.namespace ?? deployment.namespace
+      deployment.status = 'deploying'
 
-    const deployment = deployments.get(id)
-    if (!deployment) {
-      return c.json({ error: 'Deployment not found' }, 404)
-    }
+      deployments.set(deployment.id, deployment)
 
-    // Clean up resources
-    await cleanupDeployment(deployment)
-    deployments.delete(id)
+      // Start async deployment
+      deployToNetwork(deployment).catch((err) => {
+        console.error(`[Helm] Deployment ${deployment.id} failed:`, err)
+        deployment.status = 'failed'
+      })
 
-    return c.json({ success: true, id })
-  })
-
-  // Scale deployment
-  router.post('/helm/deployments/:id/scale', async (c) => {
-    const { id } = validateParams(z.object({ id: z.string() }), c)
-    const body = await validateBody(
-      z.object({
-        worker: z.string(),
-        replicas: z.number().min(0).max(100),
-      }),
-      c,
-    )
-
-    const deployment = deployments.get(id)
-    if (!deployment) {
-      return c.json({ error: 'Deployment not found' }, 404)
-    }
-
-    const worker = deployment.workers.find((w) => w.name === body.worker)
-    if (!worker) {
-      return c.json({ error: 'Worker not found' }, 404)
-    }
-
-    worker.replicas = body.replicas
-    // Scale would be implemented here
-
-    return c.json({
-      success: true,
-      worker: worker.name,
-      replicas: body.replicas,
+      return {
+        id: deployment.id,
+        name: deployment.name,
+        namespace: deployment.namespace,
+        workers: deployment.workers.length,
+        services: deployment.services.length,
+        status: deployment.status,
+      }
     })
-  })
 
-  return router
+    // Get deployment status
+    .get('/deployments/:id', ({ params, set }) => {
+      const deployment = deployments.get(params.id)
+      if (!deployment) {
+        set.status = 404
+        return { error: 'Deployment not found' }
+      }
+
+      return {
+        id: deployment.id,
+        name: deployment.name,
+        namespace: deployment.namespace,
+        workers: deployment.workers.map((w) => ({
+          id: w.id,
+          name: w.name,
+          replicas: w.replicas,
+          image: w.image,
+        })),
+        services: deployment.services.map((s) => ({
+          id: s.id,
+          name: s.name,
+          type: s.type,
+          ports: s.ports,
+        })),
+        status: deployment.status,
+        createdAt: deployment.createdAt,
+      }
+    })
+
+    // List deployments
+    .get('/deployments', () => {
+      const list = Array.from(deployments.values()).map((d) => ({
+        id: d.id,
+        name: d.name,
+        namespace: d.namespace,
+        status: d.status,
+        createdAt: d.createdAt,
+      }))
+
+      return { deployments: list }
+    })
+
+    // Delete deployment
+    .delete('/deployments/:id', async ({ params, set }) => {
+      const deployment = deployments.get(params.id)
+      if (!deployment) {
+        set.status = 404
+        return { error: 'Deployment not found' }
+      }
+
+      await cleanupDeployment(deployment)
+      deployments.delete(params.id)
+
+      return { success: true, id: params.id }
+    })
+
+    // Scale deployment
+    .post('/deployments/:id/scale', ({ params, body, set }) => {
+      const scaleBody = expectValid(
+        z.object({
+          worker: z.string(),
+          replicas: z.number().min(0).max(100),
+        }),
+        body,
+        'Scale body',
+      )
+
+      const deployment = deployments.get(params.id)
+      if (!deployment) {
+        set.status = 404
+        return { error: 'Deployment not found' }
+      }
+
+      const worker = deployment.workers.find((w) => w.name === scaleBody.worker)
+      if (!worker) {
+        set.status = 404
+        return { error: 'Worker not found' }
+      }
+
+      worker.replicas = scaleBody.replicas
+
+      return {
+        success: true,
+        worker: worker.name,
+        replicas: scaleBody.replicas,
+      }
+    })
 }
 
 // ============================================================================

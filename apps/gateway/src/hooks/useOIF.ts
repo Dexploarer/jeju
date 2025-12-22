@@ -14,7 +14,7 @@ import {
   useWriteContract,
 } from 'wagmi'
 import { CONTRACTS } from '../config'
-import { ZERO_ADDRESS } from '../lib/contracts'
+import { ZERO_ADDRESS } from '@jejunetwork/ui'
 
 const INPUT_SETTLER_ABI = [
   {

@@ -43,7 +43,7 @@ import {
   waitForTransactionReceipt,
 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
-import { expectValid, SignRequestSchema } from '../../schemas'
+import { expectValid, SignRequestSchema, SignResponseSchema } from '../../schemas'
 import { inferChainFromRpcUrl } from '../shared/chain-utils'
 
 const ROOT = join(import.meta.dir, '../..')
@@ -71,13 +71,6 @@ interface BatchRequest {
   hash: string
   signatures: Map<string, string>
   timestamp: number
-}
-
-interface SignResponse {
-  requestId: string
-  signature: string
-  signer: string
-  error?: string
 }
 
 class ThresholdBatcherProxy {
@@ -261,7 +254,8 @@ class ThresholdBatcherProxy {
           return null
         }
 
-        const result = (await response.json()) as SignResponse
+        const resultRaw = await response.json()
+        const result = expectValid(SignResponseSchema, resultRaw, 'sign response')
         if (result.error) {
           console.log(`    Signer ${index + 1}: ${result.error}`)
           return null

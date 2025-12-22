@@ -108,6 +108,9 @@ export const TOTPSetupResponseSchema = z.object({
 })
 
 export const MFAStatusSchema = z.object({
+  enabled: z.boolean(),
+  methods: z.array(z.enum(['passkey', 'totp', 'sms', 'backup_code'])),
+  preferredMethod: z.enum(['passkey', 'totp', 'sms', 'backup_code']).nullable(),
   totpEnabled: z.boolean(),
   passkeyCount: z.number().int().nonnegative(),
   backupCodesRemaining: z.number().int().nonnegative(),

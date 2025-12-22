@@ -13,8 +13,8 @@ import { Elysia } from 'elysia'
 import { createA2ARouter } from './a2a'
 import { createMCPRouter } from './mcp'
 import { createRESTRouter } from './rest'
-import { expectValid, VPNServerConfigSchema } from './schemas'
-import type { VPNServerConfig, VPNServiceContext } from './types'
+import { expectValid, VPNServerConfigSchema, type VPNServerConfig } from './schemas'
+import type { VPNServiceContext } from './types'
 import { checkRateLimit } from './utils/rate-limit'
 import { createX402Middleware } from './x402'
 
@@ -267,4 +267,5 @@ export function createVPNServer(config: VPNServerConfig) {
   return app
 }
 
-export type { VPNServerConfig, VPNServiceContext } from './types'
+export type { VPNServerConfig } from './schemas'
+export type { VPNServiceContext } from './types'

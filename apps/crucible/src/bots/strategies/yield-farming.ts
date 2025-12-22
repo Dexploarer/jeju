@@ -28,7 +28,7 @@ import {
   SolanaDexPoolsResponseSchema,
   SolanaLendingMarketsResponseSchema,
 } from '../../schemas'
-import type { ChainId, StrategyConfig } from '../autocrat-types'
+import type { ChainId, StrategyConfig } from '../autocrat-types-source'
 
 // ============ Types ============
 

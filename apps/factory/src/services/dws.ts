@@ -8,9 +8,10 @@
  */
 
 import { type Address, createPublicClient, http } from 'viem'
+import { getCoreAppUrl, getL2RpcUrl } from '@jejunetwork/config/ports'
 
 const DWS_TAG = 'dws'
-const FALLBACK_DWS_URL = process.env.DWS_URL || 'http://localhost:4030'
+const FALLBACK_DWS_URL = process.env.DWS_URL || getCoreAppUrl('DWS_API')
 
 const IDENTITY_REGISTRY_ABI = [
   {

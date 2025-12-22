@@ -247,6 +247,13 @@
       "usdc": "",
       "weth": "0x4200000000000000000000000000000000000006"
     },
+    "babylon": {
+      "BBLNToken": "",
+      "BabylonTreasury": "",
+      "BabylonAgentVault": "",
+      "BabylonDAO": "",
+      "TrainingOrchestrator": ""
+    },
     "registry": {
       "identity": "",
       "app": "",

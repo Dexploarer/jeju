@@ -467,6 +467,14 @@ export const JsonRpcResponseSchema = z.object({
 export type JsonRpcResponse = z.infer<typeof JsonRpcResponseSchema>
 
 /**
+ * Minimal chain config schema (just rpcUrl for readiness checks)
+ */
+export const ChainConfigMinimalSchema = z.object({
+  rpcUrl: z.string(),
+}).passthrough()
+export type ChainConfigMinimal = z.infer<typeof ChainConfigMinimalSchema>
+
+/**
  * JSON-RPC response for eth_getBalance
  */
 export const JsonRpcBalanceResponseSchema = z.object({
@@ -647,6 +655,19 @@ export const CIDUploadResponseSchema = z.object({
   cid: z.string(),
 })
 export type CIDUploadResponse = z.infer<typeof CIDUploadResponseSchema>
+
+/**
+ * Agent registration file (ERC-8004 metadata)
+ */
+export const AgentRegistrationFileSchema = z.object({
+  name: z.string().optional(),
+  description: z.string().optional(),
+  endpoints: z.array(z.object({
+    type: z.string(),
+    value: z.string(),
+  })).optional(),
+}).passthrough()
+export type AgentRegistrationFile = z.infer<typeof AgentRegistrationFileSchema>
 
 /**
  * DNS zone list response (Cloudflare style)

@@ -11,7 +11,7 @@ import {
   AccessControlSchema,
   UsageLimitsSchema,
 } from '../shared/schemas/api-marketplace'
-import { expectValid } from '../shared/validation'
+import { expectValid } from '@jejunetwork/types'
 import {
   apiListingState,
   apiUserAccountState,

@@ -4,9 +4,11 @@
  */
 
 import { expect, test } from '@playwright/test'
+import { getCoreAppUrl } from '@jejunetwork/config/ports'
 
-const A2A_ENDPOINT = 'http://localhost:4006/api/a2a'
-const AGENT_CARD_URL = 'http://localhost:4006/.well-known/agent-card.json'
+const BAZAAR_URL = getCoreAppUrl('BAZAAR')
+const A2A_ENDPOINT = `${BAZAAR_URL}/api/a2a`
+const AGENT_CARD_URL = `${BAZAAR_URL}/.well-known/agent-card.json`
 
 test.describe('A2A Protocol Implementation', () => {
   test('should serve agent card at well-known endpoint', async ({

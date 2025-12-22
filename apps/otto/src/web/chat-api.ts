@@ -10,13 +10,13 @@ import { isAddress, verifyMessage } from 'viem'
 import { z } from 'zod'
 import { getConfig } from '../config'
 import { processMessage } from '../eliza/runtime'
+import { expectValid } from '@jejunetwork/types'
 import {
   AuthMessageResponseSchema,
   AuthVerifyRequestSchema,
   ChatMessageSchema,
   ChatRequestSchema,
   ChatResponseSchema,
-  expectValid,
 } from '../schemas'
 import { getStateManager } from '../services/state'
 import { getWalletService } from '../services/wallet'
@@ -389,4 +389,5 @@ export const chatApi = new Elysia({ prefix: '/api/chat' })
   })
 
 export default chatApi
+
 

@@ -25,7 +25,7 @@ import {
   useJNSResolver,
   useJNSReverse,
 } from '../hooks/useJNS'
-import { ZERO_BYTES32 } from '../lib/contracts'
+import { ZERO_BYTES32 } from '@jejunetwork/ui'
 
 const SearchIcon = Search as ComponentType<LucideProps>
 const CheckCircleIcon = CheckCircle as ComponentType<LucideProps>

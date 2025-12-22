@@ -5,17 +5,8 @@
  * and/or config files.
  */
 
-import type { EVMChainId, FeeConfig, TFMMRiskParameters } from '../types'
-
-// Re-export validated types from schemas
-export type {
-  CompositeStrategyConfig,
-  CrossChainArbConfigValidated,
-  MeanReversionStrategyConfig,
-  MomentumStrategyConfig,
-  VolatilityStrategyConfig,
-} from '../schemas'
-
+import type { EVMChainId } from '@jejunetwork/types'
+import type { FeeConfig, TFMMRiskParameters } from '../types'
 import { expectEVMChainId } from '../schemas'
 
 // ============ Environment Loading ============

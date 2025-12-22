@@ -26,11 +26,8 @@ import {
 } from 'viem'
 import { OracleAggregator, TOKEN_SYMBOLS } from '../oracles'
 import { JupiterQuoteResponseSchema } from '../schemas'
-import type {
-  CrossChainArbOpportunity,
-  EVMChainId,
-  SolanaNetwork,
-} from '../types'
+import type { EVMChainId, SolanaNetwork } from '@jejunetwork/types'
+import type { CrossChainArbOpportunity } from '../types'
 
 // ============ Chain Configuration ============
 

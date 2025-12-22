@@ -12,11 +12,26 @@ import {
   keccak256,
   type PublicClient,
   parseAbi,
-  readContract,
   stringToBytes,
   stringToHex,
   zeroAddress,
 } from 'viem'
+
+// Helper to call readContract via client.readContract
+async function readContract(
+  client: PublicClient,
+  params: {
+    address: Address
+    abi: readonly unknown[]
+    functionName: string
+    args?: readonly unknown[]
+  },
+) {
+  return client.readContract(
+    params as Parameters<typeof client.readContract>[0],
+  )
+}
+
 import {
   type PrivateKeyAccount,
   privateKeyToAccount,

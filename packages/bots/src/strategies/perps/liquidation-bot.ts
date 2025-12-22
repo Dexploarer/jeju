@@ -16,7 +16,7 @@ import {
 import type { OracleAggregator } from '../../oracles'
 import { IndexerPositionsResponseSchema } from '../../schemas'
 import { sleep } from '../../shared'
-import type { EVMChainId } from '../../types'
+import type { EVMChainId } from '@jejunetwork/types'
 
 export interface LiquidationBotConfig {
   chainId: EVMChainId

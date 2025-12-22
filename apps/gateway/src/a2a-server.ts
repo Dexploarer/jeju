@@ -74,10 +74,9 @@ import {
 } from './lib/validation.js'
 import {
   checkPayment,
-  createPaymentRequirement,
-  PAYMENT_TIERS,
   type PaymentRequirements,
-} from './lib/x402.js'
+} from '@jejunetwork/deployment/scripts/shared/x402'
+import { createPaymentRequirement, PAYMENT_TIERS } from './lib/x402.js'
 import { banCheckPlugin } from './middleware/ban-check.js'
 import {
   agentRateLimitPlugin,

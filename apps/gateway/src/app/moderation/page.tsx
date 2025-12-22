@@ -32,7 +32,7 @@ import { formatEther } from 'viem'
 import BanVotingInterface from '../../components/moderation/BanVotingInterface'
 import { IPFS_GATEWAY_URL } from '../../config'
 import { MODERATION_CONTRACTS } from '../../config/moderation'
-import { ZERO_BYTES32 } from '../../lib/contracts'
+import { ZERO_BYTES32 } from '@jejunetwork/ui'
 
 type TabType = 'overview' | 'active' | 'resolved' | 'submit' | 'labels' | 'bans'
 

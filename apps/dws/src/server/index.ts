@@ -11,7 +11,6 @@
 
 import { cors } from '@elysiajs/cors'
 import { Elysia } from 'elysia'
-import { Hono } from 'hono'
 import type { Address, Hex } from 'viem'
 import { createAgentRouter, initExecutor, initRegistry } from '../agents'
 import { initializeMarketplace } from '../api-marketplace'
@@ -54,7 +53,6 @@ import {
   createPkgRegistryProxyRouter,
   createPkgRouter,
   createPricesRouter,
-  createRPCRouter,
   createS3Router,
   createScrapingRouter,
   createVPNRouter,
@@ -62,6 +60,7 @@ import {
   createWorkersRouter,
   getPriceService,
   handleEdgeWebSocket,
+  rpcRoutes,
   shutdownDA,
   storageRoutes,
   type SubscribableWebSocket,
@@ -166,38 +165,7 @@ const decentralized = createDecentralizedServices(
 let p2pCoordinator: P2PCoordinator | null = null
 let distributedRateLimiter: DistributedRateLimiter | null = null
 
-// Create Hono app for legacy routes
-const legacyApp = new Hono()
-
-// Mount legacy Hono routes
-legacyApp.route('/oauth3', createOAuth3Router())
-legacyApp.route('/api', createAPIMarketplaceRouter())
-legacyApp.route('/containers', createContainerRouter())
-legacyApp.route('/mcp', createMCPRouter())
-legacyApp.route('/s3', createS3Router(backendManager))
-legacyApp.route('/workers', createWorkersRouter(backendManager))
-legacyApp.route('/workerd', createDefaultWorkerdRouter(backendManager))
-legacyApp.route('/kms', createKMSRouter())
-legacyApp.route('/vpn', createVPNRouter())
-legacyApp.route('/scraping', createScrapingRouter())
-legacyApp.route('/rpc', createRPCRouter())
-legacyApp.route('/edge', createEdgeRouter())
-legacyApp.route('/prices', createPricesRouter())
-legacyApp.route('/moderation', createModerationRouter())
-legacyApp.route('/email', createEmailRouter())
-legacyApp.route('/funding', createFundingRouter())
-legacyApp.route('/registry', createPkgRegistryProxyRouter())
-legacyApp.route('/k3s', createK3sRouter())
-legacyApp.route('/', createHelmProviderRouter())
-legacyApp.route('/', createTerraformProviderRouter())
-legacyApp.route('/git', createGitRouter({ repoManager, backend: backendManager }))
-legacyApp.route('/pkg', createPkgRouter({ registryManager, backend: backendManager }))
-legacyApp.route(
-  '/ci',
-  createCIRouter({ workflowEngine, repoManager, backend: backendManager }),
-)
-
-// DA Layer
+// DA Layer config
 const daConfig = {
   operatorPrivateKey: process.env.DA_OPERATOR_PRIVATE_KEY as Hex | undefined,
   operatorEndpoint: process.env.DWS_BASE_URL || `http://localhost:${PORT}`,
@@ -209,10 +177,38 @@ const daConfig = {
   daContractAddress: process.env.DA_CONTRACT_ADDRESS as Address | undefined,
   rpcUrl: getEnvOrDefault('RPC_URL', LOCALNET_DEFAULTS.rpcUrl),
 }
-legacyApp.route('/da', createDARouter(daConfig))
 
-// Agent system
-legacyApp.route('/agents', createAgentRouter())
+// Elysia route instances (for use() mounting with type safety)
+const elysiaRoutes = {
+  oauth3: () => createOAuth3Router(),
+  kms: () => createKMSRouter(),
+  vpn: () => createVPNRouter(),
+  scraping: () => createScrapingRouter(),
+  prices: () => createPricesRouter(),
+  moderation: () => createModerationRouter(),
+  mcp: () => createMCPRouter(),
+  s3: () => createS3Router(backendManager),
+  workers: () => createWorkersRouter(backendManager),
+  workerd: () => createDefaultWorkerdRouter(backendManager),
+  containers: () => createContainerRouter(),
+  da: () => createDARouter(daConfig),
+  git: () => createGitRouter({ repoManager, backend: backendManager }),
+  pkg: () => createPkgRouter({ registryManager, backend: backendManager }),
+  ci: () => createCIRouter({ workflowEngine, repoManager, backend: backendManager }),
+  api: () => createAPIMarketplaceRouter(),
+  registry: () => createPkgRegistryProxyRouter(),
+  agents: () => createAgentRouter(),
+}
+
+// Routes mounted via fetch handlers
+const mountedRoutes = {
+  edge: () => createEdgeRouter(),
+  email: () => createEmailRouter(),
+  funding: () => createFundingRouter(),
+  k3s: () => createK3sRouter(),
+  helm: () => createHelmProviderRouter(),
+  terraform: () => createTerraformProviderRouter(),
+}
 
 // Initialize deployment context
 setDeploymentContext({
@@ -568,8 +564,34 @@ export const app = new Elysia({ name: 'dws' })
     return { error: 'Frontend not available' }
   })
 
-  // Mount legacy Hono routes
-  .mount('/', legacyApp.fetch)
+  // Elysia routes with built-in prefixes (use() for type safety)
+  .use(elysiaRoutes.oauth3())
+  .use(elysiaRoutes.kms())
+  .use(elysiaRoutes.vpn())
+  .use(elysiaRoutes.scraping())
+  .use(elysiaRoutes.prices())
+  .use(elysiaRoutes.moderation())
+  .use(elysiaRoutes.mcp())
+  .use(elysiaRoutes.s3())
+  .use(elysiaRoutes.workers())
+  .use(elysiaRoutes.workerd())
+  .use(elysiaRoutes.containers())
+  .use(elysiaRoutes.da())
+  .use(elysiaRoutes.git())
+  .use(elysiaRoutes.pkg())
+  .use(elysiaRoutes.ci())
+  .use(elysiaRoutes.api())
+  .use(elysiaRoutes.registry())
+  .use(elysiaRoutes.agents())
+  .use(rpcRoutes)
+
+  // Routes mounted via fetch handlers
+  .mount('/edge', mountedRoutes.edge().fetch)
+  .mount('/email', mountedRoutes.email().fetch)
+  .mount('/funding', mountedRoutes.funding().fetch)
+  .mount('/k3s', mountedRoutes.k3s().fetch)
+  .mount('/', mountedRoutes.helm().fetch)
+  .mount('/', mountedRoutes.terraform().fetch)
 
 // Export app type for Eden
 export type App = typeof app

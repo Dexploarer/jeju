@@ -7,7 +7,7 @@
 
 import { testWithSynpress } from '@synthetixio/synpress'
 import { MetaMask, metaMaskFixtures } from '@synthetixio/synpress/playwright'
-import { basicSetup } from '../../synpress.config'
+import basicSetup from '@jejunetwork/tests/wallet-setup'
 
 const test = testWithSynpress(metaMaskFixtures(basicSetup))
 const { expect } = test

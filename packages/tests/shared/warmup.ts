@@ -16,9 +16,6 @@ import {
 } from './schemas'
 import { findJejuWorkspaceRoot } from './utils'
 
-// Re-export types for backwards compatibility
-export type { AppConfig, WarmupOptions, WarmupResult, AppWarmupResult }
-
 const DEFAULT_ROUTES = ['/', '/about', '/settings']
 
 export function discoverAppsForWarmup(rootDir = process.cwd()): AppConfig[] {

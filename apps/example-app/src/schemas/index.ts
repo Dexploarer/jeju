@@ -14,9 +14,6 @@ import {
 import type { Address, Hex } from 'viem'
 import { z } from 'zod'
 
-// Re-export base schemas from shared types
-export { AddressSchema, HexSchema, TimestampSchema, BigIntSchema }
-
 // Alias for backwards compatibility
 export const addressSchema = AddressSchema
 const hexSchema = HexSchema

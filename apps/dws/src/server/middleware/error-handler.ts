@@ -2,22 +2,11 @@
  * Error handling middleware for fail-fast validation errors
  */
 
-import type { Context, Next } from 'hono'
-import { HTTPException } from 'hono/http-exception'
+import { Elysia } from 'elysia'
 
-export async function errorHandler(
-  c: Context,
-  next: Next,
-): Promise<Response | undefined> {
-  try {
-    return await next()
-  } catch (error) {
-    if (error instanceof HTTPException) {
-      throw error
-    }
-
-    const message =
-      error instanceof Error ? error.message : 'Internal server error'
+export function errorHandler() {
+  return new Elysia({ name: 'error-handler' }).onError(({ error, set }) => {
+    const message = error instanceof Error ? error.message : 'Internal server error'
     const lowerMessage = message.toLowerCase()
 
     // Check for auth-related errors (401) - check header validation failures
@@ -55,6 +44,7 @@ export async function errorHandler(
             ? 400
             : 500
 
-    return c.json({ error: message }, statusCode)
-  }
+    set.status = statusCode
+    return { error: message }
+  })
 }

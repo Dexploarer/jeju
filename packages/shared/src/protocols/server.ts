@@ -18,7 +18,6 @@ import type { ProtocolData, ProtocolValue } from '../types'
 import {
   type AgentInfo,
   configureProtocolMiddleware,
-  type PaymentRequirement,
   type ProtocolMiddlewareConfig,
   type SkillResult,
   verifyERC8004Identity,
@@ -590,14 +589,3 @@ export function createServerlessHandler(config: UnifiedServerConfig): {
   return { fetch: app.fetch }
 }
 
-// ============================================================================
-// Re-exports for convenience
-// ============================================================================
-
-export type { SkillResult, PaymentRequirement }
-export {
-  configureX402,
-  skillError,
-  skillRequiresPayment,
-  skillSuccess,
-} from './middleware'

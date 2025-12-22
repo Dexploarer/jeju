@@ -4,21 +4,19 @@
  */
 
 import { getDWSUrl } from '@jejunetwork/config'
-import { Hono } from 'hono'
-import { validateBody, validateHeaders, z } from '../../shared'
+import { Elysia, t } from 'elysia'
 import type { BackendManager } from '../../storage/backends'
 
 interface MCPContext {
   backend?: BackendManager
 }
 
-export function createMCPRouter(ctx: MCPContext = {}): Hono {
-  const router = new Hono()
+export function createMCPRouter(ctx: MCPContext = {}) {
   const { backend: _backend } = ctx
 
-  // Initialize MCP connection
-  router.post('/initialize', async (c) => {
-    return c.json({
+  return new Elysia({ name: 'mcp', prefix: '/mcp' })
+    // Initialize MCP connection
+    .post('/initialize', () => ({
       protocolVersion: '2024-11-05',
       capabilities: {
         resources: { subscribe: true, listChanged: true },
@@ -31,12 +29,10 @@ export function createMCPRouter(ctx: MCPContext = {}): Hono {
         description:
           'Decentralized Web Services - Storage, Compute, CDN, Git, Pkg',
       },
-    })
-  })
+    }))
 
-  // List available resources
-  router.post('/resources/list', async (c) => {
-    return c.json({
+    // List available resources
+    .post('/resources/list', () => ({
       resources: [
         {
           uri: 'dws://storage/stats',
@@ -75,61 +71,66 @@ export function createMCPRouter(ctx: MCPContext = {}): Hono {
           description: 'Recent workflow runs',
         },
       ],
-    })
-  })
+    }))
 
-  // Read resource content
-  router.post('/resources/read', async (c) => {
-    const body = await validateBody(z.object({ uri: z.string().min(1) }), c)
-    const baseUrl = getDWSUrl()
+    // Read resource content
+    .post(
+      '/resources/read',
+      async ({ body }) => {
+        const baseUrl = getDWSUrl()
 
-    const fetchResource = async (
-      path: string,
-    ): Promise<Record<string, unknown>> => {
-      const response = await fetch(`${baseUrl}${path}`)
-      if (!response.ok) return { error: `Failed to fetch: ${response.status}` }
-      return response.json() as Promise<Record<string, unknown>>
-    }
+        const fetchResource = async (
+          path: string,
+        ): Promise<Record<string, unknown>> => {
+          const response = await fetch(`${baseUrl}${path}`)
+          if (!response.ok) return { error: `Failed to fetch: ${response.status}` }
+          return response.json() as Promise<Record<string, unknown>>
+        }
 
-    let data: Record<string, unknown>
+        let data: Record<string, unknown>
 
-    switch (body.uri) {
-      case 'dws://storage/stats':
-        data = await fetchResource('/storage/health')
-        break
-      case 'dws://compute/status':
-        data = await fetchResource('/compute/health')
-        break
-      case 'dws://cdn/stats':
-        data = await fetchResource('/cdn/stats')
-        break
-      case 'dws://git/repos':
-        data = await fetchResource('/git/repos')
-        break
-      case 'dws://pkg/packages':
-        data = await fetchResource('/pkg/-/v1/search?text=')
-        break
-      case 'dws://ci/runs':
-        data = { runs: [], total: 0 } // CI runs need repo context
-        break
-      default:
-        throw new Error(`Unknown resource: ${body.uri}`)
-    }
+        switch (body.uri) {
+          case 'dws://storage/stats':
+            data = await fetchResource('/storage/health')
+            break
+          case 'dws://compute/status':
+            data = await fetchResource('/compute/health')
+            break
+          case 'dws://cdn/stats':
+            data = await fetchResource('/cdn/stats')
+            break
+          case 'dws://git/repos':
+            data = await fetchResource('/git/repos')
+            break
+          case 'dws://pkg/packages':
+            data = await fetchResource('/pkg/-/v1/search?text=')
+            break
+          case 'dws://ci/runs':
+            data = { runs: [], total: 0 } // CI runs need repo context
+            break
+          default:
+            throw new Error(`Unknown resource: ${body.uri}`)
+        }
 
-    return c.json({
-      contents: [
-        {
-          uri: body.uri,
-          mimeType: 'application/json',
-          text: JSON.stringify(data, null, 2),
-        },
-      ],
-    })
-  })
+        return {
+          contents: [
+            {
+              uri: body.uri,
+              mimeType: 'application/json',
+              text: JSON.stringify(data, null, 2),
+            },
+          ],
+        }
+      },
+      {
+        body: t.Object({
+          uri: t.String({ minLength: 1 }),
+        }),
+      },
+    )
 
-  // List available tools
-  router.post('/tools/list', async (c) => {
-    return c.json({
+    // List available tools
+    .post('/tools/list', () => ({
       tools: [
         {
           name: 'dws_upload',
@@ -216,139 +217,140 @@ export function createMCPRouter(ctx: MCPContext = {}): Hono {
           },
         },
       ],
-    })
-  })
+    }))
 
-  // Execute tool
-  router.post('/tools/call', async (c) => {
-    const body = await validateBody(
-      z.object({
-        name: z.string().min(1),
-        arguments: z.record(z.string(), z.union([z.string(), z.number()])),
-      }),
-      c,
-    )
-    const baseUrl = getDWSUrl()
-    const { 'x-jeju-address': address } = validateHeaders(
-      z.object({ 'x-jeju-address': z.string().optional() }),
-      c,
-    )
-    const userAddress = address || '0x0000000000000000000000000000000000000000'
+    // Execute tool
+    .post(
+      '/tools/call',
+      async ({ body, headers }) => {
+        const baseUrl = getDWSUrl()
+        const address = headers['x-jeju-address']
+        const userAddress = address || '0x0000000000000000000000000000000000000000'
 
-    switch (body.name) {
-      case 'dws_upload': {
-        const content =
-          body.arguments.encoding === 'base64'
-            ? Buffer.from(body.arguments.content as string, 'base64')
-            : Buffer.from(body.arguments.content as string)
+        switch (body.name) {
+          case 'dws_upload': {
+            const content =
+              body.arguments.encoding === 'base64'
+                ? Buffer.from(body.arguments.content as string, 'base64')
+                : Buffer.from(body.arguments.content as string)
 
-        const formData = new FormData()
-        formData.append(
-          'file',
-          new Blob([content]),
-          (body.arguments.filename as string) || 'upload',
-        )
+            const formData = new FormData()
+            formData.append(
+              'file',
+              new Blob([content]),
+              (body.arguments.filename as string) || 'upload',
+            )
 
-        const response = await fetch(`${baseUrl}/storage/upload`, {
-          method: 'POST',
-          body: formData,
-        })
+            const response = await fetch(`${baseUrl}/storage/upload`, {
+              method: 'POST',
+              body: formData,
+            })
 
-        const result = (await response.json()) as { cid: string }
-        return c.json({
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({ success: true, cid: result.cid }),
-            },
-          ],
-        })
-      }
+            const result = (await response.json()) as { cid: string }
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify({ success: true, cid: result.cid }),
+                },
+              ],
+            }
+          }
 
-      case 'dws_download': {
-        const response = await fetch(
-          `${baseUrl}/storage/download/${body.arguments.cid}`,
-        )
-        if (!response.ok) {
-          return c.json({
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify({ error: 'Content not found' }),
+          case 'dws_download': {
+            const response = await fetch(
+              `${baseUrl}/storage/download/${body.arguments.cid}`,
+            )
+            if (!response.ok) {
+              return {
+                content: [
+                  {
+                    type: 'text',
+                    text: JSON.stringify({ error: 'Content not found' }),
+                  },
+                ],
+              }
+            }
+            const content = await response.text()
+            return { content: [{ type: 'text', text: content }] }
+          }
+
+          case 'dws_create_repo': {
+            const response = await fetch(`${baseUrl}/git/repos`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-jeju-address': userAddress,
               },
-            ],
-          })
+              body: JSON.stringify({
+                name: body.arguments.name,
+                description: body.arguments.description || '',
+                visibility: body.arguments.visibility || 'public',
+              }),
+            })
+            const result = await response.json()
+            return {
+              content: [{ type: 'text', text: JSON.stringify(result) }],
+            }
+          }
+
+          case 'dws_run_compute': {
+            const response = await fetch(`${baseUrl}/compute/jobs`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-jeju-address': userAddress,
+              },
+              body: JSON.stringify({
+                command: body.arguments.command,
+                shell: body.arguments.shell || 'bash',
+                timeout: body.arguments.timeout || 60000,
+              }),
+            })
+            const result = await response.json()
+            return {
+              content: [{ type: 'text', text: JSON.stringify(result) }],
+            }
+          }
+
+          case 'dws_chat': {
+            const response = await fetch(`${baseUrl}/compute/chat/completions`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                model: body.arguments.model || 'default',
+                messages: [
+                  ...(body.arguments.systemPrompt
+                    ? [{ role: 'system', content: body.arguments.systemPrompt }]
+                    : []),
+                  { role: 'user', content: body.arguments.prompt },
+                ],
+              }),
+            })
+            const result = (await response.json()) as {
+              choices: Array<{ message: { content: string } }>
+            }
+            return {
+              content: [
+                { type: 'text', text: result.choices[0]?.message.content || '' },
+              ],
+            }
+          }
+
+          default:
+            throw new Error(`Unknown tool: ${body.name}`)
         }
-        const content = await response.text()
-        return c.json({ content: [{ type: 'text', text: content }] })
-      }
-
-      case 'dws_create_repo': {
-        const response = await fetch(`${baseUrl}/git/repos`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-jeju-address': userAddress,
-          },
-          body: JSON.stringify({
-            name: body.arguments.name,
-            description: body.arguments.description || '',
-            visibility: body.arguments.visibility || 'public',
-          }),
-        })
-        const result = await response.json()
-        return c.json({
-          content: [{ type: 'text', text: JSON.stringify(result) }],
-        })
-      }
-
-      case 'dws_run_compute': {
-        const response = await fetch(`${baseUrl}/compute/jobs`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-jeju-address': userAddress,
-          },
-          body: JSON.stringify({
-            command: body.arguments.command,
-            shell: body.arguments.shell || 'bash',
-            timeout: body.arguments.timeout || 60000,
-          }),
-        })
-        const result = await response.json()
-        return c.json({
-          content: [{ type: 'text', text: JSON.stringify(result) }],
-        })
-      }
-
-      case 'dws_chat': {
-        const response = await fetch(`${baseUrl}/compute/chat/completions`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: body.arguments.model || 'default',
-            messages: [
-              ...(body.arguments.systemPrompt
-                ? [{ role: 'system', content: body.arguments.systemPrompt }]
-                : []),
-              { role: 'user', content: body.arguments.prompt },
-            ],
-          }),
-        })
-        const result = (await response.json()) as {
-          choices: Array<{ message: { content: string } }>
-        }
-        return c.json({
-          content: [
-            { type: 'text', text: result.choices[0]?.message.content || '' },
-          ],
-        })
-      }
-
-      default:
-        throw new Error(`Unknown tool: ${body.name}`)
-    }
-  })
-
-  return router
+      },
+      {
+        body: t.Object({
+          name: t.String({ minLength: 1 }),
+          arguments: t.Record(t.String(), t.Union([t.String(), t.Number()])),
+        }),
+        headers: t.Object({
+          'x-jeju-address': t.Optional(t.String()),
+        }),
+      },
+    )
 }
+
+export type MCPRoutes = ReturnType<typeof createMCPRouter>

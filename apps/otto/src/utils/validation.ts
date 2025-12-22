@@ -3,13 +3,7 @@
  * Common validation helpers and schemas
  */
 
-import {
-  AddressSchema,
-  expectAddress,
-  expectHex,
-  expectValid,
-  HexSchema,
-} from '@jejunetwork/types'
+import { expectAddress, expectHex, expectValid } from '@jejunetwork/types'
 import { z } from 'zod'
 import { PlatformSchema } from '../schemas'
 
@@ -28,15 +22,6 @@ export function getRequiredEnv(key: string, defaultForDev?: string): string {
   }
   throw new Error(`Missing required environment variable: ${key}`)
 }
-
-// Re-export shared schemas and helpers
-export { AddressSchema, HexSchema, expectAddress, expectHex, expectValid }
-export { PlatformSchema }
-
-// Backwards-compatible aliases
-export const AddressParamSchema = AddressSchema
-export const HexParamSchema = HexSchema
-export const PlatformParamSchema = PlatformSchema
 
 // ============================================================================
 // App-Specific Validation Schemas
@@ -70,7 +55,7 @@ export const validateHex = expectHex
 export function validatePlatform(
   platform: string,
 ): 'discord' | 'telegram' | 'whatsapp' | 'farcaster' | 'twitter' | 'web' {
-  return expectValid(PlatformParamSchema, platform, 'platform parameter')
+  return expectValid(PlatformSchema, platform, 'platform parameter')
 }
 
 /**

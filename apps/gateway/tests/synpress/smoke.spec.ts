@@ -7,12 +7,13 @@
 
 import { testWithSynpress } from '@synthetixio/synpress'
 import { MetaMask, metaMaskFixtures } from '@synthetixio/synpress/playwright'
+import { getCoreAppUrl, getL2RpcUrl } from '@jejunetwork/config/ports'
 import { basicSetup } from '../../synpress.config'
 
 const test = testWithSynpress(metaMaskFixtures(basicSetup))
 const { expect } = test
 
-const GATEWAY_URL = process.env.GATEWAY_URL || 'http://localhost:4001'
+const GATEWAY_URL = process.env.GATEWAY_URL || getCoreAppUrl('GATEWAY')
 
 test.describe('Gateway Smoke Tests', () => {
   test('homepage loads without errors', async ({ page }) => {
@@ -138,7 +139,7 @@ test.describe('Gateway Smoke Tests', () => {
   })
 
   test('RPC endpoint is accessible', async ({ page }) => {
-    const response = await page.request.post('http://127.0.0.1:6546', {
+    const response = await page.request.post(getL2RpcUrl(), {
       data: {
         jsonrpc: '2.0',
         method: 'eth_blockNumber',
@@ -154,7 +155,7 @@ test.describe('Gateway Smoke Tests', () => {
 
   test('A2A server responds', async ({ page }) => {
     const response = await page.request.get(
-      'http://localhost:4003/.well-known/agent-card.json',
+      `${getCoreAppUrl('NODE_EXPLORER_UI')}/.well-known/agent-card.json`,
     )
     expect(response.status()).toBe(200)
 

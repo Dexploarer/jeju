@@ -11,7 +11,8 @@ import {
   Zap,
 } from 'lucide-react'
 import { useAppStore } from '../store'
-import { formatDuration, formatEther, formatUsd } from '../utils'
+import { formatDuration, formatUsd } from '@jejunetwork/shared'
+import { formatEther } from '../utils'
 import { EarningsChart } from './EarningsChart'
 
 export function Dashboard() {

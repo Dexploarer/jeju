@@ -10,6 +10,8 @@ import {
 } from 'lucide-react'
 import { type ComponentType, useState } from 'react'
 import { useAccount } from 'wagmi'
+import { readContract, writeContract, waitForTransactionReceipt } from 'wagmi/actions'
+import { getConfig } from '../../lib/wagmi-config'
 import {
   useFeedRegistry,
   useOperatorCommittees,
@@ -176,12 +178,6 @@ function OperatorRegistrationForm({
     setError(null)
 
     try {
-      // Import wagmi hooks dynamically to avoid SSR issues
-      const { writeContract, waitForTransactionReceipt } = await import(
-        'wagmi/actions'
-      )
-      const { getConfig } = await import('../../lib/wagmi-config')
-
       const config = getConfig()
 
       // OracleNetworkConnector ABI for registration
@@ -364,9 +360,6 @@ function PerformanceMetrics() {
 
     const fetchMetrics = async () => {
       try {
-        const { readContract } = await import('wagmi/actions')
-        const { getConfig } = await import('../../lib/wagmi-config')
-
         const config = getConfig()
         const contractAddress = process.env.NEXT_PUBLIC_ORACLE_NETWORK_CONNECTOR
 

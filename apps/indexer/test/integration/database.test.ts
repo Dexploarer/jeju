@@ -5,6 +5,12 @@ import {
   getTestDataSource,
   isDatabaseAvailable,
 } from './setup'
+import {
+  Account,
+  ComputeProvider,
+  RegisteredAgent,
+  StorageProvider,
+} from '../../src/model'
 
 let ds: DataSource | null = null
 let dbAvailable = false
@@ -41,7 +47,6 @@ describe('Database Integration', () => {
   it('should have registered_agent table', async () => {
     if (!dbAvailable || !ds) return
 
-    const { RegisteredAgent } = await import('../../src/model')
     const repo = ds.getRepository(RegisteredAgent)
     const count = await repo.count()
     expect(typeof count).toBe('number')
@@ -50,7 +55,6 @@ describe('Database Integration', () => {
   it('should insert and query agents', async () => {
     if (!dbAvailable || !ds) return
 
-    const { RegisteredAgent, Account } = await import('../../src/model')
     const agentRepo = ds.getRepository(RegisteredAgent)
     const accountRepo = ds.getRepository(Account)
 
@@ -98,7 +102,6 @@ describe('Database Integration', () => {
   it('should filter agents by active status', async () => {
     if (!dbAvailable || !ds) return
 
-    const { RegisteredAgent } = await import('../../src/model')
     const repo = ds.getRepository(RegisteredAgent)
 
     const activeAgents = await repo.find({ where: { active: true } })
@@ -112,7 +115,6 @@ describe('Database Integration', () => {
   it('should query with TypeORM query builder', async () => {
     if (!dbAvailable || !ds) return
 
-    const { RegisteredAgent } = await import('../../src/model')
     const repo = ds.getRepository(RegisteredAgent)
 
     const results = await repo
@@ -128,7 +130,6 @@ describe('Database Integration', () => {
   it('should handle tag array queries', async () => {
     if (!dbAvailable || !ds) return
 
-    const { RegisteredAgent } = await import('../../src/model')
     const repo = ds.getRepository(RegisteredAgent)
 
     // PostgreSQL array contains query
@@ -179,7 +180,6 @@ describe('Provider Integration', () => {
   it('should insert and query compute providers', async () => {
     if (!dbAvailable || !ds) return
 
-    const { ComputeProvider } = await import('../../src/model')
     const repo = ds.getRepository(ComputeProvider)
 
     const provider = repo.create({
@@ -205,7 +205,6 @@ describe('Provider Integration', () => {
   it('should insert and query storage providers', async () => {
     if (!dbAvailable || !ds) return
 
-    const { StorageProvider } = await import('../../src/model')
     const repo = ds.getRepository(StorageProvider)
 
     const provider = repo.create({

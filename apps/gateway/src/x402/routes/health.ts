@@ -29,9 +29,7 @@ const healthRoutes = new Elysia({ prefix: '/' })
     const configStatus = await getConfigStatus()
     const nonceStats = await getNonceCacheStats()
 
-    if (status === 'unhealthy') {
-      set.status = 503
-    }
+    set.status = status === 'unhealthy' ? 503 : 200
 
     return {
       service: cfg.serviceName,
@@ -91,9 +89,7 @@ const healthRoutes = new Elysia({ prefix: '/' })
 
     const ready =
       configStatus.keySource !== 'none' && cfg.facilitatorAddress !== ZERO_ADDRESS
-    if (!ready) {
-      set.status = 503
-    }
+    set.status = ready ? 200 : 503
     return { status: ready ? 'ready' : 'not_ready', timestamp: Date.now() }
   })
 

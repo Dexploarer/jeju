@@ -2,8 +2,8 @@
  * WhatsApp Platform Adapter (via Twilio)
  */
 
+import { expectValid } from '@jejunetwork/types'
 import {
-  expectValid,
   PlatformMessageSchema,
   TwilioWebhookPayloadSchema,
 } from '../schemas'

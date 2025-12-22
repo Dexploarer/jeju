@@ -18,19 +18,17 @@ import {
   buildTransactionQuery,
 } from './lib/graphql-utils'
 import { BadRequestError, NotFoundError } from './lib/types'
+import { AddressSchema, HashSchema, validateOrThrow } from '@jejunetwork/types'
 import {
-  addressSchema,
   analyzeTransactionPromptArgsSchema,
   blockNumberSchema,
   explainProposalPromptArgsSchema,
-  hashSchema,
   type JsonValue,
   mcpPromptGetSchema,
   mcpResourceReadSchema,
   mcpToolCallSchema,
   summarizeAgentActivityPromptArgsSchema,
   validateBody,
-  validateOrThrow,
 } from './lib/validation'
 
 interface MCPResourceContents {
@@ -494,7 +492,7 @@ export function createIndexerMCPServer() {
             )
           }
           if (blockHash) {
-            validateOrThrow(hashSchema, blockHash, 'MCP tool get_block blockHash')
+            validateOrThrow(HashSchema, blockHash, 'MCP tool get_block blockHash')
           }
           const query = buildBlockQuery(blockNumber, blockHash)
           result = { query: query.query }
@@ -505,7 +503,7 @@ export function createIndexerMCPServer() {
           if (typeof args.hash !== 'string') {
             throw new BadRequestError('hash is required and must be a string')
           }
-          validateOrThrow(hashSchema, args.hash, 'MCP tool get_transaction hash')
+          validateOrThrow(HashSchema, args.hash, 'MCP tool get_transaction hash')
           const query = buildTransactionQuery(args.hash)
           result = { query: query.query }
           break
@@ -516,7 +514,7 @@ export function createIndexerMCPServer() {
             throw new BadRequestError('address is required and must be a string')
           }
           validateOrThrow(
-            addressSchema,
+            AddressSchema,
             args.address,
             'MCP tool get_account address',
           )
@@ -530,7 +528,7 @@ export function createIndexerMCPServer() {
             throw new BadRequestError('address is required and must be a string')
           }
           validateOrThrow(
-            addressSchema,
+            AddressSchema,
             args.address,
             'MCP tool get_token_balances address',
           )
@@ -589,7 +587,7 @@ export function createIndexerMCPServer() {
             throw new BadRequestError('address is required and must be a string')
           }
           validateOrThrow(
-            addressSchema,
+            AddressSchema,
             args.address,
             'MCP tool get_contract_events address',
           )

@@ -7,6 +7,10 @@ import {
   stringToBytes,
   zeroHash,
 } from 'viem'
+import {
+  expectValid,
+  SignResponseSchema,
+} from '../../../schemas'
 
 interface Sequencer {
   address: string
@@ -27,13 +31,6 @@ interface Vote {
   sequencer: string
   signature: string
   blockNumber: number
-}
-
-interface SignerResponse {
-  requestId: string
-  signature: string
-  signer: string
-  error?: string
 }
 
 interface ConsensusConfig {
@@ -192,7 +189,8 @@ export class ConsensusAdapter {
           return null
         }
 
-        const result = (await response.json()) as SignerResponse
+        const resultRaw = await response.json()
+        const result = expectValid(SignResponseSchema, resultRaw, 'signer response')
 
         if (result.error) {
           console.log(`[Consensus] Signer ${index + 1} error: ${result.error}`)

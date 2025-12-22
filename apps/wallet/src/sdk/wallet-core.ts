@@ -18,9 +18,8 @@ import {
   expectDefined,
   expectHex,
   expectJson,
-  expectNonEmpty,
-  expectSchema,
-} from '../lib/validation'
+} from '@jejunetwork/types'
+import { expectNonEmpty, expectSchema } from '../lib/validation'
 import { type AAClient, createAAClient } from './account-abstraction'
 import { chains, getNetworkRpcUrl } from './chains'
 import { createEILClient, type EILClient } from './eil'

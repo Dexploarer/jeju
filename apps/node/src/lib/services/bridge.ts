@@ -19,6 +19,13 @@
 
 import type { Address, Hex } from 'viem'
 import {
+  createPublicClient,
+  createWalletClient,
+  encodeFunctionData,
+  http,
+} from 'viem'
+import { privateKeyToAccount } from 'viem/accounts'
+import {
   HyperliquidPricesResponseSchema,
   JitoBundleResponseSchema,
   JitoBundleStatusResponseSchema,
@@ -26,7 +33,7 @@ import {
   JupiterPriceResponseSchema,
 } from '../../validation'
 
-// Lazy import to avoid native module issues with @solana/web3.js
+// Dynamic import: Lazy load to avoid native module issues with @solana/web3.js
 type ArbitrageExecutorModule = typeof import('./arbitrage-executor')
 let arbExecutorModule: ArbitrageExecutorModule | null = null
 async function getArbitrageExecutorModule(): Promise<ArbitrageExecutorModule> {
@@ -369,10 +376,6 @@ class BridgeServiceImpl implements BridgeService {
 
     console.log(`[Bridge] Depositing ${amount} of ${token} to chain ${chainId}`)
 
-    const { createWalletClient, createPublicClient, http, encodeFunctionData } =
-      await import('viem')
-    // Dynamic import: viem/accounts only needed when private key is present
-    const { privateKeyToAccount } = await import('viem/accounts')
 
     const account = privateKeyToAccount(this.config.privateKey)
     const publicClient = createPublicClient({ transport: http(rpcUrl) })
@@ -446,12 +449,6 @@ class BridgeServiceImpl implements BridgeService {
       `[Bridge] Withdrawing ${amount} of ${token} from chain ${chainId}`,
     )
 
-    const { createWalletClient, http, encodeFunctionData } = await import(
-      'viem'
-    )
-    // Dynamic import: viem/accounts only needed when private key is present
-    const { privateKeyToAccount } = await import('viem/accounts')
-
     const account = privateKeyToAccount(this.config.privateKey)
     const walletClient = createWalletClient({
       account,
@@ -491,7 +488,6 @@ class BridgeServiceImpl implements BridgeService {
 
     console.log(`[Bridge] Getting liquidity balance for chain ${chainId}`)
 
-    const { createPublicClient, http } = await import('viem')
     const publicClient = createPublicClient({ transport: http(rpcUrl) })
 
     const balance = (await publicClient.readContract({
@@ -532,11 +528,6 @@ class BridgeServiceImpl implements BridgeService {
     const chainId = Object.keys(this.config.evmRpcUrls)[0]
     const rpcUrl = this.config.evmRpcUrls[Number(chainId)]
     if (!rpcUrl) throw new Error('No RPC URL configured')
-
-    const { createWalletClient, http, encodeFunctionData } = await import(
-      'viem'
-    )
-    const { privateKeyToAccount } = await import('viem/accounts')
 
     const account = privateKeyToAccount(this.config.privateKey)
     const walletClient = createWalletClient({
@@ -581,11 +572,6 @@ class BridgeServiceImpl implements BridgeService {
     const chainId = Object.keys(this.config.evmRpcUrls)[0]
     const rpcUrl = this.config.evmRpcUrls[Number(chainId)]
     if (!rpcUrl) throw new Error('No RPC URL configured')
-
-    const { createWalletClient, http, encodeFunctionData } = await import(
-      'viem'
-    )
-    const { privateKeyToAccount } = await import('viem/accounts')
 
     const account = privateKeyToAccount(this.config.privateKey)
     const walletClient = createWalletClient({
@@ -942,7 +928,6 @@ class BridgeServiceImpl implements BridgeService {
     const feedAddress = CHAINLINK_FEEDS[token]?.[chainId]
     if (!feedAddress) return null
 
-    const { createPublicClient, http } = await import('viem')
     const client = createPublicClient({ transport: http(rpcUrl) })
 
     const result = (await client.readContract({

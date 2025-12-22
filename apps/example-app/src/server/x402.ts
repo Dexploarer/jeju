@@ -12,12 +12,8 @@ import type { Address, Hex } from 'viem'
 import { createPublicClient, http, parseAbi, verifyMessage } from 'viem'
 import { base, baseSepolia } from 'viem/chains'
 import { x402PaymentHeaderSchema, x402VerifySchema } from '../schemas'
-import type {
-  X402Config,
-  X402PaymentHeader,
-  X402PaymentResult,
-  X402Token,
-} from '../types'
+import type { X402Config, X402PaymentHeader } from '../schemas'
+import type { X402PaymentResult, X402Token } from '../types'
 import {
   expectValid,
   sanitizeErrorMessage,

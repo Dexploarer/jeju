@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, test } from 'bun:test'
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
+import { getCoreAppUrl } from '@jejunetwork/config/ports'
 
 /**
  * Integration tests for Node Explorer
@@ -12,7 +13,7 @@ import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 const API_URL =
   process.env.NODE_EXPLORER_API_URL ||
   process.env.API_URL ||
-  `http://localhost:${process.env.NODE_EXPLORER_API_PORT || '4002'}`
+  getCoreAppUrl('NODE_EXPLORER_API')
 
 // Check if API is available
 let apiAvailable = false

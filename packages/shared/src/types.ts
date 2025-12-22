@@ -114,8 +114,3 @@ export type ProtocolValue =
  */
 export type WebhookBody = Record<string, ProtocolValue>
 
-// ============================================================================
-// Re-exports for convenience
-// ============================================================================
-
-export type { Address, Hex } from 'viem'

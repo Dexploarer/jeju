@@ -750,6 +750,3 @@ export function getNetworkConfig(): NetworkConfig {
   return _networkConfig
 }
 
-export type { ContractInfo } from './contract-events'
-// Re-export for convenience
-export { getContractInfo, registerContract } from './contract-events'

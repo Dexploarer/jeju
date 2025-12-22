@@ -3,7 +3,7 @@ import {
   INPUT_SETTLER_ADDRESS,
   OUTPUT_SETTLER_ADDRESS,
 } from '../config/contracts.js'
-import { ZERO_ADDRESS } from '../lib/contracts.js'
+import { ZERO_ADDRESS } from '@jejunetwork/ui'
 import {
   expect,
   expectChainId,

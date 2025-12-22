@@ -17,7 +17,7 @@ import {
 } from '@jejunetwork/types'
 import { z } from 'zod'
 
-// Re-export validation functions for local imports
+// Re-export assertion functions for use by other modules
 export { expect, expectDefined, expectValid, validateOrThrow }
 
 // ============ Base Schemas ============

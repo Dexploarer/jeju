@@ -5,16 +5,10 @@
  * Uses @jejunetwork/shared for common utilities.
  */
 
-import {
-  chunk,
-  delay,
-  generateId as sharedGenerateId,
-} from '@jejunetwork/shared'
+import { generateId as sharedGenerateId } from '@jejunetwork/shared'
 import pRetry from 'p-retry'
-import type { Todo, TodoPriority } from './types'
-
-// Re-export from shared
-export { delay, chunk }
+import type { Todo } from './schemas'
+import type { TodoPriority } from './types'
 
 // ============================================================================
 // Authentication Utilities

@@ -7,40 +7,7 @@ import {
   useWriteContract,
 } from 'wagmi'
 import { NETWORK } from '../config'
-import { ZERO_ADDRESS } from '../lib/contracts'
-
-// Re-export shared types and utilities
-export {
-  APP_TOKEN_PREFERENCE_ABI,
-  type AppPreference,
-  buildAppAwarePaymentData,
-  buildLiquidityDepositTransaction,
-  buildSwapTransaction,
-  buildTokenPaymentData,
-  buildXLPStakeTransaction,
-  type ChainInfo,
-  CROSS_CHAIN_PAYMASTER_ABI,
-  type CrossChainSwapParams,
-  calculateSwapFee,
-  type EILStats,
-  estimateSwapTime,
-  formatGasPaymentOption,
-  formatSwapRoute,
-  formatXLPPosition,
-  type GasPaymentOption,
-  getBestGasTokenForApp,
-  getChainById,
-  isCrossChainSwap,
-  L1_STAKE_MANAGER_ABI,
-  type StakeStatus,
-  SUPPORTED_CHAINS,
-  type SwapStatus,
-  selectBestGasToken,
-  validateSwapParams,
-  type XLPPosition,
-} from '@jejunetwork/deployment/scripts/shared/eil-hooks'
-
-// Import for local use
+import { ZERO_ADDRESS } from '@jejunetwork/ui'
 import {
   APP_TOKEN_PREFERENCE_ABI,
   type AppPreference,

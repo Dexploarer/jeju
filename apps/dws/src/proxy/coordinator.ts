@@ -3,11 +3,11 @@
  * Decentralized bandwidth marketplace coordinator
  */
 
-import { Hono } from 'hono'
-import { cors } from 'hono/cors'
+import { Elysia } from 'elysia'
+import { cors } from '@elysiajs/cors'
 
-const app = new Hono()
-app.use('/*', cors({ origin: '*' }))
+const app = new Elysia()
+app.use(cors({ origin: '*' }))
 
 interface ProxyNode {
   id: string
@@ -21,50 +21,55 @@ interface ProxyNode {
 
 const nodes = new Map<string, ProxyNode>()
 
-app.get('/health', (c) => {
-  return c.json({
+app.get('/health', () => {
+  return {
     status: 'healthy',
     service: 'dws-proxy-coordinator',
     nodes: nodes.size,
-  })
+  }
 })
 
-app.get('/nodes', (c) => {
+app.get('/nodes', () => {
   const activeNodes = Array.from(nodes.values()).filter(
     (n) => n.healthy && Date.now() - n.lastSeen < 60000,
   )
-  return c.json({ nodes: activeNodes })
+  return { nodes: activeNodes }
 })
 
-app.post('/nodes/register', async (c) => {
-  const body = await c.req.json<{
+app.post('/nodes/register', ({ body }) => {
+  const { id, address, region, capacity } = body as {
     id: string
     address: string
     region: string
     capacity: number
-  }>()
+  }
   const node: ProxyNode = {
-    ...body,
+    id,
+    address,
+    region,
+    capacity,
     currentLoad: 0,
     lastSeen: Date.now(),
     healthy: true,
   }
-  nodes.set(body.id, node)
-  return c.json({ success: true, node })
+  nodes.set(id, node)
+  return { success: true, node }
 })
 
-app.post('/nodes/:id/heartbeat', (c) => {
-  const id = c.req.param('id')
-  const node = nodes.get(id)
-  if (!node) return c.json({ error: 'Node not found' }, 404)
+app.post('/nodes/:id/heartbeat', ({ params, set }) => {
+  const node = nodes.get(params.id)
+  if (!node) {
+    set.status = 404
+    return { error: 'Node not found' }
+  }
 
   node.lastSeen = Date.now()
   node.healthy = true
-  return c.json({ success: true })
+  return { success: true }
 })
 
-app.get('/route', async (c) => {
-  const region = c.req.query('region') || 'US'
+app.get('/route', ({ query, set }) => {
+  const region = (query.region as string) || 'US'
   const activeNodes = Array.from(nodes.values())
     .filter((n) => n.healthy && Date.now() - n.lastSeen < 60000)
     .sort((a, b) => {
@@ -74,17 +79,18 @@ app.get('/route', async (c) => {
     })
 
   if (activeNodes.length === 0) {
-    return c.json({ error: 'No available nodes' }, 503)
+    set.status = 503
+    return { error: 'No available nodes' }
   }
 
-  return c.json({ node: activeNodes[0] })
+  return { node: activeNodes[0] }
 })
 
 const PORT = parseInt(process.env.PROXY_COORDINATOR_PORT || '4020', 10)
 
 if (import.meta.main) {
   console.log(`[DWS Proxy Coordinator] Running at http://localhost:${PORT}`)
-  Bun.serve({ port: PORT, fetch: app.fetch })
+  app.listen(PORT)
 }
 
 export { app as coordinatorApp }

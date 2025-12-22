@@ -4,8 +4,8 @@
 
 import { type Context, Markup, Telegraf } from 'telegraf'
 import type { Message, Update } from 'telegraf/types'
+import { expectValid } from '@jejunetwork/types'
 import {
-  expectValid,
   PlatformMessageSchema,
   TelegramWebhookPayloadSchema,
 } from '../schemas'

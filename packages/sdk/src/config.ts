@@ -1,33 +1,11 @@
 /**
- * SDK Configuration - Re-exports from @jejunetwork/config with SDK-specific helpers
+ * SDK Configuration - SDK-specific contract helpers
  */
 
-import { getContract } from '@jejunetwork/config'
+import type { ContractCategoryName } from '@jejunetwork/config'
+import { getChainConfig, getContract, getServicesConfig } from '@jejunetwork/config'
 import type { NetworkType } from '@jejunetwork/types'
 import type { Address } from 'viem'
-
-// Re-export all config utilities
-export {
-  getChainConfig,
-  getConfig,
-  getConstant,
-  getContract,
-  getCurrentNetwork,
-  getEILChainById,
-  getEILChains,
-  getEILConfig,
-  getFederatedNetworks,
-  getFederationConfig,
-  getNetworkName,
-  getServicesConfig,
-  getServiceUrl,
-  type NetworkConfig,
-  type ServicesConfig,
-} from '@jejunetwork/config'
-
-// Import ContractCategoryName for internal use
-import type { ContractCategoryName } from '@jejunetwork/config'
-export type { ContractCategoryName }
 
 /** Contract addresses for SDK modules - maps to contracts.json structure */
 export interface ContractAddresses {

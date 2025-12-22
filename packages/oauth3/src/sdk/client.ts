@@ -150,6 +150,7 @@ export class OAuth3Client {
   private session: OAuth3Session | null = null
   private identity: OAuth3Identity | null = null
   private farcasterProvider: FarcasterProvider
+  private publicClient: ReturnType<typeof createPublicClient>
   private eventHandlers: Map<
     OAuth3EventType,
     Set<OAuth3EventHandler<OAuth3EventType>>

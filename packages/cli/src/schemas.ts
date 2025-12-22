@@ -7,9 +7,6 @@
 
 import { z } from 'zod'
 
-// Re-export validation utilities from @jejunetwork/types
-export { expectValid, expectJson, toError } from '@jejunetwork/types'
-
 // ============================================================================
 // Package.json Schema
 // ============================================================================
@@ -631,19 +628,6 @@ export const RegistryDetailsSchema = z.object({
   lastSyncBlock: z.bigint(),
 })
 export type RegistryDetails = z.infer<typeof RegistryDetailsSchema>
-
-// ============================================================================
-// JNS (Jeju Name Service) Schemas
-// ============================================================================
-
-export const JNSRegistrationResponseSchema = z.object({
-  success: z.boolean(),
-  name: z.string(),
-  total: z.number(),
-})
-export type JNSRegistrationResponse = z.infer<
-  typeof JNSRegistrationResponseSchema
->
 
 // ============================================================================
 // Validation Helper

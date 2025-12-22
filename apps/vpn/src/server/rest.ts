@@ -14,8 +14,9 @@ import {
   expectValid,
   NodesQuerySchema,
   ProxyRequestSchema,
+  type VPNNodeState,
 } from './schemas'
-import type { VPNNodeState, VPNServiceContext } from './types'
+import type { VPNServiceContext } from './types'
 import {
   calculateContributionRatio,
   getOrCreateContribution,

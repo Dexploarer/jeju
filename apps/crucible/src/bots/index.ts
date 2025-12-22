@@ -51,7 +51,7 @@ export type {
   StrategyConfig,
   StrategyType,
   Token,
-} from './autocrat-types'
+} from './autocrat-types-source'
 export {
   createTradingBotOptions,
   DEFAULT_BOTS,

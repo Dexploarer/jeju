@@ -21,9 +21,6 @@ import {
   ScoredDataSchema,
 } from '../schemas'
 
-// Re-export types for backwards compatibility
-export type { Message, RegisterEnv, Registration, ScoredData }
-
 export interface EnvConfig {
   max_context_len: number
   weight: number

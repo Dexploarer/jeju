@@ -23,6 +23,7 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Subprocess } from 'bun'
+import { CORE_PORTS, getIpfsApiUrl } from '@jejunetwork/config/ports'
 import type { InfraStatus } from './schemas'
 import {
   checkContractsDeployed,
@@ -45,7 +46,7 @@ const DWS_PORT = 4030
 // Docker service ports
 const DOCKER_SERVICES = {
   cql: { port: 4661, healthPath: '/health', name: 'CovenantSQL' },
-  ipfs: { port: 5001, healthPath: '/api/v0/id', name: 'IPFS' },
+  ipfs: { port: CORE_PORTS.IPFS_API.DEFAULT, healthPath: '/api/v0/id', name: 'IPFS' },
   cache: { port: 4115, healthPath: '/health', name: 'Cache Service' },
   da: { port: 4010, healthPath: '/health', name: 'DA Server' },
 } as const
@@ -369,7 +370,7 @@ function setEnvVars(status: InfraStatus): void {
 
   // Docker service URLs
   process.env.CQL_URL = 'http://127.0.0.1:4661'
-  process.env.IPFS_API_URL = 'http://127.0.0.1:5001'
+  process.env.IPFS_API_URL = getIpfsApiUrl()
   process.env.DA_URL = 'http://127.0.0.1:4010'
   process.env.CACHE_URL = 'http://127.0.0.1:4115'
 }

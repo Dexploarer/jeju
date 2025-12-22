@@ -28,6 +28,10 @@ import {
   toBytes,
 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
+import {
+  CIDUploadResponseSchema,
+  expectValid,
+} from '../../schemas'
 import { base, baseSepolia } from 'viem/chains'
 import {
   expectJson,
@@ -954,7 +958,8 @@ class SelfHostingBootstrap {
       throw new Error(`Failed to upload ${filename}: ${error}`)
     }
 
-    const result = (await response.json()) as { cid: string }
+    const resultRaw = await response.json()
+    const result = expectValid(CIDUploadResponseSchema, resultRaw, 'upload response')
     return result.cid
   }
 

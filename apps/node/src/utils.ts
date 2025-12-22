@@ -1,23 +1,13 @@
 /**
  * Node Utility Functions
- * Uses shared formatting utilities from @jejunetwork/shared
+ * App-specific formatting utilities
  */
 
-import {
-  classNames,
-  delay,
-  formatAddress,
-  formatBytes,
-  formatDuration,
-  formatUsd,
-} from '@jejunetwork/shared'
+import { delay, formatAddress } from '@jejunetwork/shared'
 import {
   formatEther as viemFormatEther,
   parseEther as viemParseEther,
 } from 'viem'
-
-// Re-export from shared
-export { formatBytes, formatDuration, formatAddress, classNames, delay }
 
 /**
  * Format ETH with custom display logic
@@ -41,11 +31,6 @@ export function formatEther(wei: string | bigint): string {
   if (num < 100) return num.toFixed(2)
   return num.toFixed(1)
 }
-
-/**
- * Format USD with custom display logic for small amounts
- */
-export { formatUsd }
 
 /**
  * Shorten address alias

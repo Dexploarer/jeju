@@ -19,7 +19,8 @@ import {
   getChainName,
   PENDING_ACTION_TTL,
 } from '../config'
-import { expectValid, OttoUserSchema } from '../schemas'
+import { expectValid } from '@jejunetwork/types'
+import { OttoUserSchema } from '../schemas'
 import { getStateManager } from '../services/state'
 import { getTradingService } from '../services/trading'
 import { getWalletService } from '../services/wallet'

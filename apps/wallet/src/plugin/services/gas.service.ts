@@ -19,7 +19,7 @@ import {
   expectBigInt,
   expectChainId,
   expectHex,
-} from '../../lib/validation'
+} from '@jejunetwork/types'
 import type { GasEstimate, GasOption, GasServiceConfig } from '../types'
 
 export class GasService {

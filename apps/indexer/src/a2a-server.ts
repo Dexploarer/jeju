@@ -24,6 +24,7 @@ import {
   buildTransactionQuery,
 } from './lib/graphql-utils'
 import { BadRequestError } from './lib/types'
+import { validateOrThrow } from '@jejunetwork/types'
 import {
   a2aRequestSchema,
   getAccountSkillSchema,
@@ -40,7 +41,6 @@ import {
   getTransactionSkillSchema,
   type JsonValue,
   validateBody,
-  validateOrThrow,
 } from './lib/validation'
 
 // Local agent card creator (avoids React dependency from shared package)

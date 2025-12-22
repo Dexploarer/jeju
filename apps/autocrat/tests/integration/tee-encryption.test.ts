@@ -1,18 +1,17 @@
 // TEE and Encryption Tests
-import { beforeAll, describe, expect, test } from 'bun:test'
+// Tests run against live local services
+import { describe, expect, test } from 'bun:test'
+import * as encryption from '../../src/encryption'
+import * as tee from '../../src/tee'
 
 describe('TEE Encryption', () => {
-  let tee: typeof import('../../src/tee')
-
-  beforeAll(async () => {
-    tee = await import('../../src/tee')
+  test('getTEEMode returns dstack or simulator mode', () => {
+    const mode = tee.getTEEMode()
+    // With local services running, should use dstack simulator
+    expect(['dstack', 'simulator']).toContain(mode)
   })
 
-  test('getTEEMode returns local without TEE_ENDPOINT', () => {
-    expect(tee.getTEEMode()).toBe('local')
-  })
-
-  test('makeTEEDecision works in local mode', async () => {
+  test('makeTEEDecision works', async () => {
     const result = await tee.makeTEEDecision({
       proposalId: 'test-proposal-123',
       autocratVotes: [
@@ -26,9 +25,11 @@ describe('TEE Encryption', () => {
     expect(typeof result.approved).toBe('boolean')
     expect(result.encryptedHash).toMatch(/^0x[a-fA-F0-9]{64}$/)
     expect(result.confidenceScore).toBeGreaterThanOrEqual(0)
-    expect(result.attestation.provider).toBe('local')
+    expect(['local', 'dstack', 'simulator']).toContain(
+      result.attestation.provider,
+    )
     console.log(
-      `✅ TEE decision: ${result.approved ? 'APPROVED' : 'REJECTED'} (${result.confidenceScore}%)`,
+      `✅ TEE decision: ${result.approved ? 'APPROVED' : 'REJECTED'} (${result.confidenceScore}%) via ${result.attestation.provider}`,
     )
   })
 
@@ -86,12 +87,6 @@ describe('TEE Encryption', () => {
 })
 
 describe('Network KMS Encryption', () => {
-  let encryption: typeof import('../../src/encryption')
-
-  beforeAll(async () => {
-    encryption = await import('../../src/encryption')
-  })
-
   const makeDecision = (
     id: string,
     approved = true,

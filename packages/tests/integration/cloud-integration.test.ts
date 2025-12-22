@@ -264,6 +264,7 @@ describe.skipIf(!localnetAvailable)('Cloud Integration', () => {
   describe('Security', () => {
     test('should reject unauthorized reputation updates', async () => {
       // Create unauthorized signer
+      // Dynamic import used conditionally to avoid loading viem/accounts if test is skipped
       const { generatePrivateKey } = await import('viem/accounts')
       const unauthorizedAccount = privateKeyToAccount(generatePrivateKey())
 

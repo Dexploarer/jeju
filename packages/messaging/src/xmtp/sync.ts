@@ -24,7 +24,7 @@ export interface SyncEvent {
   type: 'message' | 'conversation' | 'identity' | 'group'
   id: string
   timestamp: number
-  data: XMTPEnvelope | XMTPConversation | XMTPMessage
+  data: XMTPEnvelope | XMTPConversation | XMTPMessage | Record<string, unknown>
 }
 
 export interface SyncPeer {

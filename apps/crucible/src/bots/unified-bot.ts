@@ -27,7 +27,7 @@ import type {
   CrossChainArbOpportunity,
   StrategyConfig,
   StrategyType,
-} from './autocrat-types'
+} from './autocrat-types-source'
 // Contract integrations (EIL/XLP/OIF)
 import {
   type LiquidityRequest,

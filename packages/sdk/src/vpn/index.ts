@@ -4,7 +4,6 @@
  * Provides:
  * - x402 Payment Integration for VPN services
  * - A2A (Agent-to-Agent) client for VPN agents
- * - Type re-exports from @jejunetwork/types
  *
  * Note: For VPN node management integrated with JejuClient,
  * see vpn-module.ts which provides the VPNModule interface.
@@ -251,21 +250,3 @@ export function createVPNAgentClient(
     },
   }
 }
-
-// ============================================================================
-// Re-exports from types package
-// ============================================================================
-
-export type {
-  ContributionQuota,
-  ContributionSettings,
-  CountryCode,
-  CountryLegalStatus,
-  VPNConnection,
-  VPNConnectionStatus,
-  VPNConnectOptions,
-  VPNNode,
-  VPNNodeQuery,
-  VPNProtocol,
-  VPNProviderEarnings,
-} from '@jejunetwork/types'

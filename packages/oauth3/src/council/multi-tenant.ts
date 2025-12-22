@@ -202,6 +202,9 @@ Prioritize safety, capability advancement, and developer experience.`,
 
 export class MultiTenantCouncilManager {
   private registry: CouncilRegistry
+  private identityRegistryAddress: Address
+  private appRegistryAddress: Address
+  private chainId: number
 
   constructor(
     identityRegistryAddress: Address,

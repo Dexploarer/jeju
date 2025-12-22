@@ -846,7 +846,6 @@ ${chalk.bold('Quick Start:')}
     }
     const config = loadConfig()
     config.privateKey = normalizedKey
-    const { privateKeyToAccount } = await import('viem/accounts')
     config.walletAddress = privateKeyToAccount(
       normalizedKey as `0x${string}`,
     ).address

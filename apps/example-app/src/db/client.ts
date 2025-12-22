@@ -11,7 +11,7 @@
 
 import { type CQLClient, getCQL } from '@jejunetwork/db'
 import type { Address } from 'viem'
-import type { CreateTodoInput, Todo, UpdateTodoInput } from '../types'
+import type { CreateTodoInput, Todo, UpdateTodoInput } from '../schemas'
 
 const DATABASE_ID = process.env.CQL_DATABASE_ID || 'todo-experimental'
 const NETWORK = process.env.NETWORK || 'localnet'

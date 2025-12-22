@@ -102,7 +102,7 @@ describe('Search Documentation Integration', () => {
   })
 
   test('excludes node_modules', async () => {
-    const results = await searchDocumentation('express')
+    const results = await searchDocumentation('package')
     const hasNodeModules = results.some((r) => r.file.includes('node_modules'))
     expect(hasNodeModules).toBe(false)
   })

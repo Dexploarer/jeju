@@ -6,9 +6,9 @@
 
 import { z } from 'zod'
 import { DEFAULT_CHAIN_ID, getChainId, PENDING_ACTION_TTL } from '../config'
+import { expectValid } from '@jejunetwork/types'
 import {
   CommandResultSchema,
-  expectValid,
   OttoUserSchema,
   PlatformMessageSchema,
 } from '../schemas'

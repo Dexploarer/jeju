@@ -23,13 +23,13 @@ import {
 import { getCronService } from '../services/cron'
 import { getTodoService } from '../services/todo'
 import type {
-  MCPPrompt,
   MCPResource,
   MCPServerInfo,
   MCPTool,
   Todo,
   TodoStats,
-} from '../types'
+} from '../schemas'
+import type { MCPPrompt } from '../types'
 import {
   expectValid,
   sanitizeErrorMessage,

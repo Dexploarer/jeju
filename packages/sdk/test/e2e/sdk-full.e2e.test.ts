@@ -7,6 +7,7 @@
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { type Address, parseEther } from 'viem'
+import { getCoreAppUrl, getL2RpcUrl } from '@jejunetwork/config/ports'
 import { createJejuClient, type JejuClient } from '../../src/index'
 import {
   setupTestEnvironment,
@@ -32,10 +33,10 @@ beforeAll(async () => {
     env = await setupTestEnvironment()
   } catch {
     env = {
-      rpcUrl: 'http://127.0.0.1:6546',
-      storageUrl: 'http://127.0.0.1:4010',
-      computeUrl: 'http://127.0.0.1:4007',
-      gatewayUrl: 'http://127.0.0.1:4003',
+      rpcUrl: getL2RpcUrl(),
+      storageUrl: getCoreAppUrl('IPFS'),
+      computeUrl: getCoreAppUrl('COMPUTE'),
+      gatewayUrl: getCoreAppUrl('NODE_EXPLORER_UI'),
       privateKey: DEPLOYER_KEY,
       chainRunning: false,
       contractsDeployed: false,
@@ -707,7 +708,7 @@ describe('A2A Module', () => {
     if (!env.servicesRunning) return
 
     try {
-      const card = await user.a2a.discover('http://localhost:4000')
+      const card = await user.a2a.discover(getCoreAppUrl('EXPLORER'))
       expect(card).toBeDefined()
       expect(card.name).toBeDefined()
     } catch {
@@ -719,7 +720,7 @@ describe('A2A Module', () => {
     if (!env.servicesRunning) return
 
     try {
-      const card = await user.a2a.discover('http://localhost:4004')
+      const card = await user.a2a.discover(getCoreAppUrl('DOCUMENTATION'))
       expect(card).toBeDefined()
     } catch {
       // Expected if services not running
@@ -730,7 +731,7 @@ describe('A2A Module', () => {
     if (!env.servicesRunning) return
 
     try {
-      const card = await user.a2a.discover('http://localhost:4003')
+      const card = await user.a2a.discover(getCoreAppUrl('NODE_EXPLORER_UI'))
       expect(card).toBeDefined()
     } catch {
       // Expected if services not running
@@ -741,7 +742,7 @@ describe('A2A Module', () => {
     if (!env.servicesRunning) return
 
     try {
-      const result = await user.a2a.call('http://localhost:4000', {
+      const result = await user.a2a.call(getCoreAppUrl('EXPLORER'), {
         skill: 'list-protocol-tokens',
         params: {},
       })

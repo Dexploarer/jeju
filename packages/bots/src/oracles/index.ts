@@ -6,7 +6,8 @@ import {
   parseAbi,
 } from 'viem'
 import { expectEVMChainId } from '../schemas'
-import type { EVMChainId, OraclePrice } from '../types'
+import type { EVMChainId } from '@jejunetwork/types'
+import type { OraclePrice } from '../types'
 
 const PYTH_ABI = parseAbi([
   'function getPriceUnsafe(bytes32 id) view returns ((int64 price, uint64 conf, int32 expo, uint256 publishTime))',

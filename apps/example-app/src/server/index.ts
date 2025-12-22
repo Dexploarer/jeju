@@ -30,7 +30,7 @@ import {
 import { getKMSService } from '../services/kms'
 import { getRegistryService } from '../services/registry'
 import { getStorageService } from '../services/storage'
-import type { HealthResponse, ServiceStatus } from '../types'
+import type { HealthResponse, ServiceStatus } from '../schemas'
 import { expectValid } from '../utils/validation'
 import { createA2AServer } from './a2a'
 import { createAuthRoutes } from './auth'

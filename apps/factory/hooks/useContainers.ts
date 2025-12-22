@@ -1,7 +1,13 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { getCoreAppUrl } from '@jejunetwork/config/ports'
 import { api, extractDataSafe } from '../lib/client'
+
+function getFactoryApiUrl(): string {
+  if (typeof window !== 'undefined') return ''
+  return process.env.FACTORY_API_URL || getCoreAppUrl('FACTORY')
+}
 
 // ============ Types ============
 
@@ -98,10 +104,7 @@ function formatBytes(bytes: number): string {
 
 async function fetchInstances(): Promise<ContainerInstance[]> {
   // Instances endpoint may not be in the typed API
-  const baseUrl =
-    typeof window !== 'undefined'
-      ? ''
-      : process.env.FACTORY_API_URL || 'http://localhost:4009'
+  const baseUrl = getFactoryApiUrl()
   const res = await fetch(`${baseUrl}/api/containers/instances`)
   if (!res.ok) return []
   const data = await res.json()
@@ -138,10 +141,7 @@ async function startContainer(
   imageId: string,
   config: { name: string; cpu: string; memory: string; gpu?: string },
 ): Promise<ContainerInstance | null> {
-  const baseUrl =
-    typeof window !== 'undefined'
-      ? ''
-      : process.env.FACTORY_API_URL || 'http://localhost:4009'
+  const baseUrl = getFactoryApiUrl()
   const res = await fetch(`${baseUrl}/api/containers/instances`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -152,10 +152,7 @@ async function startContainer(
 }
 
 async function stopContainer(instanceId: string): Promise<boolean> {
-  const baseUrl =
-    typeof window !== 'undefined'
-      ? ''
-      : process.env.FACTORY_API_URL || 'http://localhost:4009'
+  const baseUrl = getFactoryApiUrl()
   const res = await fetch(
     `${baseUrl}/api/containers/instances/${instanceId}/stop`,
     {
@@ -166,10 +163,7 @@ async function stopContainer(instanceId: string): Promise<boolean> {
 }
 
 async function deleteContainer(instanceId: string): Promise<boolean> {
-  const baseUrl =
-    typeof window !== 'undefined'
-      ? ''
-      : process.env.FACTORY_API_URL || 'http://localhost:4009'
+  const baseUrl = getFactoryApiUrl()
   const res = await fetch(`${baseUrl}/api/containers/instances/${instanceId}`, {
     method: 'DELETE',
   })

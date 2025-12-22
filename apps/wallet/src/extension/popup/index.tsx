@@ -14,9 +14,10 @@ import { createConfig, http, WagmiProvider } from 'wagmi'
 import { arbitrum, base, bsc, mainnet, optimism } from 'wagmi/chains'
 import { injected } from 'wagmi/connectors'
 import { z } from 'zod'
+import { expectJson } from '@jejunetwork/types'
 import App from '../../App'
 import '../../index.css'
-import { expectJson, expectSchema } from '../../lib/validation'
+import { expectSchema } from '../../lib/validation'
 
 // Network RPC - open API, no keys required
 const JEJU_RPC = 'https://rpc.jejunetwork.org'

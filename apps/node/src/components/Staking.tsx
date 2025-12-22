@@ -11,7 +11,8 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { useAppStore } from '../store'
-import { formatEther, formatUsd } from '../utils'
+import { formatUsd } from '@jejunetwork/shared'
+import { formatEther } from '../utils'
 
 export function Staking() {
   const {

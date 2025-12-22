@@ -405,7 +405,7 @@ describe('GRPO Trainer', () => {
 
 describe('Cross-Chain Bridge', () => {
   test('merkle root computation is consistent', async () => {
-    // Import the bridge module
+    // Dynamic import used conditionally - only load bridge module if test runs
     const { CrossChainTrainingBridge } = await import('./cross-chain-bridge')
 
     // Create bridge with mock config

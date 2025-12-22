@@ -23,6 +23,7 @@ import { $ } from 'bun'
 import { type Address, createPublicClient, formatEther, http } from 'viem'
 import { inferChainFromRpcUrl } from '../shared/chain-utils'
 import {
+  ChainConfigMinimalSchema,
   expectJson,
   expectValid,
   EILDeploymentSchema,
@@ -518,7 +519,7 @@ async function checkChainStatus() {
     return
   }
   const configContent = readFileSync(CHAIN_CONFIG, 'utf-8')
-  const config = JSON.parse(configContent) as { rpcUrl: string }
+  const config = expectJson(configContent, ChainConfigMinimalSchema, 'chain config')
 
   // Try to connect to testnet RPC
   try {

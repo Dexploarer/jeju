@@ -6,7 +6,7 @@
  */
 
 import { JobsListResponseSchema } from '../shared/schemas/training'
-import { expectValid } from '../shared/validation'
+import { expectValid } from '@jejunetwork/types'
 
 // ============================================================================
 // Types

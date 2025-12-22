@@ -23,7 +23,7 @@ import {
   expectChainId,
   expectHex,
   expectNonNegative,
-} from '../../lib/validation'
+} from '@jejunetwork/types'
 import type { Intent, IntentOrder, OIFServiceConfig } from '../types'
 
 // InputSettler ABI (from the network contracts)

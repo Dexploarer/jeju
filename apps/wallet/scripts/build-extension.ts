@@ -88,17 +88,8 @@ const stubPlugin: BunPlugin = {
   },
 }
 
-// Try to load tailwind plugin
-let tailwindPlugin: BunPlugin | undefined
-try {
-  const { default: tw } = await import('bun-plugin-tailwind')
-  tailwindPlugin = tw
-} catch {
-  // Tailwind plugin not available, CSS will be bundled without Tailwind processing
-  console.warn(
-    '  Warning: bun-plugin-tailwind not found, CSS may not process correctly',
-  )
-}
+import tw from 'bun-plugin-tailwind'
+const tailwindPlugin: BunPlugin = tw
 
 async function build() {
   console.log(`Building extension for ${target}...`)
@@ -127,7 +118,7 @@ async function build() {
         isProduction ? 'production' : 'development',
       ),
     },
-    plugins: tailwindPlugin ? [stubPlugin, tailwindPlugin] : [stubPlugin],
+    plugins: [stubPlugin, tailwindPlugin],
     naming: {
       asset: 'assets/[name]-[hash].[ext]',
     },

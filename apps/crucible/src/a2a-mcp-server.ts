@@ -5,10 +5,10 @@
  * the Crucible compute orchestration system.
  */
 
+import { cors } from '@elysiajs/cors'
 import { getCliBranding } from '@jejunetwork/config'
 import { createAgentCard, getServiceName } from '@jejunetwork/shared'
-import { Hono } from 'hono'
-import { cors } from 'hono/cors'
+import { Elysia } from 'elysia'
 import {
   A2ARequestSchema,
   expect,
@@ -236,25 +236,24 @@ const MCP_TOOLS = [
 // A2A Server
 // ============================================================================
 
-export function createCrucibleA2AServer(): Hono {
-  const app = new Hono()
-  app.use('/*', cors())
+export function createCrucibleA2AServer(): Elysia {
+  const app = new Elysia().use(cors())
 
-  app.get('/.well-known/agent-card.json', (c) => c.json(AGENT_CARD))
+  app.get('/.well-known/agent-card.json', () => AGENT_CARD)
 
-  app.post('/', async (c) => {
-    const rawBody = await c.req.json()
-    const body = parseOrThrow(A2ARequestSchema, rawBody, 'A2A request')
+  app.post('/', async ({ body }) => {
+    const rawBody = body as Record<string, unknown>
+    const parsedBody = parseOrThrow(A2ARequestSchema, rawBody, 'A2A request')
 
-    if (body.method !== 'message/send') {
-      return c.json({
+    if (parsedBody.method !== 'message/send') {
+      return {
         jsonrpc: '2.0',
-        id: body.id,
+        id: parsedBody.id,
         error: { code: -32601, message: 'Method not found' },
-      })
+      }
     }
 
-    const message = body.params?.message
+    const message = parsedBody.params?.message
     const validMessage = expect(message, 'Message is required')
     const dataPart = validMessage.parts.find((p) => p.kind === 'data')
     const validDataPart = expect(dataPart, 'Data part is required')
@@ -264,9 +263,9 @@ export function createCrucibleA2AServer(): Hono {
     const skillId = validData.skillId as string
     const result = await executeA2ASkill(skillId, validData)
 
-    return c.json({
+    return {
       jsonrpc: '2.0',
-      id: body.id,
+      id: parsedBody.id,
       result: {
         role: 'agent',
         parts: [
@@ -276,7 +275,7 @@ export function createCrucibleA2AServer(): Hono {
         messageId: validMessage.messageId,
         kind: 'message',
       },
-    })
+    }
   })
 
   return app
@@ -315,23 +314,20 @@ async function executeA2ASkill(
 // MCP Server
 // ============================================================================
 
-export function createCrucibleMCPServer(): Hono {
-  const app = new Hono()
-  app.use('/*', cors())
+export function createCrucibleMCPServer(): Elysia {
+  const app = new Elysia().use(cors())
 
-  app.post('/initialize', (c) =>
-    c.json({
-      protocolVersion: '2024-11-05',
-      serverInfo: MCP_SERVER_INFO,
-      capabilities: MCP_SERVER_INFO.capabilities,
-    }),
-  )
+  app.post('/initialize', () => ({
+    protocolVersion: '2024-11-05',
+    serverInfo: MCP_SERVER_INFO,
+    capabilities: MCP_SERVER_INFO.capabilities,
+  }))
 
-  app.post('/resources/list', (c) => c.json({ resources: MCP_RESOURCES }))
+  app.post('/resources/list', () => ({ resources: MCP_RESOURCES }))
 
-  app.post('/resources/read', async (c) => {
-    const rawBody = await c.req.json()
-    const body = parseOrThrow(
+  app.post('/resources/read', ({ body, set }) => {
+    const rawBody = body as Record<string, unknown>
+    const parsedBody = parseOrThrow(
       MCPResourceReadRequestSchema,
       rawBody,
       'MCP resource read request',
@@ -346,7 +342,7 @@ export function createCrucibleMCPServer(): Hono {
 
     let contents: ResourceContent
 
-    switch (body.uri) {
+    switch (parsedBody.uri) {
       case 'crucible://providers':
         contents = { providers: [] }
         break
@@ -363,25 +359,26 @@ export function createCrucibleMCPServer(): Hono {
         contents = { cpu: 0.01, gpu: 0.1, memory: 0.005 }
         break
       default:
-        return c.json({ error: 'Resource not found' }, 404)
+        set.status = 404
+        return { error: 'Resource not found' }
     }
 
-    return c.json({
+    return {
       contents: [
         {
-          uri: body.uri,
+          uri: parsedBody.uri,
           mimeType: 'application/json',
           text: JSON.stringify(contents),
         },
       ],
-    })
+    }
   })
 
-  app.post('/tools/list', (c) => c.json({ tools: MCP_TOOLS }))
+  app.post('/tools/list', () => ({ tools: MCP_TOOLS }))
 
-  app.post('/tools/call', async (c) => {
-    const rawBody = await c.req.json()
-    const body = parseOrThrow(
+  app.post('/tools/call', ({ body }) => {
+    const rawBody = body as Record<string, unknown>
+    const parsedBody = parseOrThrow(
       MCPToolCallRequestSchema,
       rawBody,
       'MCP tool call request',
@@ -395,7 +392,7 @@ export function createCrucibleMCPServer(): Hono {
 
     let result: ToolResult
 
-    switch (body.name) {
+    switch (parsedBody.name) {
       case 'request_compute':
         result = {
           jobId: crypto.randomUUID(),
@@ -405,7 +402,7 @@ export function createCrucibleMCPServer(): Hono {
         break
       case 'run_inference': {
         const args = expect(
-          body.arguments,
+          parsedBody.arguments,
           'Arguments are required for run_inference',
         )
         expect(
@@ -424,7 +421,7 @@ export function createCrucibleMCPServer(): Hono {
         break
       case 'get_job_status': {
         const args = expect(
-          body.arguments,
+          parsedBody.arguments,
           'Arguments are required for get_job_status',
         )
         expect(args.jobId, 'Job ID is required for get_job_status')
@@ -436,21 +433,23 @@ export function createCrucibleMCPServer(): Hono {
         break
       }
       default:
-        return c.json({
+        return {
           content: [{ type: 'text', text: 'Tool not found' }],
           isError: true,
-        })
+        }
     }
 
-    return c.json({
+    return {
       content: [{ type: 'text', text: JSON.stringify(result) }],
       isError: false,
-    })
+    }
   })
 
-  app.get('/', (c) =>
-    c.json({ ...MCP_SERVER_INFO, resources: MCP_RESOURCES, tools: MCP_TOOLS }),
-  )
+  app.get('/', () => ({
+    ...MCP_SERVER_INFO,
+    resources: MCP_RESOURCES,
+    tools: MCP_TOOLS,
+  }))
 
   return app
 }
@@ -459,23 +458,21 @@ export function createCrucibleMCPServer(): Hono {
 // Combined Server
 // ============================================================================
 
-export function createCrucibleServer(): Hono {
-  const app = new Hono()
+export function createCrucibleServer(): Elysia {
+  const app = new Elysia()
 
-  app.route('/a2a', createCrucibleA2AServer())
-  app.route('/mcp', createCrucibleMCPServer())
+  app.group('/a2a', (group) => group.use(createCrucibleA2AServer()))
+  app.group('/mcp', (group) => group.use(createCrucibleMCPServer()))
 
-  app.get('/', (c) =>
-    c.json({
-      name: getServiceName('Crucible'),
-      version: '1.0.0',
-      endpoints: {
-        a2a: '/a2a',
-        mcp: '/mcp',
-        agentCard: '/a2a/.well-known/agent-card.json',
-      },
-    }),
-  )
+  app.get('/', () => ({
+    name: getServiceName('Crucible'),
+    version: '1.0.0',
+    endpoints: {
+      a2a: '/a2a',
+      mcp: '/mcp',
+      agentCard: '/a2a/.well-known/agent-card.json',
+    },
+  }))
 
   return app
 }

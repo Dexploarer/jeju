@@ -13,7 +13,8 @@ import {
   TFMMRebalancer,
   type TFMMRebalancerConfig,
 } from '../strategies/tfmm/rebalancer'
-import type { BotStats, EVMChainId, StrategyType, TradeResult } from '../types'
+import type { EVMChainId } from '@jejunetwork/types'
+import type { BotStats, StrategyType, TradeResult } from '../types'
 
 // ============ Types ============
 

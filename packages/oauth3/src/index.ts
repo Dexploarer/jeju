@@ -230,7 +230,6 @@ export {
 } from './credentials/verifiable-credentials.js'
 // Cross-chain Identity (Open Intents)
 export {
-  ChainId,
   type ChainIdentityState,
   type CrossChainAuthIntent,
   CrossChainIdentityManager,

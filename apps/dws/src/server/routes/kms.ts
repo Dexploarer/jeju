@@ -3,19 +3,19 @@
  * Key Management Service integration for DWS
  */
 
-import { Hono } from 'hono'
+import { Elysia } from 'elysia'
 import type { Address, Hex } from 'viem'
+import { keccak256, toBytes, fromHex } from 'viem'
+import { privateKeyToAccount } from 'viem/accounts'
+import { expectValid } from '@jejunetwork/types'
+import { z } from 'zod'
+import crypto from 'node:crypto'
 import {
   createKmsKeyRequestSchema,
   decryptRequestSchema,
   encryptRequestSchema,
-  jejuAddressHeaderSchema,
   kmsKeyParamsSchema,
   signRequestSchema,
-  validateBody,
-  validateHeaders,
-  validateParams,
-  z,
 } from '../../shared'
 
 // MPC Configuration
@@ -66,15 +66,16 @@ const signingSessions = new Map<
   }
 >()
 
-export function createKMSRouter(): Hono {
-  const router = new Hono()
+export function createKMSRouter() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let router: any = new Elysia({ name: 'kms', prefix: '/kms' })
 
   // ============================================================================
   // Health & Info
   // ============================================================================
 
-  router.get('/health', (c) => {
-    return c.json({
+  router = router.get('/health', () => {
+    return {
       status: 'healthy',
       service: 'dws-kms',
       keys: keys.size,
@@ -86,7 +87,7 @@ export function createKMSRouter(): Hono {
         defaultThreshold: MPC_CONFIG.defaultThreshold,
         defaultParties: MPC_CONFIG.defaultParties,
       },
-    })
+    }
   })
 
   // ============================================================================
@@ -94,28 +95,30 @@ export function createKMSRouter(): Hono {
   // ============================================================================
 
   // Generate new MPC key
-  router.post('/keys', async (c) => {
-    const { 'x-jeju-address': owner } = validateHeaders(
-      jejuAddressHeaderSchema,
-      c,
-    )
-    const body = await validateBody(
+  router = router.post('/keys', async ({ body, request, set }) => {
+    const owner = request.headers.get('x-jeju-address') as Address
+    if (!owner) throw new Error('Missing x-jeju-address header')
+
+    const validBody = expectValid(
       createKmsKeyRequestSchema.extend({
         threshold: z.number().int().min(2).optional(),
         totalParties: z.number().int().positive().optional(),
         metadata: z.record(z.string(), z.string()).optional(),
       }),
-      c,
+      body,
+      'Create KMS key request',
     )
 
-    const threshold = body.threshold ?? MPC_CONFIG.defaultThreshold
-    const totalParties = body.totalParties ?? MPC_CONFIG.defaultParties
+    const threshold = validBody.threshold ?? MPC_CONFIG.defaultThreshold
+    const totalParties = validBody.totalParties ?? MPC_CONFIG.defaultParties
 
     if (threshold < 2) {
-      return c.json({ error: 'Threshold must be at least 2' }, 400)
+      set.status = 400
+      return { error: 'Threshold must be at least 2' }
     }
     if (threshold > totalParties) {
-      return c.json({ error: 'Threshold cannot exceed total parties' }, 400)
+      set.status = 400
+      return { error: 'Threshold cannot exceed total parties' }
     }
 
     const keyId = crypto.randomUUID()
@@ -133,8 +136,6 @@ export function createKMSRouter(): Hono {
     const privateKey = `0x${Array.from(randomBytes)
       .map((b) => b.toString(16).padStart(2, '0'))
       .join('')}` as Hex
-    // Dynamic import: only needed when creating keys (conditional - inside route handler)
-    const { privateKeyToAccount } = await import('viem/accounts')
     const account = privateKeyToAccount(privateKey as `0x${string}`)
 
     const key: StoredKey = {
@@ -146,41 +147,36 @@ export function createKMSRouter(): Hono {
       totalParties,
       createdAt: Date.now(),
       version: 1,
-      metadata: body.metadata ?? {},
+      metadata: validBody.metadata ?? {},
     }
 
     keys.set(keyId, key)
 
-    return c.json(
-      {
-        keyId,
-        publicKey: key.publicKey,
-        address: key.address,
-        threshold,
-        totalParties,
-        createdAt: key.createdAt,
-        mode: mpcEnabled ? 'mpc' : 'development',
-        warning: mpcEnabled
-          ? undefined
-          : 'Key is locally generated. Set MPC_COORDINATOR_URL for production MPC keys.',
-      },
-      201,
-    )
+    set.status = 201
+    return {
+      keyId,
+      publicKey: key.publicKey,
+      address: key.address,
+      threshold,
+      totalParties,
+      createdAt: key.createdAt,
+      mode: mpcEnabled ? 'mpc' : 'development',
+      warning: mpcEnabled
+        ? undefined
+        : 'Key is locally generated. Set MPC_COORDINATOR_URL for production MPC keys.',
+    }
   })
 
   // List keys
-  router.get('/keys', (c) => {
-    const { 'x-jeju-address': owner } = validateHeaders(
-      z.object({ 'x-jeju-address': z.string().optional() }),
-      c,
-    )
+  router = router.get('/keys', ({ request }) => {
+    const owner = request.headers.get('x-jeju-address')?.toLowerCase()
 
     let keyList = Array.from(keys.values())
     if (owner) {
       keyList = keyList.filter((k) => k.owner.toLowerCase() === owner)
     }
 
-    return c.json({
+    return {
       keys: keyList.map((k) => ({
         keyId: k.keyId,
         address: k.address,
@@ -189,18 +185,18 @@ export function createKMSRouter(): Hono {
         version: k.version,
         createdAt: k.createdAt,
       })),
-    })
+    }
   })
 
   // Get key details
-  router.get('/keys/:keyId', (c) => {
-    const { keyId } = validateParams(kmsKeyParamsSchema, c)
+  router = router.get('/keys/:keyId', ({ params }) => {
+    const { keyId } = expectValid(kmsKeyParamsSchema, params, 'KMS key params')
     const key = keys.get(keyId)
     if (!key) {
       throw new Error('Key not found')
     }
 
-    return c.json({
+    return {
       keyId: key.keyId,
       publicKey: key.publicKey,
       address: key.address,
@@ -209,16 +205,15 @@ export function createKMSRouter(): Hono {
       version: key.version,
       createdAt: key.createdAt,
       metadata: key.metadata,
-    })
+    }
   })
 
   // Rotate key
-  router.post('/keys/:keyId/rotate', async (c) => {
-    const { 'x-jeju-address': owner } = validateHeaders(
-      jejuAddressHeaderSchema,
-      c,
-    )
-    const { keyId } = validateParams(kmsKeyParamsSchema, c)
+  router = router.post('/keys/:keyId/rotate', async ({ params, body, request }) => {
+    const owner = request.headers.get('x-jeju-address') as Address
+    if (!owner) throw new Error('Missing x-jeju-address header')
+
+    const { keyId } = expectValid(kmsKeyParamsSchema, params, 'KMS key params')
     const key = keys.get(keyId)
 
     if (!key) {
@@ -228,30 +223,29 @@ export function createKMSRouter(): Hono {
       throw new Error('Not authorized')
     }
 
-    const body = await c.req.json<{
+    const validBody = body as {
       newThreshold?: number
       newTotalParties?: number
-    }>()
+    }
 
-    key.threshold = body.newThreshold ?? key.threshold
-    key.totalParties = body.newTotalParties ?? key.totalParties
+    key.threshold = validBody.newThreshold ?? key.threshold
+    key.totalParties = validBody.newTotalParties ?? key.totalParties
     key.version++
 
-    return c.json({
+    return {
       keyId: key.keyId,
       version: key.version,
       threshold: key.threshold,
       totalParties: key.totalParties,
-    })
+    }
   })
 
   // Delete key
-  router.delete('/keys/:keyId', (c) => {
-    const { 'x-jeju-address': owner } = validateHeaders(
-      jejuAddressHeaderSchema,
-      c,
-    )
-    const { keyId } = validateParams(kmsKeyParamsSchema, c)
+  router = router.delete('/keys/:keyId', ({ params, request }) => {
+    const owner = request.headers.get('x-jeju-address') as Address
+    if (!owner) throw new Error('Missing x-jeju-address header')
+
+    const { keyId } = expectValid(kmsKeyParamsSchema, params, 'KMS key params')
     const key = keys.get(keyId)
 
     if (!key) {
@@ -262,7 +256,7 @@ export function createKMSRouter(): Hono {
     }
 
     keys.delete(key.keyId)
-    return c.json({ success: true })
+    return { success: true }
   })
 
   // ============================================================================
@@ -270,16 +264,19 @@ export function createKMSRouter(): Hono {
   // ============================================================================
 
   // Request signature
-  router.post('/sign', async (c) => {
-    validateHeaders(jejuAddressHeaderSchema, c)
-    const body = await validateBody(
+  router = router.post('/sign', async ({ body, request }) => {
+    const owner = request.headers.get('x-jeju-address') as Address
+    if (!owner) throw new Error('Missing x-jeju-address header')
+
+    const validBody = expectValid(
       signRequestSchema.extend({
         keyId: z.string().uuid(),
       }),
-      c,
+      body,
+      'Sign request',
     )
 
-    const key = keys.get(body.keyId)
+    const key = keys.get(validBody.keyId)
     if (!key) {
       throw new Error('Key not found')
     }
@@ -288,25 +285,21 @@ export function createKMSRouter(): Hono {
     // Production: would initiate MPC signing session with threshold parties
     const mpcEnabled = !!process.env.MPC_COORDINATOR_URL
 
-    // Dynamic import: only needed when signing (conditional - inside route handler)
-    const { privateKeyToAccount } = await import('viem/accounts')
-    const { keccak256, toBytes, toHex: _toHex, fromHex } = await import('viem')
-
     // Derive signing key from keyId (deterministic for development)
     const derivedKey = keccak256(toBytes(`${key.keyId}:${key.version}`))
     const account = privateKeyToAccount(derivedKey)
 
     // Convert message to bytes based on encoding
     const messageBytes =
-      body.encoding === 'hex'
-        ? fromHex(body.message as `0x${string}`, 'bytes')
-        : new TextEncoder().encode(body.message)
+      validBody.encoding === 'hex'
+        ? fromHex(validBody.message as `0x${string}`, 'bytes')
+        : new TextEncoder().encode(validBody.message)
 
     const signature = await account.signMessage({
       message: { raw: messageBytes },
     })
 
-    return c.json({
+    return {
       signature,
       keyId: key.keyId,
       address: key.address,
@@ -315,35 +308,32 @@ export function createKMSRouter(): Hono {
       warning: mpcEnabled
         ? undefined
         : 'Signed with local key. Set MPC_COORDINATOR_URL for production MPC signing.',
-    })
+    }
   })
 
   // ============================================================================
   // Encryption
   // ============================================================================
 
-  router.post('/encrypt', async (c) => {
-    const body = await validateBody(
+  router = router.post('/encrypt', async ({ body }) => {
+    const validBody = expectValid(
       encryptRequestSchema.extend({
         keyId: z.string().uuid().optional(),
       }),
-      c,
+      body,
+      'Encrypt request',
     )
 
     // AES-256-GCM encryption (development mode - key stored in memory)
-    // Dynamic import: only needed when encrypting (conditional - inside route handler)
-    const nodeCrypto = await import('node:crypto')
-    const { keccak256, toBytes } = await import('viem')
-
     // Generate or derive encryption key
-    const keyId = body.keyId ?? crypto.randomUUID()
+    const keyId = validBody.keyId ?? crypto.randomUUID()
     const derivedKey = Buffer.from(keccak256(toBytes(keyId)).slice(2), 'hex')
 
     // Encrypt with AES-256-GCM
-    const iv = nodeCrypto.randomBytes(12)
-    const cipher = nodeCrypto.createCipheriv('aes-256-gcm', derivedKey, iv)
+    const iv = crypto.randomBytes(12)
+    const cipher = crypto.createCipheriv('aes-256-gcm', derivedKey, iv)
     const encrypted = Buffer.concat([
-      cipher.update(body.data, 'utf8'),
+      cipher.update(validBody.data, 'utf8'),
       cipher.final(),
     ])
     const authTag = cipher.getAuthTag()
@@ -353,38 +343,35 @@ export function createKMSRouter(): Hono {
       'base64',
     )
 
-    return c.json({
+    return {
       encrypted: ciphertext,
       keyId,
       mode: process.env.MPC_COORDINATOR_URL ? 'mpc' : 'development',
-    })
+    }
   })
 
-  router.post('/decrypt', async (c) => {
-    const body = await validateBody(
+  router = router.post('/decrypt', async ({ body }) => {
+    const validBody = expectValid(
       decryptRequestSchema.extend({
         keyId: z.string().uuid(),
       }),
-      c,
+      body,
+      'Decrypt request',
     )
 
     const mpcEnabled = !!process.env.MPC_COORDINATOR_URL
 
     // Decrypt with AES-256-GCM (development mode)
-    // Dynamic import: only needed when decrypting (conditional - inside route handler)
-    const nodeCrypto = await import('node:crypto')
-    const { keccak256, toBytes } = await import('viem')
-
-    const data = Buffer.from(body.encrypted, 'base64')
+    const data = Buffer.from(validBody.encrypted, 'base64')
     const iv = data.subarray(0, 12)
     const authTag = data.subarray(12, 28)
     const ciphertext = data.subarray(28)
 
     const derivedKey = Buffer.from(
-      keccak256(toBytes(body.keyId)).slice(2),
+      keccak256(toBytes(validBody.keyId)).slice(2),
       'hex',
     )
-    const decipher = nodeCrypto.createDecipheriv('aes-256-gcm', derivedKey, iv)
+    const decipher = crypto.createDecipheriv('aes-256-gcm', derivedKey, iv)
     decipher.setAuthTag(authTag)
 
     const decrypted = Buffer.concat([
@@ -392,40 +379,36 @@ export function createKMSRouter(): Hono {
       decipher.final(),
     ]).toString('utf8')
 
-    return c.json({
+    return {
       decrypted,
-      keyId: body.keyId,
+      keyId: validBody.keyId,
       mode: mpcEnabled ? 'mpc' : 'development',
       warning: mpcEnabled
         ? undefined
         : 'Running in development mode. Set MPC_COORDINATOR_URL for production MPC.',
-    })
+    }
   })
 
   // Legacy endpoint for backwards compatibility
-  router.post('/decrypt-mpc', async (c) => {
+  router = router.post('/decrypt-mpc', async ({ set }) => {
     const mpcEnabled = !!process.env.MPC_COORDINATOR_URL
 
     if (!mpcEnabled) {
-      return c.json(
-        {
-          error: 'MPC decryption not available',
-          message:
-            'MPC decryption requires MPC_COORDINATOR_URL to be configured',
-          mode: 'development',
-        },
-        501,
-      )
+      set.status = 501
+      return {
+        error: 'MPC decryption not available',
+        message:
+          'MPC decryption requires MPC_COORDINATOR_URL to be configured',
+        mode: 'development',
+      }
     }
 
     // In production with MPC configured, would decrypt using threshold signatures
-    return c.json(
-      {
-        error: 'MPC decryption not yet implemented',
-        message: 'Configure MPC provider and implement threshold decryption',
-      },
-      501,
-    )
+    set.status = 501
+    return {
+      error: 'MPC decryption not yet implemented',
+      message: 'Configure MPC provider and implement threshold decryption',
+    }
   })
 
   // ============================================================================
@@ -433,34 +416,33 @@ export function createKMSRouter(): Hono {
   // ============================================================================
 
   // Store secret
-  router.post('/vault/secrets', async (c) => {
-    const owner = c.req.header('x-jeju-address') as Address
+  router = router.post('/vault/secrets', async ({ body, request, set }) => {
+    const owner = request.headers.get('x-jeju-address') as Address
     if (!owner) {
-      return c.json({ error: 'Missing x-jeju-address header' }, 401)
+      set.status = 401
+      return { error: 'Missing x-jeju-address header' }
     }
 
-    const body = await c.req.json<{
+    const validBody = body as {
       name: string
       value: string
       metadata?: Record<string, string>
       expiresIn?: number // seconds
-    }>()
+    }
 
-    if (!body.name || !body.value) {
-      return c.json({ error: 'Name and value required' }, 400)
+    if (!validBody.name || !validBody.value) {
+      set.status = 400
+      return { error: 'Name and value required' }
     }
 
     const id = crypto.randomUUID()
-    // Dynamic import: only needed when storing secrets (conditional - inside route handler)
-    const { keccak256, toBytes } = await import('viem')
-    const nodeCrypto = await import('node:crypto')
 
     // Encrypt the value with AES-256-GCM
     const derivedKey = Buffer.from(keccak256(toBytes(id)).slice(2), 'hex')
-    const iv = nodeCrypto.randomBytes(12)
-    const cipher = nodeCrypto.createCipheriv('aes-256-gcm', derivedKey, iv)
+    const iv = crypto.randomBytes(12)
+    const cipher = crypto.createCipheriv('aes-256-gcm', derivedKey, iv)
     const encrypted = Buffer.concat([
-      cipher.update(body.value, 'utf8'),
+      cipher.update(validBody.value, 'utf8'),
       cipher.final(),
     ])
     const authTag = cipher.getAuthTag()
@@ -470,33 +452,31 @@ export function createKMSRouter(): Hono {
 
     const secret: Secret = {
       id,
-      name: body.name,
+      name: validBody.name,
       owner,
       encryptedValue,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      expiresAt: body.expiresIn
-        ? Date.now() + body.expiresIn * 1000
+      expiresAt: validBody.expiresIn
+        ? Date.now() + validBody.expiresIn * 1000
         : undefined,
-      metadata: body.metadata ?? {},
+      metadata: validBody.metadata ?? {},
     }
 
     secrets.set(id, secret)
 
-    return c.json(
-      {
-        id,
-        name: secret.name,
-        createdAt: secret.createdAt,
-        expiresAt: secret.expiresAt,
-      },
-      201,
-    )
+    set.status = 201
+    return {
+      id,
+      name: secret.name,
+      createdAt: secret.createdAt,
+      expiresAt: secret.expiresAt,
+    }
   })
 
   // List secrets
-  router.get('/vault/secrets', (c) => {
-    const owner = c.req.header('x-jeju-address')?.toLowerCase()
+  router = router.get('/vault/secrets', ({ request }) => {
+    const owner = request.headers.get('x-jeju-address')?.toLowerCase()
 
     let secretList = Array.from(secrets.values())
     if (owner) {
@@ -507,7 +487,7 @@ export function createKMSRouter(): Hono {
     const now = Date.now()
     secretList = secretList.filter((s) => !s.expiresAt || s.expiresAt > now)
 
-    return c.json({
+    return {
       secrets: secretList.map((s) => ({
         id: s.id,
         name: s.name,
@@ -515,54 +495,56 @@ export function createKMSRouter(): Hono {
         updatedAt: s.updatedAt,
         expiresAt: s.expiresAt,
       })),
-    })
+    }
   })
 
   // Get secret (returns metadata only, not value)
-  router.get('/vault/secrets/:id', (c) => {
-    const owner = c.req.header('x-jeju-address')?.toLowerCase()
-    const secret = secrets.get(c.req.param('id'))
+  router = router.get('/vault/secrets/:id', ({ params, request, set }) => {
+    const owner = request.headers.get('x-jeju-address')?.toLowerCase()
+    const secret = secrets.get(params.id)
 
     if (!secret) {
-      return c.json({ error: 'Secret not found' }, 404)
+      set.status = 404
+      return { error: 'Secret not found' }
     }
     if (secret.owner.toLowerCase() !== owner) {
-      return c.json({ error: 'Not authorized' }, 403)
+      set.status = 403
+      return { error: 'Not authorized' }
     }
     if (secret.expiresAt && secret.expiresAt < Date.now()) {
-      return c.json({ error: 'Secret expired' }, 410)
+      set.status = 410
+      return { error: 'Secret expired' }
     }
 
-    return c.json({
+    return {
       id: secret.id,
       name: secret.name,
       createdAt: secret.createdAt,
       updatedAt: secret.updatedAt,
       expiresAt: secret.expiresAt,
       metadata: secret.metadata,
-    })
+    }
   })
 
   // Reveal secret value (requires authentication)
-  router.post('/vault/secrets/:id/reveal', async (c) => {
-    const owner = c.req.header('x-jeju-address')?.toLowerCase()
-    const secret = secrets.get(c.req.param('id'))
+  router = router.post('/vault/secrets/:id/reveal', async ({ params, request, set }) => {
+    const owner = request.headers.get('x-jeju-address')?.toLowerCase()
+    const secret = secrets.get(params.id)
 
     if (!secret) {
-      return c.json({ error: 'Secret not found' }, 404)
+      set.status = 404
+      return { error: 'Secret not found' }
     }
     if (secret.owner.toLowerCase() !== owner) {
-      return c.json({ error: 'Not authorized' }, 403)
+      set.status = 403
+      return { error: 'Not authorized' }
     }
     if (secret.expiresAt && secret.expiresAt < Date.now()) {
-      return c.json({ error: 'Secret expired' }, 410)
+      set.status = 410
+      return { error: 'Secret expired' }
     }
 
     // Decrypt the value with AES-256-GCM
-    // Dynamic import: only needed when revealing secrets (conditional - inside route handler)
-    const { keccak256, toBytes } = await import('viem')
-    const nodeCrypto = await import('node:crypto')
-
     const data = Buffer.from(secret.encryptedValue, 'base64')
     const iv = data.subarray(0, 12)
     const authTag = data.subarray(12, 28)
@@ -572,7 +554,7 @@ export function createKMSRouter(): Hono {
       keccak256(toBytes(secret.id)).slice(2),
       'hex',
     )
-    const decipher = nodeCrypto.createDecipheriv('aes-256-gcm', derivedKey, iv)
+    const decipher = crypto.createDecipheriv('aes-256-gcm', derivedKey, iv)
     decipher.setAuthTag(authTag)
 
     const decrypted = Buffer.concat([
@@ -580,27 +562,29 @@ export function createKMSRouter(): Hono {
       decipher.final(),
     ]).toString('utf8')
 
-    return c.json({
+    return {
       id: secret.id,
       name: secret.name,
       value: decrypted,
-    })
+    }
   })
 
   // Delete secret
-  router.delete('/vault/secrets/:id', (c) => {
-    const owner = c.req.header('x-jeju-address')?.toLowerCase()
-    const secret = secrets.get(c.req.param('id'))
+  router = router.delete('/vault/secrets/:id', ({ params, request, set }) => {
+    const owner = request.headers.get('x-jeju-address')?.toLowerCase()
+    const secret = secrets.get(params.id)
 
     if (!secret) {
-      return c.json({ error: 'Secret not found' }, 404)
+      set.status = 404
+      return { error: 'Secret not found' }
     }
     if (secret.owner.toLowerCase() !== owner) {
-      return c.json({ error: 'Not authorized' }, 403)
+      set.status = 403
+      return { error: 'Not authorized' }
     }
 
     secrets.delete(secret.id)
-    return c.json({ success: true })
+    return { success: true }
   })
 
   return router

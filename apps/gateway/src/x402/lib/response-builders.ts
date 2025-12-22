@@ -91,5 +91,3 @@ export function buildSettleSuccessResponse(
   }
 }
 
-// Re-export formatError for backwards compatibility
-export { formatError }

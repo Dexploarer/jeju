@@ -756,7 +756,7 @@ export class CowProtocolSolver extends EventEmitter {
         | 'presign'
         | 'eip1271',
       status: o.status as 'open' | 'fulfilled' | 'cancelled' | 'expired',
-      createdAt: new Date(o.creationDate).getTime(),
+      createdAt: new Date(o.creationDate ?? Date.now()).getTime(),
       filledAmount: BigInt(o.executedSellAmount || '0'),
     }))
   }

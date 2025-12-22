@@ -12,13 +12,13 @@
 export {
   createDWSClient,
   type DWSClientConfig,
-  type DWSJobStatus,
   DWSTrainingClient,
   getDefaultDWSConfig,
   isDWSAvailable,
-  type JudgeResult,
   type RolloutData,
 } from './dws-client'
+
+export type { DWSJobStatus, JudgeResult } from '../schemas'
 
 export type {
   TrainingJobRequest,

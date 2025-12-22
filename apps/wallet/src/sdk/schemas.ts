@@ -5,14 +5,14 @@
  * These schemas enforce type safety and fail-fast validation.
  */
 
-import { z } from 'zod'
 import {
   AddressSchema,
   BigIntSchema,
   ChainIdSchema,
   HexSchema,
   TimestampSchema,
-} from '../lib/validation'
+} from '@jejunetwork/types'
+import { z } from 'zod'
 
 // ============================================================================
 // Base Schemas

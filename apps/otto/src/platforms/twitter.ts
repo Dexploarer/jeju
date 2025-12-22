@@ -4,8 +4,8 @@
  */
 
 import { z } from 'zod'
+import { expectValid } from '@jejunetwork/types'
 import {
-  expectValid,
   PlatformMessageSchema,
   TwitterWebhookPayloadSchema,
 } from '../schemas'

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { Address, Hex } from 'viem'
 import { useAccount, useChainId, usePublicClient, useWalletClient } from 'wagmi'
 import { CONTRACTS } from '../config'
-import { ZERO_ADDRESS } from '../lib/contracts'
+import { ZERO_ADDRESS } from '@jejunetwork/ui'
 
 interface PaymentState {
   status: 'idle' | 'signing' | 'approving' | 'settling' | 'success' | 'error'

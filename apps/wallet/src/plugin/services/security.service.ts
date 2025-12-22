@@ -19,8 +19,8 @@ import {
   expectBigInt,
   expectChainId,
   expectHex,
-  expectNonEmpty,
-} from '../../lib/validation'
+} from '@jejunetwork/types'
+import { expectNonEmpty } from '../../lib/validation'
 import type { SecurityAnalysis, SignatureRisk, TransactionRisk } from '../types'
 
 // Known malicious/scam patterns

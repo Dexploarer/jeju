@@ -7,13 +7,9 @@ import {
   AddressSchema,
   ChainIdSchema,
   HexSchema,
-  expectValid as sharedExpectValid,
+  expectValid,
 } from '@jejunetwork/types'
 import { z } from 'zod'
-
-// Re-export shared validation helpers and base schemas
-export { sharedExpectValid as expectValid }
-export { AddressSchema, HexSchema, ChainIdSchema }
 
 // ============================================================================
 // Base Validators
@@ -749,7 +745,7 @@ export function expectValidArray<T>(
   context?: string,
 ): T[] {
   return items.map((item, index) =>
-    sharedExpectValid(
+    expectValid(
       schema,
       item,
       context ? `${context}[${index}]` : `[${index}]`,

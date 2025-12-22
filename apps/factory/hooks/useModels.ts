@@ -1,7 +1,13 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { getCoreAppUrl } from '@jejunetwork/config/ports'
 import { api, extractDataSafe } from '../lib/client'
+
+function getFactoryApiUrl(): string {
+  if (typeof window !== 'undefined') return ''
+  return process.env.FACTORY_API_URL || getCoreAppUrl('FACTORY')
+}
 
 // ============ Types ============
 
@@ -177,10 +183,7 @@ async function runInference(
   usage: { promptTokens: number; completionTokens: number }
 }> {
   // Inference endpoint - use direct fetch as Eden may not have this typed
-  const baseUrl =
-    typeof window !== 'undefined'
-      ? ''
-      : process.env.FACTORY_API_URL || 'http://localhost:4009'
+  const baseUrl = getFactoryApiUrl()
   const res = await fetch(`${baseUrl}/api/models/${org}/${name}/inference`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -194,10 +197,7 @@ async function runInference(
 
 async function starModel(org: string, name: string): Promise<boolean> {
   // Star endpoint - use direct fetch as Eden may not have this typed
-  const baseUrl =
-    typeof window !== 'undefined'
-      ? ''
-      : process.env.FACTORY_API_URL || 'http://localhost:4009'
+  const baseUrl = getFactoryApiUrl()
   const res = await fetch(`${baseUrl}/api/models/${org}/${name}/star`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

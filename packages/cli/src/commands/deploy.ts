@@ -12,6 +12,7 @@ import { z } from 'zod'
 import { checkRpcHealth, getAccountBalance } from '../lib/chain'
 import { hasKeys, resolvePrivateKey } from '../lib/keys'
 import { logger } from '../lib/logger'
+import { keysCommand } from './keys'
 import {
   checkDocker,
   checkFoundry,
@@ -163,8 +164,6 @@ export const deployCommand = new Command('deploy')
         })
 
         if (generateKeys) {
-          // Dynamic import kept conditional - only loads if user chooses to generate keys
-          const { keysCommand } = await import('./keys')
           await keysCommand.parseAsync(['genesis', '-n', network], {
             from: 'user',
           })

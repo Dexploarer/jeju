@@ -4,7 +4,8 @@
  */
 
 import type { Address } from 'viem'
-import { ChatMessageSchema, expectValid } from '../schemas'
+import { expectValid } from '@jejunetwork/types'
+import { ChatMessageSchema } from '../schemas'
 import { type ChatSession, getStateManager } from '../services/state'
 import type { ChatMessage } from '../types'
 

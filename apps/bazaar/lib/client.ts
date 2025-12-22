@@ -6,6 +6,7 @@
 
 import type { Address } from 'viem'
 import type { z } from 'zod'
+import { getCoreAppUrl } from '@jejunetwork/config/ports'
 import {
   FaucetClaimResultSchema,
   FaucetInfoSchema,
@@ -18,7 +19,7 @@ import {
 export const API_BASE =
   typeof window !== 'undefined'
     ? ''
-    : process.env.BAZAAR_API_URL || 'http://localhost:4007'
+    : process.env.BAZAAR_API_URL || getCoreAppUrl('BAZAAR_API')
 
 // =============================================================================
 // Response Types (from Zod schemas)

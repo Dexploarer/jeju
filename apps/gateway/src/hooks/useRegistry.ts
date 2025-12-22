@@ -6,7 +6,7 @@ import {
   useWriteContract,
 } from 'wagmi'
 import { CONTRACTS } from '../config'
-import { IERC20_ABI, ZERO_ADDRESS } from '../lib/contracts'
+import { IERC20_ABI, ZERO_ADDRESS } from '@jejunetwork/ui'
 
 export const IDENTITY_REGISTRY_ADDRESS = CONTRACTS.identityRegistry
 const REGISTRY_ADDRESS = IDENTITY_REGISTRY_ADDRESS

@@ -16,11 +16,11 @@
  *   INFERENCE_PORT (default 4031)
  */
 
-import { Hono } from 'hono'
-import { cors } from 'hono/cors'
+import { Elysia } from 'elysia'
+import { cors } from '@elysiajs/cors'
 
-const app = new Hono()
-app.use('/*', cors({ origin: '*' }))
+const app = new Elysia()
+app.use(cors({ origin: '*' }))
 
 // Provider configurations
 interface ProviderConfig {
@@ -125,18 +125,18 @@ function getProviderForModel(
 }
 
 // Health check
-app.get('/health', (c) => {
+app.get('/health', () => {
   const configured = getConfiguredProviders()
-  return c.json({
+  return {
     service: 'dws-inference-node',
     status: configured.length > 0 ? 'healthy' : 'no_providers',
     providers: configured.map((p) => p.id),
     models: configured.flatMap((p) => p.models).filter((m) => m !== '*'),
-  })
+  }
 })
 
 // List available models
-app.get('/v1/models', (c) => {
+app.get('/v1/models', () => {
   const configured = getConfiguredProviders()
   const models = configured.flatMap((p) =>
     p.models
@@ -148,43 +148,41 @@ app.get('/v1/models', (c) => {
         created: Date.now(),
       })),
   )
-  return c.json({ object: 'list', data: models })
+  return { object: 'list', data: models }
 })
 
 // Chat completions
-app.post('/v1/chat/completions', async (c) => {
-  const body = await c.req.json<{
+app.post('/v1/chat/completions', async ({ body, set }) => {
+  const { model, messages, max_tokens, temperature, stream } = body as {
     model: string
     messages: Array<{ role: string; content: string }>
     max_tokens?: number
     temperature?: number
     stream?: boolean
-  }>()
+  }
 
-  const provider = getProviderForModel(body.model)
+  const provider = getProviderForModel(model)
   if (!provider) {
-    return c.json(
-      {
-        error: 'No inference provider configured',
-        message: 'Set GROQ_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY',
-        configured: getConfiguredProviders().map((p) => p.id),
-      },
-      503,
-    )
+    set.status = 503
+    return {
+      error: 'No inference provider configured',
+      message: 'Set GROQ_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY',
+      configured: getConfiguredProviders().map((p) => p.id),
+    }
   }
 
   // Handle Anthropic's different API format
   if (provider.isAnthropic) {
     const anthropicBody = {
-      model: body.model,
-      max_tokens: body.max_tokens || 1024,
-      messages: body.messages
+      model,
+      max_tokens: max_tokens || 1024,
+      messages: messages
         .filter((m) => m.role !== 'system')
         .map((m) => ({
           role: m.role as 'user' | 'assistant',
           content: m.content,
         })),
-      system: body.messages.find((m) => m.role === 'system')?.content,
+      system: messages.find((m) => m.role === 'system')?.content,
     }
 
     const response = await fetch(`${provider.baseUrl}/messages`, {
@@ -199,10 +197,8 @@ app.post('/v1/chat/completions', async (c) => {
 
     if (!response.ok) {
       const error = await response.text()
-      return c.json(
-        { error: `Anthropic error: ${error}` },
-        response.status as 400 | 500,
-      )
+      set.status = response.status
+      return { error: `Anthropic error: ${error}` }
     }
 
     const result = (await response.json()) as {
@@ -210,11 +206,11 @@ app.post('/v1/chat/completions', async (c) => {
       usage: { input_tokens: number; output_tokens: number }
     }
 
-    return c.json({
+    return {
       id: `chatcmpl-${Date.now()}`,
       object: 'chat.completion',
       created: Math.floor(Date.now() / 1000),
-      model: body.model,
+      model,
       provider: 'anthropic',
       choices: [
         {
@@ -231,7 +227,7 @@ app.post('/v1/chat/completions', async (c) => {
         completion_tokens: result.usage.output_tokens,
         total_tokens: result.usage.input_tokens + result.usage.output_tokens,
       },
-    })
+    }
   }
 
   // OpenAI-compatible providers
@@ -247,24 +243,22 @@ app.post('/v1/chat/completions', async (c) => {
           }
         : {}),
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ model, messages, max_tokens, temperature, stream }),
   })
 
   if (!response.ok) {
     const error = await response.text()
-    return c.json(
-      { error: `${provider.id} error: ${error}` },
-      response.status as 400 | 500,
-    )
+    set.status = response.status
+    return { error: `${provider.id} error: ${error}` }
   }
 
   const result = await response.json()
-  return c.json({ ...result, provider: provider.id })
+  return { ...result, provider: provider.id }
 })
 
 // Embeddings
-app.post('/v1/embeddings', async (c) => {
-  const body = await c.req.json<{ input: string | string[]; model?: string }>()
+app.post('/v1/embeddings', async ({ body, set }) => {
+  const { input, model } = body as { input: string | string[]; model?: string }
 
   // Only OpenAI and Together support embeddings
   const configured = getConfiguredProviders()
@@ -274,13 +268,11 @@ app.post('/v1/embeddings', async (c) => {
 
   if (!provider) {
     // No embedding provider available - fail with clear error
-    return c.json(
-      {
-        error: 'No embedding provider configured',
-        message: 'Set OPENAI_API_KEY or TOGETHER_API_KEY for embeddings',
-      },
-      503,
-    )
+    set.status = 503
+    return {
+      error: 'No embedding provider configured',
+      message: 'Set OPENAI_API_KEY or TOGETHER_API_KEY for embeddings',
+    }
   }
 
   const response = await fetch(`${provider.baseUrl}/embeddings`, {
@@ -290,21 +282,19 @@ app.post('/v1/embeddings', async (c) => {
       Authorization: `Bearer ${provider.apiKey}`,
     },
     body: JSON.stringify({
-      input: body.input,
-      model: body.model || 'text-embedding-3-small',
+      input,
+      model: model || 'text-embedding-3-small',
     }),
   })
 
   if (!response.ok) {
     const error = await response.text()
-    return c.json(
-      { error: `${provider.id} embeddings error: ${error}` },
-      response.status as 400 | 500,
-    )
+    set.status = response.status
+    return { error: `${provider.id} embeddings error: ${error}` }
   }
 
   const result = await response.json()
-  return c.json({ ...result, provider: provider.id })
+  return { ...result, provider: provider.id }
 })
 
 // Start server and register with DWS
@@ -381,7 +371,7 @@ if (import.meta.main) {
     `[Inference Node] Configured providers: ${configured.map((p) => p.id).join(', ') || 'none'}`,
   )
 
-  Bun.serve({ port: PORT, fetch: app.fetch })
+  app.listen(PORT)
 
   // Register with DWS after a short delay
   setTimeout(registerWithDWS, 2000)

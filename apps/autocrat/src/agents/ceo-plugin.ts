@@ -20,7 +20,8 @@ import type {
   State,
 } from '@elizaos/core'
 import { getAutocratA2AUrl } from '@jejunetwork/config'
-import { A2AJsonRpcResponseSchema, expectValid } from '../schemas'
+import { expectValid } from '@jejunetwork/types'
+import { A2AJsonRpcResponseSchema } from '../schemas'
 import { makeTEEDecision } from '../tee'
 import { ceoProviders } from './ceo-providers'
 

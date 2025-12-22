@@ -22,9 +22,6 @@ import {
 } from '../schemas'
 import type { TrainingJobRequest, TrainingJobResult } from './types'
 
-// Re-export types for external use
-export type { DWSJobStatus, JudgeResult }
-
 // ============================================================================
 // Types
 // ============================================================================

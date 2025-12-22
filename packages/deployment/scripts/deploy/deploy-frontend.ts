@@ -18,6 +18,7 @@
 import { existsSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { spawn } from 'bun'
+import { getIpfsApiUrl } from '@jejunetwork/config/ports'
 import {
   type Address,
   createPublicClient,
@@ -453,7 +454,7 @@ async function parseArgs(): Promise<DeployConfig> {
   // Network-specific configuration
   const networkConfigs = {
     localnet: {
-      ipfsApiUrl: process.env.IPFS_API_URL ?? 'http://localhost:5001',
+      ipfsApiUrl: getIpfsApiUrl(),
       rpcUrl: process.env.RPC_URL ?? 'http://localhost:6546',
       jnsRegistryAddress: (process.env.JNS_REGISTRY_ADDRESS ??
         '0x0000000000000000000000000000000000000000') as Address,

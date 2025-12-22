@@ -2,8 +2,8 @@
  * DWS Provider Node - storage and compute services
  */
 
-import { Hono } from 'hono'
-import { cors } from 'hono/cors'
+import { cors } from '@elysiajs/cors'
+import { Elysia, t } from 'elysia'
 import {
   type Address,
   createPublicClient,
@@ -23,12 +23,11 @@ function inferChainFromRpcUrl(rpcUrl: string) {
   return localhost
 }
 
-const app = new Hono()
-app.use('/*', cors({ origin: '*' }))
-
 const privateKey = process.env.PRIVATE_KEY
 const rpcUrl = process.env.RPC_URL || 'http://localhost:6546'
-const ipfsApiUrl = process.env.IPFS_API_URL || 'http://localhost:5001'
+// IPFS API port from centralized config (default 5001)
+const ipfsPort = process.env.IPFS_API_PORT ?? '5001'
+const ipfsApiUrl = process.env.IPFS_API_URL || `http://localhost:${ipfsPort}`
 
 // Wallet state - initialized lazily
 interface WalletState {
@@ -77,129 +76,146 @@ async function checkIpfsHealth(): Promise<boolean> {
   return true
 }
 
-app.get('/health', async (c) => {
-  const ipfsHealthy = await checkIpfsHealth().catch((err: Error) => {
-    console.warn(`[DWS Node] IPFS unreachable: ${err.message}`)
-    return false
+// Compute inference - proxy to DWS server
+const DWS_SERVER_URL = process.env.DWS_SERVER_URL || 'http://localhost:4030'
+
+export const nodeApp = new Elysia({ name: 'dws-node' })
+  .use(cors({ origin: '*' }))
+
+  .get('/health', async () => {
+    const ipfsHealthy = await checkIpfsHealth().catch((err: Error) => {
+      console.warn(`[DWS Node] IPFS unreachable: ${err.message}`)
+      return false
+    })
+
+    return {
+      status: ipfsHealthy ? 'healthy' : 'degraded',
+      service: 'dws-node',
+      address: walletState?.address ?? 'read-only',
+      rpcUrl,
+      ipfs: ipfsHealthy ? 'connected' : 'disconnected',
+      uptime: Date.now() - nodeStartTime,
+    }
   })
 
-  return c.json({
-    status: ipfsHealthy ? 'healthy' : 'degraded',
-    service: 'dws-node',
-    address: walletState?.address ?? 'read-only',
-    rpcUrl,
-    ipfs: ipfsHealthy ? 'connected' : 'disconnected',
-    uptime: Date.now() - nodeStartTime,
-  })
-})
+  .get('/status', async () => {
+    if (!walletState) {
+      return {
+        address: 'read-only',
+        balance: '0',
+        registered: false,
+        reputation: 0,
+        services: ['storage', 'compute'],
+        uptime: Date.now() - nodeStartTime,
+        pinnedCids: pinnedCids.size,
+      }
+    }
 
-app.get('/status', async (c) => {
-  if (!walletState) {
-    return c.json({
-      address: 'read-only',
-      balance: '0',
+    const balance = formatEther(
+      await walletState.publicClient.getBalance({ address: walletState.address }),
+    )
+    return {
+      address: walletState.address,
+      balance,
       registered: false,
       reputation: 0,
       services: ['storage', 'compute'],
       uptime: Date.now() - nodeStartTime,
       pinnedCids: pinnedCids.size,
-    })
-  }
-
-  const balance = formatEther(
-    await walletState.publicClient.getBalance({ address: walletState.address }),
-  )
-  return c.json({
-    address: walletState.address,
-    balance,
-    registered: false,
-    reputation: 0,
-    services: ['storage', 'compute'],
-    uptime: Date.now() - nodeStartTime,
-    pinnedCids: pinnedCids.size,
+    }
   })
-})
 
-app.post('/storage/pin', async (c) => {
-  if (!walletState)
-    return c.json({ error: 'Read-only mode. Set PRIVATE_KEY.' }, 403)
+  .post(
+    '/storage/pin',
+    async ({ body, set }) => {
+      if (!walletState) {
+        set.status = 403
+        return { error: 'Read-only mode. Set PRIVATE_KEY.' }
+      }
 
-  const body = await c.req.json<{ cid: string; size?: number }>()
-  if (!body.cid) return c.json({ error: 'CID required' }, 400)
+      if (!body.cid) {
+        set.status = 400
+        return { error: 'CID required' }
+      }
 
-  const pinResponse = await fetch(
-    `${ipfsApiUrl}/api/v0/pin/add?arg=${body.cid}`,
-    { method: 'POST' },
+      const pinResponse = await fetch(
+        `${ipfsApiUrl}/api/v0/pin/add?arg=${body.cid}`,
+        { method: 'POST' },
+      )
+      if (!pinResponse.ok) {
+        set.status = 500
+        return { error: `Pin failed: ${await pinResponse.text()}` }
+      }
+
+      const pinnedAt = Date.now()
+      pinnedCids.set(body.cid, { size: body.size || 0, pinnedAt })
+
+      return {
+        success: true,
+        cid: body.cid,
+        pinnedAt,
+        nodeAddress: walletState.address,
+      }
+    },
+    {
+      body: t.Object({
+        cid: t.String(),
+        size: t.Optional(t.Number()),
+      }),
+    },
   )
-  if (!pinResponse.ok) {
-    return c.json({ error: `Pin failed: ${await pinResponse.text()}` }, 500)
-  }
 
-  const pinnedAt = Date.now()
-  pinnedCids.set(body.cid, { size: body.size || 0, pinnedAt })
-
-  return c.json({
-    success: true,
-    cid: body.cid,
-    pinnedAt,
-    nodeAddress: walletState.address,
-  })
-})
-
-app.get('/storage/pins', (c) => {
-  return c.json({
+  .get('/storage/pins', () => ({
     pins: Array.from(pinnedCids.entries()).map(([cid, info]) => ({
       cid,
       ...info,
     })),
     total: pinnedCids.size,
-  })
-})
+  }))
 
-app.delete('/storage/pin/:cid', async (c) => {
-  if (!walletState) return c.json({ error: 'Read-only mode' }, 403)
+  .delete('/storage/pin/:cid', async ({ params, set }) => {
+    if (!walletState) {
+      set.status = 403
+      return { error: 'Read-only mode' }
+    }
 
-  const cid = c.req.param('cid')
-  const unpinResponse = await fetch(`${ipfsApiUrl}/api/v0/pin/rm?arg=${cid}`, {
-    method: 'POST',
-  })
-  if (!unpinResponse.ok) {
-    return c.json({ error: `Unpin failed: ${await unpinResponse.text()}` }, 500)
-  }
+    const unpinResponse = await fetch(`${ipfsApiUrl}/api/v0/pin/rm?arg=${params.cid}`, {
+      method: 'POST',
+    })
+    if (!unpinResponse.ok) {
+      set.status = 500
+      return { error: `Unpin failed: ${await unpinResponse.text()}` }
+    }
 
-  pinnedCids.delete(cid)
-  return c.json({ success: true, cid })
-})
-
-// Compute inference - proxy to DWS server
-const DWS_SERVER_URL = process.env.DWS_SERVER_URL || 'http://localhost:4030'
-
-app.post('/compute/inference', async (c) => {
-  const body = await c.req.json()
-  const response = await fetch(`${DWS_SERVER_URL}/compute/chat/completions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    pinnedCids.delete(params.cid)
+    return { success: true, cid: params.cid }
   })
 
-  if (!response.ok) {
-    const errorText = await response.text()
-    return c.json(
-      { error: `Inference failed: ${errorText}` },
-      response.status as 400 | 401 | 403 | 404 | 500 | 502 | 503,
-    )
-  }
+  .post('/compute/inference', async ({ body, set }) => {
+    const response = await fetch(`${DWS_SERVER_URL}/compute/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
 
-  const result = await response.json()
-  return c.json(result)
-})
+    if (!response.ok) {
+      const errorText = await response.text()
+      set.status = response.status as 400 | 401 | 403 | 404 | 500 | 502 | 503
+      return { error: `Inference failed: ${errorText}` }
+    }
+
+    return response.json()
+  })
+
+// Export app type for Eden
+export type NodeApp = typeof nodeApp
 
 const PORT = parseInt(process.env.DWS_NODE_PORT || '4031', 10)
 
 if (import.meta.main) {
   await initializeWallet()
   console.log(`[DWS Node] Running at http://localhost:${PORT}`)
-  Bun.serve({ port: PORT, fetch: app.fetch })
+  Bun.serve({ port: PORT, fetch: nodeApp.fetch })
 }
 
-export { app as nodeApp, walletState }
+export { walletState }

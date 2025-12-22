@@ -1,7 +1,4 @@
-// Re-export consolidated HealthStatus
-import type { HealthStatus } from '@jejunetwork/types'
 import { type Address, namehash } from 'viem'
-export type { HealthStatus }
 
 export interface WakePageData {
   jnsName: string

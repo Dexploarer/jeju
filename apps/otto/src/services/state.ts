@@ -6,8 +6,8 @@
 import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import type { Address, Hex } from 'viem'
 import { z } from 'zod'
+import { expectValid } from '@jejunetwork/types'
 import {
-  expectValid,
   LimitOrderSchema,
   OttoUserSchema,
   validateOrNull,

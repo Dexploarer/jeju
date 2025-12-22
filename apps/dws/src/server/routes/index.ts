@@ -3,29 +3,103 @@
  * All routes are Elysia plugins with type exports for Eden
  */
 
+// ============================================================================
+// Static Elysia plugins (already instantiated)
+// ============================================================================
+
 export { a2aRoutes, type A2ARoutes } from './a2a'
 export { cdnRoutes, type CDNRoutes } from './cdn'
 export { computeRoutes, type ComputeRoutes } from './compute'
 export { storageRoutes, type StorageRoutes } from './storage'
+export { rlaifRoutes, type RLAIFRoutes } from './rlaif'
+export { rpcRoutes, type RPCRoutes } from './rpc'
+export { trainingRoutes, type TrainingRoutes } from './training'
 
-// Legacy Hono routes - to be converted to Elysia
-export { createContainerRouter } from './containers'
-export { createDARouter, shutdownDA } from './da'
+// ============================================================================
+// Elysia route factories (with type exports)
+// ============================================================================
+
+// OAuth3 proxy
+export { createOAuth3Router, type OAuth3Routes } from './oauth3'
+
+// Key Management Service
+export { createKMSRouter, type KMSRoutes } from './kms'
+
+// VPN/Proxy
+export { createVPNRouter, type VPNRoutes } from './vpn'
+
+// Web Scraping
+export { createScrapingRouter, type ScrapingRoutes } from './scraping'
+
+// Price Streaming
+export {
+  createPricesRouter,
+  getPriceService,
+  handlePriceWebSocket,
+  type PricesRoutes,
+  type SubscribableWebSocket,
+} from './prices'
+
+// Moderation
+export { createModerationRouter, type ModerationRoutes } from './moderation'
+
+// S3-compatible storage
+export { createS3Router, type S3Routes } from './s3'
+
+// Workers
+export { createWorkersRouter, type WorkersRoutes } from './workers'
+export {
+  createWorkerdRouter,
+  createDefaultWorkerdRouter,
+  type WorkerdRoutes,
+  type WorkerdRouterOptions,
+} from './workerd'
+
+// Containers
+export { createContainerRouter, type ContainerRoutes } from './containers'
+
+// Data Availability
+export { createDARouter, shutdownDA, type DARoutes } from './da'
+
+// Edge Coordination
 export { createEdgeRouter, handleEdgeWebSocket } from './edge'
+
+// Funding
 export { createFundingRouter } from './funding'
+
+// Git
 export { createGitRouter } from './git'
-export { createKMSRouter } from './kms'
-export { createMCPRouter } from './mcp'
-export { createModerationRouter } from './moderation'
-export { createOAuth3Router } from './oauth3'
-export { createPkgRouter } from './pkg'
-export { createPkgRegistryProxyRouter } from './pkg-registry-proxy'
-export { createPricesRouter, getPriceService, type SubscribableWebSocket } from './prices'
+
+// MCP (Model Context Protocol)
+export { createMCPRouter, type MCPRoutes } from './mcp'
+
+// Packages
+export { createPkgRouter, type PkgRoutes } from './pkg'
+export {
+  createPkgRegistryProxyRouter,
+  type PkgRegistryProxyRoutes,
+} from './pkg-registry-proxy'
+
+// CI/CD
+export { createCIRouter, type CIRoutes } from './ci'
+
+// API Marketplace
+export {
+  createAPIMarketplaceRouter,
+  type APIMarketplaceRoutes,
+} from './api-marketplace'
+
+// RPC (legacy factory export)
 export { createRPCRouter } from './rpc'
-export { createS3Router } from './s3'
-export { createScrapingRouter } from './scraping'
-export { createVPNRouter } from './vpn'
-export { createDefaultWorkerdRouter } from './workerd'
-export { createWorkersRouter } from './workers'
-export { createAPIMarketplaceRouter } from './api-marketplace'
-export { createCIRouter } from './ci'
+
+// Models
+export { createModelsRouter, type ModelsRoutes } from './models'
+
+// Datasets
+export { createDatasetsRouter, type DatasetsRoutes } from './datasets'
+
+// Dependency Scanner
+export {
+  createDependencyScannerRouter,
+  type DependencyScannerRoutes,
+} from './dependency-scanner'

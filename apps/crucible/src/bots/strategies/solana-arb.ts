@@ -29,7 +29,7 @@ import type {
   CrossChainArbOpportunity,
   StrategyConfig,
   Token,
-} from '../autocrat-types'
+} from '../autocrat-types-source'
 
 // ============ Configuration ============
 

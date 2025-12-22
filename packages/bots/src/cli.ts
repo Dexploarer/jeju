@@ -14,7 +14,8 @@ import { EVMChainIdSchema } from './schemas'
 import { type BacktestConfig, Backtester } from './simulation/backtester'
 import { HistoricalDataFetcher } from './simulation/data-fetcher'
 import { PortfolioSimulator } from './simulation/portfolio-simulator'
-import type { EVMChainId, Token } from './types'
+import type { EVMChainId } from '@jejunetwork/types'
+import type { Token } from './types'
 
 // ============ CLI Argument Schemas ============
 

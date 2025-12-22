@@ -5,18 +5,15 @@
 import { keccak_256 } from '@noble/hashes/sha3'
 import pRetry from 'p-retry'
 
-// Re-export logger
 export { createLogger, type Logger, type LogLevel } from './logger.js'
-
-// Re-export validation utilities
 export {
   type AWSNitroConfig as ValidationAWSNitroConfig,
   AWSNitroConfigSchema,
   type BatchProofResponse,
   BatchProofResponseSchema,
+  computeMerkleRoot,
   ConsensusSnapshotSchema,
   CrossChainTransferSchema,
-  computeMerkleRoot,
   EthereumUpdateSchema,
   EVMChainConfigSchema,
   type EVMRPCResponse,
@@ -24,9 +21,11 @@ export {
   type GCPConfidentialConfig as ValidationGCPConfidentialConfig,
   GCPConfidentialConfigSchema,
   GCPTokenResponseSchema,
+  getHomeDir,
   type Groth16Data,
   Groth16DataSchema,
-  getHomeDir,
+  hashToHex,
+  hexToHash32,
   HyperCoreClearinghouseResponseSchema,
   HyperCoreL2BookResponseSchema,
   type HyperCoreMarket,
@@ -35,8 +34,6 @@ export {
   HyperCoreOrderResponseSchema,
   type HyperCorePosition,
   HyperCorePositionSchema,
-  hashToHex,
-  hexToHash32,
   JupiterQuoteResponseSchema,
   type NitroDocument,
   NitroDocumentSchema,
@@ -50,9 +47,7 @@ export {
   type PhalaHealthResponse,
   PhalaHealthResponseSchema,
   PhalaVerifyResponseSchema,
-  // Types
   type ProofData,
-  // Schemas
   ProofDataSchema,
   RelayerEnvSchema,
   requireEnv,
@@ -66,7 +61,6 @@ export {
   type SuccinctProveResponse,
   SuccinctProveResponseSchema,
   TransferSubmissionSchema,
-  // Relayer schemas
   ValidatorVoteSchema,
   type WormholeVAAResponse,
   WormholeVAAResponseSchema,

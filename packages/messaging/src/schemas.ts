@@ -147,8 +147,10 @@ export const SendMessageResponseSchema = z.object({
   success: z.boolean(),
   messageId: z.string(),
   timestamp: z.number(),
+  cid: z.string().optional(),
   nodeId: z.string().optional(),
   error: z.string().optional(),
+  delivered: z.boolean().optional(),
 })
 
 /** Send message response */
@@ -197,7 +199,7 @@ export const SyncEventSchema = z.object({
   type: z.enum(['message', 'conversation', 'identity', 'group']),
   id: z.string().min(1),
   timestamp: z.number().int().positive(),
-  data: z.record(z.unknown()), // XMTP envelope/conversation/message data
+  data: z.record(z.string(), z.unknown()), // XMTP envelope/conversation/message data
 })
 
 /** Sync event from peer */

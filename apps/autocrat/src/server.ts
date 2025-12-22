@@ -174,13 +174,3 @@ start()
 
 export { app }
 export type App = typeof app
-
-// Re-export shared state for backwards compatibility
-export {
-  blockchain,
-  config,
-  getOrchestrator,
-  metricsData,
-  runOrchestratorCycle,
-  setOrchestrator,
-} from './shared-state'

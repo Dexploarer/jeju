@@ -1,6 +1,7 @@
 import { defineChain } from 'viem'
 import { createConfig, http } from 'wagmi'
 import { injected } from 'wagmi/connectors'
+import { getCoreAppUrl } from '@jejunetwork/config/ports'
 import { JEJU_RPC_URL, jeju } from './chains'
 import { NETWORK_NAME } from './index'
 
@@ -20,7 +21,7 @@ const localnet = defineChain({
   blockExplorers: {
     default: {
       name: `${NETWORK_NAME} Explorer`,
-      url: 'http://localhost:4004',
+      url: getCoreAppUrl('EXPLORER'),
     },
   },
   testnet: true,

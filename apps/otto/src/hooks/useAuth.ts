@@ -5,7 +5,8 @@
 
 import type { Address, Hex } from 'viem'
 import { verifyMessage } from 'viem'
-import { AuthVerifyRequestSchema, expectValid } from '../schemas'
+import { expectValid } from '@jejunetwork/types'
+import { AuthVerifyRequestSchema } from '../schemas'
 import { getStateManager } from '../services/state'
 import { getWalletService } from '../services/wallet'
 import { validateNonce } from '../utils/validation'

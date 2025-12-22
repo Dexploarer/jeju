@@ -4,7 +4,8 @@
  */
 
 import { z } from 'zod'
-import { CommandResultSchema, expectValid } from '../schemas'
+import { expectValid } from '@jejunetwork/types'
+import { CommandResultSchema } from '../schemas'
 import type { CommandResult } from '../types'
 
 // ============================================================================

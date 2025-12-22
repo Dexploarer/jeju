@@ -2,7 +2,7 @@
 
 /**
  * EIL Hooks for Bazaar
- * Re-exports shared implementation with Bazaar-specific config
+ * Provides Bazaar-specific EIL configuration and hooks
  */
 
 import { AddressSchema } from '@jejunetwork/types'
@@ -16,7 +16,6 @@ import {
 } from 'wagmi'
 import { expect, expectPositive } from '../lib/validation'
 
-// Re-export shared types and utilities
 export {
   APP_TOKEN_PREFERENCE_ABI,
   type AppPreference,
@@ -43,7 +42,6 @@ export {
   type XLPPosition,
 } from '@jejunetwork/deployment/scripts/shared/eil-hooks'
 
-// Import for use
 import {
   APP_TOKEN_PREFERENCE_ABI,
   type AppPreference,

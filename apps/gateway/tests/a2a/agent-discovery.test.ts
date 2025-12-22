@@ -4,8 +4,9 @@
  */
 
 import { describe, expect, test } from 'bun:test'
+import { getCoreAppUrl } from '@jejunetwork/config/ports'
 
-const A2A_BASE_URL = 'http://localhost:4003'
+const A2A_BASE_URL = getCoreAppUrl('NODE_EXPLORER_UI')
 
 describe('A2A Agent Card Discovery', () => {
   test('should serve agent card at well-known endpoint', async () => {

@@ -22,7 +22,8 @@ import {
 import { useState } from 'react'
 import { useAppStore } from '../store'
 import type { ServiceWithStatus } from '../types'
-import { formatDuration, formatEther, formatUsd } from '../utils'
+import { formatDuration, formatUsd } from '@jejunetwork/shared'
+import { formatEther } from '../utils'
 import {
   NonTeeWarningBadge,
   PrivacyWarning,

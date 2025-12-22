@@ -15,6 +15,7 @@ import {
   createPublicClient,
   createWalletClient,
   formatEther,
+  getBalance,
   http,
   type PublicClient,
   parseEther,
@@ -541,7 +542,6 @@ describe('EIL Cross-Chain Validation', () => {
 describe('Balance Change Tracking', () => {
   test('can read balance from provider', async () => {
     // Test that we can read balances
-    const { getBalance } = await import('viem')
     const balance = await getBalance(publicClient, {
       address: user1Account.address,
     })
