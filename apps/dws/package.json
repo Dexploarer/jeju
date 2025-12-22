@@ -19,7 +19,7 @@
     "start": "bun run src/server/index.ts",
     "node": "bun run src/node/index.ts",
     "inference": "bun run src/compute/local-inference-server.ts",
-    "test": "bun test src/tests src/cdn/tests tests/*.test.ts",
+    "test": "NODE_ENV=test bun test src/tests src/cdn/tests tests/*.test.ts",
     "test:integration": "bun test tests/*.test.ts tests/integration",
     "test:unit": "bun test src/tests src/cdn/tests",
     "test:frontend": "cd frontend && bun run test",
