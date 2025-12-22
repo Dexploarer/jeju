@@ -436,7 +436,7 @@ export function createMCPModule(
         messages: MCPPromptMessage[];
       }>(endpoint, "prompts/get", {
         name: promptName,
-        arguments: arguments_,
+        ...(arguments_ && { arguments: arguments_ }),
       });
     },
 

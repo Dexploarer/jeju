@@ -12,7 +12,7 @@ import type {
   Mailbox,
   FolderContents,
   EmailSummary,
-  SearchParams,
+  EmailSearchParams,
   FilterRule,
   EmailEvent,
   EmailEventHandler,
@@ -282,7 +282,7 @@ export class EmailClient {
   /**
    * Search emails
    */
-  async search(params: SearchParams): Promise<{
+  async search(params: EmailSearchParams): Promise<{
     results: EmailSummary[];
     total: number;
     hasMore: boolean;

@@ -238,6 +238,40 @@ export {
   type LoggerConfig,
 } from './logger';
 
+// Formatting Utilities
+export {
+  // Bytes
+  formatBytes,
+  formatBytesBinary,
+  // Duration
+  formatMs,
+  formatDuration,
+  formatDurationVerbose,
+  // Time ago
+  formatTimeAgo,
+  formatTimestamp,
+  // Numbers
+  formatNumber,
+  formatUsd,
+  formatPercent,
+  // Addresses
+  formatAddress,
+  shortenAddress,
+  // ETH
+  formatEth,
+  formatGas,
+  formatGasPrice,
+  // IDs
+  generateId,
+  generatePrefixedId,
+  // CSS
+  classNames,
+  cn,
+  // Utilities
+  delay,
+  chunk,
+} from './format';
+
 // Protocol Servers
 export {
   // Unified Server
