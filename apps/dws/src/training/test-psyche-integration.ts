@@ -13,9 +13,6 @@ import {
   Connection,
   PublicKey,
   Keypair,
-  Transaction,
-  sendAndConfirmTransaction,
-  SystemProgram,
   LAMPORTS_PER_SOL,
 } from '@solana/web3.js';
 import {
@@ -26,7 +23,6 @@ import {
   type Address,
   type Hex,
   keccak256,
-  encodeAbiParameters,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { foundry } from 'viem/chains';
@@ -38,9 +34,12 @@ import { createCrossChainBridge, type BridgeConfig, type RewardDistribution } fr
 // ============================================================================
 
 const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL || 'http://localhost:8899';
-const EVM_RPC_URL = process.env.EVM_RPC_URL || 'http://localhost:8545';
+const EVM_RPC_URL = process.env.EVM_RPC_URL || 'http://localhost:6546';
 const EVM_PRIVATE_KEY = (process.env.EVM_PRIVATE_KEY || '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80') as Hex; // Anvil default
-const MOCK_BRIDGE_ADDRESS = '0x5FbDB2315678afecb367f032d93F642f64180aa3' as Address;
+// Deployed contracts from forge script
+const COORDINATOR_ADDRESS = '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512' as Address;
+const _TOKEN_ADDRESS = '0x5FbDB2315678afecb367f032d93F642f64180aa3' as Address; // Reserved for future use
+const MOCK_BRIDGE_ADDRESS = COORDINATOR_ADDRESS; // Use coordinator as bridge for testing
 
 // Psyche Coordinator Program ID
 const PSYCHE_PROGRAM_ID = new PublicKey('4SHugWqSXwKE5fqDchkJcPEqnoZE22VYKtSTVm7axbT7');
@@ -170,7 +169,7 @@ async function testEvmConnection(): Promise<void> {
 async function testEvmWalletSetup(): Promise<void> {
   const account = privateKeyToAccount(EVM_PRIVATE_KEY);
   
-  const walletClient = createWalletClient({
+  const _walletClient = createWalletClient({
     account,
     chain: foundry,
     transport: http(EVM_RPC_URL),
@@ -295,7 +294,7 @@ async function testMerkleProofGeneration(): Promise<void> {
     { client: '0x4444444444444444444444444444444444444444' as Address, amount: 4000n },
   ];
   
-  const root = bridge.computeRewardsMerkleRoot(rewards);
+  const _root = bridge.computeRewardsMerkleRoot(rewards); // Root stored for verification
   const proof0 = bridge.generateMerkleProof(rewards, 0);
   const proof1 = bridge.generateMerkleProof(rewards, 1);
   
@@ -385,6 +384,135 @@ async function testCoordinatorAccountSize(): Promise<void> {
 }
 
 // ============================================================================
+// EVM Coordinator Tests
+// ============================================================================
+
+async function testEvmCoordinatorDeployed(): Promise<void> {
+  const publicClient = createPublicClient({
+    chain: foundry,
+    transport: http(EVM_RPC_URL),
+  });
+
+  // Check contract exists
+  const code = await publicClient.getBytecode({ address: COORDINATOR_ADDRESS });
+  if (!code || code === '0x') {
+    throw new Error('Coordinator contract not deployed');
+  }
+  console.log(`  Contract code length: ${code.length} bytes`);
+}
+
+async function testEvmCoordinatorNextClientId(): Promise<void> {
+  const publicClient = createPublicClient({
+    chain: foundry,
+    transport: http(EVM_RPC_URL),
+  });
+
+  const result = await publicClient.readContract({
+    address: COORDINATOR_ADDRESS,
+    abi: parseAbi(['function nextClientId() view returns (uint32)']),
+    functionName: 'nextClientId',
+  });
+
+  if (result < 1) {
+    throw new Error('Invalid nextClientId');
+  }
+  console.log(`  Next client ID: ${result}`);
+}
+
+async function testEvmCoordinatorRegisterClient(): Promise<void> {
+  const account = privateKeyToAccount(SECOND_PRIVATE_KEY);
+  
+  const _walletClient = createWalletClient({
+    account,
+    chain: foundry,
+    transport: http(EVM_RPC_URL),
+  });
+
+  const publicClient = createPublicClient({
+    chain: foundry,
+    transport: http(EVM_RPC_URL),
+  });
+
+  // Check if already registered
+  const existingId = await publicClient.readContract({
+    address: COORDINATOR_ADDRESS,
+    abi: parseAbi(['function clientIdByAddress(address) view returns (uint32)']),
+    functionName: 'clientIdByAddress',
+    args: [account.address],
+  });
+
+  if (existingId > 0) {
+    console.log(`  Client already registered: ${account.address} (ID: ${existingId})`);
+    return;
+  }
+
+  // Register new client
+  const hash = await walletClient.writeContract({
+    address: COORDINATOR_ADDRESS,
+    abi: parseAbi(['function registerClient(address evmAddress, bytes32 solanaKey, string gpuType, uint8 gpuCount, uint16 memoryGb) returns (uint32)']),
+    functionName: 'registerClient',
+    args: [
+      account.address,
+      keccak256(Buffer.from('test-solana-key')) as `0x${string}`,
+      'RTX5090',
+      1,
+      16,
+    ],
+  });
+
+  await publicClient.waitForTransactionReceipt({ hash });
+  console.log(`  Client registered: ${account.address}`);
+  console.log(`  Transaction: ${hash.slice(0, 18)}...`);
+}
+
+async function testEvmCoordinatorCreateRun(): Promise<void> {
+  const account = privateKeyToAccount(EVM_PRIVATE_KEY);
+  
+  const _walletClient = createWalletClient({
+    account,
+    chain: foundry,
+    transport: http(EVM_RPC_URL),
+  });
+
+  const publicClient = createPublicClient({
+    chain: foundry,
+    transport: http(EVM_RPC_URL),
+  });
+
+  const runId = keccak256(Buffer.from(`test-run-${Date.now()}`)) as `0x${string}`;
+
+  const hash = await walletClient.writeContract({
+    address: COORDINATOR_ADDRESS,
+    abi: parseAbi([
+      'function createRun(bytes32 runId, string environmentId, string modelCid, uint32 targetEpochs, (uint64 epochLengthMs, uint32 warmupEpochs, uint32 checkpointIntervalEpochs, uint256 learningRate, uint32 batchSize, uint32 gradientAccumulationSteps, uint32 maxSeqLength, uint256 rewardPerStep) config) returns (bytes32)',
+    ]),
+    functionName: 'createRun',
+    args: [
+      runId,
+      'fundamental-prediction',
+      'ipfs://QmTest123',
+      100,
+      {
+        epochLengthMs: 60000n,
+        warmupEpochs: 5,
+        checkpointIntervalEpochs: 10,
+        learningRate: BigInt(1e15),
+        batchSize: 8,
+        gradientAccumulationSteps: 4,
+        maxSeqLength: 2048,
+        rewardPerStep: BigInt(1e18),
+      },
+    ],
+  });
+
+  await publicClient.waitForTransactionReceipt({ hash });
+  console.log(`  Run created: ${runId.slice(0, 18)}...`);
+  console.log(`  Transaction: ${hash.slice(0, 18)}...`);
+}
+
+const SECOND_PRIVATE_KEY = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d' as Hex;
+
+// ============================================================================
 // Main Test Runner
 // ============================================================================
 
@@ -424,6 +552,14 @@ async function runAllTests(): Promise<void> {
   await runTest('Full coordinator state', testFullCoordinatorState);
   await runTest('Bridge run state tracking', testBridgeRunStateTracking);
   await runTest('Coordinator account size', testCoordinatorAccountSize);
+  console.log('');
+
+  // EVM Coordinator Tests
+  console.log('--- EVM Coordinator Tests ---');
+  await runTest('EVM coordinator deployed', testEvmCoordinatorDeployed);
+  await runTest('EVM coordinator nextClientId', testEvmCoordinatorNextClientId);
+  await runTest('EVM coordinator register client', testEvmCoordinatorRegisterClient);
+  await runTest('EVM coordinator create run', testEvmCoordinatorCreateRun);
   console.log('');
 
   // Summary

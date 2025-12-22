@@ -5,6 +5,7 @@
 
 import { createPublicClient, http, formatEther, Address, parseEther, Chain } from 'viem';
 import { baseSepolia } from 'viem/chains';
+import { BAN_MANAGER_ABI, MODERATION_MARKETPLACE_ABI } from '@jejunetwork/types';
 
 // ============ Types ============
 
@@ -281,28 +282,9 @@ function getLabelName(code: number): string {
   return name;
 }
 
-// ============ ABIs ============
+// ABIs imported from @jejunetwork/types
 
-const BAN_MANAGER_ABI = [
-  { name: 'isAddressBanned', type: 'function', stateMutability: 'view', inputs: [{ name: 'target', type: 'address' }], outputs: [{ name: '', type: 'bool' }] },
-  { name: 'isOnNotice', type: 'function', stateMutability: 'view', inputs: [{ name: 'target', type: 'address' }], outputs: [{ name: '', type: 'bool' }] },
-  { name: 'getAddressBan', type: 'function', stateMutability: 'view', inputs: [{ name: 'target', type: 'address' }], outputs: [{ type: 'tuple', components: [{ name: 'isBanned', type: 'bool' }, { name: 'banType', type: 'uint8' }, { name: 'bannedAt', type: 'uint256' }, { name: 'expiresAt', type: 'uint256' }, { name: 'reason', type: 'string' }, { name: 'proposalId', type: 'bytes32' }, { name: 'reporter', type: 'address' }, { name: 'caseId', type: 'bytes32' }] }] },
-] as const;
-
-const MODERATION_MARKETPLACE_ABI = [
-  { name: 'getStake', type: 'function', stateMutability: 'view', inputs: [{ name: 'user', type: 'address' }], outputs: [{ type: 'tuple', components: [{ name: 'amount', type: 'uint256' }, { name: 'stakedAt', type: 'uint256' }, { name: 'stakedBlock', type: 'uint256' }, { name: 'lastActivityBlock', type: 'uint256' }, { name: 'isStaked', type: 'bool' }] }] },
-  { name: 'getModeratorReputation', type: 'function', stateMutability: 'view', inputs: [{ name: 'moderator', type: 'address' }], outputs: [{ type: 'tuple', components: [{ name: 'successfulBans', type: 'uint256' }, { name: 'unsuccessfulBans', type: 'uint256' }, { name: 'totalSlashedFrom', type: 'uint256' }, { name: 'totalSlashedOthers', type: 'uint256' }, { name: 'reputationScore', type: 'uint256' }, { name: 'lastReportTimestamp', type: 'uint256' }, { name: 'reportCooldownUntil', type: 'uint256' }] }] },
-  { name: 'getModeratorPnL', type: 'function', stateMutability: 'view', inputs: [{ name: 'moderator', type: 'address' }], outputs: [{ name: '', type: 'int256' }] },
-  { name: 'getReputationTier', type: 'function', stateMutability: 'view', inputs: [{ name: 'user', type: 'address' }], outputs: [{ name: '', type: 'uint8' }] },
-  { name: 'canReport', type: 'function', stateMutability: 'view', inputs: [{ name: 'user', type: 'address' }], outputs: [{ name: '', type: 'bool' }] },
-  { name: 'getAllCaseIds', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'bytes32[]' }] },
-  { name: 'getCase', type: 'function', stateMutability: 'view', inputs: [{ name: 'caseId', type: 'bytes32' }], outputs: [{ type: 'tuple', components: [{ name: 'caseId', type: 'bytes32' }, { name: 'reporter', type: 'address' }, { name: 'target', type: 'address' }, { name: 'reporterStake', type: 'uint256' }, { name: 'targetStake', type: 'uint256' }, { name: 'reason', type: 'string' }, { name: 'evidenceHash', type: 'bytes32' }, { name: 'status', type: 'uint8' }, { name: 'createdAt', type: 'uint256' }, { name: 'marketOpenUntil', type: 'uint256' }, { name: 'yesVotes', type: 'uint256' }, { name: 'noVotes', type: 'uint256' }, { name: 'totalPot', type: 'uint256' }, { name: 'resolved', type: 'bool' }, { name: 'outcome', type: 'uint8' }, { name: 'appealCount', type: 'uint256' }] }] },
-  { name: 'minReporterStake', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'uint256' }] },
-  { name: 'totalStaked', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'uint256' }] },
-  { name: 'getRequiredStakeForReporter', type: 'function', stateMutability: 'view', inputs: [{ name: 'reporter', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] },
-  { name: 'getQuorumRequired', type: 'function', stateMutability: 'view', inputs: [{ name: 'reporter', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] },
-] as const;
-
+// Additional ABIs not in shared types
 const REPORTING_SYSTEM_ABI = [
   { name: 'getAllReports', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'uint256[]' }] },
   { name: 'getReport', type: 'function', stateMutability: 'view', inputs: [{ name: 'reportId', type: 'uint256' }], outputs: [{ type: 'tuple', components: [{ name: 'reportId', type: 'uint256' }, { name: 'reportType', type: 'uint8' }, { name: 'severity', type: 'uint8' }, { name: 'targetAgentId', type: 'uint256' }, { name: 'sourceAppId', type: 'bytes32' }, { name: 'reporter', type: 'address' }, { name: 'reporterAgentId', type: 'uint256' }, { name: 'evidenceHash', type: 'bytes32' }, { name: 'details', type: 'string' }, { name: 'marketId', type: 'bytes32' }, { name: 'reportBond', type: 'uint256' }, { name: 'createdAt', type: 'uint256' }, { name: 'votingEnds', type: 'uint256' }, { name: 'status', type: 'uint8' }] }] },

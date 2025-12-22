@@ -101,7 +101,7 @@ function getDefaultRpcUrl(): string {
   switch (NETWORK) {
     case 'mainnet': return 'https://rpc.jejunetwork.org';
     case 'testnet': return 'https://testnet-rpc.jejunetwork.org';
-    default: return 'http://localhost:9545';
+    default: return 'http://localhost:6546';
   }
 }
 

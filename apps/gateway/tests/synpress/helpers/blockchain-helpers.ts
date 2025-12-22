@@ -5,7 +5,7 @@
 
 import { Page } from '@playwright/test';
 
-const RPC_URL = 'http://127.0.0.1:9545';
+const RPC_URL = 'http://127.0.0.1:6546';
 
 /** JSON-RPC primitive value */
 type JsonPrimitive = string | number | boolean | null;

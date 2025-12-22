@@ -7,7 +7,7 @@ import type { Page } from "@playwright/test";
  * 
  * Prerequisites:
  *   - Localnet running with deployed contracts
- *   - MetaMask configured with localnet (chainId 1337, rpc http://localhost:9545)
+ *   - MetaMask configured with localnet (chainId 1337, rpc http://localhost:6546)
  */
 
 import { testWithSynpress } from '@synthetixio/synpress'
@@ -17,7 +17,7 @@ import { expect } from '@playwright/test'
 
 const test = testWithSynpress(metaMaskFixtures(basicSetup))
 
-const LOCALNET_RPC = 'http://localhost:9545'
+const LOCALNET_RPC = 'http://localhost:6546'
 const LOCALNET_CHAIN_ID = '1337'
 
 test.describe('Localnet E2E - Token Creation', () => {

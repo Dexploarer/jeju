@@ -87,7 +87,7 @@ Common labels include "verified" for verified identity, "trusted" for high reput
 cd packages/contracts
 
 forge script script/DeployModeration.s.sol \
-  --rpc-url http://127.0.0.1:9545 \
+  --rpc-url http://127.0.0.1:6546 \
   --broadcast
 ```
 

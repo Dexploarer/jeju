@@ -26,14 +26,14 @@ async function checkPrerequisites(): Promise<boolean> {
   console.log(`${COLORS.CYAN}${COLORS.BRIGHT}Checking prerequisites...${COLORS.RESET}\n`)
 
   // Check if localnet is running
-  const response = await fetch('http://localhost:9545', {
+  const response = await fetch('http://localhost:6546', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ jsonrpc: '2.0', method: 'eth_blockNumber', params: [], id: 1 }),
   }).catch(() => null)
   
   if (!response?.ok) {
-    console.error(`${COLORS.RED}❌ Localnet not responding at http://localhost:9545${COLORS.RESET}`)
+    console.error(`${COLORS.RED}❌ Localnet not responding at http://localhost:6546${COLORS.RESET}`)
     console.log('   Run: bun run localnet:start')
     return false
   }

@@ -243,10 +243,12 @@
         "c-kzg": "^4.1.0",
         "croner": "^9.0.0",
         "hono": "4.7.0",
+        "kzg-wasm": "^1.0.0",
         "lru-cache": "11.2.4",
         "opossum": "^9.0.0",
         "p-retry": "^7.1.1",
         "prom-client": "^15.1.3",
+        "tweetnacl": "^1.0.3",
         "viem": "2.43.2",
         "yaml": "^2.8.2",
         "zod": "^4.1.13",
@@ -264,7 +266,9 @@
         "@jejunetwork/kms": "workspace:*",
         "@jejunetwork/oauth3": "workspace:*",
         "@jejunetwork/sdk": "workspace:*",
+        "@jejunetwork/shared": "workspace:*",
         "hono": "4.11.1",
+        "p-retry": "^7.1.1",
         "viem": "2.43.2",
         "zod": "^4.1.13",
       },
@@ -328,6 +332,7 @@
         "@jejunetwork/oauth3": "workspace:*",
         "@jejunetwork/shared": "workspace:*",
         "@jejunetwork/types": "workspace:*",
+        "@jejunetwork/ui": "workspace:*",
         "@rainbow-me/rainbowkit": "2.2.9",
         "@tanstack/react-query": "5.90.12",
         "cors": "2.8.5",
@@ -529,6 +534,7 @@
         "@jejunetwork/contracts": "workspace:*",
         "@jejunetwork/oauth3": "workspace:*",
         "@jejunetwork/sdk": "workspace:*",
+        "@jejunetwork/shared": "workspace:*",
         "@jejunetwork/types": "workspace:*",
         "clsx": "2.1.1",
         "date-fns": "4.1.0",
@@ -995,6 +1001,7 @@
       "name": "@jejunetwork/ui",
       "version": "0.1.0",
       "dependencies": {
+        "@jejunetwork/config": "workspace:*",
         "@jejunetwork/sdk": "workspace:*",
         "@jejunetwork/types": "workspace:*",
         "viem": "2.43.2",
@@ -1008,6 +1015,7 @@
       },
       "peerDependencies": {
         "react": ">=18.0.0",
+        "wagmi": ">=2.0.0",
         "zod": ">=4.0.0",
       },
     },
@@ -9344,6 +9352,8 @@
     "knip": ["knip@5.74.0", "", { "dependencies": { "@nodelib/fs.walk": "^1.2.3", "fast-glob": "^3.3.3", "formatly": "^0.3.0", "jiti": "^2.6.0", "js-yaml": "^4.1.1", "minimist": "^1.2.8", "oxc-resolver": "^11.15.0", "picocolors": "^1.1.1", "picomatch": "^4.0.1", "smol-toml": "^1.5.2", "strip-json-comments": "5.0.3", "zod": "^4.1.11" }, "peerDependencies": { "@types/node": ">=18", "typescript": ">=5.0.4 <7" }, "bin": { "knip": "bin/knip.js", "knip-bun": "bin/knip-bun.js" } }, "sha512-xSG+vn403ONBkQtSBf1+kcE8ulzyQHLWIDQAxvu3W7HnM0jZJqVUPlK5w6FZNUyKnp+4FInsYQW77eapDpmcNA=="],
 
     "kysely": ["kysely@0.26.3", "", {}, "sha512-yWSgGi9bY13b/W06DD2OCDDHQmq1kwTGYlQ4wpZkMOJqMGCstVCFIvxCCVG4KfY1/3G0MhDAcZsip/Lw8/vJWw=="],
+
+    "kzg-wasm": ["kzg-wasm@1.0.0", "", {}, "sha512-jMvFK5uiV41BgcLrCaHbNeDeQeZdoTcqOYm7yS1Xdvl4MAykjou+SLlnt+P1bWz5C0YWHOmgUUjIpCuU83zNTA=="],
 
     "langchain": ["langchain@0.3.6", "", { "dependencies": { "@langchain/openai": ">=0.1.0 <0.4.0", "@langchain/textsplitters": ">=0.0.0 <0.2.0", "js-tiktoken": "^1.0.12", "js-yaml": "^4.1.0", "jsonpointer": "^5.0.1", "langsmith": "^0.2.0", "openapi-types": "^12.1.3", "p-retry": "4", "uuid": "^10.0.0", "yaml": "^2.2.1", "zod": "^3.22.4", "zod-to-json-schema": "^3.22.3" }, "peerDependencies": { "@langchain/anthropic": "*", "@langchain/aws": "*", "@langchain/cohere": "*", "@langchain/core": ">=0.2.21 <0.4.0", "@langchain/google-genai": "*", "@langchain/google-vertexai": "*", "@langchain/groq": "*", "@langchain/mistralai": "*", "@langchain/ollama": "*", "axios": "*", "cheerio": "*", "handlebars": "^4.7.8", "peggy": "^3.0.2", "typeorm": "*" }, "optionalPeers": ["@langchain/anthropic", "@langchain/aws", "@langchain/cohere", "@langchain/google-genai", "@langchain/google-vertexai", "@langchain/groq", "@langchain/mistralai", "@langchain/ollama", "axios", "cheerio", "handlebars", "peggy", "typeorm"] }, "sha512-erZOIKXzwCOrQHqY9AyjkQmaX62zUap1Sigw1KrwMUOnVoLKkVNRmAyxFlNZDZ9jLs/58MaQcaT9ReJtbj3x6w=="],
 

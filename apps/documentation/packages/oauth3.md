@@ -164,7 +164,7 @@ docker compose -f docker/dstack.compose.yaml --profile local up
 
 ```bash
 CHAIN_ID=420690
-JEJU_RPC_URL=http://localhost:9545
+JEJU_RPC_URL=http://localhost:6546
 OAUTH3_PORT=4200
 TEE_MODE=simulated  # dstack | phala | simulated
 

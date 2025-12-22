@@ -80,7 +80,10 @@ export { ReedSolomonCodec, createReedSolomonCodec } from './erasure';
 
 // Polynomial commitments
 export { 
-  createCommitment, 
+  createCommitment,
+  createCommitmentSync,
+  initializeCommitmentSystem,
+  isCommitmentSystemInitialized,
   verifyProof,
   computeBlobId,
   type PolynomialCommitment,

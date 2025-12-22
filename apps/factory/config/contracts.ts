@@ -26,7 +26,8 @@ const LOCALNET_ADDRESSES: ContractAddresses = {
   workAgreementRegistry: '0xa513E6E4b8f2a923D98304ec87F64353C4D5C853',
 };
 
-// Testnet addresses (Base Sepolia)
+// Testnet addresses (Jeju Testnet)
+// NOTE: Jeju testnet has its own chain ID, not Base Sepolia
 const TESTNET_ADDRESSES: ContractAddresses = {
   contributorRegistry: (process.env.NEXT_PUBLIC_CONTRIBUTOR_REGISTRY || '0x0000000000000000000000000000000000000000') as Address,
   paymentRequestRegistry: (process.env.NEXT_PUBLIC_PAYMENT_REQUEST_REGISTRY || '0x0000000000000000000000000000000000000000') as Address,
@@ -36,7 +37,7 @@ const TESTNET_ADDRESSES: ContractAddresses = {
   workAgreementRegistry: (process.env.NEXT_PUBLIC_WORK_AGREEMENT_REGISTRY || '0x0000000000000000000000000000000000000000') as Address,
 };
 
-// Mainnet addresses (Base)
+// Mainnet addresses (Jeju Mainnet)
 const MAINNET_ADDRESSES: ContractAddresses = {
   contributorRegistry: (process.env.NEXT_PUBLIC_CONTRIBUTOR_REGISTRY || '0x0000000000000000000000000000000000000000') as Address,
   paymentRequestRegistry: (process.env.NEXT_PUBLIC_PAYMENT_REQUEST_REGISTRY || '0x0000000000000000000000000000000000000000') as Address,
@@ -46,24 +47,29 @@ const MAINNET_ADDRESSES: ContractAddresses = {
   workAgreementRegistry: (process.env.NEXT_PUBLIC_WORK_AGREEMENT_REGISTRY || '0x0000000000000000000000000000000000000000') as Address,
 };
 
+// Jeju chain IDs - these should be defined in network config
+const JEJU_TESTNET_CHAIN_ID = Number(process.env.NEXT_PUBLIC_JEJU_TESTNET_CHAIN_ID || 9999); // Placeholder
+const JEJU_MAINNET_CHAIN_ID = Number(process.env.NEXT_PUBLIC_JEJU_MAINNET_CHAIN_ID || 10000); // Placeholder
+
 export function getContractAddresses(): ContractAddresses {
   const chainId = parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || '31337', 10);
   
   switch (chainId) {
-    case 31337: // Localnet
+    case 31337: // Localnet (Anvil)
     case 1337:
       return LOCALNET_ADDRESSES;
-    case 84532: // Base Sepolia
+    case JEJU_TESTNET_CHAIN_ID:
       return TESTNET_ADDRESSES;
-    case 8453: // Base
+    case JEJU_MAINNET_CHAIN_ID:
       return MAINNET_ADDRESSES;
     default:
-      return LOCALNET_ADDRESSES;
+      // For any unknown chain, use env vars or defaults
+      return TESTNET_ADDRESSES;
   }
 }
 
 export function getRpcUrl(): string {
-  return process.env.NEXT_PUBLIC_RPC_URL || 'http://127.0.0.1:8545';
+  return process.env.NEXT_PUBLIC_RPC_URL || 'http://127.0.0.1:6546';
 }
 
 export function getDwsUrl(): string {

@@ -41,8 +41,8 @@ const DEFAULT_CONFIG: OrchestratorConfig = {
 };
 
 const SERVICE_PORTS: Record<string, { port: number; healthPath: string }> = {
-  'geth-l1': { port: 8545, healthPath: '/' },
-  'op-geth': { port: 9545, healthPath: '/' },
+  'geth-l1': { port: 6545, healthPath: '/' },
+  'op-geth': { port: 6546, healthPath: '/' },
   'postgres': { port: 5432, healthPath: '' },
   'redis': { port: 6379, healthPath: '' },
   'ipfs': { port: 5001, healthPath: '/api/v0/id' },

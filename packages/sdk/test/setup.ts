@@ -19,8 +19,8 @@ const TEST_LOCK_FILE = "/tmp/jeju-test-services.lock";
 const STARTUP_TIMEOUT = 60000;
 const DEPLOYER_KEY: Hex = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
 
-// Service URLs - L2 defaults to 9545 to match localnet.json config
-export const TEST_RPC_URL = process.env.TEST_RPC_URL || "http://127.0.0.1:9545";
+// Service URLs - L2 defaults to 6546 to match localnet.json config
+export const TEST_RPC_URL = process.env.TEST_RPC_URL || "http://127.0.0.1:6546";
 export const TEST_L1_RPC_URL = process.env.TEST_L1_RPC_URL || "http://127.0.0.1:6545";
 export const TEST_STORAGE_URL = process.env.TEST_STORAGE_URL || "http://127.0.0.1:4010";
 export const TEST_COMPUTE_URL = process.env.TEST_COMPUTE_URL || "http://127.0.0.1:4007";
@@ -136,14 +136,14 @@ function releaseLock(): void {
  */
 async function startLocalnet(): Promise<void> {
   const root = findRoot();
-  console.log("Starting Anvil localnet on port 9545...");
+  console.log("Starting Anvil localnet on port 6546...");
   
   // Add common foundry paths to PATH
   const homeDir = process.env.HOME || "/home/" + process.env.USER;
   const foundryBin = join(homeDir, ".foundry/bin");
   const path = `${foundryBin}:${process.env.PATH}`;
   
-  // Start L2 Anvil on port 9545 (matches localnet.json config)
+  // Start L2 Anvil on port 6546 (matches localnet.json config)
   const proc = execa("anvil", [
     "--port", "9545",
     "--chain-id", "1337",

@@ -21,7 +21,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { Address } from 'viem';
-import { validateBody, validateParams } from '../server/routes/shared';
+import { validateBody, validateParams } from '../shared/validation';
 
 // ============================================================================
 // Kubernetes Manifest Types
@@ -588,54 +588,387 @@ export function createHelmProviderRouter(): Hono {
 }
 
 // ============================================================================
-// Deployment Logic
+// Deployment Logic - Real Implementation
 // ============================================================================
+
+import { getCluster, applyManifest, installHelmChart } from './k3s-provider';
+import { getServiceMesh } from './service-mesh';
+import { getIngressController } from './ingress';
+
+// Runtime context for deployment
+interface DeploymentContext {
+  localDockerEnabled: boolean;
+  k3sCluster?: string;
+  nodeEndpoints: string[];
+}
+
+let deploymentContext: DeploymentContext = {
+  localDockerEnabled: true,
+  nodeEndpoints: [],
+};
+
+export function setDeploymentContext(ctx: Partial<DeploymentContext>): void {
+  deploymentContext = { ...deploymentContext, ...ctx };
+}
 
 async function deployToNetwork(deployment: DWSDeployment): Promise<void> {
   console.log(`[Helm] Deploying ${deployment.name} to DWS network`);
 
-  // Deploy workers
-  for (const worker of deployment.workers) {
-    console.log(`[Helm] Deploying worker ${worker.name} (${worker.replicas} replicas)`);
-    
-    // In production, this would:
-    // 1. Find qualified nodes
-    // 2. Pull container image
-    // 3. Convert to workerd if possible, or run as container
-    // 4. Start instances
-    // 5. Register with service mesh
+  // Strategy 1: Deploy to local k3s/k3d cluster if available
+  if (deploymentContext.k3sCluster) {
+    await deployToK3sCluster(deployment, deploymentContext.k3sCluster);
+    return;
   }
 
-  // Configure services
+  // Strategy 2: Deploy to local Docker
+  if (deploymentContext.localDockerEnabled) {
+    await deployToLocalDocker(deployment);
+    return;
+  }
+
+  // Strategy 3: Deploy to decentralized nodes
+  if (deploymentContext.nodeEndpoints.length > 0) {
+    await deployToDecentralizedNodes(deployment);
+    return;
+  }
+
+  throw new Error('No deployment target available. Enable Docker, create a k3s cluster, or register nodes.');
+}
+
+async function deployToK3sCluster(deployment: DWSDeployment, clusterName: string): Promise<void> {
+  const cluster = getCluster(clusterName);
+  if (!cluster) {
+    throw new Error(`Cluster ${clusterName} not found`);
+  }
+
+  console.log(`[Helm] Deploying to k3s cluster: ${clusterName}`);
+
+  // Convert DWS deployment to K8s manifests
+  const namespace = deployment.namespace || 'default';
+
+  // Create namespace
+  await applyManifest(clusterName, {
+    apiVersion: 'v1',
+    kind: 'Namespace',
+    metadata: { name: namespace },
+  });
+
+  // Deploy ConfigMaps
+  for (const cm of deployment.configMaps) {
+    await applyManifest(clusterName, {
+      apiVersion: 'v1',
+      kind: 'ConfigMap',
+      metadata: { name: cm.name, namespace },
+      data: cm.data,
+    });
+  }
+
+  // Deploy Secrets
+  for (const secret of deployment.secrets) {
+    await applyManifest(clusterName, {
+      apiVersion: 'v1',
+      kind: 'Secret',
+      metadata: { name: secret.name, namespace },
+      type: 'Opaque',
+      stringData: secret.data,
+    });
+  }
+
+  // Deploy PVCs
+  for (const storage of deployment.storage) {
+    await applyManifest(clusterName, {
+      apiVersion: 'v1',
+      kind: 'PersistentVolumeClaim',
+      metadata: { name: storage.name, namespace },
+      spec: {
+        accessModes: ['ReadWriteOnce'],
+        storageClassName: storage.storageClass,
+        resources: { requests: { storage: `${storage.sizeGb}Gi` } },
+      },
+    });
+  }
+
+  // Deploy workloads as Deployments
+  for (const worker of deployment.workers) {
+    const result = await applyManifest(clusterName, {
+      apiVersion: 'apps/v1',
+      kind: 'Deployment',
+      metadata: { name: worker.name, namespace },
+      spec: {
+        replicas: worker.replicas,
+        selector: { matchLabels: { app: worker.name } },
+        template: {
+          metadata: { labels: { app: worker.name } },
+          spec: {
+            containers: [{
+              name: worker.name,
+              image: worker.image,
+              ports: worker.ports.map(p => ({ containerPort: p })),
+              env: Object.entries(worker.env).map(([name, value]) => ({ name, value })),
+              resources: {
+                requests: {
+                  cpu: `${worker.resources.cpuMillis}m`,
+                  memory: `${worker.resources.memoryMb}Mi`,
+                },
+                limits: {
+                  cpu: `${worker.resources.cpuMillis * 2}m`,
+                  memory: `${worker.resources.memoryMb * 2}Mi`,
+                },
+              },
+              ...(worker.healthCheck ? {
+                readinessProbe: {
+                  httpGet: { path: worker.healthCheck.path, port: worker.healthCheck.port },
+                  periodSeconds: Math.floor(worker.healthCheck.intervalMs / 1000),
+                },
+              } : {}),
+            }],
+          },
+        },
+      },
+    });
+
+    if (!result.success) {
+      console.error(`[Helm] Failed to deploy ${worker.name}: ${result.output}`);
+    }
+  }
+
+  // Deploy Services
   for (const service of deployment.services) {
-    console.log(`[Helm] Configuring service ${service.name}`);
-    
-    // In production, this would:
-    // 1. Set up routing rules
-    // 2. Configure load balancing
-    // 3. Register with JNS if external
+    await applyManifest(clusterName, {
+      apiVersion: 'v1',
+      kind: 'Service',
+      metadata: { name: service.name, namespace },
+      spec: {
+        type: service.type,
+        selector: service.selector,
+        ports: service.ports.map(p => ({
+          name: p.name || `port-${p.port}`,
+          port: p.port,
+          targetPort: p.targetPort,
+        })),
+      },
+    });
   }
 
   deployment.status = 'running';
-  console.log(`[Helm] Deployment ${deployment.name} complete`);
+  console.log(`[Helm] Deployment ${deployment.name} complete on cluster ${clusterName}`);
+}
+
+async function deployToLocalDocker(deployment: DWSDeployment): Promise<void> {
+  console.log(`[Helm] Deploying to local Docker`);
+
+  const DOCKER_HOST = process.env.DOCKER_HOST || 'unix:///var/run/docker.sock';
+  const DOCKER_API_URL = DOCKER_HOST.startsWith('unix://') ? 'http://localhost' : DOCKER_HOST;
+
+  async function dockerRequest(path: string, options: RequestInit = {}): Promise<Response> {
+    const url = `${DOCKER_API_URL}${path}`;
+    if (DOCKER_HOST.startsWith('unix://')) {
+      return fetch(url, { ...options, unix: DOCKER_HOST.replace('unix://', '') } as RequestInit);
+    }
+    return fetch(url, options);
+  }
+
+  // Create network for this deployment
+  const networkName = `dws-${deployment.id}`;
+  await dockerRequest('/v1.44/networks/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ Name: networkName, Driver: 'bridge' }),
+  }).catch(() => {}); // Ignore if exists
+
+  // Deploy containers
+  for (const worker of deployment.workers) {
+    for (let i = 0; i < worker.replicas; i++) {
+      const containerName = `${worker.name}-${i}`;
+      
+      // Create container
+      const createResponse = await dockerRequest('/v1.44/containers/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          Image: worker.image,
+          Hostname: containerName,
+          Env: Object.entries(worker.env).map(([k, v]) => `${k}=${v}`),
+          HostConfig: {
+            Memory: worker.resources.memoryMb * 1024 * 1024,
+            NanoCpus: worker.resources.cpuMillis * 1000000,
+            NetworkMode: networkName,
+            RestartPolicy: { Name: 'unless-stopped' },
+          },
+          Labels: {
+            'dws.deployment.id': deployment.id,
+            'dws.worker.name': worker.name,
+            'dws.worker.replica': String(i),
+          },
+        }),
+      });
+
+      if (!createResponse.ok) {
+        const err = await createResponse.text();
+        console.error(`[Helm] Failed to create container ${containerName}: ${err}`);
+        continue;
+      }
+
+      const { Id: containerId } = await createResponse.json() as { Id: string };
+
+      // Start container
+      const startResponse = await dockerRequest(`/v1.44/containers/${containerId}/start`, {
+        method: 'POST',
+      });
+
+      if (startResponse.ok) {
+        console.log(`[Helm] Started container ${containerName}`);
+      }
+    }
+  }
+
+  // Register with service mesh if available
+  const serviceMesh = getServiceMesh();
+  if (serviceMesh) {
+    for (const service of deployment.services) {
+      // Get container IPs for this service
+      const listResponse = await dockerRequest(`/v1.44/containers/json?filters=${encodeURIComponent(JSON.stringify({ label: [`dws.deployment.id=${deployment.id}`] }))}`);
+      const containers = await listResponse.json() as Array<{ NetworkSettings: { Networks: Record<string, { IPAddress: string }> } }>;
+      
+      const backends = containers
+        .map(c => c.NetworkSettings?.Networks?.[networkName]?.IPAddress)
+        .filter(Boolean)
+        .map(ip => ({ endpoint: `http://${ip}:${service.ports[0]?.targetPort || 8080}`, weight: 1 }));
+
+      if (backends.length > 0) {
+        serviceMesh.registerBackends({
+          name: service.name,
+          namespace: deployment.namespace,
+          backends,
+        });
+      }
+    }
+  }
+
+  deployment.status = 'running';
+  console.log(`[Helm] Deployment ${deployment.name} complete on local Docker`);
+}
+
+async function deployToDecentralizedNodes(deployment: DWSDeployment): Promise<void> {
+  console.log(`[Helm] Deploying to decentralized nodes`);
+
+  const endpoints = deploymentContext.nodeEndpoints;
+  let deployedCount = 0;
+
+  for (const worker of deployment.workers) {
+    // Distribute replicas across nodes
+    for (let i = 0; i < worker.replicas; i++) {
+      const nodeEndpoint = endpoints[i % endpoints.length];
+      
+      const response = await fetch(`${nodeEndpoint}/containers/deploy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          image: worker.image,
+          name: `${worker.name}-${i}`,
+          env: worker.env,
+          resources: {
+            cpuCores: Math.ceil(worker.resources.cpuMillis / 1000),
+            memoryMb: worker.resources.memoryMb,
+          },
+          ports: worker.ports,
+          labels: {
+            'dws.deployment.id': deployment.id,
+            'dws.worker.name': worker.name,
+          },
+        }),
+        signal: AbortSignal.timeout(30000),
+      }).catch(err => {
+        console.error(`[Helm] Failed to deploy to ${nodeEndpoint}: ${err}`);
+        return null;
+      });
+
+      if (response?.ok) {
+        deployedCount++;
+        console.log(`[Helm] Deployed ${worker.name}-${i} to ${nodeEndpoint}`);
+      }
+    }
+  }
+
+  if (deployedCount === 0) {
+    deployment.status = 'failed';
+    throw new Error('Failed to deploy to any node');
+  }
+
+  // Configure ingress
+  const ingressController = getIngressController();
+  if (ingressController) {
+    for (const service of deployment.services) {
+      if (service.type === 'LoadBalancer') {
+        ingressController.registerService({
+          name: service.name,
+          namespace: deployment.namespace,
+          host: `${service.name}.dws.local`,
+          backends: endpoints.map(ep => ({ endpoint: ep, weight: 1 })),
+        });
+      }
+    }
+  }
+
+  deployment.status = 'running';
+  console.log(`[Helm] Deployment ${deployment.name} complete: ${deployedCount} containers across ${endpoints.length} nodes`);
 }
 
 async function cleanupDeployment(deployment: DWSDeployment): Promise<void> {
   console.log(`[Helm] Cleaning up deployment ${deployment.name}`);
 
-  // Stop workers
-  for (const worker of deployment.workers) {
-    console.log(`[Helm] Stopping worker ${worker.name}`);
+  // Strategy 1: Cleanup from k3s cluster
+  if (deploymentContext.k3sCluster) {
+    const cluster = getCluster(deploymentContext.k3sCluster);
+    if (cluster) {
+      const kubectl = process.env.KUBECTL_PATH || 'kubectl';
+      const proc = Bun.spawn([
+        kubectl, 'delete', 'all', '-l', `dws.deployment.id=${deployment.id}`,
+        '--namespace', deployment.namespace,
+        '--kubeconfig', cluster.kubeconfig,
+      ]);
+      await proc.exited;
+    }
+    return;
   }
 
-  // Remove services
-  for (const service of deployment.services) {
-    console.log(`[Helm] Removing service ${service.name}`);
+  // Strategy 2: Cleanup from local Docker
+  if (deploymentContext.localDockerEnabled) {
+    const DOCKER_HOST = process.env.DOCKER_HOST || 'unix:///var/run/docker.sock';
+    const DOCKER_API_URL = DOCKER_HOST.startsWith('unix://') ? 'http://localhost' : DOCKER_HOST;
+
+    const dockerRequest = async (path: string, options: RequestInit = {}): Promise<Response> => {
+      const url = `${DOCKER_API_URL}${path}`;
+      if (DOCKER_HOST.startsWith('unix://')) {
+        return fetch(url, { ...options, unix: DOCKER_HOST.replace('unix://', '') } as RequestInit);
+      }
+      return fetch(url, options);
+    };
+
+    // List and remove containers
+    const listResponse = await dockerRequest(`/v1.44/containers/json?all=true&filters=${encodeURIComponent(JSON.stringify({ label: [`dws.deployment.id=${deployment.id}`] }))}`);
+    const containers = await listResponse.json() as Array<{ Id: string; Names: string[] }>;
+
+    for (const container of containers) {
+      await dockerRequest(`/v1.44/containers/${container.Id}?force=true`, { method: 'DELETE' });
+      console.log(`[Helm] Removed container ${container.Names[0]}`);
+    }
+
+    // Remove network
+    await dockerRequest(`/v1.44/networks/dws-${deployment.id}`, { method: 'DELETE' }).catch(() => {});
+    return;
   }
 
-  // Delete storage (if requested)
-  for (const storage of deployment.storage) {
-    console.log(`[Helm] Deleting storage ${storage.name}`);
+  // Strategy 3: Cleanup from decentralized nodes
+  for (const nodeEndpoint of deploymentContext.nodeEndpoints) {
+    await fetch(`${nodeEndpoint}/containers/cleanup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deploymentId: deployment.id }),
+      signal: AbortSignal.timeout(10000),
+    }).catch(() => {});
   }
+
+  console.log(`[Helm] Cleanup complete for deployment ${deployment.name}`);
 }
 

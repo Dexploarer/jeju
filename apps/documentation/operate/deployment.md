@@ -26,8 +26,8 @@ bun run dev
 
 | Service | Port | Auto-start |
 |---------|------|------------|
-| L2 RPC | 9545 | ✅ |
-| L1 RPC | 8545 | ✅ |
+| L2 RPC | 6546 | ✅ |
+| L1 RPC | 6545 | ✅ |
 | Gateway | 4001 | ✅ |
 | Bazaar | 4006 | ✅ |
 | Indexer | 4350 | ❌ |

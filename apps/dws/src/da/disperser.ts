@@ -111,8 +111,8 @@ export class Disperser {
    * Disperse a blob to operators
    */
   async disperse(request: BlobSubmissionRequest): Promise<DispersalResult> {
-    // Prepare blob
-    const { blob, chunks, commitment, metadata } = this.blobManager.submit(request);
+    // Prepare blob (now async for KZG commitment)
+    const { blob, chunks, commitment, metadata } = await this.blobManager.submit(request);
     
     // Update status
     this.blobManager.updateStatus(blob.id, 'dispersing');

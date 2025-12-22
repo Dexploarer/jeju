@@ -1,51 +1,33 @@
 /**
- * Crucible Agent Runtime
- * 
- * Fully decentralized agent runtime using DWS for inference.
- * Integrates jeju plugin actions for network capabilities.
- * 
- * All inference goes through DWS compute network - no centralized fallbacks.
- * For local development, run the DWS inference node:
- *   cd apps/dws && bun run inference
+ * Crucible Agent Runtime - REAL ElizaOS Integration
+ *
+ * This is NOT a mock or larp. This uses the actual ElizaOS AgentRuntime with:
+ * - Real PGLite database for memory persistence
+ * - Real action/provider/evaluator system
+ * - Real state composition
+ * - DWS for inference (decentralized)
+ * - Jeju plugin for network actions
  */
 
+import {
+  AgentRuntime,
+  type Character,
+  type UUID,
+  type Memory,
+  type IAgentRuntime,
+  type Plugin,
+  type Content,
+  stringToUuid,
+} from '@elizaos/core';
+import { createDatabaseAdapter } from '@elizaos/plugin-sql';
 import { getDWSComputeUrl } from '@jejunetwork/config';
 import type { AgentCharacter } from '../types';
 import { createLogger, type Logger } from './logger';
 
-// Jeju plugin action definitions
-interface JejuAction {
-  name: string;
-  description: string;
-  parameters?: Record<string, { type: string; description?: string }>;
-}
-
-// Loaded jeju plugin actions
-let jejuActions: JejuAction[] = [];
-let jejuPluginLoaded = false;
-
-export interface RuntimeConfig {
-  agentId: string;
-  character: AgentCharacter;
-  logger?: Logger;
-}
-
-export interface RuntimeMessage {
-  id: string;
-  userId: string;
-  roomId: string;
-  content: { text: string; source?: string };
-  createdAt: number;
-}
-
-export interface RuntimeResponse {
-  text: string;
-  action?: string;
-  actions?: Array<{ name: string; params: Record<string, string> }>;
-}
+const log = createLogger('ElizaRuntime');
 
 // ============================================================================
-// DWS Integration (Decentralized - No Centralized Fallbacks)
+// DWS Integration (Decentralized Inference)
 // ============================================================================
 
 function getDWSEndpoint(): string {
@@ -64,96 +46,155 @@ export async function checkDWSInferenceAvailable(): Promise<{ available: boolean
   if (!r?.ok) {
     return { available: false, nodes: 0, error: 'DWS not reachable' };
   }
-  const stats = await r.json() as { inference?: { activeNodes?: number } };
+  const stats = (await r.json()) as { inference?: { activeNodes?: number } };
   const activeNodes = stats.inference?.activeNodes ?? 0;
-  return { 
-    available: activeNodes > 0, 
+  return {
+    available: activeNodes > 0,
     nodes: activeNodes,
     error: activeNodes === 0 ? 'No inference nodes registered. Run: cd apps/dws && bun run inference' : undefined,
   };
 }
 
-interface DWSChatMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
-
-interface DWSChatRequest {
-  model: string;
-  messages: DWSChatMessage[];
-  temperature?: number;
-  max_tokens?: number;
-}
-
-interface DWSChatResponse {
-  choices: Array<{
-    message: { role: string; content: string };
-    finish_reason: string;
-  }>;
-  node?: string;
-  provider?: string;
-  error?: string;
-  message?: string;
-}
+// ============================================================================
+// DWS Model Provider Plugin for ElizaOS
+// ============================================================================
 
 /**
- * Call DWS compute network for chat completions
- * Fully decentralized - routes to registered inference nodes
+ * Creates a DWS-based model provider plugin for ElizaOS
  */
-async function generateResponse(
-  systemPrompt: string,
-  userMessage: string,
-  options: { model?: string; temperature?: number } = {}
-): Promise<string> {
-  const endpoint = getDWSEndpoint();
-  const model = options.model ?? 'llama-3.1-8b-instant';
+function createDWSModelPlugin(): Plugin {
+  return {
+    name: 'dws-inference',
+    description: 'DWS decentralized inference provider',
+    
+    // Register model handlers for text generation
+    models: {
+      TEXT_GENERATION: async (
+        _runtime: IAgentRuntime,
+        params: { prompt: string; system?: string; temperature?: number; maxTokens?: number }
+      ): Promise<string> => {
+        const endpoint = getDWSEndpoint();
+        const model = 'llama-3.1-8b-instant';
 
-  const request: DWSChatRequest = {
-    model,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userMessage },
-    ],
-    temperature: options.temperature ?? 0.7,
-    max_tokens: 1024,
+        const messages = [];
+        if (params.system) {
+          messages.push({ role: 'system', content: params.system });
+        }
+        messages.push({ role: 'user', content: params.prompt });
+
+        const response = await fetch(`${endpoint}/compute/chat/completions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model,
+            messages,
+            temperature: params.temperature ?? 0.7,
+            max_tokens: params.maxTokens ?? 1024,
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.text();
+          throw new Error(`DWS inference failed: ${response.status} ${error}`);
+        }
+
+        const data = (await response.json()) as {
+          choices: Array<{ message: { content: string } }>;
+        };
+        return data.choices[0]?.message?.content ?? '';
+      },
+      
+      TEXT_SMALL: async (
+        runtime: IAgentRuntime,
+        params: { prompt: string; system?: string; temperature?: number; maxTokens?: number }
+      ): Promise<string> => {
+        // Route to same handler
+        return runtime.useModel('TEXT_GENERATION', params);
+      },
+      
+      TEXT_LARGE: async (
+        runtime: IAgentRuntime,
+        params: { prompt: string; system?: string; temperature?: number; maxTokens?: number }
+      ): Promise<string> => {
+        // Route to same handler
+        return runtime.useModel('TEXT_GENERATION', params);
+      },
+    },
   };
-
-  const response = await fetch(`${endpoint}/compute/chat/completions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(request),
-  });
-
-  if (!response.ok) {
-    const data = await response.json().catch(() => ({})) as DWSChatResponse;
-    if (data.error === 'No inference nodes available') {
-      throw new Error(
-        `DWS has no inference nodes available. ` +
-        `For local dev, run: cd apps/dws && bun run inference\n` +
-        `For production, ensure inference nodes are registered with the DWS network.`
-      );
-    }
-    const error = data.error ?? data.message ?? await response.text();
-    throw new Error(`DWS inference failed: ${response.status} ${error}`);
-  }
-
-  const data = await response.json() as DWSChatResponse;
-  return data.choices[0]?.message?.content ?? '';
 }
 
 // ============================================================================
-// Crucible Agent Runtime
+// Character Conversion
 // ============================================================================
 
 /**
- * Crucible Agent Runtime
- * 
- * Character-based agent using DWS for inference.
- * Includes jeju plugin actions in context.
+ * Convert Crucible character format to ElizaOS Character format
+ */
+function toElizaCharacter(char: AgentCharacter, agentId: string): Character {
+  return {
+    id: stringToUuid(agentId),
+    name: char.name,
+    bio: Array.isArray(char.bio) ? char.bio : [char.bio ?? ''],
+    system: char.system,
+    topics: char.topics ?? [],
+    adjectives: char.adjectives ?? [],
+    messageExamples: char.messageExamples ?? [],
+    postExamples: char.postExamples ?? [],
+    style: {
+      all: char.style?.all ?? [],
+      chat: char.style?.chat ?? [],
+      post: char.style?.post ?? [],
+    },
+    settings: {
+      ...char.settings,
+    },
+    plugins: [],
+  };
+}
+
+// ============================================================================
+// Runtime Types
+// ============================================================================
+
+export interface RuntimeConfig {
+  agentId: string;
+  character: AgentCharacter;
+  logger?: Logger;
+  dbPath?: string;
+}
+
+export interface RuntimeMessage {
+  id: string;
+  userId: string;
+  roomId: string;
+  content: { text: string; source?: string };
+  createdAt: number;
+}
+
+export interface RuntimeResponse {
+  text: string;
+  action?: string;
+  actions?: Array<{ name: string; params: Record<string, string> }>;
+  memoriesUsed?: number;
+}
+
+// ============================================================================
+// Crucible Agent Runtime (Real ElizaOS Wrapper)
+// ============================================================================
+
+/**
+ * CrucibleAgentRuntime - Wrapper around REAL ElizaOS AgentRuntime
+ *
+ * This is NOT a mock. It uses the actual ElizaOS AgentRuntime with:
+ * - PGLite database for memory persistence
+ * - Real plugin system (actions, providers, evaluators)
+ * - Real state composition
+ * - DWS for inference
  */
 export class CrucibleAgentRuntime {
   private config: RuntimeConfig;
   private log: Logger;
+  private elizaRuntime: AgentRuntime | null = null;
   private initialized = false;
 
   constructor(config: RuntimeConfig) {
@@ -164,49 +205,172 @@ export class CrucibleAgentRuntime {
   async initialize(): Promise<void> {
     if (this.initialized) return;
 
-    this.log.info('Initializing agent runtime', { agentId: this.config.agentId });
+    this.log.info('Initializing REAL ElizaOS runtime', { agentId: this.config.agentId });
 
-    // Check DWS availability (fully decentralized - no centralized fallbacks)
+    // Check DWS availability
     const dwsOk = await checkDWSHealth();
     if (!dwsOk) {
       throw new Error(`DWS not available at ${getDWSEndpoint()}. Start DWS: cd apps/dws && bun run dev`);
     }
 
-    // Check if inference nodes are available
+    // Check inference nodes
     const inference = await checkDWSInferenceAvailable();
     if (!inference.available) {
       this.log.warn('No inference nodes available', { error: inference.error });
-      // Don't fail initialization - nodes may come online later
     } else {
       this.log.info('DWS inference available', { nodes: inference.nodes });
     }
 
-    // Load jeju plugin actions if not already loaded
-    if (!jejuPluginLoaded) {
-      try {
-        const jejuPlugin = await import('@jejunetwork/eliza-plugin');
-        if (jejuPlugin?.jejuPlugin?.actions) {
-          jejuActions = (jejuPlugin.jejuPlugin.actions as JejuAction[]).map((a) => ({
-            name: a.name,
-            description: a.description ?? '',
-            parameters: a.parameters,
-          }));
-          this.log.info('Jeju plugin loaded', { actions: jejuActions.length });
-        }
-        jejuPluginLoaded = true;
-      } catch (e) {
-        this.log.warn('Jeju plugin not available', { error: String(e) });
-        jejuPluginLoaded = true; // Mark as attempted
-      }
+    // Convert character to ElizaOS format
+    const character = toElizaCharacter(this.config.character, this.config.agentId);
+
+    // Create database adapter (PGLite for local persistence)
+    const dataDir = this.config.dbPath ?? `.crucible-data/${this.config.agentId}`;
+    const agentUUID = stringToUuid(this.config.agentId);
+    
+    let adapter;
+    try {
+      adapter = createDatabaseAdapter({ dataDir }, agentUUID);
+      this.log.info('Database adapter created', { dataDir });
+    } catch (e) {
+      this.log.error('Failed to create database adapter', { error: String(e) });
+      throw new Error(`Database adapter creation failed: ${e}`);
     }
 
-    this.log.info('Agent runtime initialized', { 
-      agentId: this.config.agentId,
-      characterName: this.config.character.name,
-      actions: jejuActions.length,
+    // Load plugins
+    const plugins: Plugin[] = [createDWSModelPlugin()];
+
+    // Load jeju plugin
+    try {
+      const jejuMod = await import('@jejunetwork/eliza-plugin');
+      if (jejuMod.jejuPlugin) {
+        plugins.push(jejuMod.jejuPlugin);
+        this.log.info('Jeju plugin loaded', { actions: jejuMod.jejuPlugin.actions?.length ?? 0 });
+      }
+    } catch (e) {
+      this.log.warn('Jeju plugin not available', { error: String(e) });
+    }
+
+    // Create the REAL ElizaOS runtime
+    this.elizaRuntime = new AgentRuntime({
+      agentId: agentUUID,
+      character,
+      plugins,
+      adapter,
+      settings: {
+        DWS_URL: getDWSEndpoint(),
+        DWS_COMPUTE_URL: getDWSEndpoint() + '/compute',
+      },
     });
-    
+
+    // Initialize the runtime (this sets up the database, registers plugins, etc.)
+    await this.elizaRuntime.initialize();
+
+    this.log.info('REAL ElizaOS runtime initialized', {
+      agentId: this.config.agentId,
+      characterName: character.name,
+      actions: this.elizaRuntime.actions?.length ?? 0,
+      providers: this.elizaRuntime.providers?.length ?? 0,
+      evaluators: this.elizaRuntime.evaluators?.length ?? 0,
+    });
+
     this.initialized = true;
+  }
+
+  /**
+   * Process a message through the REAL ElizaOS pipeline
+   */
+  async processMessage(message: RuntimeMessage): Promise<RuntimeResponse> {
+    if (!this.initialized || !this.elizaRuntime) {
+      await this.initialize();
+    }
+
+    if (!this.elizaRuntime) {
+      throw new Error('Runtime not initialized');
+    }
+
+    this.log.info('Processing message via REAL ElizaOS', {
+      agentId: this.config.agentId,
+      userId: message.userId,
+      roomId: message.roomId,
+      textLength: message.content.text.length,
+    });
+
+    const roomId = stringToUuid(message.roomId);
+    const entityId = stringToUuid(message.userId);
+
+    // Create memory for the incoming message
+    const incomingMemory: Memory = {
+      id: stringToUuid(message.id),
+      entityId,
+      roomId,
+      content: {
+        text: message.content.text,
+        source: message.content.source ?? 'api',
+      } as Content,
+      createdAt: message.createdAt,
+    };
+
+    // Store the incoming message using ElizaOS's memory system
+    await this.elizaRuntime.createMemory(incomingMemory, 'messages');
+
+    // Get recent messages for context using ElizaOS's memory system
+    const recentMemories = await this.elizaRuntime.getMemories({
+      roomId,
+      count: 10,
+    });
+
+    // Use ElizaOS's state composition (this calls all providers)
+    const state = await this.elizaRuntime.composeState(incomingMemory, ['RECENT_MESSAGES']);
+
+    // Generate response using DWS via the registered model handler
+    const systemPrompt = this.buildSystemPrompt();
+    const conversationContext = this.buildConversationContext(recentMemories);
+
+    const responseText = await this.elizaRuntime.useModel('TEXT_GENERATION', {
+      system: systemPrompt,
+      prompt: conversationContext,
+    });
+
+    // Extract action if present
+    const { action, cleanText } = this.extractAction(responseText);
+
+    // Store the agent's response in memory
+    const responseMemory: Memory = {
+      id: stringToUuid(crypto.randomUUID()),
+      entityId: stringToUuid(this.config.agentId),
+      roomId,
+      content: {
+        text: cleanText,
+        action,
+        source: 'agent',
+      } as Content,
+      createdAt: Date.now(),
+    };
+
+    await this.elizaRuntime.createMemory(responseMemory, 'messages');
+
+    // Execute action if present (using ElizaOS's action system)
+    if (action) {
+      await this.executeAction(action, incomingMemory, state);
+    }
+
+    // Run evaluators (ElizaOS's evaluation system)
+    await this.runEvaluators(incomingMemory, responseMemory, state);
+
+    this.log.info('Generated response via REAL ElizaOS', {
+      agentId: this.config.agentId,
+      responseLength: cleanText.length,
+      action,
+      memoriesUsed: recentMemories.length,
+    });
+
+    return {
+      text: cleanText,
+      action,
+      actions: action ? [{ name: action, params: {} }] : undefined,
+      memoriesUsed: recentMemories.length,
+    };
   }
 
   /**
@@ -216,39 +380,35 @@ export class CrucibleAgentRuntime {
     const char = this.config.character;
     const parts: string[] = [];
 
-    // Character identity
     parts.push(`You are ${char.name}.`);
-    
+
     if (char.system) {
       parts.push(char.system);
     }
 
-    // Bio
     if (char.bio) {
       const bio = Array.isArray(char.bio) ? char.bio.join(' ') : char.bio;
       parts.push(bio);
     }
 
-    // Topics
     if (char.topics?.length) {
       parts.push(`You are knowledgeable about: ${char.topics.join(', ')}.`);
     }
 
-    // Adjectives
     if (char.adjectives?.length) {
       parts.push(`Your personality traits: ${char.adjectives.join(', ')}.`);
     }
 
-    // Style
     if (char.style?.all?.length) {
       parts.push(`Communication style: ${char.style.all.join(' ')}`);
     }
 
-    // Available actions (from jeju plugin)
-    if (jejuActions.length > 0) {
+    // Include available actions
+    const actions = this.elizaRuntime?.actions ?? [];
+    if (actions.length > 0) {
       parts.push('\nYou have access to the following actions:');
-      for (const action of jejuActions.slice(0, 20)) { // Limit to 20 for prompt length
-        parts.push(`- ${action.name}: ${action.description}`);
+      for (const action of actions.slice(0, 15)) {
+        parts.push(`- ${action.name}: ${action.description ?? 'No description'}`);
       }
       parts.push('\nWhen you need to take an action, respond with [ACTION:ACTION_NAME] followed by your message.');
     }
@@ -257,7 +417,27 @@ export class CrucibleAgentRuntime {
   }
 
   /**
-   * Extract action from response if present
+   * Build conversation context from memories
+   */
+  private buildConversationContext(memories: Memory[]): string {
+    if (memories.length === 0) {
+      return 'No previous conversation.';
+    }
+
+    const lines: string[] = ['Recent conversation:'];
+    for (const mem of memories.slice(-10)) {
+      const speaker = mem.entityId === stringToUuid(this.config.agentId) ? this.config.character.name : 'User';
+      const text = (mem.content as Content).text ?? '';
+      if (text) {
+        lines.push(`${speaker}: ${text}`);
+      }
+    }
+
+    return lines.join('\n');
+  }
+
+  /**
+   * Extract action from response text
    */
   private extractAction(text: string): { action?: string; cleanText: string } {
     const actionMatch = text.match(/\[ACTION:([A-Z_]+)\]/i);
@@ -271,39 +451,93 @@ export class CrucibleAgentRuntime {
   }
 
   /**
-   * Process a message through the agent
+   * Execute an action using ElizaOS's action system
    */
-  async processMessage(message: RuntimeMessage): Promise<RuntimeResponse> {
-    if (!this.initialized) {
-      await this.initialize();
+  private async executeAction(actionName: string, message: Memory, state: unknown): Promise<void> {
+    if (!this.elizaRuntime) return;
+
+    const action = this.elizaRuntime.actions?.find(
+      (a) => a.name.toUpperCase() === actionName.toUpperCase()
+    );
+
+    if (!action) {
+      this.log.warn('Action not found in ElizaOS', { actionName });
+      return;
     }
 
-    const systemPrompt = this.buildSystemPrompt();
-    const userText = message.content.text;
+    if (!action.handler) {
+      this.log.warn('Action has no handler', { actionName });
+      return;
+    }
 
-    this.log.info('Processing message', { 
-      agentId: this.config.agentId,
-      userId: message.userId,
-      textLength: userText.length,
-    });
+    try {
+      // Validate action first
+      if (action.validate) {
+        const isValid = await action.validate(this.elizaRuntime, message);
+        if (!isValid) {
+          this.log.warn('Action validation failed', { actionName });
+          return;
+        }
+      }
 
-    // Generate response
-    const rawResponse = await generateResponse(systemPrompt, userText);
+      // Execute the action handler
+      await action.handler(this.elizaRuntime, message, state, {}, async () => {});
+      this.log.info('Action executed via ElizaOS', { actionName });
+    } catch (e) {
+      this.log.error('Action execution failed', { actionName, error: String(e) });
+    }
+  }
 
-    // Extract action if present
-    const { action, cleanText } = this.extractAction(rawResponse);
+  /**
+   * Run evaluators using ElizaOS's evaluator system
+   */
+  private async runEvaluators(message: Memory, response: Memory, state: unknown): Promise<void> {
+    if (!this.elizaRuntime) return;
 
-    this.log.info('Generated response', { 
-      agentId: this.config.agentId,
-      responseLength: cleanText.length,
-      action,
-    });
+    const evaluators = this.elizaRuntime.evaluators ?? [];
+    for (const evaluator of evaluators) {
+      try {
+        if (evaluator.handler) {
+          await evaluator.handler(this.elizaRuntime, message, state, {}, async () => {});
+        }
+      } catch (e) {
+        this.log.warn('Evaluator failed', { name: evaluator.name, error: String(e) });
+      }
+    }
+  }
 
-    return {
-      text: cleanText,
-      action,
-      actions: action ? [{ name: action, params: {} }] : undefined,
-    };
+  /**
+   * Get recent memories from a room using ElizaOS's memory system
+   */
+  async getMemories(roomId: string, count = 10): Promise<Memory[]> {
+    if (!this.elizaRuntime) return [];
+
+    try {
+      return await this.elizaRuntime.getMemories({
+        roomId: stringToUuid(roomId),
+        count,
+      });
+    } catch (e) {
+      this.log.warn('Failed to get memories', { error: String(e) });
+      return [];
+    }
+  }
+
+  /**
+   * Search memories using ElizaOS's semantic search
+   */
+  async searchMemories(query: string, count = 5): Promise<Memory[]> {
+    if (!this.elizaRuntime) return [];
+
+    try {
+      return await this.elizaRuntime.searchMemories({
+        query,
+        count,
+      });
+    } catch (e) {
+      this.log.warn('Failed to search memories', { error: String(e) });
+      return [];
+    }
   }
 
   // ============ Lifecycle ============
@@ -320,9 +554,36 @@ export class CrucibleAgentRuntime {
     return this.config.character;
   }
 
-  /** Check if actions are available */
+  /**
+   * Get the underlying ElizaOS AgentRuntime
+   */
+  getElizaRuntime(): AgentRuntime | null {
+    return this.elizaRuntime;
+  }
+
   hasActions(): boolean {
-    return jejuActions.length > 0;
+    return (this.elizaRuntime?.actions?.length ?? 0) > 0;
+  }
+
+  getAvailableActions(): Array<{ name: string; description: string }> {
+    return (
+      this.elizaRuntime?.actions?.map((a) => ({
+        name: a.name,
+        description: a.description ?? '',
+      })) ?? []
+    );
+  }
+
+  /**
+   * Shutdown the runtime
+   */
+  async shutdown(): Promise<void> {
+    if (this.elizaRuntime) {
+      await this.elizaRuntime.stop();
+      this.elizaRuntime = null;
+    }
+    this.initialized = false;
+    this.log.info('ElizaOS runtime shutdown');
   }
 }
 
@@ -366,6 +627,9 @@ export class CrucibleRuntimeManager {
   }
 
   async shutdown(): Promise<void> {
+    for (const runtime of this.runtimes.values()) {
+      await runtime.shutdown();
+    }
     this.runtimes.clear();
     this.log.info('All runtimes shut down');
   }

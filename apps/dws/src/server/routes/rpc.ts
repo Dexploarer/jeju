@@ -128,6 +128,27 @@ const CHAINS: Record<number, ChainConfig> = {
     isTestnet: true,
     enabled: true,
   },
+  // Jeju Network
+  420691: {
+    id: 420691,
+    name: 'Jeju Network',
+    network: 'jeju',
+    symbol: 'ETH',
+    rpcUrls: [],
+    explorerUrl: 'https://explorer.jejunetwork.org',
+    isTestnet: false,
+    enabled: true,
+  },
+  420690: {
+    id: 420690,
+    name: 'Jeju Testnet',
+    network: 'jeju-testnet',
+    symbol: 'ETH',
+    rpcUrls: [],
+    explorerUrl: 'https://testnet-explorer.jejunetwork.org',
+    isTestnet: true,
+    enabled: true,
+  },
 };
 
 const providers = new Map<string, RPCProvider>();

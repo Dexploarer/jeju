@@ -85,7 +85,7 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     chainId: 420691,
     name: 'Jeju',
     network: 'jeju',
-    rpcUrl: getRpcUrl('JEJU_RPC_URL', 'http://127.0.0.1:9545'),
+    rpcUrl: getRpcUrl('JEJU_RPC_URL', 'http://127.0.0.1:6546'),
     usdc: getEnvOrConfig('JEJU_USDC_ADDRESS', ['mainnet', 'tokens', 'usdc'], '0x0165878A594ca255338adfa4d48449f69242Eb8F') as Address,
     facilitator: getEnvOrConfig('X402_FACILITATOR_ADDRESS', ['mainnet', 'payments', 'x402Facilitator'], ZERO_ADDRESS) as Address,
     nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },

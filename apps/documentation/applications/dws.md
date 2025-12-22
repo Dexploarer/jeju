@@ -149,7 +149,7 @@ See [Compute Node](/operate/compute-node) and [Storage Node](/operate/storage-no
 
 ```bash
 NETWORK=localnet
-RPC_URL=http://127.0.0.1:9545
+RPC_URL=http://127.0.0.1:6546
 PRIVATE_KEY=0x...
 STORAGE_PATH=/data/ipfs
 COMPUTE_GPU_ENABLED=true

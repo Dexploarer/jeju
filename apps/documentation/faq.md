@@ -15,7 +15,7 @@ Ethereum L2 on OP-Stack. 200ms flashblocks. Native paymasters for gasless tx. ER
 ### RPC URLs?
 ```typescript
 const RPC = {
-  localnet: 'http://127.0.0.1:9545',
+  localnet: 'http://127.0.0.1:6546',
   testnet: 'https://testnet-rpc.jejunetwork.org',
   mainnet: 'https://rpc.jejunetwork.org',
 };
@@ -144,7 +144,7 @@ const TEST_ACCOUNTS = [
 
 | Service | Local | Testnet | Mainnet |
 |---------|-------|---------|---------|
-| RPC | localhost:9545 | testnet-rpc.jejunetwork.org | rpc.jejunetwork.org |
+| RPC | localhost:6546 | testnet-rpc.jejunetwork.org | rpc.jejunetwork.org |
 | Indexer | localhost:4350/graphql | testnet-indexer.jejunetwork.org/graphql | indexer.jejunetwork.org/graphql |
 | Gateway | localhost:4001 | testnet-gateway.jejunetwork.org | gateway.jejunetwork.org |
 | Explorer | - | testnet-explorer.jejunetwork.org | explorer.jejunetwork.org |

@@ -13,7 +13,7 @@ import { createPublicClient, http, parseAbi } from 'viem'
 const test = testWithSynpress(metaMaskFixtures(basicSetup))
 const { expect } = test
 
-const RPC_URL = 'http://localhost:9545'
+const RPC_URL = 'http://localhost:6546'
 const MARKETPLACE_ADDRESS = '0x537e697c7AB75A26f9ECF0Ce810e3154dFcaaf44'
 
 const publicClient = createPublicClient({

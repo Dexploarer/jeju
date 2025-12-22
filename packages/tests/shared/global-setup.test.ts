@@ -183,8 +183,8 @@ describe('Global Setup - RPC URL Resolution', () => {
     delete process.env.L2_RPC_URL;
     delete process.env.JEJU_RPC_URL;
 
-    const rpcUrl = process.env.L2_RPC_URL || process.env.JEJU_RPC_URL || 'http://localhost:9545';
-    expect(rpcUrl).toBe('http://localhost:9545');
+    const rpcUrl = process.env.L2_RPC_URL || process.env.JEJU_RPC_URL || 'http://localhost:6546';
+    expect(rpcUrl).toBe('http://localhost:6546');
   });
 });
 

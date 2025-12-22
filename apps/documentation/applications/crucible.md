@@ -22,7 +22,7 @@ bun install
 
 # Set environment
 export PRIVATE_KEY=0x...
-export RPC_URL=http://127.0.0.1:9545
+export RPC_URL=http://127.0.0.1:6546
 export NETWORK=localnet
 
 bun run dev
@@ -107,7 +107,7 @@ const runtime = await runtimeManager.createRuntime({
 
 ```bash
 PRIVATE_KEY=0x...
-RPC_URL=http://127.0.0.1:9545
+RPC_URL=http://127.0.0.1:6546
 NETWORK=localnet
 STORAGE_API_URL=http://127.0.0.1:3100
 COMPUTE_MARKETPLACE_URL=http://127.0.0.1:4007

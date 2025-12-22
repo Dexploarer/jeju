@@ -282,6 +282,18 @@ async function main() {
     process.env.DAO_FUNDING_ADDRESS = contractAddresses.DAO_FUNDING;
     process.env.FEE_CONFIG_ADDRESS = contractAddresses.FEE_CONFIG;
   }
+  
+  // Load SecurityBountyRegistry from localnet deployment if available
+  const deploymentPath = join(rootDir, 'packages/contracts/deployments/localnet-complete.json');
+  try {
+    const deployment = await Bun.file(deploymentPath).json() as { contracts?: { securityBountyRegistry?: string } };
+    if (deployment?.contracts?.securityBountyRegistry) {
+      process.env.SECURITY_BOUNTY_REGISTRY_ADDRESS = deployment.contracts.securityBountyRegistry;
+      console.log(`✅ SecurityBountyRegistry: ${deployment.contracts.securityBountyRegistry}`);
+    }
+  } catch {
+    // Deployment file not found - will use config
+  }
 
   console.log(`\n🤖 Starting Autocrat on port ${AUTOCRAT_PORT}...\n`);
 

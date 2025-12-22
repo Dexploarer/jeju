@@ -102,7 +102,7 @@ import { JejuSDK } from '@jeju/sdk';
 
 const sdk = new JejuSDK({
   rpcUrl: 'https://rpc.jejunetwork.org',
-  chainId: 8453,
+  chainId: 420691, // Jeju Mainnet
 });
 
 // Create a bounty

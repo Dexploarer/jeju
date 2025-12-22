@@ -41,7 +41,7 @@ interface LocalEnvConfig {
 }
 
 const DEFAULT_CONFIG: LocalEnvConfig = {
-  anvilPort: 8545,
+  anvilPort: 6546,
   anvilChainId: 31337,
   anvilBlockTime: 1,
   solanaRpcPort: 8899,

@@ -9,7 +9,7 @@
  * - Blob reconstruction
  */
 
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, it, expect, beforeEach, beforeAll } from 'bun:test';
 import {
   PeerDAS,
   PeerDASBlobManager,
@@ -20,6 +20,7 @@ import {
   MAX_BLOB_SIZE,
   CUSTODY_COLUMNS_PER_NODE,
   SAMPLES_PER_SLOT,
+  initializeKZG,
 } from '../src/da';
 import type { Address, Hex } from 'viem';
 import { keccak256, toBytes } from 'viem';
@@ -243,29 +244,34 @@ describe('PeerDAS Light Node Sampling', () => {
 describe('PeerDAS Blob Manager', () => {
   let manager: PeerDASBlobManager;
 
+  beforeAll(async () => {
+    await initializeKZG();
+  });
+
   beforeEach(() => {
     manager = createPeerDASBlobManager();
   });
 
-  it('should prepare blob with correct structure', () => {
+  it('should prepare blob with correct structure', async () => {
     const data = new Uint8Array(1024);
     for (let i = 0; i < data.length; i++) {
       data[i] = i % 256;
     }
 
-    const blob = manager.prepare(data);
+    const blob = await manager.prepare(data);
     
     expect(blob.data.length).toBe(MAX_BLOB_SIZE);
     expect(blob.matrix.length).toBeGreaterThan(0);
     expect(blob.extendedMatrix.length).toBe(blob.matrix.length);
     expect(blob.columnCommitments.length).toBe(EXTENDED_COLUMN_COUNT);
     expect(blob.rowCommitments.length).toBe(blob.matrix.length);
-    expect(blob.commitment).toMatch(/^0x[a-f0-9]{64}$/);
+    // KZG commitment is 96 hex chars (48 bytes)
+    expect(blob.commitment).toMatch(/^0x[a-f0-9]{96}$/i);
   });
 
-  it('should get columns for operator custody', () => {
+  it('should get columns for operator custody', async () => {
     const data = new Uint8Array(1024).fill(42);
-    const blob = manager.prepare(data);
+    const blob = await manager.prepare(data);
     
     const columns = manager.getColumnsForOperator(blob.commitment, TEST_ADDRESS);
     
@@ -279,9 +285,9 @@ describe('PeerDAS Blob Manager', () => {
     }
   });
 
-  it('should store and retrieve columns', () => {
+  it('should store and retrieve columns', async () => {
     const data = new Uint8Array(1024).fill(42);
-    const blob = manager.prepare(data);
+    const blob = await manager.prepare(data);
     
     const columns = manager.getColumnsForOperator(blob.commitment, TEST_ADDRESS);
     
@@ -299,9 +305,9 @@ describe('PeerDAS Blob Manager', () => {
     }
   });
 
-  it('should reject invalid column commitment', () => {
+  it('should reject invalid column commitment', async () => {
     const data = new Uint8Array(1024).fill(42);
-    const blob = manager.prepare(data);
+    const blob = await manager.prepare(data);
     
     const columns = manager.getColumnsForOperator(blob.commitment, TEST_ADDRESS);
     const column = columns[0];
@@ -316,9 +322,9 @@ describe('PeerDAS Blob Manager', () => {
     expect(stored).toBe(false);
   });
 
-  it('should handle sample request', () => {
+  it('should handle sample request', async () => {
     const data = new Uint8Array(1024).fill(42);
-    const blob = manager.prepare(data);
+    const blob = await manager.prepare(data);
     
     // Store all columns first
     for (let c = 0; c < EXTENDED_COLUMN_COUNT; c++) {
@@ -339,9 +345,9 @@ describe('PeerDAS Blob Manager', () => {
     expect(response.columns.length).toBe(SAMPLES_PER_SLOT);
   });
 
-  it('should report reconstructability', () => {
+  it('should report reconstructability', async () => {
     const data = new Uint8Array(1024).fill(42);
-    const blob = manager.prepare(data);
+    const blob = await manager.prepare(data);
     
     // Initially not reconstructable
     expect(manager.canReconstruct(blob.commitment)).toBe(false);
@@ -361,7 +367,7 @@ describe('PeerDAS Blob Manager', () => {
     expect(manager.canReconstruct(blob.commitment)).toBe(true);
   });
 
-  it('should get statistics', () => {
+  it('should get statistics', async () => {
     const stats = manager.getStats();
     
     expect(stats.blobCount).toBe(0);
@@ -370,7 +376,7 @@ describe('PeerDAS Blob Manager', () => {
     
     // Add a blob
     const data = new Uint8Array(1024).fill(42);
-    manager.prepare(data);
+    await manager.prepare(data);
     
     const stats2 = manager.getStats();
     expect(stats2.blobCount).toBe(1);
@@ -378,6 +384,10 @@ describe('PeerDAS Blob Manager', () => {
 });
 
 describe('PeerDAS End-to-End Flow', () => {
+  beforeAll(async () => {
+    await initializeKZG();
+  });
+
   it('should complete full PeerDAS workflow', async () => {
     const manager = createPeerDASBlobManager();
     
@@ -387,9 +397,10 @@ describe('PeerDAS End-to-End Flow', () => {
       originalData[i] = (i * 17) % 256; // Some pattern
     }
     
-    // 2. Prepare blob for distribution
-    const blob = manager.prepare(originalData);
-    expect(blob.commitment).toMatch(/^0x[a-f0-9]{64}$/);
+    // 2. Prepare blob for distribution (now async)
+    const blob = await manager.prepare(originalData);
+    // KZG commitment is 96 hex chars (48 bytes)
+    expect(blob.commitment).toMatch(/^0x[a-f0-9]{96}$/i);
     
     // 3. Distribute columns to operators
     const operators = [
@@ -433,8 +444,8 @@ describe('PeerDAS End-to-End Flow', () => {
     
     expect(confidence).toBeGreaterThan(0.9);
     
-    // 6. Verify sample response
-    const isValid = PeerDAS.verifySampleResponse(sampleRequest, sampleResponse, blob.commitment);
+    // 6. Verify sample response (now async)
+    const isValid = await PeerDAS.verifySampleResponse(sampleRequest, sampleResponse, blob.commitment);
     expect(isValid).toBe(true);
     
     console.log(`PeerDAS E2E: ${operators.length} operators, ${confidence * 100}% confidence`);

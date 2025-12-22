@@ -26,8 +26,8 @@ export class MetricsExporter {
   }
 
   async start(): Promise<void> {
-    const networkName = this.config.chainId === 8453 ? 'mainnet' : 
-                        this.config.chainId === 84532 ? 'testnet' : 'localnet';
+    const networkName = this.config.chainId === 420691 ? 'mainnet' : 
+                        this.config.chainId === 420690 ? 'testnet' : 'localnet';
     
     this.server = Bun.serve({
       port: this.config.metricsPort,

@@ -33,7 +33,7 @@ function getDefaultRpcUrl(): string {
   switch (NETWORK) {
     case 'mainnet': return 'https://rpc.jejunetwork.org';
     case 'testnet': return 'https://testnet-rpc.jejunetwork.org';
-    default: return 'http://127.0.0.1:9545';
+    default: return 'http://127.0.0.1:6546';
   }
 }
 

@@ -115,7 +115,7 @@ function createMockStorageBackend() {
 // ============ EmailRelayService Tests ============
 
 const createRelayConfig = () => ({
-  rpcUrl: 'http://localhost:8545',
+  rpcUrl: 'http://localhost:6546',
   chainId: 31337,
   emailRegistryAddress: createMockAddress(),
   emailStakingAddress: createMockAddress(),
@@ -910,7 +910,7 @@ describe('Concurrent Behavior', () => {
     test('handles concurrent email sends', async () => {
       resetEmailRelayService();
       const concurrentRelay = createEmailRelayService({
-        rpcUrl: 'http://localhost:8545',
+        rpcUrl: 'http://localhost:6546',
         chainId: 31337,
         emailRegistryAddress: createMockAddress(),
         emailStakingAddress: createMockAddress(),

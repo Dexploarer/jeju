@@ -59,7 +59,7 @@ describe('Configuration Loaders', () => {
       
       expect(config.chainId).toBe(1337);
       expect(config.name).toBe('Jeju Localnet');
-      expect(config.rpcUrl).toBe('http://127.0.0.1:9545');
+      expect(config.rpcUrl).toBe('http://127.0.0.1:6546');
       expect(config.l1ChainId).toBe(1337);
     });
 
@@ -173,9 +173,9 @@ describe('Configuration Loaders', () => {
       });
 
       it('should override with environment variable', () => {
-        process.env.JEJU_RPC_URL = 'http://localhost:9545';
+        process.env.JEJU_RPC_URL = 'http://localhost:6546';
         const rpcUrl = getRpcUrl('mainnet');
-        expect(rpcUrl).toBe('http://localhost:9545');
+        expect(rpcUrl).toBe('http://localhost:6546');
       });
     });
 
@@ -187,9 +187,9 @@ describe('Configuration Loaders', () => {
       });
 
       it('should override with environment variable', () => {
-        process.env.JEJU_WS_URL = 'ws://localhost:9546';
+        process.env.JEJU_WS_URL = 'ws://localhost:6547';
         const wsUrl = getWsUrl('mainnet');
-        expect(wsUrl).toBe('ws://localhost:9546');
+        expect(wsUrl).toBe('ws://localhost:6547');
       });
     });
 

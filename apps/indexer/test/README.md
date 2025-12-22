@@ -105,7 +105,7 @@ Runs: basic → real-data → e2e
 ## Test Requirements
 
 **For localnet tests**:
-- Jeju localnet running on port 8545
+- Jeju localnet running on port 6546
 - `bun run dev` from project root
 
 **For basic tests**:

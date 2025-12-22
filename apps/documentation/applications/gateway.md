@@ -93,7 +93,7 @@ Runs on http://localhost:4001
 ## Environment
 
 ```bash
-VITE_RPC_URL=http://127.0.0.1:9545
+VITE_RPC_URL=http://127.0.0.1:6546
 VITE_CHAIN_ID=1337
 VITE_WALLETCONNECT_PROJECT_ID=...
 VITE_INDEXER_URL=http://127.0.0.1:4350/graphql

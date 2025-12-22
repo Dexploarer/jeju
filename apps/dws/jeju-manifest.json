@@ -5,8 +5,8 @@
   "type": "service",
   "deployment": {
     "testnet": {
-      "network": "base-sepolia",
-      "chainId": 84532,
+      "network": "jeju-testnet",
+      "chainId": 420690,
       "contracts": {
         "IdentityRegistry": "${IDENTITY_REGISTRY_ADDRESS}",
         "DAORegistry": "${DAO_REGISTRY_ADDRESS}",
@@ -27,8 +27,8 @@
       }
     },
     "mainnet": {
-      "network": "base",
-      "chainId": 8453,
+      "network": "jeju",
+      "chainId": 420691,
       "contracts": {
         "IdentityRegistry": "${IDENTITY_REGISTRY_ADDRESS}",
         "DAORegistry": "${DAO_REGISTRY_ADDRESS}",

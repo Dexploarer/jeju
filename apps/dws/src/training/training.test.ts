@@ -357,7 +357,7 @@ describe('GRPO Trainer', () => {
     // Verify registration by checking info
     const infoResponse = await fetch(`http://localhost:${atroposPort}/info`);
     const info = await infoResponse.json() as { batch_size: number };
-    expect(info.batch_size).toBe(32); // batchSize * gradientAccumulationSteps = 2 * 16
+    expect(info.batch_size).toBe(4); // batchSize * gradientAccumulationSteps = 1 * 4
   });
 
   test('trainer getBatch handles empty queue', async () => {
@@ -390,7 +390,7 @@ describe('Cross-Chain Bridge', () => {
 
     // Create bridge with mock config
     const bridge = new CrossChainTrainingBridge({
-      evmRpcUrl: 'http://localhost:8545',
+      evmRpcUrl: 'http://localhost:6546',
       bridgeContractAddress: '0x0000000000000000000000000000000000000001',
       solanaRpcUrl: 'http://localhost:8899',
     });

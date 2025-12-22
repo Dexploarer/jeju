@@ -159,7 +159,7 @@ export const JEJU_TEST_WALLET = {
 
 export const JEJU_NETWORK = {
   networkName: 'Jeju Localnet',
-  rpcUrl: 'http://127.0.0.1:9545',
+  rpcUrl: 'http://127.0.0.1:6546',
   chainId: 1337,
   symbol: 'ETH',
 };

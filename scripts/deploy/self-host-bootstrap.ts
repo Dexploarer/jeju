@@ -23,7 +23,7 @@ import {
   parseEther,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { baseSepolia, base } from 'viem/chains';
+import { getJejuChain, type JejuNetwork } from '../shared/viem-chains';
 import { readFileSync, readdirSync, existsSync, writeFileSync } from 'fs';
 import { join, relative } from 'path';
 import { execSync } from 'child_process';
@@ -238,7 +238,7 @@ class SelfHostingBootstrap {
     this.config = config;
     this.rootDir = join(import.meta.dir, '../..');
     
-    const chain = config.network === 'mainnet' ? base : baseSepolia;
+    const chain = getJejuChain(config.network as JejuNetwork);
     
     this.account = privateKeyToAccount(config.privateKey);
     this.publicClient = createPublicClient({
@@ -969,8 +969,8 @@ async function main() {
   const config: DeploymentConfig = {
     network,
     rpcUrl: network === 'mainnet' 
-      ? process.env.MAINNET_RPC_URL || 'https://mainnet.base.org'
-      : process.env.TESTNET_RPC_URL || 'https://sepolia.base.org',
+      ? process.env.JEJU_RPC_URL || 'https://rpc.jejunetwork.org'
+      : process.env.JEJU_TESTNET_RPC_URL || 'https://testnet-rpc.jejunetwork.org',
     privateKey: privateKey as Hex,
     contracts,
     dwsEndpoint: process.env.DWS_ENDPOINT || (network === 'mainnet' ? 'https://dws.jejunetwork.org' : 'https://dws.testnet.jejunetwork.org'),

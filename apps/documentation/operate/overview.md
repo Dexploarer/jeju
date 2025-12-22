@@ -37,7 +37,7 @@ cp .env.rpc.example .env
 docker compose -f packages/deployment/docker/rpc-node.yml up -d
 
 # Verify
-curl http://localhost:8545/health
+curl http://localhost:6546/health
 ```
 
 ### Register

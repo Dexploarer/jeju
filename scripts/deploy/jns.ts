@@ -28,9 +28,9 @@ const isTestnet = process.argv.includes('--testnet');
 const network = isMainnet ? 'mainnet' : isTestnet ? 'testnet' : 'localnet';
 
 const RPC_URL = isMainnet
-  ? process.env.BASE_RPC_URL || 'https://mainnet.base.org'
+  ? process.env.JEJU_RPC_URL || 'https://rpc.jejunetwork.org'
   : isTestnet
-    ? process.env.BASE_SEPOLIA_RPC_URL || 'https://sepolia.base.org'
+    ? process.env.JEJU_TESTNET_RPC_URL || 'https://testnet-rpc.jejunetwork.org'
     : process.env.RPC_URL || 'http://127.0.0.1:6546';
 
 const PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY || 

@@ -18,7 +18,8 @@ import {
   type Address,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { base, baseSepolia, localhost } from 'viem/chains';
+import { localhost } from 'viem/chains';
+import { jejuTestnet, jejuMainnet } from '../shared/viem-chains';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 
@@ -163,9 +164,9 @@ const DAORegistryABI = [
 function getChainConfig(network: string) {
   switch (network) {
     case 'mainnet':
-      return { chain: base, rpcUrl: process.env.BASE_RPC_URL ?? 'https://mainnet.base.org' };
+      return { chain: jejuMainnet, rpcUrl: process.env.JEJU_RPC_URL ?? 'https://rpc.jejunetwork.org' };
     case 'testnet':
-      return { chain: baseSepolia, rpcUrl: process.env.BASE_SEPOLIA_RPC_URL ?? 'https://sepolia.base.org' };
+      return { chain: jejuTestnet, rpcUrl: process.env.JEJU_TESTNET_RPC_URL ?? 'https://testnet-rpc.jejunetwork.org' };
     default:
       return { chain: localhost, rpcUrl: process.env.LOCAL_RPC_URL ?? 'http://localhost:6546' };
   }

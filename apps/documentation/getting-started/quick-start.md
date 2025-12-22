@@ -71,8 +71,8 @@ First run takes 5-10 minutes to download images. Wait for:
 
 | Service | URL |
 |---------|-----|
-| L2 RPC | http://127.0.0.1:9545 |
-| L1 RPC | http://127.0.0.1:8545 |
+| L2 RPC | http://127.0.0.1:6546 |
+| L1 RPC | http://127.0.0.1:6545 |
 | Gateway | http://127.0.0.1:4001 |
 | Bazaar | http://127.0.0.1:4006 |
 | Indexer | http://127.0.0.1:4350/graphql |
@@ -81,12 +81,12 @@ First run takes 5-10 minutes to download images. Wait for:
 
 ```bash
 # Check L2 is producing blocks
-cast block latest --rpc-url http://127.0.0.1:9545
+cast block latest --rpc-url http://127.0.0.1:6546
 
 # Send ETH
 cast send 0x70997970C51812dc3A010C7d01b50e0d17dc79C8 \
   --value 0.1ether \
-  --rpc-url http://127.0.0.1:9545 \
+  --rpc-url http://127.0.0.1:6546 \
   --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 ```
 
@@ -95,7 +95,7 @@ cast send 0x70997970C51812dc3A010C7d01b50e0d17dc79C8 \
 | Setting | Value |
 |---------|-------|
 | Network Name | Jeju Localnet |
-| RPC URL | `http://127.0.0.1:9545` |
+| RPC URL | `http://127.0.0.1:6546` |
 | Chain ID | `1337` |
 | Currency | ETH |
 
@@ -127,7 +127,7 @@ sudo systemctl start docker
 
 **Port in use:**
 ```bash
-lsof -i :9545
+lsof -i :6546
 kill -9 <PID>
 ```
 
@@ -171,7 +171,7 @@ bun install
 bun run dev
 
 Services:
-- L2: http://127.0.0.1:9545
+- L2: http://127.0.0.1:6546
 - Gateway: http://127.0.0.1:4001
 - Bazaar: http://127.0.0.1:4006
 - Indexer: http://127.0.0.1:4350/graphql

@@ -9,7 +9,7 @@ cd packages/contracts
 
 # Localnet
 forge script script/DeployLocalnet.s.sol \
-  --rpc-url http://127.0.0.1:9545 \
+  --rpc-url http://127.0.0.1:6546 \
   --broadcast
 
 # Testnet

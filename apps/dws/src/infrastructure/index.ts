@@ -74,7 +74,32 @@ export { DecentralizedWorkerDeployer, WorkerAutoScaler } from './worker-deployer
 
 // Terraform & Helm Providers
 export { createTerraformProviderRouter } from './terraform-provider';
-export { createHelmProviderRouter } from './helm-provider';
+export { createHelmProviderRouter, setDeploymentContext } from './helm-provider';
+
+// K3s/K3d Local Kubernetes
+export {
+  createCluster,
+  deleteCluster,
+  getCluster,
+  listClusters,
+  installHelmChart,
+  applyManifest,
+  installDWSAgent,
+  createK3sRouter,
+  type K3sCluster,
+  type K3sClusterConfig,
+  type K3sNode,
+  type ClusterProvider,
+} from './k3s-provider';
+
+// Helm Template Rendering
+export {
+  loadChart,
+  renderChart,
+  type HelmChart,
+  type RenderOptions,
+  type KubeManifest,
+} from './helm-templates';
 
 // Service Mesh
 export { 

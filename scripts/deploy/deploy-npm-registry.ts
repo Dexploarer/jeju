@@ -12,7 +12,8 @@ import {
   type Hex,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { foundry, baseSepolia, base } from 'viem/chains';
+import { foundry } from 'viem/chains';
+import { jejuTestnet, jejuMainnet } from '../shared/viem-chains';
 
 // Contract compilation - we'll use forge for this
 async function compileContract(): Promise<{ abi: readonly object[]; bytecode: Hex }> {
@@ -48,8 +49,8 @@ async function deployPackageRegistry(config: DeployConfig): Promise<Address> {
     config.network === 'localnet'
       ? { ...foundry, rpcUrls: { default: { http: [config.rpcUrl] } } }
       : config.network === 'testnet'
-        ? baseSepolia
-        : base;
+        ? jejuTestnet
+        : jejuMainnet;
 
   const account = privateKeyToAccount(config.privateKey);
 
@@ -133,7 +134,7 @@ async function main() {
       }
       config = {
         network: 'testnet',
-        rpcUrl: process.env.TESTNET_RPC_URL || 'https://sepolia.base.org',
+        rpcUrl: process.env.JEJU_TESTNET_RPC_URL || 'https://testnet-rpc.jejunetwork.org',
         privateKey: process.env.DEPLOYER_PRIVATE_KEY as Hex,
         identityRegistryAddress: process.env.IDENTITY_REGISTRY_ADDRESS as Address,
       };
@@ -145,7 +146,7 @@ async function main() {
       }
       config = {
         network: 'mainnet',
-        rpcUrl: process.env.MAINNET_RPC_URL || 'https://mainnet.base.org',
+        rpcUrl: process.env.JEJU_RPC_URL || 'https://rpc.jejunetwork.org',
         privateKey: process.env.DEPLOYER_PRIVATE_KEY as Hex,
         identityRegistryAddress: process.env.IDENTITY_REGISTRY_ADDRESS as Address,
       };

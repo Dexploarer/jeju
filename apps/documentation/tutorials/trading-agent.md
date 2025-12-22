@@ -48,7 +48,7 @@ const account = privateKeyToAccount(PRIVATE_KEY);
 const client = createWalletClient({
   account,
   chain: jejuLocalnet,
-  transport: http('http://127.0.0.1:9545'),
+  transport: http('http://127.0.0.1:6546'),
 });
 
 async function registerAgent() {
@@ -178,13 +178,13 @@ const account = privateKeyToAccount(PRIVATE_KEY);
 
 const publicClient = createPublicClient({
   chain: jejuLocalnet,
-  transport: http('http://127.0.0.1:9545'),
+  transport: http('http://127.0.0.1:6546'),
 });
 
 const walletClient = createWalletClient({
   account,
   chain: jejuLocalnet,
-  transport: http('http://127.0.0.1:9545'),
+  transport: http('http://127.0.0.1:6546'),
 });
 
 // Get current market price

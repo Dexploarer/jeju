@@ -226,6 +226,77 @@ export const BAN_MANAGER_ABI = [
       { name: 'appId', type: 'bytes32' }
     ],
     outputs: [{ name: '', type: 'bool' }]
+  },
+  {
+    name: 'getNetworkBan',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'agentId', type: 'uint256' }],
+    outputs: [
+      {
+        type: 'tuple',
+        components: [
+          { name: 'isBanned', type: 'bool' },
+          { name: 'bannedAt', type: 'uint256' },
+          { name: 'reason', type: 'string' },
+          { name: 'proposalId', type: 'bytes32' }
+        ]
+      }
+    ]
+  },
+  {
+    name: 'isAppBanned',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'agentId', type: 'uint256' },
+      { name: 'appId', type: 'bytes32' }
+    ],
+    outputs: [{ name: '', type: 'bool' }]
+  },
+  {
+    name: 'getAppBan',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'agentId', type: 'uint256' },
+      { name: 'appId', type: 'bytes32' }
+    ],
+    outputs: [
+      {
+        type: 'tuple',
+        components: [
+          { name: 'isBanned', type: 'bool' },
+          { name: 'bannedAt', type: 'uint256' },
+          { name: 'reason', type: 'string' },
+          { name: 'proposalId', type: 'bytes32' }
+        ]
+      }
+    ]
+  },
+  {
+    name: 'getAppBans',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'agentId', type: 'uint256' }],
+    outputs: [{ name: '', type: 'bytes32[]' }]
+  },
+  {
+    name: 'getBanReason',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'agentId', type: 'uint256' },
+      { name: 'appId', type: 'bytes32' }
+    ],
+    outputs: [{ name: '', type: 'string' }]
+  },
+  {
+    name: 'isAddressBannedActive',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'target', type: 'address' }],
+    outputs: [{ name: '', type: 'bool' }]
   }
 ] as const;
 

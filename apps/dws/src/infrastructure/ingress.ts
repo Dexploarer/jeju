@@ -13,7 +13,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { Address, Hex } from 'viem';
-import { validateBody, validateParams } from '../server/routes/shared';
+import { validateBody, validateParams } from '../shared/validation';
 
 // ============================================================================
 // Types
@@ -94,6 +94,38 @@ const hostToRuleMap = new Map<string, string>();
 
 export class IngressController {
   private defaultTLSCert: string | null = null;
+  private serviceBackends = new Map<string, Array<{ endpoint: string; weight: number }>>();
+
+  /**
+   * Register backends for a service (used by Helm deployments)
+   */
+  registerService(config: {
+    name: string;
+    namespace?: string;
+    host?: string;
+    backends: Array<{ endpoint: string; weight: number }>;
+  }): void {
+    const key = `${config.namespace || 'default'}/${config.name}`;
+    this.serviceBackends.set(key, config.backends);
+    
+    // Auto-create ingress if host provided
+    if (config.host && !hostToRuleMap.has(config.host)) {
+      this.createIngress({
+        name: config.name,
+        host: config.host,
+        paths: [{
+          path: '/',
+          pathType: 'Prefix',
+          backend: {
+            type: 'service',
+            serviceId: key,
+          },
+        }],
+      }).catch(console.error);
+    }
+    
+    console.log(`[Ingress] Registered ${config.backends.length} backends for ${key}`);
+  }
 
   /**
    * Create an ingress rule

@@ -20,7 +20,6 @@ import type {
   WorkerdPoolMetrics,
   WorkerdEvent,
   WorkerdEventHandler,
-  WorkerdModule,
 } from './types';
 import { DEFAULT_WORKERD_CONFIG } from './types';
 import { generateWorkerConfig, wrapHandlerAsWorker } from './config-generator';
@@ -322,9 +321,14 @@ export class WorkerdExecutor {
 
       const body = await response.text();
       
+      const headerEntries: Record<string, string> = {};
+      response.headers.forEach((value, key) => {
+        headerEntries[key] = value;
+      });
+      
       invocation.response = {
         status: response.status,
-        headers: Object.fromEntries(response.headers.entries()),
+        headers: headerEntries,
         body,
       };
       invocation.status = 'success';

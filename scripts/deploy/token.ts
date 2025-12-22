@@ -30,7 +30,8 @@ import {
   type Hex,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { foundry, baseSepolia, base } from 'viem/chains';
+import { foundry } from 'viem/chains';
+import { jejuTestnet, jejuMainnet, jejuLocalnet } from '../shared/viem-chains';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import path from 'path';
 import { parseArgs } from 'util';
@@ -38,23 +39,23 @@ import { parseArgs } from 'util';
 // Network configurations
 const NETWORKS = {
   localnet: {
-    chain: foundry,
+    chain: jejuLocalnet,
     rpcUrl: 'http://localhost:6546',
     chainId: 1337,
     enableFaucet: true,
     requireMultiSig: false,
   },
   testnet: {
-    chain: baseSepolia,
-    rpcUrl: process.env.TESTNET_RPC_URL || 'https://sepolia.base.org',
-    chainId: 84532,
+    chain: jejuTestnet,
+    rpcUrl: process.env.JEJU_TESTNET_RPC_URL || 'https://testnet-rpc.jejunetwork.org',
+    chainId: 420690,
     enableFaucet: true,
     requireMultiSig: false, // Optional for testnet
   },
   mainnet: {
-    chain: base,
-    rpcUrl: process.env.MAINNET_RPC_URL || 'https://mainnet.base.org',
-    chainId: 8453,
+    chain: jejuMainnet,
+    rpcUrl: process.env.JEJU_RPC_URL || 'https://rpc.jejunetwork.org',
+    chainId: 420691,
     enableFaucet: false,
     requireMultiSig: true, // Required for mainnet
   },

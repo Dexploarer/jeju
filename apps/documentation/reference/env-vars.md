@@ -137,7 +137,7 @@ DB_PORT=23798
 DB_NAME=indexer
 DB_USER=postgres
 DB_PASS=postgres
-RPC_URL=http://127.0.0.1:9545
+RPC_URL=http://127.0.0.1:6546
 ```
 
 ## Key Management CLI

@@ -88,7 +88,7 @@ bun run dev
 # Deploy
 cd packages/contracts
 forge script script/DeployLocalnet.s.sol \
-  --rpc-url http://127.0.0.1:9545 \
+  --rpc-url http://127.0.0.1:6546 \
   --broadcast
 ```
 
@@ -228,7 +228,7 @@ Environments:
 
 Contract Deployment:
 # Localnet
-forge script script/DeployLocalnet.s.sol --rpc-url http://127.0.0.1:9545 --broadcast
+forge script script/DeployLocalnet.s.sol --rpc-url http://127.0.0.1:6546 --broadcast
 
 # Testnet
 PRIVATE_KEY=0x... forge script script/DeployTestnet.s.sol \

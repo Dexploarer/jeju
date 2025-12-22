@@ -11,7 +11,7 @@ const JEJU_CHAIN = {
   chainId: 1337,
   chainIdHex: '0x539',
   name: 'Jeju Localnet',
-  rpcUrl: 'http://127.0.0.1:9545',
+  rpcUrl: 'http://127.0.0.1:6546',
   symbol: 'ETH',
   blockExplorerUrl: '',
 };

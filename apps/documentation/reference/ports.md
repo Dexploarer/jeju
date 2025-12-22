@@ -20,9 +20,9 @@ Standard port assignments for Jeju services.
 
 | Service | Port | Description |
 |---------|------|-------------|
-| L2 RPC (HTTP) | 9545 | Jeju JSON-RPC |
-| L2 RPC (WS) | 9546 | Jeju WebSocket |
-| L1 RPC | 8545 | Local Ethereum |
+| L1 RPC | 6545 | Local Ethereum L1 (avoids Anvil/Hardhat 8545) |
+| L2 RPC (HTTP) | 6546 | Jeju JSON-RPC |
+| L2 RPC (WS) | 6547 | Jeju WebSocket |
 | L1 Beacon | 4000 | Consensus layer |
 
 ## Supporting Services
@@ -51,7 +51,7 @@ Set environment variables to change default ports:
 GATEWAY_PORT=5001
 BAZAAR_PORT=5006
 INDEXER_GRAPHQL_PORT=5350
-L2_RPC_PORT=8545
+L2_RPC_PORT=6546
 ```
 
 ## Port Conflicts
@@ -60,7 +60,7 @@ If a port is in use:
 
 ```bash
 # Find process using port
-lsof -i :9545
+lsof -i :6546
 
 # Kill it
 kill -9 <PID>

@@ -69,8 +69,8 @@ services:
   op-reth:
     image: ghcr.io/paradigmxyz/op-reth:latest
     ports:
-      - "9545:9545"  # HTTP RPC
-      - "9546:9546"  # WebSocket
+      - "9545:6546"  # HTTP RPC
+      - "9546:6547"  # WebSocket
     volumes:
       - ./data:/data
     environment:
@@ -80,7 +80,7 @@ services:
       --chain jeju
       --http
       --http.addr 0.0.0.0
-      --http.port 9545
+      --http.port 6546
       --ws
       --ws.addr 0.0.0.0
       --ws.port 9546
@@ -125,12 +125,12 @@ cast call $NODE_STAKING_MANAGER "getNodeByOperator(address)" $YOUR_ADDRESS
 
 ```bash
 # Block number
-curl -X POST http://localhost:9545 \
+curl -X POST http://localhost:6546 \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
 
 # Sync status
-curl -X POST http://localhost:9545 \
+curl -X POST http://localhost:6546 \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","method":"eth_syncing","params":[],"id":1}'
 ```
@@ -223,7 +223,7 @@ cast send $NODE_STAKING_MANAGER "completeUnstake()" \
 docker compose logs op-reth | tail -100
 
 # Check peers
-curl -X POST http://localhost:9545 \
+curl -X POST http://localhost:6546 \
   -d '{"jsonrpc":"2.0","method":"net_peerCount","params":[],"id":1}'
 ```
 

@@ -10,19 +10,22 @@
 
 const NETWORKS = {
   testnet: {
-    rpc: process.env.BASE_SEPOLIA_RPC_URL || 'https://sepolia.base.org',
-    chain: 'base_sepolia',
+    rpc: process.env.JEJU_TESTNET_RPC_URL || 'https://testnet-rpc.jejunetwork.org',
+    chainId: 420690,
     verify: true,
+    explorerApi: 'https://testnet-explorer.jejunetwork.org/api',
   },
   mainnet: {
-    rpc: process.env.BASE_RPC_URL || 'https://mainnet.base.org',
-    chain: 'base',
+    rpc: process.env.JEJU_RPC_URL || 'https://rpc.jejunetwork.org',
+    chainId: 420691,
     verify: true,
+    explorerApi: 'https://explorer.jejunetwork.org/api',
   },
   localnet: {
     rpc: 'http://localhost:6546',
-    chain: 'local',
+    chainId: 1337,
     verify: false,
+    explorerApi: '',
   },
 };
 
@@ -52,8 +55,8 @@ function validateEnv(network: Network): boolean {
     }
   }
   
-  if (network !== 'localnet' && !process.env.BASESCAN_API_KEY) {
-    console.log(`  ⚠️  BASESCAN_API_KEY - not set (verification will fail)`);
+  if (network !== 'localnet' && !process.env.EXPLORER_API_KEY) {
+    console.log(`  ⚠️  EXPLORER_API_KEY - not set (verification may fail)`);
   }
   
   return valid;
@@ -91,10 +94,11 @@ async function main() {
   --rpc-url ${config.rpc} \\
   --broadcast`;
   
-  if (config.verify) {
+  if (config.verify && config.explorerApi) {
     cmd += ` \\
   --verify \\
-  --etherscan-api-key $BASESCAN_API_KEY`;
+  --verifier blockscout \\
+  --verifier-url ${config.explorerApi}`;
   }
   
   console.log(cmd);

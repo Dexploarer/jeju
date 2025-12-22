@@ -36,18 +36,18 @@ function getNetworkConfig(network: string): { rpcUrl: string; chainId: number } 
   switch (network) {
     case 'mainnet':
       return {
-        rpcUrl: process.env.BASE_MAINNET_RPC_URL ?? 'https://mainnet.base.org',
-        chainId: 8453,
+        rpcUrl: process.env.JEJU_RPC_URL ?? 'https://rpc.jejunetwork.org',
+        chainId: 420691,
       };
     case 'testnet':
       return {
-        rpcUrl: process.env.BASE_SEPOLIA_RPC_URL ?? 'https://sepolia.base.org',
-        chainId: 84532,
+        rpcUrl: process.env.JEJU_TESTNET_RPC_URL ?? 'https://testnet-rpc.jejunetwork.org',
+        chainId: 420690,
       };
     case 'localnet':
     default:
       return {
-        rpcUrl: process.env.LOCAL_RPC_URL ?? 'http://localhost:8545',
+        rpcUrl: process.env.LOCAL_RPC_URL ?? 'http://localhost:6546',
         chainId: 1337,
       };
   }

@@ -587,7 +587,8 @@ describe('Security Edge Cases', () => {
   test('should handle null and undefined', () => {
     const config = createSanitizationConfig();
     expect(sanitizeObject(null, config)).toBeNull();
-    expect(sanitizeObject(undefined, config)).toBeUndefined();
+    // undefined is converted to null (JSON doesn't have undefined)
+    expect(sanitizeObject(undefined, config)).toBeNull();
   });
 
   test('should handle very long strings', () => {

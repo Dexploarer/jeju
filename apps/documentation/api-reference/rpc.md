@@ -4,7 +4,7 @@ Jeju is Ethereum-compatible. Standard JSON-RPC methods work as expected.
 
 ## Endpoints
 
-Localnet uses `http://127.0.0.1:9545` with WebSocket at `ws://127.0.0.1:9546`. Testnet uses `https://testnet-rpc.jejunetwork.org` with WebSocket at `wss://testnet-ws.jejunetwork.org`. Mainnet uses `https://rpc.jejunetwork.org` with WebSocket at `wss://ws.jejunetwork.org`.
+Localnet uses `http://127.0.0.1:6546` with WebSocket at `ws://127.0.0.1:6547`. Testnet uses `https://testnet-rpc.jejunetwork.org` with WebSocket at `wss://testnet-ws.jejunetwork.org`. Mainnet uses `https://rpc.jejunetwork.org` with WebSocket at `wss://ws.jejunetwork.org`.
 
 ## Standard Methods
 

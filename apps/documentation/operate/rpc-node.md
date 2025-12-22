@@ -54,8 +54,8 @@ services:
   op-reth:
     image: ghcr.io/paradigmxyz/op-reth:latest
     ports:
-      - "9545:9545"
-      - "9546:9546"
+      - "9545:6546"
+      - "9546:6547"
     volumes:
       - ./data:/data
     command: >
@@ -78,11 +78,11 @@ cast send $NODE_STAKING_MANAGER \
 
 ```bash
 # Block number
-curl -X POST http://localhost:9545 \
+curl -X POST http://localhost:6546 \
   -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
 
 # Sync status
-curl -X POST http://localhost:9545 \
+curl -X POST http://localhost:6546 \
   -d '{"jsonrpc":"2.0","method":"eth_syncing","params":[],"id":1}'
 ```
 

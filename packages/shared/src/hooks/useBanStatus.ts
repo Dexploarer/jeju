@@ -6,15 +6,12 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Address, createPublicClient, http } from 'viem';
 import { baseSepolia } from 'viem/chains';
+import { BanType, BAN_MANAGER_ABI } from '@jejunetwork/types';
 
 // ============ Types ============
 
-export enum BanType {
-  NONE = 0,
-  ON_NOTICE = 1,
-  CHALLENGED = 2,
-  PERMANENT = 3
-}
+// Re-export for convenience
+export { BanType };
 
 export interface BanStatus {
   isBanned: boolean;
@@ -34,46 +31,6 @@ export interface BanCheckConfig {
   appId?: `0x${string}`;
   rpcUrl?: string;
 }
-
-// ============ ABIs ============
-
-const BAN_MANAGER_ABI = [
-  {
-    name: 'isAddressBanned',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [{ name: 'target', type: 'address' }],
-    outputs: [{ name: '', type: 'bool' }],
-  },
-  {
-    name: 'isOnNotice',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [{ name: 'target', type: 'address' }],
-    outputs: [{ name: '', type: 'bool' }],
-  },
-  {
-    name: 'getAddressBan',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [{ name: 'target', type: 'address' }],
-    outputs: [
-      {
-        type: 'tuple',
-        components: [
-          { name: 'isBanned', type: 'bool' },
-          { name: 'banType', type: 'uint8' },
-          { name: 'bannedAt', type: 'uint256' },
-          { name: 'expiresAt', type: 'uint256' },
-          { name: 'reason', type: 'string' },
-          { name: 'proposalId', type: 'bytes32' },
-          { name: 'reporter', type: 'address' },
-          { name: 'caseId', type: 'bytes32' },
-        ],
-      },
-    ],
-  },
-] as const;
 
 const MODERATION_MARKETPLACE_ABI = [
   {
@@ -96,7 +53,7 @@ function getDefaultRpcUrl(): string {
   switch (network) {
     case 'mainnet': return 'https://rpc.jejunetwork.org';
     case 'testnet': return 'https://testnet-rpc.jejunetwork.org';
-    default: return 'http://localhost:9545';
+    default: return 'http://localhost:6546';
   }
 }
 

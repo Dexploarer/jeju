@@ -89,7 +89,7 @@ function encodeBalanceOf(address: string): string {
  * Make RPC call to localnet
  */
 async function rpcCall(page: RpcPageRequest, method: string, params: EthRpcParam[] = []): Promise<string> {
-  const response = await page.request.post('http://127.0.0.1:9545', {
+  const response = await page.request.post('http://127.0.0.1:6546', {
     data: {
       jsonrpc: '2.0',
       method,

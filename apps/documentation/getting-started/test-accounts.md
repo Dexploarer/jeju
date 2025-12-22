@@ -36,7 +36,7 @@ const account = privateKeyToAccount(TEST_PRIVATE_KEY);
 const client = createWalletClient({
   account,
   chain: jeju,
-  transport: http('http://127.0.0.1:9545'),
+  transport: http('http://127.0.0.1:6546'),
 });
 
 const hash = await client.sendTransaction({
@@ -52,11 +52,11 @@ export PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f
 
 cast send 0x70997970C51812dc3A010C7d01b50e0d17dc79C8 \
   --value 1ether \
-  --rpc-url http://127.0.0.1:9545 \
+  --rpc-url http://127.0.0.1:6546 \
   --private-key $PRIVATE_KEY
 
 cast balance 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 \
-  --rpc-url http://127.0.0.1:9545
+  --rpc-url http://127.0.0.1:6546
 ```
 
 ## Mnemonic
