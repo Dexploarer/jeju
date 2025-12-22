@@ -228,6 +228,16 @@ export {
   type SWRegistrationOptions,
 } from './service-worker';
 
+// Logger
+export {
+  createLogger,
+  getLogger,
+  logger,
+  type Logger,
+  type LogLevel,
+  type LoggerConfig,
+} from './logger';
+
 // Protocol Servers
 export {
   // Unified Server
