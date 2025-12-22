@@ -31,8 +31,7 @@ describe('Node Registration - On-Chain Validation', () => {
     // Validate contract addresses are configured
     const hasNodeManager =
       NODE_STAKING_MANAGER !== '0x0000000000000000000000000000000000000000'
-    const hasJeju =
-      JEJU_TOKEN !== '0x0000000000000000000000000000000000000000'
+    const hasJeju = JEJU_TOKEN !== '0x0000000000000000000000000000000000000000'
 
     console.log(
       `   Contract configured: ${hasNodeManager ? '✅' : 'ℹ️  needs .env'}`,

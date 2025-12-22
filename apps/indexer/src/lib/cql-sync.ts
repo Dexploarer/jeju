@@ -46,9 +46,6 @@ interface _CQLClientConfig {
 export type { _CQLClientConfig as CQLClientConfig }
 
 class CovenantSQLClient {
-  constructor(_config?: { blockProducerEndpoint: string; databaseId: string }) {
-    // Stub: config not used
-  }
   async query<T = SqlRow>(
     _sql: string,
     _params?: SqlParam[],

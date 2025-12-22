@@ -153,6 +153,13 @@ export {
   XLP_V2_PAIR_ABI,
   ZERO_ADDRESS,
 } from './lib'
+// ============ MEV Bot ============
+export {
+  type BotStats,
+  MevBot,
+  type MevBotConfig,
+  type TradeResult,
+} from './mev-bot'
 // ============ Solana DEX Adapters ============
 export {
   type DexSource,
@@ -174,12 +181,12 @@ export {
   LiquidityManager,
   OracleKeeperStrategy,
   type PoolAnalysis,
+  type Position,
   type RebalanceAction,
   type RiskLevel,
   SandwichStrategy,
   SolanaArbStrategy,
   SolverStrategy,
-  type Position,
   type YieldFarmingConfig,
   YieldFarmingStrategy,
   type YieldOpportunity,
@@ -187,10 +194,3 @@ export {
 } from './strategies'
 // ============ Core Trading Bot ============
 export { TradingBot, type TradingBotOptions } from './trading-bot'
-// ============ MEV Bot ============
-export {
-  type BotStats,
-  MevBot,
-  type MevBotConfig,
-  type TradeResult,
-} from './mev-bot'

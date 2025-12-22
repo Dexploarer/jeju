@@ -153,12 +153,14 @@ export class XMTPSyncService {
    * Sync with a specific peer
    */
   private async syncWithPeer(peer: SyncPeer): Promise<void> {
-    const events = await this.fetchEventsFromPeer(peer).catch((error: Error) => {
-      console.error(
-        `[XMTP Sync] Failed to sync with peer ${peer.nodeId}: ${error.message}`,
-      )
-      return []
-    })
+    const events = await this.fetchEventsFromPeer(peer).catch(
+      (error: Error) => {
+        console.error(
+          `[XMTP Sync] Failed to sync with peer ${peer.nodeId}: ${error.message}`,
+        )
+        return []
+      },
+    )
 
     for (const event of events) {
       if (

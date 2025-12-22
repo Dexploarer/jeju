@@ -69,7 +69,6 @@
  */
 
 export { createHelmProviderRouter } from './helm-provider'
-export { createK3sRouter } from './k3s-provider'
 // Ingress Controller
 export {
   type BackendConfig,
@@ -79,6 +78,7 @@ export {
   type IngressRule,
   type PathRule,
 } from './ingress'
+export { createK3sRouter } from './k3s-provider'
 export { DecentralizedNodeRegistry } from './node-registry'
 // Service Mesh
 export {

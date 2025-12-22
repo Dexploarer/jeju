@@ -16,9 +16,9 @@ import {
   formatEther,
   getBalance,
   http,
+  type PublicClient,
   parseEther,
   parseUnits,
-  type PublicClient,
 } from 'viem'
 import { type Account, privateKeyToAccount } from 'viem/accounts'
 import { inferChainFromRpcUrl } from '../../../packages/deployment/scripts/shared/chain-utils'
@@ -38,7 +38,7 @@ const TEST_CONFIG = {
 
 // Test state
 let publicClient: PublicClient
-let deployerAccount: Account
+let _deployerAccount: Account
 let user1Account: Account
 
 // Validation tracking
@@ -73,7 +73,7 @@ beforeAll(async () => {
     transport: http(TEST_CONFIG.rpcUrl),
   })
 
-  deployerAccount = privateKeyToAccount(TEST_ACCOUNTS.deployer.privateKey)
+  _deployerAccount = privateKeyToAccount(TEST_ACCOUNTS.deployer.privateKey)
   user1Account = privateKeyToAccount(TEST_ACCOUNTS.user1.privateKey)
 })
 

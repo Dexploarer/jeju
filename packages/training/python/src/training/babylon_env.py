@@ -160,14 +160,12 @@ class BabylonRLAIFEnv(BaseEnv):
         env_config = BabylonEnvConfig(
             tokenizer_name="Qwen/Qwen2.5-3B-Instruct",
             group_size=4,  # Compare 4 trajectories at a time
-            use_wandb=True,
             max_num_workers=64,
             rollout_server_url="http://localhost:8000",
             total_steps=1000,
             batch_size=16,
             steps_per_eval=100,
             max_token_length=4096,
-            wandb_name="babylon-rlaif",
             eval_handling=EvalHandlingEnum.LIMIT_TRAIN,
             eval_limit_ratio=0.1,
             database_url=os.getenv("DATABASE_URL", ""),
@@ -273,32 +271,28 @@ class BabylonRLAIFEnv(BaseEnv):
         # Shuffle for variety
         random.shuffle(self.trajectory_cache)
 
-    async def wandb_log(self, wandb_metrics: dict | None = None):
-        """Log metrics to wandb including judgement samples"""
-        if wandb_metrics is None:
-            wandb_metrics = {}
-
-        # Add judgement samples table if available (only if wandb is active)
-        if len(self.judgement_samples) > 0 and self.config.use_wandb:
-            import wandb as _wandb
-
-            if _wandb.run is not None:
-                table = _wandb.Table(columns=["trajectory_a", "trajectory_b", "judge_reasoning"])
-                for item in self.judgement_samples[-10:]:  # Keep last 10
-                    table.add_data(item[0][:500], item[1][:500], item[2][:500])
-                wandb_metrics["train/judgement_samples"] = table
+    async def log_metrics(self, metrics: dict | None = None):
+        """Log metrics (wandb removed - use local logging)"""
+        if metrics is None:
+            metrics = {}
 
         # Add eval metrics
         if len(self.eval_metrics) > 0:
-            wandb_metrics["eval/windows_processed"] = self.windows_processed
-            wandb_metrics["eval/avg_pnl"] = (
+            metrics["eval/windows_processed"] = self.windows_processed
+            metrics["eval/avg_pnl"] = (
                 sum(m.get("avg_pnl", 0) for m in self.eval_metrics) / len(self.eval_metrics)
                 if self.eval_metrics
                 else 0
             )
 
+        # Log judgement samples locally
+        if len(self.judgement_samples) > 0:
+            logger.info(f"Judgement samples: {len(self.judgement_samples)}")
+            for item in self.judgement_samples[-3:]:
+                logger.debug(f"  PnL: {item[0]}, Response: {item[1][:50]}..., Score: {item[2]}")
+
         self.judgement_samples = []  # Clear after logging
-        await super().wandb_log(wandb_metrics)
+        return metrics
 
     async def get_next_item(self) -> tuple | None:
         """Get next trajectory group for scoring"""
@@ -574,7 +568,7 @@ You receive market updates and must analyze, reason, and then act."""
             final_score = composite_reward(reward_inputs)
             scores.append(final_score)
 
-            # Logging sample for WandB
+            # Logging sample for debugging
             if len(self.judgement_samples) < 10:
                 self.judgement_samples.append(
                     (

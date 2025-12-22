@@ -336,8 +336,6 @@ const DEFAULT_CONFIG: Omit<CrossChainArbConfig, 'chains'> & {
 export class CrossChainArbitrage extends EventEmitter {
   private config: CrossChainArbConfig
   private evmClients: Map<EVMChainId, PublicClient> = new Map()
-  private oracle: OracleAggregator | null = null
-  private solanaConnection: Connection | null = null
   private prices: Map<string, ChainPrice[]> = new Map()
   private opportunities: CrossChainArbOpportunity[] = []
   private running = false

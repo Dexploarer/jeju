@@ -101,7 +101,9 @@ export const CompositeStrategyConfigSchema = z.object({
   enableRegimeDetection: z.boolean(),
   minConfidenceThreshold: z.number().min(0).max(1),
 })
-export type CompositeStrategyConfig = z.infer<typeof CompositeStrategyConfigSchema>
+export type CompositeStrategyConfig = z.infer<
+  typeof CompositeStrategyConfigSchema
+>
 
 export const CrossChainArbConfigSchema = z.object({
   minProfitBps: z.number().int().nonnegative(),
@@ -158,7 +160,9 @@ export const IndexerPositionsResponseSchema = z.object({
     )
     .optional(),
 })
-export type IndexerPositionsResponse = z.infer<typeof IndexerPositionsResponseSchema>
+export type IndexerPositionsResponse = z.infer<
+  typeof IndexerPositionsResponseSchema
+>
 
 export const PythPriceSchema = z.object({
   price: z.bigint(),
@@ -188,7 +192,9 @@ export const StrategyTypeSchema = z.enum([
 export const BotEngineConfigSchema = z.object({
   chainId: EVMChainIdSchema,
   rpcUrl: z.string().url(),
-  privateKey: z.string().regex(/^0x[a-fA-F0-9]{64}$/, 'Invalid private key format'),
+  privateKey: z
+    .string()
+    .regex(/^0x[a-fA-F0-9]{64}$/, 'Invalid private key format'),
   enabledStrategies: z.array(StrategyTypeSchema),
   healthCheckIntervalMs: z.number().positive(),
   logLevel: z.enum(['debug', 'info', 'warn', 'error']),

@@ -5,7 +5,11 @@
  */
 
 import { describe, expect, it } from 'bun:test'
-import { getChainConfig, getContractAddresses, getServicesConfig } from '../config'
+import {
+  getChainConfig,
+  getContractAddresses,
+  getServicesConfig,
+} from '../config'
 
 describe('getChainConfig', () => {
   it('should return localnet config', () => {
@@ -33,7 +37,10 @@ describe('getContractAddresses', () => {
     const addresses = getContractAddresses('localnet')
     expect(addresses).toBeDefined()
     // Core contracts should be defined
-    expect(typeof addresses.jnsRegistry === 'string' || addresses.jnsRegistry === undefined).toBe(true)
+    expect(
+      typeof addresses.jnsRegistry === 'string' ||
+        addresses.jnsRegistry === undefined,
+    ).toBe(true)
   })
 
   it('should return contract addresses for testnet', () => {
@@ -57,4 +64,3 @@ describe('getServicesConfig', () => {
     expect(services.gateway).toBeDefined()
   })
 })
-

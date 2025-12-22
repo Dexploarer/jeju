@@ -7,8 +7,8 @@
 import { describe, expect, test } from 'bun:test'
 import { getCharacter, listCharacters } from '../src/characters'
 import {
-  checkDWSHealth,
   CrucibleAgentRuntime,
+  checkDWSHealth,
   createCrucibleRuntime,
   type RuntimeMessage,
   runtimeManager,
@@ -16,7 +16,9 @@ import {
 
 // Check DWS availability once at module load
 let dwsAvailable = false
-const initDWSCheck = checkDWSHealth().then(ok => { dwsAvailable = ok })
+const initDWSCheck = checkDWSHealth().then((ok) => {
+  dwsAvailable = ok
+})
 
 describe('Crucible Agent Runtime', () => {
   describe('Runtime Creation', () => {

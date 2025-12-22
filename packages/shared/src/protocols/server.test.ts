@@ -6,11 +6,11 @@ import { beforeAll, describe, expect, test } from 'bun:test'
 import {
   configureX402,
   createServer,
+  type ServerConfig,
   type SkillContext,
   skillError,
   skillRequiresPayment,
   skillSuccess,
-  type ServerConfig,
 } from './server'
 
 beforeAll(() => {

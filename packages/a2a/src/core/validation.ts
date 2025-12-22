@@ -29,7 +29,10 @@ export const PaymentRequestParamsSchema = z.object({
   amount: z.string().min(1),
   service: z.string().min(1),
   metadata: z
-    .record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]))
+    .record(
+      z.string(),
+      z.union([z.string(), z.number(), z.boolean(), z.null()]),
+    )
     .optional(),
   from: z.string().optional(),
 })

@@ -463,4 +463,3 @@ export interface PkgRegistryConfig {
   rpcUrl: string
   packageRegistryAddress: Address
 }
-
