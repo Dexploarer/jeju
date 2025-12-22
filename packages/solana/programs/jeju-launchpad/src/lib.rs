@@ -61,39 +61,51 @@ pub mod jeju_launchpad {
         require!(uri.len() <= 200, LaunchpadError::UriTooLong);
         require!(creator_fee_bps <= MAX_CREATOR_FEE_BPS, LaunchpadError::FeeTooHigh);
 
+        // Get keys and account infos before mutable borrow
+        let token_mint_key = ctx.accounts.token_mint.key();
+        let creator_key = ctx.accounts.creator.key();
+        let bump = ctx.bumps.bonding_curve;
+        let token_program_info = ctx.accounts.token_program.to_account_info();
+        let token_mint_info = ctx.accounts.token_mint.to_account_info();
+        let curve_token_account_info = ctx.accounts.curve_token_account.to_account_info();
+        let bonding_curve_info = ctx.accounts.bonding_curve.to_account_info();
+
+        let actual_threshold = if graduation_threshold > 0 {
+            graduation_threshold
+        } else {
+            DEFAULT_GRADUATION_THRESHOLD
+        };
+
+        // Update curve state
         let curve = &mut ctx.accounts.bonding_curve;
-        curve.creator = ctx.accounts.creator.key();
-        curve.token_mint = ctx.accounts.token_mint.key();
+        curve.creator = creator_key;
+        curve.token_mint = token_mint_key;
         curve.virtual_sol_reserves = DEFAULT_VIRTUAL_SOL_RESERVES;
         curve.virtual_token_reserves = DEFAULT_VIRTUAL_TOKEN_RESERVES;
         curve.real_sol_reserves = 0;
         curve.real_token_reserves = DEFAULT_VIRTUAL_TOKEN_RESERVES;
         curve.tokens_sold = 0;
-        curve.graduation_threshold = if graduation_threshold > 0 {
-            graduation_threshold
-        } else {
-            DEFAULT_GRADUATION_THRESHOLD
-        };
+        curve.graduation_threshold = actual_threshold;
         curve.creator_fee_bps = creator_fee_bps;
         curve.graduated = false;
         curve.created_at = Clock::get()?.unix_timestamp;
-        curve.bump = ctx.bumps.bonding_curve;
+        curve.bump = bump;
 
         // Mint initial supply to curve vault
         let seeds = &[
             BONDING_CURVE_SEED,
-            ctx.accounts.token_mint.key().as_ref(),
-            &[curve.bump],
+            token_mint_key.as_ref(),
+            &[bump],
         ];
         let signer = &[&seeds[..]];
 
         token::mint_to(
             CpiContext::new_with_signer(
-                ctx.accounts.token_program.to_account_info(),
+                token_program_info,
                 MintTo {
-                    mint: ctx.accounts.token_mint.to_account_info(),
-                    to: ctx.accounts.curve_token_account.to_account_info(),
-                    authority: ctx.accounts.bonding_curve.to_account_info(),
+                    mint: token_mint_info,
+                    to: curve_token_account_info,
+                    authority: bonding_curve_info,
                 },
                 signer,
             ),
@@ -105,11 +117,11 @@ pub mod jeju_launchpad {
         config.total_launches += 1;
 
         emit!(TokenCreated {
-            token_mint: ctx.accounts.token_mint.key(),
-            creator: ctx.accounts.creator.key(),
+            token_mint: token_mint_key,
+            creator: creator_key,
             name,
             symbol,
-            graduation_threshold: curve.graduation_threshold,
+            graduation_threshold: actual_threshold,
         });
 
         Ok(())

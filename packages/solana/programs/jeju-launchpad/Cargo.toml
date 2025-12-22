@@ -14,6 +14,7 @@ no-idl = []
 no-log-ix-name = []
 cpi = ["no-entrypoint"]
 default = []
+init-if-needed = ["anchor-lang/init-if-needed"]
 
 [dependencies]
 anchor-lang = { workspace = true }
