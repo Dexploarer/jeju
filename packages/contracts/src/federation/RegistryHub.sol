@@ -3,6 +3,7 @@ pragma solidity ^0.8.33;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {IWormhole} from "./interfaces/IWormhole.sol";
@@ -32,7 +33,7 @@ import {IWormhole} from "./interfaces/IWormhole.sol";
  * - STAKED: 1+ ETH stake, trusted for federation
  * - VERIFIED: Governance-approved, full trust
  */
-contract RegistryHub is Ownable, ReentrancyGuard {
+contract RegistryHub is Ownable, ReentrancyGuard, Pausable {
     using ECDSA for bytes32;
     using MessageHashUtils for bytes32;
 
@@ -231,7 +232,7 @@ contract RegistryHub is Ownable, ReentrancyGuard {
         ChainType chainType,
         string calldata name,
         string calldata rpcUrl
-    ) external payable nonReentrant {
+    ) external payable nonReentrant whenNotPaused {
         if (chains[chainId].registeredAt != 0) revert ChainExists();
 
         TrustTier tier = TrustTier.UNSTAKED;
@@ -328,7 +329,7 @@ contract RegistryHub is Ownable, ReentrancyGuard {
         string calldata name,
         string calldata registryVersion,
         string calldata metadataUri
-    ) external {
+    ) external whenNotPaused {
         ChainInfo storage chain = chains[chainId];
         if (chain.registeredAt == 0) revert ChainNotFound();
         if (chain.networkOperator != msg.sender && msg.sender != owner()) revert NotOperator();
@@ -432,7 +433,7 @@ contract RegistryHub is Ownable, ReentrancyGuard {
      * - name: string (variable length)
      * - metadataUri: string (variable length)
      */
-    function verifySolanaRegistry(bytes calldata vaa) external {
+    function verifySolanaRegistry(bytes calldata vaa) external whenNotPaused {
         // Parse and verify VAA through Wormhole core bridge
         (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(vaa);
         
@@ -815,6 +816,16 @@ contract RegistryHub is Ownable, ReentrancyGuard {
 
     function setTrustedSolanaEmitter(bytes32 _emitter) external onlyOwner {
         trustedSolanaEmitter = _emitter;
+    }
+
+    /// @notice Pause all registry operations
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /// @notice Unpause registry operations
+    function unpause() external onlyOwner {
+        _unpause();
     }
 
     function version() external pure returns (string memory) {

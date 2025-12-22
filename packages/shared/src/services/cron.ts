@@ -204,7 +204,7 @@ class CronServiceImpl implements CronService {
   }
 
   private toPublicJob(job: LocalCronJob): CronJob {
-    const { cronInstance, timeoutId, ...publicJob } = job;
+    const { cronInstance: _cronInstance, timeoutId: _timeoutId, ...publicJob } = job;
     return publicJob;
   }
 

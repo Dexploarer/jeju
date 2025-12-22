@@ -38,6 +38,7 @@
  */
 
 import { execSync } from 'child_process';
+import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -184,7 +185,7 @@ async function main() {
       // const vkJson = execSync('cargo prove vk --output json', { cwd: circuitDir });
       // const vk = JSON.parse(vkJson.toString());
 
-    } catch (error) {
+    } catch {
       console.error('❌ Failed to build circuit');
       console.log('   Generating placeholder keys for development...\n');
     }
@@ -199,8 +200,6 @@ async function main() {
   const testSeed = Buffer.from('jeju-evm-light-client-test-seed-v1');
 
   function generateTestPoint(seed: Buffer, index: number, size: number): Uint8Array {
-    const crypto = require('crypto');
-    
     // Create initial seed hash
     const seedHash = crypto.createHash('sha256');
     seedHash.update(seed);

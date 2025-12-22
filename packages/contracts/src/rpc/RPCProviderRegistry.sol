@@ -102,6 +102,8 @@ contract RPCProviderRegistry is ProviderRegistryBase {
     error InvalidAmount();
     error InvalidEndpoint();
     error InvalidRegion();
+    error InvalidTreasury();
+    error InsufficientBalance();
     error UserIsFrozen();
     error UserNotFrozen();
     error AlreadyLinked();
@@ -422,6 +424,15 @@ contract RPCProviderRegistry is ProviderRegistryBase {
 
     function setTreasury(address _treasury) external onlyOwner {
         treasury = _treasury;
+    }
+
+    /// @notice Withdraw accumulated ETH to treasury
+    function withdrawETH() external onlyOwner {
+        if (treasury == address(0)) revert InvalidTreasury();
+        uint256 balance = address(this).balance;
+        if (balance == 0) revert InsufficientBalance();
+        (bool success, ) = treasury.call{value: balance}("");
+        if (!success) revert TransferFailed();
     }
 
     function setWhitelisted(address account, bool status) external onlyOwner {

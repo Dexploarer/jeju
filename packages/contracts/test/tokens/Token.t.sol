@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.33;
 
 import {Test, console2} from "forge-std/Test.sol";
 import {Token, IBanManager} from "../../src/tokens/Token.sol";

@@ -44,7 +44,7 @@ pub mod cpi;
 #[cfg(feature = "cpi")]
 pub use cpi::{accounts as cpi_accounts, LatestStateResult};
 
-declare_id!("EVMLightCL1111111111111111111111111111111111");
+declare_id!("5TMUr2vv5TAUhKo4q8ibfkkw9SeBRzumYaRNo1iWvwsX");
 
 /// Maximum sync committee size (512 validators)
 pub const SYNC_COMMITTEE_SIZE: usize = 512;

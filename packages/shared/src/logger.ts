@@ -1,14 +1,18 @@
 /**
- * KMS Logger - Standalone pino logger (avoids circular dep with shared)
+ * Shared Structured Logger using pino
+ * 
+ * All packages should import from here:
+ * import { createLogger, Logger } from '@jejunetwork/shared/logger';
  */
 
 import pino from 'pino';
 
-type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 const isProduction = process.env.NODE_ENV === 'production';
-const logLevel = (process.env.LOG_LEVEL?.toLowerCase() as LogLevel) ?? 'info';
+const logLevel = (process.env.LOG_LEVEL as LogLevel) ?? 'info';
 
+// Base pino logger with appropriate configuration
 const baseLogger = pino({
   level: logLevel,
   transport: !isProduction ? {
@@ -25,15 +29,31 @@ const baseLogger = pino({
   timestamp: () => `,"timestamp":"${new Date().toISOString()}"`,
 });
 
-interface Logger {
+export interface Logger {
   debug: (message: string, data?: Record<string, unknown>) => void;
   info: (message: string, data?: Record<string, unknown>) => void;
   warn: (message: string, data?: Record<string, unknown>) => void;
   error: (message: string, data?: Record<string, unknown>) => void;
 }
 
-export function createLogger(service: string): Logger {
+export interface LoggerConfig {
+  level?: LogLevel;
+  silent?: boolean;
+}
+
+/**
+ * Create a logger instance for a specific service/component
+ */
+export function createLogger(service: string, config?: LoggerConfig): Logger {
   const logger = baseLogger.child({ service });
+  
+  if (config?.level) {
+    logger.level = config.level;
+  }
+  
+  if (config?.silent) {
+    logger.level = 'silent';
+  }
 
   return {
     debug: (message: string, data?: Record<string, unknown>) => {
@@ -67,8 +87,18 @@ export function createLogger(service: string): Logger {
   };
 }
 
-// Pre-configured loggers for KMS components
-export const kmsLogger = createLogger('kms');
-export const encLogger = createLogger('kms.enc');
-export const teeLogger = createLogger('kms.tee');
-export const mpcLogger = createLogger('kms.mpc');
+// Singleton loggers cache
+const loggers = new Map<string, Logger>();
+
+/**
+ * Get or create a logger for a service (cached)
+ */
+export function getLogger(service: string): Logger {
+  if (!loggers.has(service)) {
+    loggers.set(service, createLogger(service));
+  }
+  return loggers.get(service)!;
+}
+
+// Default logger for quick usage
+export const logger = createLogger('app');

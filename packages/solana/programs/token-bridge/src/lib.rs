@@ -22,7 +22,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer, MintTo, Burn};
 use solana_program::keccak;
 
-declare_id!("TknBridge1111111111111111111111111111111111");
+declare_id!("36Cx8V6UCkCGuSCjzQuE9oeeqojd9734TKmfnbDGWhCA");
 
 /// Maximum payload size for cross-chain messages
 pub const MAX_PAYLOAD_SIZE: usize = 1024;

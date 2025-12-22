@@ -2,7 +2,7 @@
  * Storage Module - IPFS, multi-provider storage
  */
 
-import { z, type ZodSchema } from "zod";
+import type { ZodSchema } from "zod";
 
 // Re-export enhanced storage module
 export {
@@ -31,7 +31,7 @@ export {
 import { parseEther } from "viem";
 import type { NetworkType } from "@jejunetwork/types";
 import type { JejuWallet } from "../wallet";
-import type { JsonValue, JsonRecord } from "../shared/types";
+import type { JsonValue } from "../shared/types";
 import { getServicesConfig } from "../config";
 import { generateAuthHeaders } from "../shared/api";
 import {
