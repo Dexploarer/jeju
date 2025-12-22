@@ -237,13 +237,13 @@ export {
   type PaymentRequirement,
   type ProtocolMiddlewareConfig,
   parseX402Header,
+  type ServerConfig,
   type ServerInstance,
   type SkillContext,
   type SkillResult,
   skillError,
   skillRequiresPayment,
   skillSuccess,
-  type ServerConfig,
   startServer,
   verifyX402Payment,
   type X402Config,
@@ -258,6 +258,13 @@ export {
   retryWithCondition,
   sleep,
 } from './retry'
+// Security Middleware
+export {
+  type RateLimitConfig,
+  rateLimitMiddleware,
+  type SecurityConfig,
+  securityMiddleware,
+} from './security-middleware'
 // Service Worker
 export {
   cacheUrls,
@@ -356,13 +363,6 @@ export {
   isSignificantAmount,
   parseTokenAmount,
 } from './token-utils'
-// Security Middleware
-export {
-  rateLimitMiddleware,
-  type RateLimitConfig,
-  securityMiddleware,
-  type SecurityConfig,
-} from './security-middleware'
 // Shared Types
 export type {
   JsonRpcError,

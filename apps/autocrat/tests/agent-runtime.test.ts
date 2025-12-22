@@ -75,9 +75,16 @@ describe('Agent Runtime', () => {
         console.log(`[Test] Treasury vote: ${vote.vote} (${vote.confidence}%)`)
       } catch (error) {
         // DWS health check passed but compute endpoint may not be available
-        const errorMessage = error instanceof Error ? error.message : String(error)
-        if (errorMessage.includes('DWS compute error') || errorMessage.includes('404')) {
-          console.log('[Test] Skipping - DWS compute endpoint not available:', errorMessage)
+        const errorMessage =
+          error instanceof Error ? error.message : String(error)
+        if (
+          errorMessage.includes('DWS compute error') ||
+          errorMessage.includes('404')
+        ) {
+          console.log(
+            '[Test] Skipping - DWS compute endpoint not available:',
+            errorMessage,
+          )
           return
         }
         throw error
@@ -156,9 +163,16 @@ describe('Agent Runtime', () => {
           `[Test] CEO decision: ${decision.approved ? 'APPROVED' : 'REJECTED'} (${decision.confidence}%)`,
         )
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error)
-        if (errorMessage.includes('DWS compute error') || errorMessage.includes('404')) {
-          console.log('[Test] Skipping - DWS compute endpoint not available:', errorMessage)
+        const errorMessage =
+          error instanceof Error ? error.message : String(error)
+        if (
+          errorMessage.includes('DWS compute error') ||
+          errorMessage.includes('404')
+        ) {
+          console.log(
+            '[Test] Skipping - DWS compute endpoint not available:',
+            errorMessage,
+          )
           return
         }
         throw error
@@ -227,9 +241,16 @@ describe('DWS Direct Inference', () => {
       expect(response.length).toBeGreaterThan(0)
       console.log(`[Test] DWS response: ${response.slice(0, 100)}...`)
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      if (errorMessage.includes('DWS compute error') || errorMessage.includes('404')) {
-        console.log('[Test] Skipping - DWS compute endpoint not available:', errorMessage)
+      const errorMessage =
+        error instanceof Error ? error.message : String(error)
+      if (
+        errorMessage.includes('DWS compute error') ||
+        errorMessage.includes('404')
+      ) {
+        console.log(
+          '[Test] Skipping - DWS compute endpoint not available:',
+          errorMessage,
+        )
         return
       }
       throw error

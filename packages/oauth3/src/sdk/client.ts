@@ -10,7 +10,7 @@
  * - IPFS storage for credentials
  */
 
-import { type Address, type Hex, http, toHex } from 'viem'
+import { type Address, type Hex, toHex } from 'viem'
 import { CHAIN_IDS, DEFAULT_RPC } from '../infrastructure/config.js'
 import {
   createDecentralizedDiscovery,

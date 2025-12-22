@@ -211,7 +211,10 @@ export class LoadTestSimulator {
     const errorMap = new Map<string, { count: number; examples: string[] }>()
     for (const result of this.results) {
       if (!result.success && result.error) {
-        const existing = errorMap.get(result.error) ?? { count: 0, examples: [] }
+        const existing = errorMap.get(result.error) ?? {
+          count: 0,
+          examples: [],
+        }
         existing.count++
         if (existing.examples.length < 3) {
           existing.examples.push(`${result.method} ${result.endpoint}`)
@@ -363,4 +366,3 @@ export const SCENARIOS: Record<string, LoadTestScenario> = {
     thinkTimeMs: 200,
   },
 }
-

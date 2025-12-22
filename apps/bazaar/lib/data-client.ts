@@ -268,7 +268,6 @@ export async function fetchTokensWithMarketData(options: {
   return data.tokens.map(mapToken)
 }
 
-
 export async function fetchTokenDetails(address: Address): Promise<Token> {
   const validatedAddress = AddressSchema.parse(address)
   const client = getRpcClient()

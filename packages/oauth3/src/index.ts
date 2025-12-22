@@ -208,6 +208,8 @@ export * from './types.js'
 // React SDK (separate entry point for tree-shaking)
 // import { OAuth3Provider, useOAuth3 } from '@jejunetwork/oauth3/react'
 
+// Re-export type guards from viem
+export { isAddress, isHex } from 'viem'
 // Multi-tenant Council
 export {
   type CEOConfig,
@@ -254,9 +256,6 @@ export {
   type SignMessageOptions,
   type TransactionOptions,
 } from './sdk/client.js'
-
-// Re-export type guards from viem
-export { isAddress, isHex } from 'viem'
 
 // Validation (Zod schemas and utilities)
 export {
