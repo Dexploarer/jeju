@@ -24,6 +24,13 @@ import {
 } from '../decentralized'
 import { createEmailRouter } from '../email/routes'
 import { GitRepoManager } from '../git/repo-manager'
+import {
+  createHelmProviderRouter,
+  createIngressRouter,
+  createK3sRouter,
+  createServiceMeshRouter,
+  createTerraformProviderRouter,
+} from '../infrastructure'
 import { banCheckMiddleware } from '../middleware/ban-check'
 import { PkgRegistryManager } from '../pkg/registry-manager'
 import { createBackendManager } from '../storage/backends'
@@ -58,13 +65,6 @@ import { createStorageRouter } from './routes/storage'
 import { createVPNRouter } from './routes/vpn'
 import { createDefaultWorkerdRouter } from './routes/workerd'
 import { createWorkersRouter } from './routes/workers'
-import {
-  createHelmProviderRouter,
-  createIngressRouter,
-  createK3sRouter,
-  createServiceMeshRouter,
-  createTerraformProviderRouter,
-} from '../infrastructure'
 
 // Server port - defined early for use in config
 const PORT = parseInt(process.env.DWS_PORT || process.env.PORT || '4030', 10)

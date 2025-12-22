@@ -111,8 +111,7 @@ export function createA2AServer() {
       }
 
       // Handle Error instances or extract message from other error types
-      const errorObj =
-        error instanceof Error ? error : new Error(String(error))
+      const errorObj = error instanceof Error ? error : new Error(String(error))
       const safeMessage = sanitizeErrorMessage(errorObj, isLocalnet)
       return {
         jsonrpc: '2.0',

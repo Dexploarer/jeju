@@ -24,18 +24,18 @@ import { createX402Routes, getX402Middleware } from './x402'
 
 // Environment schema with proper defaults
 const envSchema = z.object({
-  PORT: z
-    .string()
-    .regex(/^\d+$/)
-    .default('4500')
-    .transform(Number),
+  PORT: z.string().regex(/^\d+$/).default('4500').transform(Number),
   APP_NAME: z.string().default('Decentralized App Template'),
   CORS_ORIGINS: z.string().optional(),
 })
 
 type EnvConfig = z.infer<typeof envSchema>
 
-const env: EnvConfig = expectValid(envSchema, process.env, 'Environment variables')
+const env: EnvConfig = expectValid(
+  envSchema,
+  process.env,
+  'Environment variables',
+)
 
 const PORT = env.PORT
 const APP_NAME = env.APP_NAME
@@ -88,7 +88,7 @@ if (!WEBHOOK_SECRET && !isLocalnet) {
   console.error('SECURITY ERROR: WEBHOOK_SECRET must be set in production')
   process.exit(1)
 }
-const webhookSecret = WEBHOOK_SECRET || 'dev-webhook-secret'
+const _webhookSecret = WEBHOOK_SECRET || 'dev-webhook-secret'
 
 // Constant-time string comparison using crypto.subtle
 const constantTimeEqual = async (a: string, b: string): Promise<boolean> => {

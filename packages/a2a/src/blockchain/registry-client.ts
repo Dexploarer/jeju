@@ -340,9 +340,10 @@ export class RegistryClient {
   /**
    * Transform AgentProfile to registry entry format
    */
-  private toRegistryEntry(
-    profile: AgentProfile,
-  ): { agentId: string; [key: string]: JsonValue } {
+  private toRegistryEntry(profile: AgentProfile): {
+    agentId: string
+    [key: string]: JsonValue
+  } {
     return {
       agentId: String(profile.tokenId),
       tokenId: profile.tokenId,

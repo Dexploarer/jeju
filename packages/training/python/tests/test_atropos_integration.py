@@ -14,7 +14,6 @@ import pytest
 
 # Check for optional dependencies
 HAS_TORCH = False
-HAS_WANDB = False
 try:
     import torch
 
@@ -23,16 +22,7 @@ try:
 except ImportError:
     pass
 
-try:
-    import wandb
-
-    _ = wandb.__version__  # Use the import to satisfy linter
-    HAS_WANDB = True
-except ImportError:
-    pass
-
 requires_torch = pytest.mark.skipif(not HAS_TORCH, reason="torch not installed")
-requires_wandb = pytest.mark.skipif(not HAS_WANDB, reason="wandb not installed")
 
 
 class TestImports:
@@ -75,7 +65,7 @@ class TestImports:
 
         assert BabylonAtroposTrainer is not None
 
-    @requires_wandb
+    @requires_torch
     def test_import_environment(self):
         from src.training import (
             BabylonRLAIFEnv,
@@ -274,9 +264,9 @@ class TestTrainerConfig:
         assert config.learning_rate == 5e-6
 
 
-@requires_wandb
+@requires_torch
 class TestEnvironmentConfig:
-    """Test environment configuration (requires wandb)"""
+    """Test environment configuration (requires torch)"""
 
     def test_default_config(self):
         from src.training import BabylonEnvConfig

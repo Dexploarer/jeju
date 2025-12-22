@@ -3,9 +3,9 @@ import { type Context, Elysia } from 'elysia'
 import type { Address } from 'viem'
 import { verifyMessage } from 'viem'
 import {
+  type AuthCallbackQuery,
   authCallbackQuerySchema,
   authProviderSchema,
-  type AuthCallbackQuery,
   type OAuth3AuthHeaders,
   oauth3AuthHeadersSchema,
   type WalletAuthHeaders,
@@ -159,8 +159,7 @@ export function createAuthRoutes() {
         return { error: error.message, code: 'VALIDATION_ERROR' }
       }
 
-      const errorObj =
-        error instanceof Error ? error : new Error(String(error))
+      const errorObj = error instanceof Error ? error : new Error(String(error))
       const safeMessage = sanitizeErrorMessage(errorObj, isLocalnet)
       set.status = 500
       return { error: safeMessage, code: 'INTERNAL_ERROR' }
@@ -379,4 +378,3 @@ export function createAuthRoutes() {
       }
     })
 }
-

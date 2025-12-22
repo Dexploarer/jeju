@@ -35,7 +35,9 @@ const SimulateArgsSchema = z.object({
 const StartArgsSchema = z.object({
   chainId: EVMChainIdSchema,
   rpcUrl: z.string().url(),
-  privateKey: z.string().regex(/^0x[a-fA-F0-9]{64}$/, 'Invalid private key format'),
+  privateKey: z
+    .string()
+    .regex(/^0x[a-fA-F0-9]{64}$/, 'Invalid private key format'),
 })
 
 const COMMANDS = ['start', 'backtest', 'simulate', 'prices', 'help'] as const

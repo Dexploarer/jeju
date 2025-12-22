@@ -8,8 +8,8 @@ import { describe, expect, it } from 'bun:test'
 import { z } from 'zod'
 import {
   LPPositionSchema,
-  PaymasterInfoResponseSchema,
   PaymasterDetailSchema,
+  PaymasterInfoResponseSchema,
 } from '../shared/schemas'
 
 describe('LPPositionSchema', () => {
@@ -101,4 +101,3 @@ describe('API response validation patterns', () => {
     expect(result.optional).toBe('default-value')
   })
 })
-

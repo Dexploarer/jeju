@@ -91,8 +91,6 @@ export class Backtester {
         }
 
         const calculation = await strategy.calculateWeights(ctx)
-
-        // Calculate rebalance costs
         const rebalanceCost = this.calculateRebalanceCost(
           weights,
           calculation.newWeights,
@@ -104,8 +102,6 @@ export class Backtester {
         )
 
         cumulativeFees += rebalanceCost
-
-        // Update weights and balances
         weights = calculation.newWeights
         balances = this.rebalanceBalances(
           balances,
@@ -118,7 +114,6 @@ export class Backtester {
         lastRebalance = dataPoint.timestamp
       }
 
-      // Update balances based on price changes
       const previousPrices =
         i > 0 ? config.priceData[i - 1].prices : dataPoint.prices
       balances = this.updateBalancesForPriceChange(
@@ -128,14 +123,12 @@ export class Backtester {
         config.tokens,
       )
 
-      // Calculate portfolio value
       const valueUsd = this.calculatePortfolioValue(
         balances,
         dataPoint.prices,
         config.tokens,
       )
 
-      // Calculate impermanent loss vs hold
       const holdValue = this.calculateHoldValue(
         config.initialCapitalUsd,
         config.initialWeights,
@@ -145,7 +138,6 @@ export class Backtester {
       )
       const ilPercent = ((holdValue - valueUsd) / holdValue) * 100
 
-      // Record snapshot
       snapshots.push({
         date: dataPoint.date,
         timestamp: dataPoint.timestamp,
@@ -158,7 +150,6 @@ export class Backtester {
       })
     }
 
-    // Calculate metrics
     const returns = snapshots.map((s, i) =>
       i === 0
         ? 0
@@ -173,18 +164,15 @@ export class Backtester {
       (1000 * 60 * 60 * 24)
     const annualizedReturn = (1 + totalReturn) ** (365 / periodDays) - 1
 
-    // Calculate Sharpe ratio
     const meanReturn = returns.reduce((a, b) => a + b, 0) / returns.length
     const stdDev = Math.sqrt(
       returns.reduce((sum, r) => sum + (r - meanReturn) ** 2, 0) /
         returns.length,
     )
-    const riskFreeRate = 0.05 / 365 // 5% annual, daily
-    // If stdDev is 0, Sharpe is technically undefined - return 0 to indicate no meaningful risk-adjusted measure
+    const riskFreeRate = 0.05 / 365
     const sharpeRatio = stdDev > 0 ? (meanReturn - riskFreeRate) / stdDev : 0
     const annualizedSharpe = sharpeRatio * Math.sqrt(365)
 
-    // Calculate max drawdown
     let maxDrawdown = 0
     let peak = snapshots[0].valueUsd
     for (const snap of snapshots) {
@@ -193,7 +181,6 @@ export class Backtester {
       if (drawdown > maxDrawdown) maxDrawdown = drawdown
     }
 
-    // Calculate win rate (positive rebalances)
     let wins = 0
     let trades = 0
     for (let i = 1; i < snapshots.length; i++) {
@@ -206,7 +193,6 @@ export class Backtester {
     }
     const winRate = trades > 0 ? wins / trades : 0
 
-    // Calculate final IL
     const finalSnapshot = snapshots[snapshots.length - 1]
     const holdValue = this.calculateHoldValue(
       config.initialCapitalUsd,
@@ -232,9 +218,6 @@ export class Backtester {
     }
   }
 
-  /**
-   * Compare multiple strategies
-   */
   async compare(
     baseConfig: Omit<BacktestConfig, 'strategy'>,
     strategies: ('momentum' | 'mean-reversion' | 'volatility' | 'composite')[],
@@ -247,20 +230,16 @@ export class Backtester {
       results.set(strategy, result)
     }
 
-    // Add buy-and-hold benchmark
     const holdResult = this.calculateBuyAndHold(baseConfig)
     results.set('buy-and-hold', holdResult)
 
     return results
   }
 
-  // ============ Private Methods ============
-
   private createStrategy(
     type: string,
     params?: Record<string, number>,
   ): BaseTFMMStrategy {
-    // Mock oracle for backtesting
     const oracle = new OracleAggregator({})
 
     switch (type) {
@@ -340,7 +319,6 @@ export class Backtester {
       turnover += Math.abs(newWeight - oldWeight)
     }
 
-    // Half the turnover represents actual trades (one side buys, other sells)
     const tradedValue = (portfolioValue * turnover) / 2
     const feeCost = (tradedValue * feeBps) / 10000
     const slippageCost = (tradedValue * slippageBps) / 10000
@@ -373,7 +351,6 @@ export class Backtester {
     _currentPrices: Record<string, number>,
     _tokens: Token[],
   ): bigint[] {
-    // Balances don't change, only values do
     return balances
   }
 
@@ -423,7 +400,6 @@ export class Backtester {
       returns.reduce((sum, r) => sum + (r - meanReturn) ** 2, 0) /
         returns.length,
     )
-    // If stdDev is 0, Sharpe is technically undefined - return 0 to indicate no meaningful risk-adjusted measure
     const sharpeRatio =
       stdDev > 0 ? ((meanReturn - 0.05 / 365) / stdDev) * Math.sqrt(365) : 0
 

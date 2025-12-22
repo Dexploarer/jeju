@@ -5,6 +5,7 @@
  */
 
 import type { AppLoadTestConfig } from '../types'
+
 export { testServerConfig } from './test-server'
 
 export const autocratConfig: AppLoadTestConfig = {
@@ -500,9 +501,7 @@ export const monitoringConfig: AppLoadTestConfig = {
   baseUrl: 'http://localhost:5173',
   port: 5173,
   healthEndpoint: '/',
-  endpoints: [
-    { path: '/', method: 'GET', weight: 0.3, expectedStatus: [200] },
-  ],
+  endpoints: [{ path: '/', method: 'GET', weight: 0.3, expectedStatus: [200] }],
   thresholds: {
     p50Latency: 100,
     p95Latency: 300,
@@ -582,9 +581,7 @@ export const walletConfig: AppLoadTestConfig = {
   baseUrl: 'http://localhost:4015',
   port: 4015,
   healthEndpoint: '/',
-  endpoints: [
-    { path: '/', method: 'GET', weight: 1.0, expectedStatus: [200] },
-  ],
+  endpoints: [{ path: '/', method: 'GET', weight: 1.0, expectedStatus: [200] }],
   thresholds: {
     p50Latency: 100,
     p95Latency: 300,
@@ -658,8 +655,5 @@ export const API_CONFIGS: AppLoadTestConfig[] = [
 ]
 
 export function getConfigByName(name: string): AppLoadTestConfig | undefined {
-  return ALL_CONFIGS.find(
-    (c) => c.name.toLowerCase() === name.toLowerCase(),
-  )
+  return ALL_CONFIGS.find((c) => c.name.toLowerCase() === name.toLowerCase())
 }
-

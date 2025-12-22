@@ -11,6 +11,7 @@ import {
 
 /** Stake status - local type definition */
 type StakeStatus = 'idle' | 'pending' | 'complete' | 'error'
+
 import { ZERO_ADDRESS } from '@jejunetwork/ui'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { type Address, parseEther } from 'viem'
