@@ -228,7 +228,7 @@ const workerResourceSchema = z.object({
   scale_to_zero: z.boolean().optional(),
   tee_required: z.boolean().optional(),
   tee_platform: z.string().optional(),
-  env: z.record(z.string()).optional(),
+  env: z.record(z.string(), z.string()).optional(),
 })
 
 const containerResourceSchema = z.object({
@@ -240,7 +240,7 @@ const containerResourceSchema = z.object({
   gpu_count: z.number().optional(),
   command: z.array(z.string()).optional(),
   args: z.array(z.string()).optional(),
-  env: z.record(z.string()).optional(),
+  env: z.record(z.string(), z.string()).optional(),
   ports: z.array(z.number()).optional(),
   tee_required: z.boolean().optional(),
 })
