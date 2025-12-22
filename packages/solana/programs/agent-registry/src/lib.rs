@@ -26,7 +26,7 @@ use anchor_spl::{
     token::{self, Mint, MintTo, Token, TokenAccount},
 };
 
-declare_id!("AgentReg1111111111111111111111111111111111");
+declare_id!("EmgfjEphLavCs8ofPdjhisBKg2UAQK7wYXyX8yV8KtMD");
 
 // ============================================================================
 // Constants

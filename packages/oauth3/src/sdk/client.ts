@@ -101,9 +101,7 @@ export interface LoginEventData {
   session?: OAuth3Session;
 }
 
-export interface LogoutEventData {
-  // Empty for logout events
-}
+export type LogoutEventData = Record<string, never>;
 
 export interface SessionRefreshEventData {
   session: OAuth3Session;

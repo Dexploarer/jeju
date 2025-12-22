@@ -6,7 +6,7 @@ import type { NetworkType } from "@jejunetwork/types";
 import type { JejuWallet } from "../wallet";
 import type { ServicesConfig } from "../config";
 import type { JsonRecord, JsonValue } from "../shared/types";
-import { AgentCardSchema, DiscoveredAgentSchema, AgentsListSchema } from "../shared/schemas";
+import { AgentCardSchema, AgentsListSchema } from "../shared/schemas";
 
 export interface AgentCard {
   protocolVersion: string;

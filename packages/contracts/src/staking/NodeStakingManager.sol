@@ -350,7 +350,8 @@ contract NodeStakingManager is INodeStakingManager, Ownable, Pausable, Reentranc
         if (rewardPaymasterAddr != address(0)) {
             (bool success1,) = payable(rewardPaymasterAddr).call{value: _convertUSDToETH(rewardFee)}("");
             if (stakeFee > 0 && success1 && stakingPaymasterAddr != address(0)) {
-                payable(stakingPaymasterAddr).call{value: _convertUSDToETH(stakeFee)}("");
+                (bool success2,) = payable(stakingPaymasterAddr).call{value: _convertUSDToETH(stakeFee)}("");
+                success2; // Best-effort transfer to staking paymaster
             }
         }
 

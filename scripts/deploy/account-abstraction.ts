@@ -24,7 +24,6 @@ import {
   encodeDeployData,
   type Address,
   type Hex,
-  type Abi,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import path from "path";
