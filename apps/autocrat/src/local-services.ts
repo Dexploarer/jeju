@@ -13,9 +13,9 @@ import {
 import type { AutocratVote, StoredObject } from './types.js';
 import { getDWSComputeUrl, getCurrentNetwork } from '@jejunetwork/config';
 
-// DWS endpoint is automatically resolved from network config
+// DWS endpoint is automatically resolved from network config, but env var overrides
 function getDWSEndpoint(): string {
-  return getDWSComputeUrl();
+  return process.env.DWS_URL ?? getDWSComputeUrl();
 }
 
 // Bounded in-memory caches for performance (CQL is source of truth)
@@ -59,11 +59,12 @@ interface InferenceRequest {
 
 async function dwsGenerate(prompt: string, system: string): Promise<string> {
   const endpoint = getDWSEndpoint();
-  // Use OpenAI-compatible endpoint - DWS will select the best available model
-  const r = await fetch(`${endpoint}/chat/completions`, {
+  // Use OpenAI-compatible endpoint via DWS compute router
+  const r = await fetch(`${endpoint}/compute/chat/completions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
+      model: 'llama-3.1-8b-instant',
       messages: [
         { role: 'system', content: system },
         { role: 'user', content: prompt },
@@ -74,7 +75,8 @@ async function dwsGenerate(prompt: string, system: string): Promise<string> {
   });
   if (!r.ok) {
     const network = getCurrentNetwork();
-    throw new Error(`DWS compute error (network: ${network}): ${r.status}`);
+    const errorText = await r.text();
+    throw new Error(`DWS compute error (network: ${network}): ${r.status} - ${errorText}`);
   }
   const data = await r.json() as { choices?: Array<{ message?: { content: string } }>; content?: string };
   return data.choices?.[0]?.message?.content ?? data.content ?? '';

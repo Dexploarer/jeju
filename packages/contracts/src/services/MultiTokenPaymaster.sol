@@ -117,8 +117,7 @@ contract MultiTokenPaymaster is BasePaymaster, Pausable {
         address _priceOracle,
         address _revenueWallet,
         address _owner
-    ) BasePaymaster(_entryPoint) {
-        if (_owner != msg.sender) _transferOwnership(_owner);
+    ) BasePaymaster(_entryPoint, _owner) {
         require(_usdc != address(0), "Invalid USDC");
         require(_elizaOS != address(0), "Invalid elizaOS");
         // creditManager can be zero if we only want direct payments initially, but constructor requires it non-zero in original code
@@ -384,12 +383,12 @@ contract MultiTokenPaymaster is BasePaymaster, Pausable {
     }
 
     function depositToEntryPoint() external payable onlyOwner {
-        entryPoint.depositTo{value: msg.value}(address(this));
+        entryPoint().depositTo{value: msg.value}(address(this));
         emit EntryPointFunded(msg.value);
     }
 
     function withdrawFromEntryPoint(address payable to, uint256 amount) external onlyOwner {
-        entryPoint.withdrawTo(to, amount);
+        entryPoint().withdrawTo(to, amount);
     }
 
     function pause() external onlyOwner {

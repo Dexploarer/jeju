@@ -19,6 +19,14 @@ interface IBanManager {
 }
 
 /**
+ * @title IUserBlockRegistry
+ * @notice Interface for user-to-user blocking
+ */
+interface IUserBlockRegistry {
+    function isInteractionBlocked(address source, address target) external view returns (bool);
+}
+
+/**
  * @title IHyperlaneMailbox
  * @notice Interface for cross-chain messaging
  */
@@ -85,6 +93,7 @@ contract Token is ERC20, ERC20Burnable, ERC20Permit, Ownable2Step, ReentrancyGua
     FeeConfig public fees;
 
     IBanManager public banManager;
+    IUserBlockRegistry public blockRegistry;
     IHyperlaneMailbox public mailbox;
     IInterchainGasPaymaster public igp;
     uint32 public homeChainDomain;
@@ -122,6 +131,7 @@ contract Token is ERC20, ERC20Burnable, ERC20Permit, Ownable2Step, ReentrancyGua
     error MessageAlreadyProcessed();
     error InsufficientBalance();
     error InsufficientGas(uint256 required, uint256 provided);
+    error UserBlocked(address from, address to);
 
     // ═══════════════════════════════════════════════════════════════════════════
     //                              CONSTRUCTOR
@@ -171,6 +181,11 @@ contract Token is ERC20, ERC20Burnable, ERC20Permit, Ownable2Step, ReentrancyGua
         if (config.banEnforcementEnabled && address(banManager) != address(0)) {
             if (!banExempt[to] && banManager.isAddressBanned(from)) revert BannedUser(from);
             if (banManager.isAddressBanned(to)) revert BannedUser(to);
+        }
+
+        // Check user-to-user blocks: if recipient has blocked sender, transfer fails
+        if (address(blockRegistry) != address(0) && !banExempt[from]) {
+            if (blockRegistry.isInteractionBlocked(from, to)) revert UserBlocked(from, to);
         }
 
         if (config.maxTxBps > 0 && !limitExempt[from] && !limitExempt[to]) {
@@ -356,6 +371,10 @@ contract Token is ERC20, ERC20Burnable, ERC20Permit, Ownable2Step, ReentrancyGua
 
     function setBanManager(address _banManager) external onlyOwner {
         banManager = IBanManager(_banManager);
+    }
+
+    function setBlockRegistry(address _blockRegistry) external onlyOwner {
+        blockRegistry = IUserBlockRegistry(_blockRegistry);
     }
 
     function setHyperlane(address _mailbox, address _igp, uint32 _homeChainDomain) external onlyOwner {
