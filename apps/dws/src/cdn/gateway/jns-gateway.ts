@@ -110,11 +110,10 @@ export class JNSGateway {
     ])
 
     const chain = inferChainFromRpcUrl(config.rpcUrl)
-    // @ts-expect-error TS2719: Multiple viem versions in monorepo cause incompatible PublicClient types
     this.publicClient = createPublicClient({
       chain,
       transport: http(config.rpcUrl),
-    })
+    }) as PublicClient
     this.registryAddress = config.jnsRegistryAddress
     this.defaultResolverAddress = config.jnsResolverAddress
 

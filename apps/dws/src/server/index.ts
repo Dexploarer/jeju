@@ -58,6 +58,12 @@ import { createStorageRouter } from './routes/storage'
 import { createVPNRouter } from './routes/vpn'
 import { createDefaultWorkerdRouter } from './routes/workerd'
 import { createWorkersRouter } from './routes/workers'
+import {
+  createK3sRouter,
+  createHelmProviderRouter,
+  createTerraformProviderRouter,
+  setDeploymentContext,
+} from '../infrastructure'
 
 // Server port - defined early for use in config
 const PORT = parseInt(process.env.DWS_PORT || process.env.PORT || '4030', 10)
@@ -393,6 +399,18 @@ app.route('/email', createEmailRouter())
 // Funding and package registry proxy
 app.route('/funding', createFundingRouter())
 app.route('/registry', createPkgRegistryProxyRouter())
+
+// Infrastructure - K3s/K3d, Helm, Terraform providers
+app.route('/k3s', createK3sRouter())
+app.route('/', createHelmProviderRouter())
+app.route('/', createTerraformProviderRouter())
+
+// Initialize deployment context
+setDeploymentContext({
+  localDockerEnabled: true,
+  nodeEndpoints: process.env.DWS_NODE_ENDPOINTS?.split(',') || [],
+  k3sCluster: process.env.DWS_K3S_CLUSTER,
+})
 
 // Data Availability Layer
 const daConfig = {
