@@ -716,7 +716,6 @@ function CreateTrainingContent() {
 
 export default function CreateTrainingPage() {
   return (
-    // @ts-expect-error Suspense type mismatch in React 19
     <Suspense
       fallback={
         <div className="min-h-screen p-8 flex items-center justify-center">

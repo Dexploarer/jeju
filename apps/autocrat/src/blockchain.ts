@@ -55,13 +55,10 @@ export class AutocratBlockchain {
   constructor(config: AutocratConfig) {
     this.config = config
     const chain = inferChainFromRpcUrl(config.rpcUrl)
-    // Monorepo has multiple viem versions (2.43.2 in package.json, 2.43.3 hoisted).
-    // This causes PublicClient types to be incompatible. Fix requires aligning viem versions.
-    // @ts-expect-error - viem version mismatch in monorepo causes incompatible PublicClient types
     this.client = createPublicClient({
       chain,
       transport: http(config.rpcUrl),
-    })
+    }) as PublicClient
     this.councilAddress = (config.contracts?.council ?? ZERO_ADDRESS) as Address
     this.ceoAgentAddress = (config.contracts?.ceoAgent ??
       ZERO_ADDRESS) as Address

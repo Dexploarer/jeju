@@ -5,6 +5,7 @@
  * to ensure type safety at runtime.
  */
 
+import type { Address, Hex } from 'viem'
 import { z } from 'zod'
 import type { JsonRecord, JsonValue } from './types'
 
@@ -42,11 +43,13 @@ export const JsonRecordSchema: z.ZodType<JsonRecord> = z.record(
 export const AddressSchema = z
   .string()
   .regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid address')
+  .transform((val): Address => val as Address)
 
 /** Transaction hash schema */
 export const TxHashSchema = z
   .string()
   .regex(/^0x[a-fA-F0-9]{64}$/, 'Invalid tx hash')
+  .transform((val): Hex => val as Hex)
 
 /** Bigint string schema (for JSON APIs that return bigints as strings) */
 export const BigIntStringSchema = z.string().transform((val) => BigInt(val))

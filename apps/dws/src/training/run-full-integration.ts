@@ -13,9 +13,8 @@
 
 import { createAtroposServer } from './atropos-server';
 import { createDWSTrainingService } from './dws-integration';
-import { createCrossChainBridge, type BridgeConfig } from './cross-chain-bridge';
 import { createTicTacToeEnv, trajectoryToTrainingFormat } from './environments/tic-tac-toe';
-import { createPublicClient, createWalletClient, http, parseEther, type Address, type Hex } from 'viem';
+import { createPublicClient, createWalletClient, http, type Address, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { foundry } from 'viem/chains';
 import { spawn } from 'bun';

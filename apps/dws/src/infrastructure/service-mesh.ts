@@ -19,7 +19,7 @@ import { Hono } from 'hono'
 import type { Address, Hex } from 'viem'
 import { keccak256, toBytes } from 'viem'
 import { z } from 'zod'
-import { validateBody, validateParams } from '../server/routes/shared'
+import { validateBody, validateParams } from '../shared'
 
 // ============================================================================
 // Types
