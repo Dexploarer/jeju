@@ -30,13 +30,30 @@ import type {
 
 const log = createLogger('AutonomousTick')
 
+/** JSON value types for LLM parameters */
+type JsonPrimitive = string | number | boolean | null
+type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue }
+type JsonObject = { [key: string]: JsonValue }
+
+/** JSON value schema for LLM parameters */
+const JsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
+  z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.null(),
+    z.array(JsonValueSchema),
+    z.record(z.string(), JsonValueSchema),
+  ]),
+)
+
 /** Schema for raw LLM decision parsing - accepts various field names LLMs might use */
 const RawLLMDecisionSchema = z.object({
   isFinish: z.boolean().optional(),
   is_finish: z.boolean().optional(),
   action: z.string().optional(),
-  parameters: z.record(z.string(), z.unknown()).optional(),
-  params: z.record(z.string(), z.unknown()).optional(),
+  parameters: z.record(z.string(), JsonValueSchema).optional(),
+  params: z.record(z.string(), JsonValueSchema).optional(),
   thought: z.string().optional(),
   reasoning: z.string().optional(),
 })
@@ -57,9 +74,9 @@ export interface AutonomousTickResult {
  */
 export interface AutonomousAction {
   name: string
-  parameters: Record<string, unknown>
+  parameters: Record<string, JsonValue | undefined>
   success: boolean
-  result?: unknown
+  result?: JsonValue
   error?: string
   timestamp: number
 }
@@ -70,15 +87,15 @@ export interface AutonomousAction {
 interface TickDecision {
   isFinish: boolean
   action?: string
-  parameters?: Record<string, unknown>
+  parameters?: Record<string, JsonValue | undefined>
   thought: string
 }
 
 // SDK action registry - maps action names to their execution handlers
 type ActionHandler = (
-  params: Record<string, unknown>,
+  params: Record<string, JsonValue | undefined>,
   context: { runtime: CrucibleAgentRuntime; config: AutonomousAgentConfig },
-) => Promise<unknown>
+) => Promise<JsonValue>
 
 const ACTION_HANDLERS: Record<string, ActionHandler> = {
   // Compute actions
@@ -92,19 +109,19 @@ const ACTION_HANDLERS: Record<string, ActionHandler> = {
       createdAt: Date.now(),
     }
     const response = await runtime.processMessage(message)
-    return { response: response.text, action: response.action }
+    return { response: response.text, action: response.action ?? null }
   },
 
   // Moderation actions (for blue team)
   REPORT_AGENT: async (params) => {
-    const agentId = params.agentId ?? params.target
+    const agentId = params.agentId ?? params.target ?? null
     const reason = params.reason ?? params.violation ?? 'suspicious behavior'
     log.info('Moderation report submitted', { agentId, reason })
     return { reported: agentId, reason, status: 'submitted' }
   },
 
   FLAG_CONTENT: async (params) => {
-    const contentId = params.contentId ?? params.content_id
+    const contentId = params.contentId ?? params.content_id ?? null
     const severity = params.severity ?? 'medium'
     const reason = params.reason ?? 'policy violation'
     log.info('Content flagged', { contentId, severity, reason })
@@ -119,7 +136,7 @@ const ACTION_HANDLERS: Record<string, ActionHandler> = {
   },
 
   CHECK_TRUST: async (params) => {
-    const entity = params.entity ?? params.address
+    const entity = params.entity ?? params.address ?? null
     // In production, this would query the trust registry
     log.info('Trust check performed', { entity })
     return { entity, trustScore: 0.5, labels: [], status: 'checked' }
@@ -127,7 +144,7 @@ const ACTION_HANDLERS: Record<string, ActionHandler> = {
 
   CREATE_CASE: async (params) => {
     const type = params.type ?? 'general'
-    const target = params.target
+    const target = params.target ?? null
     const priority = params.priority ?? 'medium'
     log.info('Moderation case created', { type, target, priority })
     return {
@@ -140,7 +157,7 @@ const ACTION_HANDLERS: Record<string, ActionHandler> = {
   },
 
   SUBMIT_EVIDENCE: async (params) => {
-    const caseId = params.caseId ?? params.case_id
+    const caseId = params.caseId ?? params.case_id ?? null
     const evidenceType = params.type ?? 'text'
     log.info('Evidence submitted', { caseId, evidenceType })
     return { caseId, evidenceType, status: 'submitted' }
@@ -148,14 +165,14 @@ const ACTION_HANDLERS: Record<string, ActionHandler> = {
 
   // Security testing actions (for red team)
   PROBE: async (params) => {
-    const target = params.target ?? params.endpoint
+    const target = params.target ?? params.endpoint ?? null
     const test = params.test ?? params.vector ?? 'general'
     log.info('Security probe executed', { target, test })
     return { target, test, status: 'probed', findings: [] }
   },
 
   FUZZ: async (params) => {
-    const target = params.target ?? params.contract
+    const target = params.target ?? params.contract ?? null
     const strategy = params.strategy ?? 'random'
     const iterations = Number(params.iterations ?? 100)
     log.info('Fuzzing started', { target, strategy, iterations })
@@ -163,7 +180,7 @@ const ACTION_HANDLERS: Record<string, ActionHandler> = {
   },
 
   ANALYZE_CONTRACT: async (params) => {
-    const address = params.address ?? params.contract
+    const address = params.address ?? params.contract ?? null
     const focus = params.focus ?? 'full'
     log.info('Contract analysis started', { address, focus })
     return { address, focus, findings: [], status: 'analyzed' }
@@ -171,7 +188,7 @@ const ACTION_HANDLERS: Record<string, ActionHandler> = {
 
   SIMULATE_ATTACK: async (params) => {
     const attackType = params.type ?? 'unknown'
-    const target = params.target
+    const target = params.target ?? null
     log.info('Attack simulation', { attackType, target })
     return { type: attackType, target, simulated: true, status: 'simulated' }
   },
@@ -197,7 +214,7 @@ const ACTION_HANDLERS: Record<string, ActionHandler> = {
   },
 
   CALL_AGENT: async (params) => {
-    const targetAgent = params.agentId ?? params.target
+    const targetAgent = params.agentId ?? params.target ?? null
     const message = String(params.message ?? '')
     log.info('A2A call initiated', {
       targetAgent,
@@ -737,7 +754,7 @@ export class AutonomousTick {
    */
   private async executeAction(
     actionName: string,
-    parameters: Record<string, unknown>,
+    parameters: Record<string, JsonValue | undefined>,
   ): Promise<AutonomousAction> {
     const timestamp = Date.now()
     const normalizedAction = actionName.toUpperCase().replace(/\s+/g, '_')
@@ -802,7 +819,7 @@ export class AutonomousTick {
           }
 
           const response = await this.runtime.processMessage(actionMessage)
-          result.result = { response: response.text, action: response.action }
+          result.result = { response: response.text, action: response.action ?? null }
           result.success = true
 
           if (this.verbose) {

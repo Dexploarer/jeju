@@ -341,7 +341,7 @@ contract XLPRouter is ReentrancyGuard, Ownable, IXLPV3SwapCallback, IRouterInteg
 
     /// @notice Propose new Permit2 - requires 24-hour delay
     /// @dev SECURITY: Prevents instant Permit2 swap to malicious contract
-    function proposePermit2(address _permit2) external onlyOwner {
+    function proposePermit2(address _permit2) public onlyOwner {
         if (pendingPermit2.executeAfter > 0) revert ChangeAlreadyPending();
         
         pendingPermit2 = PendingChange({
@@ -373,7 +373,7 @@ contract XLPRouter is ReentrancyGuard, Ownable, IXLPV3SwapCallback, IRouterInteg
 
     /// @notice Propose new LiquidityAggregator - requires 24-hour delay
     /// @dev SECURITY: Prevents instant aggregator swap
-    function proposeLiquidityAggregator(address _aggregator) external onlyOwner {
+    function proposeLiquidityAggregator(address _aggregator) public onlyOwner {
         if (pendingAggregator.executeAfter > 0) revert ChangeAlreadyPending();
         
         pendingAggregator = PendingChange({

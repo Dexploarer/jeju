@@ -7,6 +7,7 @@
 
 import { existsSync } from 'node:fs'
 import { mkdir } from 'node:fs/promises'
+import { createServer } from 'node:net'
 import { join } from 'node:path'
 import type { BackendManager } from '../../storage/backends'
 import { generateWorkerConfig, wrapHandlerAsWorker } from './config-generator'
@@ -183,7 +184,7 @@ export class WorkerdExecutor {
     worker: WorkerdWorkerDefinition,
     codeDir: string,
   ): Promise<void> {
-    const port = this.allocatePort()
+    const port = await this.allocatePort()
     const configPath = `${codeDir}/config.capnp`
 
     // Generate workerd config
@@ -448,12 +449,24 @@ export class WorkerdExecutor {
   // Port Management
   // ============================================================================
 
-  private allocatePort(): number {
+  private async isPortAvailable(port: number): Promise<boolean> {
+    return new Promise((resolve) => {
+      const server = createServer()
+      server.once('error', () => resolve(false))
+      server.once('listening', () => {
+        server.close()
+        resolve(true)
+      })
+      server.listen(port, '127.0.0.1')
+    })
+  }
+
+  private async allocatePort(): Promise<number> {
     const { min, max } = this.config.portRange
 
     for (let attempt = 0; attempt < 100; attempt++) {
       const port = min + Math.floor(Math.random() * (max - min))
-      if (!this.usedPorts.has(port)) {
+      if (!this.usedPorts.has(port) && (await this.isPortAvailable(port))) {
         this.usedPorts.add(port)
         return port
       }

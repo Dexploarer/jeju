@@ -164,7 +164,7 @@ contract PerpetualMarket is IPerpetualMarket, ReentrancyGuard, Ownable {
     
     /// @notice Propose a new price oracle - requires 48-hour delay
     /// @dev SECURITY: Prevents instant oracle manipulation attacks
-    function proposePriceOracle(address _priceOracle) external onlyOwner {
+    function proposePriceOracle(address _priceOracle) public onlyOwner {
         require(_priceOracle != address(0), "Invalid oracle");
         if (pendingOracle != address(0)) revert OracleChangePending();
         
