@@ -1,16 +1,24 @@
 /**
- * Compute SDK - Handles inference through the compute marketplace.
+ * Compute SDK - Handles inference through DWS (Decentralized Workstation Service)
+ * 
+ * Uses the same DWS infrastructure as Autocrat and Otto for unified AI inference.
  */
 
+import { getDWSComputeUrl, getCurrentNetwork } from '@jejunetwork/config';
 import type { AgentCharacter, ExecutionOptions } from '../types';
 import { createLogger, type Logger } from './logger';
 import { expect, AgentCharacterSchema, ModelsResponseSchema, InferenceResponseSchema, EmbeddingResponseSchema } from '../schemas';
 
 export interface ComputeConfig {
-  marketplaceUrl: string;
+  marketplaceUrl?: string; // Optional - falls back to DWS
   rpcUrl: string;
   defaultModel?: string;
   logger?: Logger;
+}
+
+// Get DWS endpoint from centralized config
+function getDWSEndpoint(): string {
+  return process.env.DWS_URL ?? process.env.COMPUTE_MARKETPLACE_URL ?? getDWSComputeUrl();
 }
 
 export interface InferenceRequest {
@@ -47,9 +55,14 @@ export class CrucibleCompute {
     this.log = config.logger ?? createLogger('Compute');
   }
 
+  private getEndpoint(): string {
+    return this.config.marketplaceUrl ?? getDWSEndpoint();
+  }
+
   async getAvailableModels(): Promise<ModelInfo[]> {
     this.log.debug('Fetching available models');
-    const r = await fetch(`${this.config.marketplaceUrl}/api/v1/models`);
+    const endpoint = this.getEndpoint();
+    const r = await fetch(`${endpoint}/api/v1/models`);
     expect(r.ok, `Failed to fetch models: ${r.statusText}`);
     const rawResult = await r.json();
     const parsed = ModelsResponseSchema.parse(rawResult);
@@ -139,22 +152,55 @@ export class CrucibleCompute {
     }
 
     const start = Date.now();
-    this.log.debug('Inference request', { model, messageCount: request.messages.length });
+    const endpoint = this.getEndpoint();
+    this.log.debug('Inference request', { model, messageCount: request.messages.length, endpoint });
 
-    const r = await fetch(`${this.config.marketplaceUrl}/api/v1/inference`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...request, model }),
+    const r = await fetch(`${endpoint}/compute/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...request, model }),
     });
+
     if (!r.ok) {
-      throw new Error(`Inference failed: ${await r.text()}`);
+      const error = await r.text();
+      const network = getCurrentNetwork();
+      this.log.error('Inference failed', { status: r.status, error, network, endpoint });
+      throw new Error(`DWS inference failed (network: ${network}): ${error}`);
     }
 
-    const rawResult = await r.json();
-    const result = InferenceResponseSchema.parse(rawResult);
+    const rawResult = await r.json() as Record<string, unknown>;
+    
+    // Handle both OpenAI-compatible format and legacy format
+    let content: string;
+    let modelUsed: string;
+    let promptTokens: number;
+    let completionTokens: number;
+    let cost: bigint;
+    
+    if (rawResult.choices && Array.isArray(rawResult.choices)) {
+      // OpenAI-compatible format from DWS
+      const choice = (rawResult.choices as Array<{ message?: { content: string } }>)[0];
+      content = choice?.message?.content ?? '';
+      modelUsed = String(rawResult.model ?? model);
+      const usage = rawResult.usage as { prompt_tokens?: number; completion_tokens?: number } | undefined;
+      promptTokens = usage?.prompt_tokens ?? 0;
+      completionTokens = usage?.completion_tokens ?? 0;
+      cost = rawResult.cost ? BigInt(String(rawResult.cost)) : 0n;
+    } else {
+      // Legacy format
+      const result = InferenceResponseSchema.parse(rawResult);
+      content = result.content;
+      modelUsed = result.model;
+      promptTokens = result.usage.prompt_tokens;
+      completionTokens = result.usage.completion_tokens;
+      cost = result.cost;
+    }
+    
     return {
-      content: result.content,
-      model: result.model,
-      tokensUsed: { input: result.usage.prompt_tokens, output: result.usage.completion_tokens },
-      cost: result.cost,
+      content,
+      model: modelUsed,
+      tokensUsed: { input: promptTokens, output: completionTokens },
+      cost,
       latencyMs: Date.now() - start,
     };
   }
@@ -162,9 +208,12 @@ export class CrucibleCompute {
   async generateEmbedding(text: string): Promise<number[]> {
     expect(text, 'Text is required');
     expect(text.length > 0, 'Text cannot be empty');
-    this.log.debug('Generating embedding', { textLength: text.length });
-    const r = await fetch(`${this.config.marketplaceUrl}/api/v1/embeddings`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ input: text }),
+    const endpoint = this.getEndpoint();
+    this.log.debug('Generating embedding', { textLength: text.length, endpoint });
+    const r = await fetch(`${endpoint}/api/v1/embeddings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input: text }),
     });
     expect(r.ok, `Embedding failed: ${r.statusText}`);
     const rawResult = await r.json();

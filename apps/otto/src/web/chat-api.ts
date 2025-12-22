@@ -1,16 +1,18 @@
 /**
  * Otto Chat API
- * REST API for web-based chat - uses ElizaOS-style runtime
+ * REST API for web-based chat - uses ElizaOS runtime via plugin actions
  */
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { Address } from 'viem';
+import { isAddress, verifyMessage } from 'viem';
 import { z } from 'zod';
-import { isAddress } from 'viem';
 import type { PlatformMessage } from '../types';
 import { processMessage } from '../eliza/runtime';
 import { getConfig } from '../config';
+import { getWalletService } from '../services/wallet';
+import { getStateManager } from '../services/state';
 import {
   expectValid,
   ChatRequestSchema,
@@ -19,19 +21,109 @@ import {
   AuthMessageResponseSchema,
   AuthVerifyRequestSchema,
 } from '../schemas';
-import {
-  createChatSession,
-  getSessionMessages,
-  addSessionMessage,
-  getOrCreateSession,
-} from '../hooks/useSession';
-import {
-  generateAuthMessage,
-  verifyAndConnectWallet,
-} from '../hooks/useAuth';
-import { validateAddress, validateSessionId } from '../utils/validation';
-import { getStateManager } from '../services/state';
-import { createSuccessResponse } from '../utils/response';
+
+const walletService = getWalletService();
+const stateManager = getStateManager();
+
+// Chat message history per session
+const sessionMessages = new Map<string, Array<{ id: string; role: 'user' | 'assistant'; content: string; timestamp: number }>>();
+
+// ============================================================================
+// Session helpers
+// ============================================================================
+
+function createChatSession(walletAddress?: Address): { sessionId: string; messages: Array<{ id: string; role: 'user' | 'assistant'; content: string; timestamp: number }> } {
+  // Use the state manager's createSession method
+  const session = stateManager.createSession(walletAddress);
+  const messages: Array<{ id: string; role: 'user' | 'assistant'; content: string; timestamp: number }> = [];
+  sessionMessages.set(session.sessionId, messages);
+  
+  return { sessionId: session.sessionId, messages };
+}
+
+function getSessionMessages(sessionId: string): Array<{ id: string; role: 'user' | 'assistant'; content: string; timestamp: number }> {
+  return sessionMessages.get(sessionId) ?? [];
+}
+
+function addSessionMessage(sessionId: string, msg: { id: string; role: 'user' | 'assistant'; content: string; timestamp: number }): void {
+  const messages = sessionMessages.get(sessionId) ?? [];
+  messages.push(msg);
+  sessionMessages.set(sessionId, messages);
+}
+
+function getOrCreateSession(sessionId?: string, walletAddress?: Address): { sessionId: string; session: { userId: string } } {
+  if (sessionId) {
+    const session = stateManager.getSession(sessionId);
+    if (session) {
+      return { sessionId, session: { userId: session.userId } };
+    }
+  }
+  const { sessionId: newSessionId } = createChatSession(walletAddress);
+  return { sessionId: newSessionId, session: { userId: walletAddress ?? newSessionId } };
+}
+
+// ============================================================================
+// Auth helpers
+// ============================================================================
+
+function generateAuthMessage(address: Address): { message: string; nonce: string } {
+  const nonce = crypto.randomUUID();
+  const message = `Sign this message to connect your wallet to Otto.\n\nAddress: ${address}\nNonce: ${nonce}\nTimestamp: ${Date.now()}`;
+  return { message, nonce };
+}
+
+async function verifyAndConnectWallet(
+  address: string,
+  message: string,
+  signature: string,
+  sessionId: string,
+  platform: string
+): Promise<{ success: boolean; error?: string }> {
+  const valid = await verifyMessage({
+    address: address as Address,
+    message,
+    signature: signature as `0x${string}`,
+  });
+  
+  if (!valid) {
+    return { success: false, error: 'Invalid signature' };
+  }
+  
+  // Connect via verifyAndConnect - this stores the user
+  await walletService.verifyAndConnect(
+    platform as 'web',
+    sessionId,
+    sessionId, // username
+    address as Address,
+    signature as `0x${string}`,
+    crypto.randomUUID() // nonce
+  );
+  
+  return { success: true };
+}
+
+// ============================================================================
+// Validation helpers
+// ============================================================================
+
+function validateAddress(address: string): Address {
+  if (!isAddress(address)) {
+    throw new Error(`Invalid address: ${address}`);
+  }
+  return address;
+}
+
+function validateSessionId(sessionId: string): string {
+  const result = z.string().uuid().safeParse(sessionId);
+  if (!result.success) {
+    throw new Error('Invalid session ID');
+  }
+  return result.data;
+}
+
+// ============================================================================
+// API Routes
+// ============================================================================
 
 export const chatApi = new Hono();
 
@@ -60,7 +152,6 @@ chatApi.get('/session/:id', (c) => {
   const sessionIdParam = c.req.param('id');
   const sessionId = validateSessionId(sessionIdParam);
   
-  const stateManager = getStateManager();
   const session = stateManager.getSession(sessionId);
   
   if (!session) {
@@ -72,7 +163,7 @@ chatApi.get('/session/:id', (c) => {
   return c.json({ sessionId: session.sessionId, messages, userId: session.userId });
 });
 
-// Send message - USES ELIZA RUNTIME
+// Send message
 chatApi.post('/chat', async (c) => {
   const rawBody = await c.req.json();
   const body = expectValid(ChatRequestSchema, rawBody, 'chat request');
@@ -97,10 +188,9 @@ chatApi.post('/chat', async (c) => {
   const validatedUserMsg = expectValid(ChatMessageSchema, userMsg, 'user message');
   addSessionMessage(sessionId, validatedUserMsg);
 
-  const stateManager = getStateManager();
   stateManager.updateSession(sessionId, {});
 
-  // Process through ElizaOS-style runtime
+  // Process message
   const platformMessage: PlatformMessage = {
     platform: 'web',
     messageId: validatedUserMsg.id,
@@ -167,7 +257,7 @@ chatApi.post('/auth/verify', async (c) => {
     return c.json({ error: result.error ?? 'Verification failed' }, 401);
   }
 
-  return c.json(createSuccessResponse(body.address));
+  return c.json({ success: true, address: body.address });
 });
 
 export default chatApi;

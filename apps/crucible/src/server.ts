@@ -1,6 +1,12 @@
 /**
  * Crucible API Server
  * REST API for agent management, room coordination, and execution.
+ * 
+ * Agent Runtime Options:
+ * 1. ElizaOS + @jejunetwork/eliza-plugin: Full plugin/action support (60+ actions)
+ * 2. DWS-only: Character-template inference (fallback when ElizaOS unavailable)
+ * 
+ * The runtime auto-detects ElizaOS availability and uses full capabilities when possible.
  */
 
 import { Hono } from 'hono';
@@ -16,7 +22,8 @@ import { createAgentSDK } from './sdk/agent';
 import { createRoomSDK } from './sdk/room';
 import { createExecutorSDK } from './sdk/executor';
 import { createLogger } from './sdk/logger';
-import { getCharacter, listCharacters } from './characters';
+import { runtimeManager, checkDWSHealth, type RuntimeMessage } from './sdk/eliza-runtime';
+import { getCharacter, listCharacters, characters } from './characters';
 import { BotInitializer } from './bots/initializer';
 import type { TradingBot } from './bots/trading-bot';
 import {
@@ -174,14 +181,104 @@ app.get('/health', (c) => c.json({
   timestamp: new Date().toISOString(),
 }));
 
-app.get('/info', (c) => c.json({
-  service: 'crucible',
-  version: '1.0.0',
-  network: config.network,
-  contracts: config.contracts,
-  services: config.services,
-  hasWallet: !!walletClient,
-}));
+app.get('/info', async (c) => {
+  const dwsAvailable = await checkDWSHealth();
+  return c.json({
+    service: 'crucible',
+    version: '1.0.0',
+    network: config.network,
+    contracts: config.contracts,
+    services: config.services,
+    hasWallet: !!walletClient,
+    dwsAvailable,
+    runtimes: runtimeManager.getAllRuntimes().length,
+  });
+});
+
+// ============================================================================
+// Agent Chat API - ElizaOS + @jejunetwork/eliza-plugin (60+ actions)
+// ============================================================================
+
+// Chat with an agent
+app.post('/api/v1/chat/:characterId', async (c) => {
+  const characterId = c.req.param('characterId');
+  const character = getCharacter(characterId);
+  
+  if (!character) {
+    return c.json({ error: `Character not found: ${characterId}` }, 404);
+  }
+  
+  const body = await c.req.json() as { text: string; userId?: string; roomId?: string };
+  
+  if (!body.text) {
+    return c.json({ error: 'Missing text field' }, 400);
+  }
+  
+  // Get or create runtime for this character
+  let runtime = runtimeManager.getRuntime(characterId);
+  if (!runtime) {
+    runtime = await runtimeManager.createRuntime({
+      agentId: characterId,
+      character,
+    });
+  }
+  
+  const message: RuntimeMessage = {
+    id: crypto.randomUUID(),
+    userId: body.userId ?? 'anonymous',
+    roomId: body.roomId ?? 'default',
+    content: { text: body.text, source: 'api' },
+    createdAt: Date.now(),
+  };
+  
+  const response = await runtime.processMessage(message);
+  metrics.agents.executions++;
+  
+  return c.json({
+    text: response.text,
+    action: response.action,
+    actions: response.actions,
+    character: characterId,
+  });
+});
+
+// List available characters with runtime status
+app.get('/api/v1/chat/characters', async (c) => {
+  const characterList = listCharacters().map(id => {
+    const char = getCharacter(id);
+    const runtime = runtimeManager.getRuntime(id);
+    return {
+      id,
+      name: char?.name,
+      description: char?.description,
+      hasRuntime: !!runtime,
+    };
+  });
+  return c.json({ characters: characterList });
+});
+
+// Initialize all character runtimes
+app.post('/api/v1/chat/init', async (c) => {
+  const results: Record<string, { success: boolean; error?: string }> = {};
+  
+  for (const [id, character] of Object.entries(characters)) {
+    try {
+      await runtimeManager.createRuntime({
+        agentId: id,
+        character,
+      });
+      results[id] = { success: true };
+    } catch (e) {
+      results[id] = { success: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  }
+  
+  return c.json({
+    initialized: Object.values(results).filter(r => r.success).length,
+    total: Object.keys(characters).length,
+    results,
+  });
+});
 
 // Prometheus Metrics
 app.get('/metrics', (c) => {

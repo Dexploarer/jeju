@@ -30,6 +30,7 @@ export {
 export * from './ci';
 export * from './containers';
 export * from './workers';
+export * from './workerd';
 export * from './api-marketplace';
 export * from './cdn';
 export * from './pkg';

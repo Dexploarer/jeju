@@ -31,8 +31,12 @@ export interface InferenceProvider {
 
 import type { ChatRequest } from '../schemas';
 
-// Provider endpoints - users can add more via config
+// DWS endpoint for decentralized inference
+const DWS_ENDPOINT = process.env.DWS_URL || 'http://localhost:4030';
+
+// Provider endpoints - only used by local inference node, not CLI directly
 const PROVIDER_ENDPOINTS: Record<string, { baseUrl: string; type: string }> = {
+  dws: { baseUrl: `${DWS_ENDPOINT}/compute`, type: 'openai' }, // Primary - DWS
   openai: { baseUrl: 'https://api.openai.com/v1', type: 'openai' },
   anthropic: { baseUrl: 'https://api.anthropic.com/v1', type: 'anthropic' },
   groq: { baseUrl: 'https://api.groq.com/openai/v1', type: 'openai' },
@@ -98,13 +102,8 @@ class LocalInferenceServer {
   }
 
   private detectDefaultProvider(): string {
-    // Check which providers have API keys configured
-    const priority = ['groq', 'cerebras', 'fireworks', 'xai', 'together', 'openai', 'anthropic', 'google'];
-    for (const provider of priority) {
-      const keyVar = API_KEY_VARS[provider];
-      if (keyVar && process.env[keyVar]) return provider;
-    }
-    return 'openai'; // Default fallback
+    // Always try DWS first for decentralized inference
+    return 'dws';
   }
 
   private getApiKey(provider: string): string | undefined {
@@ -190,10 +189,16 @@ class LocalInferenceServer {
       }
 
       const { provider, model } = this.resolveModelProvider(body.model, body.provider);
-      const apiKey = this.getApiKey(provider);
       const endpoint = this.getProviderEndpoint(provider);
 
-      if (!apiKey || !endpoint) {
+      if (!endpoint) {
+        logger.warn(`Unknown provider: ${provider}`);
+        return c.json(this.localFallback(body, provider));
+      }
+
+      // DWS doesn't require API key - it handles auth internally
+      const apiKey = provider === 'dws' ? 'dws' : this.getApiKey(provider);
+      if (!apiKey) {
         logger.warn(`No API key for provider: ${provider}`);
         return c.json(this.localFallback(body, provider));
       }

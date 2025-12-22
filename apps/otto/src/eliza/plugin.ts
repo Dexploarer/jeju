@@ -1,7 +1,6 @@
 /**
  * Otto ElizaOS Plugin
- * Exposes Otto trading capabilities as ElizaOS Actions
- * Uses official ElizaOS plugins for platform handling
+ * Trading actions for the Otto agent
  */
 
 import type {
@@ -71,7 +70,7 @@ export const swapAction: Action = {
   validate: async (_runtime: IAgentRuntime) => true,
   
   handler: async (
-    runtime: IAgentRuntime,
+    _runtime: IAgentRuntime,
     message: Memory,
     _state?: State,
     _options?: HandlerOptions,
@@ -93,10 +92,11 @@ export const swapAction: Action = {
       return;
     }
     
-    const user = await getOrCreateUser(runtime, message);
+    const userId = getUserId(message);
+    const platform = getPlatform(message);
+    const user = getWalletService().getUserByPlatform(platform, userId);
+    
     if (!user) {
-      const userId = getUserId(message);
-      const platform = getPlatform(message);
       const connectUrl = await getWalletService().generateConnectUrl(platform, userId, userId);
       callback?.({ text: `Connect your wallet first:\n${connectUrl}` });
       return;
@@ -128,10 +128,8 @@ export const swapAction: Action = {
     }
     
     const toAmount = getTradingService().formatAmount(quote.toAmount, toToken.decimals);
-    const priceImpact = (quote.priceImpact * 100).toFixed(2);
-    
-    const platform = getPlatform(message);
     const channelId = getRoomId(message);
+    
     getStateManager().setPendingAction(platform, channelId, {
       type: 'swap',
       quote,
@@ -145,25 +143,11 @@ export const swapAction: Action = {
     });
     
     callback?.({
-      text: `**Swap Quote**
-
-${params.amount} ${params.from} → ${toAmount} ${params.to}
-Price Impact: ${priceImpact}%
-Chain: ${getChainName(chainId)}
-
-Reply "confirm" to execute or "cancel" to abort.`,
+      text: `**Swap Quote**\n\n${params.amount} ${params.from} → ${toAmount} ${params.to}\nPrice Impact: ${(quote.priceImpact * 100).toFixed(2)}%\nChain: ${getChainName(chainId)}\n\nReply "confirm" to execute or "cancel" to abort.`,
     });
   },
-  
   examples: [
-    [
-      { name: 'user', content: { text: 'swap 1 ETH to USDC' } },
-      { name: 'agent', content: { text: 'Getting quote for 1 ETH → USDC...' } },
-    ],
-    [
-      { name: 'user', content: { text: 'exchange 100 USDC for ETH on base' } },
-      { name: 'agent', content: { text: 'Getting quote for 100 USDC → ETH...' } },
-    ],
+    [{ name: 'user', content: { text: 'swap 1 ETH to USDC' } }, { name: 'Otto', content: { text: 'Getting quote...' } }],
   ],
 };
 
@@ -175,7 +159,7 @@ export const bridgeAction: Action = {
   validate: async (_runtime: IAgentRuntime) => true,
   
   handler: async (
-    runtime: IAgentRuntime,
+    _runtime: IAgentRuntime,
     message: Memory,
     _state?: State,
     _options?: HandlerOptions,
@@ -183,16 +167,16 @@ export const bridgeAction: Action = {
   ) => {
     const text = String(message.content?.text ?? '');
     const params = parseBridgeParams(text);
+    const userId = getUserId(message);
+    const platform = getPlatform(message);
     
     if (!params.amount || !params.token || !params.fromChain || !params.toChain) {
       callback?.({ text: 'Please specify bridge details. Example: "bridge 1 ETH from ethereum to base"' });
       return;
     }
     
-    const user = await getOrCreateUser(runtime, message);
+    const user = getWalletService().getUserByPlatform(platform, userId);
     if (!user) {
-      const userId = getUserId(message);
-      const platform = getPlatform(message);
       const connectUrl = await getWalletService().generateConnectUrl(platform, userId, userId);
       callback?.({ text: `Connect your wallet first:\n${connectUrl}` });
       return;
@@ -202,9 +186,7 @@ export const bridgeAction: Action = {
     const destChainId = getChainId(params.toChain);
     
     if (!sourceChainId || !destChainId) {
-      callback?.({
-        text: `Unknown chain: ${!sourceChainId ? params.fromChain : params.toChain}. Supported: ethereum, base, optimism, arbitrum, jeju`,
-      });
+      callback?.({ text: `Unknown chain: ${!sourceChainId ? params.fromChain : params.toChain}` });
       return;
     }
     
@@ -236,41 +218,21 @@ export const bridgeAction: Action = {
     }
     
     const outputAmount = getTradingService().formatAmount(quote.outputAmount, destToken.decimals);
-    const fee = getTradingService().formatUsd(quote.feeUsd ?? 0);
-    const time = Math.ceil(quote.estimatedTimeSeconds / 60);
-    
-    const platform = getPlatform(message);
     const channelId = getRoomId(message);
+    
     getStateManager().setPendingAction(platform, channelId, {
       type: 'bridge',
       quote,
-      params: {
-        amount: params.amount,
-        token: params.token,
-        fromChain: params.fromChain,
-        toChain: params.toChain,
-        sourceChainId,
-        destChainId,
-      },
+      params: { amount: params.amount, token: params.token, fromChain: params.fromChain, toChain: params.toChain, sourceChainId, destChainId },
       expiresAt: Date.now() + PENDING_ACTION_TTL,
     });
     
     callback?.({
-      text: `**Bridge Quote**
-
-${params.amount} ${params.token} (${params.fromChain}) → ${outputAmount} ${params.token} (${params.toChain})
-Fee: ${fee}
-Estimated time: ~${time} min
-
-Reply "confirm" to execute or "cancel" to abort.`,
+      text: `**Bridge Quote**\n\n${params.amount} ${params.token} (${params.fromChain}) → ${outputAmount} ${params.token} (${params.toChain})\nFee: ${getTradingService().formatUsd(quote.feeUsd ?? 0)}\nTime: ~${Math.ceil(quote.estimatedTimeSeconds / 60)} min\n\nReply "confirm" or "cancel".`,
     });
   },
-  
   examples: [
-    [
-      { name: 'user', content: { text: 'bridge 1 ETH from ethereum to base' } },
-      { name: 'agent', content: { text: 'Getting bridge quote...' } },
-    ],
+    [{ name: 'user', content: { text: 'bridge 1 ETH from ethereum to base' } }, { name: 'Otto', content: { text: 'Getting quote...' } }],
   ],
 };
 
@@ -305,26 +267,20 @@ export const balanceAction: Action = {
     );
     
     if (balances.length === 0) {
-      callback?.({
-        text: `No tokens found for ${user.primaryWallet.slice(0, 6)}...${user.primaryWallet.slice(-4)} on ${getChainName(user.settings.defaultChainId)}`,
-      });
+      callback?.({ text: `No tokens found on ${getChainName(user.settings.defaultChainId)}` });
       return;
     }
     
     const lines = balances.map(b => {
-      const amount = getTradingService().formatAmount(b.balance, b.token.decimals);
+      const amt = getTradingService().formatAmount(b.balance, b.token.decimals);
       const usd = b.balanceUsd ? ` ($${b.balanceUsd.toFixed(2)})` : '';
-      return `• ${amount} ${b.token.symbol}${usd}`;
+      return `• ${amt} ${b.token.symbol}${usd}`;
     });
     
     callback?.({ text: `**Balances on ${getChainName(user.settings.defaultChainId)}**\n\n${lines.join('\n')}` });
   },
-  
   examples: [
-    [
-      { name: 'user', content: { text: 'check my balance' } },
-      { name: 'agent', content: { text: 'Fetching your balances...' } },
-    ],
+    [{ name: 'user', content: { text: 'check my balance' } }, { name: 'Otto', content: { text: 'Fetching balances...' } }],
   ],
 };
 
@@ -359,18 +315,12 @@ export const priceAction: Action = {
     }
     
     const price = tokenInfo.price?.toFixed(2) ?? 'N/A';
-    const change = tokenInfo.priceChange24h 
-      ? `${tokenInfo.priceChange24h >= 0 ? '+' : ''}${tokenInfo.priceChange24h.toFixed(2)}%`
-      : '';
+    const change = tokenInfo.priceChange24h ? `${tokenInfo.priceChange24h >= 0 ? '+' : ''}${tokenInfo.priceChange24h.toFixed(2)}%` : '';
     
     callback?.({ text: `**${tokenInfo.name} (${tokenInfo.symbol})**\nPrice: $${price} ${change}` });
   },
-  
   examples: [
-    [
-      { name: 'user', content: { text: 'price of ETH' } },
-      { name: 'agent', content: { text: '**Ethereum (ETH)**\nPrice: $2500 +2.5%' } },
-    ],
+    [{ name: 'user', content: { text: 'price of ETH' } }, { name: 'Otto', content: { text: 'ETH: $2500' } }],
   ],
 };
 
@@ -393,12 +343,8 @@ export const connectAction: Action = {
     const connectUrl = await getWalletService().generateConnectUrl(platform, userId, userId);
     callback?.({ text: `Connect your wallet:\n${connectUrl}` });
   },
-  
   examples: [
-    [
-      { name: 'user', content: { text: 'connect my wallet' } },
-      { name: 'agent', content: { text: 'Connect your wallet: https://...' } },
-    ],
+    [{ name: 'user', content: { text: 'connect wallet' } }, { name: 'Otto', content: { text: 'Connect: https://...' } }],
   ],
 };
 
@@ -478,12 +424,8 @@ export const confirmAction: Action = {
       }
     }
   },
-  
   examples: [
-    [
-      { name: 'user', content: { text: 'confirm' } },
-      { name: 'agent', content: { text: 'Executing swap...' } },
-    ],
+    [{ name: 'user', content: { text: 'confirm' } }, { name: 'Otto', content: { text: 'Executing...' } }],
   ],
 };
 
@@ -506,12 +448,8 @@ export const cancelAction: Action = {
     getStateManager().clearPendingAction(platform, channelId);
     callback?.({ text: 'Cancelled.' });
   },
-  
   examples: [
-    [
-      { name: 'user', content: { text: 'cancel' } },
-      { name: 'agent', content: { text: 'Cancelled.' } },
-    ],
+    [{ name: 'user', content: { text: 'cancel' } }, { name: 'Otto', content: { text: 'Cancelled.' } }],
   ],
 };
 
@@ -530,29 +468,16 @@ export const helpAction: Action = {
     callback?: HandlerCallback
   ) => {
     callback?.({
-      text: `**Otto Trading Agent**
-
-I can help you with:
-• **Swap** - "swap 1 ETH to USDC"
-• **Bridge** - "bridge 1 ETH from ethereum to base"
-• **Balance** - "check my balance"
-• **Price** - "price of ETH"
-• **Connect** - "connect wallet"
-
-After getting a quote, reply "confirm" or "cancel".`,
+      text: `**Otto Trading Agent**\n\nI can help you with:\n• **Swap** - "swap 1 ETH to USDC"\n• **Bridge** - "bridge 1 ETH from ethereum to base"\n• **Balance** - "check my balance"\n• **Price** - "price of ETH"\n• **Connect** - "connect wallet"\n\nAfter getting a quote, reply "confirm" or "cancel".`,
     });
   },
-  
   examples: [
-    [
-      { name: 'user', content: { text: 'help' } },
-      { name: 'agent', content: { text: 'Otto Trading Agent...' } },
-    ],
+    [{ name: 'user', content: { text: 'help' } }, { name: 'Otto', content: { text: 'I can help with swap, bridge...' } }],
   ],
 };
 
 // ============================================================================
-// Providers
+// Provider
 // ============================================================================
 
 export const ottoWalletProvider: Provider = {
@@ -586,25 +511,11 @@ Pending action: ${pending ? pending.type : 'None'}`,
 
 export const ottoPlugin: Plugin = {
   name: 'otto',
-  description: 'Otto Trading Agent - Swap, bridge, and manage tokens across chains',
-  
-  actions: [
-    swapAction,
-    bridgeAction,
-    balanceAction,
-    priceAction,
-    connectAction,
-    confirmAction,
-    cancelAction,
-    helpAction,
-  ],
-  
+  description: 'Otto Trading Agent - Swap, bridge, and manage tokens',
+  actions: [swapAction, bridgeAction, balanceAction, priceAction, connectAction, confirmAction, cancelAction, helpAction],
   providers: [ottoWalletProvider],
-  
   evaluators: [],
-  
   services: [],
 };
 
 export default ottoPlugin;
-

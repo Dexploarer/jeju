@@ -89,6 +89,7 @@ function appPreferenceFromTuple(tuple: AppPreferenceTuple): AppPreference {
 
 // Load and validate config from JSON
 import eilConfigRaw from '@jejunetwork/config/eil';
+import contractsConfig from '@jejunetwork/config/contracts';
 import {
   EILJsonConfigSchema,
   type EILJsonConfig,
@@ -98,6 +99,25 @@ import {
 
 // Validate the EIL config at module load time - fail fast if config is invalid
 const typedConfig: EILJsonConfig = expectValid(EILJsonConfigSchema, eilConfigRaw, 'EIL config');
+
+// Contracts config type (simplified for liquidity)
+interface ContractsNetworkConfig {
+  liquidity?: {
+    riskSleeve?: string;
+    liquidityRouter?: string;
+    multiServiceStakeManager?: string;
+    liquidityVault?: string;
+    federatedLiquidity?: string;
+  };
+}
+
+// Get liquidity contracts for current network
+function getLiquidityContracts(): ContractsNetworkConfig['liquidity'] {
+  const config = contractsConfig as { localnet?: ContractsNetworkConfig; testnet?: ContractsNetworkConfig; mainnet?: ContractsNetworkConfig };
+  if (NETWORK === 'testnet') return config.testnet?.liquidity;
+  if (NETWORK === 'mainnet') return config.mainnet?.liquidity;
+  return config.localnet?.liquidity;
+}
 
 // Helper to get chain config based on current network
 function getNetworkConfig(): EILNetworkConfig {
@@ -116,6 +136,9 @@ export function useEILConfig() {
       supportedChains: [],
       l1StakeManager: undefined,
       supportedTokens: [],
+      riskSleeve: undefined,
+      liquidityRouter: undefined,
+      multiServiceStakeManager: undefined,
     };
   }
   const chainId = chain.id.toString();
@@ -137,6 +160,16 @@ export function useEILConfig() {
 
   // Get appTokenPreference address from chain config if available
   const appTokenPreferenceAddr = chainConfig?.tokens?.['appTokenPreference'] as Address | undefined;
+  
+  // Get liquidity contracts from contracts.json
+  const liquidityContracts = getLiquidityContracts();
+  const riskSleeveAddr = liquidityContracts?.riskSleeve;
+  const liquidityRouterAddr = liquidityContracts?.liquidityRouter;
+  const multiServiceStakeManagerAddr = liquidityContracts?.multiServiceStakeManager;
+
+  // Helper to convert empty string to undefined
+  const toAddress = (addr: string | undefined): Address | undefined => 
+    addr && addr.length > 0 ? addr as Address : undefined;
 
   return {
     isAvailable: Boolean(isAvailable),
@@ -145,6 +178,9 @@ export function useEILConfig() {
     supportedChains: configuredChains,
     l1StakeManager: (networkConfig.hub.l1StakeManager || undefined) as Address | undefined,
     supportedTokens: typedConfig.supportedTokens as readonly string[] as Address[],
+    riskSleeve: toAddress(riskSleeveAddr),
+    liquidityRouter: toAddress(liquidityRouterAddr),
+    multiServiceStakeManager: toAddress(multiServiceStakeManagerAddr),
   };
 }
 
