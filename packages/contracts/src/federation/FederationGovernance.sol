@@ -823,6 +823,7 @@ contract FederationGovernance is Ownable, ReentrancyGuard, Pausable {
     }
 
     function setTreasury(address _treasury) external onlyOwner {
+        require(_treasury != address(0), "Invalid treasury");
         treasury = _treasury;
     }
 

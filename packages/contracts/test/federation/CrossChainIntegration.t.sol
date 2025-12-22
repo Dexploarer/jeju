@@ -25,13 +25,32 @@ contract MockWormhole is IWormhole {
     uint16 public lastChainId;
     bytes32 public lastEmitter;
     
+    // Testing controls
+    bool public shouldRejectNext;
+    string public rejectionReason;
+    mapping(bytes32 => bool) public invalidSignatures;
+    
+    function setNextVerificationFails(string memory reason) external {
+        shouldRejectNext = true;
+        rejectionReason = reason;
+    }
+    
+    function markSignatureInvalid(bytes32 vaaHash) external {
+        invalidSignatures[vaaHash] = true;
+    }
+    
     function parseAndVerifyVM(bytes calldata encodedVM)
         external
         view
         override
         returns (VM memory vm, bool valid, string memory reason)
     {
-        // Simple mock - just parse the payload
+        // Test hook: reject next VAA
+        if (shouldRejectNext) {
+            return (vm, false, rejectionReason);
+        }
+        
+        // Validate minimum length for VAA structure
         if (encodedVM.length < 100) {
             return (vm, false, "VAA too short");
         }
@@ -51,6 +70,11 @@ contract MockWormhole is IWormhole {
         vm.payload = encodedVM[42:];
         vm.guardianSetIndex = currentGuardianSetIndex;
         vm.hash = keccak256(encodedVM);
+        
+        // Test hook: check for marked invalid signatures
+        if (invalidSignatures[vm.hash]) {
+            return (vm, false, "Invalid guardian signatures");
+        }
         
         return (vm, true, "");
     }
@@ -637,5 +661,136 @@ contract CrossChainIntegrationTest is Test {
         assertEq(chain.name, "Solana");
         assertEq(uint8(chain.chainType), uint8(RegistryHub.ChainType.SOLANA));
         assertTrue(chain.isActive);
+    }
+
+    // ========================================================================
+    // Invalid VAA Tests - Verify Wormhole verification actually rejects bad VAAs
+    // ========================================================================
+
+    function test_RevertOnInvalidVAASignature() public {
+        bytes32 solanaEmitter = bytes32(uint256(0x501A4A00000000000000000000000000000001));
+        vm.prank(deployer);
+        registryHub.setTrustedSolanaEmitter(solanaEmitter);
+
+        // Create a valid-looking VAA with enough padding to pass length check (needs >= 100 bytes)
+        // Header: 2 (chainId) + 32 (emitter) + 8 (sequence) = 42 bytes
+        // Need payload >= 58 bytes to reach 100
+        bytes32 programId = bytes32(uint256(0xDEADBEEF));
+        bytes memory registryName = "SolanaAgentRegistry"; // 19 bytes
+        bytes memory metadataUri = "ipfs://QmTestMetadataForAgentRegistry"; // 37 bytes
+        bytes memory payload = abi.encodePacked(
+            uint8(1), // REGISTER
+            programId, // 32 bytes
+            uint8(1), // Identity registry
+            uint16(bytes(registryName).length),
+            registryName,
+            uint16(bytes(metadataUri).length),
+            metadataUri
+        );
+        bytes memory vaa = wormhole.createMockVAA(
+            uint16(SOLANA_CHAIN_ID), solanaEmitter, 1, payload
+        );
+
+        // Mark this VAA's signature as invalid
+        wormhole.markSignatureInvalid(keccak256(vaa));
+
+        // Should revert because signature is invalid
+        vm.expectRevert(abi.encodeWithSelector(RegistryHub.VerificationFailed.selector, "Invalid guardian signatures"));
+        registryHub.verifySolanaRegistry(vaa);
+    }
+
+    function test_RevertOnTooShortVAA() public {
+        // VAA that's too short to be valid
+        bytes memory shortVaa = new bytes(50);
+        
+        vm.expectRevert(abi.encodeWithSelector(RegistryHub.VerificationFailed.selector, "VAA too short"));
+        registryHub.verifySolanaRegistry(shortVaa);
+    }
+
+    // ========================================================================
+    // Pause Functionality Tests
+    // ========================================================================
+
+    function test_PauseRegistryHub() public {
+        // Owner can pause
+        vm.prank(deployer);
+        registryHub.pause();
+
+        // Registration should fail while paused (OpenZeppelin v5 uses EnforcedPause())
+        vm.expectRevert(abi.encodeWithSignature("EnforcedPause()"));
+        registryHub.registerChain(
+            999,
+            RegistryHub.ChainType.EVM,
+            "TestChain",
+            "https://test.rpc"
+        );
+    }
+
+    function test_UnpauseRegistryHub() public {
+        vm.startPrank(deployer);
+        registryHub.pause();
+        registryHub.unpause();
+        vm.stopPrank();
+
+        // Should work after unpause
+        registryHub.registerChain(
+            999,
+            RegistryHub.ChainType.EVM,
+            "TestChain",
+            "https://test.rpc"
+        );
+        
+        RegistryHub.ChainInfo memory chain = registryHub.getChain(999);
+        assertEq(chain.name, "TestChain");
+    }
+
+    function test_OnlyOwnerCanPauseRegistryHub() public {
+        vm.prank(agent1Owner);
+        vm.expectRevert();
+        registryHub.pause();
+    }
+
+    function test_PauseCrossChainIdentitySync() public {
+        // Register an agent first (before pausing)
+        vm.prank(agent1Owner);
+        uint256 agentId = identityRegistry.register("ipfs://test-agent");
+        
+        // Now pause
+        vm.prank(deployer);
+        identitySync.pause();
+
+        // Broadcast should fail while paused (OpenZeppelin v5 uses EnforcedPause())
+        vm.prank(agent1Owner);
+        vm.expectRevert(abi.encodeWithSignature("EnforcedPause()"));
+        identitySync.broadcastRegistration{value: 0.1 ether}(agentId);
+    }
+
+    function test_PauseBlocksIncomingMessages() public {
+        // Set up trusted remote using BASE_DOMAIN
+        bytes32 remoteSender = bytes32(uint256(uint160(address(identitySync))));
+        vm.prank(deployer);
+        identitySync.setTrustedRemote(BASE_DOMAIN, remoteSender);
+
+        // Pause
+        vm.prank(deployer);
+        identitySync.pause();
+
+        // Build a message
+        bytes memory message = abi.encodePacked(
+            uint8(1), // version
+            uint8(1), // REGISTER type
+            uint256(1), // agentId
+            address(agent1Owner),
+            bytes32("test-metadata"),
+            uint256(0.1 ether),
+            uint8(2), // SILVER tier
+            uint64(block.timestamp),
+            bytes("{}") // metadata
+        );
+
+        // Incoming message should fail (OpenZeppelin v5 uses EnforcedPause())
+        vm.prank(address(mailbox));
+        vm.expectRevert(abi.encodeWithSignature("EnforcedPause()"));
+        identitySync.handle(BASE_DOMAIN, remoteSender, message);
     }
 }

@@ -204,6 +204,8 @@ contract CrossChainIdentitySync is Ownable, ReentrancyGuard, Pausable {
         address _mailbox,
         uint32 _localDomain
     ) Ownable(msg.sender) {
+        require(_identityRegistry != address(0), "Invalid identity registry");
+        require(_mailbox != address(0), "Invalid mailbox");
         identityRegistry = IdentityRegistry(payable(_identityRegistry));
         mailbox = IMailbox(_mailbox);
         localDomain = _localDomain;
@@ -333,6 +335,7 @@ contract CrossChainIdentitySync is Ownable, ReentrancyGuard, Pausable {
      * @notice Update mailbox address
      */
     function setMailbox(address _mailbox) external onlyOwner {
+        require(_mailbox != address(0), "Invalid mailbox");
         mailbox = IMailbox(_mailbox);
     }
 

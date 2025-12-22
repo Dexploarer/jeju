@@ -22,7 +22,9 @@
     "@jejunetwork/kms": "workspace:*",
     "@jejunetwork/oauth3": "workspace:*",
     "@jejunetwork/sdk": "workspace:*",
+    "@jejunetwork/shared": "workspace:*",
     "hono": "4.11.1",
+    "p-retry": "^7.1.1",
     "viem": "2.43.2",
     "zod": "^4.1.13"
   },
