@@ -35,7 +35,7 @@
  */
 
 export { main as startBot, startBotAPIServer } from './api-server'
-// ============ Types ============
+
 export type {
   ArbitrageOpportunity,
   AutocratConfig,
@@ -59,7 +59,7 @@ export {
   type DefaultBotConfig,
   getDefaultBotsForNetwork,
 } from './default-bots'
-// ============ Engine (Infrastructure) ============
+
 export {
   ARBITRAGE_EXECUTOR_SOLIDITY,
   type BlockEvent,
@@ -103,7 +103,7 @@ export {
   TreasuryManager,
 } from './engine'
 export { BotInitializer, type BotInitializerConfig } from './initializer'
-// ============ Math & Utilities ============
+
 export {
   AUTOCRAT_TREASURY_ABI,
   bigintAbsDiff,
@@ -153,14 +153,14 @@ export {
   XLP_V2_PAIR_ABI,
   ZERO_ADDRESS,
 } from './lib'
-// ============ Unified Bot ============
+
 export {
   type BotStats,
   type TradeResult,
   UnifiedBot,
   type UnifiedBotConfig,
 } from './mev-bot'
-// ============ Solana DEX Adapters ============
+
 export {
   type DexSource,
   JupiterAdapter,
@@ -172,7 +172,7 @@ export {
   SolanaDexAggregator,
   type SwapQuote,
 } from './solana'
-// ============ Strategies ============
+
 export {
   CrossChainArbStrategy,
   DexArbitrageStrategy,
@@ -182,15 +182,15 @@ export {
   OracleKeeperStrategy,
   type PoolAnalysis,
   type RebalanceAction,
-  type UnifiedPosition,
   type RiskLevel,
   SandwichStrategy,
   SolanaArbStrategy,
   SolverStrategy,
+  type UnifiedPosition,
   type YieldFarmingConfig,
   YieldFarmingStrategy,
   type YieldOpportunity,
   type YieldSource,
 } from './strategies'
-// ============ Core Trading Bot ============
+
 export { TradingBot, type TradingBotOptions } from './trading-bot'

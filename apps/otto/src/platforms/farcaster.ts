@@ -1,6 +1,11 @@
 /**
  * Farcaster Platform Adapter
  * Integrates with Farcaster via Neynar API for DMs and cast mentions
+ *
+ * External API Strategy:
+ * - Neynar API: External Farcaster API provider (keep fetch)
+ *   All endpoints use raw fetch with Zod validation.
+ *   Cannot use Eden as Neynar is a third-party service.
  */
 
 import { expectValid } from '@jejunetwork/types'

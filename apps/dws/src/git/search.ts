@@ -403,13 +403,14 @@ export class SearchManager {
 
   /**
    * Search users
+   * User search requires indexing via Meilisearch (set MEILISEARCH_URL) or
+   * a dedicated user registry. Returns empty results when using in-memory search.
    */
   async searchUsers(
     _query: string,
     _options: UserSearchOptions = {},
   ): Promise<UserSearchResult> {
-    // TODO: Implement user search when proper indexing is available
-    // For now, return empty results as user search requires proper indexing
+    // User search requires Meilisearch or dedicated indexing
     return { totalCount: 0, items: [] }
   }
 

@@ -110,8 +110,6 @@ export interface LiquidityManagerConfig extends StrategyConfig {
   targetAprPercent: number
 }
 
-// ============ Constants ============
-
 const UNISWAP_V3_POSITIONS_NFT: Record<number, Address> = {
   1: '0xC36442b4a4522E871399CD717aBDD847Ab11FE88',
   42161: '0xC36442b4a4522E871399CD717aBDD847Ab11FE88',
@@ -131,8 +129,6 @@ const POSITION_NFT_ABI = parseAbi([
   'function balanceOf(address owner) view returns (uint256)',
   'function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256)',
 ])
-
-// ============ Liquidity Manager ============
 
 export class LiquidityManager extends EventEmitter {
   private config: LiquidityManagerConfig
@@ -436,8 +432,6 @@ export class LiquidityManager extends EventEmitter {
 
     return { success: false, error: 'EVM removal not implemented yet' }
   }
-
-  // ============ Private Methods ============
 
   private async loadEVMPositions(walletAddress: Address): Promise<void> {
     for (const [chainId, client] of this.evmClients) {

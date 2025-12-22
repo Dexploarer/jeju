@@ -14,10 +14,6 @@ import { encodeFunctionData } from 'viem'
 import { getContractAddresses } from '../config'
 import type { JejuWallet } from '../wallet'
 
-// ============================================================================
-// Types
-// ============================================================================
-
 export interface GameContracts {
   gameIntegration: Address
   gold: Address
@@ -74,10 +70,6 @@ export interface TransferItemParams {
   amount: bigint
   data?: Hex
 }
-
-// ============================================================================
-// ABIs
-// ============================================================================
 
 const GAME_INTEGRATION_ABI = [
   {
@@ -324,10 +316,6 @@ const ITEMS_ABI = [
   },
 ] as const
 
-// ============================================================================
-// Module Interface
-// ============================================================================
-
 export interface GamesModule {
   // Game Integration
   getContracts(): Promise<GameContracts>
@@ -371,10 +359,6 @@ export interface GamesModule {
   getPlayerInfo(player?: Address): Promise<PlayerInfo>
   getGameStats(): Promise<GameStats>
 }
-
-// ============================================================================
-// Implementation
-// ============================================================================
 
 export function createGamesModule(
   wallet: JejuWallet,

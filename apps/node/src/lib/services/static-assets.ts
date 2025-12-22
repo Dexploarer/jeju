@@ -12,9 +12,7 @@ import {
   type HybridTorrentService,
 } from './hybrid-torrent'
 
-// ============================================================================
 // Configuration Schema
-// ============================================================================
 
 const StaticAssetConfigSchema = z.object({
   listenPort: z.number().min(1024).max(65535).default(8080),
@@ -22,7 +20,6 @@ const StaticAssetConfigSchema = z.object({
   maxCacheSizeMb: z.number().default(1024), // 1GB default
   enableTorrent: z.boolean().default(true),
   enableCDN: z.boolean().default(true),
-  cdnFallbackUrl: z.string().url().optional(),
   metricsPort: z.number().optional(),
   // Network asset manifest
   manifestUrl: z.string().url().optional(),
@@ -52,9 +49,7 @@ const AssetManifestSchema = z.object({
   checksum: z.string().min(1),
 })
 
-// ============================================================================
 // Types
-// ============================================================================
 
 export interface NetworkAsset {
   contentHash: string
@@ -84,9 +79,7 @@ interface CachedAsset {
   accessCount: number
 }
 
-// ============================================================================
 // Prometheus Metrics
-// ============================================================================
 
 const metricsRegistry = new Registry()
 
@@ -130,9 +123,7 @@ const assetLatency = new Histogram({
   registers: [metricsRegistry],
 })
 
-// ============================================================================
 // MIME Types
-// ============================================================================
 
 const MIME_TYPES: Record<string, string> = {
   '.html': 'text/html',
@@ -160,9 +151,7 @@ function getMimeType(filePath: string): string {
   return MIME_TYPES[ext] ?? 'application/octet-stream'
 }
 
-// ============================================================================
 // Static Asset Service
-// ============================================================================
 
 export class StaticAssetService {
   private config: StaticAssetConfig
@@ -439,33 +428,7 @@ export class StaticAssetService {
           `[StaticAssets] Torrent fetch failed for ${assetPath}:`,
           error,
         )
-      }
-    }
-
-    // Try CDN fallback
-    if (this.config.enableCDN && this.config.cdnFallbackUrl) {
-      try {
-        const cdnUrl = `${this.config.cdnFallbackUrl}/${assetPath}`
-        const data = await this.fetchFromCDN(cdnUrl)
-
-        if (data) {
-          const hash = createHash('sha256').update(data).digest('hex')
-          const mimeType = getMimeType(assetPath)
-
-          const asset: CachedAsset = {
-            contentHash: hash,
-            data,
-            mimeType,
-            size: data.length,
-            lastAccessed: Date.now(),
-            accessCount: 1,
-          }
-
-          await this.cacheAsset(hash, asset)
-          return asset
-        }
-      } catch (error) {
-        console.warn(`[StaticAssets] CDN fetch failed for ${assetPath}:`, error)
+        throw error
       }
     }
 
@@ -611,9 +574,7 @@ export class StaticAssetService {
   }
 }
 
-// ============================================================================
 // Factory
-// ============================================================================
 
 export function createStaticAssetService(
   client: NodeClient | null,

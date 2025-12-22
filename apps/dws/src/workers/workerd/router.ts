@@ -200,6 +200,7 @@ export class DecentralizedWorkerRouter {
         '[WorkerRouter] Failed to refresh nodes from registry:',
         e instanceof Error ? e.message : String(e),
       )
+      throw e
     }
   }
 

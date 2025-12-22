@@ -8,8 +8,6 @@ import { type Address, createPublicClient, http } from 'viem'
 import { baseSepolia } from 'viem/chains'
 import { BAN_MANAGER_ABI, MODERATION_MARKETPLACE_ABI } from '../api/abis'
 
-// ============ Types ============
-
 export const BanType = {
   NONE: 0,
   ON_NOTICE: 1,
@@ -36,8 +34,6 @@ export interface BanCheckConfig {
   appId?: `0x${string}`
   rpcUrl?: string
 }
-
-// ============ Default Config ============
 
 // Get RPC URL with network-aware defaults
 function getDefaultRpcUrl(): string {
@@ -69,8 +65,6 @@ const DEFAULT_CONFIG: BanCheckConfig = {
     process.env.VITE_IDENTITY_REGISTRY_ADDRESS) as Address | undefined,
   rpcUrl: getDefaultRpcUrl(),
 }
-
-// ============ Hook ============
 
 /**
  * Hook to check and monitor user's ban status

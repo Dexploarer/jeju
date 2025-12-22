@@ -12,9 +12,7 @@ import { privateKeyToAccount } from 'viem/accounts'
 import { WebSocket, WebSocketServer } from 'ws'
 import { z } from 'zod'
 
-// ============================================================================
 // Configuration Schema
-// ============================================================================
 
 const EdgeCoordinatorConfigSchema = z.object({
   nodeId: z.string().min(1),
@@ -43,9 +41,7 @@ const EdgeCoordinatorConfigSchema = z.object({
 
 export type EdgeCoordinatorConfig = z.infer<typeof EdgeCoordinatorConfigSchema>
 
-// ============================================================================
 // Gossip Message Payload Types
-// ============================================================================
 
 /** Typed payload for announce messages */
 export interface AnnouncePayload {
@@ -120,9 +116,7 @@ const GossipMessageSchema = z.object({
     .transform((val) => val as GossipPayload),
 })
 
-// ============================================================================
 // Types
-// ============================================================================
 
 export interface EdgeNodeInfo {
   nodeId: string
@@ -177,9 +171,7 @@ export interface GossipMessage {
   payload: GossipPayload
 }
 
-// ============================================================================
 // Prometheus Metrics
-// ============================================================================
 
 const metricsRegistry = new Registry()
 
@@ -216,9 +208,7 @@ const coordinatorGossipLatency = new Histogram({
   registers: [metricsRegistry],
 })
 
-// ============================================================================
 // Edge Coordinator
-// ============================================================================
 
 export class EdgeCoordinator {
   private config: EdgeCoordinatorConfig
@@ -351,7 +341,7 @@ export class EdgeCoordinator {
         }
 
         if (req.url === '/gossip' && req.method === 'POST') {
-          // Handle HTTP gossip fallback
+          // Handle HTTP gossip transport
           let body = ''
           req.on('data', (chunk: string) => {
             body += chunk
@@ -487,7 +477,7 @@ export class EdgeCoordinator {
     } catch (error) {
       coordinatorAuthFailures.inc({ reason: 'invalid_signature' })
       console.error('[EdgeCoordinator] Signature verification failed:', error)
-      return false
+      throw error
     }
   }
 
@@ -517,7 +507,7 @@ export class EdgeCoordinator {
       return isRegistered
     } catch (error) {
       console.error('[EdgeCoordinator] Registration check failed:', error)
-      return false
+      throw error
     }
   }
 
@@ -999,9 +989,7 @@ export class EdgeCoordinator {
   }
 }
 
-// ============================================================================
 // Factory
-// ============================================================================
 
 export function createEdgeCoordinator(
   config: EdgeCoordinatorConfig,

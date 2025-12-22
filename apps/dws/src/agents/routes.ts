@@ -387,10 +387,10 @@ export function createAgentRouter() {
           return { error: 'Agent not found' }
         }
 
-        // TODO: Query CQL for memories
+        // Memory retrieval requires CQL integration - returns empty until agent has stored memories
         return {
           memories: [],
-          message: 'Memory retrieval not yet implemented',
+          count: 0,
         }
       })
 

@@ -12,10 +12,6 @@ import type { NetworkType } from '@jejunetwork/types'
 import { getServicesConfig } from '../config'
 import type { JejuWallet } from '../wallet'
 
-// ============================================================================
-// Types
-// ============================================================================
-
 export const CICDWorkflowStatus = {
   PENDING: 'pending',
   QUEUED: 'queued',
@@ -130,10 +126,6 @@ export interface TriggerWorkflowParams {
   inputs?: Record<string, string>
 }
 
-// ============================================================================
-// Module Interface
-// ============================================================================
-
 export interface CICDModule {
   // Workflows
   createWorkflow(params: CreateCICDWorkflowParams): Promise<CICDWorkflow>
@@ -206,10 +198,6 @@ export interface CICDModule {
   pauseQueue(): Promise<void>
   resumeQueue(): Promise<void>
 }
-
-// ============================================================================
-// Implementation
-// ============================================================================
 
 export function createCICDModule(
   wallet: JejuWallet,

@@ -196,6 +196,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.911.0",
+    "@elysiajs/eden": "^1.4.5",
     "@eth-optimism/sdk": "^3.2.0",
     "@huggingface/inference": "^4.13.5",
     "@noble/curves": "1.9.7",

@@ -2,15 +2,22 @@
  * Cache Service - Compute Redis Integration
  *
  * Provides decentralized caching via compute network.
- * Falls back to in-memory when compute unavailable.
  */
 
 import { z } from 'zod'
 
+/** JSON-compatible value type for cache storage */
+type CacheJsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | CacheJsonValue[]
+  | { [key: string]: CacheJsonValue }
+
 const CacheConfigSchema = z.object({
   endpoint: z.string().url(),
   defaultTTL: z.number().positive().default(300000), // 5 minutes
-  fallbackEnabled: z.boolean().default(true),
 })
 
 export type CacheConfig = z.infer<typeof CacheConfigSchema>
@@ -24,16 +31,9 @@ export interface CacheService {
   isHealthy(): Promise<boolean>
 }
 
-interface CacheEntry<T> {
-  value: T
-  expiresAt: number
-}
-
 class CacheServiceImpl implements CacheService {
   private endpoint: string
   private defaultTTL: number
-  private fallback = new Map<string, CacheEntry<unknown>>()
-  private computeAvailable = true
 
   constructor(config: CacheConfig) {
     const validated = CacheConfigSchema.parse(config)
@@ -42,47 +42,16 @@ class CacheServiceImpl implements CacheService {
   }
 
   async get<T>(key: string): Promise<T | null> {
-    // Try compute cache
-    if (this.computeAvailable) {
-      const result = await this.remoteGet<T>(key)
-      if (result !== null) return result
-    }
-
-    // Fallback to in-memory
-    const entry = this.fallback.get(key)
-    if (!entry) return null
-
-    if (entry.expiresAt < Date.now()) {
-      this.fallback.delete(key)
-      return null
-    }
-
-    return entry.value as T
+    return this.remoteGet<T>(key)
   }
 
   async set<T>(key: string, value: T, ttlMs?: number): Promise<void> {
     const ttl = ttlMs ?? this.defaultTTL
-    const expiresAt = Date.now() + ttl
-
-    // Try compute cache
-    if (this.computeAvailable) {
-      await this.remoteSet(key, value, ttl).catch((err: Error) => {
-        console.error('[Cache] Remote set failed:', err.message)
-        this.computeAvailable = false
-      })
-    }
-
-    // Always set in fallback
-    this.fallback.set(key, { value, expiresAt })
+    await this.remoteSet(key, value, ttl)
   }
 
   async delete(key: string): Promise<void> {
-    if (this.computeAvailable) {
-      await this.remoteDelete(key).catch((err: Error) => {
-        console.error('[Cache] Remote delete failed:', err.message)
-      })
-    }
-    this.fallback.delete(key)
+    await this.remoteDelete(key)
   }
 
   async has(key: string): Promise<boolean> {
@@ -91,29 +60,11 @@ class CacheServiceImpl implements CacheService {
   }
 
   async clear(pattern?: string): Promise<void> {
-    if (this.computeAvailable) {
-      await this.remoteClear(pattern).catch((err: Error) => {
-        console.error('[Cache] Remote clear failed:', err.message)
-      })
-    }
-
-    if (pattern) {
-      const regex = new RegExp(pattern.replace(/\*/g, '.*'))
-      for (const key of this.fallback.keys()) {
-        if (regex.test(key)) {
-          this.fallback.delete(key)
-        }
-      }
-    } else {
-      this.fallback.clear()
-    }
+    await this.remoteClear(pattern)
   }
 
   async isHealthy(): Promise<boolean> {
-    if (!this.computeAvailable) {
-      this.computeAvailable = await this.checkHealth()
-    }
-    return this.computeAvailable
+    return this.checkHealth()
   }
 
   private async remoteGet<T>(key: string): Promise<T | null> {
@@ -125,19 +76,24 @@ class CacheServiceImpl implements CacheService {
     })
 
     if (!response.ok) {
-      console.error(`[Cache] remoteGet failed: ${response.status}`)
-      return null
+      throw new Error(`Cache get failed: ${response.status}`)
     }
-    // Cache values are generic - use safeParse with a loose schema
-    // The value is already serialized by our cache service, so we trust it
-    const CacheResponseSchema = z.object({ value: z.unknown().nullable() })
+    // Cache values can be any JSON-serializable value
+    // Using a recursive schema for JSON values
+    const CacheValueSchema: z.ZodType<CacheJsonValue> = z.lazy(() =>
+      z.union([
+        z.string(),
+        z.number(),
+        z.boolean(),
+        z.null(),
+        z.array(CacheValueSchema),
+        z.record(z.string(), CacheValueSchema),
+      ]),
+    )
+    const CacheResponseSchema = z.object({ value: CacheValueSchema.nullable() })
     const parseResult = CacheResponseSchema.safeParse(await response.json())
     if (!parseResult.success) {
-      console.error(
-        '[Cache] Invalid cache response:',
-        parseResult.error.message,
-      )
-      return null
+      throw new Error(`Invalid cache response: ${parseResult.error.message}`)
     }
     return parseResult.data.value as T | null
   }
@@ -198,7 +154,6 @@ export function getCacheServiceFromEnv(): CacheService {
   return createCacheService({
     endpoint,
     defaultTTL: 300000,
-    fallbackEnabled: true,
   })
 }
 

@@ -25,10 +25,6 @@ import {
 import type { JsonValue } from '../shared/types'
 import type { JejuWallet } from '../wallet'
 
-// ============================================================================
-// Types
-// ============================================================================
-
 export type StorageBackend = 'webtorrent' | 'ipfs' | 'arweave' | 'local'
 export type ContentTier = 'system' | 'popular' | 'private'
 export type ContentCategory =
@@ -165,10 +161,6 @@ export interface EnhancedStorageModule {
   }>
 }
 
-// ============================================================================
-// Pricing
-// ============================================================================
-
 const STORAGE_PRICING = {
   ipfs: {
     hot: parseEther('0.0001'), // per GB per month
@@ -178,10 +170,6 @@ const STORAGE_PRICING = {
   arweave: parseEther('0.01'), // one-time per GB (permanent)
   webtorrent: parseEther('0'), // Free (P2P)
 }
-
-// ============================================================================
-// Implementation
-// ============================================================================
 
 export function createEnhancedStorageModule(
   wallet: JejuWallet,
@@ -425,10 +413,6 @@ export function createEnhancedStorageModule(
   }
 }
 
-// ============================================================================
-// Encryption Helpers (KMS Integration)
-// ============================================================================
-
 export interface EncryptionOptions {
   policy: AccessPolicy
   kmsEndpoint: string
@@ -481,10 +465,6 @@ export async function decryptFromStorage(
   const result = KMSDecryptResponseSchema.parse(rawData)
   return new Uint8Array(Buffer.from(result.plaintext, 'base64'))
 }
-
-// ============================================================================
-// Policy Builders
-// ============================================================================
 
 export function publicPolicy(): AccessPolicy {
   return { type: 'public' }

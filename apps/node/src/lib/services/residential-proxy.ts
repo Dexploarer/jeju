@@ -10,9 +10,7 @@ import { z } from 'zod'
 import { PROXY_REGISTRY_ABI } from '../abis'
 import { getChain, type NodeClient } from '../contracts'
 
-// ============================================================================
 // Configuration Schema
-// ============================================================================
 
 const ProxyConfigSchema = z.object({
   coordinatorWsUrl: z.string().url(),
@@ -51,9 +49,7 @@ const CoordinatorMessageSchema = z
   })
   .passthrough()
 
-// ============================================================================
 // Types
-// ============================================================================
 
 export interface ProxyState {
   isRegistered: boolean
@@ -65,9 +61,7 @@ export interface ProxyState {
   earnings: bigint
 }
 
-// ============================================================================
 // Prometheus Metrics
-// ============================================================================
 
 const metricsRegistry = new Registry()
 
@@ -105,9 +99,7 @@ const proxyCoordinatorConnected = new Gauge({
   registers: [metricsRegistry],
 })
 
-// ============================================================================
 // Circuit Breaker
-// ============================================================================
 
 class CircuitBreaker {
   private failures = 0
@@ -156,9 +148,7 @@ class CircuitBreaker {
   }
 }
 
-// ============================================================================
 // Residential Proxy Service
-// ============================================================================
 
 export class ResidentialProxyService {
   private client: NodeClient
@@ -479,7 +469,7 @@ export class ResidentialProxyService {
       return isValid
     } catch (error) {
       console.error('[Proxy] Auth token validation error:', error)
-      return false
+      throw error
     }
   }
 
@@ -840,9 +830,7 @@ export class ResidentialProxyService {
   }
 }
 
-// ============================================================================
 // Factory
-// ============================================================================
 
 export function createResidentialProxyService(
   client: NodeClient,

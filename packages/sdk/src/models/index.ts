@@ -14,10 +14,6 @@ import { encodeFunctionData } from 'viem'
 import { getContractAddresses } from '../config'
 import type { JejuWallet } from '../wallet'
 
-// ============================================================================
-// Types
-// ============================================================================
-
 export const ModelType = {
   LLM: 0,
   VISION: 1,
@@ -166,10 +162,6 @@ export interface CreateEndpointParams {
   paymentToken?: Address
 }
 
-// ============================================================================
-// Contract ABIs
-// ============================================================================
-
 const MODEL_REGISTRY_ABI = [
   'function createModel(string name, string organization, uint8 modelType, uint8 license, string licenseUri, uint8 accessLevel, string description, string[] tags) external payable returns (bytes32)',
   'function publishVersion(bytes32 modelId, string version, string weightsUri, bytes32 weightsHash, uint256 weightsSize, string configUri, string tokenizerUri, uint256 parameterCount, string precision) external returns (bytes32)',
@@ -192,10 +184,6 @@ const MODEL_REGISTRY_ABI = [
   'function hasStarred(bytes32 modelId, address user) external view returns (bool)',
   'function uploadFee() external view returns (uint256)',
 ] as const
-
-// ============================================================================
-// Models Module Interface
-// ============================================================================
 
 export interface ModelsModule {
   // Model Queries
@@ -239,10 +227,6 @@ export interface ModelsModule {
   // Constants
   readonly UPLOAD_FEE: bigint
 }
-
-// ============================================================================
-// Implementation
-// ============================================================================
 
 export function createModelsModule(
   wallet: JejuWallet,

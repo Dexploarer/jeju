@@ -4,7 +4,7 @@
  * Provides full type inference from the Elysia server
  */
 
-import { treaty, type Treaty } from '@elysiajs/eden'
+import { type Treaty, treaty } from '@elysiajs/eden'
 import type { App } from '../../../src/server'
 
 const API_BASE = import.meta.env.VITE_AUTOCRAT_API || ''

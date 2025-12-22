@@ -7,7 +7,7 @@ import {
   getChainConfig,
   getEVMChains,
   getHomeChain,
-  getSVMChains,
+  getSolanaChains,
   validateChainConfig,
 } from '../config/chains'
 import type {
@@ -83,13 +83,19 @@ describe('ChainConfig', () => {
   test('should get EVM chains only', () => {
     const evmChains = getEVMChains()
     expect(evmChains.length).toBeGreaterThan(0)
-    expect(evmChains.every((c) => c.chainType === 'evm')).toBe(true)
+    expect(
+      evmChains.every((c: { chainType: string }) => c.chainType === 'evm'),
+    ).toBe(true)
   })
 
   test('should get Solana chains only', () => {
-    const solanaChains = getSVMChains() // getSVMChains is deprecated alias
+    const solanaChains = getSolanaChains()
     expect(solanaChains.length).toBeGreaterThan(0)
-    expect(solanaChains.every((c) => c.chainType === 'solana')).toBe(true)
+    expect(
+      solanaChains.every(
+        (c: { chainType: string }) => c.chainType === 'solana',
+      ),
+    ).toBe(true)
   })
 
   test('should validate chain config', () => {
@@ -128,8 +134,10 @@ describe('FeeComparison', () => {
 
 describe('SolanaIntegration', () => {
   test('should have Solana in mainnet chains', () => {
-    const solanaChains = getSVMChains(true) // getSVMChains is deprecated alias
-    const solana = solanaChains.find((c) => c.chainId === 'solana-mainnet')
+    const solanaChains = getSolanaChains(true)
+    const solana = solanaChains.find(
+      (c: { chainId: string | number }) => c.chainId === 'solana-mainnet',
+    )
     expect(solana).toBeDefined()
   })
 

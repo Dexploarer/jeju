@@ -11,10 +11,6 @@ import {
 } from '@jejunetwork/types'
 import { z } from 'zod'
 
-// ============================================================================
-// Base Validators
-// ============================================================================
-
 export const PlatformSchema = z.enum([
   'discord',
   'telegram',
@@ -23,10 +19,6 @@ export const PlatformSchema = z.enum([
   'twitter',
   'web',
 ])
-
-// ============================================================================
-// Platform Types
-// ============================================================================
 
 export const PlatformUserSchema = z.object({
   platform: PlatformSchema,
@@ -97,10 +89,6 @@ export const OttoUserSchema = z.object({
   fid: z.number().int().positive().optional(),
   farcasterUsername: z.string().optional(),
 })
-
-// ============================================================================
-// Trading Types
-// ============================================================================
 
 export const TokenInfoSchema = z.object({
   address: AddressSchema,
@@ -197,10 +185,6 @@ export const BridgeResultSchema = z.object({
   error: z.string().optional(),
 })
 
-// ============================================================================
-// Token Launch Types
-// ============================================================================
-
 export const TokenLaunchParamsSchema = z.object({
   userId: z.string().min(1),
   name: z.string().min(1).max(100),
@@ -289,7 +273,7 @@ export const ParsedCommandSchema = z.object({
 export const EmbedFieldSchema = z.object({
   name: z.string().min(1),
   value: z.string().min(1),
-  inline: z.boolean().optional(),
+  inline: z.boolean().default(false),
 })
 
 export const MessageEmbedSchema = z.object({
@@ -308,7 +292,7 @@ export const MessageButtonSchema = z.object({
   style: z.enum(['primary', 'secondary', 'success', 'danger', 'link']),
   customId: z.string().optional(),
   url: z.string().url().optional(),
-  disabled: z.boolean().optional(),
+  disabled: z.boolean().default(false),
 })
 
 export const CommandResultDataSchema = z.object({

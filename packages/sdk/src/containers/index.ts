@@ -15,10 +15,6 @@ import { encodeFunctionData, keccak256, toHex } from 'viem'
 import { getContractAddresses } from '../config'
 import type { JejuWallet } from '../wallet'
 
-// ============================================================================
-// Types
-// ============================================================================
-
 export type ContainerVisibility = 'PUBLIC' | 'PRIVATE' | 'ORGANIZATION'
 
 export interface ContainerRepository {
@@ -93,10 +89,6 @@ export interface SignImageParams {
   signature: Hex
   publicKeyUri: string
 }
-
-// ============================================================================
-// ABIs
-// ============================================================================
 
 const CONTAINER_REGISTRY_ABI = [
   {
@@ -304,10 +296,6 @@ const CONTAINER_REGISTRY_ABI = [
   },
 ] as const
 
-// ============================================================================
-// Module Interface
-// ============================================================================
-
 export interface ContainersModule {
   // Repository Management
   createRepository(params: CreateRepositoryParams): Promise<Hex>
@@ -339,10 +327,6 @@ export interface ContainersModule {
     tag: string
   }
 }
-
-// ============================================================================
-// Implementation
-// ============================================================================
 
 export function createContainersModule(
   wallet: JejuWallet,

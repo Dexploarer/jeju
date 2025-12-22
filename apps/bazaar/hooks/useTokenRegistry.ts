@@ -11,9 +11,10 @@ import {
 } from '@jejunetwork/ui'
 import type { Address } from 'viem'
 
-// TODO: Get from bazaar config when available
-const TOKEN_REGISTRY_ADDRESS =
-  '0x0000000000000000000000000000000000000000' as Address
+// Token registry address from env: NEXT_PUBLIC_TOKEN_REGISTRY_ADDRESS
+const TOKEN_REGISTRY_ADDRESS = (process.env
+  .NEXT_PUBLIC_TOKEN_REGISTRY_ADDRESS ??
+  '0x0000000000000000000000000000000000000000') as Address
 
 export type { TokenInfo, TokenConfig }
 

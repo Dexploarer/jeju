@@ -1,10 +1,5 @@
-/**
- * Elysia Rate Limiting Adapter
- *
- * Provides Elysia plugins for rate limiting using the framework-agnostic core.
- */
-
 import { type Context, Elysia } from 'elysia'
+import type { AuthUser } from '../auth/types.js'
 import {
   createRateLimitHeaders,
   createRateLimitKey,
@@ -18,7 +13,10 @@ import {
   RateLimitTiers,
 } from './types.js'
 
-// ============ Types ============
+/** Context with auth user - used by rate limiting to determine tier */
+interface ContextWithAuth {
+  authUser?: AuthUser
+}
 
 export interface RateLimitPluginConfig extends RateLimiterConfig {
   /** Function to extract user identifier from context */
@@ -31,18 +29,12 @@ export interface RateLimitPluginConfig extends RateLimiterConfig {
   perPath?: boolean
 }
 
-export interface RateLimitContext {
+/** Context derived by rate limit plugin - extends Record for Elysia compatibility */
+export interface RateLimitContext extends Record<string, unknown> {
   rateLimit: RateLimitResult
   rateLimitKey: string
-  /** Index signature for Elysia derive compatibility */
-  [key: string]: RateLimitResult | string
 }
 
-// ============ Elysia Plugin ============
-
-/**
- * Create an Elysia plugin for rate limiting
- */
 export function rateLimitPlugin(config: RateLimitPluginConfig) {
   const limiter = new RateLimiter(config)
   const includeHeaders = config.includeHeaders ?? true
@@ -52,7 +44,6 @@ export function rateLimitPlugin(config: RateLimitPluginConfig) {
 
   return new Elysia({ name: 'rate-limit' })
     .derive((): RateLimitContext => {
-      // Create placeholder - will be populated in onBeforeHandle
       return {
         rateLimit: {
           allowed: true,
@@ -67,36 +58,25 @@ export function rateLimitPlugin(config: RateLimitPluginConfig) {
     .onBeforeHandle(async (ctx) => {
       const { path, request, set } = ctx
 
-      // Skip rate limiting for specified paths
       if (skipPaths.has(path)) {
         return undefined
       }
 
-      // Extract client IP
       const ip = extractClientIp(Object.fromEntries(request.headers.entries()))
 
-      // Skip rate limiting for specified IPs
       if (skipIps.has(ip)) {
         return undefined
       }
 
-      // Get user ID if available
-      const userId = config.getUserId?.(ctx)
-
-      // Create rate limit key
+      const userId = config.getUserId?.(ctx as Context)
       const key = createRateLimitKey(ip, userId, perPath ? path : undefined)
-
-      // Determine tier
-      const tier = config.getTier?.(ctx) ?? config.defaultTier
-
-      // Check rate limit
+      const tier = config.getTier?.(ctx as Context) ?? config.defaultTier
       const result = await limiter.check(key, tier)
 
-      // Update context
-      ;(ctx as unknown as { rateLimit: RateLimitResult }).rateLimit = result
-      ;(ctx as unknown as { rateLimitKey: string }).rateLimitKey = key
+      const rateLimitCtx = ctx as RateLimitContext
+      rateLimitCtx.rateLimit = result
+      rateLimitCtx.rateLimitKey = key
 
-      // Add headers if enabled
       if (includeHeaders) {
         const headers = createRateLimitHeaders(result)
         for (const [name, value] of Object.entries(headers)) {
@@ -104,7 +84,6 @@ export function rateLimitPlugin(config: RateLimitPluginConfig) {
         }
       }
 
-      // Return error if rate limited
       if (!result.allowed) {
         set.status = 429
         return {
@@ -123,9 +102,6 @@ export function rateLimitPlugin(config: RateLimitPluginConfig) {
     })
 }
 
-/**
- * Simple rate limit plugin with sensible defaults
- */
 export function simpleRateLimit(
   maxRequests: number = 100,
   windowMs: number = 60000,
@@ -136,9 +112,6 @@ export function simpleRateLimit(
   })
 }
 
-/**
- * Tiered rate limit plugin that uses auth context
- */
 export function tieredRateLimit(options?: {
   skipPaths?: string[]
   includeHeaders?: boolean
@@ -149,11 +122,8 @@ export function tieredRateLimit(options?: {
     skipPaths: options?.skipPaths ?? ['/health', '/', '/docs'],
     includeHeaders: options?.includeHeaders ?? true,
     getTier: (ctx) => {
-      // Check for authUser in context (set by auth plugin)
-      const authContext = ctx as unknown as {
-        authUser?: { permissions?: string[] }
-      }
-      const permissions = authContext.authUser?.permissions ?? []
+      const { authUser } = ctx as ContextWithAuth
+      const permissions = authUser?.permissions ?? []
 
       if (permissions.includes('unlimited')) {
         return RateLimitTiers.UNLIMITED
@@ -170,10 +140,6 @@ export function tieredRateLimit(options?: {
   })
 }
 
-/**
- * Per-route rate limit decorator
- * Use this to set custom rate limits on specific routes
- */
 export function withRateLimit(tier: RateLimitTier, limiter: RateLimiter) {
   return async ({
     request,

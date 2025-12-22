@@ -15,10 +15,6 @@ import { encodeFunctionData, parseEther } from 'viem'
 import { getContractAddresses } from '../config'
 import type { JejuWallet } from '../wallet'
 
-// ============================================================================
-// Types
-// ============================================================================
-
 export type LaunchType = 'STANDARD' | 'BONDING_CURVE' | 'PRESALE' | 'NFT'
 export type PresaleStatus =
   | 'PENDING'
@@ -122,10 +118,6 @@ export interface UserContribution {
   claimable: bigint
   vested: bigint
 }
-
-// ============================================================================
-// ABIs
-// ============================================================================
 
 const TOKEN_LAUNCHPAD_ABI = [
   {
@@ -384,10 +376,6 @@ const LP_LOCKER_ABI = [
   },
 ] as const
 
-// ============================================================================
-// Module Interface
-// ============================================================================
-
 export interface LaunchpadModule {
   // Token Creation
   createToken(params: TokenLaunchParams): Promise<{ hash: Hex; token: Address }>
@@ -422,10 +410,6 @@ export interface LaunchpadModule {
   getLPLock(lockId: Hex): Promise<LPLock>
   listMyLPLocks(): Promise<LPLock[]>
 }
-
-// ============================================================================
-// Implementation
-// ============================================================================
 
 export function createLaunchpadModule(
   wallet: JejuWallet,

@@ -300,9 +300,6 @@ export function getSolanaChains(mainnetOnly = true): ChainConfig[] {
   return chains.filter((c) => c.chainType === 'solana')
 }
 
-/** @deprecated Use getSolanaChains instead */
-export const getSVMChains = getSolanaChains
-
 export function getHomeChain(mainnetOnly = true): ChainConfig {
   const chains = mainnetOnly ? MAINNET_CHAINS : ALL_CHAINS
   const home = chains.find((c) => c.isHomeChain)
@@ -323,5 +320,7 @@ export function validateChainConfig(config: ChainConfig): ChainConfig {
       result.error.issues,
     )
   }
+  // Safe to cast: we validated the input config which already has the correct ChainConfig type
+  // Zod infers broader types but the validation ensures it matches ChainConfig
   return result.data as ChainConfig
 }

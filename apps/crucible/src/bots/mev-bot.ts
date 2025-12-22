@@ -60,8 +60,6 @@ import {
 
 const log = createLogger('UnifiedBot')
 
-// ============ Types ============
-
 export interface UnifiedBotConfig {
   // Chain configuration
   evmChains: ChainId[]
@@ -138,8 +136,6 @@ export interface TradeResult {
   error?: string
 }
 
-// ============ Unified Bot ============
-
 export class UnifiedBot extends EventEmitter {
   private config: UnifiedBotConfig
   private startTime: number = 0
@@ -165,9 +161,6 @@ export class UnifiedBot extends EventEmitter {
   // Stats
   private trades: TradeResult[] = []
   private totalProfitUsd = 0
-
-  // Risk management
-  private riskManager: RiskManager | null = null
 
   constructor(config: UnifiedBotConfig) {
     super()
@@ -800,8 +793,6 @@ export class UnifiedBot extends EventEmitter {
 
     return { success: true, txHash }
   }
-
-  // ============ Private Methods ============
 
   private getPendingOpportunityCount(): number {
     let count = 0

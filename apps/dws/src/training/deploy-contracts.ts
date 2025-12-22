@@ -252,6 +252,8 @@ export async function deployTrainingContracts(): Promise<DeployedContracts> {
     abi: COORDINATOR_ABI,
     functionName: 'authorizeBridge',
     args: [account.address, true],
+    chain: walletClient.chain ?? null,
+    account: walletClient.account ?? null,
   })
   await publicClient.waitForTransactionReceipt({ hash: authHash })
   console.log('       Deployer authorized as bridge')

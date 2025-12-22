@@ -25,10 +25,6 @@ import { A2AJsonRpcResponseSchema } from '../schemas'
 import { makeTEEDecision } from '../tee'
 import { ceoProviders } from './ceo-providers'
 
-// ============================================================================
-// CEO Actions
-// ============================================================================
-
 /**
  * Action: Make CEO Decision
  * Final decision on a proposal with TEE attestation
@@ -310,10 +306,6 @@ ${voteText}`,
     }
   },
 }
-
-// ============================================================================
-// CEO Plugin
-// ============================================================================
 
 /**
  * CEO Plugin for ElizaOS

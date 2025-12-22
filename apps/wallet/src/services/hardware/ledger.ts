@@ -6,7 +6,7 @@
 import LedgerEth from '@ledgerhq/hw-app-eth'
 import type Transport from '@ledgerhq/hw-transport'
 import TransportWebHID from '@ledgerhq/hw-transport-webhid'
-import { toHex, type Address, type Hex } from 'viem'
+import { type Address, type Hex, toHex } from 'viem'
 
 export type LedgerHDPathType = 'LedgerLive' | 'BIP44' | 'Legacy'
 
@@ -44,7 +44,6 @@ export interface PartialLedgerSerializedState {
   hdPath?: string
   hdPathType?: LedgerHDPathType
 }
-
 
 export class LedgerKeyring {
   static type = 'Ledger Hardware'
@@ -262,7 +261,10 @@ export class LedgerKeyring {
     }
 
     // Native EIP-712 signing (requires modern firmware)
-    const signature = await this.app.signEIP712Message(details.hdPath, typedData)
+    const signature = await this.app.signEIP712Message(
+      details.hdPath,
+      typedData,
+    )
     const vNum =
       typeof signature.v === 'string' ? parseInt(signature.v, 16) : signature.v
     const vHex = vNum.toString(16).padStart(2, '0')

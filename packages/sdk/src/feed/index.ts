@@ -13,10 +13,6 @@ import type { Address } from 'viem'
 import { getServicesConfig } from '../config'
 import type { JejuWallet } from '../wallet'
 
-// ============================================================================
-// Types
-// ============================================================================
-
 export interface FeedPost {
   id: string
   hash: string
@@ -89,10 +85,6 @@ export interface SearchParams {
   limit?: number
   cursor?: string
 }
-
-// ============================================================================
-// Module Interface
-// ============================================================================
 
 export interface FeedModule {
   // Feed Reading
@@ -205,10 +197,6 @@ export interface FeedModule {
   unlinkWallet(): Promise<void>
   getLinkedFid(): Promise<number | null>
 }
-
-// ============================================================================
-// Implementation
-// ============================================================================
 
 export function createFeedModule(
   wallet: JejuWallet,

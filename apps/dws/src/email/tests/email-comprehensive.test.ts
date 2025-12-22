@@ -1324,15 +1324,14 @@ describe('Error Handling', () => {
         attachments: [],
       }
 
-      // Should use fallback heuristics instead of throwing
-      const result = await pipeline.screenEmail(
-        createMockEnvelope(),
-        content,
-        createMockAddress(),
-      )
-
-      expect(result).toBeDefined()
-      expect(result.action).toBeDefined()
+      // Should throw when AI endpoint is unreachable
+      await expect(
+        pipeline.screenEmail(
+          createMockEnvelope(),
+          content,
+          createMockAddress(),
+        ),
+      ).rejects.toThrow()
     })
   })
 })

@@ -18,10 +18,6 @@ import {
 } from '../shared/schemas'
 import type { JejuWallet } from '../wallet'
 
-// ============================================================================
-// Types
-// ============================================================================
-
 export const DatasetFormat = {
   PARQUET: 0,
   JSON: 1,
@@ -144,10 +140,6 @@ export interface UploadDatasetParams {
   }
 }
 
-// ============================================================================
-// Module Interface
-// ============================================================================
-
 export interface DatasetsModule {
   // Dataset Queries
   getDataset(datasetId: Hex): Promise<Dataset | null>
@@ -228,10 +220,6 @@ export interface DatasetsModule {
   }>
 }
 
-// ============================================================================
-// Contract ABI
-// ============================================================================
-
 const DATASET_REGISTRY_ABI = [
   'function createDataset(string name, string organization, string description, uint8 format, uint8 license, string licenseUri, uint8 accessLevel, string[] tags) external payable returns (bytes32)',
   'function publishVersion(bytes32 datasetId, string version, string dataCid, bytes32 dataHash, uint256 size, uint256 rowCount, string schemaCid) external returns (bytes32)',
@@ -247,10 +235,6 @@ const DATASET_REGISTRY_ABI = [
   'function getAllDatasetIds(uint256 offset, uint256 limit) external view returns (bytes32[])',
   'function getOrganizationDatasets(string org) external view returns (bytes32[])',
 ] as const
-
-// ============================================================================
-// Implementation
-// ============================================================================
 
 export function createDatasetsModule(
   wallet: JejuWallet,

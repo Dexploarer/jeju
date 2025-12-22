@@ -14,10 +14,10 @@ import { z } from 'zod'
 // Schema for address extraction from request body
 const AddressBodySchema = z
   .object({
-    address: z.string().optional(),
-    from: z.string().optional(),
-    sender: z.string().optional(),
-    agentOwner: z.string().optional(),
+    address: z.string().nullable(),
+    from: z.string().nullable(),
+    sender: z.string().nullable(),
+    agentOwner: z.string().nullable(),
   })
   .passthrough() // Allow other fields but only validate address-related ones
 

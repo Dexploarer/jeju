@@ -277,6 +277,52 @@ class DecentralizedDWSClient {
     return response.text()
   }
 
+  async getRepoCommits(
+    owner: string,
+    name: string,
+    ref = 'main',
+  ): Promise<
+    Array<{
+      sha: string
+      message: string
+      author: string
+      authorEmail: string
+      date: number
+    }>
+  > {
+    return this.request(`/git/repos/${owner}/${name}/commits?ref=${ref}`)
+  }
+
+  async getRepoBranches(
+    owner: string,
+    name: string,
+  ): Promise<
+    Array<{
+      name: string
+      sha: string
+      isDefault: boolean
+      isProtected: boolean
+    }>
+  > {
+    return this.request(`/git/repos/${owner}/${name}/branches`)
+  }
+
+  async starRepository(owner: string, name: string): Promise<void> {
+    await this.request(`/git/repos/${owner}/${name}/star`, { method: 'POST' })
+  }
+
+  async forkRepository(
+    owner: string,
+    name: string,
+    newOwner: string,
+  ): Promise<Repository> {
+    return this.request<Repository>(`/git/repos/${owner}/${name}/fork`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ newOwner }),
+    })
+  }
+
   // Package Operations
   async searchPackages(query: string): Promise<Package[]> {
     return this.request<Package[]>(`/pkg/search?q=${encodeURIComponent(query)}`)

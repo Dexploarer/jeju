@@ -12,10 +12,6 @@
 import type { Address } from 'viem'
 import { VPNA2AResultSchema } from '../shared/schemas'
 
-// ============================================================================
-// x402 Payment Integration
-// ============================================================================
-
 export interface VPNSDKConfig {
   rpcUrl: string
   chainId: number
@@ -72,10 +68,6 @@ export async function createVPNPaymentHeader(
     expiresAt: timestamp + 300,
   }
 }
-
-// ============================================================================
-// A2A Integration
-// ============================================================================
 
 export interface VPNAgentClient {
   /** Discover VPN agent capabilities */

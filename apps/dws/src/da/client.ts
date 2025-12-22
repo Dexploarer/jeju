@@ -12,7 +12,7 @@ import { expectJson } from '@jejunetwork/types'
 import type { Address, Hex, PublicClient } from 'viem'
 import { createPublicClient, http, toBytes, toHex } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
-import { type ZodSchema, z } from 'zod'
+import type { ZodSchema } from 'zod'
 import { computeBlobId } from './commitment'
 import type {
   AvailabilityAttestation,
@@ -20,9 +20,6 @@ import type {
   BlobSubmissionResult,
   SampleVerificationResult,
 } from './types'
-
-/** Schema for validating generic JSON objects */
-const JsonObjectSchema = z.record(z.string(), z.unknown())
 
 // ============================================================================
 // Client Configuration
@@ -202,17 +199,9 @@ export class DAClient {
    * @param blobId - The blob ID to retrieve
    * @param schema - Optional Zod schema for validation. If provided, validates the parsed JSON.
    */
-  async retrieveJSON<T = Record<string, unknown>>(
-    blobId: Hex,
-    schema?: ZodSchema<T>,
-  ): Promise<T> {
+  async retrieveJSON<T>(blobId: Hex, schema: ZodSchema<T>): Promise<T> {
     const str = await this.retrieveString(blobId)
-    if (schema) {
-      return expectJson(str, schema, `DA blob ${blobId}`)
-    }
-    // Fallback for backwards compatibility - parse but validate it's a JSON object
-    const parsed = expectJson(str, JsonObjectSchema, `DA blob ${blobId}`)
-    return parsed as T
+    return expectJson(str, schema, `DA blob ${blobId}`)
   }
 
   /**

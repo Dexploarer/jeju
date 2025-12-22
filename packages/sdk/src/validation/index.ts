@@ -17,8 +17,6 @@ import {
 import { requireContract } from '../config'
 import type { JejuWallet } from '../wallet'
 
-// ============ Types ============
-
 export interface ValidationRequest {
   requestHash: Hex
   validatorAddress: Address
@@ -87,8 +85,6 @@ export interface ValidationModule {
   // Check if request exists
   requestExists(requestHash: Hex): Promise<boolean>
 }
-
-// ============ ABI ============
 
 const VALIDATION_REGISTRY_ABI = [
   {
@@ -179,8 +175,6 @@ const VALIDATION_REGISTRY_ABI = [
   },
 ] as const
 
-// ============ Helper Functions ============
-
 const ZERO_BYTES32: Hex =
   '0x0000000000000000000000000000000000000000000000000000000000000000'
 const ZERO_ADDRESS: Address = '0x0000000000000000000000000000000000000000'
@@ -192,8 +186,6 @@ function stringToBytes32(str: string): Hex {
   padded.set(bytes.slice(0, 32))
   return toHex(padded)
 }
-
-// ============ Module Factory ============
 
 export function createValidationModule(
   wallet: JejuWallet,

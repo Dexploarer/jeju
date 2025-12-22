@@ -97,8 +97,6 @@ const STALE_THRESHOLD_SEC = 3600 // 1 hour
 const DEVIATION_THRESHOLD_BPS = 100 // 1%
 const UPDATE_COOLDOWN_MS = 60000 // 1 minute between updates
 
-// ============ Strategy Class ============
-
 export class OracleKeeperStrategy {
   private publicClient: PublicClient | null = null
   private walletClient: WalletClient | null = null
@@ -233,8 +231,6 @@ export class OracleKeeperStrategy {
     return this.updatePrice(token, price.price, price.decimals)
   }
 
-  // ============ Private Methods ============
-
   private async checkPrices(): Promise<void> {
     if (!this.publicClient || !this.priceOracleAddress) return
 
@@ -331,12 +327,6 @@ export class OracleKeeperStrategy {
       if (price) return price
     }
 
-    // Fallback to DEX price if configured
-    if (source.dexPool) {
-      // Would implement DEX price fetching here
-      // For now, skip
-    }
-
     return null
   }
 
@@ -409,7 +399,7 @@ export class OracleKeeperStrategy {
       }
     } catch (error) {
       console.error(`Error fetching Pyth price for ${symbol}:`, error)
-      return null
+      throw error
     }
   }
 
@@ -451,7 +441,7 @@ export class OracleKeeperStrategy {
       }
     } catch (error) {
       console.error(`Error fetching Redstone price for ${symbol}:`, error)
-      return null
+      throw error
     }
   }
 
@@ -681,7 +671,7 @@ export class OracleKeeperStrategy {
       }
     } catch (error) {
       console.error(`Error fetching Chainlink price for ${symbol}:`, error)
-      return null
+      throw error
     }
   }
 

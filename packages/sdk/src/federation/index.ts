@@ -35,10 +35,6 @@ import {
 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 
-// ============================================================================
-// Types
-// ============================================================================
-
 export const TrustTier = {
   UNSTAKED: 0,
   STAKED: 1,
@@ -172,10 +168,6 @@ export interface RegisterRegistryParams {
   metadataUri?: string
 }
 
-// ============================================================================
-// ABIs
-// ============================================================================
-
 const NETWORK_REGISTRY_ABI = [
   'function getNetwork(uint256 chainId) view returns (tuple(uint256 chainId, string name, string rpcUrl, string explorerUrl, string wsUrl, address operator, tuple(address,address,address,address,address,address,address,address) contracts, bytes32 genesisHash, uint256 registeredAt, uint256 stake, uint8 trustTier, bool isActive, bool isVerified, bool isSuperchain))',
   'function getAllNetworkIds() view returns (uint256[])',
@@ -204,10 +196,6 @@ const REGISTRY_HUB_ABI = [
   'function totalRegistries() view returns (uint256)',
   'function totalStaked() view returns (uint256)',
 ]
-
-// ============================================================================
-// Client Implementation
-// ============================================================================
 
 export async function createFederationClient(
   config: FederationClientConfig,
@@ -526,10 +514,6 @@ export async function createFederationClient(
     },
   }
 }
-
-// ============================================================================
-// Utilities
-// ============================================================================
 
 export function trustTierToString(tier: TrustTier): string {
   switch (tier) {

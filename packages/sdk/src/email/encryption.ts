@@ -16,8 +16,6 @@ import {
 import { secp256k1 } from '@noble/curves/secp256k1'
 import type { Hex } from 'viem'
 
-// ============ Types ============
-
 export interface EncryptedEmail {
   ciphertext: Hex
   nonce: Hex
@@ -29,8 +27,6 @@ export interface KeyPair {
   publicKey: Uint8Array
   privateKey: Uint8Array
 }
-
-// ============ Key Generation ============
 
 /**
  * Generate ephemeral key pair for encryption using secp256k1
@@ -64,8 +60,6 @@ export function deriveSharedSecret(
   // HKDF-like derivation: hash to get the final key
   return new Uint8Array(createHash('sha256').update(xCoord).digest())
 }
-
-// ============ Encryption ============
 
 /**
  * Encrypt email content for a recipient
@@ -136,8 +130,6 @@ export function decryptEmail(
 
   return decrypted.toString('utf8')
 }
-
-// ============ Multi-recipient Encryption ============
 
 /**
  * Encrypt email for multiple recipients
