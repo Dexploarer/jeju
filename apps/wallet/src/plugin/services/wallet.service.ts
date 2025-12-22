@@ -65,7 +65,7 @@ export class WalletService {
 
   constructor() {
     this._config = {
-      defaultChainId: 8453, // Base
+      defaultChainId: 420691, // Jeju Mainnet
       useNetworkInfrastructure: true,
     }
 
@@ -74,7 +74,7 @@ export class WalletService {
       isInitialized: false,
       accounts: [],
       activeChainId: this._config.defaultChainId,
-      preferredChains: [8453, 1, 42161, 10, 137],
+      preferredChains: [420691, 420690, 1, 42161, 10, 137], // Jeju first, then other chains
       autoLockTimeout: 15 * 60 * 1000, // 15 minutes
       gasPreferences: {
         autoGasAbstraction: true,

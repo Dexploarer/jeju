@@ -20,7 +20,7 @@ export const CHAIN_IDS = {
 } as const
 
 export const RPC_URLS: Record<NetworkType, string> = {
-  localnet: 'http://localhost:9545',
+  localnet: 'http://localhost:6546',
   testnet: 'https://testnet.jejunetwork.org',
   mainnet: 'https://mainnet.jejunetwork.org',
 } as const

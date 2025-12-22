@@ -289,7 +289,7 @@ describe('Key Registry Sync', () => {
 
     registrySync = createKeyRegistrySync(keyManager, {
       registryAddress: '0x7777777777777777777777777777777777777777' as Address,
-      rpcUrl: 'http://localhost:8545',
+      rpcUrl: 'http://localhost:6546',
       network: 'testnet',
     })
 

@@ -4,7 +4,7 @@
  * ASSUMPTIONS:
  * - Test wallet 0xf39Fd6... is Anvil account #0 with 10k ETH
  * - Private key 0xac097... is the well-known Anvil test key (NOT A SECRET)
- * - Default RPC at localhost:9545 is network localnet
+ * - Default RPC at localhost:6546 is network localnet
  * - Chain ID 1337 is localnet (use CHAIN_ID env for others)
  *
  * CHECKS PERFORMED:

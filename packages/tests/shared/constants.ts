@@ -16,9 +16,9 @@ export { TEST_ACCOUNTS, SEED_PHRASE, TEST_WALLET_ADDRESS }
 // ============================================================================
 
 export const INFRA_PORTS = {
-  l1Rpc: 8545,
-  l2Rpc: 9545,
-  l2Ws: 9546,
+  l1Rpc: 6545,
+  l2Rpc: 6546,
+  l2Ws: 6547,
   prometheus: 9090,
   grafana: 4010,
 } as const

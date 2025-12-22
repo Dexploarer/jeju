@@ -142,7 +142,7 @@ export class StorageService {
     if (this.torrent) return
 
     this.torrent = getHybridTorrentService({
-      rpcUrl: this.client.publicClient.transport.url ?? 'http://127.0.0.1:9545',
+      rpcUrl: this.client.publicClient.transport.url ?? 'http://127.0.0.1:6546',
       privateKey,
       contentRegistryAddress,
     })

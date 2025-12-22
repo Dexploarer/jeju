@@ -19,9 +19,9 @@ export { TEST_ACCOUNTS, TEST_NETWORKS }
 
 // Network default ports (from packages/cli/src/types.ts)
 export const JEJU_PORTS = {
-  l1Rpc: 8545,
-  l2Rpc: 9545,
-  l2Ws: 9546,
+  l1Rpc: 6545,
+  l2Rpc: 6546,
+  l2Ws: 6547,
   gateway: 4001,
   wallet: 4015,
 } as const

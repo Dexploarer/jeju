@@ -110,4 +110,3 @@ contract DeployTraining is Script {
         console.log("MPCKeyRegistry:", address(mpcKeyRegistry));
     }
 }
-

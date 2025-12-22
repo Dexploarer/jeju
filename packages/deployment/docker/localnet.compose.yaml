@@ -76,7 +76,7 @@ services:
   # ============================================================================
   cql:
     build:
-      context: ./packages/deployment/docker/covenantsql
+      context: ./covenantsql
       dockerfile: Dockerfile
     container_name: jeju-cql-docker
     hostname: cql
@@ -93,7 +93,7 @@ services:
       - CQL_LOG_LEVEL=info
     volumes:
       - cql-bp-data:/data
-      - ./packages/deployment/docker/covenantsql/config/bp.yaml:/config/config.yaml:ro
+      - ./covenantsql/config/bp.yaml:/config/config.yaml:ro
     networks:
       - jeju
     healthcheck:
@@ -106,7 +106,7 @@ services:
 
   cql-miner:
     build:
-      context: ./packages/deployment/docker/covenantsql
+      context: ./covenantsql
       dockerfile: Dockerfile
     container_name: jeju-cql-miner
     hostname: cql-miner
@@ -119,7 +119,7 @@ services:
       - CQL_LOG_LEVEL=info
     volumes:
       - cql-miner-data:/data
-      - ./packages/deployment/docker/covenantsql/config/miner.yaml:/config/config.yaml:ro
+      - ./covenantsql/config/miner.yaml:/config/config.yaml:ro
     networks:
       - jeju
     depends_on:
@@ -132,7 +132,7 @@ services:
   # ============================================================================
   cache-service:
     build:
-      context: ./apps/storage/cache-service
+      context: ../../../apps/storage/cache-service
       dockerfile: Dockerfile
     container_name: jeju-cache
     hostname: cache
@@ -159,7 +159,7 @@ services:
   # ============================================================================
   da-server:
     build:
-      context: ./apps/storage/da-server
+      context: ../../../apps/storage/da-server
       dockerfile: Dockerfile
     container_name: jeju-da
     hostname: da
@@ -193,7 +193,7 @@ services:
   # ============================================================================
   jns-gateway:
     build:
-      context: ./apps/gateway
+      context: ../../../apps/gateway
       dockerfile: Dockerfile.jns
     container_name: jeju-jns-gateway
     hostname: jns-gateway
@@ -225,7 +225,7 @@ services:
   # ============================================================================
   trigger-service:
     build:
-      context: ./apps/dws
+      context: ../../../apps/dws
       dockerfile: docker/Dockerfile.trigger
     container_name: jeju-triggers
     hostname: triggers

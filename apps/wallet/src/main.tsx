@@ -43,7 +43,7 @@ const config = createConfig({
     [arbitrum.id]: http(`${NETWORK_RPC}/arbitrum`),
     [optimism.id]: http(`${NETWORK_RPC}/optimism`),
     [bsc.id]: http(`${NETWORK_RPC}/bsc`),
-    [networkLocalnet.id]: http('http://localhost:9545'),
+    [networkLocalnet.id]: http('http://localhost:6546'),
     [networkTestnet.id]: http(urls.rpc.testnet),
   },
 })

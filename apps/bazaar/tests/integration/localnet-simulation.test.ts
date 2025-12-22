@@ -7,7 +7,7 @@
  * Run with: bun test tests/integration/localnet-simulation.test.ts
  *
  * Prerequisites:
- *   - Anvil running on port 9545
+ *   - Anvil running on port 6546
  *   - All contracts deployed via: bun run scripts/deploy-all-localnet-contracts.ts
  */
 
@@ -30,7 +30,7 @@ import { privateKeyToAccount } from 'viem/accounts'
 // CONFIGURATION
 // =============================================================================
 
-const RPC_URL = process.env.L2_RPC_URL || 'http://localhost:9545'
+const RPC_URL = process.env.L2_RPC_URL || 'http://localhost:6546'
 const CHAIN_ID = 420691 // network localnet chain ID
 const DEPLOYER_KEY =
   '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as `0x${string}`
@@ -146,7 +146,7 @@ beforeAll(async () => {
   const blockNumber = await publicClient.getBlockNumber().catch(() => null)
   if (blockNumber === null) {
     console.error(`\n❌ Cannot connect to localnet at ${RPC_URL}`)
-    console.error('   Please start anvil: anvil --port 9545 --chain-id 1337')
+    console.error('   Please start anvil: anvil --port 6546 --chain-id 1337')
     skipTests = true
     return
   }

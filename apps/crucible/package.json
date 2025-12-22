@@ -10,6 +10,7 @@
     "build": "tsc",
     "dev": "bun run src/server.ts",
     "executor": "bun run src/executor/index.ts",
+    "autonomous": "bun run src/autonomous/daemon.ts",
     "bot": "bun run src/bots/api-server.ts",
     "test": "bun test",
     "test:e2e": "npx playwright test --config synpress.config.ts",
@@ -17,13 +18,13 @@
     "clean": "rm -rf dist out cache test-results"
   },
   "dependencies": {
-    "@elizaos/core": "^1.6.4",
-    "@elizaos/adapter-sqlite": "0.25.6-alpha.1",
+    "@elizaos/core": "^1.6.6",
     "@hono/node-server": "^1.19.7",
     "@jejunetwork/config": "workspace:*",
     "@jejunetwork/db": "workspace:*",
     "@jejunetwork/shared": "workspace:*",
     "@jejunetwork/sdk": "workspace:*",
+    "@jejunetwork/training": "workspace:*",
     "@jejunetwork/eliza-plugin": "workspace:*",
     "@solana/web3.js": "1.98.4",
     "hono": "4.11.1",

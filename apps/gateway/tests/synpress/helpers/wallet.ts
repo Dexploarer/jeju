@@ -60,6 +60,32 @@ export async function waitForConnection(
 }
 
 /**
+ * Switch to a different network
+ */
+export async function switchNetwork(
+  metamask: MetaMask,
+  networkName: string,
+): Promise<void> {
+  await metamask.switchNetwork(networkName)
+  console.log(`✅ Switched to network: ${networkName}`)
+}
+
+/**
+ * Add and switch to the network Localnet
+ */
+export async function setupNetworkChain(metamask: MetaMask): Promise<void> {
+  await metamask.addNetwork({
+    networkName: 'Jeju Localnet',
+    rpcUrl: 'http://127.0.0.1:6546',
+    chainId: 1337,
+    symbol: 'ETH',
+  })
+
+  await metamask.switchNetwork('Jeju Localnet')
+  console.log('✅ Network Localnet configured')
+}
+
+/**
  * Get connected wallet address from UI
  */
 export async function getConnectedAddress(page: Page): Promise<string | null> {
@@ -113,7 +139,7 @@ export async function getWalletBalance(
   page: Page,
   address: string,
 ): Promise<bigint> {
-  const response = await page.request.post('http://127.0.0.1:9545', {
+  const response = await page.request.post('http://127.0.0.1:6546', {
     data: {
       jsonrpc: '2.0',
       method: 'eth_getBalance',
@@ -136,7 +162,7 @@ export async function getTokenBalance(
 ): Promise<bigint> {
   const data = `0x70a08231000000000000000000000000${walletAddress.slice(2)}`
 
-  const response = await page.request.post('http://127.0.0.1:9545', {
+  const response = await page.request.post('http://127.0.0.1:6546', {
     data: {
       jsonrpc: '2.0',
       method: 'eth_call',

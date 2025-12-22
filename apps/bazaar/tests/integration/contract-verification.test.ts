@@ -24,7 +24,7 @@ import { privateKeyToAccount } from 'viem/accounts'
 // CONFIGURATION
 // =============================================================================
 
-const RPC_URL = process.env.L2_RPC_URL || 'http://localhost:9545'
+const RPC_URL = process.env.L2_RPC_URL || 'http://localhost:6546'
 const CHAIN_ID = 420691 // network localnet chain ID
 const DEPLOYER_KEY =
   '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as `0x${string}`

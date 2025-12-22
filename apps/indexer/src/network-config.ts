@@ -104,7 +104,7 @@ const CHAIN_IDS: Record<NetworkType, number> = {
 }
 
 const DEFAULT_RPC: Record<NetworkType, string> = {
-  localnet: 'http://localhost:9545',
+  localnet: 'http://localhost:6546',
   testnet: 'https://testnet-rpc.jejunetwork.org',
   mainnet: 'https://rpc.jejunetwork.org',
 }

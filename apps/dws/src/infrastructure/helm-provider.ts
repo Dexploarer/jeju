@@ -21,7 +21,7 @@
 import { Hono } from 'hono'
 import type { Address } from 'viem'
 import { z } from 'zod'
-import { validateBody, validateParams } from '../server/routes/shared'
+import { validateBody, validateParams } from '../shared'
 
 // ============================================================================
 // Kubernetes Manifest Types
@@ -479,6 +479,31 @@ export function createHelmProviderRouter(): Hono {
   // Health check
   router.get('/helm/health', (c) => {
     return c.json({ status: 'healthy', provider: 'dws-helm' })
+  })
+
+  // Schema for Helm deployments
+  router.get('/helm/schema', (c) => {
+    return c.json({
+      schema: {
+        manifests: {
+          type: 'array',
+          description: 'Kubernetes manifest objects to deploy',
+          items: {
+            type: 'object',
+            required: ['apiVersion', 'kind', 'metadata'],
+            properties: {
+              apiVersion: { type: 'string' },
+              kind: { type: 'string', enum: ['Deployment', 'Service', 'ConfigMap', 'Secret', 'Job', 'CronJob', 'StatefulSet', 'DaemonSet', 'Ingress', 'PersistentVolumeClaim'] },
+              metadata: { type: 'object', properties: { name: { type: 'string' }, namespace: { type: 'string' } } },
+              spec: { type: 'object' },
+            },
+          },
+        },
+        release: { type: 'string', description: 'Name of the Helm release' },
+        namespace: { type: 'string', description: 'Target Kubernetes namespace', default: 'default' },
+        values: { type: 'object', description: 'Values to pass to Helm templates' },
+      },
+    })
   })
 
   // Apply Helm release / K8s manifests

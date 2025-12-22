@@ -38,7 +38,7 @@ export const TEST_NETWORKS = {
   jeju: {
     chainId: 1337,
     name: 'Jeju Localnet',
-    rpcUrl: 'http://127.0.0.1:9545',
+    rpcUrl: 'http://127.0.0.1:6546',
     symbol: 'ETH',
   },
   baseSepolia: {

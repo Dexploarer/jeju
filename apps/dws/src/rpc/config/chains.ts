@@ -149,7 +149,7 @@ export const CHAINS: Record<number, ChainConfig> = {
     chainId: 1337,
     name: 'Localnet',
     shortName: 'LOCAL',
-    rpcUrl: process.env.LOCALNET_RPC_URL || 'http://localhost:9545',
+    rpcUrl: process.env.LOCALNET_RPC_URL || 'http://localhost:6546',
     fallbackRpcs: [],
     explorerUrl: 'http://localhost:4000',
     isTestnet: true,

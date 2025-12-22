@@ -21,8 +21,8 @@ const jejuLocalnet = {
   name: 'Jeju Localnet',
   nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
   rpcUrls: {
-    default: { http: ['http://127.0.0.1:9545'] },
-    public: { http: ['http://127.0.0.1:9545'] },
+    default: { http: ['http://127.0.0.1:6546'] },
+    public: { http: ['http://127.0.0.1:6546'] },
   },
 } as const
 

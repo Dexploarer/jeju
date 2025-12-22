@@ -25,7 +25,7 @@ import { createMessagingClient } from '@jejunetwork/messaging';
 
 // Create client
 const client = createMessagingClient({
-  rpcUrl: 'http://localhost:9545',
+  rpcUrl: 'http://localhost:6546',
   address: '0xYourAddress',
   relayUrl: 'http://localhost:3200',
   keyRegistryAddress: '0x...',

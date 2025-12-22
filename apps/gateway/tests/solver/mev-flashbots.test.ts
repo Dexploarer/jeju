@@ -355,7 +355,7 @@ describe('External vs Jeju Strategy', () => {
   it('should protect Jeju users via Protect RPC', () => {
     // Our strategy: protect Jeju users, never sandwich them
     const jejuUserTx = {
-      chainId: 8453, // Jeju chain
+      chainId: 420691, // Jeju Mainnet
       protected: true,
       sandwiched: false,
     }
