@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.33;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
-import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {BasePaymaster} from "@account-abstraction/contracts/core/BasePaymaster.sol";
-import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
+import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import {PackedUserOperation} from "account-abstraction/interfaces/PackedUserOperation.sol";
+import {IEntryPoint} from "account-abstraction/interfaces/IEntryPoint.sol";
+import {BasePaymaster} from "account-abstraction/core/BasePaymaster.sol";
+import {Pausable} from "openzeppelin-contracts/contracts/utils/Pausable.sol";
 import {IPriceOracle} from "../interfaces/IPriceOracle.sol";
 import {ICreditManager, IServiceRegistry, ICloudServiceRegistry} from "../interfaces/IServices.sol";
 
@@ -37,8 +37,23 @@ import {ICreditManager, IServiceRegistry, ICloudServiceRegistry} from "../interf
  *
  * @custom:security-contact security@jejunetwork.org
  */
+import {Context} from "openzeppelin-contracts/contracts/utils/Context.sol";
+
 contract MultiTokenPaymaster is BasePaymaster, Pausable {
     using SafeERC20 for IERC20;
+    
+    // Override Context functions to resolve diamond inheritance
+    function _msgSender() internal view override(Context) returns (address) {
+        return super._msgSender();
+    }
+    
+    function _msgData() internal view override(Context) returns (bytes calldata) {
+        return super._msgData();
+    }
+    
+    function _contextSuffixLength() internal view override(Context) returns (uint256) {
+        return super._contextSuffixLength();
+    }
 
     // ============ State Variables ============
 
@@ -117,7 +132,7 @@ contract MultiTokenPaymaster is BasePaymaster, Pausable {
         address _priceOracle,
         address _revenueWallet,
         address _owner
-    ) BasePaymaster(_entryPoint, _owner) {
+    ) BasePaymaster(_entryPoint) {
         require(_usdc != address(0), "Invalid USDC");
         require(_elizaOS != address(0), "Invalid elizaOS");
         // creditManager can be zero if we only want direct payments initially, but constructor requires it non-zero in original code
@@ -132,6 +147,10 @@ contract MultiTokenPaymaster is BasePaymaster, Pausable {
         serviceRegistry = IServiceRegistry(_serviceRegistry);
         priceOracle = IPriceOracle(_priceOracle);
         revenueWallet = _revenueWallet;
+        
+        if (_owner != msg.sender) {
+            _transferOwnership(_owner);
+        }
     }
 
     // ============ Core Paymaster Logic ============
@@ -383,12 +402,12 @@ contract MultiTokenPaymaster is BasePaymaster, Pausable {
     }
 
     function depositToEntryPoint() external payable onlyOwner {
-        entryPoint().depositTo{value: msg.value}(address(this));
+        entryPoint.depositTo{value: msg.value}(address(this));
         emit EntryPointFunded(msg.value);
     }
 
     function withdrawFromEntryPoint(address payable to, uint256 amount) external onlyOwner {
-        entryPoint().withdrawTo(to, amount);
+        entryPoint.withdrawTo(to, amount);
     }
 
     function pause() external onlyOwner {
