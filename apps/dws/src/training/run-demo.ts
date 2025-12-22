@@ -165,8 +165,7 @@ async function main() {
 
       // Check if process died
       if (vllmProcess.exitCode !== null) {
-        const stderr = await new Response(vllmProcess.stderr).text()
-        throw new Error(`vLLM process exited: ${stderr}`)
+        throw new Error(`vLLM process exited with code ${vllmProcess.exitCode}`)
       }
 
       if (i % 10 === 0) {

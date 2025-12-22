@@ -34,7 +34,7 @@
 import { Hono } from 'hono'
 import type { Address } from 'viem'
 import { z } from 'zod'
-import { validateBody, validateParams } from '../server/routes/shared'
+import { validateBody, validateParams } from '../shared'
 
 // ============================================================================
 // Terraform Provider Protocol Types

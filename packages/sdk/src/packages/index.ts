@@ -354,6 +354,7 @@ const PACKAGE_REGISTRY_ABI = [
 
 export class JejuPkgSDK {
   private config: PackageSDKConfig
+  private publicClient: ReturnType<typeof createPublicClient>
   private walletClient?: WalletClient
   private account?: LocalAccount
 
