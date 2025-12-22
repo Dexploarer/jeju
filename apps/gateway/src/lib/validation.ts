@@ -677,7 +677,7 @@ export type RpcChainsResponse = z.infer<typeof RpcChainsResponseSchema>
  * Flashbots JSON-RPC response schemas
  */
 export const FlashbotsRpcResponseSchema = z.object({
-  result: z.unknown().optional(),
+  result: JsonValueSchema.optional(),
   error: z
     .object({
       message: z.string(),

@@ -51,8 +51,3 @@ export {
   type X402PaymentOption,
   type X402PaymentRequirement,
 } from './services/x402-payments.js'
-
-// Note: For new code, import directly from DWS
-console.warn(
-  '[Gateway/RPC] RPC functionality has moved to DWS. Consider importing from @jejunetwork/dws instead.',
-)

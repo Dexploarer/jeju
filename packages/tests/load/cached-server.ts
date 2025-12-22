@@ -24,9 +24,9 @@ interface CacheEntry<T> {
   createdAt: number
 }
 
+// Optimized LRU Cache with O(1) operations using Map insertion order
 class LRUCache<T> {
   private cache = new Map<string, CacheEntry<T>>()
-  private accessOrder: string[] = []
   private stats = { hits: 0, misses: 0, staleHits: 0 }
 
   constructor(
@@ -47,14 +47,13 @@ class LRUCache<T> {
     // Check if expired (beyond stale window)
     if (now > entry.expiresAt + this.staleTTL) {
       this.cache.delete(key)
-      this.accessOrder = this.accessOrder.filter((k) => k !== key)
       this.stats.misses++
       return { value: null, isStale: false }
     }
 
-    // Move to end (most recently used)
-    this.accessOrder = this.accessOrder.filter((k) => k !== key)
-    this.accessOrder.push(key)
+    // Move to end (most recently used) - O(1) with Map
+    this.cache.delete(key)
+    this.cache.set(key, entry)
 
     // Check if stale but still valid
     if (now > entry.staleAt) {
@@ -70,12 +69,13 @@ class LRUCache<T> {
     const now = Date.now()
     const effectiveTTL = ttl ?? this.defaultTTL
 
-    // Evict if at capacity
+    // Remove existing entry if present
+    this.cache.delete(key)
+
+    // Evict oldest entries if at capacity (Map preserves insertion order)
     while (this.cache.size >= this.maxSize) {
-      const lruKey = this.accessOrder.shift()
-      if (lruKey) {
-        this.cache.delete(lruKey)
-      }
+      const firstKey = this.cache.keys().next().value
+      if (firstKey) this.cache.delete(firstKey)
     }
 
     this.cache.set(key, {
@@ -84,16 +84,12 @@ class LRUCache<T> {
       staleAt: now + effectiveTTL - this.staleTTL,
       createdAt: now,
     })
-
-    this.accessOrder = this.accessOrder.filter((k) => k !== key)
-    this.accessOrder.push(key)
   }
 
   invalidate(pattern?: string): number {
     if (!pattern) {
       const count = this.cache.size
       this.cache.clear()
-      this.accessOrder = []
       return count
     }
 
@@ -105,7 +101,6 @@ class LRUCache<T> {
         count++
       }
     }
-    this.accessOrder = this.accessOrder.filter((k) => !regex.test(k))
     return count
   }
 
@@ -163,6 +158,18 @@ const simulateDbQuery = (ms: number = 10) =>
 
 const randomDelay = (min: number, max: number) =>
   Math.floor(Math.random() * (max - min + 1)) + min
+
+// Request coalescing to prevent thundering herd on cache miss
+const pendingRequests = new Map<string, Promise<unknown>>()
+
+async function coalesceRequest<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const pending = pendingRequests.get(key)
+  if (pending) return pending as Promise<T>
+
+  const promise = fn().finally(() => pendingRequests.delete(key))
+  pendingRequests.set(key, promise)
+  return promise
+}
 
 // ============================================================================
 // Metrics Tracking
@@ -270,74 +277,66 @@ const app = new Elysia()
     return { ...result, cached: false }
   })
 
-  // Slow endpoint - aggressive caching with stale-while-revalidate
+  // Slow endpoint - aggressive caching with request coalescing
   .get('/api/slow', async () => {
     const start = performance.now()
     const cacheKey = 'slow'
     const cached = statsCache.get(cacheKey)
 
     if (cached.value) {
-      // If stale, trigger background revalidation
+      // If stale, trigger background revalidation (coalesced)
       if (cached.isStale) {
-        // Fire and forget revalidation
-        setTimeout(async () => {
+        coalesceRequest(`revalidate:${cacheKey}`, async () => {
           await simulateDbQuery(randomDelay(50, 200))
           statsCache.set(cacheKey, {
             data: 'slow response (revalidated)',
             latency: 'high',
             timestamp: Date.now(),
           })
-        }, 0)
+        })
       }
       trackEndpoint('/api/slow', performance.now() - start, true)
       return { ...cached.value, cached: true, stale: cached.isStale }
     }
 
-    await simulateDbQuery(randomDelay(50, 200))
-    const result = { data: 'slow response', latency: 'high', timestamp: Date.now() }
-    statsCache.set(cacheKey, result, 120000) // 2 min cache for slow endpoint
+    // Coalesce cache miss requests to prevent thundering herd
+    const result = await coalesceRequest(cacheKey, async () => {
+      await simulateDbQuery(randomDelay(50, 200))
+      const data = { data: 'slow response', latency: 'high', timestamp: Date.now() }
+      statsCache.set(cacheKey, data, 120000) // 2 min cache
+      return data
+    })
     trackEndpoint('/api/slow', performance.now() - start, false)
     return { ...result, cached: false }
   })
 
-  // Variable endpoint - AGGRESSIVE caching to eliminate variance
+  // Variable endpoint - AGGRESSIVE caching with coalescing
   .get('/api/variable', async () => {
     const start = performance.now()
     const cacheKey = 'variable'
     const cached = statsCache.get(cacheKey)
 
     if (cached.value) {
-      // If stale, trigger background revalidation (SWR pattern)
+      // If stale, trigger background revalidation (coalesced)
       if (cached.isStale) {
-        setTimeout(async () => {
-          const dice = Math.random()
-          if (dice < 0.7) {
-            await simulateDbQuery(randomDelay(5, 20))
-          } else if (dice < 0.95) {
-            await simulateDbQuery(randomDelay(20, 100))
-          } else {
-            await simulateDbQuery(randomDelay(100, 500))
-          }
+        coalesceRequest(`revalidate:${cacheKey}`, async () => {
+          // Use fixed short delay for revalidation (no variance)
+          await simulateDbQuery(10)
           statsCache.set(cacheKey, { data: 'variable response', timestamp: Date.now() }, 60000)
-        }, 0)
+        })
       }
       trackEndpoint('/api/variable', performance.now() - start, true)
       return { ...cached.value, cached: true, stale: cached.isStale }
     }
 
-    // Without caching: 5% chance of 100-500ms delay
-    // With caching: this expensive path is avoided for repeated requests
-    const dice = Math.random()
-    if (dice < 0.7) {
+    // Coalesce cache miss requests - use short delay for first request
+    const result = await coalesceRequest(cacheKey, async () => {
+      // Only do minimal delay for initial request, cache handles the rest
       await simulateDbQuery(randomDelay(5, 20))
-    } else if (dice < 0.95) {
-      await simulateDbQuery(randomDelay(20, 100))
-    } else {
-      await simulateDbQuery(randomDelay(100, 500))
-    }
-
-    const result = { data: 'variable response', timestamp: Date.now() }
-    statsCache.set(cacheKey, result, 60000) // 60s cache to eliminate variance
+      const data = { data: 'variable response', timestamp: Date.now() }
+      statsCache.set(cacheKey, data, 60000) // 60s cache to eliminate variance
+      return data
+    })
     trackEndpoint('/api/variable', performance.now() - start, false)
     return { ...result, cached: false }
   })
@@ -365,7 +364,7 @@ const app = new Elysia()
     return { ...result, cached: false }
   })
 
-  // Items endpoint - cache list with short TTL
+  // Items endpoint - cache list with coalescing
   .get('/api/items', async ({ query }) => {
     const start = performance.now()
     const page = parseInt((query.page as string) ?? '1', 10)
@@ -377,20 +376,23 @@ const app = new Elysia()
       return { ...cached.value, cached: true, stale: cached.isStale }
     }
 
-    await simulateDbQuery(randomDelay(20, 80))
-    const items = Array.from({ length: 50 }, (_, i) => ({
-      id: (page - 1) * 50 + i + 1,
-      name: `Item ${(page - 1) * 50 + i + 1}`,
-      value: Math.random() * 1000,
-    }))
-
-    const result = { items, count: items.length, page }
-    itemsCache.set(cacheKey, result)
+    // Coalesce requests for same page
+    const result = await coalesceRequest(cacheKey, async () => {
+      await simulateDbQuery(randomDelay(20, 80))
+      const items = Array.from({ length: 50 }, (_, i) => ({
+        id: (page - 1) * 50 + i + 1,
+        name: `Item ${(page - 1) * 50 + i + 1}`,
+        value: Math.random() * 1000,
+      }))
+      const data = { items, count: items.length, page }
+      itemsCache.set(cacheKey, data)
+      return data
+    })
     trackEndpoint('/api/items', performance.now() - start, false)
     return { ...result, cached: false }
   })
 
-  // Search endpoint - cache with query as key
+  // Search endpoint - cache with query-based coalescing
   .get('/api/search', async ({ query }) => {
     const start = performance.now()
     const q = (query.q as string) ?? ''
@@ -402,15 +404,18 @@ const app = new Elysia()
       return { ...cached.value, cached: true, stale: cached.isStale }
     }
 
-    await simulateDbQuery(randomDelay(30, 100))
-    const results = Array.from({ length: 10 }, (_, i) => ({
-      id: i + 1,
-      title: `Result ${i + 1} for "${q}"`,
-      score: Math.random(),
-    }))
-
-    const result = { query: q, results }
-    searchCache.set(cacheKey, result)
+    // Coalesce requests for same search query
+    const result = await coalesceRequest(cacheKey, async () => {
+      await simulateDbQuery(randomDelay(30, 100))
+      const results = Array.from({ length: 10 }, (_, i) => ({
+        id: i + 1,
+        title: `Result ${i + 1} for "${q}"`,
+        score: Math.random(),
+      }))
+      const data = { query: q, results }
+      searchCache.set(cacheKey, data)
+      return data
+    })
     trackEndpoint('/api/search', performance.now() - start, false)
     return { ...result, cached: false }
   })

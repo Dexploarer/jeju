@@ -633,7 +633,7 @@ contract NodeStakingManager is INodeStakingManager, Ownable, Pausable, Reentranc
 
     /// @notice Propose a slash - requires SLASH_DISPUTE_PERIOD before execution
     /// @dev SECURITY: Operators can dispute slashes during the dispute period
-    function proposeSlash(bytes32 nodeId, uint256 slashPercentageBPS, string calldata reason) external onlyOwner returns (bytes32 slashId) {
+    function proposeSlash(bytes32 nodeId, uint256 slashPercentageBPS, string calldata reason) public onlyOwner returns (bytes32 slashId) {
         NodeStake storage node = nodes[nodeId];
         if (node.operator == address(0)) revert NodeNotFound(nodeId);
         
@@ -704,7 +704,7 @@ contract NodeStakingManager is INodeStakingManager, Ownable, Pausable, Reentranc
 
     /// @notice Propose an emergency withdrawal - requires 7-day timelock
     /// @dev SECURITY: Prevents instant rugpull of staked funds
-    function proposeEmergencyWithdrawal(address token, uint256 amount) external onlyOwner {
+    function proposeEmergencyWithdrawal(address token, uint256 amount) public onlyOwner {
         if (pendingEmergencyWithdrawal.executeAfter > 0 && !pendingEmergencyWithdrawal.executed) {
             revert EmergencyWithdrawalPending();
         }

@@ -173,6 +173,10 @@ jobs:
       - name: Install dependencies
         run: bun install
 
+      - name: Install workerd binary
+        working-directory: apps/dws
+        run: bun run install:workerd
+
       - name: Start Anvil (Jeju L2 on port 6546)
         run: |
           anvil --port 6546 &

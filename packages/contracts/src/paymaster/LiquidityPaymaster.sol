@@ -75,7 +75,7 @@ contract LiquidityPaymaster is BasePaymaster {
 
     /// @notice Propose a new oracle - requires 24-hour delay
     /// @dev SECURITY: Prevents instant oracle manipulation for gas sponsorship
-    function proposeOracle(address _oracle) external onlyOwner {
+    function proposeOracle(address _oracle) public onlyOwner {
         require(_oracle != address(0), "Invalid oracle");
         if (pendingOracle != address(0)) revert OracleChangePending();
         
