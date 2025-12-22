@@ -2,7 +2,7 @@
  * Scripts Logger - Uses shared logger with CLI formatting utilities
  */
 
-import { createLogger, type Logger as BaseLogger } from '@jejunetwork/shared/logger';
+import { createLogger, type Logger as BaseLogger } from '@jejunetwork/shared';
 
 export type LogLevel = 'debug' | 'info' | 'success' | 'warn' | 'error';
 

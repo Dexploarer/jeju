@@ -58,10 +58,6 @@
     "./db": {
       "types": "./dist/db/index.d.ts",
       "import": "./dist/db/index.js"
-    },
-    "./logger": {
-      "types": "./dist/logger.d.ts",
-      "import": "./dist/logger.js"
     }
   },
   "files": [
@@ -104,7 +100,12 @@
     "pino": "^10.1.0",
     "siwe": "^2.3.2",
     "croner": "^9.0.0",
-    "ioredis": "^5.4.1"
+    "ioredis": "^5.4.1",
+    "pretty-bytes": "^6.1.1",
+    "pretty-ms": "^9.2.0",
+    "timeago.js": "^4.0.2",
+    "nanoid": "^5.1.5",
+    "clsx": "^2.1.1"
   },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0"
