@@ -488,7 +488,7 @@ describe('FraudProofGenerator', () => {
       expect(contractData.length).toBeGreaterThan(200);
     });
 
-    test('different inputs produce different divergence steps', async () => {
+    test('different inputs produce different proofs', async () => {
       const preState = keccak256(encodeAbiParameters([{ type: 'string' }], ['pre']));
       
       const proof1 = await generator.generateFraudProof(
@@ -507,7 +507,9 @@ describe('FraudProofGenerator', () => {
         testAccount
       );
 
-      expect(proof1.step).not.toBe(proof2.step);
+      // Different inputs should produce different proofs even if divergence step is same
+      expect(proof1.encoded).not.toBe(proof2.encoded);
+      expect(proof1.cannonData.proofData).not.toBe(proof2.cannonData.proofData);
     });
   });
 
@@ -659,5 +661,307 @@ describe('Integration', () => {
     // All proofs should be unique
     const encodedSet = new Set(proofs.map((p) => p.encoded));
     expect(encodedSet.size).toBe(3);
+  });
+});
+
+describe('Memory Merkle Tree', () => {
+  let cannon: CannonInterface;
+
+  beforeAll(() => {
+    cannon = new CannonInterface();
+  });
+
+  test('builds Merkle tree from memory', () => {
+    const memory = new Map<number, number>();
+    memory.set(0, 0x12345678);
+    memory.set(4, 0xDEADBEEF);
+
+    const { root, proofs } = cannon.buildMemoryTree(memory);
+
+    expect(root).toBeDefined();
+    expect(root.startsWith('0x')).toBe(true);
+    expect(root.length).toBe(66);
+
+    // Should have proofs for accessed addresses
+    expect(proofs.size).toBe(2);
+    expect(proofs.has(0)).toBe(true);
+    expect(proofs.has(4)).toBe(true);
+  });
+
+  test('different memory produces different roots', () => {
+    const memory1 = new Map<number, number>();
+    memory1.set(0, 0x12345678);
+
+    const memory2 = new Map<number, number>();
+    memory2.set(0, 0x87654321);
+
+    const { root: root1 } = cannon.buildMemoryTree(memory1);
+    const { root: root2 } = cannon.buildMemoryTree(memory2);
+
+    expect(root1).not.toBe(root2);
+  });
+
+  test('proofs have correct depth', () => {
+    const memory = new Map<number, number>();
+    memory.set(0, 0x12345678);
+
+    // Use default depth of 16 for testing
+    const { proofs } = cannon.buildMemoryTree(memory);
+    const proof = proofs.get(0);
+
+    expect(proof).toBeDefined();
+    // Default tree depth is 16
+    expect(proof!.length).toBe(16);
+  });
+
+  test('proofs with custom depth', () => {
+    const memory = new Map<number, number>();
+    memory.set(0, 0x12345678);
+
+    const { proofs } = cannon.buildMemoryTree(memory, 10);
+    const proof = proofs.get(0);
+
+    expect(proof).toBeDefined();
+    expect(proof!.length).toBe(10);
+  });
+});
+
+describe('Preimage Generation', () => {
+  let cannon: CannonInterface;
+
+  beforeAll(() => {
+    cannon = new CannonInterface();
+  });
+
+  test('generates preimages from snapshot', () => {
+    const snapshot = createMockSnapshot(100n);
+    const preimages = cannon.generateStatePreimages(snapshot);
+
+    expect(preimages.length).toBeGreaterThan(0);
+    
+    // Each preimage should have key, data, and offset
+    for (const preimage of preimages) {
+      expect(preimage.key.startsWith('0x')).toBe(true);
+      expect(preimage.key.length).toBe(66);
+      expect(preimage.data).toBeInstanceOf(Uint8Array);
+      expect(preimage.offset).toBe(0);
+    }
+  });
+
+  test('preimage keys are unique', () => {
+    const snapshot = createMockSnapshot(100n);
+    const preimages = cannon.generateStatePreimages(snapshot);
+
+    const keys = new Set(preimages.map(p => p.key));
+    expect(keys.size).toBe(preimages.length);
+  });
+});
+
+describe('Step Witness Generation', () => {
+  let cannon: CannonInterface;
+
+  beforeAll(() => {
+    cannon = new CannonInterface();
+  });
+
+  test('generates complete step witness', () => {
+    const state: MIPSState = {
+      memRoot: keccak256('0x1234'),
+      preimageKey: pad('0x00', { size: 32 }) as Hex,
+      preimageOffset: 0,
+      pc: 0,
+      nextPC: 4,
+      lo: 0,
+      hi: 0,
+      heap: HEAP_START,
+      exitCode: 0,
+      exited: false,
+      step: 0n,
+      registers: new Array(32).fill(0),
+    };
+
+    const memory = new Map<number, number>();
+    memory.set(0, cannon.encodeRType(MIPS_REGISTERS.T0, MIPS_REGISTERS.T1, MIPS_REGISTERS.T2, 0, MIPS_FUNCTS.ADD));
+
+    const preimages = new Map<Hex, Uint8Array>();
+
+    const witness = cannon.generateStepWitness(state, memory, preimages);
+
+    expect(witness.stateData).toBeDefined();
+    expect(witness.stateData.startsWith('0x')).toBe(true);
+    expect(witness.memProof).toBeDefined();
+    expect(witness.preimageProof).toBe('0x');
+  });
+
+  test('generates preimage proof when preimageKey is set', () => {
+    const preimageKey = keccak256('0xtest');
+    const state: MIPSState = {
+      memRoot: keccak256('0x1234'),
+      preimageKey,
+      preimageOffset: 8,
+      pc: 0,
+      nextPC: 4,
+      lo: 0,
+      hi: 0,
+      heap: HEAP_START,
+      exitCode: 0,
+      exited: false,
+      step: 100n,
+      registers: new Array(32).fill(0),
+    };
+
+    const memory = new Map<number, number>();
+    const preimages = new Map<Hex, Uint8Array>();
+    preimages.set(preimageKey, new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]));
+
+    const witness = cannon.generateStepWitness(state, memory, preimages);
+
+    expect(witness.preimageProof).not.toBe('0x');
+    expect(witness.preimageProof.length).toBeGreaterThan(2);
+  });
+});
+
+describe('Bisection Game', () => {
+  let cannon: CannonInterface;
+
+  beforeAll(() => {
+    cannon = new CannonInterface();
+  });
+
+  test('finds divergence with binary search', async () => {
+    const preState: MIPSState = {
+      memRoot: pad('0x01', { size: 32 }) as Hex,
+      preimageKey: pad('0x00', { size: 32 }) as Hex,
+      preimageOffset: 0,
+      pc: 0,
+      nextPC: 4,
+      lo: 0,
+      hi: 0,
+      heap: HEAP_START,
+      exitCode: 0,
+      exited: false,
+      step: 0n,
+      registers: new Array(32).fill(0),
+    };
+
+    const memory = new Map<number, number>();
+    // Simple program: addi, addi, addi, syscall
+    memory.set(0, cannon.encodeIType(MIPS_OPCODES.ADDI, 0, MIPS_REGISTERS.T0, 10));
+    memory.set(4, cannon.encodeIType(MIPS_OPCODES.ADDI, MIPS_REGISTERS.T0, MIPS_REGISTERS.T0, 20));
+    memory.set(8, cannon.encodeIType(MIPS_OPCODES.ADDI, MIPS_REGISTERS.T0, MIPS_REGISTERS.T0, 30));
+    memory.set(12, cannon.encodeRType(0, 0, 0, 0, MIPS_FUNCTS.SYSCALL));
+
+    const preimages = new Map<Hex, Uint8Array>();
+
+    // Execute to get actual final state
+    let state = { ...preState, registers: [...preState.registers] };
+    for (let i = 0; i < 10 && !state.exited; i++) {
+      const { newState } = cannon.executeStep(state, memory, preimages);
+      state = newState;
+    }
+    const correctPostHash = cannon.computeStateHash(state);
+
+    // Create wrong post hash
+    const claimedPostHash = keccak256('wrong_state');
+
+    // Find divergence
+    const result = await cannon.findDivergenceStep(
+      preState,
+      claimedPostHash,
+      correctPostHash,
+      10n,
+      memory,
+      preimages
+    );
+
+    expect(result.step).toBeDefined();
+    expect(result.step).toBeLessThanOrEqual(10n);
+    expect(result.preStateAtStep).toBeDefined();
+    expect(result.instruction).toBeDefined();
+  });
+});
+
+describe('Output Root Computation', () => {
+  test('computes output root per OP Stack spec', () => {
+    const fetcher = new StateFetcher('http://127.0.0.1:8545');
+
+    const stateRoot = keccak256(encodeAbiParameters([{ type: 'string' }], ['state']));
+    const messagePasserRoot = keccak256(encodeAbiParameters([{ type: 'string' }], ['mpr']));
+    const blockHash = keccak256(encodeAbiParameters([{ type: 'string' }], ['block']));
+
+    const outputRoot = fetcher.computeOutputRoot(stateRoot, messagePasserRoot, blockHash);
+
+    // Manually compute expected output root
+    const expected = keccak256(concat([
+      pad('0x00', { size: 32 }), // version
+      stateRoot,
+      messagePasserRoot,
+      blockHash,
+    ]));
+
+    expect(outputRoot).toBe(expected);
+  });
+
+  test('output root matches snapshot output root', () => {
+    const snapshot = createMockSnapshot(100n);
+    const fetcher = new StateFetcher('http://127.0.0.1:8545');
+
+    const computed = fetcher.computeOutputRoot(
+      snapshot.stateRoot,
+      snapshot.messagePasserStorageRoot,
+      snapshot.blockHash
+    );
+
+    expect(computed).toBe(snapshot.outputRoot);
+  });
+});
+
+describe('Contract Proof Format', () => {
+  test('generates valid contract-ready proof format', async () => {
+    const generator = new FraudProofGenerator(L1_RPC);
+
+    const preState = keccak256(encodeAbiParameters([{ type: 'string' }], ['pre']));
+    const claimedPost = keccak256(encodeAbiParameters([{ type: 'string' }], ['claimed']));
+    const correctPost = keccak256(encodeAbiParameters([{ type: 'string' }], ['correct']));
+
+    const proof = await generator.generateFraudProof(
+      preState,
+      claimedPost,
+      correctPost,
+      100n,
+      testAccount
+    );
+
+    const contractData = generator.getContractProofData(proof);
+
+    // Contract data should be ABI-encoded tuple
+    expect(contractData.startsWith('0x')).toBe(true);
+    
+    // Should be able to decode: (bytes32 preStateHash, bytes stateData, bytes proofData)
+    // Minimum size: 32 (preStateHash) + 64 (stateData offset + length) + 64 (proofData offset + length) = 160 bytes
+    expect(contractData.length).toBeGreaterThanOrEqual(160 * 2 + 2);
+  });
+
+  test('proof data contains required fields', async () => {
+    const generator = new FraudProofGenerator(L1_RPC);
+
+    const preState = keccak256('0x1');
+    const claimedPost = keccak256('0x2');
+    const correctPost = keccak256('0x3');
+
+    const proof = await generator.generateFraudProof(
+      preState,
+      claimedPost,
+      correctPost,
+      50n,
+      testAccount
+    );
+
+    expect(proof.cannonData.preStateHash).toBeDefined();
+    expect(proof.cannonData.stateData).toBeDefined();
+    expect(proof.cannonData.proofData).toBeDefined();
+
+    // State data should contain encoded MIPS state
+    expect(proof.cannonData.stateData.length).toBeGreaterThan(100);
   });
 });

@@ -52,13 +52,13 @@ pnpm install
 
 # 3. Deploy PreimageOracle first
 forge create src/cannon/PreimageOracle.sol:PreimageOracle \
-  --private-key $DEPLOYER_PRIVATE_KEY \
+  --private-key $PRIVATE_KEY \
   --rpc-url $RPC_URL \
   --constructor-args 0 0
 
 # 4. Deploy MIPS with PreimageOracle address
 forge create src/cannon/MIPS.sol:MIPS \
-  --private-key $DEPLOYER_PRIVATE_KEY \
+  --private-key $PRIVATE_KEY \
   --rpc-url $RPC_URL \
   --constructor-args $PREIMAGE_ORACLE_ADDRESS
 

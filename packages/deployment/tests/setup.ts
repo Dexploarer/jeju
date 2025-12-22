@@ -75,7 +75,7 @@ export async function startAnvil(): Promise<ChildProcess> {
 
     const proc = spawn(anvilPath, [
       "--host", "127.0.0.1",
-      "--port", "8545",
+      "--port", "6546",
       "--chain-id", TEST_CHAIN_ID.toString(),
       "--gas-limit", "30000000",
       "--code-size-limit", "100000",

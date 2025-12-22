@@ -8,8 +8,8 @@ import {LiquidityPaymaster} from "../src/paymaster/LiquidityPaymaster.sol";
 import {LiquidityVault} from "../src/liquidity/LiquidityVault.sol";
 import {FeeDistributorV2 as FeeDistributor} from "../src/distributor/FeeDistributor.sol";
 import {PriceOracle} from "../src/oracle/PriceOracle.sol";
-import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IEntryPoint} from "account-abstraction/interfaces/IEntryPoint.sol";
+import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 
 contract MockToken is ERC20 {
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {
