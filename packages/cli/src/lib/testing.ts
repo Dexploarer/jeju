@@ -10,9 +10,9 @@ import {
 import { join } from 'node:path'
 import { validateOrNull } from '@jejunetwork/types'
 import { execa } from 'execa'
-import type { AppTestConfig, TestPhase, TestResult } from '../types'
+import type { AppManifest, AppTestConfig, TestPhase, TestResult } from '../types'
 import { checkRpcHealth } from './chain'
-import { type AppManifest, AppManifestSchema } from './discover-apps'
+import { AppManifestSchema } from './discover-apps'
 import { logger } from './logger'
 
 /** Command execution error with output streams */
@@ -377,10 +377,10 @@ export async function runAppTests(
   // Load manifest for config generation
   const manifestPath = join(appDir, 'jeju-manifest.json')
   const manifest: AppManifest | undefined = existsSync(manifestPath)
-    ? (validateOrNull(
+    ? ((validateOrNull(
         AppManifestSchema,
         JSON.parse(readFileSync(manifestPath, 'utf-8')),
-      ) ?? undefined)
+      ) as AppManifest | null) ?? undefined)
     : undefined
 
   // Run unit tests if available

@@ -187,7 +187,6 @@ export type Message = z.infer<typeof MessageSchema>
 export type ScoredData = z.infer<typeof ScoredDataSchema>
 export type Registration = z.infer<typeof RegistrationSchema>
 export type RegisterEnv = z.infer<typeof RegisterEnvSchema>
-export type DisconnectEnv = z.infer<typeof DisconnectEnvSchema>
 export type DWSJobStatus = z.infer<typeof DWSJobStatusSchema>
 export type JudgeResult = z.infer<typeof JudgeResultSchema>
 

@@ -3,38 +3,17 @@
  */
 
 import {
-  AddressSchema,
   BigIntSchema,
   NonEmptyStringSchema,
-  NonNegativeNumberSchema,
 } from '@jejunetwork/types'
 import { z } from 'zod'
-import { DateSchema } from './common'
 
-export const MarketSchema = z.object({
-  id: NonEmptyStringSchema,
-  sessionId: NonEmptyStringSchema,
-  question: NonEmptyStringSchema.min(
-    3,
-    'Question must be at least 3 characters',
-  ),
-  yesPrice: BigIntSchema,
-  noPrice: BigIntSchema,
-  yesShares: BigIntSchema,
-  noShares: BigIntSchema,
-  totalVolume: BigIntSchema,
-  createdAt: DateSchema,
-  resolved: z.boolean(),
-  outcome: z.boolean().nullable(), // null when market is unresolved
-})
-
-export type Market = z.infer<typeof MarketSchema>
-
-export const MarketInfoSchema = z.object({
+// Used internally by PositionSchema
+const MarketInfoSchema = z.object({
   sessionId: NonEmptyStringSchema,
   question: NonEmptyStringSchema,
   resolved: z.boolean(),
-  outcome: z.boolean().nullable(), // null when market is unresolved
+  outcome: z.boolean().nullable(),
 })
 
 export const PositionSchema = z.object({
@@ -48,67 +27,3 @@ export const PositionSchema = z.object({
 })
 
 export type Position = z.infer<typeof PositionSchema>
-
-export const TradeSchema = z.object({
-  id: NonEmptyStringSchema,
-  timestamp: z.string(),
-  trader: AddressSchema,
-  amount: z.string(),
-  outcome: z.boolean(),
-  yesPrice: z.string(),
-  noPrice: z.string(),
-  market: z
-    .object({
-      question: NonEmptyStringSchema,
-    })
-    .optional(),
-})
-
-export type Trade = z.infer<typeof TradeSchema>
-
-export const PricePointSchema = z.object({
-  timestamp: z.string(),
-  yesPrice: NonNegativeNumberSchema,
-  noPrice: NonNegativeNumberSchema,
-})
-
-export type PricePoint = z.infer<typeof PricePointSchema>
-
-export const MarketStatsSchema = z.object({
-  totalVolume: BigIntSchema,
-  activeMarketCount: z.number().int().nonnegative(),
-  totalMarketCount: z.number().int().nonnegative(),
-})
-
-export type MarketStats = z.infer<typeof MarketStatsSchema>
-
-export const UserStatsSchema = z.object({
-  totalValue: BigIntSchema,
-  totalPnL: BigIntSchema,
-  activePositionCount: z.number().int().nonnegative(),
-})
-
-export type UserStats = z.infer<typeof UserStatsSchema>
-
-export const RawMarketPositionSchema = z.object({
-  id: z.string(),
-  yesShares: z.string(),
-  noShares: z.string(),
-  totalSpent: z.string(),
-  totalReceived: z.string(),
-  hasClaimed: z.boolean(),
-  market: z.object({
-    sessionId: z.string(),
-    question: z.string(),
-    resolved: z.boolean(),
-    outcome: z.boolean().nullable(),
-  }),
-})
-export type RawMarketPosition = z.infer<typeof RawMarketPositionSchema>
-
-export const MarketPositionsResponseSchema = z.object({
-  marketPositions: z.array(RawMarketPositionSchema),
-})
-export type MarketPositionsResponse = z.infer<
-  typeof MarketPositionsResponseSchema
->

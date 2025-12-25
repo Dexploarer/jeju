@@ -157,8 +157,13 @@ export {
 // =============================================================================
 
 export {
+  type ChatMessage as JejuChatMessage,
+  createJejuInference,
+  type InferenceProvider,
   type InferenceRequest,
   type InferenceResponse,
+  JejuInference,
+  type JejuInferenceConfig,
   LLMInferenceService,
   llmInferenceService,
   runInference,

@@ -30,7 +30,6 @@ const BROWSER_EXTERNALS = [
   '@jejunetwork/config',
   '@jejunetwork/shared',
   '@jejunetwork/sdk',
-  '@jejunetwork/oauth3',
   '@jejunetwork/deployment',
   '@jejunetwork/contracts',
 ]

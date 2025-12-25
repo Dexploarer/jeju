@@ -11,7 +11,7 @@ export interface AutocratAgentTemplate {
   character: Character
 }
 
-export const treasuryAgent: AutocratAgentTemplate = {
+const treasuryAgent: AutocratAgentTemplate = {
   id: 'treasury',
   name: 'Treasury Agent',
   role: 'TREASURY',
@@ -29,7 +29,7 @@ Provide: financial assessment, concerns, vote (APPROVE/REJECT/ABSTAIN), reasonin
   },
 }
 
-export const codeAgent: AutocratAgentTemplate = {
+const codeAgent: AutocratAgentTemplate = {
   id: 'code',
   name: 'Code Agent',
   role: 'CODE',
@@ -47,7 +47,7 @@ Provide: technical assessment, security concerns, vote (APPROVE/REJECT/ABSTAIN),
   },
 }
 
-export const communityAgent: AutocratAgentTemplate = {
+const communityAgent: AutocratAgentTemplate = {
   id: 'community',
   name: 'Community Agent',
   role: 'COMMUNITY',
@@ -65,7 +65,7 @@ Provide: community impact assessment, vote (APPROVE/REJECT/ABSTAIN), reasoning.`
   },
 }
 
-export const securityAgent: AutocratAgentTemplate = {
+const securityAgent: AutocratAgentTemplate = {
   id: 'security',
   name: 'Security Agent',
   role: 'SECURITY',
@@ -83,7 +83,7 @@ Provide: security assessment, concerns, vote (APPROVE/REJECT/ABSTAIN), reasoning
   },
 }
 
-export const legalAgent: AutocratAgentTemplate = {
+const legalAgent: AutocratAgentTemplate = {
   id: 'legal',
   name: 'Legal Agent',
   role: 'LEGAL',
@@ -123,7 +123,7 @@ Output JSON: {"approved": bool, "reasoning": "...", "confidence": 0-100, "alignm
   },
 }
 
-export const securityBountyAgent: AutocratAgentTemplate = {
+const securityBountyAgent: AutocratAgentTemplate = {
   id: 'security-bounty',
   name: 'Security Bounty Agent',
   role: 'SECURITY_BOUNTY',
@@ -170,7 +170,7 @@ Vote format: APPROVE with reward amount, REJECT with reason, or REQUEST_CHANGES 
   },
 }
 
-export const guardianAgent: AutocratAgentTemplate = {
+const guardianAgent: AutocratAgentTemplate = {
   id: 'guardian',
   name: 'Guardian Agent',
   role: 'GUARDIAN',
@@ -217,7 +217,7 @@ export function getAgentByRole(
   return autocratAgentTemplates.find((a) => a.role === role)
 }
 
-export const AUTOCRAT_ROLES = [
+const AUTOCRAT_ROLES = [
   'TREASURY',
   'CODE',
   'COMMUNITY',

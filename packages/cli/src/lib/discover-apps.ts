@@ -10,6 +10,8 @@ const AppManifestSchema = z
     $schema: z.string().optional(),
     name: z.string().regex(/^[a-z0-9-]+$/),
     displayName: z.string().optional(),
+    slug: z.string().optional(),
+    _folderName: z.string().optional(),
     version: z.string().regex(/^\d+\.\d+\.\d+(-[a-z0-9.]+)?$/),
     type: z
       .enum(['core', 'service', 'vendor', 'app', 'utility'])
@@ -152,6 +154,28 @@ const AppManifestSchema = z
           .optional(),
         services: z.array(z.string()).optional(),
         dependencies: z.array(z.string()).optional(),
+      })
+      .passthrough()
+      .optional(),
+    architecture: z
+      .object({
+        type: z.enum(['hybrid', 'frontend', 'backend']).optional(),
+        frontend: z
+          .object({
+            type: z.string().optional(),
+            builder: z.string().optional(),
+            entrypoint: z.string().optional(),
+            outputDir: z.string().optional(),
+          })
+          .passthrough()
+          .optional(),
+        backend: z
+          .object({
+            type: z.string().optional(),
+            runtime: z.string().optional(),
+          })
+          .passthrough()
+          .optional(),
       })
       .passthrough()
       .optional(),

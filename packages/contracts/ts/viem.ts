@@ -27,7 +27,6 @@ import type {
   ContractFunctionArgs,
   ContractFunctionName,
   Hex,
-  PublicClient,
   ReadContractReturnType,
   Transport,
   WalletClient,
@@ -77,7 +76,8 @@ export async function readContract<
   TFunctionName extends ContractFunctionName<TAbi, 'pure' | 'view'>,
   TArgs extends ContractFunctionArgs<TAbi, 'pure' | 'view', TFunctionName>,
 >(
-  client: { readContract: ReadableClient['readContract'] },
+  // biome-ignore lint/suspicious/noExplicitAny: Required for viem client compatibility - viem's PublicClient has complex generics that cannot be structurally matched
+  client: { readContract: (...args: never[]) => Promise<unknown> },
   params: {
     address: Address
     abi: TAbi
@@ -87,7 +87,7 @@ export async function readContract<
     blockTag?: 'latest' | 'earliest' | 'pending' | 'safe' | 'finalized'
   },
 ): Promise<ReadContractReturnType<TAbi, TFunctionName, TArgs>> {
-  return client.readContract({
+  return (client.readContract as (params: Record<string, unknown>) => Promise<unknown>)({
     address: params.address,
     abi: params.abi,
     functionName: params.functionName as string,

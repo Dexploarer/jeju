@@ -48,7 +48,7 @@ export interface CrossChainConfig {
   tokenAddress: Address
 }
 
-export interface RegistrationResult {
+interface RegistrationResult {
   agentId: bigint
   tokenRegistryId: bigint
   txHashes: Hex[]

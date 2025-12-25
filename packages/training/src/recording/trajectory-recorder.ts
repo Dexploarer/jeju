@@ -16,18 +16,9 @@ import type {
   Action,
   EnvironmentState,
   LLMCall,
-  ProviderAccess,
   TrajectoryStep,
 } from '../schemas'
 import { getCurrentWindowId } from './window-utils'
-
-export type {
-  TrajectoryStep,
-  EnvironmentState,
-  ProviderAccess,
-  LLMCall,
-  Action,
-}
 
 /**
  * Active trajectory being recorded.

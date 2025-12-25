@@ -183,16 +183,29 @@ export class IntentSolver extends EventEmitter {
       const parsed = CowswapOrdersSchema.safeParse(await response.json())
       if (!parsed.success) return []
 
-      return parsed.data.map((order) => ({
+      return parsed.data.map((order): Intent => ({
         id: order.uid,
-        protocol: 'cowswap' as const,
+        protocol: 'cowswap',
         tokenIn: order.sellToken as Address,
         tokenOut: order.buyToken as Address,
         amountIn: BigInt(order.sellAmount),
         minAmountOut: BigInt(order.buyAmount),
         deadline: BigInt(order.validTo),
         user: order.owner as Address,
-        rawOrder: order,
+        rawOrder: {
+          uid: order.uid,
+          sellToken: order.sellToken as Address,
+          buyToken: order.buyToken as Address,
+          sellAmount: order.sellAmount,
+          buyAmount: order.buyAmount,
+          validTo: order.validTo,
+          appData: order.appData,
+          feeAmount: order.feeAmount,
+          kind: order.kind,
+          partiallyFillable: order.partiallyFillable,
+          receiver: order.receiver as Address,
+          owner: order.owner as Address,
+        },
       }))
     } catch (error) {
       console.warn('Failed to fetch Cowswap orders:', error)
@@ -216,16 +229,30 @@ export class IntentSolver extends EventEmitter {
 
       return parsed.data.orders
         .filter((order) => order.outputs.length > 0)
-        .map((order) => ({
+        .map((order): Intent => ({
           id: order.orderHash,
-          protocol: 'uniswapx' as const,
-          tokenIn: order.input.token,
-          tokenOut: order.outputs[0].token,
+          protocol: 'uniswapx',
+          tokenIn: order.input.token as Address,
+          tokenOut: order.outputs[0].token as Address,
           amountIn: BigInt(order.input.amount),
           minAmountOut: BigInt(order.outputs[0].amount),
           deadline: BigInt(order.deadline),
-          user: order.swapper,
-          rawOrder: order,
+          user: order.swapper as Address,
+          rawOrder: {
+            orderHash: order.orderHash,
+            chainId: order.chainId,
+            swapper: order.swapper as Address,
+            input: {
+              token: order.input.token as Address,
+              amount: order.input.amount,
+            },
+            outputs: order.outputs.map((o) => ({
+              token: o.token as Address,
+              amount: o.amount,
+              recipient: o.recipient as Address,
+            })),
+            deadline: order.deadline,
+          },
         }))
     } catch (error) {
       console.warn('Failed to fetch UniswapX orders:', error)

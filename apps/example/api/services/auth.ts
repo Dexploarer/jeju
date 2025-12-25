@@ -8,7 +8,7 @@ import {
   type OAuth3Config,
   type OAuth3Identity,
   type OAuth3Session,
-} from '@jejunetwork/oauth3'
+} from '@jejunetwork/auth'
 import type { Address, Hex } from 'viem'
 
 export interface OAuth3Service {

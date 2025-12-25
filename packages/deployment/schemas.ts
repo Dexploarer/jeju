@@ -762,6 +762,7 @@ export const AgentRegistrationFileSchema = z
   .object({
     name: z.string().optional(),
     description: z.string().optional(),
+    active: z.boolean().optional(),
     endpoints: z
       .array(
         z.object({

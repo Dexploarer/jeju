@@ -16,8 +16,6 @@ import type {
   SimulationResult,
 } from './types'
 
-export type { SimulationConfig, SimulationEngineState, SimulationResult }
-
 /**
  * Simulation Engine Stub
  *

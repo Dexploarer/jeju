@@ -767,12 +767,13 @@ export function discoverDAOManifests(rootDir: string): DAOManifest[] {
 
 // NOTE: DAOAllocationRegistry contract not yet deployed
 // These allocation types are for future use when inter-DAO allocations are supported
-const ALLOCATION_TYPES = {
+const _ALLOCATION_TYPES = {
   'deep-funding': 0,
   'fee-share': 1,
   recurring: 2,
   'one-time': 3,
 } as const
+void _ALLOCATION_TYPES
 
 export interface MultiDAODeployOptions extends DAODeployOptions {
   all?: boolean

@@ -22,8 +22,6 @@
     "infra:apply": "bun run scripts/terraform.ts apply"
   },
   "dependencies": {
-    "@elysiajs/cors": "^1.2.0",
-    "@jejunetwork/cli": "workspace:*",
     "@jejunetwork/dws": "workspace:*",
     "@jejunetwork/shared": "workspace:*",
     "@jejunetwork/types": "workspace:*",

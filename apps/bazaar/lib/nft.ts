@@ -321,3 +321,11 @@ export function isNFTOwner(nft: NormalizedNFT, address: string): boolean {
   // ERC1155 - check balance
   return Number(nft.balance) > 0
 }
+
+/**
+ * Format an address for display by truncating the middle
+ */
+export function formatAddress(address: string, chars = 4): string {
+  if (address.length <= chars * 2 + 4) return address
+  return `${address.slice(0, chars + 2)}...${address.slice(-chars)}`
+}

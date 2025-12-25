@@ -28,7 +28,6 @@
     "chalk": "5.4.1",
     "clsx": "2.1.1",
     "commander": "12.1.0",
-    "date-fns": "4.1.0",
     "framer-motion": "12.23.26",
     "lru-cache": "^11.2.4",
     "lucide-react": "0.562.0",
@@ -46,16 +45,11 @@
     "@synthetixio/synpress": "4.1.1",
     "@tauri-apps/api": "2.0.0",
     "@tauri-apps/cli": "2.0.0",
-    "@tauri-apps/plugin-os": "2.0.0",
-    "@tauri-apps/plugin-process": "2.0.0",
-    "@tauri-apps/plugin-shell": "2.0.0",
-    "@tauri-apps/plugin-store": "2.0.0",
     "@types/bun": "latest",
     "@types/react": "19.2.3",
     "@types/react-dom": "^19.0.0",
     "@types/webtorrent": "0.109.5",
     "@types/ws": "^8.18.1",
-    "bun-plugin-tailwind": "0.1.2",
     "typescript": "5.9.3"
   }
 }

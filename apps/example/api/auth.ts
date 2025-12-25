@@ -1,5 +1,5 @@
 import { getNetworkName } from '@jejunetwork/config'
-import { AuthProvider } from '@jejunetwork/oauth3'
+import { AuthProvider } from '@jejunetwork/auth'
 import { isValidAddress } from '@jejunetwork/types'
 import { type Context, Elysia } from 'elysia'
 import type { Address } from 'viem'

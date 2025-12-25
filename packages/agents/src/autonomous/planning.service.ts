@@ -166,10 +166,10 @@ export class AutonomousPlanningCoordinator {
   }
 
   /**
-<<<<<<< HEAD
-=======
    * Build planning prompt
+   * Note: Currently unused, prepared for LLM integration
    */
+  // @ts-ignore - Unused method kept for future LLM integration
   private buildPlanningPrompt(
     config: PlanningAgentConfig,
     context: PlanningContext,
@@ -193,7 +193,7 @@ export class AutonomousPlanningCoordinator {
         ...context.directives.always.map((d) => `✓ ALWAYS: ${d.rule}`),
         ...context.directives.never.map((d) => `✗ NEVER: ${d.rule}`),
         ...context.directives.prefer.map((d) => `+ PREFER: ${d.rule}`),
-      ].join('\n') ?? 'No directives'
+      ].join('\n') || 'No directives'
 
     const constraintsText = context.constraints
       ? `- Max actions this tick: ${context.constraints.general.maxActionsPerTick}
@@ -210,6 +210,14 @@ export class AutonomousPlanningCoordinator {
               (p) =>
                 `- ${p.type}: "${p.content.substring(0, 60)}..." by ${p.author}`,
             )
+            .join('\n')
+        : 'None'
+
+    const recentActionsText =
+      context.recentActions.length > 0
+        ? context.recentActions
+            .slice(0, 10)
+            .map((a) => `- ${a.type}: ${a.success ? 'success' : 'failed'}`)
             .join('\n')
         : 'None'
 
@@ -242,12 +250,7 @@ Pending interactions (${context.pending.length}):
 ${pendingText}
 
 Recent actions (last 10):
-${
-  context.recentActions
-    .slice(0, 10)
-    .map((a) => `- ${a.type}: ${a.success ? 'success' : 'failed'}`)
-    .join('\n') ?? 'None'
-}
+${recentActionsText}
 
 === YOUR TASK ===
 Plan ${config.maxActionsPerTick} or fewer actions for this tick to make maximum progress toward your goals.
@@ -271,7 +274,6 @@ Your action plan (JSON only):`
   }
 
   /**
->>>>>>> 9ead75abad3a811d2d0d16aa55c89314f789455e
    * Generate simple plan for agents without goals
    */
   private generateSimplePlan(

@@ -6,114 +6,14 @@
  * - KZG polynomial commitments with trusted setup
  * - 2D Reed-Solomon erasure coding
  * - Hash-to-curve per RFC 9380
+ *
+ * Note: These implementations are internal to the DA layer.
+ * Import directly from specific modules if needed.
  */
 
-// BLS Signatures
-export {
-  type AggregatedSignature,
-  aggregatePublicKeys,
-  aggregateSignatures,
-  BLS,
-  type BLSKeyPair,
-  type BLSPublicKey,
-  type BLSSecretKey,
-  type BLSSignature,
-  createAggregatedAttestation,
-  createAttestationMessage,
-  createProofOfPossession,
-  derivePublicKey,
-  generateKeyPair,
-  hashToG1 as blsHashToG1,
-  hashToG2 as blsHashToG2,
-  sign,
-  signAttestation,
-  signWithDomain,
-  validatePublicKey,
-  validateSecretKey,
-  verify,
-  verifyAggregate,
-  verifyAggregatedAttestation,
-  verifyAttestation,
-  verifyBatch,
-  verifyProofOfPossession,
-  verifyWithDomain,
-} from './bls'
-// Hash-to-Curve
-export {
-  addG1Points,
-  addG2Points,
-  compressG1,
-  compressG2,
-  type DST,
-  DST_BLS_POP,
-  DST_BLS_SIG,
-  DST_DA_ATTEST,
-  DST_DA_SAMPLE,
-  decompressG1,
-  decompressG2,
-  encodeToG1,
-  encodeToG2,
-  expandMessageXMD,
-  G1Generator,
-  type G1Point,
-  G2Generator,
-  type G2Point,
-  HashToCurve,
-  hashToField,
-  hashToG1,
-  hashToG2,
-  mulG1,
-  mulG2,
-  verifyG1Point,
-  verifyG2Point,
-} from './hash-to-curve'
-// KZG Commitments
-export {
-  BLOB_SIZE,
-  BLS_MODULUS,
-  type Blob,
-  type BlobWithCommitment,
-  BYTES_PER_FIELD_ELEMENT,
-  COMMITMENT_SIZE,
-  type CommitmentWithProof,
-  commitToBlob,
-  computeBlobProof,
-  computeCellProofs,
-  computeCommitment,
-  computeCommitments,
-  computeProof,
-  computeVersionedHash,
-  createBlob,
-  FIELD_ELEMENTS_PER_BLOB,
-  initializeKZG,
-  isKZGInitialized,
-  KZG,
-  type KZGCommitment,
-  type KZGProof,
-  PROOF_SIZE,
-  validateBlob,
-  verifyBlobProof,
-  verifyBlobProofBatch,
-  verifyCommitmentForData,
-  verifyProof as verifyKZGProof,
-} from './kzg'
-// 2D Reed-Solomon
-export {
-  type CellCoord,
-  canReconstruct,
-  createMatrix,
-  type ExtendedMatrix2D,
-  extend2D,
-  extractColumn,
-  extractRow,
-  flattenMatrix,
-  gfAdd,
-  gfDiv,
-  gfInv,
-  gfMul,
-  gfPow,
-  type Matrix2D,
-  ReedSolomon2D,
-  reconstruct2D,
-  verifyExtended,
-} from './reed-solomon-2d'
+// Re-export only the essential types and utilities that may be needed by other da modules
+// The full implementations are available by importing directly from:
+// - ./bls for BLS signatures
+// - ./hash-to-curve for hash-to-curve
+// - ./kzg for KZG commitments
+// - ./reed-solomon-2d for erasure coding

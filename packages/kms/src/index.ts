@@ -88,6 +88,21 @@ export {
   type MPCSignSession,
   resetMPCCoordinator,
 } from './mpc/index.js'
+// FROST Threshold Signing
+export {
+  aggregateSignatures,
+  type FROSTCluster,
+  FROSTCoordinator,
+  type FROSTKeyShare,
+  type FROSTSignature,
+  type FROSTSignatureShare,
+  type FROSTSigningCommitment,
+  generateKeyShares,
+  generateSignatureShare,
+  generateSigningCommitment,
+  publicKeyToAddress,
+  verifySignature,
+} from './mpc/frost-signing.js'
 // Providers
 export {
   EncryptionProvider,

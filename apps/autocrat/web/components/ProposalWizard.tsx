@@ -13,12 +13,16 @@ import {
 } from 'lucide-react'
 import { useCallback, useState } from 'react'
 import {
+  assessProposal,
   assessProposalFull,
   checkDuplicates,
+  factCheck,
   type FullQualityAssessment,
   generateProposal,
   improveProposal,
+  prepareSubmitProposal,
   type ProposalDraft,
+  type QualityAssessment,
   type QuickScoreResult,
   quickScore,
   type SimilarProposal,
@@ -94,6 +98,16 @@ export function ProposalWizard({ onComplete, onCancel }: WizardProps) {
   const [error, setError] = useState('')
   const [generating, setGenerating] = useState(false)
   const [improving, setImproving] = useState<string | null>(null)
+  const [factChecking, setFactChecking] = useState(false)
+  const [factCheckResult, setFactCheckResult] = useState<{
+    verified: boolean
+    confidence: number
+    sources: string[]
+  } | null>(null)
+  const [a2aAssessment, setA2aAssessment] = useState<QualityAssessment | null>(
+    null,
+  )
+  const [a2aLoading, setA2aLoading] = useState(false)
 
   // Quick score as user types
   const handleQuickScore = useCallback(async () => {
@@ -130,6 +144,68 @@ export function ProposalWizard({ onComplete, onCancel }: WizardProps) {
       description: `${draft.description}\n\n${improved}`,
     })
     setImproving(null)
+  }
+
+  // Fact check claims in the description
+  const handleFactCheck = async () => {
+    if (!draft.description) return
+    setFactChecking(true)
+    setError('')
+    try {
+      const result = await factCheck(draft.summary, draft.description)
+      setFactCheckResult(
+        result as { verified: boolean; confidence: number; sources: string[] },
+      )
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Fact check failed')
+    }
+    setFactChecking(false)
+  }
+
+  // Quick A2A assessment (lighter than full assessment)
+  const handleA2AAssess = async () => {
+    setA2aLoading(true)
+    setError('')
+    try {
+      const result = await assessProposal({
+        title: draft.title,
+        summary: draft.summary,
+        description: draft.description,
+        proposalType: String(draft.proposalType),
+      })
+      setA2aAssessment(result)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'A2A assessment failed')
+    }
+    setA2aLoading(false)
+  }
+
+  // Prepare submission transaction
+  const handlePrepareSubmit = async () => {
+    if (!assessment) return
+    setLoading(true)
+    setError('')
+    try {
+      const result = await prepareSubmitProposal({
+        proposalType: draft.proposalType,
+        qualityScore: assessment.overallScore,
+        contentHash: `0x${Date.now().toString(16).padStart(64, '0')}`,
+        targetContract: draft.targetContract,
+        callData: draft.calldata,
+        value: draft.value,
+      })
+      if (result.success) {
+        // Proceed to on-chain submission
+        if (assessment && onComplete) {
+          onComplete(draft, assessment)
+        }
+      } else {
+        setError(result.error ?? 'Prepare submission failed')
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Prepare submission failed')
+    }
+    setLoading(false)
   }
 
   // Full quality assessment
@@ -237,6 +313,9 @@ export function ProposalWizard({ onComplete, onCancel }: WizardProps) {
             onQuickScore={handleQuickScore}
             onGenerate={handleGenerate}
             generating={generating}
+            onFactCheck={handleFactCheck}
+            factChecking={factChecking}
+            factCheckResult={factCheckResult}
           />
         )}
 
@@ -331,6 +410,9 @@ function DraftStep({
   onQuickScore,
   onGenerate,
   generating,
+  onFactCheck,
+  factChecking,
+  factCheckResult,
 }: {
   draft: ProposalDraft
   setDraft: (d: ProposalDraft) => void
@@ -338,6 +420,13 @@ function DraftStep({
   onQuickScore: () => void
   onGenerate: (idea: string) => void
   generating: boolean
+  onFactCheck: () => void
+  factChecking: boolean
+  factCheckResult: {
+    verified: boolean
+    confidence: number
+    sources: string[]
+  } | null
 }) {
   const [idea, setIdea] = useState('')
   const [showGenerator, setShowGenerator] = useState(false)
@@ -500,6 +589,49 @@ function DraftStep({
               ? 'Ready for AI quality assessment'
               : 'Add more detail to continue'}
           </div>
+        </div>
+      )}
+
+      {/* Fact Check */}
+      {draft.description.length > 100 && (
+        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium flex items-center gap-2">
+              <Search size={14} />
+              Verify Claims
+            </span>
+            <button
+              type="button"
+              onClick={onFactCheck}
+              disabled={factChecking}
+              className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+            >
+              {factChecking ? 'Checking...' : 'Fact Check'}
+            </button>
+          </div>
+          {factCheckResult && (
+            <div className="mt-3 text-sm">
+              <div className="flex items-center gap-2 mb-2">
+                {factCheckResult.verified ? (
+                  <span className="text-green-600 flex items-center gap-1">
+                    <Check size={14} />
+                    Claims verified ({factCheckResult.confidence}% confidence)
+                  </span>
+                ) : (
+                  <span className="text-yellow-600 flex items-center gap-1">
+                    <AlertTriangle size={14} />
+                    Some claims need review ({factCheckResult.confidence}%
+                    confidence)
+                  </span>
+                )}
+              </div>
+              {factCheckResult.sources.length > 0 && (
+                <div className="text-xs text-gray-500">
+                  Sources: {factCheckResult.sources.join(', ')}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

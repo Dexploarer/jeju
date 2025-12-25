@@ -62,36 +62,42 @@ const SAFE_ABI = [
   {
     name: 'getOwners',
     type: 'function',
+    stateMutability: 'view',
     inputs: [],
     outputs: [{ type: 'address[]' }],
   },
   {
     name: 'getThreshold',
     type: 'function',
+    stateMutability: 'view',
     inputs: [],
     outputs: [{ type: 'uint256' }],
   },
   {
     name: 'nonce',
     type: 'function',
+    stateMutability: 'view',
     inputs: [],
     outputs: [{ type: 'uint256' }],
   },
   {
     name: 'VERSION',
     type: 'function',
+    stateMutability: 'view',
     inputs: [],
     outputs: [{ type: 'string' }],
   },
   {
     name: 'getModulesPaginated',
     type: 'function',
+    stateMutability: 'view',
     inputs: [{ type: 'address' }, { type: 'uint256' }],
     outputs: [{ type: 'address[]' }, { type: 'address' }],
   },
   {
     name: 'getGuard',
     type: 'function',
+    stateMutability: 'view',
     inputs: [],
     outputs: [{ type: 'address' }],
   },
@@ -100,6 +106,7 @@ const SAFE_ABI = [
   {
     name: 'execTransaction',
     type: 'function',
+    stateMutability: 'payable',
     inputs: [
       { name: 'to', type: 'address' },
       { name: 'value', type: 'uint256' },
@@ -119,6 +126,7 @@ const SAFE_ABI = [
   {
     name: 'getTransactionHash',
     type: 'function',
+    stateMutability: 'view',
     inputs: [
       { name: 'to', type: 'address' },
       { name: 'value', type: 'uint256' },
@@ -145,36 +153,32 @@ class SafeService {
   ): Promise<SafeInfo> {
     const client = rpcService.getClient(chainId)
 
-    const [owners, threshold, nonce, version, modulesResult] =
-      await Promise.all([
-        client.readContract({
-          address: safeAddress,
-          abi: SAFE_ABI,
-          functionName: 'getOwners',
-        }),
-        client.readContract({
-          address: safeAddress,
-          abi: SAFE_ABI,
-          functionName: 'getThreshold',
-        }),
-        client.readContract({
-          address: safeAddress,
-          abi: SAFE_ABI,
-          functionName: 'nonce',
-        }),
-        client.readContract({
-          address: safeAddress,
-          abi: SAFE_ABI,
-          functionName: 'VERSION',
-        }),
-        client.readContract({
-          address: safeAddress,
-          abi: SAFE_ABI,
-          functionName: 'getModulesPaginated',
-          args: ['0x0000000000000000000000000000000000000001' as Address, 10n],
-        }),
-      ])
-
+    const owners = await client.readContract({
+      address: safeAddress,
+      abi: SAFE_ABI,
+      functionName: 'getOwners',
+    })
+    const threshold = await client.readContract({
+      address: safeAddress,
+      abi: SAFE_ABI,
+      functionName: 'getThreshold',
+    })
+    const nonce = await client.readContract({
+      address: safeAddress,
+      abi: SAFE_ABI,
+      functionName: 'nonce',
+    })
+    const version = await client.readContract({
+      address: safeAddress,
+      abi: SAFE_ABI,
+      functionName: 'VERSION',
+    })
+    const modulesResult = await client.readContract({
+      address: safeAddress,
+      abi: SAFE_ABI,
+      functionName: 'getModulesPaginated',
+      args: ['0x0000000000000000000000000000000000000001' as Address, 10n],
+    })
     const guardAddress = await client.readContract({
       address: safeAddress,
       abi: SAFE_ABI,

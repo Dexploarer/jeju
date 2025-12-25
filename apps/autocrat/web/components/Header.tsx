@@ -1,17 +1,34 @@
-import { Menu, Moon, Sun, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { Activity, Menu, Moon, Sun, X } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { fetchHealth } from '../config/api'
 import { AuthButton } from './auth/AuthButton'
+
+interface HealthStatus {
+  status: string
+  version?: string
+  uptime?: number
+}
 
 export function Header() {
   const location = useLocation()
   const pathname = location.pathname
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isDark, setIsDark] = useState(false)
+  const [health, setHealth] = useState<HealthStatus | null>(null)
+
+  const checkHealth = useCallback(async () => {
+    const data = await fetchHealth().catch(() => null)
+    setHealth(data as HealthStatus | null)
+  }, [])
 
   useEffect(() => {
     setIsDark(document.documentElement.classList.contains('dark'))
-  }, [])
+    checkHealth()
+    // Check health every 30 seconds
+    const interval = setInterval(checkHealth, 30000)
+    return () => clearInterval(interval)
+  }, [checkHealth])
 
   // Close menu on route change
   useEffect(() => {
@@ -30,6 +47,8 @@ export function Header() {
     { href: '/proposals', label: 'Proposals' },
     { href: '/create', label: 'Create' },
     { href: '/ceo', label: 'CEO' },
+    { href: '/moderation', label: 'Moderation' },
+    { href: '/bug-bounty', label: 'Bounty' },
   ]
 
   return (
@@ -71,6 +90,32 @@ export function Header() {
 
           {/* Right Actions */}
           <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Health Status Indicator */}
+            <div
+              className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs"
+              title={health ? `API: ${health.status}` : 'Checking status...'}
+            >
+              <Activity
+                size={14}
+                className={
+                  health?.status === 'ok'
+                    ? 'text-green-500'
+                    : health
+                      ? 'text-yellow-500'
+                      : 'text-gray-400'
+                }
+              />
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  health?.status === 'ok'
+                    ? 'bg-green-500'
+                    : health
+                      ? 'bg-yellow-500'
+                      : 'bg-gray-400'
+                }`}
+              />
+            </div>
+
             <button
               type="button"
               onClick={toggleTheme}

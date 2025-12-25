@@ -182,7 +182,6 @@ export class CQLDatabaseAdapter extends DatabaseAdapter<CQLClient> {
    * Parse JSON from database - internal use for known-good data
    * This is used for data we wrote ourselves where the schema is implicit
    * Still wrapped in try-catch for resilience against corrupted data
-   * @deprecated Prefer fromJsonValidated with schema for external data
    */
   private fromJson<T>(value: string | null): T | null {
     if (!value) return null

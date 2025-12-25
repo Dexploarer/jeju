@@ -54,6 +54,7 @@ import {
   getRateLimitUsage,
   getVaultStats,
   // Types
+  type APIProvider,
   type ProxyRequest,
   parsePaymentProof,
   // Payments
@@ -151,7 +152,7 @@ export function createAPIMarketplaceRouter() {
         let providers = getAllProviders()
 
         if (category) {
-          providers = providers.filter((p) =>
+          providers = providers.filter((p: APIProvider) =>
             p.categories.includes(category as never),
           )
         }
@@ -161,7 +162,7 @@ export function createAPIMarketplaceRouter() {
         }
 
         return {
-          providers: providers.map((p) => ({
+          providers: providers.map((p: APIProvider) => ({
             id: p.id,
             name: p.name,
             description: p.description,

@@ -7,12 +7,16 @@ import { Layout } from './components/Layout'
 import { wagmiConfig } from './config/wagmi'
 import './app/globals.css'
 
+import AdminPage from './pages/Admin'
 import AuthCallbackPage from './pages/AuthCallback'
 import BugBountyPage from './pages/BugBounty'
+import BugBountyDetailPage from './pages/BugBountyDetail'
 import CEOPage from './pages/CEO'
 import CreatePage from './pages/Create'
 // Pages
 import DashboardPage from './pages/Dashboard'
+import ModerationPage from './pages/Moderation'
+import ProposalDetailPage from './pages/ProposalDetail'
 import ProposalsPage from './pages/Proposals'
 
 function App() {
@@ -38,9 +42,13 @@ function App() {
               <Route element={<Layout />}>
                 <Route path="/" element={<DashboardPage />} />
                 <Route path="/proposals" element={<ProposalsPage />} />
+                <Route path="/proposals/:id" element={<ProposalDetailPage />} />
                 <Route path="/create" element={<CreatePage />} />
                 <Route path="/ceo" element={<CEOPage />} />
+                <Route path="/moderation" element={<ModerationPage />} />
                 <Route path="/bug-bounty" element={<BugBountyPage />} />
+                <Route path="/bug-bounty/:id" element={<BugBountyDetailPage />} />
+                <Route path="/admin" element={<AdminPage />} />
                 <Route path="/auth/callback" element={<AuthCallbackPage />} />
               </Route>
             </Routes>

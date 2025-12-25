@@ -10,9 +10,6 @@ import type {
   TrainingComputeResponse,
 } from './types'
 
-// Re-export types for convenience
-export type { JudgingScoreResponse, SimulationResultResponse, TEEInitResponse, TEEProvider, TrainingComputeResponse }
-
 /**
  * Check if value is an object
  */

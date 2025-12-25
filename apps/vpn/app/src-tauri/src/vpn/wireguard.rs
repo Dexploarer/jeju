@@ -141,7 +141,7 @@ impl WireGuardTunnel {
 
         tokio::spawn(async move {
             if let Err(e) = run_tunnel_loop(
-                tunn,
+                Box::new(tunn),
                 socket,
                 running.clone(),
                 bytes_up,
@@ -299,54 +299,49 @@ async fn run_tunnel_loop(
                         bytes_down.fetch_add(n as u64, Ordering::Relaxed);
                         packets_down.fetch_add(1, Ordering::Relaxed);
 
-                        let mut tunn_guard = tunn.lock();
-                        let mut result = tunn_guard.decapsulate(None, &recv_buf[..n], &mut send_buf);
+                        // Collect data to write while holding lock, then release before async writes
+                        let mut tun_writes: Vec<Vec<u8>> = Vec::new();
+                        {
+                            let mut tunn_guard = tunn.lock();
+                            let mut result = tunn_guard.decapsulate(None, &recv_buf[..n], &mut send_buf);
 
-                        loop {
-                            match result {
-                                TunnResult::WriteToNetwork(data) => {
-                                    if let Err(e) = socket.send(data) {
-                                        tracing::warn!("Failed to send response: {}", e);
-                                    }
-                                    bytes_up.fetch_add(data.len() as u64, Ordering::Relaxed);
-                                    packets_up.fetch_add(1, Ordering::Relaxed);
-                                }
-                                TunnResult::WriteToTunnelV4(data, _src) => {
-                                    // Write decrypted packet to TUN interface
-                                    #[cfg(any(target_os = "linux", target_os = "macos"))]
-                                    {
-                                        if let Err(e) = write_to_tun(&tun_device, data).await {
-                                            tracing::warn!("Failed to write to TUN: {}", e);
+                            loop {
+                                match result {
+                                    TunnResult::WriteToNetwork(data) => {
+                                        if let Err(e) = socket.send(data) {
+                                            tracing::warn!("Failed to send response: {}", e);
                                         }
+                                        bytes_up.fetch_add(data.len() as u64, Ordering::Relaxed);
+                                        packets_up.fetch_add(1, Ordering::Relaxed);
                                     }
-                                    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
-                                    {
-                                        let _ = data; // Silence unused warning
-                                        tracing::debug!("Received {} bytes from tunnel", data.len());
+                                    TunnResult::WriteToTunnelV4(data, _src) => {
+                                        tun_writes.push(data.to_vec());
                                     }
-                                }
-                                TunnResult::WriteToTunnelV6(data, _src) => {
-                                    #[cfg(any(target_os = "linux", target_os = "macos"))]
-                                    {
-                                        if let Err(e) = write_to_tun(&tun_device, data).await {
-                                            tracing::warn!("Failed to write IPv6 to TUN: {}", e);
-                                        }
+                                    TunnResult::WriteToTunnelV6(data, _src) => {
+                                        tun_writes.push(data.to_vec());
                                     }
-                                    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
-                                    {
-                                        let _ = data;
-                                        tracing::debug!("Received {} IPv6 bytes from tunnel", data.len());
+                                    TunnResult::Done => break,
+                                    TunnResult::Err(e) => {
+                                        tracing::warn!("Decapsulation error: {:?}", e);
+                                        break;
                                     }
                                 }
-                                TunnResult::Done => break,
-                                TunnResult::Err(e) => {
-                                    tracing::warn!("Decapsulation error: {:?}", e);
-                                    break;
-                                }
+
+                                // Check if there's more data to process
+                                result = tunn_guard.decapsulate(None, &[], &mut send_buf);
                             }
+                        } // tunn_guard dropped here
 
-                            // Check if there's more data to process
-                            result = tunn_guard.decapsulate(None, &[], &mut send_buf);
+                        // Now perform async TUN writes without holding the lock
+                        #[cfg(any(target_os = "linux", target_os = "macos"))]
+                        for data in tun_writes {
+                            if let Err(e) = write_to_tun(&tun_device, &data).await {
+                                tracing::warn!("Failed to write to TUN: {}", e);
+                            }
+                        }
+                        #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+                        for data in tun_writes {
+                            tracing::debug!("Received {} bytes from tunnel", data.len());
                         }
                     }
                     Ok(_) => {}

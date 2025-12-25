@@ -1,9 +1,6 @@
 import type { BrowserContext, Page } from '@playwright/test'
-import { testWithSynpress } from '@synthetixio/synpress'
-import { MetaMask, metaMaskFixtures } from '@synthetixio/synpress/playwright'
-import { basicSetup } from '../../synpress.config'
-
-const test = testWithSynpress(metaMaskFixtures(basicSetup))
+import { test, basicSetup } from '@jejunetwork/tests'
+import { MetaMask } from '@synthetixio/synpress/playwright'
 const { expect } = test
 
 async function connectWallet(
