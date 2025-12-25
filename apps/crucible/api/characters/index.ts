@@ -7,32 +7,8 @@
 
 import type { AgentCharacter } from '../../lib/types'
 
-// Original characters
-export { blueTeamCharacter } from './blue-team'
-// Blue Team (Defensive) Characters
-export {
-  contractsAuditorCharacter,
-  moderatorCharacter,
-  networkGuardianCharacter,
-} from './blue-team/index'
-export { communityManagerCharacter } from './community-manager'
-export { devRelCharacter } from './devrel'
-export { liaisonCharacter } from './liaison'
-export { projectManagerCharacter } from './project-manager'
-export { redTeamCharacter } from './red-team'
-
-// Red Team (Adversarial) Characters
-export {
-  contractsExpertCharacter,
-  fuzzTesterCharacter,
-  scammerCharacter,
-  securityResearcherCharacter,
-} from './red-team/index'
-export { socialMediaManagerCharacter } from './social-media-manager'
-
-// Import all for character registry
+// Character imports
 import { blueTeamCharacter } from './blue-team'
-// Blue team imports
 import {
   contractsAuditorCharacter,
   moderatorCharacter,
@@ -43,8 +19,6 @@ import { devRelCharacter } from './devrel'
 import { liaisonCharacter } from './liaison'
 import { projectManagerCharacter } from './project-manager'
 import { redTeamCharacter } from './red-team'
-
-// Red team imports
 import {
   contractsExpertCharacter,
   fuzzTesterCharacter,
@@ -78,10 +52,8 @@ export const characters: Record<string, AgentCharacter> = {
   'contracts-auditor': contractsAuditorCharacter,
 }
 
-/**
- * Red team character IDs (for adversarial testing)
- */
-export const RED_TEAM_CHARACTERS = [
+// Red team character IDs (for adversarial testing)
+const _RED_TEAM_CHARACTERS = [
   'red-team',
   'scammer',
   'security-researcher',
@@ -89,25 +61,13 @@ export const RED_TEAM_CHARACTERS = [
   'fuzz-tester',
 ] as const
 
-/** Type-safe check for red team character ID */
-export function isRedTeamCharacter(id: string): boolean {
-  return (RED_TEAM_CHARACTERS as readonly string[]).includes(id)
-}
-
-/**
- * Blue team character IDs (for defense/moderation)
- */
-export const BLUE_TEAM_CHARACTERS = [
+// Blue team character IDs (for defense/moderation)
+const _BLUE_TEAM_CHARACTERS = [
   'blue-team',
   'moderator',
   'network-guardian',
   'contracts-auditor',
 ] as const
-
-/** Type-safe check for blue team character ID */
-export function isBlueTeamCharacter(id: string): boolean {
-  return (BLUE_TEAM_CHARACTERS as readonly string[]).includes(id)
-}
 
 /**
  * Get character by ID
@@ -122,22 +82,4 @@ export function getCharacter(id: string): AgentCharacter | null {
  */
 export function listCharacters(): string[] {
   return Object.keys(characters)
-}
-
-/**
- * Get all red team characters
- */
-export function getRedTeamCharacters(): AgentCharacter[] {
-  return RED_TEAM_CHARACTERS.map((id) => characters[id]).filter(
-    (c): c is AgentCharacter => c !== undefined,
-  )
-}
-
-/**
- * Get all blue team characters
- */
-export function getBlueTeamCharacters(): AgentCharacter[] {
-  return BLUE_TEAM_CHARACTERS.map((id) => characters[id]).filter(
-    (c): c is AgentCharacter => c !== undefined,
-  )
 }

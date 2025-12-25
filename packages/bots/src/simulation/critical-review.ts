@@ -155,5 +155,4 @@ export function printAuditReport(): void {
   for (const rec of LARP_AUDIT.recommendations) {
     console.log(`  • ${rec}`)
   }
-  console.log('========================\n')
 }

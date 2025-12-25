@@ -11,6 +11,7 @@
 import { existsSync } from 'node:fs'
 import { rm } from 'node:fs/promises'
 import { resolve } from 'node:path'
+import { getCurrentNetwork } from '@jejunetwork/config'
 import type { BunPlugin } from 'bun'
 import { buildCSS } from './build-css'
 
@@ -220,7 +221,7 @@ async function buildFrontend(): Promise<void> {
     // Runtime config
     window.__JEJU_CONFIG__ = ${JSON.stringify({
       apiUrl: process.env.PUBLIC_API_URL || '',
-      network: process.env.NETWORK || 'localnet',
+      network: getCurrentNetwork(),
     })};
   </script>
 </head>

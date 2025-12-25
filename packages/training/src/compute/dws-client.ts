@@ -2,7 +2,7 @@
  * DWS distributed training client.
  */
 
-import { getDWSUrl, getRpcUrl } from '@jejunetwork/config'
+import { getDWSUrl, getExternalRpc, getRpcUrl } from '@jejunetwork/config'
 import { expectValid } from '@jejunetwork/types'
 import type { Address, Hex } from 'viem'
 import {
@@ -421,14 +421,14 @@ export function createDWSClient(config: DWSClientConfig): DWSTrainingClient {
 }
 
 export function isDWSAvailable(): boolean {
-  return !!process.env.DWS_API_URL
+  return !!getDWSUrl()
 }
 
 export function getDefaultDWSConfig(): DWSClientConfig {
   return {
     dwsApiUrl: getDWSUrl(),
-    solanaRpcUrl: process.env.SOLANA_RPC_URL,
-    evmRpcUrl: process.env.EVM_RPC_URL ?? getRpcUrl(),
+    solanaRpcUrl: getExternalRpc('solana'),
+    evmRpcUrl: getRpcUrl(),
     evmPrivateKey: process.env.EVM_PRIVATE_KEY as Hex | undefined,
     bridgeAddress: process.env.BRIDGE_ADDRESS as Address | undefined,
     llmJudgeUrl: process.env.LLM_JUDGE_URL,

@@ -1,5 +1,13 @@
-import { FileText, Plus } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import {
+  FileText,
+  Loader2,
+  Pause,
+  Play,
+  Plus,
+  RefreshCw,
+  Zap,
+} from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AutocratStatus } from '../components/AutocratStatus'
 import { CEOStatus } from '../components/CEOStatus'
@@ -10,9 +18,13 @@ import {
   fetchAutocratStatus,
   fetchCEOStatus,
   fetchGovernanceStats,
+  fetchOrchestratorStatus,
   fetchProposals,
   type GovernanceStats,
+  type OrchestratorStatus,
   type Proposal,
+  startOrchestrator,
+  stopOrchestrator,
 } from '../config/api'
 
 export default function DashboardPage() {
@@ -21,26 +33,56 @@ export default function DashboardPage() {
   const [autocratStatus, setAutocratStatus] =
     useState<AutocratStatusType | null>(null)
   const [stats, setStats] = useState<GovernanceStats | null>(null)
+  const [orchestrator, setOrchestrator] = useState<OrchestratorStatus | null>(
+    null,
+  )
   const [loading, setLoading] = useState(true)
+  const [orchestratorLoading, setOrchestratorLoading] = useState(false)
+
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    const [proposalsData, ceo, autocrat, statsData, orch] = await Promise.all([
+      fetchProposals(true).catch(() => ({ proposals: [], total: 0 })),
+      fetchCEOStatus().catch(() => null),
+      fetchAutocratStatus().catch(() => null),
+      fetchGovernanceStats().catch(() => null),
+      fetchOrchestratorStatus().catch(() => null),
+    ])
+
+    setProposals(proposalsData.proposals)
+    setCEOStatus(ceo)
+    setAutocratStatus(autocrat)
+    setStats(statsData)
+    setOrchestrator(orch)
+    setLoading(false)
+  }, [])
 
   useEffect(() => {
-    async function loadData() {
-      setLoading(true)
-      const [proposalsData, ceo, autocrat, statsData] = await Promise.all([
-        fetchProposals(true).catch(() => ({ proposals: [], total: 0 })),
-        fetchCEOStatus().catch(() => null),
-        fetchAutocratStatus().catch(() => null),
-        fetchGovernanceStats().catch(() => null),
-      ])
-
-      setProposals(proposalsData.proposals)
-      setCEOStatus(ceo)
-      setAutocratStatus(autocrat)
-      setStats(statsData)
-      setLoading(false)
-    }
     loadData()
-  }, [])
+  }, [loadData])
+
+  const handleStartOrchestrator = async () => {
+    setOrchestratorLoading(true)
+    await startOrchestrator().catch(() => null)
+    const status = await fetchOrchestratorStatus().catch(() => null)
+    setOrchestrator(status)
+    setOrchestratorLoading(false)
+  }
+
+  const handleStopOrchestrator = async () => {
+    setOrchestratorLoading(true)
+    await stopOrchestrator().catch(() => null)
+    const status = await fetchOrchestratorStatus().catch(() => null)
+    setOrchestrator(status)
+    setOrchestratorLoading(false)
+  }
+
+  const handleRefreshOrchestrator = async () => {
+    setOrchestratorLoading(true)
+    const status = await fetchOrchestratorStatus().catch(() => null)
+    setOrchestrator(status)
+    setOrchestratorLoading(false)
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -124,6 +166,95 @@ export default function DashboardPage() {
 
         {/* Sidebar - shows first on mobile for quick status view */}
         <div className="space-y-3 sm:space-y-4 order-1 lg:order-2">
+          {/* Orchestrator Controls */}
+          <div className="card-static p-3 sm:p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold flex items-center gap-2 text-sm">
+                <Zap size={16} />
+                Orchestrator
+              </h3>
+              <button
+                type="button"
+                onClick={handleRefreshOrchestrator}
+                disabled={orchestratorLoading}
+                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                aria-label="Refresh status"
+              >
+                <RefreshCw
+                  size={14}
+                  className={orchestratorLoading ? 'animate-spin' : ''}
+                />
+              </button>
+            </div>
+
+            {orchestrator ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">Status</span>
+                  <span
+                    className={`flex items-center gap-1.5 text-sm font-medium ${
+                      orchestrator.running ? 'text-green-600' : 'text-gray-500'
+                    }`}
+                  >
+                    <span
+                      className={`w-2 h-2 rounded-full ${
+                        orchestrator.running ? 'bg-green-500' : 'bg-gray-400'
+                      }`}
+                    />
+                    {orchestrator.running ? 'Running' : 'Stopped'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">Cycles</span>
+                  <span className="text-sm font-medium">
+                    {orchestrator.cycleCount}
+                  </span>
+                </div>
+                {orchestrator.processedProposals !== undefined && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-500">Processed</span>
+                    <span className="text-sm font-medium">
+                      {orchestrator.processedProposals}
+                    </span>
+                  </div>
+                )}
+                <div className="flex gap-2 pt-2">
+                  {orchestrator.running ? (
+                    <button
+                      type="button"
+                      onClick={handleStopOrchestrator}
+                      disabled={orchestratorLoading}
+                      className="btn-secondary flex-1 text-sm flex items-center justify-center gap-1.5"
+                    >
+                      {orchestratorLoading ? (
+                        <Loader2 className="animate-spin" size={14} />
+                      ) : (
+                        <Pause size={14} />
+                      )}
+                      Stop
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleStartOrchestrator}
+                      disabled={orchestratorLoading}
+                      className="btn-primary flex-1 text-sm flex items-center justify-center gap-1.5"
+                    >
+                      {orchestratorLoading ? (
+                        <Loader2 className="animate-spin" size={14} />
+                      ) : (
+                        <Play size={14} />
+                      )}
+                      Start
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">Unable to fetch status</p>
+            )}
+          </div>
+
           <CEOStatus status={ceoStatus} loading={loading} />
           <AutocratStatus status={autocratStatus} loading={loading} />
         </div>

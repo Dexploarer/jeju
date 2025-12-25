@@ -2,8 +2,8 @@
 
 import { Elysia } from 'elysia'
 import {
-  type DiscussionRow,
   type DiscussionReplyRow,
+  type DiscussionRow,
   createDiscussion as dbCreateDiscussion,
   createDiscussionReply as dbCreateReply,
   listDiscussions as dbListDiscussions,

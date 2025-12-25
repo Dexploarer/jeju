@@ -2,19 +2,21 @@
 
 import { Elysia } from 'elysia'
 import {
-  createIssue as dbCreateIssue,
   createIssueComment as dbCreateComment,
-  getIssueComments,
+  createIssue as dbCreateIssue,
   listIssues as dbListIssues,
   getIssue,
-  type IssueRow,
+  getIssueComments,
   type IssueCommentRow,
+  type IssueRow,
+  updateIssue,
 } from '../db/client'
 import {
   CreateIssueBodySchema,
   expectValid,
   IssueCommentBodySchema,
   IssuesQuerySchema,
+  UpdateIssueBodySchema,
 } from '../schemas'
 import { requireAuth } from '../validation/access-control'
 
@@ -169,14 +171,9 @@ export const issuesRoutes = new Elysia({ prefix: '/api/issues' })
         }
       }
 
-      // Update the issue in the database
-      const dbClient = await import('../db/client')
-      const updateData = body as {
-        title?: string
-        body?: string
-        status?: 'open' | 'closed'
-      }
-      const updated = dbClient.updateIssue(params.issueId, updateData)
+      // Validate and update the issue in the database
+      const validated = expectValid(UpdateIssueBodySchema, body, 'request body')
+      const updated = updateIssue(params.issueId, validated)
 
       return transformIssue(updated ?? row)
     },
@@ -232,7 +229,10 @@ export const issuesRoutes = new Elysia({ prefix: '/api/issues' })
       }
 
       const comments = getIssueComments(params.issueId)
-      return { comments: comments.map(transformComment), total: comments.length }
+      return {
+        comments: comments.map(transformComment),
+        total: comments.length,
+      }
     },
     { detail: { tags: ['issues'], summary: 'Get comments' } },
   )

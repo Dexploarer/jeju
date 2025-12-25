@@ -9,8 +9,6 @@
 
 import type { ModelConfig, ModelProvider, ModelTier } from './types'
 
-export type { ModelConfig, ModelProvider, ModelTier }
-
 /**
  * Registry of all available models for benchmarking
  */

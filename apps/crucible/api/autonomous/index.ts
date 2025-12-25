@@ -3,6 +3,7 @@
  * Manages autonomous agent lifecycle and tick execution
  */
 
+import { getCurrentNetwork } from '@jejunetwork/config'
 import { checkDWSHealth, getSharedDWSClient } from '../client/dws'
 import {
   type CrucibleAgentRuntime,
@@ -279,7 +280,7 @@ export class AutonomousAgentRunner {
 
   private async getNetworkState(): Promise<NetworkState> {
     const dwsAvailable = await checkDWSHealth()
-    const network = process.env.NETWORK ?? 'localnet'
+    const network = getCurrentNetwork()
 
     let inferenceAvailable = false
     let inferenceNodes = 0

@@ -426,6 +426,7 @@ class SimulationService {
         {
           name: 'symbol',
           type: 'function',
+          stateMutability: 'view',
           inputs: [],
           outputs: [{ type: 'string' }],
         },

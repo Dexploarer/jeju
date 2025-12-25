@@ -72,8 +72,8 @@
       "project": ["src/**/*.ts"]
     },
     "packages/deployment": {
-      "entry": ["scripts/**/*.ts", "schemas.ts"],
-      "project": ["scripts/**/*.ts", "schemas.ts"],
+      "entry": ["scripts/**/*.ts"],
+      "project": ["scripts/**/*.ts"],
       "ignore": ["**/tests/**"]
     },
     "packages/eliza-plugin": {
@@ -123,7 +123,7 @@
     },
     "apps/documentation": {
       "entry": ["lib/index.ts", "server/a2a-server.ts"],
-      "project": ["lib/**/*.ts", "server/**/*.ts", "docs/components/**/*.ts", "docs/components/**/*.tsx"],
+      "project": ["lib/**/*.ts", "server/**/*.ts"],
       "ignore": ["**/playwright.config.ts", "**/tests/**", "api/**", "build/**"]
     },
     "apps/dws": {
@@ -185,13 +185,15 @@
     "**/*.config.js",
     "**/synpress.config.ts",
     "**/playwright.config.ts",
-    "**/eslint.config.js"
+    "**/eslint.config.js",
+    "**/*.test.ts",
+    "**/__tests__/**",
+    "**/test-fixtures.ts"
   ],
   "ignoreDependencies": [
     "@playwright/test",
     "@synthetixio/synpress",
     "@jejunetwork/tests",
-    "madge",
     "depcheck",
     "playwright-core",
     "prettier",

@@ -368,8 +368,9 @@ async function processVoucherFulfilled(
   transfers: Map<string, EILTransfer>,
 ): Promise<void> {
   const voucherId = log.topics[1]
-  const _recipientAddr = `0x${log.topics[2].slice(26)}`
-  const _amount = BigInt(log.data)
+  // recipientAddr and amount available from topics/data if needed for logging
+  // const recipientAddr = `0x${log.topics[2].slice(26)}`
+  // const amount = BigInt(log.data)
 
   const voucher =
     vouchers.get(voucherId) ||
@@ -533,7 +534,7 @@ async function processSourceFundsClaimed(
   xlps: Map<string, XLP>,
   _vouchers: Map<string, CrossChainVoucher>,
 ): Promise<void> {
-  const _requestId = log.topics[1]
+  // requestId available from topics[1] if needed
   const xlpAddr = `0x${log.topics[2].slice(26)}`
 
   // Decode amount and fee from data
@@ -541,7 +542,7 @@ async function processSourceFundsClaimed(
     [{ type: 'uint256' }, { type: 'uint256' }] as const,
     log.data,
   )
-  const _amount = decoded[0]
+  // const amount = decoded[0] // available if needed for logging
   const fee = decoded[1]
 
   // Find voucher by request ID and update XLP earnings
@@ -605,13 +606,13 @@ async function processUnbondingStarted(
 ): Promise<void> {
   const xlpAddr = `0x${log.topics[1].slice(26)}`
 
-  // Decode amount and unbondingComplete
+  // Decode amount and unbondingComplete timestamp
   const decoded = decodeLogData(
     [{ type: 'uint256' }, { type: 'uint256' }] as const,
     log.data,
   )
   const amount = decoded[0]
-  const _unbondingComplete = decoded[1]
+  // const unbondingComplete = decoded[1] // timestamp when unbonding completes
 
   const xlp = xlps.get(xlpAddr.toLowerCase())
   if (xlp) {
@@ -627,7 +628,7 @@ async function processStakeWithdrawn(
   xlps: Map<string, XLP>,
 ): Promise<void> {
   const xlpAddr = `0x${log.topics[1].slice(26)}`
-  const _amount = BigInt(log.data)
+  // const amount = BigInt(log.data) // available if needed for logging
 
   const xlp = xlps.get(xlpAddr.toLowerCase())
   if (xlp) {

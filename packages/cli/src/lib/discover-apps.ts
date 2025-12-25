@@ -53,22 +53,6 @@ const AppManifestSchema = z
         url: z.string().optional(),
       })
       .optional(),
-    architecture: z
-      .object({
-        frontend: z
-          .object({
-            outputDir: z.string().optional(),
-            framework: z.string().optional(),
-          })
-          .optional(),
-        backend: z
-          .object({
-            runtime: z.string().optional(),
-            outputDir: z.string().optional(),
-          })
-          .optional(),
-      })
-      .optional(),
     agent: z
       .object({
         enabled: z.boolean().optional(),
@@ -170,6 +154,28 @@ const AppManifestSchema = z
           .optional(),
         services: z.array(z.string()).optional(),
         dependencies: z.array(z.string()).optional(),
+      })
+      .passthrough()
+      .optional(),
+    architecture: z
+      .object({
+        type: z.enum(['hybrid', 'frontend', 'backend']).optional(),
+        frontend: z
+          .object({
+            type: z.string().optional(),
+            builder: z.string().optional(),
+            entrypoint: z.string().optional(),
+            outputDir: z.string().optional(),
+          })
+          .passthrough()
+          .optional(),
+        backend: z
+          .object({
+            type: z.string().optional(),
+            runtime: z.string().optional(),
+          })
+          .passthrough()
+          .optional(),
       })
       .passthrough()
       .optional(),

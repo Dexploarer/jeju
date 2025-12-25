@@ -4,11 +4,11 @@ import { Elysia } from 'elysia'
 import {
   createPullRequest as dbCreatePR,
   createPRReview as dbCreateReview,
-  getPRReviews,
   listPullRequests as dbListPRs,
+  getPRReviews,
   getPullRequest,
-  type PullRequestRow,
   type PRReviewRow,
+  type PullRequestRow,
 } from '../db/client'
 import {
   CreatePullBodySchema,

@@ -28,7 +28,7 @@ pub const ACTIVITY_CHECK_INTERVAL_SECS: u64 = 30;
 /// Bandwidth measurement window (seconds)
 pub const BANDWIDTH_WINDOW_SECS: u64 = 60;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct BandwidthState {
     /// Detected total bandwidth (Mbps)
     pub total_bandwidth_mbps: u32,
@@ -187,6 +187,11 @@ impl AdaptiveBandwidthManager {
     pub fn record_contribution_bytes(&self, bytes: u64) {
         self.contribution_bytes_window
             .fetch_add(bytes, Ordering::SeqCst);
+    }
+
+    /// Get the state Arc for direct access
+    pub fn state_arc(&self) -> Arc<RwLock<BandwidthState>> {
+        self.state.clone()
     }
 
     /// Get current state

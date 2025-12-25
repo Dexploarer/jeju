@@ -21,8 +21,12 @@ class TestExecutor extends BaseAgentExecutor {
   public operationResult: ExecutorResult = { success: true }
 
   protected parseCommand(message: Message): ExecutorCommand {
-    const content = message.parts?.[0]
-    const text = content?.kind === 'text' ? content.text : ''
+    const parts = message.parts
+    if (!parts || parts.length === 0) {
+      return { operation: 'test', params: { message: '' } }
+    }
+    const content = parts[0]
+    const text = content.kind === 'text' ? content.text : ''
     return {
       operation: 'test',
       params: { message: text },
@@ -55,6 +59,18 @@ type ExecutorEvent = Task | StatusUpdateEvent | ArtifactUpdateEvent
 /**
  * Mock event bus for capturing published events
  */
+function isExecutorEvent(
+  event: Task | Record<string, unknown>,
+): event is ExecutorEvent {
+  if ('kind' in event) {
+    const kind = event.kind
+    return (
+      kind === 'task' || kind === 'status-update' || kind === 'artifact-update'
+    )
+  }
+  return false
+}
+
 function createMockEventBus(): ExecutionEventBus & {
   events: ExecutorEvent[]
 } {
@@ -62,7 +78,9 @@ function createMockEventBus(): ExecutionEventBus & {
   return {
     events,
     publish(event: Task | Record<string, unknown>) {
-      events.push(event as ExecutorEvent)
+      if (isExecutorEvent(event)) {
+        events.push(event)
+      }
     },
     finished() {
       // no-op for testing

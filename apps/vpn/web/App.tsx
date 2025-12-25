@@ -6,7 +6,8 @@ import {
   Shield,
   Users,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { invoke, isTauri } from '../lib'
 import { formatBytes } from '../lib/utils'
 import { ConnectionStats } from './components/ConnectionStats'
 import { ContributionPanel } from './components/ContributionPanel'
@@ -29,15 +30,75 @@ function App() {
   const { connect, disconnect, isLoading } = useVPNConnection()
   const { stats, dws } = useContribution()
 
-  const handleConnect = async () => {
+  const isConnected = vpnStatus.status === 'Connected'
+
+  const handleConnect = useCallback(async () => {
     if (vpnStatus.status === 'Connected') {
       await disconnect()
     } else {
       await connect(selectedNode)
     }
-  }
+  }, [vpnStatus.status, disconnect, connect, selectedNode])
 
-  const isConnected = vpnStatus.status === 'Connected'
+  // Sync tray state with VPN status
+  useEffect(() => {
+    if (!isTauri()) return
+
+    const location = selectedNode
+      ? `${selectedNode.region}, ${selectedNode.country_code}`
+      : undefined
+
+    invoke('update_tray_state', {
+      connected: isConnected,
+      location,
+      contributionPercent: 10,
+    }).catch((err) => {
+      console.warn('Failed to update tray state:', err)
+    })
+  }, [isConnected, selectedNode])
+
+  // Listen for tray events
+  useEffect(() => {
+    if (!isTauri()) return
+
+    let cleanup: (() => void) | undefined
+
+    const setupListeners = async () => {
+      const { listen } = await import('@tauri-apps/api/event')
+
+      // Listen for tray toggle VPN event
+      const unlistenToggle = await listen('tray_toggle_vpn', () => {
+        handleConnect()
+      })
+
+      // Listen for navigation events from tray
+      const unlistenNavigate = await listen<string>('navigate', (event) => {
+        if (event.payload === 'settings') {
+          setActiveTab('settings')
+        } else if (event.payload === 'locations') {
+          setActiveTab('vpn')
+        }
+      })
+
+      // Listen for app quit event
+      const unlistenQuit = await listen('app_quit', async () => {
+        // Disconnect VPN before quitting
+        if (isConnected) {
+          await disconnect()
+        }
+      })
+
+      cleanup = () => {
+        unlistenToggle()
+        unlistenNavigate()
+        unlistenQuit()
+      }
+    }
+
+    setupListeners()
+
+    return () => cleanup?.()
+  }, [handleConnect, isConnected, disconnect])
 
   return (
     <div className="h-full flex flex-col bg-[#0a0a0f]">

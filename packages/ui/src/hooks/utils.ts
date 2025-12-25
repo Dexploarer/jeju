@@ -7,7 +7,7 @@ export interface AsyncState {
   error: Error | null
 }
 
-export interface UseAsyncStateResult extends AsyncState {
+interface UseAsyncStateResult extends AsyncState {
   execute: <T>(operation: () => Promise<T>) => Promise<T>
 }
 

@@ -12,6 +12,7 @@ import {
   CORE_PORTS,
   getCoreAppUrl,
   getCQLBlockProducerUrl,
+  getCurrentNetwork,
   getL2RpcUrl,
 } from '@jejunetwork/config'
 import { type CQLClient, createTable, getCQL } from '@jejunetwork/db'
@@ -403,8 +404,7 @@ if (isMainModule) {
   const PORT = CORE_PORTS.BAZAAR_API.get()
 
   const app = createBazaarApp({
-    NETWORK:
-      (process.env.NETWORK as 'localnet' | 'testnet' | 'mainnet') || 'localnet',
+    NETWORK: getCurrentNetwork(),
     TEE_MODE: 'simulated',
     TEE_PLATFORM: 'local',
     TEE_REGION: 'local',

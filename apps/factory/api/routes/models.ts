@@ -4,8 +4,8 @@ import { Elysia } from 'elysia'
 import {
   createModel as dbCreateModel,
   listModels as dbListModels,
-  getModel,
   starModel as dbStarModel,
+  getModel,
   type ModelRow,
 } from '../db/client'
 import {

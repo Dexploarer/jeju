@@ -38,12 +38,10 @@
     "@noble/hashes": "^1.7.1",
     "elysia": "^1.4.19",
     "viem": "2.43.3",
-    "ws": "8.18.3",
     "zod": "4.2.1"
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "@types/ws": "8.18.1",
     "typescript": "5.9.3"
   },
   "peerDependencies": {

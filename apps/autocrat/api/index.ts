@@ -38,7 +38,7 @@ import {
   ProposalTypeSchema,
 } from '../lib'
 import { createAutocratA2AServer } from './a2a-server'
-import { autocratAgentRuntime } from './agents'
+import { autocratAgentRuntime } from './agents/runtime'
 import { getBlockchain } from './blockchain'
 import {
   getComputeTriggerClient,
@@ -1201,11 +1201,10 @@ export { createAutocratA2AServer } from './a2a-server'
 export {
   type AgentVote,
   autocratAgentRuntime,
-  autocratAgentTemplates,
   type CEODecisionRequest,
   type DeliberationRequest,
-  getAgentByRole,
-} from './agents'
+} from './agents/runtime'
+export { autocratAgentTemplates, getAgentByRole } from './agents/templates'
 export { AutocratBlockchain, getBlockchain } from './blockchain'
 export {
   getComputeTriggerClient,

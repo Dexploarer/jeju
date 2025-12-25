@@ -370,11 +370,11 @@ export function verifyAttestation(attestation: string): {
 /**
  * Rotate a key (store new, delete old)
  */
-export function rotateKey(
+export async function rotateKey(
   oldKeyId: string,
   owner: Address,
   newApiKey: string,
-): VaultKey | null {
+): Promise<VaultKey | null> {
   const oldKey = vault.get(oldKeyId)
   if (!oldKey) return null
 
@@ -384,7 +384,7 @@ export function rotateKey(
   }
 
   // Store new key
-  const newKey = storeKey(oldKey.providerId, owner, newApiKey)
+  const newKey = await storeKey(oldKey.providerId, owner, newApiKey)
 
   // Delete old key
   vault.delete(oldKeyId)

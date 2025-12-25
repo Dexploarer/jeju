@@ -113,11 +113,13 @@ function validateSearchParams(raw: SearchParams): ValidatedSearchParams {
     0,
     Math.min(4, Number.isNaN(parsedMinStakeTier) ? 0 : parsedMinStakeTier),
   )
+  const parsedLimit = parseInt(String(raw.limit ?? '50'), 10)
   const limit = Math.max(
     1,
-    Math.min(1000, parseInt(String(raw.limit ?? '50'), 10) ?? 50),
+    Math.min(1000, Number.isNaN(parsedLimit) ? 50 : parsedLimit),
   )
-  const offset = Math.max(0, parseInt(String(raw.offset ?? '0'), 10) ?? 0)
+  const parsedOffset = parseInt(String(raw.offset ?? '0'), 10)
+  const offset = Math.max(0, Number.isNaN(parsedOffset) ? 0 : parsedOffset)
 
   const parseBoolean = (
     val: string | boolean | undefined,

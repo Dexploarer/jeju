@@ -871,7 +871,9 @@ export function createIssueComment(comment: {
   )
 
   const row = db
-    .query<IssueCommentRow, [string]>('SELECT * FROM issue_comments WHERE id = ?')
+    .query<IssueCommentRow, [string]>(
+      'SELECT * FROM issue_comments WHERE id = ?',
+    )
     .get(id)
   return IssueCommentRowSchema.parse(row)
 }
@@ -1226,7 +1228,15 @@ export function createDiscussionReply(reply: {
   db.run(
     `INSERT INTO discussion_replies (id, discussion_id, author, author_name, author_avatar, content, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [id, reply.discussionId, reply.author, reply.authorName, reply.authorAvatar, reply.content, now],
+    [
+      id,
+      reply.discussionId,
+      reply.author,
+      reply.authorName,
+      reply.authorAvatar,
+      reply.content,
+      now,
+    ],
   )
 
   // Update discussion reply count and last_reply_at
@@ -1236,7 +1246,9 @@ export function createDiscussionReply(reply: {
   )
 
   const row = db
-    .query<DiscussionReplyRow, [string]>('SELECT * FROM discussion_replies WHERE id = ?')
+    .query<DiscussionReplyRow, [string]>(
+      'SELECT * FROM discussion_replies WHERE id = ?',
+    )
     .get(id)
   return DiscussionReplyRowSchema.parse(row)
 }
@@ -1967,10 +1979,19 @@ export function upsertRepoSettings(
 export function deleteRepoSettings(owner: string, repo: string): boolean {
   const db = getDB()
   // Delete collaborators and webhooks first
-  db.run('DELETE FROM repo_collaborators WHERE owner = ? AND repo = ?', [owner, repo])
-  db.run('DELETE FROM repo_webhooks WHERE owner = ? AND repo = ?', [owner, repo])
+  db.run('DELETE FROM repo_collaborators WHERE owner = ? AND repo = ?', [
+    owner,
+    repo,
+  ])
+  db.run('DELETE FROM repo_webhooks WHERE owner = ? AND repo = ?', [
+    owner,
+    repo,
+  ])
   // Delete settings
-  const result = db.run('DELETE FROM repo_settings WHERE owner = ? AND repo = ?', [owner, repo])
+  const result = db.run(
+    'DELETE FROM repo_settings WHERE owner = ? AND repo = ?',
+    [owner, repo],
+  )
   return result.changes > 0
 }
 

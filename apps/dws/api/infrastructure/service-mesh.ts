@@ -134,9 +134,6 @@ function getOrCreateCA(): CACredentials {
     namedCurve: 'prime256v1',
   })
 
-  const now = new Date()
-  const _notAfter = new Date(now.getTime() + 10 * 365 * 24 * 60 * 60 * 1000) // 10 years
-
   // Self-signed CA certificate using node:crypto
   // Build certificate manually since node:crypto doesn't have a high-level API
   const caPrivateKeyPem = privateKey.export({
@@ -180,10 +177,6 @@ function generateSelfSignedCert(options: {
   const { spawnSync } = require('node:child_process')
 
   const subject = `/CN=${options.commonName}`
-  const now = new Date()
-  const _notAfter = new Date(
-    now.getTime() + options.validDays * 24 * 60 * 60 * 1000,
-  )
 
   // Create temp files for openssl
   const tmpDir = require('node:os').tmpdir()
@@ -443,16 +436,12 @@ export class ServiceMesh {
     const ca = getOrCreateCA()
 
     // Generate key pair for service
-    const { privateKey, publicKey } = generateKeyPairSync('ec', {
+    const { privateKey } = generateKeyPairSync('ec', {
       namedCurve: 'prime256v1',
     })
 
     const servicePrivateKeyPem = privateKey.export({
       type: 'pkcs8',
-      format: 'pem',
-    }) as string
-    const _servicePublicKeyPem = publicKey.export({
-      type: 'spki',
       format: 'pem',
     }) as string
 
@@ -916,10 +905,13 @@ export function createServiceMeshRouter(mesh: ServiceMesh) {
     .post(
       '/certificates/verify',
       async ({ body }) => {
-        const result = await mesh.verifyCertificate(
-          body.cert,
-          body.expectedService,
-        )
+        const selector: ServiceSelector | undefined = body.expectedService
+          ? {
+              ...body.expectedService,
+              owner: body.expectedService.owner as Address | undefined,
+            }
+          : undefined
+        const result = await mesh.verifyCertificate(body.cert, selector)
         return result
       },
       {

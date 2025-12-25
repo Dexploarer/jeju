@@ -2,9 +2,8 @@
  * TEE GPU Provider Tests
  * Tests for H200/H100 GPU provisioning via TEE
  *
- * These tests require TEE credentials to run:
- * - Set PHALA_ENDPOINT and PHALA_API_KEY environment variables
- * - Or skip these tests in CI without TEE access
+ * LOCAL mode is used for testing - generates simulated attestations
+ * that are clearly marked as simulated.
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
@@ -25,39 +24,35 @@ import {
 const TEST_ADDRESS = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as const
 const TEST_ENDPOINT = 'http://localhost:4030'
 
-// Check if TEE is available
-const TEE_AVAILABLE = !!(
-  process.env.PHALA_ENDPOINT && process.env.PHALA_API_KEY
-)
-
 describe('TEE GPU Provider', () => {
-  // Tests that require TEE credentials
-  describe.skipIf(!TEE_AVAILABLE)('With TEE Credentials', () => {
+  describe('LOCAL Mode (Simulated)', () => {
     let provider: TEEGPUProvider
 
     describe('Initialization', () => {
-      test('creates H200 provider', () => {
+      test('creates H200 provider in LOCAL mode', () => {
         provider = createTEEGPUProvider({
           gpuType: GPUType.H200,
           nodeId: `test-h200-${Date.now()}`,
           address: TEST_ADDRESS,
           endpoint: TEST_ENDPOINT,
-          teeProvider: TEEProvider.PHALA,
+          teeProvider: TEEProvider.LOCAL,
           gpuCount: 8,
         })
         expect(provider).toBeDefined()
+        expect(provider.isSimulated()).toBe(true)
       })
 
-      test('creates H100 provider', () => {
+      test('creates H100 provider in LOCAL mode', () => {
         const h100Provider = createTEEGPUProvider({
           gpuType: GPUType.H100,
           nodeId: `test-h100-${Date.now()}`,
           address: TEST_ADDRESS,
           endpoint: TEST_ENDPOINT,
-          teeProvider: TEEProvider.PHALA,
+          teeProvider: TEEProvider.LOCAL,
           gpuCount: 4,
         })
         expect(h100Provider).toBeDefined()
+        expect(h100Provider.isSimulated()).toBe(true)
       })
     })
 
@@ -72,12 +67,14 @@ describe('TEE GPU Provider', () => {
         await provider.shutdown()
       })
 
-      test('generates attestation on init', () => {
+      test('generates simulated attestation on init', () => {
         expect(attestation.mrEnclave).toBeDefined()
         expect(attestation.mrSigner).toBeDefined()
         expect(attestation.quote).toBeDefined()
         expect(attestation.timestamp).toBeGreaterThan(0)
-        expect(attestation.provider).toBe(TEEProvider.PHALA)
+        expect(attestation.provider).toBe(TEEProvider.LOCAL)
+        // IMPORTANT: Verify it's marked as simulated
+        expect(attestation.simulated).toBe(true)
       })
 
       test('registers node with scheduler', () => {
@@ -98,7 +95,7 @@ describe('TEE GPU Provider', () => {
       })
     })
 
-    describe('Job Execution', () => {
+    describe('Job Execution (Simulated)', () => {
       let provider2: TEEGPUProvider
       let jobRequest: GPUJobRequest
 
@@ -108,7 +105,7 @@ describe('TEE GPU Provider', () => {
           nodeId: `test-job-${Date.now()}`,
           address: TEST_ADDRESS,
           endpoint: TEST_ENDPOINT,
-          teeProvider: TEEProvider.PHALA,
+          teeProvider: TEEProvider.LOCAL,
           gpuCount: 8,
         })
         await provider2.initialize()
@@ -152,11 +149,26 @@ describe('TEE GPU Provider', () => {
         expect(['pending', 'running', 'completed', 'failed']).toContain(
           status.status,
         )
+
+        // If completed, verify attestation is simulated
+        if (status.result?.attestation) {
+          expect(status.result.attestation.simulated).toBe(true)
+        }
       })
     })
 
     describe('Node Management', () => {
-      test('getAvailableGPUNodes filters by type', () => {
+      test('getAvailableGPUNodes filters by type', async () => {
+        // Create a test node
+        const p = createTEEGPUProvider({
+          gpuType: GPUType.A100,
+          nodeId: `test-filter-${Date.now()}`,
+          address: TEST_ADDRESS,
+          endpoint: TEST_ENDPOINT,
+          teeProvider: TEEProvider.LOCAL,
+        })
+        await p.initialize()
+
         const h200Nodes = getAvailableGPUNodes(GPUType.H200)
         const a100Nodes = getAvailableGPUNodes(GPUType.A100)
 
@@ -167,6 +179,8 @@ describe('TEE GPU Provider', () => {
         for (const node of a100Nodes) {
           expect(node.gpu.gpuType).toBe(GPUType.A100)
         }
+
+        await p.shutdown()
       })
 
       test('getTEEGPUNode returns specific node', async () => {
@@ -176,7 +190,7 @@ describe('TEE GPU Provider', () => {
           nodeId,
           address: TEST_ADDRESS,
           endpoint: TEST_ENDPOINT,
-          teeProvider: TEEProvider.PHALA,
+          teeProvider: TEEProvider.LOCAL,
         })
         await p.initialize()
 
@@ -194,7 +208,7 @@ describe('TEE GPU Provider', () => {
           nodeId,
           address: TEST_ADDRESS,
           endpoint: TEST_ENDPOINT,
-          teeProvider: TEEProvider.PHALA,
+          teeProvider: TEEProvider.LOCAL,
         })
         await p.initialize()
         await p.shutdown()
@@ -205,7 +219,7 @@ describe('TEE GPU Provider', () => {
     })
   })
 
-  // Tests that don't require TEE credentials
+  // Tests that don't require any provider mode
   describe('GPU Types', () => {
     test('GPUType enum has expected values', () => {
       expect(GPUType.H200).toBe('nvidia-h200')
@@ -220,6 +234,7 @@ describe('TEE GPU Provider', () => {
       expect(TEEProvider.PHALA).toBe('phala')
       expect(TEEProvider.INTEL_TDX).toBe('intel-tdx')
       expect(TEEProvider.AMD_SEV).toBe('amd-sev')
+      expect(TEEProvider.LOCAL).toBe('local')
     })
 
     test('GPU_SPECS has all GPU types', () => {
@@ -242,7 +257,19 @@ describe('TEE GPU Provider', () => {
   })
 
   describe('Factory Function Validation', () => {
-    test('throws without TEE endpoint', () => {
+    test('LOCAL mode does not require endpoint/key', () => {
+      // Should not throw
+      const provider = createTEEGPUProvider({
+        gpuType: GPUType.H200,
+        address: TEST_ADDRESS,
+        endpoint: TEST_ENDPOINT,
+        teeProvider: TEEProvider.LOCAL,
+      })
+      expect(provider).toBeDefined()
+      expect(provider.isSimulated()).toBe(true)
+    })
+
+    test('throws without TEE endpoint for non-LOCAL mode', () => {
       // Clear env vars temporarily
       const savedEndpoint = process.env.PHALA_ENDPOINT
       const savedApiKey = process.env.PHALA_API_KEY
@@ -254,6 +281,7 @@ describe('TEE GPU Provider', () => {
           gpuType: GPUType.H200,
           address: TEST_ADDRESS,
           endpoint: TEST_ENDPOINT,
+          teeProvider: TEEProvider.PHALA,
         })
       }).toThrow('TEE endpoint required')
 
@@ -262,7 +290,7 @@ describe('TEE GPU Provider', () => {
       if (savedApiKey) process.env.PHALA_API_KEY = savedApiKey
     })
 
-    test('throws without TEE API key', () => {
+    test('throws without TEE API key for non-LOCAL mode', () => {
       // Clear env vars temporarily
       const savedEndpoint = process.env.PHALA_ENDPOINT
       const savedApiKey = process.env.PHALA_API_KEY
@@ -274,6 +302,7 @@ describe('TEE GPU Provider', () => {
           gpuType: GPUType.H200,
           address: TEST_ADDRESS,
           endpoint: TEST_ENDPOINT,
+          teeProvider: TEEProvider.PHALA,
         })
       }).toThrow('TEE API key required')
 
@@ -284,6 +313,34 @@ describe('TEE GPU Provider', () => {
         delete process.env.PHALA_ENDPOINT
       }
       if (savedApiKey) process.env.PHALA_API_KEY = savedApiKey
+    })
+  })
+
+  describe('Simulated Mode Verification', () => {
+    test('isSimulated returns true for LOCAL mode', () => {
+      const provider = createTEEGPUProvider({
+        gpuType: GPUType.H200,
+        address: TEST_ADDRESS,
+        endpoint: TEST_ENDPOINT,
+        teeProvider: TEEProvider.LOCAL,
+      })
+      expect(provider.isSimulated()).toBe(true)
+    })
+
+    test('attestations from LOCAL mode are marked as simulated', async () => {
+      const provider = createTEEGPUProvider({
+        gpuType: GPUType.H200,
+        nodeId: `test-sim-verify-${Date.now()}`,
+        address: TEST_ADDRESS,
+        endpoint: TEST_ENDPOINT,
+        teeProvider: TEEProvider.LOCAL,
+      })
+
+      const attestation = await provider.initialize()
+      expect(attestation.simulated).toBe(true)
+      expect(attestation.provider).toBe('local')
+
+      await provider.shutdown()
     })
   })
 })

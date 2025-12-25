@@ -9,7 +9,7 @@ import { cors } from '@elysiajs/cors'
 import { CORE_PORTS, getNetworkName } from '@jejunetwork/config'
 import { ZERO_ADDRESS } from '@jejunetwork/types'
 import { Elysia } from 'elysia'
-import { autocratAgentRuntime } from './agents'
+import { autocratAgentRuntime } from './agents/runtime'
 import {
   getComputeTriggerClient,
   registerAutocratTriggers,

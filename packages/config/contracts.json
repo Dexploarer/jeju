@@ -550,18 +550,18 @@
       }
     },
     "solana": {
-      "chainId": 0,
+      "chainId": 101,
       "rpcUrl": "https://api.mainnet-beta.solana.com",
       "bridge": {
         "programId": "",
         "evmLightClientProgramId": ""
       },
       "tokens": {
-        "usdc": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+        "usdc": ""
       }
     },
     "solanaDevnet": {
-      "chainId": 0,
+      "chainId": 103,
       "rpcUrl": "https://api.devnet.solana.com",
       "bridge": {
         "programId": "",

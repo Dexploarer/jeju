@@ -121,7 +121,7 @@ async function fetchAgentCard(baseUrl: string): Promise<AgentCard | null> {
  * Provider: Service Discovery
  * Discover available A2A agents and MCP services
  */
-export const serviceDiscoveryProvider: Provider = {
+const serviceDiscoveryProvider: Provider = {
   name: 'AUTOCRAT_SERVICE_DISCOVERY',
   description: 'Discover available A2A agents and MCP services in the network',
 
@@ -191,7 +191,7 @@ export const serviceDiscoveryProvider: Provider = {
  * Provider: Other Autocrat Votes
  * Get votes from other autocrat agents on active proposals
  */
-export const otherAutocratVotesProvider: Provider = {
+const otherAutocratVotesProvider: Provider = {
   name: 'AUTOCRAT_OTHER_VOTES',
   description: 'Get votes from other autocrat agents on proposals',
 
@@ -250,7 +250,7 @@ export const otherAutocratVotesProvider: Provider = {
  * Provider: Active Proposals
  * Get list of proposals awaiting deliberation
  */
-export const activeProposalsProvider: Provider = {
+const activeProposalsProvider: Provider = {
   name: 'AUTOCRAT_ACTIVE_PROPOSALS',
   description: 'Get active proposals awaiting autocrat deliberation',
 
@@ -293,7 +293,7 @@ export const activeProposalsProvider: Provider = {
  * Provider: Proposal Detail
  * Get full details of a specific proposal
  */
-export const proposalDetailProvider: Provider = {
+const proposalDetailProvider: Provider = {
   name: 'AUTOCRAT_PROPOSAL_DETAIL',
   description: 'Get full details of a specific proposal for evaluation',
 
@@ -341,7 +341,7 @@ Use this information to inform your deliberation vote.`,
  * Provider: CEO Status
  * Get current AI CEO status and recent decisions
  */
-export const ceoStatusProvider: Provider = {
+const ceoStatusProvider: Provider = {
   name: 'AUTOCRAT_CEO_STATUS',
   description: 'Get AI CEO status and recent decision patterns',
 
@@ -374,7 +374,7 @@ ${ceo.lastDecision ? `Last Decision: ${ceo.lastDecision.proposalId.slice(0, 12)}
  * Provider: Available MCP Tools
  * List MCP tools available for governance actions
  */
-export const mcpToolsProvider: Provider = {
+const mcpToolsProvider: Provider = {
   name: 'AUTOCRAT_MCP_TOOLS',
   description: 'List available MCP tools for governance actions',
 
@@ -445,7 +445,7 @@ export const mcpToolsProvider: Provider = {
  * Provider: Available A2A Skills
  * List A2A skills available across all agents
  */
-export const a2aSkillsProvider: Provider = {
+const a2aSkillsProvider: Provider = {
   name: 'AUTOCRAT_A2A_SKILLS',
   description: 'List available A2A skills across autocrat and CEO agents',
 
@@ -509,7 +509,7 @@ export const a2aSkillsProvider: Provider = {
  * Provider: Governance Stats
  * Get overall governance statistics
  */
-export const governanceStatsProvider: Provider = {
+const governanceStatsProvider: Provider = {
   name: 'AUTOCRAT_GOVERNANCE_STATS',
   description: 'Get overall DAO governance statistics',
 
@@ -548,7 +548,7 @@ and calibrate your voting recommendations.`,
  * Provider: Research Reports
  * Access research reports for proposals
  */
-export const researchReportsProvider: Provider = {
+const researchReportsProvider: Provider = {
   name: 'AUTOCRAT_RESEARCH_REPORTS',
   description: 'Access deep research reports for proposals',
 

@@ -288,7 +288,8 @@ describe('verifyPeerDASSampling', () => {
 
 describe('DASampler', () => {
   it('should use default config', () => {
-    const _sampler = new DASampler({})
+    // Verify DASampler can be constructed with empty config
+    new DASampler({})
 
     expect(DEFAULT_SAMPLING_CONFIG.sampleCount).toBe(16)
     expect(DEFAULT_SAMPLING_CONFIG.targetConfidence).toBe(0.9999)

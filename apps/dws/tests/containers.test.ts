@@ -202,13 +202,7 @@ describe('Warm Pool', () => {
       memoryMb: 512,
       storageMb: 1024,
     }
-    const _instance = addInstance(
-      testDigest,
-      'inst-warm',
-      resources,
-      TEST_USER,
-      'node-1',
-    )
+    addInstance(testDigest, 'inst-warm', resources, TEST_USER, 'node-1')
 
     // Make it warm
     updateInstanceState(testDigest, 'inst-warm', 'warm', {

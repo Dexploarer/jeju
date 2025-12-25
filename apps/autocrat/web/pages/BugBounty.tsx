@@ -20,12 +20,16 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { formatEther, parseEther } from 'viem'
 import {
+  assessBugBounty,
+  type BountyAssessment,
   type BountyStats,
   type BountySubmission,
+  type BountySubmissionDraft,
   fetchBugBountyStats,
   fetchBugBountySubmissions,
   fetchResearcherLeaderboard,
   type ResearcherLeaderboardEntry,
+  submitBugBounty,
 } from '../config/api'
 
 // Severity config
@@ -121,8 +125,66 @@ export default function BugBountyPage() {
   )
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'submissions' | 'leaderboard'
+    'overview' | 'submissions' | 'submit' | 'leaderboard'
   >('overview')
+
+  // Submission form state
+  const [draft, setDraft] = useState<BountySubmissionDraft>({
+    title: '',
+    summary: '',
+    description: '',
+    severity: 0,
+    vulnType: 0,
+    affectedComponents: [],
+    stepsToReproduce: [],
+    proofOfConcept: '',
+    suggestedFix: '',
+    impact: '',
+  })
+  const [assessment, setAssessment] = useState<BountyAssessment | null>(null)
+  const [assessing, setAssessing] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+
+  const handleAssess = async () => {
+    setAssessing(true)
+    setSubmitError(null)
+    try {
+      const result = await assessBugBounty(draft)
+      setAssessment(result)
+    } catch (e) {
+      setSubmitError(e instanceof Error ? e.message : 'Assessment failed')
+    }
+    setAssessing(false)
+  }
+
+  const handleSubmit = async () => {
+    setSubmitting(true)
+    setSubmitError(null)
+    try {
+      await submitBugBounty(
+        draft,
+        '0x0000000000000000000000000000000000000000', // Would come from wallet
+      )
+      setActiveTab('submissions')
+      setDraft({
+        title: '',
+        summary: '',
+        description: '',
+        severity: 0,
+        vulnType: 0,
+        affectedComponents: [],
+        stepsToReproduce: [],
+        proofOfConcept: '',
+        suggestedFix: '',
+        impact: '',
+      })
+      setAssessment(null)
+    } catch (e) {
+      setSubmitError(e instanceof Error ? e.message : 'Submission failed')
+    }
+    setSubmitting(false)
+  }
 
   useEffect(() => {
     async function fetchData() {
@@ -229,20 +291,22 @@ export default function BugBountyPage() {
       {/* Tabs */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex gap-4 border-b border-gray-700 mb-8">
-          {(['overview', 'submissions', 'leaderboard'] as const).map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-3 font-medium capitalize transition-colors ${
-                activeTab === tab
-                  ? 'text-red-400 border-b-2 border-red-400'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
+          {(['overview', 'submissions', 'submit', 'leaderboard'] as const).map(
+            (tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-3 font-medium capitalize transition-colors ${
+                  activeTab === tab
+                    ? 'text-red-400 border-b-2 border-red-400'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                {tab}
+              </button>
+            ),
+          )}
         </div>
 
         {activeTab === 'overview' && (
@@ -546,6 +610,234 @@ export default function BugBountyPage() {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'submit' && (
+          <div className="pb-16 max-w-3xl mx-auto">
+            <h2 className="text-2xl font-bold text-white mb-6">
+              Submit Vulnerability Report
+            </h2>
+
+            {submitError && (
+              <div className="mb-6 p-4 bg-red-900/30 border border-red-800 rounded-lg text-red-400">
+                {submitError}
+              </div>
+            )}
+
+            <div className="space-y-6">
+              {/* Title */}
+              <div>
+                <label
+                  htmlFor="report-title"
+                  className="block text-sm font-medium text-gray-300 mb-2"
+                >
+                  Title
+                </label>
+                <input
+                  id="report-title"
+                  type="text"
+                  value={draft.title}
+                  onChange={(e) =>
+                    setDraft({ ...draft, title: e.target.value })
+                  }
+                  placeholder="Brief description of the vulnerability"
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-red-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Severity */}
+              <div>
+                <div className="block text-sm font-medium text-gray-300 mb-2">
+                  Severity
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {SEVERITY_CONFIG.map((sev, i) => (
+                    <button
+                      key={sev.label}
+                      type="button"
+                      onClick={() => setDraft({ ...draft, severity: i })}
+                      className={`p-3 rounded-lg border-2 transition-colors ${
+                        draft.severity === i
+                          ? `border-${sev.textColor.replace('text-', '')} bg-${sev.textColor.replace('text-', '')}/20`
+                          : 'border-gray-700 hover:border-gray-600'
+                      }`}
+                    >
+                      <div
+                        className={`text-sm font-medium ${draft.severity === i ? sev.textColor : 'text-gray-300'}`}
+                      >
+                        {sev.label}
+                      </div>
+                      <div className="text-xs text-gray-500">{sev.range}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Vuln Type */}
+              <div>
+                <div className="block text-sm font-medium text-gray-300 mb-2">
+                  Vulnerability Type
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {VULN_TYPES.map((type, i) => (
+                    <button
+                      key={type.label}
+                      type="button"
+                      onClick={() => setDraft({ ...draft, vulnType: i })}
+                      className={`p-3 rounded-lg border transition-colors flex items-center gap-3 ${
+                        draft.vulnType === i
+                          ? 'border-red-500 bg-red-500/20'
+                          : 'border-gray-700 hover:border-gray-600'
+                      }`}
+                    >
+                      <type.icon
+                        className={`w-5 h-5 ${draft.vulnType === i ? 'text-red-400' : 'text-gray-500'}`}
+                      />
+                      <div className="text-left">
+                        <div
+                          className={`text-sm font-medium ${draft.vulnType === i ? 'text-red-400' : 'text-gray-300'}`}
+                        >
+                          {type.label}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Summary */}
+              <div>
+                <label
+                  htmlFor="report-summary"
+                  className="block text-sm font-medium text-gray-300 mb-2"
+                >
+                  Summary
+                </label>
+                <textarea
+                  id="report-summary"
+                  value={draft.summary}
+                  onChange={(e) =>
+                    setDraft({ ...draft, summary: e.target.value })
+                  }
+                  placeholder="Brief summary of the vulnerability and its impact"
+                  rows={3}
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-red-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label
+                  htmlFor="report-description"
+                  className="block text-sm font-medium text-gray-300 mb-2"
+                >
+                  Full Description
+                </label>
+                <textarea
+                  id="report-description"
+                  value={draft.description}
+                  onChange={(e) =>
+                    setDraft({ ...draft, description: e.target.value })
+                  }
+                  placeholder="Detailed description of the vulnerability..."
+                  rows={8}
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-red-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Proof of Concept */}
+              <div>
+                <label
+                  htmlFor="report-poc"
+                  className="block text-sm font-medium text-gray-300 mb-2"
+                >
+                  Proof of Concept (Optional)
+                </label>
+                <textarea
+                  id="report-poc"
+                  value={draft.proofOfConcept}
+                  onChange={(e) =>
+                    setDraft({ ...draft, proofOfConcept: e.target.value })
+                  }
+                  placeholder="Code or steps to reproduce the vulnerability..."
+                  rows={6}
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white font-mono text-sm placeholder-gray-500 focus:border-red-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Assessment Result */}
+              {assessment && (
+                <div className="p-4 bg-gray-800 rounded-lg border border-gray-700">
+                  <h3 className="font-semibold text-white mb-3">Assessment</h3>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <span className="text-gray-400 text-sm">Severity</span>
+                      <p
+                        className={`font-medium ${SEVERITY_CONFIG[assessment.severity].textColor}`}
+                      >
+                        {SEVERITY_CONFIG[assessment.severity].label}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-gray-400 text-sm">
+                        Quality Score
+                      </span>
+                      <p className="font-medium text-white">
+                        {assessment.qualityScore}/100
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-gray-400 text-sm">
+                        Estimated Reward
+                      </span>
+                      <p className="font-medium text-green-400">
+                        ${assessment.estimatedReward.min.toLocaleString()} - $
+                        {assessment.estimatedReward.max.toLocaleString()}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-gray-400 text-sm">Ready</span>
+                      <p
+                        className={`font-medium ${assessment.readyToSubmit ? 'text-green-400' : 'text-yellow-400'}`}
+                      >
+                        {assessment.readyToSubmit ? 'Yes' : 'Needs improvement'}
+                      </p>
+                    </div>
+                  </div>
+                  {assessment.issues.length > 0 && (
+                    <div className="mt-3">
+                      <span className="text-sm text-yellow-400">Issues:</span>
+                      <ul className="text-sm text-gray-400 mt-1">
+                        {assessment.issues.map((issue) => (
+                          <li key={issue}>• {issue}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-4">
+                <button
+                  type="button"
+                  onClick={handleAssess}
+                  disabled={assessing || !draft.title || !draft.description}
+                  className="flex-1 px-6 py-3 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-600 text-white font-medium rounded-lg transition-colors"
+                >
+                  {assessing ? 'Assessing...' : 'Assess Report'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={submitting || !assessment?.readyToSubmit}
+                  className="flex-1 px-6 py-3 bg-red-500 hover:bg-red-600 disabled:bg-gray-800 disabled:text-gray-600 text-white font-medium rounded-lg transition-colors"
+                >
+                  {submitting ? 'Submitting...' : 'Submit Report'}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

@@ -31,7 +31,7 @@ const AssetManifestSchema = z.object({
 type AssetManifest = z.infer<typeof AssetManifestSchema>
 
 // Cached Asset Schema
-const CachedAssetSchema = z.object({
+const _CachedAssetSchema = z.object({
   contentHash: z.string().regex(/^[a-f0-9]{64}$/),
   data: z.instanceof(Uint8Array),
   mimeType: z.string().min(1),
@@ -39,8 +39,6 @@ const CachedAssetSchema = z.object({
   cachedAt: z.number().int().positive(),
   accessCount: z.number().int().nonnegative(),
 })
-
-type CachedAsset = z.infer<typeof CachedAssetSchema>
 
 function validateStaticAssetConfig(data: unknown): StaticAssetConfig {
   return StaticAssetConfigSchema.parse(data)

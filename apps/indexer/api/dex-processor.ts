@@ -558,7 +558,7 @@ async function processSwapV2(
   }
 
   // Create swap entity
-  const txHash = log.topics[0]?.slice(0, 66) || 'unknown' // Simplified - would need actual tx hash
+  const txHash = log.transactionHash
   const swapId = `${txHash}-${log.logIndex}`
   const sender = accountFactory.getOrCreate(
     senderAddr,
@@ -738,7 +738,7 @@ async function processSwapV3(
   )
 
   // Create swap
-  const txHash = log.topics[0]?.slice(0, 66) || 'unknown'
+  const txHash = log.transactionHash
   const swapId = `${txHash}-${log.logIndex}`
   const sender = accountFactory.getOrCreate(
     senderAddr,
@@ -821,7 +821,8 @@ async function processSyncV2(
 
   pool.reserve0 = reserve0
   pool.reserve1 = reserve1
-  pool.totalLiquidity = reserve0 + reserve1 // Simplified - should use sqrt(reserve0 * reserve1)
+  // Sum of reserves as proxy for total liquidity (geometric mean would be more accurate for Uniswap V2)
+  pool.totalLiquidity = reserve0 + reserve1
 
   pools.set(poolId, pool)
 }

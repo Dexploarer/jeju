@@ -141,7 +141,7 @@ impl WireGuardTunnel {
 
         tokio::spawn(async move {
             if let Err(e) = run_tunnel_loop(
-                tunn,
+                Box::new(tunn),
                 socket,
                 running.clone(),
                 bytes_up,
@@ -299,54 +299,49 @@ async fn run_tunnel_loop(
                         bytes_down.fetch_add(n as u64, Ordering::Relaxed);
                         packets_down.fetch_add(1, Ordering::Relaxed);
 
-                        let mut tunn_guard = tunn.lock();
-                        let mut result = tunn_guard.decapsulate(None, &recv_buf[..n], &mut send_buf);
+                        // Collect data to write while holding lock, then release before async writes
+                        let mut tun_writes: Vec<Vec<u8>> = Vec::new();
+                        {
+                            let mut tunn_guard = tunn.lock();
+                            let mut result = tunn_guard.decapsulate(None, &recv_buf[..n], &mut send_buf);
 
-                        loop {
-                            match result {
-                                TunnResult::WriteToNetwork(data) => {
-                                    if let Err(e) = socket.send(data) {
-                                        tracing::warn!("Failed to send response: {}", e);
-                                    }
-                                    bytes_up.fetch_add(data.len() as u64, Ordering::Relaxed);
-                                    packets_up.fetch_add(1, Ordering::Relaxed);
-                                }
-                                TunnResult::WriteToTunnelV4(data, _src) => {
-                                    // Write decrypted packet to TUN interface
-                                    #[cfg(any(target_os = "linux", target_os = "macos"))]
-                                    {
-                                        if let Err(e) = write_to_tun(&tun_device, data).await {
-                                            tracing::warn!("Failed to write to TUN: {}", e);
+                            loop {
+                                match result {
+                                    TunnResult::WriteToNetwork(data) => {
+                                        if let Err(e) = socket.send(data) {
+                                            tracing::warn!("Failed to send response: {}", e);
                                         }
+                                        bytes_up.fetch_add(data.len() as u64, Ordering::Relaxed);
+                                        packets_up.fetch_add(1, Ordering::Relaxed);
                                     }
-                                    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
-                                    {
-                                        let _ = data; // Silence unused warning
-                                        tracing::debug!("Received {} bytes from tunnel", data.len());
+                                    TunnResult::WriteToTunnelV4(data, _src) => {
+                                        tun_writes.push(data.to_vec());
                                     }
-                                }
-                                TunnResult::WriteToTunnelV6(data, _src) => {
-                                    #[cfg(any(target_os = "linux", target_os = "macos"))]
-                                    {
-                                        if let Err(e) = write_to_tun(&tun_device, data).await {
-                                            tracing::warn!("Failed to write IPv6 to TUN: {}", e);
-                                        }
+                                    TunnResult::WriteToTunnelV6(data, _src) => {
+                                        tun_writes.push(data.to_vec());
                                     }
-                                    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
-                                    {
-                                        let _ = data;
-                                        tracing::debug!("Received {} IPv6 bytes from tunnel", data.len());
+                                    TunnResult::Done => break,
+                                    TunnResult::Err(e) => {
+                                        tracing::warn!("Decapsulation error: {:?}", e);
+                                        break;
                                     }
                                 }
-                                TunnResult::Done => break,
-                                TunnResult::Err(e) => {
-                                    tracing::warn!("Decapsulation error: {:?}", e);
-                                    break;
-                                }
+
+                                // Check if there's more data to process
+                                result = tunn_guard.decapsulate(None, &[], &mut send_buf);
                             }
+                        } // tunn_guard dropped here
 
-                            // Check if there's more data to process
-                            result = tunn_guard.decapsulate(None, &[], &mut send_buf);
+                        // Now perform async TUN writes without holding the lock
+                        #[cfg(any(target_os = "linux", target_os = "macos"))]
+                        for data in tun_writes {
+                            if let Err(e) = write_to_tun(&tun_device, &data).await {
+                                tracing::warn!("Failed to write to TUN: {}", e);
+                            }
+                        }
+                        #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+                        for data in tun_writes {
+                            tracing::debug!("Received {} bytes from tunnel", data.len());
                         }
                     }
                     Ok(_) => {}
@@ -444,136 +439,243 @@ pub fn derive_public_key(private_key: &str) -> Result<String, VPNError> {
     Ok(base64::engine::general_purpose::STANDARD.encode(public_key.as_bytes()))
 }
 
-// Platform-specific TUN interface handling
-//
-// IMPLEMENTATION STATUS: These are placeholder implementations.
-// The WireGuard protocol layer (boringtun) is fully functional, but the
-// TUN interface code needs completion to actually route traffic.
-//
-// TODO: Integrate `tun` crate for Linux/macOS and `wintun` crate for Windows.
-// See Cargo.toml for adding these dependencies.
+// Platform-specific TUN interface handling using the `tun` crate for Linux/macOS
+// and `wintun` crate for Windows.
 
 #[cfg(target_os = "linux")]
 mod platform {
     use super::*;
+    use std::io::{Read, Write};
+    use std::sync::Arc;
+    use tokio::sync::Mutex;
 
     pub struct TunDevice {
         pub name: String,
-        // TODO: Add actual file descriptor
-        // pub fd: std::os::unix::io::RawFd,
+        device: Arc<Mutex<tun::platform::Device>>,
     }
 
-    /// TODO: Replace with actual TUN device creation using the `tun` crate:
-    /// ```ignore
-    /// use tun::{Configuration, Device};
-    /// let mut config = Configuration::default();
-    /// config.name("jeju0").mtu(MTU as i32).address((10, 0, 0, 2)).up();
-    /// let dev = tun::create_as_async(&config)?;
-    /// ```
+    /// Create a TUN interface on Linux using the tun crate
     pub async fn create_tun_interface() -> Result<TunDevice, VPNError> {
         tracing::info!("Creating TUN interface on Linux");
-        tracing::warn!("TUN interface is a placeholder - not routing real traffic");
+
+        let mut config = tun::Configuration::default();
+        config
+            .name("jeju0")
+            .mtu(MTU as i32)
+            .address((10, 0, 0, 2))
+            .netmask((255, 255, 255, 0))
+            .up();
+
+        #[cfg(target_os = "linux")]
+        config.platform(|config| {
+            config.packet_information(true);
+        });
+
+        let device = tun::create(&config)
+            .map_err(|e| VPNError::TunnelError(format!("Failed to create TUN device: {}", e)))?;
+
+        let name = device
+            .name()
+            .map_err(|e| VPNError::TunnelError(format!("Failed to get TUN device name: {}", e)))?;
+
+        tracing::info!("Created TUN interface: {}", name);
 
         Ok(TunDevice {
-            name: "jeju0".to_string(),
+            name,
+            device: Arc::new(Mutex::new(device)),
         })
     }
 
-    /// TODO: Implement actual write to TUN device
+    /// Write data to the TUN device
     pub async fn write_to_tun(device: &TunDevice, data: &[u8]) -> Result<(), VPNError> {
-        tracing::trace!("Writing {} bytes to TUN {}", data.len(), device.name);
+        let mut dev = device.device.lock().await;
+        dev.write_all(data)
+            .map_err(|e| VPNError::TunnelError(format!("Failed to write to TUN: {}", e)))?;
+        tracing::trace!("Wrote {} bytes to TUN {}", data.len(), device.name);
         Ok(())
     }
 
-    /// TODO: Implement actual read from TUN device
+    /// Read data from the TUN device
     pub async fn read_from_tun<'a>(
         device: &TunDevice,
         buf: &'a mut [u8],
     ) -> Result<&'a [u8], VPNError> {
-        let _ = (device, buf);
-        Ok(&[])
+        let mut dev = device.device.lock().await;
+
+        // Use non-blocking read
+        match dev.read(buf) {
+            Ok(n) if n > 0 => {
+                tracing::trace!("Read {} bytes from TUN {}", n, device.name);
+                Ok(&buf[..n])
+            }
+            Ok(_) => Ok(&[]),
+            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => Ok(&[]),
+            Err(e) => Err(VPNError::TunnelError(format!(
+                "Failed to read from TUN: {}",
+                e
+            ))),
+        }
     }
 }
 
 #[cfg(target_os = "macos")]
 mod platform {
     use super::*;
+    use std::io::{Read, Write};
+    use std::sync::Arc;
+    use tokio::sync::Mutex;
 
     pub struct TunDevice {
         pub name: String,
-        // TODO: Add actual utun file descriptor
+        device: Arc<Mutex<tun::platform::Device>>,
     }
 
-    /// TODO: Replace with actual utun device creation using the `tun` crate:
-    /// ```ignore
-    /// use tun::{Configuration, Device};
-    /// let config = Configuration::default();
-    /// let dev = tun::create(&config)?;
-    /// // macOS auto-assigns utunX name
-    /// ```
+    /// Create a TUN interface on macOS using the tun crate (utun)
     pub async fn create_tun_interface() -> Result<TunDevice, VPNError> {
         tracing::info!("Creating TUN interface on macOS (utun)");
-        tracing::warn!("TUN interface is a placeholder - not routing real traffic");
+
+        let mut config = tun::Configuration::default();
+        config
+            .mtu(MTU as i32)
+            .address((10, 0, 0, 2))
+            .netmask((255, 255, 255, 0))
+            .up();
+
+        let device = tun::create(&config)
+            .map_err(|e| VPNError::TunnelError(format!("Failed to create utun device: {}", e)))?;
+
+        let name = device
+            .name()
+            .map_err(|e| VPNError::TunnelError(format!("Failed to get utun device name: {}", e)))?;
+
+        tracing::info!("Created utun interface: {}", name);
 
         Ok(TunDevice {
-            name: "utun99".to_string(),
+            name,
+            device: Arc::new(Mutex::new(device)),
         })
     }
 
-    /// TODO: Implement actual write to utun device
+    /// Write data to the utun device
     pub async fn write_to_tun(device: &TunDevice, data: &[u8]) -> Result<(), VPNError> {
-        tracing::trace!("Writing {} bytes to TUN {}", data.len(), device.name);
+        let mut dev = device.device.lock().await;
+        dev.write_all(data)
+            .map_err(|e| VPNError::TunnelError(format!("Failed to write to utun: {}", e)))?;
+        tracing::trace!("Wrote {} bytes to utun {}", data.len(), device.name);
         Ok(())
     }
 
-    /// TODO: Implement actual read from utun device
+    /// Read data from the utun device
     pub async fn read_from_tun<'a>(
         device: &TunDevice,
         buf: &'a mut [u8],
     ) -> Result<&'a [u8], VPNError> {
-        let _ = (device, buf);
-        Ok(&[])
+        let mut dev = device.device.lock().await;
+
+        match dev.read(buf) {
+            Ok(n) if n > 0 => {
+                tracing::trace!("Read {} bytes from utun {}", n, device.name);
+                Ok(&buf[..n])
+            }
+            Ok(_) => Ok(&[]),
+            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => Ok(&[]),
+            Err(e) => Err(VPNError::TunnelError(format!(
+                "Failed to read from utun: {}",
+                e
+            ))),
+        }
     }
 }
 
 #[cfg(target_os = "windows")]
 mod platform {
     use super::*;
+    use std::sync::Arc;
 
     pub struct TunDevice {
         pub name: String,
-        // TODO: Add WinTun session handle
+        session: Arc<wintun::Session>,
     }
 
-    /// TODO: Replace with actual WinTun device creation using the `wintun` crate:
-    /// ```ignore
-    /// use wintun::Adapter;
-    /// let wintun = unsafe { wintun::load()? };
-    /// let adapter = Adapter::create(&wintun, "JejuVPN", "JejuVPN", None)?;
-    /// let session = adapter.start_session(wintun::MAX_RING_CAPACITY)?;
-    /// ```
+    /// Create a TUN interface on Windows using the wintun crate
     pub async fn create_tun_interface() -> Result<TunDevice, VPNError> {
         tracing::info!("Creating TUN interface on Windows (WinTun)");
-        tracing::warn!("TUN interface is a placeholder - not routing real traffic");
+
+        // Load the WinTun DLL
+        let wintun = unsafe { wintun::load() }
+            .map_err(|e| VPNError::TunnelError(format!("Failed to load WinTun: {}", e)))?;
+
+        // Create adapter
+        let adapter =
+            wintun::Adapter::create(&wintun, "JejuVPN", "JejuVPN", None).map_err(|e| {
+                VPNError::TunnelError(format!("Failed to create WinTun adapter: {}", e))
+            })?;
+
+        // Set IP address using netsh (WinTun doesn't do this automatically)
+        let output = std::process::Command::new("netsh")
+            .args([
+                "interface",
+                "ip",
+                "set",
+                "address",
+                "name=JejuVPN",
+                "static",
+                "10.0.0.2",
+                "255.255.255.0",
+            ])
+            .output();
+
+        if let Err(e) = output {
+            tracing::warn!("Failed to set IP address: {}", e);
+        }
+
+        // Start session
+        let session = adapter
+            .start_session(wintun::MAX_RING_CAPACITY)
+            .map_err(|e| VPNError::TunnelError(format!("Failed to start WinTun session: {}", e)))?;
+
+        tracing::info!("Created WinTun interface: JejuVPN");
 
         Ok(TunDevice {
             name: "JejuVPN".to_string(),
+            session: Arc::new(session),
         })
     }
 
-    /// TODO: Implement actual write to WinTun device
+    /// Write data to the WinTun device
     pub async fn write_to_tun(device: &TunDevice, data: &[u8]) -> Result<(), VPNError> {
-        tracing::trace!("Writing {} bytes to TUN {}", data.len(), device.name);
+        let mut packet = device
+            .session
+            .allocate_send_packet(data.len() as u16)
+            .map_err(|e| {
+                VPNError::TunnelError(format!("Failed to allocate WinTun packet: {}", e))
+            })?;
+
+        packet.bytes_mut().copy_from_slice(data);
+        device.session.send_packet(packet);
+
+        tracing::trace!("Wrote {} bytes to WinTun {}", data.len(), device.name);
         Ok(())
     }
 
-    /// TODO: Implement actual read from WinTun device
+    /// Read data from the WinTun device
     pub async fn read_from_tun<'a>(
         device: &TunDevice,
         buf: &'a mut [u8],
     ) -> Result<&'a [u8], VPNError> {
-        let _ = (device, buf);
-        Ok(&[])
+        match device.session.try_receive() {
+            Ok(Some(packet)) => {
+                let len = packet.bytes().len().min(buf.len());
+                buf[..len].copy_from_slice(&packet.bytes()[..len]);
+                tracing::trace!("Read {} bytes from WinTun {}", len, device.name);
+                Ok(&buf[..len])
+            }
+            Ok(None) => Ok(&[]),
+            Err(e) => Err(VPNError::TunnelError(format!(
+                "Failed to read from WinTun: {}",
+                e
+            ))),
+        }
     }
 }
 

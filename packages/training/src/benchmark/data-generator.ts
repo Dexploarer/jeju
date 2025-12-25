@@ -685,42 +685,6 @@ export class BenchmarkDataGenerator {
       }
     }
 
-    // =========================================================================
-    // LEGACY PLACEHOLDER DATA (not used by causal simulation)
-    // These fields exist for backward compatibility with older benchmarks.
-    // They contain synthetic placeholder data, NOT real ground truth.
-    // For causal simulation, use: hiddenNarrativeFacts, causalEvents, priceHistory
-    // =========================================================================
-
-    // SYNTHETIC: Simple heuristic - buying the correct outcome at tick 1
-    // This is NOT a sophisticated optimal action calculation
-    const optimalActions: GroundTruth['optimalActions'] = []
-    for (const [marketId, outcome] of Object.entries(marketOutcomes)) {
-      optimalActions.push({
-        tick: 1,
-        type: 'buy_prediction',
-        target: marketId,
-        expectedValue: 100, // Placeholder value
-        reason: `[SYNTHETIC] Market ${marketId} will resolve ${outcome ? 'YES' : 'NO'}`,
-      })
-    }
-
-    // SYNTHETIC: Placeholder social opportunities at regular intervals
-    const socialOpportunities: GroundTruth['socialOpportunities'] = []
-    const socialInterval = Math.max(1, Math.floor(numTicks / 5))
-    for (let i = 0; i < numTicks; i += socialInterval) {
-      socialOpportunities.push({
-        tick: i,
-        type: 'synthetic_opportunity',
-        value: 100, // Fixed placeholder value
-        description: `[SYNTHETIC] Placeholder opportunity at tick ${i}`,
-      })
-    }
-
-    // SYNTHETIC: Empty arrays - these were never meaningfully implemented
-    const hiddenFacts: GroundTruth['hiddenFacts'] = []
-    const hiddenEvents: GroundTruth['hiddenEvents'] = []
-
     // TRUE FACTS: Actual computed values from initial state
     const trueFacts: GroundTruth['trueFacts'] = {
       totalLiquidity: initialState.predictionMarkets.reduce(
@@ -741,10 +705,6 @@ export class BenchmarkDataGenerator {
     return {
       marketOutcomes,
       priceHistory,
-      optimalActions,
-      socialOpportunities,
-      hiddenFacts,
-      hiddenEvents,
       trueFacts,
       hiddenNarrativeFacts,
       causalEvents,

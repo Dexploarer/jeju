@@ -215,46 +215,14 @@ describe('CoW Profitability Analysis', () => {
   })
 
   it('should find profitable orders when prices are favorable', () => {
-    // Create mock auction
-    const _auction = {
-      id: 1,
-      chainId: 1,
-      orders: [
-        {
-          uid: '0x1234' as `0x${string}`,
-          chainId: 1,
-          owner: '0x1111111111111111111111111111111111111111' as Address,
-          sellToken: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' as Address, // USDC
-          buyToken: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2' as Address, // WETH
-          sellAmount: BigInt('1000000000'), // 1000 USDC
-          buyAmount: BigInt('300000000000000000'), // 0.3 WETH (user wants)
-          validTo: Math.floor(Date.now() / 1000) + 3600,
-          appData: '0x00' as `0x${string}`,
-          feeAmount: BigInt('1000000'),
-          kind: 'sell' as const,
-          partiallyFillable: false,
-          receiver: '0x1111111111111111111111111111111111111111' as Address,
-          signature: '0x' as `0x${string}`,
-          signingScheme: 'eip712' as const,
-          status: 'open' as const,
-          createdAt: Date.now(),
-          filledAmount: BigInt(0),
-        },
-      ],
-      tokens: [] as Address[],
-      deadline: Math.floor(Date.now() / 1000) + 30,
-    }
-
     // Our prices: 1 USDC = $1, 1 WETH = $3000
-    // User wants 0.3 WETH for 1000 USDC = $333/WETH implied
-    // We can provide WETH at $3000 = profit
     const ourPrices = new Map<string, bigint>()
     ourPrices.set('0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', BigInt(1e18)) // USDC = 1
     ourPrices.set('0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2', BigInt(3000e18)) // WETH = 3000
 
     const profitable = solver.findProfitableOrders(1, ourPrices, 10)
     // Note: findProfitableOrders uses getCurrentAuction which isn't set
-    // This is testing the type structure, actual logic would need real auction
+    // This is testing the method returns an array, actual logic would need real auction
     expect(Array.isArray(profitable)).toBe(true)
   })
 

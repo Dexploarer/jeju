@@ -12,21 +12,16 @@
 // Trajectory recorder
 export {
   // Types
-  type Action,
   type ActiveTrajectory,
   // Instances
   defaultStorage,
   type EndTrajectoryOptions,
-  type EnvironmentState,
   // Classes
   InMemoryTrajectoryStorage,
-  type LLMCall,
   type LLMCallLogRecord,
-  type ProviderAccess,
   type StartTrajectoryOptions,
   type TrajectoryRecord,
   TrajectoryRecorder,
-  type TrajectoryStep,
   type TrajectoryStorage,
   trajectoryRecorder,
 } from './trajectory-recorder'

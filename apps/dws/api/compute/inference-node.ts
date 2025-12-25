@@ -10,7 +10,7 @@
  * - Nodes must stake to register and maintain active status
  */
 
-import { getContractsConfig } from '@jejunetwork/config'
+import { getContract, getRpcUrl } from '@jejunetwork/config'
 import type { Address, Hex, PublicClient } from 'viem'
 import { createPublicClient, http, keccak256, toBytes } from 'viem'
 import { z } from 'zod'
@@ -193,11 +193,7 @@ let computeRegistryAddress: Address | null = null
 
 function getClient(): PublicClient {
   if (!publicClient) {
-    const config = getContractsConfig()
-    const rpcUrl = config.rpcUrl
-    if (!rpcUrl) {
-      throw new Error('RPC URL not configured')
-    }
+    const rpcUrl = getRpcUrl()
     publicClient = createPublicClient({ transport: http(rpcUrl) })
   }
   return publicClient
@@ -205,8 +201,7 @@ function getClient(): PublicClient {
 
 function getComputeRegistryAddress(): Address {
   if (!computeRegistryAddress) {
-    const config = getContractsConfig()
-    const address = config.addresses.computeRegistry
+    const address = getContract('compute', 'ComputeRegistry')
     if (!address) {
       throw new Error('ComputeRegistry address not configured')
     }

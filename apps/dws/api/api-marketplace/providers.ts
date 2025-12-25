@@ -506,6 +506,20 @@ export function getProvider(id: string): APIProvider | undefined {
 }
 
 /**
+ * Get provider by ID (alias for getProvider)
+ */
+export function getProviderById(id: string): APIProvider | undefined {
+  return getProvider(id)
+}
+
+/**
+ * Get all providers
+ */
+export function getAllProviders(): APIProvider[] {
+  return ALL_PROVIDERS
+}
+
+/**
  * Get providers by category
  */
 export function getProvidersByCategory(

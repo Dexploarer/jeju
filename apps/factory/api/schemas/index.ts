@@ -272,6 +272,14 @@ export const CreateIssueBodySchema = z.object({
   assignees: z.array(z.string()).optional(),
 })
 
+export const UpdateIssueBodySchema = z.object({
+  title: z.string().min(1).max(200).optional(),
+  body: z.string().min(1).optional(),
+  status: z.enum(['open', 'closed']).optional(),
+  labels: z.array(z.string()).optional(),
+  assignees: z.array(z.string()).optional(),
+})
+
 export const PullsQuerySchema = PaginationQuerySchema.extend({
   repo: z.string().optional(),
   status: z.string().optional(),

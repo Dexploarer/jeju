@@ -139,6 +139,8 @@ export function createOAuth3Worker(config: OAuth3WorkerConfig) {
     if (keyId) return keyId
 
     // Generate new MPC key for this user
+    // Note: requestKeyGen returns { groupPublicKey, groupAddress } but we only need keyId
+    // for subsequent signing operations. The public key is derived from the MPC cluster.
     keyId = `oauth3:${userId}:${Date.now()}`
     await mpcClient.requestKeyGen({ keyId })
 

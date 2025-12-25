@@ -167,7 +167,7 @@ describe('Blob Manager', () => {
       data: data1,
       submitter: testAddress,
     })
-    const { blob: _blob2 } = blobManager.submit({
+    blobManager.submit({
       data: data2,
       submitter: testAddress,
     })

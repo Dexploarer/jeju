@@ -16,6 +16,7 @@ import {
   assessProposalFull,
   checkDuplicates,
   type FullQualityAssessment,
+  factCheck,
   generateProposal,
   improveProposal,
   type ProposalDraft,
@@ -94,6 +95,12 @@ export function ProposalWizard({ onComplete, onCancel }: WizardProps) {
   const [error, setError] = useState('')
   const [generating, setGenerating] = useState(false)
   const [improving, setImproving] = useState<string | null>(null)
+  const [factChecking, setFactChecking] = useState(false)
+  const [factCheckResult, setFactCheckResult] = useState<{
+    verified: boolean
+    confidence: number
+    sources: string[]
+  } | null>(null)
 
   // Quick score as user types
   const handleQuickScore = useCallback(async () => {
@@ -130,6 +137,22 @@ export function ProposalWizard({ onComplete, onCancel }: WizardProps) {
       description: `${draft.description}\n\n${improved}`,
     })
     setImproving(null)
+  }
+
+  // Fact check claims in the description
+  const handleFactCheck = async () => {
+    if (!draft.description) return
+    setFactChecking(true)
+    setError('')
+    try {
+      const result = await factCheck(draft.summary, draft.description)
+      setFactCheckResult(
+        result as { verified: boolean; confidence: number; sources: string[] },
+      )
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Fact check failed')
+    }
+    setFactChecking(false)
   }
 
   // Full quality assessment
@@ -237,6 +260,9 @@ export function ProposalWizard({ onComplete, onCancel }: WizardProps) {
             onQuickScore={handleQuickScore}
             onGenerate={handleGenerate}
             generating={generating}
+            onFactCheck={handleFactCheck}
+            factChecking={factChecking}
+            factCheckResult={factCheckResult}
           />
         )}
 
@@ -331,6 +357,9 @@ function DraftStep({
   onQuickScore,
   onGenerate,
   generating,
+  onFactCheck,
+  factChecking,
+  factCheckResult,
 }: {
   draft: ProposalDraft
   setDraft: (d: ProposalDraft) => void
@@ -338,6 +367,13 @@ function DraftStep({
   onQuickScore: () => void
   onGenerate: (idea: string) => void
   generating: boolean
+  onFactCheck: () => void
+  factChecking: boolean
+  factCheckResult: {
+    verified: boolean
+    confidence: number
+    sources: string[]
+  } | null
 }) {
   const [idea, setIdea] = useState('')
   const [showGenerator, setShowGenerator] = useState(false)
@@ -500,6 +536,49 @@ function DraftStep({
               ? 'Ready for AI quality assessment'
               : 'Add more detail to continue'}
           </div>
+        </div>
+      )}
+
+      {/* Fact Check */}
+      {draft.description.length > 100 && (
+        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium flex items-center gap-2">
+              <Search size={14} />
+              Verify Claims
+            </span>
+            <button
+              type="button"
+              onClick={onFactCheck}
+              disabled={factChecking}
+              className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+            >
+              {factChecking ? 'Checking...' : 'Fact Check'}
+            </button>
+          </div>
+          {factCheckResult && (
+            <div className="mt-3 text-sm">
+              <div className="flex items-center gap-2 mb-2">
+                {factCheckResult.verified ? (
+                  <span className="text-green-600 flex items-center gap-1">
+                    <Check size={14} />
+                    Claims verified ({factCheckResult.confidence}% confidence)
+                  </span>
+                ) : (
+                  <span className="text-yellow-600 flex items-center gap-1">
+                    <AlertTriangle size={14} />
+                    Some claims need review ({factCheckResult.confidence}%
+                    confidence)
+                  </span>
+                )}
+              </div>
+              {factCheckResult.sources.length > 0 && (
+                <div className="text-xs text-gray-500">
+                  Sources: {factCheckResult.sources.join(', ')}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

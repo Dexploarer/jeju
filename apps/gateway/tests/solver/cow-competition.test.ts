@@ -30,7 +30,6 @@ function createMockLiquidityPools(): Map<
   const pools = new Map()
 
   // USDC-WETH pool
-  const _usdcWeth = 'usdc-weth'
   pools.set(
     '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48-0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
     {
@@ -125,7 +124,6 @@ describe('CowSolverValidator', () => {
 describe('Solver Metrics Calculation', () => {
   let clients: Map<number, { public: PublicClient }>
   let solver: CowProtocolSolver
-  let _validator: CowSolverValidator
   let liquidityPools: Map<
     string,
     { reserve0: bigint; reserve1: bigint; token0: Address; token1: Address }
@@ -141,7 +139,6 @@ describe('Solver Metrics Calculation', () => {
     })
 
     solver = new CowProtocolSolver(clients, [1])
-    _validator = new CowSolverValidator(solver)
     liquidityPools = createMockLiquidityPools()
   })
 
@@ -320,26 +317,8 @@ describe('Live Auction Validation', () => {
 })
 
 describe('Competition Comparison', () => {
-  let clients: Map<number, { public: PublicClient }>
-  let solver: CowProtocolSolver
-  let _validator: CowSolverValidator
-  let _liquidityPools: Map<
-    string,
-    { reserve0: bigint; reserve1: bigint; token0: Address; token1: Address }
-  >
-
   beforeAll(() => {
-    clients = new Map()
-    clients.set(1, {
-      public: createPublicClient({
-        chain: mainnet,
-        transport: http('https://eth.llamarpc.com'),
-      }),
-    })
-
-    solver = new CowProtocolSolver(clients, [1])
-    _validator = new CowSolverValidator(solver)
-    _liquidityPools = createMockLiquidityPools()
+    // Setup not needed for these static comparison tests
   })
 
   it('should identify when we would not win', () => {

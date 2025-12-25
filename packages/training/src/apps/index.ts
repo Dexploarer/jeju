@@ -187,6 +187,11 @@ export class AppTrainingRunner<
   async runTrainingLoop(
     config: TrainingLoopConfig,
   ): Promise<TrainingLoopResult> {
+    // Merge runtime scoring config without mutating instance state
+    const scoring: Required<ScoringConfig> = config.scoring
+      ? { ...this.scoringConfig, ...config.scoring }
+      : this.scoringConfig
+
     const errors: string[] = []
     let trajectoriesProcessed = 0
 
@@ -232,6 +237,7 @@ export class AppTrainingRunner<
             trajectory,
             context,
             rubric,
+            scoring,
           )
         }
 
@@ -273,13 +279,14 @@ export class AppTrainingRunner<
     trajectory: Trajectory<TStep>,
     context: TContext,
     rubric: JudgeRubric,
+    scoring: Required<ScoringConfig>,
   ): Promise<number> {
     const {
       expectedEpisodeLength,
       llmEfficiencyMultiplier,
       noMetricsFallbackScore,
       priorityMetricWeight,
-    } = this.scoringConfig
+    } = scoring
     const scores: number[] = []
     const stepCount = trajectory.steps.length
 

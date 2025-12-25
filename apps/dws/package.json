@@ -13,7 +13,8 @@
     "build": "bun build api/index.ts --outdir dist --target bun && bun build.web.ts",
     "build:web": "bun build.web.ts",
     "start": "bun run api/server/index.ts",
-    "test": "bun test tests/",
+    "test": "jeju test --app=dws",
+    "test:unit": "bun test tests/",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -42,7 +43,6 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.6.1",
-    "tweetnacl": "^1.0.3",
     "viem": "2.43.3",
     "wagmi": "^2.17.4",
     "webtorrent": "^2.8.5",

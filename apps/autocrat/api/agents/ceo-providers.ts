@@ -98,7 +98,7 @@ async function callAutocratA2ATyped<T>(
  * Provider: Governance Dashboard
  * Comprehensive view of DAO state for CEO decision-making
  */
-export const governanceDashboardProvider: Provider = {
+const governanceDashboardProvider: Provider = {
   name: 'CEO_GOVERNANCE_DASHBOARD',
   description:
     'Get comprehensive governance dashboard with proposals, treasury, and autocrat status',
@@ -153,7 +153,7 @@ ${
  * Provider: Active Proposals
  * List of proposals requiring CEO attention
  */
-export const activeProposalsProvider: Provider = {
+const activeProposalsProvider: Provider = {
   name: 'CEO_ACTIVE_PROPOSALS',
   description:
     'Get active proposals awaiting CEO decision or in autocrat review',
@@ -219,7 +219,7 @@ export const activeProposalsProvider: Provider = {
  * Provider: Proposal Details
  * Full details of a specific proposal including autocrat votes
  */
-export const proposalDetailProvider: Provider = {
+const proposalDetailProvider: Provider = {
   name: 'CEO_PROPOSAL_DETAIL',
   description:
     'Get full proposal details including autocrat votes and research',
@@ -285,7 +285,7 @@ Type: ${proposal.proposalType}
  * Provider: Autocrat Status
  * Current state of all autocrat agents
  */
-export const autocratStatusProvider: Provider = {
+const autocratStatusProvider: Provider = {
   name: 'CEO_AUTOCRAT_STATUS',
   description:
     'Get status of all autocrat agents and their recent voting patterns',
@@ -336,7 +336,7 @@ const TreasuryStateResponseSchema = z.object({
  * Provider: Treasury State
  * Current treasury balance and allocations
  */
-export const treasuryProvider: Provider = {
+const treasuryProvider: Provider = {
   name: 'CEO_TREASURY',
   description: 'Get treasury balance, allocations, and budget capacity',
 
@@ -392,7 +392,7 @@ Pending Proposals: ${pendingProposals}
  * Provider: Historical Decisions
  * Past CEO decisions for consistency and precedent
  */
-export const historicalDecisionsProvider: Provider = {
+const historicalDecisionsProvider: Provider = {
   name: 'CEO_HISTORICAL_DECISIONS',
   description: 'Get historical CEO decisions for precedent and consistency',
 
@@ -441,7 +441,7 @@ Approval Rate: ${approvalRate}%
  * Provider: MCP Resources
  * Available MCP tools and resources the CEO can use
  */
-export const mcpResourcesProvider: Provider = {
+const mcpResourcesProvider: Provider = {
   name: 'CEO_MCP_RESOURCES',
   description: 'List available MCP tools and resources for governance actions',
 
@@ -488,7 +488,7 @@ All decisions are recorded with TEE attestation.`,
  * Provider: Fee Configuration
  * Current network-wide fee settings that the CEO can modify
  */
-export const feeConfigProvider: Provider = {
+const feeConfigProvider: Provider = {
   name: 'CEO_FEE_CONFIG',
   description:
     'Get current fee configuration across all network services - compute, storage, DeFi, marketplace, etc.',

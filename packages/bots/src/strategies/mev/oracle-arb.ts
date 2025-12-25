@@ -221,14 +221,15 @@ export class OracleArbStrategy extends EventEmitter {
   private async onOracleUpdate(
     oracle: Address,
     log: {
-      args: AnswerUpdatedArgs
+      args: Partial<AnswerUpdatedArgs>
       transactionHash: Hash
       blockNumber: bigint
     },
   ): Promise<void> {
     if (!this.running) return
 
-    const { current: newPrice } = log.args
+    const newPrice = log.args.current
+    if (newPrice === undefined) return
     const lastData = this.lastPrices.get(oracle)
     const oldPrice = lastData?.price ?? newPrice
     const decimals = lastData?.decimals ?? 8

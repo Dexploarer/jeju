@@ -11,18 +11,16 @@ export {
   cacheLayer,
   clearCache,
   type DeduplicationStats,
-  exportCache,
   getCachedImage,
   getCachedLayer,
   getCacheStats,
-  getPrewarmQueue,
-  invalidateImage,
   invalidateLayer,
   type PrewarmRequest,
   queuePrewarm,
   recordCacheHit,
   recordCacheMiss,
 } from './image-cache'
+
 // Types
 export * from './types'
 
@@ -92,7 +90,6 @@ export {
   GPU_SPECS,
   type GPUCapabilities,
   GPUType,
-  getAvailableGPUNodes,
   getTEEGPUNode,
   getTEEGPUNodes,
   type TEEAttestation,

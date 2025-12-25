@@ -64,6 +64,20 @@ export interface InferenceProvider {
   active: boolean
 }
 
+/**
+ * Jeju Inference configuration
+ */
+export interface JejuInferenceConfig {
+  /** Jeju network: localnet | testnet | mainnet */
+  network: 'localnet' | 'testnet' | 'mainnet'
+  /** User's wallet address for billing */
+  userAddress: Address
+  /** Gateway URL (default: auto-detected from network) */
+  gatewayUrl?: string
+  /** Preferred model routing */
+  preferredModels?: string[]
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // API Response Schemas
 // ─────────────────────────────────────────────────────────────────────────────
@@ -398,4 +412,157 @@ export async function runInference(
   request: InferenceRequest,
 ): Promise<InferenceResponse> {
   return llmInferenceService.inference(request)
+}
+
+// =============================================================================
+// JejuInference Class (for direct instantiation with config)
+// =============================================================================
+
+/**
+ * Jeju Inference Client
+ *
+ * Decentralized LLM inference through the Jeju marketplace.
+ * Use this when you need custom configuration instead of the singleton.
+ */
+export class JejuInference {
+  private config: JejuInferenceConfig
+  private gatewayUrl: string
+  private providerCache: Map<string, InferenceProvider[]> = new Map()
+  private cacheExpiry = 0
+
+  constructor(config: JejuInferenceConfig) {
+    this.config = config
+    this.gatewayUrl = config.gatewayUrl ?? getServiceUrl('compute')
+  }
+
+  /**
+   * List available inference providers from marketplace
+   */
+  async listProviders(model?: string): Promise<InferenceProvider[]> {
+    const now = Date.now()
+    if (now < this.cacheExpiry && this.providerCache.has(model ?? 'all')) {
+      return this.providerCache.get(model ?? 'all') ?? []
+    }
+
+    const url = new URL('/v1/providers', this.gatewayUrl)
+    if (model) url.searchParams.set('model', model)
+
+    const response = await fetch(url.toString(), {
+      headers: { 'x-jeju-address': this.config.userAddress },
+    })
+
+    if (!response.ok) {
+      throw new Error(`Gateway error: ${response.status}`)
+    }
+
+    const json: unknown = await response.json()
+    const parsed = ProvidersResponseSchema.parse(json)
+    const providers = parsed.providers as InferenceProvider[]
+    this.providerCache.set(model ?? 'all', providers)
+    this.cacheExpiry = now + 60_000
+
+    return providers
+  }
+
+  /**
+   * Get available models from marketplace
+   */
+  async listModels(): Promise<string[]> {
+    const response = await fetch(`${this.gatewayUrl}/v1/models`, {
+      headers: { 'x-jeju-address': this.config.userAddress },
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to list models: ${response.status}`)
+    }
+
+    const json: unknown = await response.json()
+    const parsed = ModelsResponseSchema.parse(json)
+    return parsed.data.map((m) => m.id)
+  }
+
+  /**
+   * Run inference through Jeju marketplace
+   */
+  async inference(request: InferenceRequest): Promise<InferenceResponse> {
+    const resolvedModel = resolveModel(request.model)
+
+    const response = await fetch(`${this.gatewayUrl}/v1/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-jeju-address': this.config.userAddress,
+      },
+      body: JSON.stringify({
+        model: resolvedModel,
+        messages: request.messages,
+        temperature: request.temperature ?? 0.7,
+        max_tokens: request.maxTokens ?? 2048,
+        stream: request.stream ?? false,
+      }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Marketplace inference failed: ${response.status}`)
+    }
+
+    const json: unknown = await response.json()
+    const data = ChatCompletionResponseSchema.parse(json)
+
+    const firstChoice = data.choices[0]
+    if (!firstChoice) {
+      throw new Error('No completion choices returned')
+    }
+
+    const usage = {
+      promptTokens: data.usage.prompt_tokens,
+      completionTokens: data.usage.completion_tokens,
+      totalTokens: data.usage.total_tokens,
+    }
+
+    // Estimate cost based on resolved model
+    const pricing: Record<string, { input: number; output: number }> = {
+      'llama-3.1-8b-instant': { input: 0.05, output: 0.08 },
+      'llama-3.1-70b-versatile': { input: 0.59, output: 0.79 },
+      'Qwen/Qwen2.5-3B-Instruct': { input: 0.03, output: 0.05 },
+      'Qwen/Qwen2.5-7B-Instruct': { input: 0.07, output: 0.1 },
+      'Qwen/Qwen2.5-14B-Instruct': { input: 0.15, output: 0.2 },
+    }
+    const modelPricing = pricing[resolvedModel] ?? { input: 0.05, output: 0.08 }
+    const inputCost = (usage.promptTokens / 1000) * modelPricing.input
+    const outputCost = (usage.completionTokens / 1000) * modelPricing.output
+    const cost = (inputCost + outputCost) / 100
+
+    return {
+      id: data.id,
+      content: firstChoice.message.content,
+      model: data.model,
+      usage,
+      cost,
+      provider: data.settlement?.provider as Address | undefined,
+      settlement: data.settlement
+        ? {
+            requestHash: data.settlement.requestHash as Hex,
+            signature: data.settlement.signature as Hex,
+          }
+        : undefined,
+    }
+  }
+}
+
+/**
+ * Create inference client with automatic network detection
+ */
+export function createJejuInference(
+  config: Omit<JejuInferenceConfig, 'network'> & { network?: string },
+): JejuInference {
+  const network = (config.network ?? process.env.JEJU_NETWORK ?? 'localnet') as
+    | 'localnet'
+    | 'testnet'
+    | 'mainnet'
+
+  return new JejuInference({
+    ...config,
+    network,
+  })
 }

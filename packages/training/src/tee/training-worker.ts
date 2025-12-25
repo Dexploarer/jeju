@@ -13,6 +13,12 @@
  * - Simulated mode is NOT allowed in production
  */
 
+import {
+  getTeeConfig,
+  getTeeEndpoint,
+  getTeeMode,
+  isProductionEnv,
+} from '@jejunetwork/config'
 import { logger } from '@jejunetwork/shared'
 import type { Address, Hex } from 'viem'
 import { keccak256, toBytes } from 'viem'
@@ -46,13 +52,6 @@ import {
 // TEE Training Worker
 // ============================================================================
 
-/**
- * Check if running in production environment
- */
-function isProductionEnvironment(): boolean {
-  return process.env.NODE_ENV === 'production'
-}
-
 export class TrainingWorker {
   private config: WorkerConfig
   private status: WorkerStatus = WorkerStatus.IDLE
@@ -65,17 +64,14 @@ export class TrainingWorker {
 
   constructor(config: WorkerConfig) {
     this.config = config
-    this.isProduction = isProductionEnvironment()
+    this.isProduction = isProductionEnv()
 
-    // Determine TEE provider with validation
-    const envTeeMode = process.env.TEE_MODE
-    const validatedEnvProvider = isTEEProvider(envTeeMode)
-      ? envTeeMode
-      : undefined
-    this.teeProvider =
-      config.teeProvider ??
-      validatedEnvProvider ??
-      (this.isProduction ? 'phala' : 'simulated')
+    // Get TEE config from centralized config
+    const teeConfig = getTeeConfig()
+    const validatedProvider = isTEEProvider(teeConfig.mode)
+      ? teeConfig.mode
+      : 'simulated'
+    this.teeProvider = config.teeProvider ?? validatedProvider
 
     // Validate TEE configuration in production
     this.validateTEEConfig()
@@ -93,9 +89,9 @@ export class TrainingWorker {
         )
       }
 
-      if (!process.env.TEE_MODE && !this.config.teeProvider) {
+      if (getTeeMode() === 'simulated' && !this.config.teeProvider) {
         throw new Error(
-          '[TrainingWorker] TEE_MODE must be set in production environment.',
+          '[TrainingWorker] TEE must be configured for production. Set TEE_MODE or configure tee in services.json.',
         )
       }
 
@@ -172,7 +168,7 @@ export class TrainingWorker {
    * Initialize production TEE connection
    */
   private async initializeProductionTEE(): Promise<void> {
-    const teeEndpoint = process.env.TEE_ENDPOINT || process.env.PHALA_ENDPOINT
+    const teeEndpoint = getTeeEndpoint()
 
     if (!teeEndpoint) {
       throw new Error(
@@ -833,21 +829,18 @@ export function createTrainingWorker(
   type: WorkerType,
   config?: Partial<WorkerConfig>,
 ): TrainingWorker {
-  const isProduction = isProductionEnvironment()
-  const envTeeMode = process.env.TEE_MODE
-  const validatedEnvProvider = isTEEProvider(envTeeMode)
-    ? envTeeMode
-    : undefined
-  const teeProvider =
-    config?.teeProvider ??
-    validatedEnvProvider ??
-    (isProduction ? 'phala' : 'simulated')
+  const isProduction = isProductionEnv()
+  const teeConfig = getTeeConfig()
+  const validatedProvider = isTEEProvider(teeConfig.mode)
+    ? teeConfig.mode
+    : 'simulated'
+  const teeProvider = config?.teeProvider ?? validatedProvider
 
   // Validate TEE configuration
   if (isProduction && teeProvider === 'simulated') {
     throw new Error(
       '[createTrainingWorker] Simulated TEE mode is NOT allowed in production. ' +
-        'Set TEE_MODE to a valid provider (phala, intel-sgx, intel-tdx, amd-sev).',
+        'Configure TEE in services.json or set TEE_MODE to a valid provider.',
     )
   }
 

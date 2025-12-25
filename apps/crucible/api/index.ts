@@ -10,18 +10,7 @@
 // Types
 export * from '../lib/types'
 // Characters
-export {
-  blueTeamCharacter,
-  characters,
-  communityManagerCharacter,
-  devRelCharacter,
-  getCharacter,
-  liaisonCharacter,
-  listCharacters,
-  projectManagerCharacter,
-  redTeamCharacter,
-  socialMediaManagerCharacter,
-} from './characters'
+export { characters, getCharacter, listCharacters } from './characters'
 // SDK
 export {
   AgentSDK,

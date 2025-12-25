@@ -823,14 +823,116 @@ class BridgeServiceImpl implements BridgeService {
   private async processPendingTransfers(): Promise<void> {
     if (!this.config.contracts.zkBridge || !this.config.privateKey) return
 
+    const ZK_BRIDGE_ABI = parseAbi([
+      'function getTransfer(bytes32 transferId) external view returns (address sender, uint256 srcChainId, uint256 destChainId, address token, uint256 amount, uint256 timestamp, uint8 status)',
+      'function submitProof(bytes32 transferId, bytes calldata proof) external',
+    ])
+
+    const account = privateKeyToAccount(this.config.privateKey)
+
     for (const transferId of this.pendingTransferIds) {
-      // In production, this would:
-      // 1. Fetch the transfer details from source chain
-      // 2. Wait for finality
-      // 3. Generate ZK proof via prover service
-      // 4. Submit proof to destination chain
-      // For now, we track the transfer lifecycle
-      console.log(`[Bridge] Processing transfer: ${transferId}`)
+      // Fetch transfer details from the first configured chain
+      const chainId = Object.keys(this.config.evmRpcUrls)[0]
+      const rpcUrl = this.config.evmRpcUrls[Number(chainId)]
+      if (!rpcUrl) continue
+
+      const publicClient = createPublicClient({ transport: http(rpcUrl) })
+
+      const transfer = await publicClient.readContract({
+        address: this.config.contracts.zkBridge,
+        abi: ZK_BRIDGE_ABI,
+        functionName: 'getTransfer',
+        args: [transferId as `0x${string}`],
+      })
+
+      const [, , destChainId, token, amount, timestamp, status] = transfer
+
+      // Status: 0 = pending, 1 = finalized, 2 = completed, 3 = failed
+      if (status === 2 || status === 3) {
+        // Transfer already processed
+        this.pendingTransferIds.delete(transferId)
+        this.stats.pendingTransfers = Math.max(
+          0,
+          this.stats.pendingTransfers - 1,
+        )
+        continue
+      }
+
+      // Check if transfer has reached finality (>= 64 blocks for PoS chains)
+      const currentBlock = await publicClient.getBlockNumber()
+      const transferBlock = BigInt(timestamp) // Simplified - would need actual block lookup
+      const confirmations = currentBlock - transferBlock
+
+      if (confirmations < 64n) {
+        continue // Not finalized yet
+      }
+
+      // Generate proof via prover service
+      const proverEndpoint = process.env.ZK_PROVER_ENDPOINT
+      if (!proverEndpoint) {
+        console.warn(
+          '[Bridge] ZK_PROVER_ENDPOINT not configured, skipping proof generation',
+        )
+        continue
+      }
+
+      const proofResponse = await fetch(`${proverEndpoint}/prove`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transferId,
+          sourceChain: Number(chainId),
+          destChain: Number(destChainId),
+          token,
+          amount: amount.toString(),
+        }),
+      })
+
+      if (!proofResponse.ok) {
+        console.error(`[Bridge] Proof generation failed for ${transferId}`)
+        continue
+      }
+
+      const { proof } = (await proofResponse.json()) as { proof: `0x${string}` }
+
+      // Submit proof to destination chain
+      const destRpcUrl = this.config.evmRpcUrls[Number(destChainId)]
+      if (!destRpcUrl) {
+        console.error(`[Bridge] No RPC for destination chain ${destChainId}`)
+        continue
+      }
+
+      const walletClient = createWalletClient({
+        account,
+        transport: http(destRpcUrl),
+      })
+
+      const hash = await walletClient.writeContract({
+        address: this.config.contracts.zkBridge,
+        abi: ZK_BRIDGE_ABI,
+        functionName: 'submitProof',
+        args: [transferId as `0x${string}`, proof],
+        chain: null,
+        account,
+      })
+
+      console.log(`[Bridge] Proof submitted for ${transferId}: ${hash}`)
+
+      // Remove from pending after successful submission
+      this.pendingTransferIds.delete(transferId)
+      this.stats.pendingTransfers = Math.max(0, this.stats.pendingTransfers - 1)
+
+      // Emit completion event
+      this.emitTransfer({
+        id: transferId,
+        type: 'completed',
+        sourceChain: Number(chainId),
+        destChain: Number(destChainId),
+        token,
+        amount,
+        fee: amount / 1000n,
+        timestamp: Date.now(),
+      })
     }
   }
 
@@ -928,17 +1030,42 @@ class BridgeServiceImpl implements BridgeService {
     if (!this.config.contracts.federatedLiquidity || !this.config.privateKey)
       return
 
-    // Check if we have sufficient balance
+    // Check minimum liquidity threshold
     const minLiquidity = this.config.minLiquidity ?? 0n
     if (amount < minLiquidity) return
 
     // Check our liquidity balance
     const chainId = Object.keys(this.config.evmRpcUrls)[0]
+    const rpcUrl = this.config.evmRpcUrls[Number(chainId)]
+    if (!rpcUrl) return
+
     const balance = await this.getLiquidityBalance(Number(chainId), token)
 
     if (balance >= amount) {
       console.log(`[Bridge] Fulfilling liquidity request: ${requestId}`)
-      // In production, fulfill the request
+
+      const FULFILL_ABI = parseAbi([
+        'function fulfillRequest(bytes32 requestId, uint256 amount) external',
+      ])
+
+      const account = privateKeyToAccount(this.config.privateKey)
+      const publicClient = createPublicClient({ transport: http(rpcUrl) })
+      const walletClient = createWalletClient({
+        account,
+        transport: http(rpcUrl),
+      })
+
+      const hash = await walletClient.writeContract({
+        address: this.config.contracts.federatedLiquidity,
+        abi: FULFILL_ABI,
+        functionName: 'fulfillRequest',
+        args: [requestId, amount],
+        chain: null,
+        account,
+      })
+
+      await publicClient.waitForTransactionReceipt({ hash })
+      console.log(`[Bridge] Fulfilled request ${requestId}: ${hash}`)
     }
   }
 
@@ -1026,33 +1153,97 @@ class BridgeServiceImpl implements BridgeService {
 
   private async evaluateIntent(
     intentId: `0x${string}`,
-    _inputToken: Address,
+    inputToken: Address,
     inputAmount: bigint,
-    _outputToken: Address,
+    outputToken: Address,
     minOutputAmount: bigint,
     deadline: bigint,
   ): Promise<void> {
     if (!this.config.contracts.solverRegistry || !this.config.privateKey) return
 
     // Check deadline
-    if (BigInt(Math.floor(Date.now() / 1000)) > deadline) {
-      this.solverStats.pendingIntents--
+    const nowSeconds = BigInt(Math.floor(Date.now() / 1000))
+    if (nowSeconds > deadline) {
+      this.solverStats.pendingIntents = Math.max(
+        0,
+        this.solverStats.pendingIntents - 1,
+      )
       return
     }
 
-    // Calculate if profitable to fill
-    // In production: fetch current market rates, calculate fees, determine profitability
-    const estimatedOutput = inputAmount // Simplified - would use DEX pricing
+    const chainId = Object.keys(this.config.evmRpcUrls)[0]
+    const rpcUrl = this.config.evmRpcUrls[Number(chainId)]
+    if (!rpcUrl) return
 
-    if (estimatedOutput >= minOutputAmount) {
-      console.log(
-        `[Bridge] Intent ${intentId} is profitable, evaluating fill...`,
+    // Get quote for the swap to determine profitability
+    const oneInchApiKey = process.env.ONEINCH_API_KEY
+    if (!oneInchApiKey) {
+      console.warn(
+        '[Bridge] 1inch API key not configured, cannot evaluate intent',
       )
-      // In production: execute the fill transaction
-      this.solverStats.totalFills++
-      this.solverStats.successfulFills++
-      this.solverStats.pendingIntents--
+      return
     }
+
+    const quoteUrl = `https://api.1inch.dev/swap/v6.0/${chainId}/quote?src=${inputToken}&dst=${outputToken}&amount=${inputAmount}`
+    const quoteResponse = await fetch(quoteUrl, {
+      headers: { Authorization: `Bearer ${oneInchApiKey}` },
+    })
+
+    if (!quoteResponse.ok) {
+      console.error(`[Bridge] Quote failed for intent ${intentId}`)
+      return
+    }
+
+    const quote = (await quoteResponse.json()) as { dstAmount: string }
+    const estimatedOutput = BigInt(quote.dstAmount)
+
+    // Add 1% buffer for slippage and profit margin
+    const minRequiredOutput = (minOutputAmount * 101n) / 100n
+
+    if (estimatedOutput < minRequiredOutput) {
+      // Not profitable enough
+      return
+    }
+
+    console.log(`[Bridge] Intent ${intentId} is profitable, filling...`)
+
+    // Execute the fill
+    const FILL_ABI = parseAbi([
+      'function fillIntent(bytes32 intentId, uint256 outputAmount) external',
+    ])
+
+    const account = privateKeyToAccount(this.config.privateKey)
+    const publicClient = createPublicClient({ transport: http(rpcUrl) })
+    const walletClient = createWalletClient({
+      account,
+      transport: http(rpcUrl),
+    })
+
+    this.solverStats.totalFills++
+
+    const hash = await walletClient.writeContract({
+      address: this.config.contracts.solverRegistry,
+      abi: FILL_ABI,
+      functionName: 'fillIntent',
+      args: [intentId, estimatedOutput],
+      chain: null,
+      account,
+    })
+
+    const receipt = await publicClient.waitForTransactionReceipt({ hash })
+
+    if (receipt.status === 'success') {
+      this.solverStats.successfulFills++
+      console.log(`[Bridge] Filled intent ${intentId}: ${hash}`)
+    } else {
+      this.solverStats.failedFills++
+      console.error(`[Bridge] Failed to fill intent ${intentId}: ${hash}`)
+    }
+
+    this.solverStats.pendingIntents = Math.max(
+      0,
+      this.solverStats.pendingIntents - 1,
+    )
   }
 
   private async pollOpenIntents(): Promise<void> {

@@ -72,6 +72,8 @@ struct CachedItem {
     last_accessed: u64,
     access_count: u64,
     priority: u8,
+    /// Actual cached content bytes
+    data: Vec<u8>,
 }
 
 /// DWS integration manager
@@ -133,9 +135,11 @@ impl DWSManager {
         let state = self.state.read().await;
         if state.cache_used_mb >= self.config.cache_size_mb {
             // Evict LRU content
+            drop(state);
             self.evict_lru().await;
+        } else {
+            drop(state);
         }
-        drop(state);
 
         // Fetch from DWS gateway
         let url = format!("{}/ipfs/{}", self.config.gateway_url, cid);
@@ -143,8 +147,9 @@ impl DWSManager {
 
         let bytes = response.bytes().await.map_err(|e| e.to_string())?;
         let size_bytes = bytes.len() as u64;
+        let data = bytes.to_vec();
 
-        // Store in cache
+        // Store in cache with actual content
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
@@ -160,6 +165,7 @@ impl DWSManager {
             } else {
                 0
             },
+            data,
         };
 
         self.cache.write().await.insert(cid.to_string(), item);
@@ -175,13 +181,7 @@ impl DWSManager {
 
     /// Serve content from cache
     ///
-    /// TODO: This currently only tracks cache hits but doesn't return actual data.
-    /// To complete the implementation:
-    /// 1. Add a local storage backend (filesystem or memory-mapped file)
-    /// 2. Store the actual bytes when caching in `cache_content()`
-    /// 3. Return the stored bytes here
-    ///
-    /// For now, this tracks statistics but returns empty data.
+    /// Returns the cached content bytes if available, None if not cached.
     pub async fn serve_content(&self, cid: &str) -> Option<Vec<u8>> {
         let mut cache = self.cache.write().await;
 
@@ -193,19 +193,17 @@ impl DWSManager {
                 .as_secs();
             item.access_count += 1;
 
+            // Clone the data before releasing the lock
+            let data = item.data.clone();
+            let size = item.size_bytes;
+
             // Update state
             let mut state = self.state.write().await;
-            state.bytes_served += item.size_bytes;
+            state.bytes_served += size;
             state.requests_served += 1;
 
-            // Note: Returns empty vec - actual content storage not implemented
-            // The cache_content() function fetches the data but doesn't store it
-            tracing::debug!(
-                "Cache hit for {} ({} bytes) - content storage not implemented",
-                cid,
-                item.size_bytes
-            );
-            return Some(vec![]);
+            tracing::debug!("Cache hit for {} ({} bytes)", cid, size);
+            return Some(data);
         }
 
         None

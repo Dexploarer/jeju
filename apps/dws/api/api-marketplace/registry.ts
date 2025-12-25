@@ -318,11 +318,13 @@ export async function getMarketplaceStats(): Promise<MarketplaceStats> {
   const { apiListingState, apiUserAccountState } = await import('../state')
 
   // Get all listings
-  const allListings = await apiListingState.getAll()
-  const activeListings = allListings.filter((l) => l.active)
+  const allListings = await apiListingState.listAll()
+  const activeListings = allListings.filter(
+    (l: { status: string }) => l.status === 'active',
+  )
 
   // Get all user accounts
-  const allAccounts = await apiUserAccountState.getAll()
+  const allAccounts = await apiUserAccountState.listAll()
 
   // Calculate totals
   let totalRequests = 0n
@@ -334,18 +336,18 @@ export async function getMarketplaceStats(): Promise<MarketplaceStats> {
 
   for (const listing of allListings) {
     totalRequests += BigInt(listing.total_requests ?? 0)
-    totalVolume += BigInt(listing.total_volume ?? 0)
+    totalVolume += BigInt(listing.total_revenue ?? 0)
     // Last 24h stats would need time-bucketed data
     // For now, estimate as 1/30th of total (assuming ~30 day average)
     if (listing.created_at && listing.created_at > oneDayAgo) {
       last24hRequests += BigInt(listing.total_requests ?? 0)
-      last24hVolume += BigInt(listing.total_volume ?? 0)
+      last24hVolume += BigInt(listing.total_revenue ?? 0)
     }
   }
 
-  // PoC stats
-  const pocRequiredListings = activeListings.filter(
-    (l) => l.requires_poc,
+  // PoC stats - count listings with POC status
+  const pocRequiredListings = activeListings.filter((l) =>
+    l.status.toLowerCase().includes('poc'),
   ).length
 
   return {

@@ -5,7 +5,7 @@
 
 import type { Address, Hex, PublicClient, WalletClient } from 'viem'
 import { parseEther } from 'viem'
-import type { CrucibleConfig, TradingBotMetrics } from '../../lib/types'
+import type { CrucibleConfig } from '../../lib/types'
 import type { AgentSDK } from '../sdk/agent'
 import { createLogger } from '../sdk/logger'
 import {
@@ -17,6 +17,7 @@ import {
 import type {
   TradingBot,
   TradingBotConfig,
+  TradingBotMetrics,
   TradingBotState,
 } from './trading-bot'
 
@@ -370,7 +371,7 @@ export class BotInitializer {
     const options = createTradingBotOptions(
       botConfig,
       agentResult.agentId,
-      privateKey,
+      privateKey as Hex,
       this.config.crucibleConfig.network,
       this.config.treasuryAddress,
     )
@@ -447,7 +448,7 @@ export class BotInitializer {
         },
       ],
       chains: [],
-      privateKey,
+      privateKey: privateKey as Hex,
       maxConcurrentExecutions: 5,
       useFlashbots: this.config.crucibleConfig.network !== 'localnet',
     }

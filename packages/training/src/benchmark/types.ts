@@ -214,53 +214,7 @@ export interface GroundTruth {
     sourceFactId: string
   }>
 
-  // =========================================================================
-  // LEGACY/SYNTHETIC DATA - For backward compatibility only
-  // These fields contain placeholder values, NOT real ground truth
-  // =========================================================================
-
-  /**
-   * @deprecated SYNTHETIC placeholder - simple heuristic, not real optimal actions
-   */
-  optimalActions: Array<{
-    tick: number
-    type: string
-    target: string
-    expectedValue: number
-    reason: string
-  }>
-
-  /**
-   * @deprecated SYNTHETIC placeholder - not real social opportunities
-   */
-  socialOpportunities: Array<{
-    tick: number
-    type: string
-    value: number
-    description: string
-  }>
-
-  /**
-   * @deprecated SYNTHETIC - empty array, never meaningfully implemented
-   */
-  hiddenFacts: Array<{
-    tick: number
-    fact: string
-    category: 'market' | 'social' | 'event' | 'insider'
-    value: JsonValue
-  }>
-
-  /**
-   * @deprecated SYNTHETIC - empty array, never meaningfully implemented
-   */
-  hiddenEvents: Array<{
-    tick: number
-    type: string
-    description: string
-    impact: Record<string, JsonValue>
-  }>
-
-  /** Computed facts from initial state (not synthetic, but not all fields are meaningful) */
+  /** Computed facts from initial state */
   trueFacts: Record<string, JsonValue>
 }
 
@@ -486,7 +440,7 @@ export interface SimulationAgentState {
 /**
  * Trajectory step captured during simulation for RL training
  */
-export interface SimulationTrajectoryStep {
+interface SimulationTrajectoryStep {
   /** Step number in the trajectory */
   stepNumber: number
   /** Timestamp when step occurred */

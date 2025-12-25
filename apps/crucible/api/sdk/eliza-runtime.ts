@@ -10,6 +10,7 @@
  */
 
 import type { Action, Plugin } from '@elizaos/core'
+import { getCurrentNetwork } from '@jejunetwork/config'
 import type { AgentCharacter } from '../../lib/types'
 import {
   checkDWSHealth,
@@ -328,7 +329,7 @@ export class CrucibleAgentRuntime {
     })
 
     // Determine model based on network and character preferences
-    const network = process.env.NETWORK ?? 'localnet'
+    const network = getCurrentNetwork()
     const modelPrefs = this.config.character.modelPreferences
     const model =
       network === 'testnet' || network === 'mainnet'

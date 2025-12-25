@@ -76,7 +76,7 @@ export async function readContract<
   TFunctionName extends ContractFunctionName<TAbi, 'pure' | 'view'>,
   TArgs extends ContractFunctionArgs<TAbi, 'pure' | 'view', TFunctionName>,
 >(
-  client: { readContract: ReadableClient['readContract'] },
+  client: { readContract: (...args: never[]) => Promise<unknown> },
   params: {
     address: Address
     abi: TAbi
@@ -86,7 +86,9 @@ export async function readContract<
     blockTag?: 'latest' | 'earliest' | 'pending' | 'safe' | 'finalized'
   },
 ): Promise<ReadContractReturnType<TAbi, TFunctionName, TArgs>> {
-  return client.readContract({
+  return (
+    client.readContract as (params: Record<string, unknown>) => Promise<unknown>
+  )({
     address: params.address,
     abi: params.abi,
     functionName: params.functionName as string,

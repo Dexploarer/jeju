@@ -356,12 +356,6 @@ describe('Node Status Processing', () => {
   })
 })
 
-interface ChainStats {
-  blockNumber: number
-  tps: number
-  gasPrice: string
-}
-
 function parseBlockNumber(hexBlock: string): number {
   return parseInt(hexBlock, 16)
 }
