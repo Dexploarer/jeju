@@ -614,7 +614,7 @@ export class JejuMLSClient {
   private handleRelayMessage(event: MessageEvent): void {
     const data = event.data
     if (typeof data !== 'string') {
-      console.error('[MLS Client] Received non-string message from relay')
+      log.error('Received non-string message from relay')
       return
     }
 
@@ -622,7 +622,7 @@ export class JejuMLSClient {
     try {
       parsed = JSON.parse(data)
     } catch {
-      console.error('[MLS Client] Failed to parse message from relay')
+      log.error('Failed to parse message from relay')
       return
     }
 
@@ -635,7 +635,7 @@ export class JejuMLSClient {
       }
       this.emit('message', eventData)
     } else if (parsed.type === 'ack') {
-      console.log('[MLS Client] Message acknowledged')
+      log.debug('Message acknowledged')
     }
   }
 
@@ -645,9 +645,7 @@ export class JejuMLSClient {
     }
 
     if (this.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-      console.error(
-        `[MLS Client] Max reconnect attempts (${MAX_RECONNECT_ATTEMPTS}) reached`,
-      )
+      log.error('Max reconnect attempts reached', { maxAttempts: MAX_RECONNECT_ATTEMPTS })
       return
     }
 
@@ -657,13 +655,13 @@ export class JejuMLSClient {
     )
     this.reconnectAttempts++
 
-    console.log(
-      `[MLS Client] Scheduling reconnect attempt ${this.reconnectAttempts} in ${delay}ms`,
-    )
+    log.info('Scheduling reconnect attempt', { attempt: this.reconnectAttempts, delayMs: delay })
 
     this.reconnectTimeout = setTimeout(() => {
       this.connectToRelay().catch((error) => {
-        console.error(`[MLS Client] Reconnect failed:`, error)
+        log.error('Reconnect failed', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        })
       })
     }, delay)
   }
@@ -696,10 +694,10 @@ export class JejuMLSClient {
       )
     } catch {
       // If relay is not available (e.g., in tests), allow invite with basic validation
-      console.log(`[MLS Client] Relay unavailable, skipping invite validation`)
-    return {
-      groupName: 'Group',
-      inviterAddress: '0x0000000000000000000000000000000000000000',
+      log.debug('Relay unavailable, skipping invite validation')
+      return {
+        groupName: 'Group',
+        inviterAddress: '0x0000000000000000000000000000000000000000',
       }
     }
 
@@ -743,12 +741,12 @@ export class JejuMLSClient {
           .catch(() => false)
 
         if (!hasKey) {
-          console.warn(`[MLS Client] Inviter ${data.inviterAddress} has no registered key`)
+          log.warn('Inviter has no registered key', { inviter: data.inviterAddress })
           return null
         }
       } catch {
         // RPC not available, skip on-chain verification
-        console.log(`[MLS Client] RPC unavailable, skipping inviter key verification`)
+        log.debug('RPC unavailable, skipping inviter key verification')
       }
     }
 
