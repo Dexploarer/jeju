@@ -71,8 +71,10 @@ export const CONTRACTS = {
   moderationMarketplace: addr(contracts.moderation?.moderationMarketplace),
   reportingSystem: addr(contracts.moderation?.reportingSystem),
   reputationLabelManager: addr(contracts.moderation?.reputationLabelManager),
-  predimarket: addr(contracts.moderation?.predimarket),
   registryGovernance: addr(contracts.governance?.registryGovernance),
+
+  // Bazaar (Prediction Markets)
+  predictionMarket: addr(contracts.bazaar?.predictionMarket),
 
   // Node Staking
   nodeStakingManager: addr(contracts.nodeStaking?.manager),

@@ -90,6 +90,7 @@ export class TEECacheProvider {
       maxMemoryMb: config.maxMemoryMb,
       defaultTtlSeconds: 3600,
       maxTtlSeconds: 86400 * 30,
+      evictionPolicy: 'lru',
       teeProvider: config.provider,
       teeEndpoint: config.endpoint,
     })
@@ -182,6 +183,13 @@ export class TEECacheProvider {
     return instance
   }
 
+  // ============================================================================
+  // String Operations (with optional encryption)
+  // ============================================================================
+
+  /**
+   * Get a value
+   */
   async get(namespace: string, key: string): Promise<string | null> {
     this.requireInit()
 
@@ -194,6 +202,9 @@ export class TEECacheProvider {
     return this.engine.get(namespace, key)
   }
 
+  /**
+   * Set a value
+   */
   async set(
     namespace: string,
     key: string,
@@ -210,16 +221,25 @@ export class TEECacheProvider {
     return this.engine.set(namespace, key, value, options)
   }
 
+  /**
+   * Delete keys
+   */
   async del(namespace: string, ...keys: string[]): Promise<number> {
     this.requireInit()
     return this.engine.del(namespace, ...keys)
   }
 
+  /**
+   * Check existence
+   */
   async exists(namespace: string, ...keys: string[]): Promise<number> {
     this.requireInit()
     return this.engine.exists(namespace, ...keys)
   }
 
+  /**
+   * Increment
+   */
   async incr(namespace: string, key: string, by = 1): Promise<number> {
     this.requireInit()
 
@@ -240,10 +260,20 @@ export class TEECacheProvider {
     return this.engine.incr(namespace, key, by)
   }
 
+  /**
+   * Decrement
+   */
   async decr(namespace: string, key: string, by = 1): Promise<number> {
     return this.incr(namespace, key, -by)
   }
 
+  // ============================================================================
+  // TTL Operations
+  // ============================================================================
+
+  /**
+   * Set expiration
+   */
   async expire(
     namespace: string,
     key: string,
@@ -253,11 +283,21 @@ export class TEECacheProvider {
     return this.engine.expire(namespace, key, seconds)
   }
 
+  /**
+   * Get TTL
+   */
   async ttl(namespace: string, key: string): Promise<number> {
     this.requireInit()
     return this.engine.ttl(namespace, key)
   }
 
+  // ============================================================================
+  // Hash Operations
+  // ============================================================================
+
+  /**
+   * Get hash field
+   */
   async hget(
     namespace: string,
     key: string,
@@ -274,6 +314,9 @@ export class TEECacheProvider {
     return this.engine.hget(namespace, key, field)
   }
 
+  /**
+   * Set hash field
+   */
   async hset(
     namespace: string,
     key: string,
@@ -290,6 +333,9 @@ export class TEECacheProvider {
     return this.engine.hset(namespace, key, field, value)
   }
 
+  /**
+   * Get all hash fields
+   */
   async hgetall(namespace: string, key: string): Promise<HashEntry> {
     this.requireInit()
 
@@ -306,6 +352,9 @@ export class TEECacheProvider {
     return hash
   }
 
+  /**
+   * Delete hash fields
+   */
   async hdel(
     namespace: string,
     key: string,
@@ -315,6 +364,13 @@ export class TEECacheProvider {
     return this.engine.hdel(namespace, key, ...fields)
   }
 
+  // ============================================================================
+  // List Operations
+  // ============================================================================
+
+  /**
+   * Push to left of list
+   */
   async lpush(
     namespace: string,
     key: string,
@@ -330,6 +386,9 @@ export class TEECacheProvider {
     return this.engine.lpush(namespace, key, ...values)
   }
 
+  /**
+   * Push to right of list
+   */
   async rpush(
     namespace: string,
     key: string,
@@ -345,6 +404,9 @@ export class TEECacheProvider {
     return this.engine.rpush(namespace, key, ...values)
   }
 
+  /**
+   * Pop from left
+   */
   async lpop(namespace: string, key: string): Promise<string | null> {
     this.requireInit()
 
@@ -358,6 +420,9 @@ export class TEECacheProvider {
     return value
   }
 
+  /**
+   * Pop from right
+   */
   async rpop(namespace: string, key: string): Promise<string | null> {
     this.requireInit()
 
@@ -371,6 +436,9 @@ export class TEECacheProvider {
     return value
   }
 
+  /**
+   * Get list range
+   */
   async lrange(
     namespace: string,
     key: string,
@@ -388,11 +456,21 @@ export class TEECacheProvider {
     return values
   }
 
+  /**
+   * Get list length
+   */
   async llen(namespace: string, key: string): Promise<number> {
     this.requireInit()
     return this.engine.llen(namespace, key)
   }
 
+  // ============================================================================
+  // Set Operations
+  // ============================================================================
+
+  /**
+   * Add to set
+   */
   async sadd(
     namespace: string,
     key: string,
@@ -408,6 +486,9 @@ export class TEECacheProvider {
     return this.engine.sadd(namespace, key, ...members)
   }
 
+  /**
+   * Remove from set
+   */
   async srem(
     namespace: string,
     key: string,
@@ -423,6 +504,9 @@ export class TEECacheProvider {
     return this.engine.srem(namespace, key, ...members)
   }
 
+  /**
+   * Get set members
+   */
   async smembers(namespace: string, key: string): Promise<string[]> {
     this.requireInit()
 
@@ -435,6 +519,9 @@ export class TEECacheProvider {
     return members
   }
 
+  /**
+   * Check set membership
+   */
   async sismember(
     namespace: string,
     key: string,
@@ -450,11 +537,21 @@ export class TEECacheProvider {
     return this.engine.sismember(namespace, key, member)
   }
 
+  /**
+   * Get set size
+   */
   async scard(namespace: string, key: string): Promise<number> {
     this.requireInit()
     return this.engine.scard(namespace, key)
   }
 
+  // ============================================================================
+  // Sorted Set Operations
+  // ============================================================================
+
+  /**
+   * Add to sorted set
+   */
   async zadd(
     namespace: string,
     key: string,
@@ -475,6 +572,9 @@ export class TEECacheProvider {
     return this.engine.zadd(namespace, key, ...members)
   }
 
+  /**
+   * Get sorted set range
+   */
   async zrange(
     namespace: string,
     key: string,
@@ -498,25 +598,48 @@ export class TEECacheProvider {
     return result
   }
 
+  /**
+   * Get sorted set size
+   */
   async zcard(namespace: string, key: string): Promise<number> {
     this.requireInit()
     return this.engine.zcard(namespace, key)
   }
 
+  // ============================================================================
+  // Key Operations
+  // ============================================================================
+
+  /**
+   * Get keys matching pattern
+   */
   async keys(namespace: string, pattern = '*'): Promise<string[]> {
     this.requireInit()
     return this.engine.keys(namespace, pattern)
   }
 
+  /**
+   * Clear namespace
+   */
   async flushdb(namespace: string): Promise<void> {
     this.requireInit()
     this.engine.flushdb(namespace)
   }
 
+  /**
+   * Get stats
+   */
   getStats(): CacheStats {
     return this.engine.getStats()
   }
 
+  // ============================================================================
+  // TEE Operations
+  // ============================================================================
+
+  /**
+   * Generate attestation
+   */
   private async generateAttestation(): Promise<CacheTEEAttestation> {
     // LOCAL mode - generate simulated attestation
     if (this.config.provider === CacheTEEProvider.LOCAL) {
@@ -836,33 +959,20 @@ export interface CreateTEECacheProviderConfig {
  *
  * For production: Requires TEE endpoint and API key
  * For testing: Use provider: 'local' or 'dstack'
- *
- * WARNING: LOCAL and DSTACK modes use SIMULATED attestation and
- * base64 encoding instead of real encryption. Never use in production.
  */
 export function createTEECacheProvider(
   config: CreateTEECacheProviderConfig = {},
 ): TEECacheProvider {
   const provider = config.provider ?? CacheTEEProvider.LOCAL
   const nodeId = config.nodeId ?? `tee-cache-${Date.now()}`
-  const isProduction = process.env.NODE_ENV === 'production'
 
   // LOCAL/dstack mode doesn't require endpoint
   if (
     provider === CacheTEEProvider.LOCAL ||
     provider === CacheTEEProvider.DSTACK
   ) {
-    // Prevent simulated TEE in production
-    if (isProduction && provider === CacheTEEProvider.LOCAL) {
-      throw new CacheError(
-        CacheErrorCode.ATTESTATION_FAILED,
-        'LOCAL TEE provider cannot be used in production. Use a real TEE provider (phala, intel-tdx, amd-sev) or DSTACK.',
-      )
-    }
-    const modeLabel =
-      provider === CacheTEEProvider.LOCAL ? 'SIMULATED' : 'DSTACK'
     console.log(
-      `[TEE-Cache] Creating provider in ${modeLabel} mode (attestation will be ${provider === CacheTEEProvider.LOCAL ? 'fake' : 'real if dstack available'})`,
+      `[TEE-Cache] Creating provider in ${provider.toUpperCase()} mode`,
     )
     return new TEECacheProvider(
       {

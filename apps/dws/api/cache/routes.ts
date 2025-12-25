@@ -32,6 +32,7 @@ export function getSharedEngine(): CacheEngine {
       maxMemoryMb: 1024, // 1GB shared cache
       defaultTtlSeconds: 3600,
       maxTtlSeconds: 86400 * 7, // 7 days max
+      evictionPolicy: 'lru',
     })
   }
   return sharedEngine
@@ -165,7 +166,6 @@ export function createCacheRoutes() {
           set.status = error.code === CacheErrorCode.UNAUTHORIZED ? 401 : 400
           return { error: error.message, code: error.code }
         }
-        console.error('[Cache API] Unexpected error:', error)
         set.status = 500
         return { error: 'Internal server error' }
       })

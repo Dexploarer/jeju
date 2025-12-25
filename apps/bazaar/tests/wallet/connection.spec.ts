@@ -22,9 +22,15 @@ const ERC20_FACTORY_ADDRESS = getContract('tokens', 'factory', 'localnet') as
 const NFT_MARKETPLACE_ADDRESS = getContract('nft', 'marketplace', 'localnet') as
   | `0x${string}`
   | undefined
-const PREDIMARKET_ADDRESS = getContract(
+<<<<<<< HEAD
+const _PREDIMARKET_ADDRESS = getContract(
   'moderation',
   'predimarket',
+=======
+const PREDICTION_MARKET_ADDRESS = getContract(
+  'bazaar',
+  'predictionMarket',
+>>>>>>> 2704e741a281cde8e0d87a38cb2417ed24b61d02
   'localnet',
 ) as `0x${string}` | undefined
 const POOL_MANAGER_ADDRESS = getContract('defi', 'poolManager', 'localnet') as
@@ -206,20 +212,25 @@ test.describe('Contract Deployment', () => {
     }
   })
 
-  test('Predimarket is deployed', async () => {
-    const predimarketAddress = PREDIMARKET_ADDRESS
+  test('PredictionMarket is deployed', async () => {
+    const predictionMarketAddress = PREDICTION_MARKET_ADDRESS
 
     if (
+<<<<<<< HEAD
       predimarketAddress &&
       predimarketAddress !== '0x0000000000000000000000000000000000000000'
+=======
+      predictionMarketAddress &&
+      predictionMarketAddress !== '0x0000000000000000000000000000000000000000'
+>>>>>>> 2704e741a281cde8e0d87a38cb2417ed24b61d02
     ) {
       const code = await publicClient.getCode({
-        address: predimarketAddress as `0x${string}`,
+        address: predictionMarketAddress as `0x${string}`,
       })
       expect(code).not.toBe('0x')
-      console.log(`Predimarket deployed at ${predimarketAddress}`)
+      console.log(`PredictionMarket deployed at ${predictionMarketAddress}`)
     } else {
-      console.log('Predimarket address not configured')
+      console.log('PredictionMarket address not configured')
     }
   })
 

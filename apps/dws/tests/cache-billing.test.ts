@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import type { Address, Hex } from 'viem'
 import {
   BillingMode,
-  CacheBillingManager,
+  type CacheBillingManager,
   type CachePaymentConfig,
   type CacheRentalPlan,
   initializeCacheBilling,
@@ -36,10 +36,15 @@ const TEST_PLAN: CacheRentalPlan = {
   features: ['test-feature'],
 }
 
-// Test payment proof
+// Counter for unique tx hashes
+let txHashCounter = 0
+
+// Test payment proof with unique tx hash
 function createTestPaymentProof(amount: bigint): PaymentProof {
+  txHashCounter++
+  const hexCounter = txHashCounter.toString(16).padStart(8, '0')
   return {
-    txHash: `0x${'a'.repeat(64)}` as Hex,
+    txHash: `0x${hexCounter}${'a'.repeat(56)}` as Hex,
     amount,
     asset: TEST_CONFIG.assetAddress,
     payer: '0x9876543210987654321098765432109876543210' as Address,
@@ -176,7 +181,7 @@ describe('CacheBillingManager', () => {
 
   describe('Subscription Management', () => {
     const testOwner = '0xabcdef1234567890abcdef1234567890abcdef12' as Address
-    const testInstanceId = 'test-instance-' + Date.now()
+    const testInstanceId = `test-instance-${Date.now()}`
 
     test('creates hourly subscription', async () => {
       const proof = createTestPaymentProof(TEST_PLAN.pricePerHour)
@@ -216,7 +221,7 @@ describe('CacheBillingManager', () => {
   })
 
   describe('Subscription Renewal', () => {
-    const renewInstanceId = 'renew-instance-' + Date.now()
+    const renewInstanceId = `renew-instance-${Date.now()}`
     const renewOwner = '0xfedcba0987654321fedcba0987654321fedcba09' as Address
 
     test('creates initial subscription', async () => {
@@ -246,7 +251,7 @@ describe('CacheBillingManager', () => {
       }
 
       const renewed = await manager.processRenewal(
-        subscription!.id,
+        subscription?.id,
         renewalProof,
         TEST_PLAN,
       )
@@ -257,7 +262,7 @@ describe('CacheBillingManager', () => {
   })
 
   describe('Subscription Cancellation', () => {
-    const cancelInstanceId = 'cancel-instance-' + Date.now()
+    const cancelInstanceId = `cancel-instance-${Date.now()}`
     const cancelOwner = '0x1234abcd5678efgh1234abcd5678efgh1234abcd' as Address
 
     test('creates subscription to cancel', async () => {
@@ -277,7 +282,7 @@ describe('CacheBillingManager', () => {
       expect(subscription).not.toBeUndefined()
 
       const cancelled = await manager.cancelSubscription(
-        subscription!.id,
+        subscription?.id,
         cancelOwner,
       )
 
@@ -287,7 +292,7 @@ describe('CacheBillingManager', () => {
 
     test('rejects cancellation by non-owner', async () => {
       // Create a new subscription
-      const newInstanceId = 'auth-test-' + Date.now()
+      const newInstanceId = `auth-test-${Date.now()}`
       const proof = createTestPaymentProof(TEST_PLAN.pricePerHour)
 
       const subscription = await manager.createSubscription(
@@ -308,7 +313,7 @@ describe('CacheBillingManager', () => {
 
   describe('Usage Metrics', () => {
     test('records usage metrics', async () => {
-      const instanceId = 'metrics-instance-' + Date.now()
+      const instanceId = `metrics-instance-${Date.now()}`
       const now = Date.now()
 
       await manager.recordUsage(instanceId, {
@@ -332,8 +337,9 @@ describe('CacheBillingManager', () => {
 
   describe('Invoice Generation', () => {
     test('generates invoice for hourly billing', async () => {
-      const invoiceInstanceId = 'invoice-instance-' + Date.now()
-      const invoiceOwner = '0xaaaa111122223333444455556666777788889999' as Address
+      const invoiceInstanceId = `invoice-instance-${Date.now()}`
+      const invoiceOwner =
+        '0xaaaa111122223333444455556666777788889999' as Address
 
       // Create subscription
       const proof = createTestPaymentProof(TEST_PLAN.pricePerHour)
@@ -378,7 +384,7 @@ describe('CacheBillingManager', () => {
     const historyOwner = '0xbbbb222233334444555566667777888899990000' as Address
 
     test('creates payments for history', async () => {
-      const instanceId1 = 'history-1-' + Date.now()
+      const instanceId1 = `history-1-${Date.now()}`
       const proof1 = createTestPaymentProof(TEST_PLAN.pricePerHour)
 
       await manager.createSubscription(
@@ -399,7 +405,8 @@ describe('CacheBillingManager', () => {
     })
 
     test('returns empty for unknown owner', () => {
-      const unknownOwner = '0x0000000000000000000000000000000000000001' as Address
+      const unknownOwner =
+        '0x0000000000000000000000000000000000000001' as Address
       const payments = manager.getPaymentHistory(unknownOwner)
 
       expect(payments.length).toBe(0)
@@ -419,11 +426,18 @@ describe('CacheBillingManager', () => {
 
   describe('Replay Protection', () => {
     test('rejects duplicate transaction hash', async () => {
-      const instanceId = 'replay-test-' + Date.now()
+      const instanceId = `replay-test-${Date.now()}`
       const owner = '0xcccc333344445555666677778888999900001111' as Address
 
-      // First payment
-      const proof = createTestPaymentProof(TEST_PLAN.pricePerHour)
+      // Create a specific proof for this test
+      const replayTxHash = `0x${'f'.repeat(64)}` as Hex
+      const proof: PaymentProof = {
+        txHash: replayTxHash,
+        amount: TEST_PLAN.pricePerHour,
+        asset: TEST_CONFIG.assetAddress,
+        payer: owner,
+        timestamp: Date.now(),
+      }
 
       await manager.createSubscription(
         instanceId,
@@ -434,14 +448,22 @@ describe('CacheBillingManager', () => {
       )
 
       // Try to use the same proof again
-      const secondInstanceId = 'replay-test-2-' + Date.now()
+      const secondInstanceId = `replay-test-2-${Date.now()}`
+      const duplicateProof: PaymentProof = {
+        txHash: replayTxHash, // Same tx hash
+        amount: TEST_PLAN.pricePerHour,
+        asset: TEST_CONFIG.assetAddress,
+        payer: owner,
+        timestamp: Date.now(),
+      }
+
       await expect(
         manager.createSubscription(
           secondInstanceId,
           owner,
           TEST_PLAN,
           BillingMode.HOURLY,
-          proof, // Same proof
+          duplicateProof,
         ),
       ).rejects.toThrow('already used')
     })
@@ -454,9 +476,8 @@ describe('Billing Integration with Routes', () => {
 
   test('billing requirement endpoint returns 200', async () => {
     const { createCacheRoutes } = await import('../api/cache/routes')
-    const { initializeCacheProvisioning, resetCacheProvisioning } = await import(
-      '../api/cache/provisioning'
-    )
+    const { initializeCacheProvisioning, resetCacheProvisioning } =
+      await import('../api/cache/provisioning')
 
     resetCacheProvisioning()
     resetCacheBilling()
@@ -484,9 +505,8 @@ describe('Billing Integration with Routes', () => {
 
   test('billing stats endpoint returns stats', async () => {
     const { createCacheRoutes } = await import('../api/cache/routes')
-    const { initializeCacheProvisioning, resetCacheProvisioning } = await import(
-      '../api/cache/provisioning'
-    )
+    const { initializeCacheProvisioning, resetCacheProvisioning } =
+      await import('../api/cache/provisioning')
 
     resetCacheProvisioning()
     resetCacheBilling()

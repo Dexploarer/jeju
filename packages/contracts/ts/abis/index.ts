@@ -93,7 +93,8 @@ import TokenRegistryAbiJson from '../../abis/TokenRegistry.json'
 import ValidationRegistryAbiJson from '../../abis/ValidationRegistry.json'
 import VRFCoordinatorV2_5AbiJson from '../../abis/VRFCoordinatorV2_5.json'
 
-// @deprecated PascalCase exports (cast to Abi, loses type inference)
+// Legacy PascalCase exports (cast to Abi, loses type inference)
+// @deprecated Use camelCase typed exports from '../generated' instead
 export const ERC20Abi = ERC20AbiJson.abi as Abi
 export const ERC20FactoryAbi = ERC20FactoryAbiJson.abi as Abi
 export const BazaarAbi = BazaarAbiJson.abi as Abi

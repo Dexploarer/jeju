@@ -63,6 +63,10 @@ import { createEdgeRouter, handleEdgeWebSocket } from './routes/edge'
 import { createFundingRouter } from './routes/funding'
 import { createGitRouter } from './routes/git'
 import { createKMSRouter } from './routes/kms'
+import {
+  createLoadBalancerRouter,
+  shutdownLoadBalancer,
+} from './routes/load-balancer'
 import { createMCPRouter } from './routes/mcp'
 import { createModerationRouter } from './routes/moderation'
 import { createOAuth3Router } from './routes/oauth3'
@@ -324,7 +328,10 @@ app
       services: {
         storage: { status: 'healthy', backends },
         compute: { status: 'healthy' },
-        cdn: { status: 'healthy' },
+        cdn: {
+          status: 'healthy',
+          description: 'Decentralized CDN with edge caching',
+        },
         git: { status: 'healthy' },
         pkg: { status: 'healthy' },
         ci: { status: 'healthy' },
@@ -344,6 +351,11 @@ app
           status: 'healthy',
           description: 'Decentralized serverless cache',
         },
+        email: {
+          status: 'healthy',
+          description: 'Decentralized email with SMTP/IMAP',
+        },
+        lb: { status: 'healthy', description: 'Scale-to-zero load balancer' },
       },
       backends: { available: backends, health: backendHealth },
     }
@@ -379,6 +391,8 @@ app
       'terraform',
       'mesh',
       'cache',
+      'email',
+      'lb',
     ],
     endpoints: {
       storage: '/storage/*',
@@ -409,6 +423,8 @@ app
       ingress: '/ingress/*',
       mesh: '/mesh/*',
       cache: '/cache/*',
+      email: '/email/*',
+      lb: '/lb/*',
     },
   }))
 
@@ -443,6 +459,9 @@ app.use(createEmailRouter())
 // Funding and package registry proxy
 app.use(createFundingRouter())
 app.use(createPkgRegistryProxyRouter())
+
+// Load balancer
+app.use(createLoadBalancerRouter())
 
 // Secure database provisioning and access
 app.use(createDatabaseRouter())
@@ -648,8 +667,8 @@ app.get('/.well-known/agent-card.json', () => {
 // DWS Cache Service routes (decentralized cache with TEE support)
 app.use(createCacheRoutes())
 
-// Root-level /stats endpoint for Babylon compatibility
-// Returns cache stats in the format expected by Babylon cache client
+// Root-level /stats endpoint for vendor app compatibility
+// Returns cache stats in standard format
 app.get('/stats', () => {
   const engine = getSharedEngine()
   const cacheStats = engine.getStats()
@@ -707,6 +726,8 @@ function shutdown(signal: string) {
   clearInterval(rateLimitCleanupInterval)
   shutdownDA()
   console.log('[DWS] DA layer stopped')
+  shutdownLoadBalancer()
+  console.log('[DWS] Load balancer stopped')
   stopKeepaliveService()
   console.log('[DWS] Keepalive service stopped')
   if (p2pCoordinator) {

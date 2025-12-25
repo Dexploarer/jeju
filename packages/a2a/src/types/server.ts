@@ -10,6 +10,7 @@ import type { JsonValue } from '@jejunetwork/types'
 import type { AgentCapabilities, AgentProfile } from './a2a'
 import type {
   PaymentMetadata,
+  PaymentRequest,
   PaymentVerificationParams,
   PaymentVerificationResult,
 } from './common'
@@ -243,17 +244,9 @@ export interface IRegistryClient {
 }
 
 /**
- * Payment request result (matches PaymentRequest from a2a/types)
+ * Payment request result - re-exported from common for interface use
  */
-export interface PaymentRequestResult {
-  requestId: string
-  from: string
-  to: string
-  amount: string
-  service: string
-  metadata?: PaymentMetadata
-  expiresAt: number
-}
+export type PaymentRequestResult = PaymentRequest
 
 /**
  * X402 payment manager interface
@@ -266,19 +259,19 @@ export interface IX402Manager {
     amount: string,
     service: string,
     metadata?: PaymentMetadata,
-  ): PaymentRequestResult
+  ): Promise<PaymentRequestResult>
   verifyPayment(
     verificationData: PaymentVerificationParams,
   ): Promise<PaymentVerificationResult>
-  getPaymentRequest(requestId: string): PaymentRequestResult | null
-  isPaymentVerified(requestId: string): boolean
-  cancelPaymentRequest(requestId: string): boolean
-  getPendingPayments(agentAddress: string): PaymentRequestResult[]
-  getStatistics(): {
-    totalPending: number
-    totalVerified: number
-    totalExpired: number
-  }
+  getPaymentRequest(requestId: string): Promise<PaymentRequestResult | null>
+  isPaymentVerified(requestId: string): Promise<boolean>
+  cancelPaymentRequest(requestId: string): Promise<boolean>
+  getPendingPayments(): Promise<PaymentRequestResult[]>
+  getStatistics(): Promise<{
+    pending: number
+    verified: number
+    expired: number
+  }>
 }
 
 /**

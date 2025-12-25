@@ -405,7 +405,7 @@ export class LocalJNSGateway {
     // Try multiple possible app locations and build directories
     const appDirCandidates = [
       join(this.config.rootDir, 'apps', appName),
-      join(this.config.rootDir, 'vendor', appName, 'apps', 'web'), // Babylon structure
+      join(this.config.rootDir, 'vendor', appName, 'apps', 'web'), // vendor app structure
       join(this.config.rootDir, 'vendor', appName),
     ]
 

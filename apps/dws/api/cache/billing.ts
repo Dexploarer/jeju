@@ -198,10 +198,12 @@ export class CacheBillingManager {
       await this.ensureTables()
       await this.loadFromCQL()
       console.log('[Cache Billing] Initialized with CQL persistence')
-    } catch (err) {
+    } catch (_err) {
       // CQL not available - use in-memory storage only
       this.cqlClient = null
-      console.log('[Cache Billing] Initialized with in-memory storage (CQL not available)')
+      console.log(
+        '[Cache Billing] Initialized with in-memory storage (CQL not available)',
+      )
     }
 
     this.initialized = true

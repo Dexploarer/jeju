@@ -61,8 +61,8 @@ export const CONTRACTS = {
   // NFT Marketplace
   nftMarketplace: addr(contracts.commerce?.nftMarketplace),
 
-  // Payments
-  predimarket: addr(contracts.moderation?.predimarket),
+  // Prediction Markets (part of Bazaar)
+  predictionMarket: addr(contracts.bazaar?.predictionMarket),
 
   // Perpetuals
   perpetualMarket: addr(contracts.perps?.market),

@@ -5,14 +5,9 @@
  * @packageDocumentation
  */
 
-import type { JsonValue } from '@jejunetwork/types'
+import type { JsonValue, StringRecord } from '@jejunetwork/types'
 
-export type { JsonValue }
-
-/**
- * String-keyed record type for JSON objects
- */
-export type StringRecord<T> = Record<string, T>
+export type { JsonValue, StringRecord }
 
 /**
  * JSON-RPC 2.0 Error
@@ -56,6 +51,10 @@ export type JsonRpcResult =
   | InitializeResult
   | ToolsListResult
   | ToolCallResult
+  | ResourcesListResult
+  | ResourcesReadResult
+  | PromptsListResult
+  | PromptsGetResult
   | Record<string, never> // Empty object for ping
 
 /**
@@ -239,6 +238,91 @@ export type ToolResultContent = TextContent | ImageContent | ResourceContent
 export interface ToolCallResult {
   content: ToolResultContent[]
   isError?: boolean
+}
+
+/**
+ * MCP Resource
+ */
+export interface MCPResource {
+  uri: string
+  name: string
+  description?: string
+  mimeType?: string
+}
+
+/**
+ * Resources List Result
+ */
+export interface ResourcesListResult {
+  resources: MCPResource[]
+  nextCursor?: string
+}
+
+/**
+ * Resource Read Result Content
+ */
+export interface ResourceReadContent {
+  uri: string
+  mimeType?: string
+  text?: string
+  blob?: string
+}
+
+/**
+ * Resources Read Result
+ */
+export interface ResourcesReadResult {
+  contents: ResourceReadContent[]
+}
+
+/**
+ * MCP Prompt Argument
+ */
+export interface MCPPromptArgument {
+  name: string
+  description?: string
+  required?: boolean
+}
+
+/**
+ * MCP Prompt
+ */
+export interface MCPPrompt {
+  name: string
+  description?: string
+  arguments?: MCPPromptArgument[]
+}
+
+/**
+ * Prompts List Result
+ */
+export interface PromptsListResult {
+  prompts: MCPPrompt[]
+  nextCursor?: string
+}
+
+/**
+ * Prompt Message Content
+ */
+export interface PromptMessageContent {
+  type: 'text'
+  text: string
+}
+
+/**
+ * Prompt Message
+ */
+export interface PromptMessage {
+  role: 'user' | 'assistant'
+  content: PromptMessageContent
+}
+
+/**
+ * Prompts Get Result
+ */
+export interface PromptsGetResult {
+  description?: string
+  messages: PromptMessage[]
 }
 
 /**

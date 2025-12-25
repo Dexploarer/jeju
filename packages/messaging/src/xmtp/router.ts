@@ -10,10 +10,14 @@
  * 4. Recipient decrypts with XMTP/MLS
  */
 
-import { createLogger } from '@jejunetwork/shared'
 import type { Address } from 'viem'
 
-const log = createLogger('xmtp-router')
+<<<<<<< HEAD
+
+const _log = createLogger('xmtp-router')
+
+=======
+>>>>>>> 2704e741a281cde8e0d87a38cb2417ed24b61d02
 
 import type { RouteConfig, RouteResult, XMTPEnvelope } from './types'
 
@@ -71,6 +75,9 @@ export class XMTPMessageRouter {
       maxRetries: config?.maxRetries ?? 3,
       retryDelayMs: config?.retryDelayMs ?? 1000,
       timeoutMs: config?.timeoutMs ?? 10000,
+      rpcUrl: config?.rpcUrl,
+      nodeRegistryAddress: config?.nodeRegistryAddress,
+      useFallbackNodes: config?.useFallbackNodes ?? false,
     }
 
     this.stats = {
@@ -86,7 +93,7 @@ export class XMTPMessageRouter {
    * Initialize the router
    */
   async initialize(): Promise<void> {
-    log.info('Initializing')
+    console.log('[XMTP Router] Initializing...')
 
     // Discover relay nodes
     await this.discoverNodes()
@@ -94,7 +101,7 @@ export class XMTPMessageRouter {
     // Start health check loop
     this.startHealthChecks()
 
-    log.info('Initialized', { nodeCount: this.relayNodes.size })
+    console.log(`[XMTP Router] Initialized with ${this.relayNodes.size} nodes`)
   }
 
   /**
@@ -112,7 +119,7 @@ export class XMTPMessageRouter {
     // Flush pending messages
     await this.flushPending()
 
-    log.info('Shutdown complete')
+    console.log('[XMTP Router] Shutdown complete')
   }
 
   /**
@@ -271,8 +278,7 @@ export class XMTPMessageRouter {
     )
 
     for (let i = 0; i < count && i < sorted.length; i++) {
-      const entry = sorted[i]
-      if (entry) this.pendingMessages.delete(entry[0])
+      this.pendingMessages.delete(sorted[i][0])
     }
   }
 
@@ -421,7 +427,9 @@ export class XMTPMessageRouter {
    * Flush pending messages
    */
   private async flushPending(): Promise<void> {
-    log.info('Flushing pending messages', { count: this.pendingMessages.size })
+    console.log(
+      `[XMTP Router] Flushing ${this.pendingMessages.size} pending messages`,
+    )
     await this.retryPending()
   }
 
