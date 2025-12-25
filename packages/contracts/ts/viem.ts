@@ -73,7 +73,7 @@ export async function readContract<
   TFunctionName extends ContractFunctionName<TAbi, 'pure' | 'view'>,
   TArgs extends ContractFunctionArgs<TAbi, 'pure' | 'view', TFunctionName>,
 >(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // biome-ignore lint/suspicious/noExplicitAny: Required for viem client compatibility
   client: PublicClient<any, any, any> | ReadableClient,
   params: {
     address: Address

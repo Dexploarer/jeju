@@ -209,7 +209,7 @@ export class AutonomousPlanningCoordinator {
         ...context.directives.always.map((d) => `✓ ALWAYS: ${d.rule}`),
         ...context.directives.never.map((d) => `✗ NEVER: ${d.rule}`),
         ...context.directives.prefer.map((d) => `+ PREFER: ${d.rule}`),
-      ].join('\n') || 'No directives'
+      ].join('\n') ?? 'No directives'
 
     const constraintsText = context.constraints
       ? `- Max actions this tick: ${context.constraints.general.maxActionsPerTick}
@@ -262,7 +262,7 @@ ${
   context.recentActions
     .slice(0, 10)
     .map((a) => `- ${a.type}: ${a.success ? 'success' : 'failed'}`)
-    .join('\n') || 'None'
+    .join('\n') ?? 'None'
 }
 
 === YOUR TASK ===
