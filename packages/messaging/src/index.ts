@@ -47,6 +47,14 @@ export {
   type MessagingWorker,
   type MessagingWorkerConfig,
 } from './dws-worker/index.js'
+// Unified Farcaster-Messaging Integration
+export {
+  createUnifiedMessagingService,
+  type UnifiedConversation,
+  type UnifiedMessage,
+  type UnifiedMessagingConfig,
+  UnifiedMessagingService,
+} from './farcaster-integration'
 // MLS (Message Layer Security) for group messaging
 // Exclude MessageEvent which conflicts with sdk/types
 export {
@@ -101,6 +109,18 @@ export {
 } from './mls'
 // SDK (browser-compatible)
 export * from './sdk'
+// Storage adapters
+export {
+  type ConsistencyLevel,
+  type CQLConfig,
+  CQLMessageStorage,
+  createCQLStorage,
+  getCQLStorage,
+  resetCQLStorage,
+  type StoredConversation,
+  type StoredKeyBundle,
+  type StoredMessage,
+} from './storage/cql-storage'
 // TEE-backed key management
 export * from './tee'
 // XMTP node and router (excluding RelayNode)
@@ -144,27 +164,5 @@ export type {
   XMTPNodeConfig,
   XMTPNodeStats,
 } from './xmtp/types'
-
-// Storage adapters
-export {
-  createCQLStorage,
-  getCQLStorage,
-  resetCQLStorage,
-  CQLMessageStorage,
-  type CQLConfig,
-  type ConsistencyLevel,
-  type StoredConversation,
-  type StoredKeyBundle,
-  type StoredMessage,
-} from './storage/cql-storage'
-
-// Unified Farcaster-Messaging Integration
-export {
-  createUnifiedMessagingService,
-  UnifiedMessagingService,
-  type UnifiedMessagingConfig,
-  type UnifiedMessage,
-  type UnifiedConversation,
-} from './farcaster-integration'
 
 // Node-only exports (relay server) available via '@jejunetwork/messaging/node'

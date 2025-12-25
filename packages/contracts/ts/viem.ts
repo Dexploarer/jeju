@@ -73,7 +73,8 @@ export async function readContract<
   TFunctionName extends ContractFunctionName<TAbi, 'pure' | 'view'>,
   TArgs extends ContractFunctionArgs<TAbi, 'pure' | 'view', TFunctionName>,
 >(
-  client: PublicClient | ReadableClient,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: PublicClient<any, any, any> | ReadableClient,
   params: {
     address: Address
     abi: TAbi

@@ -31,8 +31,6 @@ export interface MCPResource {
  * MCP Communication Client
  */
 export class MCPCommunicationClient {
-  private _serverEndpoint: string
-
   constructor(serverEndpoint?: string) {
     this._serverEndpoint = serverEndpoint ?? ''
   }
@@ -74,6 +72,8 @@ export class MCPCommunicationClient {
 /**
  * Create MCP client
  */
-export function createMCPClient(serverEndpoint?: string): MCPCommunicationClient {
+export function createMCPClient(
+  serverEndpoint?: string,
+): MCPCommunicationClient {
   return new MCPCommunicationClient(serverEndpoint)
 }

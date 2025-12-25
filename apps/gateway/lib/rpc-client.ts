@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { RpcChainsResponseSchema, type RpcParamValue } from './validation'
 
 // Validation schemas for RPC responses
-const _JsonRpcResponseSchema = z.object({
+const JsonRpcResponseSchema = z.object({
   jsonrpc: z.string(),
   id: z.union([z.number(), z.string()]),
   result: z.unknown().optional(),
@@ -18,7 +18,7 @@ const _JsonRpcResponseSchema = z.object({
     .optional(),
 })
 
-const _RateLimitInfoSchema = z.object({
+const RateLimitInfoSchema = z.object({
   tier: z.string(),
   limit: z.union([z.number(), z.string()]),
   remaining: z.union([z.number(), z.string()]),

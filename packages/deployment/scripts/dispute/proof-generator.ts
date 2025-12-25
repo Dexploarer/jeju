@@ -529,7 +529,7 @@ export class FraudProofGenerator {
           witness.memProof,
           snapshotPreimages.map((p) => p.key),
           Array.from(snapshot.accountProofs.values()).map((p) =>
-            keccak256(p.accountProof[0] || '0x'),
+            keccak256(p.accountProof[0] ?? '0x'),
           ),
         ],
       )

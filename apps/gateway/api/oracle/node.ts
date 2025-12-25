@@ -1,4 +1,5 @@
 import { readContract } from '@jejunetwork/shared'
+import type { NodeMetrics, OracleNodeConfig } from '@jejunetwork/types'
 import { expectHex, parseEnvAddress, ZERO_ADDRESS } from '@jejunetwork/types'
 import {
   type Chain,
@@ -15,7 +16,6 @@ import {
 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { base, baseSepolia, foundry } from 'viem/chains'
-
 import {
   COMMITTEE_MANAGER_ABI,
   FEED_REGISTRY_ABI,
@@ -23,7 +23,6 @@ import {
   REPORT_VERIFIER_ABI,
 } from './abis'
 import { type PriceData, PriceFetcher } from './price-fetcher'
-import type { NodeMetrics, OracleNodeConfig } from '@jejunetwork/types'
 import type { PriceReport } from './types'
 
 const ZERO_BYTES32 =

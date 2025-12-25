@@ -1,4 +1,3 @@
-import { readContract } from '@jejunetwork/contracts'
 import type {
   NodeMetrics,
   OracleNodeConfig,
@@ -110,7 +109,7 @@ export class OracleNode {
   private async ensureRegistered(): Promise<void> {
     const workerAddress = this.account.address
 
-    const existingOperatorId = await this.publicClient.readContract( {
+    const existingOperatorId = await this.publicClient.readContract({
       address: this.config.networkConnector,
       abi: NETWORK_CONNECTOR_ABI,
       functionName: 'workerToOperator',
@@ -143,7 +142,7 @@ export class OracleNode {
 
     await this.publicClient.waitForTransactionReceipt({ hash })
 
-    this.operatorId = await this.publicClient.readContract( {
+    this.operatorId = await this.publicClient.readContract({
       address: this.config.networkConnector,
       abi: NETWORK_CONNECTOR_ABI,
       functionName: 'workerToOperator',
@@ -158,7 +157,7 @@ export class OracleNode {
     console.log('[OracleNode] Polling prices...')
 
     // Get active feeds
-    const feedIds = await this.publicClient.readContract( {
+    const feedIds = await this.publicClient.readContract({
       address: this.config.feedRegistry,
       abi: FEED_REGISTRY_ABI,
       functionName: 'getActiveFeeds',
@@ -188,7 +187,7 @@ export class OracleNode {
   private async isCommitteeMember(feedId: Hex): Promise<boolean> {
     const workerAddress = this.account.address
 
-    return this.publicClient.readContract( {
+    return this.publicClient.readContract({
       address: this.config.committeeManager,
       abi: COMMITTEE_MANAGER_ABI,
       functionName: 'isCommitteeMember',
@@ -198,7 +197,7 @@ export class OracleNode {
 
   private async submitReport(feedId: Hex, priceData: PriceData): Promise<void> {
     // Get current round
-    const currentRound = await this.publicClient.readContract( {
+    const currentRound = await this.publicClient.readContract({
       address: this.config.reportVerifier,
       abi: REPORT_VERIFIER_ABI,
       functionName: 'getCurrentRound',

@@ -5,34 +5,50 @@
  * Supports multi-DAO hierarchies, council auto-generation, and fee configuration.
  */
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
-import { join, dirname } from 'node:path'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import {
   type Address,
+  type Chain,
   createPublicClient,
   createWalletClient,
   formatEther,
   http,
+  isAddress,
   keccak256,
   toBytes,
-  type Chain,
 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { base, baseSepolia, localhost } from 'viem/chains'
-import { logger } from './logger'
+import { z } from 'zod'
 import {
   type DAOManifest,
-  validateDAOManifest,
   validateCouncilWeights,
+  validateDAOManifest,
 } from '../schemas/dao-manifest'
 import {
+  CHAIN_CONFIG,
   type DAODeploymentResult,
+  getDevCEOAddress,
+  getDevCouncilAddresses,
   type NetworkType,
   WELL_KNOWN_KEYS,
-  getDevCouncilAddresses,
-  getDevCEOAddress,
-  CHAIN_CONFIG,
 } from '../types'
+import { logger } from './logger'
+
+// ============ Validation Schemas ============
+
+const AddressSchema = z
+  .string()
+  .refine(isAddress, { message: 'Invalid address' })
+
+/** Schema for governance deployment file */
+const GovernanceDeploymentSchema = z
+  .object({
+    DAORegistry: AddressSchema,
+    DAOFunding: AddressSchema,
+  })
+  .passthrough()
 
 // ============ Contract ABIs ============
 
@@ -254,11 +270,12 @@ function getChainConfig(network: NetworkType): ChainConfig {
         chain: baseSepolia,
         rpcUrl: process.env.BASE_SEPOLIA_RPC_URL ?? 'https://sepolia.base.org',
       }
-    case 'localnet':
     default:
       return {
         chain: localhost,
-        rpcUrl: process.env.LOCAL_RPC_URL ?? `http://127.0.0.1:${CHAIN_CONFIG.localnet.rpcUrl.split(':').pop()}`,
+        rpcUrl:
+          process.env.LOCAL_RPC_URL ??
+          `http://127.0.0.1:${CHAIN_CONFIG.localnet.rpcUrl.split(':').pop()}`,
       }
   }
 }
@@ -290,13 +307,8 @@ async function loadContractAddresses(
   }
 
   const content = readFileSync(deploymentPath, 'utf-8')
-  const deployment = JSON.parse(content) as Record<string, string>
-
-  if (!deployment.DAORegistry || !deployment.DAOFunding) {
-    throw new Error(
-      `DAORegistry and DAOFunding not found in ${network} deployment. Run 'jeju deploy governance' first.`,
-    )
-  }
+  const parsed: unknown = JSON.parse(content)
+  const deployment = GovernanceDeploymentSchema.parse(parsed)
 
   return {
     DAORegistry: deployment.DAORegistry as Address,
@@ -324,7 +336,9 @@ export interface DAODeployOptions {
 
 // ============ Main Deployment Function ============
 
-export async function deployDAO(options: DAODeployOptions): Promise<DAODeploymentResult> {
+export async function deployDAO(
+  options: DAODeployOptions,
+): Promise<DAODeploymentResult> {
   const {
     network,
     manifestPath,
@@ -351,17 +365,22 @@ export async function deployDAO(options: DAODeployOptions): Promise<DAODeploymen
   }
 
   const manifestContent = readFileSync(manifestPath, 'utf-8')
-  const rawManifest = JSON.parse(manifestContent) as Record<string, unknown>
+  const rawManifest: unknown = JSON.parse(manifestContent)
   const manifest = validateDAOManifest(rawManifest)
 
   logger.success(`Loaded: ${manifest.displayName ?? manifest.name}`)
   if (verbose) {
     logger.keyValue('CEO', manifest.governance.ceo.name)
-    logger.keyValue('Council Members', String(manifest.governance.council.members.length))
+    logger.keyValue(
+      'Council Members',
+      String(manifest.governance.council.members.length),
+    )
   }
 
   // Validate council weights
-  const weightValidation = validateCouncilWeights(manifest.governance.council.members)
+  const weightValidation = validateCouncilWeights(
+    manifest.governance.council.members,
+  )
   if (!weightValidation.valid) {
     logger.warn(weightValidation.message)
   }
@@ -433,18 +452,27 @@ export async function deployDAO(options: DAODeployOptions): Promise<DAODeploymen
           traits: manifest.governance.ceo.traits,
         },
         {
-          minQualityScore: BigInt(manifest.governance.parameters.minQualityScore),
-          councilVotingPeriod: BigInt(manifest.governance.parameters.councilVotingPeriod),
+          minQualityScore: BigInt(
+            manifest.governance.parameters.minQualityScore,
+          ),
+          councilVotingPeriod: BigInt(
+            manifest.governance.parameters.councilVotingPeriod,
+          ),
           gracePeriod: BigInt(manifest.governance.parameters.gracePeriod),
-          minProposalStake: BigInt(manifest.governance.parameters.minProposalStake),
+          minProposalStake: BigInt(
+            manifest.governance.parameters.minProposalStake,
+          ),
           quorumBps: BigInt(manifest.governance.parameters.quorumBps),
         },
       ],
     })
 
     logger.info(`TX: ${createDAOHash}`)
-    const receipt = await publicClient.waitForTransactionReceipt({ hash: createDAOHash })
-    daoId = (receipt.logs[0]?.topics?.[1] ?? keccak256(toBytes(manifest.name))) as `0x${string}`
+    const receipt = await publicClient.waitForTransactionReceipt({
+      hash: createDAOHash,
+    })
+    daoId = (receipt.logs[0]?.topics?.[1] ??
+      keccak256(toBytes(manifest.name))) as `0x${string}`
     logger.success(`DAO created with ID: ${daoId}`)
   }
 
@@ -485,7 +513,7 @@ export async function deployDAO(options: DAODeployOptions): Promise<DAODeploymen
 
     for (let i = 0; i < manifest.governance.council.members.length; i++) {
       const member = manifest.governance.council.members[i]
-      
+
       // Use manifest address, or dev address for localnet, or deployer as fallback
       let memberAddress: Address = account.address
       if (member.address) {
@@ -501,7 +529,13 @@ export async function deployDAO(options: DAODeployOptions): Promise<DAODeploymen
           address: contracts.DAORegistry,
           abi: DAORegistryABI,
           functionName: 'addCouncilMember',
-          args: [daoId, memberAddress, BigInt(agentId), member.role, BigInt(member.weight)],
+          args: [
+            daoId,
+            memberAddress,
+            BigInt(agentId),
+            member.role,
+            BigInt(member.weight),
+          ],
         })
         await publicClient.waitForTransactionReceipt({ hash: memberHash })
       }
@@ -512,10 +546,14 @@ export async function deployDAO(options: DAODeployOptions): Promise<DAODeploymen
         agentId,
       })
 
-      logger.info(`  Added: ${member.role} (${memberAddress.slice(0, 10)}..., weight: ${member.weight})`)
+      logger.info(
+        `  Added: ${member.role} (${memberAddress.slice(0, 10)}..., weight: ${member.weight})`,
+      )
     }
 
-    logger.success(`Council configured with ${councilResult.members.length} members`)
+    logger.success(
+      `Council configured with ${councilResult.members.length} members`,
+    )
   }
 
   // 7. Seed packages and repos
@@ -523,7 +561,8 @@ export async function deployDAO(options: DAODeployOptions): Promise<DAODeploymen
   const repoIds: string[] = []
 
   const deploymentConfig = manifest.deployment?.[network]
-  const shouldSeed = seed || (network === 'localnet' && deploymentConfig?.autoSeed !== false)
+  const shouldSeed =
+    seed || (network === 'localnet' && deploymentConfig?.autoSeed !== false)
 
   if (shouldSeed) {
     // Seed packages
@@ -531,7 +570,9 @@ export async function deployDAO(options: DAODeployOptions): Promise<DAODeploymen
       logger.step('Seeding packages...')
 
       for (const pkg of manifest.packages.seeded) {
-        const packageId = keccak256(toBytes(`${manifest.name}:package:${pkg.name}`))
+        const packageId = keccak256(
+          toBytes(`${manifest.name}:package:${pkg.name}`),
+        )
         packageIds.push(packageId)
 
         // Register in PackageRegistry if available
@@ -582,7 +623,9 @@ export async function deployDAO(options: DAODeployOptions): Promise<DAODeploymen
                 [],
               ],
             })
-            const receipt = await publicClient.waitForTransactionReceipt({ hash: proposeHash })
+            const receipt = await publicClient.waitForTransactionReceipt({
+              hash: proposeHash,
+            })
             const projectId = receipt.logs[0]?.topics?.[1] ?? packageId
 
             // Accept and set weight
@@ -668,7 +711,9 @@ export async function deployDAO(options: DAODeployOptions): Promise<DAODeploymen
                 [],
               ],
             })
-            const receipt = await publicClient.waitForTransactionReceipt({ hash: proposeHash })
+            const receipt = await publicClient.waitForTransactionReceipt({
+              hash: proposeHash,
+            })
             const projectId = receipt.logs[0]?.topics?.[1] ?? repoId
 
             const acceptHash = await walletClient.writeContract({
@@ -726,7 +771,9 @@ export async function deployDAO(options: DAODeployOptions): Promise<DAODeploymen
     })
     await publicClient.waitForTransactionReceipt({ hash: depositHash })
 
-    logger.success(`Deposited ${formatEther(matchingAmount)} ETH to matching pool`)
+    logger.success(
+      `Deposited ${formatEther(matchingAmount)} ETH to matching pool`,
+    )
   }
 
   // 9. Build and save result
@@ -773,9 +820,11 @@ export async function deployDAO(options: DAODeployOptions): Promise<DAODeploymen
 /**
  * List all DAOs from a directory containing multiple manifests
  */
-export async function discoverDAOManifests(rootDir: string): Promise<DAOManifest[]> {
+export async function discoverDAOManifests(
+  rootDir: string,
+): Promise<DAOManifest[]> {
   const manifests: DAOManifest[] = []
-  const fs = require('fs')
+  const fs = require('node:fs')
 
   // Check vendor directory
   const vendorDir = join(rootDir, 'vendor')
@@ -783,7 +832,12 @@ export async function discoverDAOManifests(rootDir: string): Promise<DAOManifest
     const vendorEntries = fs.readdirSync(vendorDir, { withFileTypes: true })
     for (const entry of vendorEntries) {
       if (entry.isDirectory()) {
-        const daoManifestPath = join(vendorDir, entry.name, 'dao', 'jeju-manifest.json')
+        const daoManifestPath = join(
+          vendorDir,
+          entry.name,
+          'dao',
+          'jeju-manifest.json',
+        )
         if (existsSync(daoManifestPath)) {
           const content = readFileSync(daoManifestPath, 'utf-8')
           try {
@@ -856,7 +910,7 @@ const DAOAllocationRegistryABI = [
 const ALLOCATION_TYPES = {
   'deep-funding': 0,
   'fee-share': 1,
-  'recurring': 2,
+  recurring: 2,
   'one-time': 3,
 } as const
 
@@ -887,7 +941,9 @@ export async function deployMultipleDAOs(
 
   logger.info(`Found ${manifests.length} DAO manifest(s)`)
   for (const m of manifests) {
-    logger.info(`  - ${m.displayName ?? m.name} (CEO: ${m.governance.ceo.name})`)
+    logger.info(
+      `  - ${m.displayName ?? m.name} (CEO: ${m.governance.ceo.name})`,
+    )
   }
   logger.newline()
 
@@ -975,7 +1031,9 @@ async function setupDAOAllocations(
     if (networkConfig.parentDao) {
       const parentDaoId = daoIdMap.get(networkConfig.parentDao)
       if (parentDaoId) {
-        logger.info(`  Setting ${manifest.name} parent to ${networkConfig.parentDao}`)
+        logger.info(
+          `  Setting ${manifest.name} parent to ${networkConfig.parentDao}`,
+        )
         try {
           const hash = await walletClient.writeContract({
             address: contracts.DAORegistry,

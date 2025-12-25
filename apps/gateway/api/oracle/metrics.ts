@@ -1,11 +1,11 @@
 import { readContract } from '@jejunetwork/shared'
+import type { NodeMetrics, OracleNodeConfig } from '@jejunetwork/types'
 import { createPublicClient, http } from 'viem'
 import {
   COMMITTEE_MANAGER_ABI,
   FEED_REGISTRY_ABI,
   REPORT_VERIFIER_ABI,
 } from './abis'
-import type { NodeMetrics, OracleNodeConfig } from './types'
 
 interface PrometheusMetric {
   name: string

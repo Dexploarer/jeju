@@ -270,7 +270,7 @@ export function buildRegistrationFile(
     name: manifest.name,
     description: manifest.description,
     endpoints: [],
-    trustModels: manifest.agent?.trustModels || ['open'],
+    trustModels: manifest.agent?.trustModels ?? ['open'],
     owners: [ownerAddress],
     operators: [],
     active: true,
