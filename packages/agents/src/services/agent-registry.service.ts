@@ -9,16 +9,12 @@
 
 import { logger } from '@jejunetwork/shared'
 import type { AgentCapabilities } from '@jejunetwork/types'
-import {
-  AgentStatus,
-  AgentType,
-  TrustLevel,
-} from '../types'
 import type {
   AgentDiscoveryFilter,
   AgentRegistration,
   ExternalAgentConnectionParams,
 } from '../types'
+import { AgentStatus, AgentType, TrustLevel } from '../types'
 
 /**
  * Parameters for registering a user-controlled agent

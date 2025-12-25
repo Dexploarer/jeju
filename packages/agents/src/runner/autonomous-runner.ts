@@ -7,9 +7,9 @@
  */
 
 import { logger } from '@jejunetwork/shared'
-import type { AgentConfig } from '../types'
 import { AutonomousCoordinator } from '../autonomous/coordinator'
 import { agentLockService } from '../services/lock.service'
+import type { AgentConfig } from '../types'
 
 /**
  * Runner status

@@ -76,7 +76,7 @@ class DWSClient {
     } = {},
   ): Promise<{ functionId: string }> {
     // Map workerd runtime to DWS supported runtimes (bun, node, deno)
-    let runtime = config.runtime || 'bun'
+    let runtime = config.runtime ?? 'bun'
     if (runtime === 'workerd') {
       runtime = 'bun' // DWS uses bun for local dev
     }
@@ -307,7 +307,7 @@ class LocalServerManager {
     // Deploy to DWS
     console.log('   Deploying to DWS...')
     const result = await this.dws.deployWorker(config.name, code, {
-      runtime: config.worker.runtime || 'bun',
+      runtime: config.worker.runtime ?? 'bun',
       memory: config.worker.memoryMb,
       timeout: config.worker.timeoutMs,
       handler: 'default',

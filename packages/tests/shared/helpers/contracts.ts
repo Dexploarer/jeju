@@ -21,7 +21,7 @@ export async function approveToken(
   },
 ) {
   console.log(
-    `Approving ${options.tokenSymbol} for ${options.spenderName || 'contract'}`,
+    `Approving ${options.tokenSymbol} for ${options.spenderName ?? 'contract'}`,
   )
 
   // Click approve button (assuming it exists in UI)
@@ -292,7 +292,7 @@ export async function connectWallet(
     timeout?: number
   },
 ) {
-  const walletName = options?.walletName || 'MetaMask'
+  const walletName = options?.walletName ?? 'MetaMask'
   const timeout = options?.timeout ?? 10000
 
   console.log(`Connecting ${walletName} wallet...`)
@@ -367,7 +367,7 @@ export async function waitForTransaction(
   },
 ) {
   const timeout = options?.timeout ?? 60000
-  const successText = options?.successText || 'success|confirmed|completed'
+  const successText = options?.successText ?? 'success|confirmed|completed'
 
   console.log(`Waiting for transaction confirmation...`)
 

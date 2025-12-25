@@ -8,9 +8,12 @@
  */
 
 import { logger } from '@jejunetwork/shared'
-import { ZERO_ADDRESS, type AgentCapabilities, type JsonValue } from '@jejunetwork/types'
-import type { Address, Hex } from 'viem'
-import type { Agent0Registration } from '../types/agent-registry'
+import {
+  type AgentCapabilities,
+  type JsonValue,
+  ZERO_ADDRESS,
+} from '@jejunetwork/types'
+import type { Address } from 'viem'
 
 /**
  * Agent0 network types
@@ -443,7 +446,7 @@ export class Agent0Client {
   /**
    * Check if address is agent owner
    */
-  async isAgentOwner(agentId: string, address: string): Promise<boolean> {
+  async isAgentOwner(_agentId: string, _address: string): Promise<boolean> {
     await this.ensureInitialized()
 
     // In a full implementation, this would query the Agent0 SDK
@@ -464,25 +467,35 @@ function isAgent0Network(value: string): value is Agent0Network {
 /**
  * Type guard for IPFS providers
  */
-function isIpfsProvider(value: string): value is 'node' | 'filecoinPin' | 'pinata' {
+function isIpfsProvider(
+  value: string,
+): value is 'node' | 'filecoinPin' | 'pinata' {
   return value === 'node' || value === 'filecoinPin' || value === 'pinata'
 }
 
 export function createAgent0Client(): Agent0Client {
   const networkEnv = process.env.AGENT0_NETWORK ?? 'localnet'
-  const network: Agent0Network = isAgent0Network(networkEnv) ? networkEnv : 'localnet'
+  const network: Agent0Network = isAgent0Network(networkEnv)
+    ? networkEnv
+    : 'localnet'
 
   const rpcUrl =
     process.env.AGENT0_RPC_URL ??
     (network === 'localnet'
       ? 'http://localhost:6545'
       : network === 'sepolia'
-        ? process.env.ETHEREUM_SEPOLIA_RPC_URL ?? 'https://ethereum-sepolia-rpc.publicnode.com'
-        : process.env.ETHEREUM_RPC_URL ?? 'https://ethereum-rpc.publicnode.com')
+        ? (process.env.ETHEREUM_SEPOLIA_RPC_URL ??
+          'https://ethereum-sepolia-rpc.publicnode.com')
+        : (process.env.ETHEREUM_RPC_URL ??
+          'https://ethereum-rpc.publicnode.com'))
 
   const privateKey = process.env.AGENT0_PRIVATE_KEY
   const ipfsEnv = process.env.AGENT0_IPFS_PROVIDER ?? 'node'
-  const ipfsProvider: 'node' | 'filecoinPin' | 'pinata' = isIpfsProvider(ipfsEnv) ? ipfsEnv : 'node'
+  const ipfsProvider: 'node' | 'filecoinPin' | 'pinata' = isIpfsProvider(
+    ipfsEnv,
+  )
+    ? ipfsEnv
+    : 'node'
 
   return new Agent0Client({
     network,

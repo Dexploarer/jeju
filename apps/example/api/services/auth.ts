@@ -11,7 +11,6 @@ import {
 } from '@jejunetwork/oauth3'
 import type { Address, Hex } from 'viem'
 
-
 export interface OAuth3Service {
   initialize(): Promise<{ app: DiscoveredApp; nodes: DiscoveredNode[] }>
   loginWithWallet(): Promise<OAuth3Session>

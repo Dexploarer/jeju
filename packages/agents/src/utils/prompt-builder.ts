@@ -25,7 +25,7 @@ const MODEL_LIMITS: Record<string, number> = {
   'gpt-4-turbo': 128000,
   'claude-3-5-sonnet': 200000,
   'claude-3-opus': 200000,
-  'default': 32768,
+  default: 32768,
 }
 
 // Lazy-loaded encoder
@@ -49,7 +49,7 @@ export function countTokensSync(text: string): number {
  * Get the context limit for a model
  */
 export function getModelTokenLimit(model: string): number {
-  return MODEL_LIMITS[model] ?? MODEL_LIMITS['default']
+  return MODEL_LIMITS[model] ?? MODEL_LIMITS.default
 }
 
 /**
@@ -72,7 +72,7 @@ export function truncateToTokenLimitSync(
   let truncatedText = new TextDecoder().decode(enc.decode(truncatedTokens))
 
   if (options.ellipsis) {
-    truncatedText = truncatedText.trimEnd() + '...'
+    truncatedText = `${truncatedText.trimEnd()}...`
   }
 
   return {

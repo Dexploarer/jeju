@@ -4,6 +4,7 @@
  * Monitors positions from indexer and executes profitable liquidations on-chain.
  */
 
+import { delay as sleep } from '@jejunetwork/shared'
 import type { EVMChainId } from '@jejunetwork/types'
 import { expectValid } from '@jejunetwork/types'
 import {
@@ -14,7 +15,6 @@ import {
   parseUnits,
   type WalletClient,
 } from 'viem'
-import { delay as sleep } from '@jejunetwork/shared'
 import type { OracleAggregator } from '../../oracles'
 import { IndexerPositionsResponseSchema } from '../../schemas'
 
