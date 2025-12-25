@@ -25,7 +25,6 @@ export interface Token {
   decimals: number
 }
 
-
 import type { SwapQuote } from '@jejunetwork/types'
 
 export interface SwapParams {

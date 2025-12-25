@@ -49,7 +49,6 @@ const DeployWorkerJsonBodySchema = z.object({
   compatibilityFlags: z.array(z.string()).optional(),
   bindings: WorkerdBindingsSchema.optional(),
 })
-type DeployWorkerJsonBody = z.infer<typeof DeployWorkerJsonBodySchema>
 
 /** Zod schema for worker updates */
 const UpdateWorkerBodySchema = z.object({
@@ -59,7 +58,6 @@ const UpdateWorkerBodySchema = z.object({
   cpuTimeMs: z.number().int().positive().optional(),
   bindings: WorkerdBindingsSchema.optional(),
 })
-type UpdateWorkerBody = z.infer<typeof UpdateWorkerBodySchema>
 
 /** Zod schema for worker invocation */
 const InvokeWorkerBodySchema = z.object({
@@ -68,7 +66,6 @@ const InvokeWorkerBodySchema = z.object({
   headers: z.record(z.string(), z.string()).optional(),
   body: z.string().optional(),
 })
-type InvokeWorkerBody = z.infer<typeof InvokeWorkerBodySchema>
 
 /** Zod schema for replication */
 const ReplicateWorkerBodySchema = z.object({

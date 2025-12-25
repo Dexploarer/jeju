@@ -55,7 +55,9 @@ export const DAOGovernanceParamsSchema = z.object({
 export const DAOGovernanceConfigSchema = z.object({
   ceo: DAOCEOConfigSchema,
   council: z.object({
-    members: z.array(DAOCouncilMemberSchema).min(1, 'At least one council member required'),
+    members: z
+      .array(DAOCouncilMemberSchema)
+      .min(1, 'At least one council member required'),
   }),
   parameters: DAOGovernanceParamsSchema,
 })
@@ -169,7 +171,9 @@ export const DAOManifestSchema = z.object({
       seeded: z.array(DAOSeededRepoSchema),
     })
     .optional(),
-  integrations: z.record(z.string(), z.record(z.string(), z.boolean())).optional(),
+  integrations: z
+    .record(z.string(), z.record(z.string(), z.boolean()))
+    .optional(),
   deployment: z
     .object({
       localnet: DAONetworkDeploymentSchema.optional(),
@@ -199,7 +203,9 @@ export function validateDAOManifest(data: unknown): DAOManifest {
  */
 export function safeValidateDAOManifest(
   data: unknown,
-): { success: true; data: DAOManifest } | { success: false; error: z.ZodError } {
+):
+  | { success: true; data: DAOManifest }
+  | { success: false; error: z.ZodError } {
   const result = DAOManifestSchema.safeParse(data)
   if (result.success) {
     return { success: true, data: result.data }

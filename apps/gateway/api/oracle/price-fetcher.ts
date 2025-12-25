@@ -1,5 +1,5 @@
 import { readContract } from '@jejunetwork/shared'
-import type { PriceData } from '@jejunetwork/types'
+import type { PriceData, PriceSourceConfig } from '@jejunetwork/types'
 import {
   createPublicClient,
   encodePacked,
@@ -8,7 +8,6 @@ import {
   keccak256,
 } from 'viem'
 import { CHAINLINK_AGGREGATOR_ABI, UNISWAP_V3_POOL_ABI } from './abis'
-import type { PriceSourceConfig } from '@jejunetwork/types'
 
 export type { PriceData }
 

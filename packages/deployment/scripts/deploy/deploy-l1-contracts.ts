@@ -56,7 +56,7 @@ async function checkPrerequisites(): Promise<boolean> {
   // Check op-deployer
   const opDeployerCheck = await $`which op-deployer`.quiet().nothrow()
   if (opDeployerCheck.exitCode !== 0) {
-    const errorMsg = opDeployerCheck.stderr.toString() || 'Command not found'
+    const errorMsg = opDeployerCheck.stderr.toString() ?? 'Command not found'
     console.log('❌ op-deployer not found')
     if (process.env.DEBUG) {
       console.log(`   Error: ${errorMsg.split('\n')[0]}`)

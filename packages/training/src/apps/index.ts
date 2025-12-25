@@ -29,15 +29,15 @@
  * ```
  */
 
-import type { JudgeRubric } from '../rubrics/index.js'
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import type { TrainingConfig, TrainingMetrics } from '../grpo/index.js'
 import {
-  uploadDirectoryToHuggingFace,
   getHuggingFaceToken,
+  uploadDirectoryToHuggingFace,
 } from '../huggingface/index.js'
-import { writeFileSync, mkdirSync, rmSync } from 'node:fs'
-import { join } from 'node:path'
-import { tmpdir } from 'node:os'
+import type { JudgeRubric } from '../rubrics/index.js'
 
 /**
  * Interface for app-specific training data collection
@@ -68,7 +68,10 @@ export interface TrainingDataAdapter<
   getRubrics(): JudgeRubric[]
 
   /** Optional: Custom scoring logic */
-  customScoring?(trajectory: Trajectory<TStep>, context: TContext): Promise<number>
+  customScoring?(
+    trajectory: Trajectory<TStep>,
+    context: TContext,
+  ): Promise<number>
 }
 
 /**
@@ -262,7 +265,9 @@ export class AppTrainingRunner<
   /**
    * Run the training loop
    */
-  async runTrainingLoop(config: TrainingLoopConfig): Promise<TrainingLoopResult> {
+  async runTrainingLoop(
+    config: TrainingLoopConfig,
+  ): Promise<TrainingLoopResult> {
     const errors: string[] = []
     let trajectoriesProcessed = 0
 
@@ -286,7 +291,9 @@ export class AppTrainingRunner<
     // 2. Score trajectories
     const rubrics = this.adapter.getRubrics()
     for (const trajectory of trajectories) {
-      const context = await this.adapter.getTrajectoryContext(trajectory.trajectoryId)
+      const context = await this.adapter.getTrajectoryContext(
+        trajectory.trajectoryId,
+      )
 
       // Use custom scoring if available, otherwise use rubric-based scoring
       const scores: Record<string, number> = {}
@@ -296,7 +303,11 @@ export class AppTrainingRunner<
 
       // Score against each rubric
       for (const rubric of rubrics) {
-        scores[rubric.id] = await this.scoreTrajectory(trajectory, context, rubric)
+        scores[rubric.id] = await this.scoreTrajectory(
+          trajectory,
+          context,
+          rubric,
+        )
       }
 
       // Store results
@@ -447,8 +458,7 @@ export class AppTrainingRunner<
       }))
 
       // Write data file based on format
-      const dataFileName =
-        config.format === 'json' ? 'data.json' : 'data.jsonl'
+      const dataFileName = config.format === 'json' ? 'data.json' : 'data.jsonl'
       const dataFilePath = join(exportDir, dataFileName)
 
       if (config.format === 'json') {
@@ -513,7 +523,9 @@ ${config.format === 'json' ? 'Single JSON array' : 'JSON Lines (one trajectory p
 export function createAppTrainingAdapter<
   TStep extends TrajectoryStep = TrajectoryStep,
   TContext extends TrajectoryContext = TrajectoryContext,
->(adapter: TrainingDataAdapter<TStep, TContext>): AppTrainingRunner<TStep, TContext> {
+>(
+  adapter: TrainingDataAdapter<TStep, TContext>,
+): AppTrainingRunner<TStep, TContext> {
   return new AppTrainingRunner(adapter)
 }
 
@@ -536,7 +548,9 @@ export interface AppTrainingConfig {
 /**
  * Get default app training configuration
  */
-export function getDefaultAppTrainingConfig(appName: string): AppTrainingConfig {
+export function getDefaultAppTrainingConfig(
+  appName: string,
+): AppTrainingConfig {
   return {
     appName,
     trajectoryThreshold: 10000,

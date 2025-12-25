@@ -6,8 +6,8 @@
  * @packageDocumentation
  */
 
-import { logger } from '@jejunetwork/shared'
 import type { IAgentRuntime } from '@elizaos/core'
+import { logger } from '@jejunetwork/shared'
 
 /**
  * DM decision
@@ -88,38 +88,6 @@ export class AutonomousDMService {
   }
 
   /**
-   * Build DM response prompt
-   */
-  private buildDMPrompt(
-    config: AgentDMConfig,
-    displayName: string,
-    allMessages: ChatMessage[],
-    latestMessage: ChatMessage,
-    agentId: string,
-  ): string {
-    return `${config.systemPrompt ?? 'You are an AI agent on Jeju.'}
-
-You are ${displayName} in a direct message conversation.
-
-Recent conversation:
-${allMessages
-  .slice(-5)
-  .map((m) => `${m.senderId === agentId ? 'You' : 'Them'}: ${m.content}`)
-  .join('\n')
-}
-
-Latest message from them:
-"${latestMessage.content}"
-
-Task: Generate a helpful, friendly response (1-2 sentences).
-Be authentic to your personality.
-Keep it under 200 characters.
-If mentioning markets, use SHORT SUMMARIES (e.g., "the TeslAI bet") not full questions.
-
-Generate ONLY the response text, nothing else.`
-  }
-
-  /**
    * Decide whether to respond to DM
    */
   async decideDMResponse(
@@ -148,7 +116,9 @@ Generate ONLY the response text, nothing else.`
 
     // If no runtime provided, we can't make LLM calls
     if (!runtime) {
-      logger.warn(`No runtime provided for agent ${agentId}, cannot generate DM response`)
+      logger.warn(
+        `No runtime provided for agent ${agentId}, cannot generate DM response`,
+      )
       return {
         shouldRespond: false,
         chatId: chat.chatId,
@@ -174,11 +144,11 @@ Generate ONLY the response text, nothing else.`
   ): Promise<number> {
     logger.debug(`Responding to DMs for agent ${agentId}`)
 
-    const config = await this.getAgentConfig(agentId)
-    const displayName = `Agent-${agentId.slice(0, 8)}`
+    const _config = await this.getAgentConfig(agentId)
+    const _displayName = `Agent-${agentId.slice(0, 8)}`
 
     const chatsWithUnread = await this.getChatsWithUnread(agentId)
-    let responsesCreated = 0
+    const responsesCreated = 0
 
     for (const chat of chatsWithUnread) {
       if (!chat || chat.isGroup) continue
@@ -194,7 +164,9 @@ Generate ONLY the response text, nothing else.`
 
       // In a full implementation, this would call the LLM
       // For now, skip
-      logger.debug(`Would respond to DM in chat ${chat.chatId} (no LLM call made)`)
+      logger.debug(
+        `Would respond to DM in chat ${chat.chatId} (no LLM call made)`,
+      )
 
       // Only respond to one DM per tick to avoid spam
       break
@@ -217,7 +189,7 @@ Generate ONLY the response text, nothing else.`
       return { success: false, error: 'Content too short' }
     }
 
-    const cleanContent = content.trim()
+    const _cleanContent = content.trim()
 
     // In a full implementation, this would:
     // 1. Verify the chat exists

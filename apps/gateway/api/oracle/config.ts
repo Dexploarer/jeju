@@ -1,6 +1,10 @@
+import type {
+  NetworkType,
+  OracleNodeConfig,
+  PriceSourceConfig,
+} from '@jejunetwork/types'
 import { expectAddress, ZERO_ADDRESS } from '@jejunetwork/types'
 import { type Address, type Hex, isAddress, isHex } from 'viem'
-import type { NetworkType, OracleNodeConfig, PriceSourceConfig } from '@jejunetwork/types'
 
 interface NetworkConfig {
   chainId: number

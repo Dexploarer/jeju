@@ -10,7 +10,6 @@
 
 import { describe, expect, test } from 'bun:test'
 import type { Address, Hex } from 'viem'
-import { ZERO_ADDRESS } from '../validation'
 import {
   type ConsensusPrice,
   calculateWeightedMedian,
@@ -23,6 +22,7 @@ import {
   type VenueSource,
   validatePriceReport,
 } from '../oracle'
+import { ZERO_ADDRESS } from '../validation'
 
 // Test Fixtures
 const TEST_ADDRESS_1 = '0x1111111111111111111111111111111111111111' as Address
