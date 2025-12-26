@@ -29,6 +29,7 @@ import { createHash } from 'node:crypto'
 import { readdir, readFile, stat } from 'node:fs/promises'
 import { join, relative } from 'node:path'
 import { getDWSUrl, getRpcUrl, getServiceUrl } from '@jejunetwork/config'
+import { z } from 'zod'
 import type {
   CacheConfig,
   CDNRegion,
@@ -317,7 +318,8 @@ export class CDNClient {
       })
 
       if (response.ok) {
-        const result = (await response.json()) as { cid: string }
+        const data: unknown = await response.json()
+        const result = z.object({ cid: z.string() }).parse(data)
         uploadedCids.push(result.cid)
       }
     }
@@ -348,7 +350,8 @@ export class CDNClient {
 
     let rootCid: string
     if (manifestResponse.ok) {
-      const result = (await manifestResponse.json()) as { cid: string }
+      const data: unknown = await manifestResponse.json()
+      const result = z.object({ cid: z.string() }).parse(data)
       rootCid = result.cid
     } else {
       // Fallback to computed hash if storage unavailable

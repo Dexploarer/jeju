@@ -84,6 +84,7 @@ import {
   createPricesRouter,
   getPriceService,
   type SubscribableWebSocket,
+  SubscriptionMessageSchema,
 } from './routes/prices'
 import { createRPCRouter } from './routes/rpc'
 import { createS3Router } from './routes/s3'
@@ -869,7 +870,12 @@ if (import.meta.main) {
           const service = getPriceService()
           const subscribable = toSubscribableWebSocket(ws)
           data.handlers.message = (msgStr: string) => {
-            const msg = JSON.parse(msgStr)
+            const parseResult = SubscriptionMessageSchema.safeParse(JSON.parse(msgStr))
+            if (!parseResult.success) {
+              console.warn('[PriceService] Invalid WS message:', parseResult.error)
+              return
+            }
+            const msg = parseResult.data
             if (msg.type === 'subscribe') {
               service.subscribe(subscribable, msg)
               ws.send(JSON.stringify({ type: 'subscribed', success: true }))
