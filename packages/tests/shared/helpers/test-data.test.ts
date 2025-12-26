@@ -48,7 +48,7 @@ describe('VIEWPORTS - Device Dimensions', () => {
   })
 
   test('all viewports have positive dimensions', () => {
-    for (const [name, viewport] of Object.entries(VIEWPORTS)) {
+    for (const [_name, viewport] of Object.entries(VIEWPORTS)) {
       expect(viewport.width).toBeGreaterThan(0)
       expect(viewport.height).toBeGreaterThan(0)
     }
@@ -58,7 +58,9 @@ describe('VIEWPORTS - Device Dimensions', () => {
     expect(VIEWPORTS.MOBILE_SMALL.width).toBeLessThan(VIEWPORTS.MOBILE.width)
     expect(VIEWPORTS.MOBILE.width).toBeLessThan(VIEWPORTS.TABLET.width)
     expect(VIEWPORTS.TABLET.width).toBeLessThan(VIEWPORTS.DESKTOP.width)
-    expect(VIEWPORTS.DESKTOP.width).toBeLessThan(VIEWPORTS.DESKTOP_ULTRAWIDE.width)
+    expect(VIEWPORTS.DESKTOP.width).toBeLessThan(
+      VIEWPORTS.DESKTOP_ULTRAWIDE.width,
+    )
   })
 })
 
@@ -68,7 +70,7 @@ describe('VIEWPORTS - Device Dimensions', () => {
 
 describe('TIMEOUTS - Duration Values', () => {
   test('timeout values are positive integers', () => {
-    for (const [name, value] of Object.entries(TIMEOUTS)) {
+    for (const [_name, value] of Object.entries(TIMEOUTS)) {
       expect(value).toBeGreaterThan(0)
       expect(Number.isInteger(value)).toBe(true)
     }
@@ -104,8 +106,8 @@ describe('BASE_SELECTORS - Selector Format', () => {
 
   test('selectors contain valid CSS patterns', () => {
     // Test that selectors don't contain invalid characters
-    const validChars = /^[a-zA-Z0-9\[\]="'\-_:.,*()|\s\\/>^$+~#@]+$/
-    for (const [name, selector] of Object.entries(BASE_SELECTORS)) {
+    const validChars = /^[a-zA-Z0-9[\]="'\-_:.,*()|\s\\/>^$+~#@]+$/
+    for (const [_name, selector] of Object.entries(BASE_SELECTORS)) {
       expect(validChars.test(selector)).toBe(true)
     }
   })
@@ -252,7 +254,7 @@ describe('HTTP_STATUS - Status Codes', () => {
   })
 
   test('all status codes are standard HTTP codes', () => {
-    for (const [name, code] of Object.entries(HTTP_STATUS)) {
+    for (const [_name, code] of Object.entries(HTTP_STATUS)) {
       expect(code).toBeGreaterThanOrEqual(100)
       expect(code).toBeLessThan(600)
     }
@@ -298,7 +300,7 @@ describe('generateTestId - ID Generation', () => {
     const id = generateTestId()
     const suffix = id.split('-')[2]
     expect(suffix).toMatch(/^[a-z0-9]+$/)
-    expect(suffix!.length).toBeGreaterThanOrEqual(6)
+    expect(suffix?.length).toBeGreaterThanOrEqual(6)
   })
 
   test('handles empty prefix', () => {
@@ -313,7 +315,7 @@ describe('generateTestId - ID Generation', () => {
 
   test('concurrent generation produces unique IDs', async () => {
     const promises = Array.from({ length: 100 }, () =>
-      Promise.resolve(generateTestId())
+      Promise.resolve(generateTestId()),
     )
     const ids = await Promise.all(promises)
     expect(new Set(ids).size).toBe(100)
@@ -377,8 +379,8 @@ describe('generateTestUsername - Username Generation', () => {
   test('username suffix is reasonable length', () => {
     const username = generateTestUsername()
     const suffix = username.split('_')[1]
-    expect(suffix!.length).toBeGreaterThanOrEqual(4)
-    expect(suffix!.length).toBeLessThanOrEqual(10)
+    expect(suffix?.length).toBeGreaterThanOrEqual(4)
+    expect(suffix?.length).toBeLessThanOrEqual(10)
   })
 })
 

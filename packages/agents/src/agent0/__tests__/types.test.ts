@@ -7,12 +7,9 @@
 
 import { describe, expect, test } from 'bun:test'
 import type {
-  Agent0AgentProfile,
-  Agent0AgentUpdateParams,
   Agent0ClientConfig,
   Agent0ContractAddresses,
   Agent0Endpoint,
-  Agent0Feedback,
   Agent0FeedbackParams,
   Agent0FeedbackSearchParams,
   Agent0Network,
@@ -21,13 +18,12 @@ import type {
   Agent0ReputationSummary,
   Agent0SearchFilters,
   Agent0SearchOptions,
-  Agent0SearchResponse,
   Agent0SearchResult,
   Agent0SearchResultMeta,
   Agent0TransferResult,
-  AggregatedReputation,
   AgentProfile,
   AgentReputation,
+  AggregatedReputation,
   DiscoveryFilters,
   IAgent0Client,
   IAgent0FeedbackService,

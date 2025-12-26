@@ -236,7 +236,6 @@ Always act in accordance with your goals and directives while respecting risk li
     }
   }
 
-
   /**
    * Create a minimal runtime for testing
    */

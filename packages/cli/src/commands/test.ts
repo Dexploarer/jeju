@@ -313,9 +313,10 @@ testCommand
     const apps = discoverApps(rootDir, true)
     for (const app of apps) {
       const folderName = app._folderName ?? app.slug ?? app.name
-      const appPath = app.type === 'vendor' 
-        ? join(rootDir, 'vendor', folderName)
-        : join(rootDir, 'apps', folderName)
+      const appPath =
+        app.type === 'vendor'
+          ? join(rootDir, 'vendor', folderName)
+          : join(rootDir, 'apps', folderName)
       const manifest = loadManifest(appPath)
       const testing = manifest?.testing as ManifestTesting | undefined
       const hasTests = !!(testing?.unit || testing?.e2e || testing?.integration)
@@ -1679,9 +1680,10 @@ async function setupE2EInfra(
 
     if (appManifest) {
       const folderName = appManifest._folderName ?? appManifest.slug ?? appName
-      const appDir = appManifest.type === 'vendor'
-        ? join(rootDir, 'vendor', folderName)
-        : join(rootDir, 'apps', folderName)
+      const appDir =
+        appManifest.type === 'vendor'
+          ? join(rootDir, 'vendor', folderName)
+          : join(rootDir, 'apps', folderName)
       const devCommand = appManifest.commands?.dev
       const mainPort = appManifest.ports?.main
 

@@ -166,6 +166,19 @@ class WalletMessagingService {
 
   private messageListeners: Set<(message: Message) => void> = new Set()
 
+  /** Status getters for health check */
+  get isInitialized(): boolean {
+    return this.initialized
+  }
+
+  get hasFarcaster(): boolean {
+    return this.farcasterAccount !== null
+  }
+
+  get hasXMTP(): boolean {
+    return this.xmtpClient !== null
+  }
+
   async initialize(address: Address, signature?: string): Promise<void> {
     if (this.initialized && this.address === address) return
 
@@ -178,7 +191,9 @@ class WalletMessagingService {
     this.signerService = new FarcasterSignerService({ hubUrl: HUB_URL })
 
     if (this.farcasterAccount) {
-      log.debug('Initializing Direct Cast client', { fid: this.farcasterAccount.fid })
+      log.debug('Initializing Direct Cast client', {
+        fid: this.farcasterAccount.fid,
+      })
       await this.initializeDCClient()
     }
     if (this.preferences.enableXMTP && signature) {
@@ -210,7 +225,10 @@ class WalletMessagingService {
   private async initializeXMTPClient(signature: string): Promise<void> {
     if (!this.address) return
     if (!RELAY_URL) {
-      throw new MessagingError('XMTP_RELAY_URL not configured', 'MISSING_CONFIG')
+      throw new MessagingError(
+        'XMTP_RELAY_URL not configured',
+        'MISSING_CONFIG',
+      )
     }
 
     const config: MessagingClientConfig = {
@@ -257,7 +275,9 @@ class WalletMessagingService {
     return this.hubClient.getProfile(fid)
   }
 
-  async getProfileByUsername(username: string): Promise<FarcasterProfile | null> {
+  async getProfileByUsername(
+    username: string,
+  ): Promise<FarcasterProfile | null> {
     if (!this.hubClient) {
       throw new MessagingError('Hub client not initialized', 'NOT_INITIALIZED')
     }
@@ -274,7 +294,10 @@ class WalletMessagingService {
     }
 
     log.info('Linking Farcaster account', { fid })
-    const result = await this.signerService.createSigner({ fid, appName: 'Jeju Wallet' })
+    const result = await this.signerService.createSigner({
+      fid,
+      appName: 'Jeju Wallet',
+    })
     const exported = await this.signerService.exportSigner(result.signer.keyId)
     log.info('Farcaster signer created', { fid, keyId: result.signer.keyId })
 
@@ -295,7 +318,11 @@ class WalletMessagingService {
   }): Promise<FarcasterAccount> {
     const profile = await this.getProfile(params.fid)
     if (!profile) {
-      throw new MessagingError('Failed to fetch Farcaster profile', 'PROFILE_NOT_FOUND', { fid: params.fid })
+      throw new MessagingError(
+        'Failed to fetch Farcaster profile',
+        'PROFILE_NOT_FOUND',
+        { fid: params.fid },
+      )
     }
 
     const account: FarcasterAccount = {
@@ -399,7 +426,11 @@ class WalletMessagingService {
       const [, peerFidStr] = id.split('-')
       const peerFid = parseInt(peerFidStr, 10)
       if (Number.isNaN(peerFid)) {
-        throw new MessagingError('Invalid conversation ID format', 'INVALID_CONVERSATION_ID', { conversationId })
+        throw new MessagingError(
+          'Invalid conversation ID format',
+          'INVALID_CONVERSATION_ID',
+          { conversationId },
+        )
       }
 
       const messages = await this.dcClient.getMessages(peerFid, {
@@ -442,7 +473,11 @@ class WalletMessagingService {
       }))
     }
 
-    throw new MessagingError('Unsupported protocol or client not initialized', 'UNSUPPORTED_PROTOCOL', { protocol })
+    throw new MessagingError(
+      'Unsupported protocol or client not initialized',
+      'UNSUPPORTED_PROTOCOL',
+      { protocol },
+    )
   }
 
   async sendMessage(params: {
@@ -504,7 +539,10 @@ class WalletMessagingService {
       hasDcClient: !!this.dcClient,
       hasUnifiedService: !!this.unifiedService,
     })
-    throw new MessagingError('No recipient or messaging not initialized', 'SEND_FAILED')
+    throw new MessagingError(
+      'No recipient or messaging not initialized',
+      'SEND_FAILED',
+    )
   }
 
   async markAsRead(conversationId: string): Promise<void> {
@@ -517,7 +555,11 @@ class WalletMessagingService {
       const [, peerFidStr] = id.split('-')
       const peerFid = parseInt(peerFidStr, 10)
       if (Number.isNaN(peerFid)) {
-        throw new MessagingError('Invalid conversation ID format', 'INVALID_CONVERSATION_ID', { conversationId })
+        throw new MessagingError(
+          'Invalid conversation ID format',
+          'INVALID_CONVERSATION_ID',
+          { conversationId },
+        )
       }
       await this.dcClient.markAsRead(peerFid)
     }
@@ -547,7 +589,8 @@ class WalletMessagingService {
     casts: FarcasterFeedCast[]
     cursor?: string
   }> {
-    if (!this.hubClient) throw new MessagingError('Hub client not initialized', 'NOT_INITIALIZED')
+    if (!this.hubClient)
+      throw new MessagingError('Hub client not initialized', 'NOT_INITIALIZED')
 
     const channelUrl = channelIdOrUrl.startsWith('https://')
       ? channelIdOrUrl
@@ -565,7 +608,8 @@ class WalletMessagingService {
     fid: number,
     options?: { limit?: number; cursor?: string },
   ): Promise<{ casts: FarcasterFeedCast[]; cursor?: string }> {
-    if (!this.hubClient) throw new MessagingError('Hub client not initialized', 'NOT_INITIALIZED')
+    if (!this.hubClient)
+      throw new MessagingError('Hub client not initialized', 'NOT_INITIALIZED')
 
     const response = await this.hubClient.getCastsByFid(fid, {
       pageSize: options?.limit ?? 20,
@@ -595,9 +639,10 @@ class WalletMessagingService {
   }
 
   async unblockAddress(address: Address): Promise<void> {
-    this.preferences.blockedAddresses = this.preferences.blockedAddresses.filter(
-      (a) => a.toLowerCase() !== address.toLowerCase(),
-    )
+    this.preferences.blockedAddresses =
+      this.preferences.blockedAddresses.filter(
+        (a) => a.toLowerCase() !== address.toLowerCase(),
+      )
     await this.savePreferences()
   }
 
@@ -609,7 +654,9 @@ class WalletMessagingService {
   }
 
   async unblockFid(fid: number): Promise<void> {
-    this.preferences.blockedFids = this.preferences.blockedFids.filter((f) => f !== fid)
+    this.preferences.blockedFids = this.preferences.blockedFids.filter(
+      (f) => f !== fid,
+    )
     await this.savePreferences()
   }
 
@@ -733,10 +780,10 @@ export function getMessagingHealth(): {
 } {
   const svc = messagingService
   return {
-    status: svc['initialized'] ? 'ok' : 'down',
+    status: svc.isInitialized ? 'ok' : 'down',
     hubUrl: HUB_URL,
-    initialized: svc['initialized'],
-    hasFarcaster: svc['farcasterAccount'] !== null,
-    hasXMTP: svc['xmtpClient'] !== null,
+    initialized: svc.isInitialized,
+    hasFarcaster: svc.hasFarcaster,
+    hasXMTP: svc.hasXMTP,
   }
 }

@@ -12,7 +12,7 @@
  * - Boundary conditions
  */
 
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import type { Address } from 'viem'
 import {
   Agent0Client,
@@ -61,7 +61,7 @@ const validRegistrationParams: Agent0RegistrationParams = {
   },
 }
 
-const validFeedbackParams: Agent0FeedbackParams = {
+const _validFeedbackParams: Agent0FeedbackParams = {
   targetAgentId: 1,
   rating: 3, // -5 to +5
   comment: 'Great agent, very helpful',
@@ -149,17 +149,26 @@ describe('Agent0Client Instance', () => {
 
   describe('getChainId', () => {
     test('returns correct chain ID for localnet', () => {
-      const localClient = new Agent0Client({ ...validConfig, network: 'localnet' })
+      const localClient = new Agent0Client({
+        ...validConfig,
+        network: 'localnet',
+      })
       expect(localClient.getChainId()).toBe(31337)
     })
 
     test('returns correct chain ID for sepolia', () => {
-      const sepoliaClient = new Agent0Client({ ...validConfig, network: 'sepolia' })
+      const sepoliaClient = new Agent0Client({
+        ...validConfig,
+        network: 'sepolia',
+      })
       expect(sepoliaClient.getChainId()).toBe(11155111)
     })
 
     test('returns correct chain ID for mainnet', () => {
-      const mainnetClient = new Agent0Client({ ...validConfig, network: 'mainnet' })
+      const mainnetClient = new Agent0Client({
+        ...validConfig,
+        network: 'mainnet',
+      })
       expect(mainnetClient.getChainId()).toBe(1)
     })
   })
@@ -352,9 +361,7 @@ describe('Agent0Client Error Handling', () => {
   describe('getReputationSummary errors', () => {
     test('throws without proper configuration', async () => {
       // Without subgraph, this will throw
-      await expect(
-        client.getReputationSummary('31337:1'),
-      ).rejects.toThrow()
+      await expect(client.getReputationSummary('31337:1')).rejects.toThrow()
     })
   })
 })
@@ -447,7 +454,9 @@ describe('Pagination Options Structure', () => {
   })
 
   test('sort option accepts array of strings', () => {
-    const options: Agent0SearchOptions = { sort: ['name:asc', 'trustScore:desc'] }
+    const options: Agent0SearchOptions = {
+      sort: ['name:asc', 'trustScore:desc'],
+    }
     expect(options.sort).toHaveLength(2)
   })
 

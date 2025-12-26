@@ -55,12 +55,14 @@ export function setContractAddressesProvider(
 }
 
 function getContractAddresses(): Agent0ContractAddresses {
-  return contractAddressesProvider?.() ?? {
-    identityRegistry: ZERO_ADDRESS,
-    reputationSystem: ZERO_ADDRESS,
-    chainId: 31337,
-    network: 'localnet',
-  }
+  return (
+    contractAddressesProvider?.() ?? {
+      identityRegistry: ZERO_ADDRESS,
+      reputationSystem: ZERO_ADDRESS,
+      chainId: 31337,
+      network: 'localnet',
+    }
+  )
 }
 
 const CHAIN_IDS: Record<Agent0Network, number> = {
@@ -107,7 +109,14 @@ function toEndpointType(type: string): EndpointType {
 function parseCapabilities(extras: Record<string, JsonValue> | undefined) {
   const caps = extras?.capabilities
   if (!caps || typeof caps !== 'object' || Array.isArray(caps)) {
-    return { strategies: [], markets: [], actions: [], version: '1.0.0', skills: [], domains: [] }
+    return {
+      strategies: [],
+      markets: [],
+      actions: [],
+      version: '1.0.0',
+      skills: [],
+      domains: [],
+    }
   }
   const c = caps as Record<string, JsonValue>
   return {
@@ -122,10 +131,17 @@ function parseCapabilities(extras: Record<string, JsonValue> | undefined) {
 
 function extractReputation(extras: Record<string, JsonValue> | undefined) {
   const rep = extras?.reputation as Record<string, unknown> | undefined
-  const trust = typeof rep?.trustScore === 'number' ? rep.trustScore
-    : typeof rep?.averageScore === 'number' ? rep.averageScore / 100
-    : 0
-  return { trustScore: trust, accuracyScore: typeof rep?.accuracyScore === 'number' ? rep.accuracyScore : trust }
+  const trust =
+    typeof rep?.trustScore === 'number'
+      ? rep.trustScore
+      : typeof rep?.averageScore === 'number'
+        ? rep.averageScore / 100
+        : 0
+  return {
+    trustScore: trust,
+    accuracyScore:
+      typeof rep?.accuracyScore === 'number' ? rep.accuracyScore : trust,
+  }
 }
 
 export class Agent0Client implements IAgent0Client {
@@ -153,26 +169,39 @@ export class Agent0Client implements IAgent0Client {
         throw new Error('PINATA_JWT required for pinata provider')
       }
       if (ipfs === 'filecoinPin' && !this.config.filecoinPrivateKey) {
-        throw new Error('FILECOIN_PRIVATE_KEY required for filecoinPin provider')
+        throw new Error(
+          'FILECOIN_PRIVATE_KEY required for filecoinPin provider',
+        )
       }
 
       const contracts = getContractAddresses()
-      const registryOverrides = this.chainId === 31337 && contracts.reputationSystem !== ZERO_ADDRESS
-        ? { [this.chainId]: { REPUTATION: contracts.reputationSystem, IDENTITY: contracts.identityRegistry } }
-        : undefined
+      const registryOverrides =
+        this.chainId === 31337 && contracts.reputationSystem !== ZERO_ADDRESS
+          ? {
+              [this.chainId]: {
+                REPUTATION: contracts.reputationSystem,
+                IDENTITY: contracts.identityRegistry,
+              },
+            }
+          : undefined
 
       this.sdk = new SDK({
         chainId: this.chainId,
         rpcUrl: this.config.rpcUrl,
         signer: this.config.privateKey,
         ipfs,
-        ipfsNodeUrl: this.config.ipfsNodeUrl ?? (ipfs === 'node' ? 'https://ipfs.io' : undefined),
+        ipfsNodeUrl:
+          this.config.ipfsNodeUrl ??
+          (ipfs === 'node' ? 'https://ipfs.io' : undefined),
         pinataJwt: this.config.pinataJwt,
         filecoinPrivateKey: this.config.filecoinPrivateKey,
         subgraphUrl: this.config.subgraphUrl,
         registryOverrides,
       })
-      logger.info('Agent0Client initialized', { chainId: this.chainId, isReadOnly: this.sdk.isReadOnly })
+      logger.info('Agent0Client initialized', {
+        chainId: this.chainId,
+        isReadOnly: this.sdk.isReadOnly,
+      })
     })()
 
     await this.initPromise
@@ -184,21 +213,33 @@ export class Agent0Client implements IAgent0Client {
     if (sdk.isReadOnly) throw new Error('SDK not initialized with write access')
   }
 
-  async registerAgent(params: Agent0RegistrationParams): Promise<Agent0RegistrationResult> {
+  async registerAgent(
+    params: Agent0RegistrationParams,
+  ): Promise<Agent0RegistrationResult> {
     const sdk = await this.ensureSDK()
     this.requireWriteAccess(sdk)
 
-    const agent = sdk.createAgent(params.name, params.description, params.imageUrl ?? undefined)
+    const agent = sdk.createAgent(
+      params.name,
+      params.description,
+      params.imageUrl ?? undefined,
+    )
 
     if (params.walletAddress && isValidAddress(params.walletAddress)) {
       agent.setAgentWallet(params.walletAddress, this.chainId)
     }
-    if (params.mcpEndpoint) await agent.setMCP(params.mcpEndpoint, '1.0.0', false)
-    if (params.a2aEndpoint) await agent.setA2A(params.a2aEndpoint, '1.0.0', false)
+    if (params.mcpEndpoint)
+      await agent.setMCP(params.mcpEndpoint, '1.0.0', false)
+    if (params.a2aEndpoint)
+      await agent.setA2A(params.a2aEndpoint, '1.0.0', false)
 
-    agent.setMetadata({ capabilities: params.capabilities, version: params.capabilities.version ?? '1.0.0' })
+    agent.setMetadata({
+      capabilities: params.capabilities,
+      version: params.capabilities.version ?? '1.0.0',
+    })
     agent.setActive(true)
-    if (params.capabilities.x402Support !== undefined) agent.setX402Support(params.capabilities.x402Support)
+    if (params.capabilities.x402Support !== undefined)
+      agent.setX402Support(params.capabilities.x402Support)
 
     const reg = await agent.registerIPFS()
     if (!reg.agentId) throw new Error('Registration missing agentId')
@@ -215,32 +256,51 @@ export class Agent0Client implements IAgent0Client {
   ): Promise<Agent0SearchResponse<Agent0SearchResult>> {
     const sdk = await this.ensureSDK()
 
-    const skills = filters.a2aSkills?.length ? filters.a2aSkills
-      : filters.strategies?.length ? filters.strategies
-      : filters.skills?.length ? filters.skills
-      : undefined
+    const skills = filters.a2aSkills?.length
+      ? filters.a2aSkills
+      : filters.strategies?.length
+        ? filters.strategies
+        : filters.skills?.length
+          ? filters.skills
+          : undefined
 
     const searchParams: SearchParams = {
       ...(skills && { a2aSkills: skills }),
       ...(filters.name && { name: filters.name }),
       ...(filters.description && { description: filters.description }),
-      ...(filters.x402Support !== undefined && { x402support: filters.x402Support }),
+      ...(filters.x402Support !== undefined && {
+        x402support: filters.x402Support,
+      }),
       ...(filters.chains !== undefined && { chains: filters.chains }),
       ...(filters.active !== undefined && { active: filters.active }),
       ...(filters.owners?.length && { owners: toAddressArray(filters.owners) }),
-      ...(filters.operators?.length && { operators: toAddressArray(filters.operators) }),
+      ...(filters.operators?.length && {
+        operators: toAddressArray(filters.operators),
+      }),
       ...(filters.mcp !== undefined && { mcp: filters.mcp }),
       ...(filters.a2a !== undefined && { a2a: filters.a2a }),
       ...(filters.ens && { ens: filters.ens }),
       ...(filters.did && { did: filters.did }),
-      ...(filters.walletAddress && isValidAddress(filters.walletAddress) && { walletAddress: filters.walletAddress }),
-      ...(filters.supportedTrust?.length && { supportedTrust: filters.supportedTrust }),
+      ...(filters.walletAddress &&
+        isValidAddress(filters.walletAddress) && {
+          walletAddress: filters.walletAddress,
+        }),
+      ...(filters.supportedTrust?.length && {
+        supportedTrust: filters.supportedTrust,
+      }),
       ...(filters.mcpTools?.length && { mcpTools: filters.mcpTools }),
       ...(filters.mcpPrompts?.length && { mcpPrompts: filters.mcpPrompts }),
-      ...(filters.mcpResources?.length && { mcpResources: filters.mcpResources }),
+      ...(filters.mcpResources?.length && {
+        mcpResources: filters.mcpResources,
+      }),
     }
 
-    const result = await sdk.searchAgents(searchParams, options?.sort, options?.pageSize, options?.cursor)
+    const result = await sdk.searchAgents(
+      searchParams,
+      options?.sort,
+      options?.pageSize,
+      options?.cursor,
+    )
 
     return {
       items: (result?.items ?? []).map((a) => this.toSearchResult(a)),
@@ -256,10 +316,18 @@ export class Agent0Client implements IAgent0Client {
     const sdk = await this.ensureSDK()
 
     const result = await sdk.searchAgentsByReputation(
-      params.agents, params.tags, params.reviewers ? toAddressArray(params.reviewers) : undefined,
-      params.capabilities, params.skills, params.tasks, params.names,
-      params.minScore, params.includeRevoked,
-      options?.pageSize, options?.cursor, options?.sort,
+      params.agents,
+      params.tags,
+      params.reviewers ? toAddressArray(params.reviewers) : undefined,
+      params.capabilities,
+      params.skills,
+      params.tasks,
+      params.names,
+      params.minScore,
+      params.includeRevoked,
+      options?.pageSize,
+      options?.cursor,
+      options?.sort,
     )
 
     return {
@@ -288,14 +356,20 @@ export class Agent0Client implements IAgent0Client {
       name: reg.name,
       walletAddress: reg.walletAddress ?? '',
       metadataCID: reg.agentURI ?? agentId,
-      capabilities: parseCapabilities(toJsonRecord(reg.metadata)) as AgentCapabilities,
+      capabilities: parseCapabilities(
+        toJsonRecord(reg.metadata),
+      ) as AgentCapabilities,
       reputation: { trustScore: 0, accuracyScore: 0 },
       description: reg.description,
       image: reg.image,
       chainId: reg.walletChainId,
       owners: reg.owners,
       operators: reg.operators,
-      endpoints: reg.endpoints.map((ep) => ({ type: toEndpointType(ep.type), value: ep.value, meta: ep.meta })),
+      endpoints: reg.endpoints.map((ep) => ({
+        type: toEndpointType(ep.type),
+        value: ep.value,
+        meta: ep.meta,
+      })),
       trustModels: toStringArray(reg.trustModels),
       active: reg.active,
       x402support: reg.x402support,
@@ -304,21 +378,37 @@ export class Agent0Client implements IAgent0Client {
     }
   }
 
-  async updateAgent(agentId: string, params: Agent0AgentUpdateParams): Promise<Agent0RegistrationResult> {
+  async updateAgent(
+    agentId: string,
+    params: Agent0AgentUpdateParams,
+  ): Promise<Agent0RegistrationResult> {
     const sdk = await this.ensureSDK()
     this.requireWriteAccess(sdk)
 
     const agent = await sdk.loadAgent(agentId)
 
-    if (params.name || params.description || params.image) agent.updateInfo(params.name, params.description, params.image)
-    if (params.walletAddress && isValidAddress(params.walletAddress)) agent.setAgentWallet(params.walletAddress, params.walletChainId ?? this.chainId)
-    if (params.mcpEndpoint) await agent.setMCP(params.mcpEndpoint, '1.0.0', false)
-    if (params.a2aEndpoint) await agent.setA2A(params.a2aEndpoint, '1.0.0', false)
+    if (params.name || params.description || params.image)
+      agent.updateInfo(params.name, params.description, params.image)
+    if (params.walletAddress && isValidAddress(params.walletAddress))
+      agent.setAgentWallet(
+        params.walletAddress,
+        params.walletChainId ?? this.chainId,
+      )
+    if (params.mcpEndpoint)
+      await agent.setMCP(params.mcpEndpoint, '1.0.0', false)
+    if (params.a2aEndpoint)
+      await agent.setA2A(params.a2aEndpoint, '1.0.0', false)
     if (params.skills) params.skills.forEach((s) => agent.addSkill(s, false))
     if (params.domains) params.domains.forEach((d) => agent.addDomain(d, false))
     if (params.active !== undefined) agent.setActive(params.active)
-    if (params.x402Support !== undefined) agent.setX402Support(params.x402Support)
-    if (params.trustModels) agent.setTrust(params.trustModels.reputation, params.trustModels.cryptoEconomic, params.trustModels.teeAttestation)
+    if (params.x402Support !== undefined)
+      agent.setX402Support(params.x402Support)
+    if (params.trustModels)
+      agent.setTrust(
+        params.trustModels.reputation,
+        params.trustModels.cryptoEconomic,
+        params.trustModels.teeAttestation,
+      )
     if (params.metadata) agent.setMetadata(params.metadata)
 
     const reg = await agent.registerIPFS()
@@ -328,12 +418,20 @@ export class Agent0Client implements IAgent0Client {
     return { tokenId, metadataCID: reg.agentURI?.replace('ipfs://', '') }
   }
 
-  async transferAgent(agentId: string, newOwner: string): Promise<Agent0TransferResult> {
+  async transferAgent(
+    agentId: string,
+    newOwner: string,
+  ): Promise<Agent0TransferResult> {
     const sdk = await this.ensureSDK()
     this.requireWriteAccess(sdk)
     const result = await sdk.transferAgent(agentId, toAddress(newOwner))
     logger.info('Agent transferred', { agentId, newOwner })
-    return { txHash: result.txHash, from: result.from, to: result.to, agentId: result.agentId }
+    return {
+      txHash: result.txHash,
+      from: result.from,
+      to: result.to,
+      agentId: result.agentId,
+    }
   }
 
   async isAgentOwner(agentId: string, address: string): Promise<boolean> {
@@ -356,32 +454,66 @@ export class Agent0Client implements IAgent0Client {
     const score = ratingToScore(params.rating)
 
     const feedbackFile = sdk.prepareFeedback(
-      agentId, score, params.tags ?? [], params.comment || undefined,
-      params.capability, undefined, params.skill, params.task, params.context, params.proofOfPayment,
+      agentId,
+      score,
+      params.tags ?? [],
+      params.comment || undefined,
+      params.capability,
+      undefined,
+      params.skill,
+      params.task,
+      params.context,
+      params.proofOfPayment,
     )
 
     const signer = privateKeyToAccount(toHex(this.config.privateKey ?? ''))
-    const auth = await sdk.signFeedbackAuth(agentId, signer.address, undefined, 24)
+    const auth = await sdk.signFeedbackAuth(
+      agentId,
+      signer.address,
+      undefined,
+      24,
+    )
     const feedback = await sdk.giveFeedback(agentId, feedbackFile, auth)
 
     logger.info('Feedback submitted', { agentId })
     return this.toFeedback(feedback)
   }
 
-  async getFeedback(agentId: string, clientAddress: string, feedbackIndex: number): Promise<Agent0Feedback> {
+  async getFeedback(
+    agentId: string,
+    clientAddress: string,
+    feedbackIndex: number,
+  ): Promise<Agent0Feedback> {
     const sdk = await this.ensureSDK()
-    const feedback = await sdk.getFeedback(agentId, toAddress(clientAddress), feedbackIndex)
+    const feedback = await sdk.getFeedback(
+      agentId,
+      toAddress(clientAddress),
+      feedbackIndex,
+    )
     if (!feedback) throw new Error(`Feedback not found for ${agentId}`)
     return this.toFeedback(feedback)
   }
 
-  async searchFeedback(agentId: string, params?: Partial<Agent0FeedbackSearchParams>): Promise<Agent0Feedback[]> {
+  async searchFeedback(
+    agentId: string,
+    params?: Partial<Agent0FeedbackSearchParams>,
+  ): Promise<Agent0Feedback[]> {
     const sdk = await this.ensureSDK()
-    const list = await sdk.searchFeedback(agentId, params?.tags, params?.capabilities, params?.skills, params?.minScore, params?.maxScore)
+    const list = await sdk.searchFeedback(
+      agentId,
+      params?.tags,
+      params?.capabilities,
+      params?.skills,
+      params?.minScore,
+      params?.maxScore,
+    )
     return list?.map((f) => this.toFeedback(f)) ?? []
   }
 
-  async revokeFeedback(agentId: string, feedbackIndex: number): Promise<string> {
+  async revokeFeedback(
+    agentId: string,
+    feedbackIndex: number,
+  ): Promise<string> {
     const sdk = await this.ensureSDK()
     this.requireWriteAccess(sdk)
     const txHash = await sdk.revokeFeedback(agentId, feedbackIndex)
@@ -389,15 +521,30 @@ export class Agent0Client implements IAgent0Client {
     return txHash
   }
 
-  async appendFeedbackResponse(agentId: string, clientAddress: string, feedbackIndex: number, uri: string, hash: string): Promise<string> {
+  async appendFeedbackResponse(
+    agentId: string,
+    clientAddress: string,
+    feedbackIndex: number,
+    uri: string,
+    hash: string,
+  ): Promise<string> {
     const sdk = await this.ensureSDK()
     this.requireWriteAccess(sdk)
-    const txHash = await sdk.appendResponse(agentId, toAddress(clientAddress), feedbackIndex, { uri, hash })
+    const txHash = await sdk.appendResponse(
+      agentId,
+      toAddress(clientAddress),
+      feedbackIndex,
+      { uri, hash },
+    )
     logger.info('Response appended', { agentId })
     return txHash
   }
 
-  async getReputationSummary(agentId: string, tag1?: string, tag2?: string): Promise<Agent0ReputationSummary> {
+  async getReputationSummary(
+    agentId: string,
+    tag1?: string,
+    tag2?: string,
+  ): Promise<Agent0ReputationSummary> {
     const sdk = await this.ensureSDK()
     const summary = await sdk.getReputationSummary(agentId, tag1, tag2)
     if (!summary) throw new Error(`No reputation for ${agentId}`)
@@ -413,9 +560,15 @@ export class Agent0Client implements IAgent0Client {
     return this.isAvailable()
   }
 
-  getSDK(): SDK | null { return this.sdk }
-  getChainId(): number { return this.chainId }
-  formatAgentId(tokenId: number): string { return `${this.chainId}:${tokenId}` }
+  getSDK(): SDK | null {
+    return this.sdk
+  }
+  getChainId(): number {
+    return this.chainId
+  }
+  formatAgentId(tokenId: number): string {
+    return `${this.chainId}:${tokenId}`
+  }
 
   private toSearchResult(agent: AgentSummary): Agent0SearchResult {
     const extras = toJsonRecord(agent.extras)
@@ -472,24 +625,47 @@ export class Agent0Client implements IAgent0Client {
       successfulChains: meta.successfulChains,
       failedChains: meta.failedChains,
       totalResults: meta.totalResults,
-      timing: { totalMs: meta.timing.totalMs, averagePerChainMs: meta.timing.averagePerChainMs },
+      timing: {
+        totalMs: meta.timing.totalMs,
+        averagePerChainMs: meta.timing.averagePerChainMs,
+      },
     }
   }
 
   private toFeedback(f: Feedback): Agent0Feedback {
     return {
-      id: f.id, agentId: f.agentId, reviewer: f.reviewer, score: f.score,
-      tags: f.tags, text: f.text, context: f.context, proofOfPayment: f.proofOfPayment,
-      fileURI: f.fileURI, createdAt: f.createdAt, answers: f.answers, isRevoked: f.isRevoked,
-      capability: f.capability, name: f.name, skill: f.skill, task: f.task,
+      id: f.id,
+      agentId: f.agentId,
+      reviewer: f.reviewer,
+      score: f.score,
+      tags: f.tags,
+      text: f.text,
+      context: f.context,
+      proofOfPayment: f.proofOfPayment,
+      fileURI: f.fileURI,
+      createdAt: f.createdAt,
+      answers: f.answers,
+      isRevoked: f.isRevoked,
+      capability: f.capability,
+      name: f.name,
+      skill: f.skill,
+      task: f.task,
     }
   }
 }
 
 export function createAgent0Client(): Agent0Client {
   const jejuNetwork = getCurrentNetwork()
-  const network: Agent0Network = jejuNetwork === 'localnet' ? 'localnet' : jejuNetwork === 'testnet' ? 'sepolia' : 'mainnet'
-  const rpcUrl = network === 'localnet' ? getRpcUrl('localnet') : getExternalRpc(network === 'sepolia' ? 'sepolia' : 'ethereum')
+  const network: Agent0Network =
+    jejuNetwork === 'localnet'
+      ? 'localnet'
+      : jejuNetwork === 'testnet'
+        ? 'sepolia'
+        : 'mainnet'
+  const rpcUrl =
+    network === 'localnet'
+      ? getRpcUrl('localnet')
+      : getExternalRpc(network === 'sepolia' ? 'sepolia' : 'ethereum')
 
   return new Agent0Client({
     network,

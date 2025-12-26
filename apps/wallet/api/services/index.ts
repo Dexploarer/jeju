@@ -69,6 +69,15 @@ export { LaunchpadService, LaunchType, launchpadService } from './launchpad'
 export type { LockType } from './lock'
 // Wallet Lock & Security
 export { LockService, lockService } from './lock'
+// Unified Messaging (Farcaster + XMTP)
+export type {
+  Conversation,
+  FarcasterAccount,
+  FarcasterFeedCast,
+  Message,
+  MessagingPreferences,
+} from './messaging'
+export { messagingService, WalletMessagingService } from './messaging'
 export type { NFT, NFTCollection } from './nft'
 export { NFTService, nftService } from './nft'
 export * from './oracle'
@@ -93,7 +102,6 @@ export type {
   V2Position,
   V3Position,
 } from './pools'
-
 // Liquidity Pools (XLP V2/V3)
 export { PoolsService, poolsService } from './pools'
 // Core services
@@ -125,12 +133,3 @@ export type {
 } from './updater'
 // Auto-Updater
 export { getUpdateService, resetUpdateService, UpdateService } from './updater'
-// Unified Messaging (Farcaster + XMTP)
-export type {
-  Conversation,
-  FarcasterAccount,
-  FarcasterFeedCast,
-  Message,
-  MessagingPreferences,
-} from './messaging'
-export { messagingService, WalletMessagingService } from './messaging'

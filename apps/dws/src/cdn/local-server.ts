@@ -1,6 +1,6 @@
 /**
  * Local CDN Server - Serves static frontends for all Jeju apps in devnet mode
- * 
+ *
  * Provides a unified CDN endpoint for all internal Jeju apps:
  * - Serves files from each app's build directory
  * - Applies cache rules from jeju-manifest.json
@@ -10,7 +10,11 @@
 
 import { readFile, stat } from 'node:fs/promises'
 import { join } from 'node:path'
-import { type AppFrontendConfig, getAppRegistry, initializeAppRegistry } from './app-registry'
+import {
+  type AppFrontendConfig,
+  getAppRegistry,
+  initializeAppRegistry,
+} from './app-registry'
 import { getEdgeCache } from './cache/edge-cache'
 
 const CONTENT_TYPES: Record<string, string> = {
@@ -46,8 +50,9 @@ function getCacheControl(app: AppFrontendConfig, path: string): string {
     if (matchPattern(path, rule.pattern)) {
       const parts: string[] = ['public']
       parts.push(`max-age=${rule.ttl}`)
-      if (rule.immutable) parts.push('immutable')
-      if (rule.staleWhileRevalidate) parts.push(`stale-while-revalidate=${rule.staleWhileRevalidate}`)
+      if (rule.strategy === 'immutable') parts.push('immutable')
+      if (rule.staleWhileRevalidate)
+        parts.push(`stale-while-revalidate=${rule.staleWhileRevalidate}`)
       return parts.join(', ')
     }
   }
@@ -57,19 +62,23 @@ function getCacheControl(app: AppFrontendConfig, path: string): string {
 function matchPattern(path: string, pattern: string): boolean {
   // Convert glob pattern to regex
   // Handle patterns like /**/*.js (any js file at any depth) and /assets/** (anything under assets)
-  let regexStr = pattern
+  const DOUBLE_STAR = '<<<DOUBLE_STAR>>>'
+  const regexStr = pattern
     .replace(/\./g, '\\.')
-    .replace(/\*\*/g, '\x00') // Placeholder for **
-    .replace(/\*/g, '[^/]+') // * matches one or more non-slash chars
-    .replace(/\x00\//g, '(?:.*/)?') // **/ becomes optional path prefix
-    .replace(/\/\x00/g, '(?:/.*)?') // /** becomes optional path suffix
-    .replace(/\x00/g, '.*') // standalone ** matches anything
+    .replace(/\*\*/g, DOUBLE_STAR)
+    .replace(/\*/g, '[^/]+')
+    .replace(new RegExp(`${DOUBLE_STAR}/`, 'g'), '(?:.*/)?')
+    .replace(new RegExp(`/${DOUBLE_STAR}`, 'g'), '(?:/.*)?')
+    .replace(new RegExp(DOUBLE_STAR, 'g'), '.*')
 
-  const regex = new RegExp('^' + regexStr + '$')
+  const regex = new RegExp(`^${regexStr}$`)
   return regex.test(path)
 }
 
-async function serveFile(app: AppFrontendConfig, requestPath: string): Promise<Response | null> {
+async function serveFile(
+  app: AppFrontendConfig,
+  requestPath: string,
+): Promise<Response | null> {
   const filePath = join(app.absoluteDir, requestPath)
 
   // Security check - ensure path is within app directory
@@ -130,16 +139,19 @@ export class LocalCDNServer {
     // Handle /apps/:appName/* routes
     if (pathname.startsWith('/apps/')) {
       const [, , appName, ...rest] = pathname.split('/')
-      const appPath = '/' + rest.join('/')
+      const appPath = `/${rest.join('/')}`
 
       const registry = getAppRegistry()
       const app = registry.getApp(appName)
 
       if (!app) {
-        return new Response(JSON.stringify({ error: `App not found: ${appName}` }), {
-          status: 404,
-          headers: { 'Content-Type': 'application/json' },
-        })
+        return new Response(
+          JSON.stringify({ error: `App not found: ${appName}` }),
+          {
+            status: 404,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        )
       }
 
       // Check cache first
@@ -152,9 +164,11 @@ export class LocalCDNServer {
           'X-Cache': status,
           'X-CDN-App': appName,
         }
-        if (entry.metadata.contentType) headers['Content-Type'] = entry.metadata.contentType
-        if (entry.metadata.cacheControl) headers['Cache-Control'] = entry.metadata.cacheControl
-        if (entry.metadata.etag) headers['ETag'] = entry.metadata.etag
+        if (entry.metadata.contentType)
+          headers['Content-Type'] = entry.metadata.contentType
+        if (entry.metadata.cacheControl)
+          headers['Cache-Control'] = entry.metadata.cacheControl
+        if (entry.metadata.etag) headers.ETag = entry.metadata.etag
 
         return new Response(new Uint8Array(entry.data), { headers })
       }
@@ -219,7 +233,9 @@ export function getLocalCDNServer(): LocalCDNServer {
   return localCDN
 }
 
-export async function initializeLocalCDN(config?: LocalCDNConfig): Promise<LocalCDNServer> {
+export async function initializeLocalCDN(
+  config?: LocalCDNConfig,
+): Promise<LocalCDNServer> {
   localCDN = new LocalCDNServer(config)
   await localCDN.initialize()
   return localCDN

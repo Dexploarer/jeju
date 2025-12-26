@@ -21,7 +21,7 @@ import {
   registerNode,
   unregisterNode,
 } from '../api/compute/inference-node'
-import { app, dwsRequest } from './setup'
+import { dwsRequest } from './setup'
 
 setDefaultTimeout(10000)
 
@@ -82,7 +82,6 @@ describe.skipIf(SKIP)('Compute Service', () => {
     })
 
     ;(globalThis as Record<string, unknown>)._testMockServer = mockServer
-    _mockServerStarted = true
 
     // Register mock inference node
     registerNode({
@@ -152,7 +151,7 @@ describe.skipIf(SKIP)('Compute Service', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'gpt-4o',
+          model: 'gpt-5.2',
           messages: [{ role: 'user', content: 'Test' }],
         }),
       })

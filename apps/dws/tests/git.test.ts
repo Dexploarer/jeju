@@ -1,8 +1,10 @@
 /**
  * Git Hosting Integration Tests
  *
+ * Requires: IPFS for object storage
+ *
  * Run with: bun test tests/git.test.ts
- * Or via: bun run test:integration
+ * Or via: jeju test --target-app dws --mode integration
  */
 
 import { beforeEach, describe, expect, setDefaultTimeout, test } from 'bun:test'
@@ -13,12 +15,13 @@ import {
   type BackendManager,
   createBackendManager,
 } from '../api/storage/backends'
+import { SKIP as INFRA_SKIP } from './infra-check'
 
 setDefaultTimeout(10000)
 
 const TEST_ADDRESS = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'
-// Only skip if explicitly requested, not by default in CI
-const SKIP = process.env.SKIP_INTEGRATION === 'true'
+// Skip if IPFS not available or explicitly requested
+const SKIP = process.env.SKIP_INTEGRATION === 'true' || INFRA_SKIP.IPFS
 
 describe.skipIf(SKIP)('GitObjectStore', () => {
   let store: GitObjectStore

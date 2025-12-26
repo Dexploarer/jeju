@@ -466,7 +466,10 @@ export class PasskeyManager {
     new Uint8Array(clientDataBuffer).set(clientDataJSON)
 
     // Hash the clientDataJSON
-    const clientDataHash = await crypto.subtle.digest('SHA-256', clientDataBuffer)
+    const clientDataHash = await crypto.subtle.digest(
+      'SHA-256',
+      clientDataBuffer,
+    )
 
     // Concatenate authenticatorData || clientDataHash
     const signedData = new Uint8Array(

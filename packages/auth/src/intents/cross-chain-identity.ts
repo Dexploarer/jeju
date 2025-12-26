@@ -463,8 +463,9 @@ export class CrossChainIdentityManager {
         args: [intentId],
       })
 
-    const rawStatus = (INTENT_STATUS[statusCode as keyof typeof INTENT_STATUS] ??
-      'pending') as (typeof INTENT_STATUS)[keyof typeof INTENT_STATUS]
+    const rawStatus = (INTENT_STATUS[
+      statusCode as keyof typeof INTENT_STATUS
+    ] ?? 'pending') as (typeof INTENT_STATUS)[keyof typeof INTENT_STATUS]
 
     // Map 'expired' to 'failed' since our return type doesn't include 'expired'
     const status: 'pending' | 'solving' | 'executed' | 'failed' =

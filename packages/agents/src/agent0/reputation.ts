@@ -24,19 +24,31 @@ export interface Agent0ReputationSummary {
 }
 
 export interface LocalReputationProvider {
-  getStats(tokenId: number): Promise<{ totalBets: number; winningBets: number; totalVolume: string; profitLoss: number }>
+  getStats(tokenId: number): Promise<{
+    totalBets: number
+    winningBets: number
+    totalVolume: string
+    profitLoss: number
+  }>
   isBanned(tokenId: number): Promise<boolean>
 }
 
 let localProvider: LocalReputationProvider | null = null
 
-export function setLocalReputationProvider(provider: LocalReputationProvider): void {
+export function setLocalReputationProvider(
+  provider: LocalReputationProvider,
+): void {
   localProvider = provider
 }
 
 const DEFAULT_REP: ReputationData = {
-  totalBets: 0, winningBets: 0, accuracyScore: 0, trustScore: 0,
-  totalVolume: '0', profitLoss: 0, isBanned: false,
+  totalBets: 0,
+  winningBets: 0,
+  accuracyScore: 0,
+  trustScore: 0,
+  totalVolume: '0',
+  profitLoss: 0,
+  isBanned: false,
 }
 
 /** Parse volume string to BigInt, returning 0n for invalid values */
@@ -61,18 +73,34 @@ export class ReputationBridge {
     return {
       totalBets: local.totalBets + agent0.totalBets,
       winningBets: local.winningBets + agent0.winningBets,
-      accuracyScore: noBets ? 0 : localOnly ? local.accuracyScore : agent0Only ? agent0.accuracyScore
-        : local.accuracyScore * 0.6 + agent0.accuracyScore * 0.4,
-      trustScore: noBets ? 0 : localOnly ? local.trustScore : agent0Only ? agent0.trustScore
-        : Math.max(local.trustScore, agent0.trustScore),
-      totalVolume: (safeBigInt(local.totalVolume) + safeBigInt(agent0.totalVolume)).toString(),
+      accuracyScore: noBets
+        ? 0
+        : localOnly
+          ? local.accuracyScore
+          : agent0Only
+            ? agent0.accuracyScore
+            : local.accuracyScore * 0.6 + agent0.accuracyScore * 0.4,
+      trustScore: noBets
+        ? 0
+        : localOnly
+          ? local.trustScore
+          : agent0Only
+            ? agent0.trustScore
+            : Math.max(local.trustScore, agent0.trustScore),
+      totalVolume: (
+        safeBigInt(local.totalVolume) + safeBigInt(agent0.totalVolume)
+      ).toString(),
       profitLoss: local.profitLoss + agent0.profitLoss,
       isBanned: local.isBanned || agent0.isBanned,
       sources: { local: local.trustScore, agent0: agent0.trustScore },
     }
   }
 
-  async getAgent0ReputationSummary(agentId: string, tag1?: string, tag2?: string): Promise<Agent0ReputationSummary> {
+  async getAgent0ReputationSummary(
+    agentId: string,
+    tag1?: string,
+    tag2?: string,
+  ): Promise<Agent0ReputationSummary> {
     if (!isAgent0Enabled()) return { count: 0, averageScore: 0 }
     const client = getAgent0Client()
     if (!client.isAvailable()) return { count: 0, averageScore: 0 }
@@ -86,17 +114,26 @@ export class ReputationBridge {
     const onChainScore = agent?.onChainData?.reputationScore ?? 0
     const trustLevel = agent?.trustLevel ?? 0
 
-    let stats = { totalBets: 0, winningBets: 0, totalVolume: '0', profitLoss: 0 }
+    let stats = {
+      totalBets: 0,
+      winningBets: 0,
+      totalVolume: '0',
+      profitLoss: 0,
+    }
     let isBanned = false
 
     if (localProvider) {
-      [stats, isBanned] = await Promise.all([localProvider.getStats(tokenId), localProvider.isBanned(tokenId)])
+      ;[stats, isBanned] = await Promise.all([
+        localProvider.getStats(tokenId),
+        localProvider.isBanned(tokenId),
+      ])
     }
 
     return {
       totalBets: stats.totalBets,
       winningBets: stats.winningBets,
-      accuracyScore: stats.totalBets > 0 ? stats.winningBets / stats.totalBets : 0,
+      accuracyScore:
+        stats.totalBets > 0 ? stats.winningBets / stats.totalBets : 0,
       trustScore: onChainScore > 0 ? onChainScore / 100 : trustLevel * 0.25,
       totalVolume: stats.totalVolume,
       profitLoss: stats.profitLoss,
@@ -140,7 +177,10 @@ export class ReputationBridge {
       return
     }
 
-    const rating = Math.max(-5, Math.min(5, Math.round((local.accuracyScore - 0.5) * 10)))
+    const rating = Math.max(
+      -5,
+      Math.min(5, Math.round((local.accuracyScore - 0.5) * 10)),
+    )
     await client.submitFeedback({
       targetAgentId: tokenId,
       rating,

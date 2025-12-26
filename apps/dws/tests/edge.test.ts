@@ -1,10 +1,13 @@
 /**
  * Edge Coordination Tests
  * Tests for the wallet/node edge coordination service
+ *
+ * Requires: CQL database for node storage
  */
 
 import { describe, expect, test } from 'bun:test'
 import { app, dwsRequest } from './setup'
+import { SKIP } from './infra-check'
 
 // Test response types
 interface EdgeNode {
@@ -73,7 +76,7 @@ interface SuccessResponse {
   success: boolean
 }
 
-describe('Edge Coordination', () => {
+describe.skipIf(SKIP.NO_INFRA)('Edge Coordination', () => {
   let testNodeId: string
 
   describe('Health', () => {

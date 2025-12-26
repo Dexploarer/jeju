@@ -653,7 +653,8 @@ export function createBridgeModule(
           {
             version: proof.outputRootProof.version,
             stateRoot: proof.outputRootProof.stateRoot,
-            messagePasserStorageRoot: proof.outputRootProof.messagePasserStorageRoot,
+            messagePasserStorageRoot:
+              proof.outputRootProof.messagePasserStorageRoot,
             latestBlockhash: proof.outputRootProof.latestBlockhash,
           },
           proof.withdrawalProof,
@@ -714,7 +715,7 @@ export function createBridgeModule(
         args: [withdrawalId],
       })
 
-      const proven = provenData[0] !== ('0x' + '0'.repeat(64))
+      const proven = provenData[0] !== `0x${'0'.repeat(64)}`
 
       // Check if finalized
       const finalized = await wallet.publicClient.readContract({

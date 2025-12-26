@@ -2,10 +2,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
 import type { Address, Hex } from 'viem'
 import {
+  DEFAULT_PREFERENCES,
   type Message,
   type MessagingPreferences,
   messagingService,
-  DEFAULT_PREFERENCES,
 } from '../../api/services/messaging'
 import { useWallet } from './useWallet'
 
@@ -36,7 +36,9 @@ export function useMessagingInit() {
       setIsInitializing(false)
     })
 
-    return () => { messagingService.destroy() }
+    return () => {
+      messagingService.destroy()
+    }
   }, [address, isConnected])
 
   const initializeXMTP = useCallback(async () => {
@@ -307,7 +309,8 @@ export function useMessageSubscription(onMessage: (message: Message) => void) {
 export function useMessaging() {
   const init = useMessagingInit()
   const farcaster = useFarcasterAccount()
-  const { data: conversations, isLoading: conversationsLoading } = useConversations()
+  const { data: conversations, isLoading: conversationsLoading } =
+    useConversations()
   const prefs = useMessagingPreferences()
 
   return {

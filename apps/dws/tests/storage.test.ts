@@ -8,6 +8,8 @@
  * - IPFS compatibility
  * - Content integrity
  * - Concurrent operations
+ *
+ * Requires: IPFS and/or S3-compatible storage
  */
 
 import {
@@ -25,12 +27,23 @@ import {
   createBackendManager,
 } from '../api/storage/backends'
 import { resetMultiBackendManager } from '../api/storage/multi-backend'
+import { SKIP as INFRA_SKIP } from './infra-check'
 
 setDefaultTimeout(10000)
 
 // Skip integration tests unless explicitly enabled or running via jeju test
-const SKIP_INTEGRATION = process.env.SKIP_INTEGRATION === 'true'
-const REQUIRE_SERVICES = process.env.REQUIRE_SERVICES === 'true'
+const SKIP_INTEGRATION = process.env.SKIP_INTEGRATION === 'true' || INFRA_SKIP.STORAGE
+
+// Check if storage service is available
+let storageAvailable = false
+async function checkStorageHealth(): Promise<boolean> {
+  try {
+    const res = await dwsRequest('/storage/health')
+    return res.status === 200
+  } catch {
+    return false
+  }
+}
 
 // Test response types
 interface StorageHealthResponse {

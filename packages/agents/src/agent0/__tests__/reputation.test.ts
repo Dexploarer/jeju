@@ -12,20 +12,19 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { resetAgent0Client } from '../client'
 import {
-  type Agent0ReputationSummary,
   ReputationBridge,
   type ReputationData,
   reputationBridge,
   safeBigInt,
 } from '../reputation'
-import { resetAgent0Client } from '../client'
 
 // =============================================================================
 // Test Fixtures
 // =============================================================================
 
-const defaultReputation: ReputationData = {
+const _defaultReputation: ReputationData = {
   totalBets: 0,
   winningBets: 0,
   accuracyScore: 0,
@@ -35,7 +34,7 @@ const defaultReputation: ReputationData = {
   isBanned: false,
 }
 
-const highReputation: ReputationData = {
+const _highReputation: ReputationData = {
   totalBets: 100,
   winningBets: 75,
   accuracyScore: 0.75,
@@ -55,7 +54,7 @@ const lowReputation: ReputationData = {
   isBanned: false,
 }
 
-const bannedReputation: ReputationData = {
+const _bannedReputation: ReputationData = {
   ...lowReputation,
   isBanned: true,
 }
@@ -118,7 +117,10 @@ describe('getAggregatedReputation', () => {
 
     test('includes local and agent0 source breakdown', async () => {
       const rep = await bridge.getAggregatedReputation(1)
-      expect(rep.sources).toEqual({ local: expect.any(Number), agent0: expect.any(Number) })
+      expect(rep.sources).toEqual({
+        local: expect.any(Number),
+        agent0: expect.any(Number),
+      })
     })
   })
 
@@ -171,17 +173,28 @@ describe('getAgent0ReputationSummary', () => {
 
   describe('tag filtering', () => {
     test('single tag returns valid summary', async () => {
-      const summary = await bridge.getAgent0ReputationSummary('31337:1', 'trading')
+      const summary = await bridge.getAgent0ReputationSummary(
+        '31337:1',
+        'trading',
+      )
       expect(summary.count).toBeGreaterThanOrEqual(0)
     })
 
     test('two tags return valid summary', async () => {
-      const summary = await bridge.getAgent0ReputationSummary('31337:1', 'trading', 'crypto')
+      const summary = await bridge.getAgent0ReputationSummary(
+        '31337:1',
+        'trading',
+        'crypto',
+      )
       expect(summary.count).toBeGreaterThanOrEqual(0)
     })
 
     test('undefined tags same as no tags', async () => {
-      const withTags = await bridge.getAgent0ReputationSummary('31337:1', undefined, undefined)
+      const withTags = await bridge.getAgent0ReputationSummary(
+        '31337:1',
+        undefined,
+        undefined,
+      )
       const withoutTags = await bridge.getAgent0ReputationSummary('31337:1')
       expect(withTags.count).toBe(withoutTags.count)
     })

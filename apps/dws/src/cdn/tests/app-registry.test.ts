@@ -5,8 +5,8 @@
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
 import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { AppRegistry, resetAppRegistry } from '../app-registry'
 import { LocalCDNServer, resetLocalCDN } from '../local-server'
 
@@ -23,10 +23,16 @@ async function setupTestApps(): Promise<void> {
   await mkdir(app3Dir, { recursive: true })
 
   // Create test files
-  await writeFile(join(app1Dir, 'dist', 'index.html'), '<html><body>App 1</body></html>')
+  await writeFile(
+    join(app1Dir, 'dist', 'index.html'),
+    '<html><body>App 1</body></html>',
+  )
   await writeFile(join(app1Dir, 'dist', 'main.js'), 'console.log("app1")')
   await writeFile(join(app1Dir, 'dist', 'style.css'), 'body { color: red }')
-  await writeFile(join(app2Dir, 'build', 'index.html'), '<html><body>App 2</body></html>')
+  await writeFile(
+    join(app2Dir, 'build', 'index.html'),
+    '<html><body>App 2</body></html>',
+  )
 
   // Create manifests
   const app1Manifest = {
@@ -37,9 +43,7 @@ async function setupTestApps(): Promise<void> {
       cdn: {
         enabled: true,
         staticDir: 'dist',
-        cacheRules: [
-          { pattern: '/**/*.js', ttl: 86400 },
-        ],
+        cacheRules: [{ pattern: '/**/*.js', ttl: 86400 }],
       },
     },
     decentralization: {
@@ -72,9 +76,18 @@ async function setupTestApps(): Promise<void> {
     ports: { main: 3004 },
   }
 
-  await writeFile(join(app1Dir, 'jeju-manifest.json'), JSON.stringify(app1Manifest))
-  await writeFile(join(app2Dir, 'jeju-manifest.json'), JSON.stringify(app2Manifest))
-  await writeFile(join(app3Dir, 'jeju-manifest.json'), JSON.stringify(app3Manifest))
+  await writeFile(
+    join(app1Dir, 'jeju-manifest.json'),
+    JSON.stringify(app1Manifest),
+  )
+  await writeFile(
+    join(app2Dir, 'jeju-manifest.json'),
+    JSON.stringify(app2Manifest),
+  )
+  await writeFile(
+    join(app3Dir, 'jeju-manifest.json'),
+    JSON.stringify(app3Manifest),
+  )
 }
 
 async function cleanupTestApps(): Promise<void> {
@@ -180,7 +193,7 @@ describe('LocalCDNServer', () => {
     await server.initialize()
 
     const response = await server.handleRequest(
-      new Request('http://localhost/apps/app1/')
+      new Request('http://localhost/apps/app1/'),
     )
 
     expect(response.status).toBe(200)
@@ -193,40 +206,35 @@ describe('LocalCDNServer', () => {
     await server.initialize()
 
     const jsResponse = await server.handleRequest(
-      new Request('http://localhost/apps/app1/main.js')
+      new Request('http://localhost/apps/app1/main.js'),
     )
     expect(jsResponse.status).toBe(200)
     expect(jsResponse.headers.get('Content-Type')).toContain('javascript')
 
     const cssResponse = await server.handleRequest(
-      new Request('http://localhost/apps/app1/style.css')
+      new Request('http://localhost/apps/app1/style.css'),
     )
     expect(cssResponse.status).toBe(200)
     expect(cssResponse.headers.get('Content-Type')).toContain('css')
   })
 
   test('applies cache control headers', async () => {
-    const server = new LocalCDNServer({ appsDir: TEST_DIR })
+    const server = new LocalCDNServer({
+      appsDir: TEST_DIR,
+      cacheEnabled: false,
+    })
     await server.initialize()
 
     const apps = server.getRegisteredApps()
-    expect(apps.some(a => a.name === 'app1')).toBe(true)
-    
-    const app1 = apps.find(a => a.name === 'app1')
-    expect(app1).toBeDefined()
+    expect(apps.some((a) => a.name === 'app1')).toBe(true)
 
     const response = await server.handleRequest(
-      new Request('http://localhost/apps/app1/main.js')
+      new Request('http://localhost/apps/app1/main.js'),
     )
 
     expect(response.status).toBe(200)
-    
-    // Debug: print all headers
-    const headers: Record<string, string> = {}
-    response.headers.forEach((value, key) => { headers[key] = value })
-    console.log('All response headers:', headers)
-    
-    const cacheControl = headers['cache-control'] ?? headers['Cache-Control']
+
+    const cacheControl = response.headers.get('Cache-Control')
     expect(cacheControl).toBeTruthy()
     expect(cacheControl).toMatch(/max-age=86400/)
   })
@@ -237,7 +245,7 @@ describe('LocalCDNServer', () => {
 
     // Non-file path should return index.html for SPA
     const response = await server.handleRequest(
-      new Request('http://localhost/apps/app1/dashboard')
+      new Request('http://localhost/apps/app1/dashboard'),
     )
 
     expect(response.status).toBe(200)
@@ -251,7 +259,7 @@ describe('LocalCDNServer', () => {
 
     // app2 has spa: false
     const response = await server.handleRequest(
-      new Request('http://localhost/apps/app2/nonexistent')
+      new Request('http://localhost/apps/app2/nonexistent'),
     )
 
     expect(response.status).toBe(404)
@@ -262,11 +270,11 @@ describe('LocalCDNServer', () => {
     await server.initialize()
 
     const response = await server.handleRequest(
-      new Request('http://localhost/apps/unknown/')
+      new Request('http://localhost/apps/unknown/'),
     )
 
     expect(response.status).toBe(404)
-    const body = await response.json() as { error: string }
+    const body = (await response.json()) as { error: string }
     expect(body.error).toContain('not found')
   })
 
@@ -275,11 +283,11 @@ describe('LocalCDNServer', () => {
     await server.initialize()
 
     const response = await server.handleRequest(
-      new Request('http://localhost/cdn/apps')
+      new Request('http://localhost/cdn/apps'),
     )
 
     expect(response.status).toBe(200)
-    const body = await response.json() as { apps: Array<{ name: string }> }
+    const body = (await response.json()) as { apps: Array<{ name: string }> }
     expect(body.apps.length).toBe(2)
     expect(body.apps.some((a) => a.name === 'app1')).toBe(true)
     expect(body.apps.some((a) => a.name === 'app2')).toBe(true)
@@ -290,7 +298,7 @@ describe('LocalCDNServer', () => {
     await server.initialize()
 
     const response = await server.handleRequest(
-      new Request('http://localhost/apps/app1/')
+      new Request('http://localhost/apps/app1/'),
     )
 
     expect(response.headers.get('X-CDN-App')).toBe('app1')
@@ -302,13 +310,13 @@ describe('LocalCDNServer', () => {
 
     // First request - should be served from filesystem
     const response1 = await server.handleRequest(
-      new Request('http://localhost/apps/app1/')
+      new Request('http://localhost/apps/app1/'),
     )
     expect(response1.status).toBe(200)
 
     // Second request - should be served from cache
     const response2 = await server.handleRequest(
-      new Request('http://localhost/apps/app1/')
+      new Request('http://localhost/apps/app1/'),
     )
     expect(response2.status).toBe(200)
   })

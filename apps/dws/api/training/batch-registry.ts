@@ -1,7 +1,7 @@
 /**
  * Trajectory Batch Registry
  *
- * Receives batch registration from apps (Crucible, Babylon) and stores
+ * Receives batch registration from apps and stores
  * references in the database for later processing.
  */
 

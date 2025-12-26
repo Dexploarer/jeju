@@ -971,24 +971,28 @@ describe('Concurrent Behavior', () => {
 // These tests use the createEmailRouter() directly with Elysia's handle() method
 
 import { Elysia } from 'elysia'
-import { createEmailRouter as createProductionEmailRouter } from '../routes'
 
 describe('Email API Routes', () => {
   // Create a test app with the email router
   // Note: This tests the production routes from src/email/routes.ts
   // These require EmailRelayService to be initialized, so we create a minimal setup
-  
+
   describe('Health Check', () => {
     test('returns healthy status', async () => {
       // Use the development in-memory routes for testing (api/email/routes.ts)
       // as they don't require contract dependencies
       const { createEmailRouter } = await import('../../../api/email/routes')
       const app = new Elysia().use(createEmailRouter())
-      
-      const response = await app.handle(new Request('http://localhost/email/health'))
+
+      const response = await app.handle(
+        new Request('http://localhost/email/health'),
+      )
       expect(response.status).toBe(200)
-      
-      const body = await response.json() as { status: string; service: string }
+
+      const body = (await response.json()) as {
+        status: string
+        service: string
+      }
       expect(body.status).toBe('healthy')
       expect(body.service).toBe('email')
     })
@@ -998,24 +1002,33 @@ describe('Email API Routes', () => {
     test('rejects unauthenticated mailbox request', async () => {
       const { createEmailRouter } = await import('../../../api/email/routes')
       const app = new Elysia().use(createEmailRouter())
-      
-      const response = await app.handle(new Request('http://localhost/email/mailbox'))
+
+      const response = await app.handle(
+        new Request('http://localhost/email/mailbox'),
+      )
       expect(response.status).toBe(401)
-      
-      const body = await response.json() as { error: string }
+
+      const body = (await response.json()) as { error: string }
       expect(body.error).toContain('required')
     })
 
     test('accepts authenticated mailbox request', async () => {
       const { createEmailRouter } = await import('../../../api/email/routes')
       const app = new Elysia().use(createEmailRouter())
-      
-      const response = await app.handle(new Request('http://localhost/email/mailbox', {
-        headers: { 'x-wallet-address': '0x1234567890123456789012345678901234567890' }
-      }))
+
+      const response = await app.handle(
+        new Request('http://localhost/email/mailbox', {
+          headers: {
+            'x-wallet-address': '0x1234567890123456789012345678901234567890',
+          },
+        }),
+      )
       expect(response.status).toBe(200)
-      
-      const body = await response.json() as { mailbox: unknown; unreadCount: number }
+
+      const body = (await response.json()) as {
+        mailbox: unknown
+        unreadCount: number
+      }
       expect(body.mailbox).toBeDefined()
       expect(typeof body.unreadCount).toBe('number')
     })
@@ -1025,62 +1038,71 @@ describe('Email API Routes', () => {
     test('rejects invalid email address in send', async () => {
       const { createEmailRouter } = await import('../../../api/email/routes')
       const app = new Elysia().use(createEmailRouter())
-      
-      const response = await app.handle(new Request('http://localhost/email/send', {
-        method: 'POST',
-        headers: {
-          'x-wallet-address': '0x1234567890123456789012345678901234567890',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: 'not-an-email', // Invalid
-          to: ['also-not-email'], // Invalid
-          subject: 'Test',
-          bodyText: 'Test body',
+
+      const response = await app.handle(
+        new Request('http://localhost/email/send', {
+          method: 'POST',
+          headers: {
+            'x-wallet-address': '0x1234567890123456789012345678901234567890',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: 'not-an-email', // Invalid
+            to: ['also-not-email'], // Invalid
+            subject: 'Test',
+            bodyText: 'Test body',
+          }),
         }),
-      }))
+      )
       expect(response.status).toBe(400)
-      
-      const body = await response.json() as { error: string }
+
+      const body = (await response.json()) as { error: string }
       expect(body.error).toContain('Invalid email')
     })
-    
+
     test('accepts valid email send request', async () => {
       const { createEmailRouter } = await import('../../../api/email/routes')
       const app = new Elysia().use(createEmailRouter())
-      
-      const response = await app.handle(new Request('http://localhost/email/send', {
-        method: 'POST',
-        headers: {
-          'x-wallet-address': '0x1234567890123456789012345678901234567890',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: 'sender@jeju.mail',
-          to: ['recipient@jeju.mail'],
-          subject: 'Test Subject',
-          bodyText: 'Test body content',
+
+      const response = await app.handle(
+        new Request('http://localhost/email/send', {
+          method: 'POST',
+          headers: {
+            'x-wallet-address': '0x1234567890123456789012345678901234567890',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: 'sender@jeju.mail',
+            to: ['recipient@jeju.mail'],
+            subject: 'Test Subject',
+            bodyText: 'Test body content',
+          }),
         }),
-      }))
+      )
       expect(response.status).toBe(200)
-      
-      const body = await response.json() as { messageId: string; success: boolean }
+
+      const body = (await response.json()) as {
+        messageId: string
+        success: boolean
+      }
       expect(body.success).toBe(true)
       expect(body.messageId).toBeDefined()
     })
   })
-  
+
   describe('Metrics', () => {
     test('returns prometheus metrics', async () => {
       const { createEmailRouter } = await import('../../../api/email/routes')
       const app = new Elysia().use(createEmailRouter())
-      
-      const response = await app.handle(new Request('http://localhost/email/metrics'))
+
+      const response = await app.handle(
+        new Request('http://localhost/email/metrics'),
+      )
       expect(response.status).toBe(200)
-      
+
       const contentType = response.headers.get('Content-Type')
       expect(contentType).toContain('text/plain')
-      
+
       const body = await response.text()
       expect(body).toContain('jeju_email')
     })
@@ -1668,7 +1690,10 @@ describe('SMTP Server Edge Cases', () => {
     smtp.handleMailFrom(session.id, 'sender@jeju.mail')
     // Skip RCPT TO - should fail because state is wrong
 
-    const result = await smtp.handleData(session.id, 'Subject: Test\r\n\r\nBody')
+    const result = await smtp.handleData(
+      session.id,
+      'Subject: Test\r\n\r\nBody',
+    )
     expect(result.success).toBe(false)
     expect(result.error).toBeDefined()
   })

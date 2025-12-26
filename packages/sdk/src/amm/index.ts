@@ -1179,7 +1179,15 @@ export function createAMMModule(
         ])
 
       // slot0 returns: [sqrtPriceX96, tick, observationIndex, observationCardinality, observationCardinalityNext, feeProtocol, unlocked]
-      const slot0Array = slot0 as readonly [bigint, number, number, number, number, number, boolean]
+      const slot0Array = slot0 as readonly [
+        bigint,
+        number,
+        number,
+        number,
+        number,
+        number,
+        boolean,
+      ]
 
       return {
         poolAddress,

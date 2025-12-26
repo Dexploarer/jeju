@@ -36,7 +36,7 @@ function createMockTrajectoryJSONL(
     timestamp: new Date().toISOString(),
   })
 
-  const trajLines = trajectories.map((t) =>
+  const trajLines = trajectories.map((t, idx) =>
     JSON.stringify({
       _type: 'trajectory',
       id: t.trajectoryId, // Schema expects 'id' field
@@ -778,9 +778,11 @@ describe('TrajectoryBatchProcessor', () => {
       })
 
       const processor = createBatchProcessor()
-      const datasets = await processor.processBatches(['QmEmpty'], 'test-app')
 
-      expect(datasets).toHaveLength(0)
+      // Should throw because trajectoryCount must be positive
+      await expect(
+        processor.processBatches(['QmEmpty'], 'test-app'),
+      ).rejects.toThrow('Invalid batch: missing header')
     })
 
     test('throws when scoring returns no matching trajectory IDs', async () => {

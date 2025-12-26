@@ -134,7 +134,11 @@ export interface Agent0AgentUpdateParams {
   x402Support?: boolean
   walletAddress?: string
   walletChainId?: number
-  trustModels?: { reputation?: boolean; cryptoEconomic?: boolean; teeAttestation?: boolean }
+  trustModels?: {
+    reputation?: boolean
+    cryptoEconomic?: boolean
+    teeAttestation?: boolean
+  }
   metadata?: Record<string, unknown>
 }
 
@@ -211,21 +215,52 @@ export interface AggregatedReputation {
 // Client Interface
 
 export interface IAgent0Client {
-  registerAgent(params: Agent0RegistrationParams): Promise<Agent0RegistrationResult>
-  searchAgents(filters: Agent0SearchFilters, options?: Agent0SearchOptions): Promise<Agent0SearchResponse<Agent0SearchResult>>
-  searchAgentsByReputation(params: Agent0FeedbackSearchParams, options?: Agent0SearchOptions): Promise<Agent0SearchResponse<Agent0SearchResult>>
+  registerAgent(
+    params: Agent0RegistrationParams,
+  ): Promise<Agent0RegistrationResult>
+  searchAgents(
+    filters: Agent0SearchFilters,
+    options?: Agent0SearchOptions,
+  ): Promise<Agent0SearchResponse<Agent0SearchResult>>
+  searchAgentsByReputation(
+    params: Agent0FeedbackSearchParams,
+    options?: Agent0SearchOptions,
+  ): Promise<Agent0SearchResponse<Agent0SearchResult>>
   getAgentProfile(tokenId: number): Promise<Agent0AgentProfile | null>
   loadAgent(agentId: string): Promise<Agent0AgentProfile | null>
-  updateAgent(agentId: string, params: Agent0AgentUpdateParams): Promise<Agent0RegistrationResult>
-  transferAgent(agentId: string, newOwner: string): Promise<Agent0TransferResult>
+  updateAgent(
+    agentId: string,
+    params: Agent0AgentUpdateParams,
+  ): Promise<Agent0RegistrationResult>
+  transferAgent(
+    agentId: string,
+    newOwner: string,
+  ): Promise<Agent0TransferResult>
   isAgentOwner(agentId: string, address: string): Promise<boolean>
   getAgentOwner(agentId: string): Promise<string>
   submitFeedback(params: Agent0FeedbackParams): Promise<Agent0Feedback>
-  getFeedback(agentId: string, clientAddress: string, feedbackIndex: number): Promise<Agent0Feedback>
-  searchFeedback(agentId: string, params?: Partial<Agent0FeedbackSearchParams>): Promise<Agent0Feedback[]>
+  getFeedback(
+    agentId: string,
+    clientAddress: string,
+    feedbackIndex: number,
+  ): Promise<Agent0Feedback>
+  searchFeedback(
+    agentId: string,
+    params?: Partial<Agent0FeedbackSearchParams>,
+  ): Promise<Agent0Feedback[]>
   revokeFeedback(agentId: string, feedbackIndex: number): Promise<string>
-  appendFeedbackResponse(agentId: string, clientAddress: string, feedbackIndex: number, uri: string, hash: string): Promise<string>
-  getReputationSummary(agentId: string, tag1?: string, tag2?: string): Promise<Agent0ReputationSummary>
+  appendFeedbackResponse(
+    agentId: string,
+    clientAddress: string,
+    feedbackIndex: number,
+    uri: string,
+    hash: string,
+  ): Promise<string>
+  getReputationSummary(
+    agentId: string,
+    tag1?: string,
+    tag2?: string,
+  ): Promise<Agent0ReputationSummary>
   isAvailable(): boolean
   getChainId(): number
   formatAgentId(tokenId: number): string
@@ -234,7 +269,10 @@ export interface IAgent0Client {
 // Service Interfaces
 
 export interface IAgentDiscoveryService {
-  discoverAgents(filters: DiscoveryFilters, options?: Agent0SearchOptions): Promise<Agent0SearchResponse<AgentProfile>>
+  discoverAgents(
+    filters: DiscoveryFilters,
+    options?: Agent0SearchOptions,
+  ): Promise<Agent0SearchResponse<AgentProfile>>
   getAgent(agentId: string): Promise<AgentProfile | null>
 }
 
@@ -274,16 +312,37 @@ export interface AgentReputation {
 
 export interface IReputationBridge {
   getAggregatedReputation(tokenId: number): Promise<AggregatedReputation>
-  getAgent0ReputationSummary(agentId: string, tag1?: string, tag2?: string): Promise<Agent0ReputationSummary>
+  getAgent0ReputationSummary(
+    agentId: string,
+    tag1?: string,
+    tag2?: string,
+  ): Promise<Agent0ReputationSummary>
 }
 
 export interface IAgent0FeedbackService {
   submitFeedback(params: Agent0FeedbackParams): Promise<Agent0Feedback>
-  getFeedback(agentId: string, clientAddress: string, feedbackIndex: number): Promise<Agent0Feedback>
-  searchFeedback(agentId: string, params?: Partial<Agent0FeedbackSearchParams>): Promise<Agent0Feedback[]>
+  getFeedback(
+    agentId: string,
+    clientAddress: string,
+    feedbackIndex: number,
+  ): Promise<Agent0Feedback>
+  searchFeedback(
+    agentId: string,
+    params?: Partial<Agent0FeedbackSearchParams>,
+  ): Promise<Agent0Feedback[]>
   revokeFeedback(agentId: string, feedbackIndex: number): Promise<string>
-  appendResponse(agentId: string, clientAddress: string, feedbackIndex: number, uri: string, hash: string): Promise<string>
-  getReputationSummary(agentId: string, tag1?: string, tag2?: string): Promise<Agent0ReputationSummary>
+  appendResponse(
+    agentId: string,
+    clientAddress: string,
+    feedbackIndex: number,
+    uri: string,
+    hash: string,
+  ): Promise<string>
+  getReputationSummary(
+    agentId: string,
+    tag1?: string,
+    tag2?: string,
+  ): Promise<Agent0ReputationSummary>
 }
 
 // Configuration

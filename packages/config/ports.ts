@@ -321,11 +321,18 @@ export const CORE_PORTS = {
     get: () => safeParsePort(process.env.VPN_API_PORT, 4023),
   },
 
-  /** Wallet - Agentic multi-chain wallet */
+  /** Wallet Frontend - Multi-chain agentic wallet */
   WALLET: {
     DEFAULT: 4015,
     ENV_VAR: 'WALLET_PORT',
     get: () => safeParsePort(process.env.WALLET_PORT, 4015),
+  },
+
+  /** Wallet WebSocket - Wallet real-time updates */
+  WALLET_WS: {
+    DEFAULT: 4017,
+    ENV_VAR: 'WALLET_WS_PORT',
+    get: () => safeParsePort(process.env.WALLET_WS_PORT, 4017),
   },
 
   /** Example App - Demo/example application */
@@ -698,12 +705,35 @@ export function getCQLBlockProducerUrl(): string {
 
 /**
  * Get the Indexer GraphQL URL
+ * Prefers DWS-proxied endpoint for decentralized access when available
  */
 export function getIndexerGraphqlUrl(): string {
+  // Direct indexer URL takes precedence (for explicit configuration)
   if (process.env.INDEXER_GRAPHQL_URL) return process.env.INDEXER_GRAPHQL_URL
+
+  // Prefer DWS-proxied endpoint for decentralized access
+  if (process.env.INDEXER_DWS_URL) return process.env.INDEXER_DWS_URL
+  if (process.env.USE_DWS_INDEXER === 'true') {
+    const dwsPort = CORE_PORTS.DWS_API.get()
+    const host = process.env.HOST || '127.0.0.1'
+    return `http://${host}:${dwsPort}/indexer/graphql`
+  }
+
+  // Fallback to direct indexer endpoint
   const port = CORE_PORTS.INDEXER_GRAPHQL.get()
   const host = process.env.HOST || '127.0.0.1'
   return `http://${host}:${port}/graphql`
+}
+
+/**
+ * Get the Indexer GraphQL URL via DWS proxy
+ * Always returns the DWS-proxied endpoint for decentralized access
+ */
+export function getIndexerDwsUrl(): string {
+  if (process.env.INDEXER_DWS_URL) return process.env.INDEXER_DWS_URL
+  const port = CORE_PORTS.DWS_API.get()
+  const host = process.env.HOST || '127.0.0.1'
+  return `http://${host}:${port}/indexer/graphql`
 }
 
 /**

@@ -564,7 +564,7 @@ export const trainingCommand = new Command('training')
       .description('Label GRPO bundles with LLM judge')
       .argument('<manifest-cid>', 'Trajectory manifest CID')
       .option('--rubric <id>', 'Rubric ID for scoring')
-      .option('--judge-model <model>', 'Judge model', 'gpt-4o-mini')
+      .option('--judge-model <model>', 'Judge model', 'gpt-5.2')
       .option('--group-size <n>', 'Group size for relative scoring', '4')
       .option(
         '--network <network>',

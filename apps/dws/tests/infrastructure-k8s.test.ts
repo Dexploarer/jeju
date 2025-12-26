@@ -7,14 +7,20 @@
  * - Terraform provider resource management
  * - Service mesh backend routing
  *
- * Run with: bun test tests/infrastructure-k8s.test.ts
+ * Requires: Docker, K8s cluster (k3s/k3d), Helm
+ *
+ * Run with: jeju test --target-app dws --mode integration
  */
 
 import { afterAll, describe, expect, setDefaultTimeout, test } from 'bun:test'
 import type { Address } from 'viem'
 import { app, dwsRequest } from './setup'
+import { SKIP } from './infra-check'
 
 setDefaultTimeout(60000)
+
+// Skip all K8s tests if no K8s cluster available
+const skipAll = SKIP.NO_K8S
 
 const TEST_ADDRESS = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as Address
 
@@ -87,7 +93,7 @@ interface IngressesListResponse {
 
 // Helm Provider Tests
 
-describe('Helm Provider', () => {
+describe.skipIf(skipAll)('Helm Provider', () => {
   let deploymentId: string
 
   test('helm health check returns healthy', async () => {
@@ -315,7 +321,7 @@ describe('Helm Provider', () => {
 
 // Terraform Provider Tests
 
-describe('Terraform Provider', () => {
+describe.skipIf(skipAll)('Terraform Provider', () => {
   let workerId: string
   let containerId: string
 
@@ -510,7 +516,7 @@ describe('Terraform Provider', () => {
 
 // K3s Provider Tests
 
-describe('K3s Provider', () => {
+describe.skipIf(skipAll)('K3s Provider', () => {
   // Skip cluster creation tests in CI unless K3S_TEST=true
   const skipClusterTests = process.env.K3S_TEST !== 'true'
 
@@ -621,7 +627,7 @@ describe('K3s Provider', () => {
 
 // Service Mesh Tests
 
-describe('Service Mesh', () => {
+describe.skipIf(skipAll)('Service Mesh', () => {
   test('mesh health check', async () => {
     const res = await dwsRequest('/mesh/health')
     expect(res.status).toBe(200)
@@ -696,7 +702,7 @@ describe('Service Mesh', () => {
 
 // Ingress Controller Tests
 
-describe('Ingress Controller', () => {
+describe.skipIf(skipAll)('Ingress Controller', () => {
   test('ingress health check', async () => {
     const res = await dwsRequest('/ingress/health')
     expect(res.status).toBe(200)
@@ -779,7 +785,7 @@ describe('Ingress Controller', () => {
 
 // End-to-End Deployment Flow Tests
 
-describe('E2E Deployment Flow', () => {
+describe.skipIf(skipAll)('E2E Deployment Flow', () => {
   test('full deployment flow: Terraform -> Helm -> Ingress', async () => {
     // Step 1: Create infrastructure with Terraform
     const tfWorkerRes = await dwsRequest(

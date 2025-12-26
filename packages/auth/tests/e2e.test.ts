@@ -325,7 +325,7 @@ describe('Multi-tenant Council', () => {
 
   test('updates council CEO', async () => {
     await manager.updateCouncilCEO('jeju' as const, {
-      modelId: 'claude-sonnet-4-20250514',
+      modelId: 'claude-opus-4-5',
     })
 
     const jeju = manager.getCouncil('jeju' as const)

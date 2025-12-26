@@ -9,7 +9,7 @@
     "dev:web": "PORT=1421 bun index.html",
     "dev:api": "bun --watch api/index.ts",
     "dev:app": "cd app/src-tauri && tauri dev",
-    "build": "bun build index.html --outdir=dist --minify",
+    "build": "bun build.web.ts",
     "build:app": "cd app/src-tauri && tauri build",
     "start": "bun api/index.ts",
     "test": "bun test lib/ api/",

@@ -1,6 +1,5 @@
 /** Key management and genesis ceremony */
 
-import { createHash, randomBytes } from 'node:crypto'
 import {
   existsSync,
   mkdirSync,
@@ -9,6 +8,7 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { join } from 'node:path'
+import { bytesToHex, hash256, hash512, randomBytes } from '@jejunetwork/shared'
 import { Command } from 'commander'
 import { execa } from 'execa'
 import prompts from 'prompts'
@@ -304,7 +304,7 @@ async function runTeeGenesis(network: NetworkType, endpoint?: string) {
   }
 
   // Hash password locally (never send plaintext to TEE)
-  const passwordHash = createHash('sha256').update(password).digest('hex')
+  const passwordHash = bytesToHex(hash256(password))
 
   logger.newline()
   logger.step('Connecting to TEE...')
@@ -759,7 +759,9 @@ async function verifyTeeAttestation(attestationFile: string) {
     logger.newline()
     logger.error('SIMULATED attestation detected - NOT VALID for production')
     logger.info('This attestation was generated in simulation mode.')
-    logger.info('Re-run the ceremony with real TEE hardware for production use.')
+    logger.info(
+      'Re-run the ceremony with real TEE hardware for production use.',
+    )
     return
   }
 
@@ -951,7 +953,7 @@ async function runGenesis(network: NetworkType) {
     const combinedEntropy = combineEntropy([
       userEntropy ?? '',
       timingEntropy,
-      randomBytes(32).toString('hex'),
+      bytesToHex(randomBytes(32)),
       Date.now().toString(),
       process.hrtime.bigint().toString(),
     ])
@@ -1303,7 +1305,7 @@ async function importKeys(): Promise<Record<string, KeyConfig> | null> {
 }
 
 function generateKeysWithEntropy(entropy: string): Record<string, KeyConfig> {
-  const entropyHash = createHash('sha256').update(entropy).digest()
+  const entropyHash = hash256(entropy)
 
   const roles = [
     { name: 'sequencer', desc: 'Produces L2 blocks' },
@@ -1320,12 +1322,14 @@ function generateKeysWithEntropy(entropy: string): Record<string, KeyConfig> {
   for (let i = 0; i < roles.length; i++) {
     const role = roles[i]
 
-    createHash('sha256')
-      .update(entropyHash)
-      .update(Buffer.from([i]))
-      .update(role.name)
-      .update(randomBytes(32))
-      .digest()
+    // Mix entropy with role info for deterministic-ish key derivation
+    const combined = new Uint8Array([
+      ...entropyHash,
+      i,
+      ...new TextEncoder().encode(role.name),
+      ...randomBytes(32),
+    ])
+    hash256(combined)
 
     const pk = generatePrivateKey()
     const account = privateKeyToAccount(pk)
@@ -1362,7 +1366,7 @@ async function collectTimingEntropy(): Promise<string> {
 
 function combineEntropy(sources: string[]): string {
   const combined = sources.join('|')
-  return createHash('sha512').update(combined).digest('hex')
+  return bytesToHex(hash512(combined))
 }
 
 async function burnKeys(network: NetworkType) {
@@ -1414,8 +1418,8 @@ async function burnKeys(network: NetworkType) {
     const path = join(networkDir, file)
     if (existsSync(path)) {
       const size = readFileSync(path).length
-      writeFileSync(path, randomBytes(size))
-      writeFileSync(path, randomBytes(size))
+      writeFileSync(path, Buffer.from(randomBytes(size)))
+      writeFileSync(path, Buffer.from(randomBytes(size)))
       writeFileSync(path, Buffer.alloc(size, 0))
       unlinkSync(path)
       logger.info(`Burned: ${file}`)

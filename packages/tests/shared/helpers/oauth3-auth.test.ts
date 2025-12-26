@@ -5,7 +5,7 @@
  * - Module exports and function signatures
  * - Selector pattern coverage
  * - Logic flow with mock page objects
- * 
+ *
  * LIMITATIONS (acknowledged, not hidden):
  * - Mock page objects return predetermined values
  * - Actual Playwright locator matching is NOT tested here
@@ -151,7 +151,10 @@ function createMockPage(config: {
     displayedAddress = null,
   } = config
 
-  const createMockLocator = (visible: boolean, text: string | null = null): MockLocator => ({
+  const createMockLocator = (
+    visible: boolean,
+    text: string | null = null,
+  ): MockLocator => ({
     isVisible: async () => visible,
     click: async () => {},
     textContent: async () => text,
@@ -329,7 +332,8 @@ describe('OAuth3 Auth - Error Handling', () => {
         },
         isVisible: async () => {
           // Connect button visible, but user-menu never appears
-          if (selector.includes('Connect') || selector.includes('Log in')) return true
+          if (selector.includes('Connect') || selector.includes('Log in'))
+            return true
           return false
         },
         click: async () => {},

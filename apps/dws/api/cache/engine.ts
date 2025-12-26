@@ -2,6 +2,7 @@
  * In-memory cache engine with LRU eviction, TTL, and namespace isolation
  */
 
+import { z } from 'zod'
 import {
   type CacheConfig,
   CacheError,
@@ -21,7 +22,6 @@ import {
   type StreamEntry,
   StreamEntrySchema,
 } from './types'
-import { z } from 'zod'
 
 interface StorageEntry {
   data: Uint8Array
@@ -923,7 +923,9 @@ export class CacheEngine {
   }
 
   private decodeSet(data: Uint8Array): Set<string> {
-    return new Set(z.array(z.string()).parse(JSON.parse(this.decodeString(data))))
+    return new Set(
+      z.array(z.string()).parse(JSON.parse(this.decodeString(data))),
+    )
   }
 
   private encodeZSet(zset: SortedSetMember[]): Uint8Array {
@@ -931,7 +933,9 @@ export class CacheEngine {
   }
 
   private decodeZSet(data: Uint8Array): SortedSetMember[] {
-    return z.array(SortedSetMemberSchema).parse(JSON.parse(this.decodeString(data)))
+    return z
+      .array(SortedSetMemberSchema)
+      .parse(JSON.parse(this.decodeString(data)))
   }
 
   private encodeStream(stream: StreamEntry[]): Uint8Array {
