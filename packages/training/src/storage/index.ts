@@ -23,10 +23,12 @@ export {
   createStaticTrajectoryStorage,
   downloadTrajectoryBatch,
   getStaticTrajectoryStorage,
+  type LLMCallJSONLRecord,
   type StaticStorageConfig,
   StaticTrajectoryStorage,
   shutdownAllStaticStorage,
   type TrajectoryBatchReference,
+  type TrajectoryJSONLRecord,
 } from './static-storage'
 export {
   getStorage,
