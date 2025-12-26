@@ -188,6 +188,8 @@ export interface NodeClient {
   walletClient: WalletClient | null
   addresses: ContractAddresses
   chainId: number
+  // Optional stake tracking for sequencer eligibility
+  stake?: bigint
 }
 
 export function createNodeClient(

@@ -37,8 +37,7 @@ import {
 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { base, baseSepolia, foundry } from 'viem/chains'
-import type { NetworkType } from '../shared'
-import { getRequiredNetwork } from '../shared'
+import { getRequiredNetwork, type NetworkType } from '../shared'
 
 const ROOT = join(import.meta.dir, '../../../..')
 const CONTRACTS_DIR = join(ROOT, 'packages/contracts')

@@ -6,6 +6,8 @@ export * from './edge-coordinator'
 export * from './hybrid-torrent'
 export * from './oracle'
 export * from './residential-proxy'
+export * from './sequencer'
+export * from './staking-manager'
 export * from './static-assets'
 export * from './storage'
 export * from './updater'
@@ -47,6 +49,16 @@ import {
   type VPNExitConfig,
   type VPNExitService,
 } from './vpn-exit'
+import {
+  createSequencerService,
+  type SequencerConfig,
+  type SequencerService,
+} from './sequencer'
+import {
+  createStakingManagerService,
+  type StakingConfig,
+  type StakingManagerService,
+} from './staking-manager'
 
 export interface NodeServices {
   compute: ComputeService
@@ -60,6 +72,8 @@ export interface NodeServices {
   torrent: HybridTorrentService
   vpn: VPNExitService
   staticAssets: StaticAssetService
+  sequencer: SequencerService
+  staking: StakingManagerService
 }
 
 export interface NodeServicesConfig {
@@ -67,6 +81,8 @@ export interface NodeServicesConfig {
   edge?: Partial<EdgeCoordinatorConfig>
   vpn?: Partial<VPNExitConfig>
   staticAssets?: Partial<StaticAssetConfig>
+  sequencer?: Partial<SequencerConfig>
+  staking?: Partial<StakingConfig>
 }
 
 export function createNodeServices(
@@ -78,6 +94,8 @@ export function createNodeServices(
     edge: edgeConfig,
     vpn: vpnConfig,
     staticAssets: staticConfig,
+    sequencer: sequencerConfig,
+    staking: stakingConfig,
   } = config
 
   // Bridge service requires operator address - defaults to ZERO_ADDRESS when not provided
@@ -141,5 +159,7 @@ export function createNodeServices(
     torrent: getHybridTorrentService(),
     vpn: createVPNExitService(client, vpnConfig),
     staticAssets: createStaticAssetService(client, staticConfig),
+    sequencer: createSequencerService(client, sequencerConfig),
+    staking: createStakingManagerService(client, stakingConfig),
   }
 }
