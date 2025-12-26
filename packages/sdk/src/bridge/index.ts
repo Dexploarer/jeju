@@ -191,14 +191,6 @@ export interface BridgeModule {
   getHyperlaneMessageStatus(messageId: Hex): Promise<boolean>
 
   // ZK Bridge
-<<<<<<< HEAD
-  submitZKProof(proofData: Hex, publicInputs: Hex[]): Promise<{ txHash: Hex; proofId: Hex }>
-=======
-  submitZKProof(
-    proofData: Hex,
-    publicInputs: Hex[],
-  ): Promise<{ txHash: Hex; proofId: Hex }>
->>>>>>> cd08d238c04fc8f92037e4eb995e7cddc3863234
   verifyZKBridgeTransfer(transferId: Hex): Promise<boolean>
 
   // Utilities

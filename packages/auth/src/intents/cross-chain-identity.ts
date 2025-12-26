@@ -6,10 +6,6 @@
  */
 
 import { getExternalRpc, getRpcUrl } from '@jejunetwork/config'
-<<<<<<< HEAD
-import { getEnv } from '@jejunetwork/shared'
-=======
->>>>>>> cd08d238c04fc8f92037e4eb995e7cddc3863234
 import { ZERO_ADDRESS } from '@jejunetwork/types'
 import {
   type Address,
@@ -478,11 +474,6 @@ export class CrossChainIdentityManager {
         status: 'executed',
         executionTx: executionTx as Hex,
         solution: {
-<<<<<<< HEAD
-          solverId: solver,
-=======
-          solverId: solver as Address,
->>>>>>> cd08d238c04fc8f92037e4eb995e7cddc3863234
           intentId,
           executionData: executionTx as Hex,
           gasUsed: 0n,

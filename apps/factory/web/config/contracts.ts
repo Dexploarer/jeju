@@ -1,9 +1,5 @@
 /** Contract Configuration - Browser-safe version */
 
-<<<<<<< HEAD
-=======
-import { getContractAddress as getNetworkAddress, getDWSUrl as getConfigDWSUrl } from '@jejunetwork/config'
->>>>>>> cd08d238c04fc8f92037e4eb995e7cddc3863234
 import type { Address } from 'viem'
 
 // Static contract addresses loaded from JSON at build time

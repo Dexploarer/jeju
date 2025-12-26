@@ -1,16 +1,11 @@
 /**
  * Training Cron Orchestrator
  *
-<<<<<<< HEAD
- * Manages scheduled cron jobs for Jeju apps. Triggers defined in app
- * manifests are executed via HTTP endpoints.
-=======
  * Manages scheduled training-related cron jobs for Jeju apps:
  * - Crucible: Agent ticks, trajectory collection, blue/red team operations
  * - DWS: Batch processing, RULER scoring, dataset creation
  *
  * Triggers are defined in app manifests and executed via HTTP endpoints.
->>>>>>> cd08d238c04fc8f92037e4eb995e7cddc3863234
  */
 
 import { getDWSUrl, getServiceUrl } from '@jejunetwork/config'
@@ -24,10 +19,7 @@ import {
 
 export interface AppCronTrigger {
   triggerId: string
-<<<<<<< HEAD
-=======
   /** App name (crucible, dws) */
->>>>>>> cd08d238c04fc8f92037e4eb995e7cddc3863234
   appName: string
   cronName: string
   schedule: string

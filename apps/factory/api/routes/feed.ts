@@ -37,7 +37,7 @@ const PaginationQuerySchema = t.Object({
 // ============================================================================
 
 /** Extract viewer FID from authorization header */
-function getViewerFid(headers: Record<string, string | null>): number | undefined {
+function getViewerFid(headers: Record<string, string | undefined>): number | undefined {
   const authHeader = headers.authorization
   if (!authHeader?.startsWith('Bearer ')) return undefined
   
@@ -322,4 +322,6 @@ export const feedRoutes = new Elysia({ prefix: '/api/feed' })
       factoryChannelId: farcasterService.getFactoryChannelId(),
     }),
     { detail: { tags: ['feed'], summary: 'Feed status', description: 'Get feed service status' } },
+  )
+
   )
