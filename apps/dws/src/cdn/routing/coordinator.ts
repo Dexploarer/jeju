@@ -131,9 +131,20 @@ export class CDNCoordinator {
         args: [nodeIdBytes as `0x${string}`],
       })
 
-      // Result is a tuple: [nodeId, operator, endpoint, region, providerType, status, stake, registeredAt, lastSeen, agentId]
-      const nodeData = onChainNode as readonly [string, Address, string, number, number, number, bigint, bigint, bigint, bigint]
-      const operator = nodeData[1]
+      // Result is an object with named fields
+      const nodeData = onChainNode as {
+        nodeId: `0x${string}`
+        operator: `0x${string}`
+        endpoint: string
+        region: number
+        providerType: number
+        status: number
+        stake: bigint
+        registeredAt: bigint
+        lastSeen: bigint
+        agentId: bigint
+      }
+      const operator = nodeData.operator
 
       if (
         !onChainNode ||

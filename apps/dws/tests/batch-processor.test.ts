@@ -36,9 +36,10 @@ function createMockTrajectoryJSONL(
     timestamp: new Date().toISOString(),
   })
 
-  const trajLines = trajectories.map((t) =>
+  const trajLines = trajectories.map((t, idx) =>
     JSON.stringify({
       _type: 'trajectory',
+      id: `traj-${idx}`,
       trajectoryId: t.trajectoryId,
       agentId: t.agentId,
       archetype: t.archetype,
@@ -56,7 +57,9 @@ function createMockTrajectoryJSONL(
           reward: t.totalReward,
         },
       ],
-      rewardComponents: {},
+      rewardComponents: [
+        { name: 'base', value: t.totalReward, weight: 1.0 },
+      ],
       metrics: {},
       metadata: {},
       totalReward: t.totalReward,
@@ -360,10 +363,11 @@ describe('TrajectoryBatchProcessor', () => {
     })
 
     test('handles default archetype for null/undefined', async () => {
+      // Both trajectories have null archetype - should be grouped under "default"
       const jsonl = [
         '{"_type":"header","batchId":"b1","appName":"test","trajectoryCount":2,"timestamp":"2024-01-01"}',
-        '{"_type":"trajectory","trajectoryId":"t1","agentId":"a1","appName":"test","startTime":"2024-01-01","endTime":"2024-01-01","durationMs":1000,"windowId":"w","scenarioId":"s","steps":[{"stepNumber":0,"timestamp":1704067200000}],"rewardComponents":{},"metrics":{},"metadata":{},"totalReward":0.5}',
-        '{"_type":"trajectory","trajectoryId":"t2","agentId":"a2","archetype":null,"appName":"test","startTime":"2024-01-01","endTime":"2024-01-01","durationMs":1000,"windowId":"w","scenarioId":"s","steps":[{"stepNumber":0,"timestamp":1704067200000}],"rewardComponents":{},"metrics":{},"metadata":{},"totalReward":0.6}',
+        '{"_type":"trajectory","id":"t1-id","trajectoryId":"t1","agentId":"a1","archetype":null,"appName":"test","startTime":"2024-01-01","endTime":"2024-01-01","durationMs":1000,"windowId":"w","scenarioId":"s","steps":[{"stepNumber":0,"timestamp":1704067200000}],"rewardComponents":[{"name":"base","value":0.5,"weight":1}],"metrics":{},"metadata":{},"totalReward":0.5}',
+        '{"_type":"trajectory","id":"t2-id","trajectoryId":"t2","agentId":"a2","archetype":null,"appName":"test","startTime":"2024-01-01","endTime":"2024-01-01","durationMs":1000,"windowId":"w","scenarioId":"s","steps":[{"stepNumber":0,"timestamp":1704067200000}],"rewardComponents":[{"name":"base","value":0.6,"weight":1}],"metrics":{},"metadata":{},"totalReward":0.6}',
       ].join('\n')
       const compressed = createCompressedBatch(jsonl)
 
@@ -764,7 +768,8 @@ describe('TrajectoryBatchProcessor', () => {
   })
 
   describe('Empty Results', () => {
-    test('returns empty array when no trajectories', async () => {
+    test('throws error when batch has zero trajectories', async () => {
+      // A batch with trajectoryCount: 0 is invalid (must be positive)
       const jsonl =
         '{"_type":"header","batchId":"empty","appName":"test","trajectoryCount":0,"timestamp":"2024-01-01"}'
       const compressed = createCompressedBatch(jsonl)
@@ -776,9 +781,11 @@ describe('TrajectoryBatchProcessor', () => {
       })
 
       const processor = createBatchProcessor()
-      const datasets = await processor.processBatches(['QmEmpty'], 'test-app')
 
-      expect(datasets).toHaveLength(0)
+      // Should throw because trajectoryCount must be positive
+      await expect(
+        processor.processBatches(['QmEmpty'], 'test-app'),
+      ).rejects.toThrow('Invalid batch: missing header')
     })
 
     test('throws when scoring returns no matching trajectory IDs', async () => {

@@ -13,15 +13,10 @@ import { LoadingSpinner } from './components/LoadingSpinner'
 
 // Lazy load pages for better performance
 const HomePage = lazy(() => import('./pages/Home'))
-const CharactersPage = lazy(() => import('./pages/Characters'))
-const CharacterDetailPage = lazy(() => import('./pages/CharacterDetail'))
 const AgentsPage = lazy(() => import('./pages/Agents'))
 const AgentDetailPage = lazy(() => import('./pages/AgentDetail'))
 const CreateAgentPage = lazy(() => import('./pages/CreateAgent'))
 const ChatPage = lazy(() => import('./pages/Chat'))
-const RoomsPage = lazy(() => import('./pages/Rooms'))
-const AutonomousPage = lazy(() => import('./pages/Autonomous'))
-const FeedPage = lazy(() => import('./pages/Feed'))
 const NotFoundPage = lazy(() => import('./pages/NotFound'))
 
 function PageLoader() {
@@ -96,15 +91,11 @@ export function App() {
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/" element={<HomePage />} />
-              <Route path="/characters" element={<CharactersPage />} />
-              <Route path="/characters/:id" element={<CharacterDetailPage />} />
               <Route path="/agents" element={<AgentsPage />} />
               <Route path="/agents/new" element={<CreateAgentPage />} />
               <Route path="/agents/:id" element={<AgentDetailPage />} />
               <Route path="/chat" element={<ChatPage />} />
-              <Route path="/rooms" element={<RoomsPage />} />
-              <Route path="/autonomous" element={<AutonomousPage />} />
-              <Route path="/feed" element={<FeedPage />} />
+              <Route path="/chat/:roomId" element={<ChatPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Suspense>

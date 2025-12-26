@@ -895,11 +895,14 @@ export class TEECacheProvider {
   private async decrypt(encrypted: string): Promise<string> {
     const parseResult = EncryptedEntrySchema.safeParse(
       (() => {
-        try { return JSON.parse(encrypted) }
-        catch { return null }
-      })()
+        try {
+          return JSON.parse(encrypted)
+        } catch {
+          return null
+        }
+      })(),
     )
-    
+
     // Not encrypted or invalid format, return as-is
     if (!parseResult.success) {
       return encrypted

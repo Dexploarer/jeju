@@ -9,7 +9,9 @@ interface WaitForServerOptions {
   timeout?: number
 }
 
-export async function waitForServerHealthy(options: WaitForServerOptions = {}): Promise<boolean> {
+export async function waitForServerHealthy(
+  options: WaitForServerOptions = {},
+): Promise<boolean> {
   const {
     baseUrl = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000',
     maxRetries = 10,
@@ -24,7 +26,8 @@ export async function waitForServerHealthy(options: WaitForServerOptions = {}): 
     }).catch(() => null)
 
     if (response && response.status < 500) return true
-    if (attempt < maxRetries) await new Promise((r) => setTimeout(r, retryDelay))
+    if (attempt < maxRetries)
+      await new Promise((r) => setTimeout(r, retryDelay))
   }
   return false
 }
@@ -96,7 +99,10 @@ interface WaitForPageLoadOptions {
   interactiveSelector?: string
 }
 
-export async function waitForPageLoad(page: Page, options: WaitForPageLoadOptions = {}): Promise<void> {
+export async function waitForPageLoad(
+  page: Page,
+  options: WaitForPageLoadOptions = {},
+): Promise<void> {
   const {
     timeout = 20000,
     hideDevOverlay = true,
@@ -111,7 +117,11 @@ export async function waitForPageLoad(page: Page, options: WaitForPageLoadOption
     const deadline = Date.now() + timeout
     let found = false
     while (Date.now() < deadline && !found) {
-      found = (await page.locator(interactiveSelector).count().catch(() => 0)) > 0
+      found =
+        (await page
+          .locator(interactiveSelector)
+          .count()
+          .catch(() => 0)) > 0
       if (!found) await page.waitForTimeout(500)
     }
     if (!found) {
@@ -121,23 +131,33 @@ export async function waitForPageLoad(page: Page, options: WaitForPageLoadOption
   }
 }
 
-export async function cooldownBetweenTests(page: Page, delay = 500): Promise<void> {
+export async function cooldownBetweenTests(
+  page: Page,
+  delay = 500,
+): Promise<void> {
   await page.waitForTimeout(delay)
 }
 
-export async function navigateToMarket(page: Page, marketId?: string): Promise<void> {
+export async function navigateToMarket(
+  page: Page,
+  marketId?: string,
+): Promise<void> {
   if (marketId) {
     await page.goto(`/market/${marketId}`)
   } else {
     await page.goto('/')
-    await page.waitForSelector('[data-testid="market-card"]', { timeout: 15000 })
+    await page.waitForSelector('[data-testid="market-card"]', {
+      timeout: 15000,
+    })
     await page.locator('[data-testid="market-card"]').first().click()
   }
   await expect(page.locator('text=/Place Bet|Buy|Trade/i')).toBeVisible()
 }
 
 export async function navigateToPortfolio(page: Page): Promise<void> {
-  await navigateToRoute(page, '/portfolio', { waitForText: /Portfolio|Your Positions/i })
+  await navigateToRoute(page, '/portfolio', {
+    waitForText: /Portfolio|Your Positions/i,
+  })
 }
 
 export async function navigateToSwap(page: Page): Promise<void> {
@@ -145,7 +165,9 @@ export async function navigateToSwap(page: Page): Promise<void> {
 }
 
 export async function navigateToLiquidity(page: Page): Promise<void> {
-  await navigateToRoute(page, '/liquidity', { waitForText: /Liquidity|Add Liquidity/i })
+  await navigateToRoute(page, '/liquidity', {
+    waitForText: /Liquidity|Add Liquidity/i,
+  })
 }
 
 export function getCurrentRoute(page: Page): string {

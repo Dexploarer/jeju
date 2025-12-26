@@ -101,6 +101,7 @@ pub struct ServiceState {
 }
 
 /// Service trait
+#[allow(dead_code)]
 #[async_trait::async_trait]
 pub trait Service: Send + Sync {
     fn id(&self) -> ServiceId;

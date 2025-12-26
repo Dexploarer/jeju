@@ -505,7 +505,10 @@ describe('EdgeCache Eviction', () => {
   test('should evict oldest entries when max entries exceeded', () => {
     resetEdgeCache()
     // Create cache with very small max entries
-    const smallCache = getEdgeCache({ maxEntries: 5, maxSizeBytes: 1024 * 1024 * 10 })
+    const smallCache = getEdgeCache({
+      maxEntries: 5,
+      maxSizeBytes: 1024 * 1024 * 10,
+    })
 
     // Add 5 entries
     for (let i = 0; i < 5; i++) {
@@ -522,7 +525,6 @@ describe('EdgeCache Eviction', () => {
     expect(smallCache.getStats().entries).toBeLessThanOrEqual(5)
 
     // Oldest entry should be evicted (entry-0 was accessed first)
-    const { status: status0 } = smallCache.get('entry-0')
     const { status: status5 } = smallCache.get('entry-5')
     expect(status5).toBe('HIT')
     // entry-0 may or may not be evicted depending on access pattern
@@ -531,7 +533,10 @@ describe('EdgeCache Eviction', () => {
   test('should evict entries when max size exceeded', () => {
     resetEdgeCache()
     // Create cache with very small size limit (100KB)
-    const smallCache = getEdgeCache({ maxEntries: 1000, maxSizeBytes: 100 * 1024 })
+    const smallCache = getEdgeCache({
+      maxEntries: 1000,
+      maxSizeBytes: 100 * 1024,
+    })
 
     // Add entries until we exceed the limit
     const largeData = Buffer.alloc(30 * 1024, 'x') // 30KB each
@@ -654,15 +659,21 @@ describe('EdgeCache TTL Behavior', () => {
 
   test('should calculate TTL correctly for different content types', () => {
     // HTML should have short TTL
-    const htmlTTL = cache.calculateTTL('/index.html', { contentType: 'text/html' })
+    const htmlTTL = cache.calculateTTL('/index.html', {
+      contentType: 'text/html',
+    })
     expect(htmlTTL).toBeLessThanOrEqual(3600)
 
     // Images should have longer TTL
-    const imageTTL = cache.calculateTTL('/image.png', { contentType: 'image/png' })
+    const imageTTL = cache.calculateTTL('/image.png', {
+      contentType: 'image/png',
+    })
     expect(imageTTL).toBeGreaterThan(htmlTTL)
 
     // Fonts should have very long TTL
-    const fontTTL = cache.calculateTTL('/font.woff2', { contentType: 'font/woff2' })
+    const fontTTL = cache.calculateTTL('/font.woff2', {
+      contentType: 'font/woff2',
+    })
     expect(fontTTL).toBeGreaterThanOrEqual(imageTTL)
   })
 

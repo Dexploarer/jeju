@@ -116,14 +116,22 @@ class LRUEdgeCache implements EdgeCache {
 
   calculateTTL(path: string, opts: TTLOptions): number {
     if (opts.cacheControl) {
-      if (opts.cacheControl.includes('no-store') || opts.cacheControl.includes('no-cache')) return 0
+      if (
+        opts.cacheControl.includes('no-store') ||
+        opts.cacheControl.includes('no-cache')
+      )
+        return 0
       const maxAgeMatch = opts.cacheControl.match(/max-age=(\d+)/)
       if (maxAgeMatch) return parseInt(maxAgeMatch[1], 10)
       if (opts.cacheControl.includes('immutable')) return TTL_CONFIG.immutable
     }
 
     // Content-hashed assets are immutable
-    if (/\.[a-f0-9]{8,}\.(js|css|woff2?|ttf|eot|png|jpg|jpeg|gif|webp|svg|avif)$/i.test(path)) {
+    if (
+      /\.[a-f0-9]{8,}\.(js|css|woff2?|ttf|eot|png|jpg|jpeg|gif|webp|svg|avif)$/i.test(
+        path,
+      )
+    ) {
       return TTL_CONFIG.immutable
     }
 
@@ -153,24 +161,44 @@ class LRUEdgeCache implements EdgeCache {
     }
 
     this.hitCount++
-    return { entry, status: Date.now() > entry.metadata.expiresAt ? 'STALE' : 'HIT' }
+    return {
+      entry,
+      status: Date.now() > entry.metadata.expiresAt ? 'STALE' : 'HIT',
+    }
   }
 
-  getConditional(key: string, ifNoneMatch?: string, ifModifiedSince?: number): ConditionalResult {
+  getConditional(
+    key: string,
+    ifNoneMatch?: string,
+    ifModifiedSince?: number,
+  ): ConditionalResult {
     const { entry, status } = this.get(key)
-    if (!entry || status === 'MISS') return { entry: null, status: 'MISS', notModified: false }
+    if (!entry || status === 'MISS')
+      return { entry: null, status: 'MISS', notModified: false }
 
-    if (ifNoneMatch && entry.metadata.etag === ifNoneMatch) return { entry, status: 'REVALIDATED', notModified: true }
-    if (ifModifiedSince && entry.metadata.lastModified && entry.metadata.lastModified <= ifModifiedSince) {
+    if (ifNoneMatch && entry.metadata.etag === ifNoneMatch)
+      return { entry, status: 'REVALIDATED', notModified: true }
+    if (
+      ifModifiedSince &&
+      entry.metadata.lastModified &&
+      entry.metadata.lastModified <= ifModifiedSince
+    ) {
       return { entry, status: 'REVALIDATED', notModified: true }
     }
     return { entry, status, notModified: false }
   }
 
-  set(key: string, data: ArrayBuffer | Buffer, metadata: Partial<Omit<CacheMetadata, 'createdAt' | 'expiresAt'>>): void {
+  set(
+    key: string,
+    data: ArrayBuffer | Buffer,
+    metadata: Partial<Omit<CacheMetadata, 'createdAt' | 'expiresAt'>>,
+  ): void {
     const now = Date.now()
-    const buffer = data instanceof Buffer ? data : Buffer.from(new Uint8Array(data))
-    const ttl = metadata.immutable ? TTL_CONFIG.immutable : this.calculateTTL(key, metadata)
+    const buffer =
+      data instanceof Buffer ? data : Buffer.from(new Uint8Array(data))
+    const ttl = metadata.immutable
+      ? TTL_CONFIG.immutable
+      : this.calculateTTL(key, metadata)
 
     const entry: CacheEntry = {
       data: buffer,
@@ -195,7 +223,11 @@ class LRUEdgeCache implements EdgeCache {
       if (idx >= 0) this.accessOrder.splice(idx, 1)
     }
 
-    while ((this.currentSize + entry.size > this.config.maxSizeBytes || this.cache.size >= this.config.maxEntries) && this.accessOrder.length > 0) {
+    while (
+      (this.currentSize + entry.size > this.config.maxSizeBytes ||
+        this.cache.size >= this.config.maxEntries) &&
+      this.accessOrder.length > 0
+    ) {
       const lruKey = this.accessOrder.shift()
       if (lruKey) {
         const evicted = this.cache.get(lruKey)
@@ -276,7 +308,11 @@ class LRUEdgeCache implements EdgeCache {
   }
 }
 
-const DEFAULT_CACHE_CONFIG: CacheConfig = { maxSizeBytes: 512 * 1024 * 1024, maxEntries: 100000, defaultTTL: 3600 }
+const DEFAULT_CACHE_CONFIG: CacheConfig = {
+  maxSizeBytes: 512 * 1024 * 1024,
+  maxEntries: 100000,
+  defaultTTL: 3600,
+}
 
 let edgeCache: EdgeCache | null = null
 
@@ -326,15 +362,23 @@ class IPFSOriginFetcher implements OriginFetcher {
     this.ipfsApiUrl = ipfsApiUrl
   }
 
-  async fetch(path: string, _query: string | undefined, options: FetchOptions): Promise<FetchResult> {
+  async fetch(
+    path: string,
+    _query: string | undefined,
+    options: FetchOptions,
+  ): Promise<FetchResult> {
     let url: string
     let origin: string
 
     if (path.startsWith('/ipfs/')) {
       const pathWithoutPrefix = path.slice(6)
       const cidEndIndex = pathWithoutPrefix.indexOf('/')
-      const cid = cidEndIndex >= 0 ? pathWithoutPrefix.slice(0, cidEndIndex) : pathWithoutPrefix
-      const subpath = cidEndIndex >= 0 ? pathWithoutPrefix.slice(cidEndIndex) : ''
+      const cid =
+        cidEndIndex >= 0
+          ? pathWithoutPrefix.slice(0, cidEndIndex)
+          : pathWithoutPrefix
+      const subpath =
+        cidEndIndex >= 0 ? pathWithoutPrefix.slice(cidEndIndex) : ''
       url = `${this.ipfsApiUrl}/api/v0/cat?arg=${cid}${subpath}`
       origin = 'ipfs'
     } else if (path.startsWith('/ipns/')) {
@@ -344,11 +388,20 @@ class IPFSOriginFetcher implements OriginFetcher {
       url = `${this.arweaveGateway}/${path.replace(/^\/(ar|arweave)\//, '')}`
       origin = 'arweave'
     } else {
-      return { success: false, body: new ArrayBuffer(0), headers: {}, origin: 'unknown', error: `Unknown path format: ${path}` }
+      return {
+        success: false,
+        body: new ArrayBuffer(0),
+        headers: {},
+        origin: 'unknown',
+        error: `Unknown path format: ${path}`,
+      }
     }
 
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), options.timeout ?? 30000)
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      options.timeout ?? 30000,
+    )
 
     try {
       const response = await fetch(url, {
@@ -359,18 +412,33 @@ class IPFSOriginFetcher implements OriginFetcher {
       clearTimeout(timeoutId)
 
       if (!response.ok) {
-        return { success: false, body: new ArrayBuffer(0), headers: {}, origin, error: `HTTP ${response.status}: ${response.statusText}` }
+        return {
+          success: false,
+          body: new ArrayBuffer(0),
+          headers: {},
+          origin,
+          error: `HTTP ${response.status}: ${response.statusText}`,
+        }
       }
 
       const body = await response.arrayBuffer()
       const headers: Record<string, string> = {}
-      response.headers.forEach((value, key) => { headers[key.toLowerCase()] = value })
-      if (origin === 'ipfs') headers['cache-control'] = 'public, max-age=31536000, immutable'
+      response.headers.forEach((value, key) => {
+        headers[key.toLowerCase()] = value
+      })
+      if (origin === 'ipfs')
+        headers['cache-control'] = 'public, max-age=31536000, immutable'
 
       return { success: true, body, headers, origin }
     } catch (error) {
       clearTimeout(timeoutId)
-      return { success: false, body: new ArrayBuffer(0), headers: {}, origin, error: error instanceof Error ? error.message : 'Unknown fetch error' }
+      return {
+        success: false,
+        body: new ArrayBuffer(0),
+        headers: {},
+        origin,
+        error: error instanceof Error ? error.message : 'Unknown fetch error',
+      }
     }
   }
 }

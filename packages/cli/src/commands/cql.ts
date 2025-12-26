@@ -527,7 +527,6 @@ async function checkMiner(
   return { id, running, endpoint: running ? endpoint : undefined }
 }
 
-
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }

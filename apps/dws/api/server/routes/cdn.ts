@@ -9,9 +9,12 @@
 
 import { Elysia, t } from 'elysia'
 import type { Address } from 'viem'
+import { getAppRegistry } from '../../../src/cdn/app-registry'
+import {
+  getLocalCDNServer,
+  initializeLocalCDN,
+} from '../../../src/cdn/local-server'
 import { type EdgeCache, getEdgeCache, getOriginFetcher } from '../../cdn'
-import { getAppRegistry, initializeAppRegistry } from '../../../src/cdn/app-registry'
-import { getLocalCDNServer, initializeLocalCDN } from '../../../src/cdn/local-server'
 import {
   JNSGateway,
   type JNSGatewayConfig,
@@ -68,9 +71,11 @@ const fetcher = getOriginFetcher()
 async function ensureLocalCDNInitialized(): Promise<void> {
   if (localCDNInitialized) return
 
-  const isDevnet = process.env.NODE_ENV !== 'production' || process.env.DEVNET === 'true'
+  const isDevnet =
+    process.env.NODE_ENV !== 'production' || process.env.DEVNET === 'true'
   if (isDevnet) {
-    const appsDir = process.env.JEJU_APPS_DIR ?? process.cwd().replace('/apps/dws', '/apps')
+    const appsDir =
+      process.env.JEJU_APPS_DIR ?? process.cwd().replace('/apps/dws', '/apps')
     await initializeLocalCDN({ appsDir, cacheEnabled: true })
     console.log(`[CDN] Local CDN initialized for devnet (apps: ${appsDir})`)
   }
@@ -80,257 +85,255 @@ async function ensureLocalCDNInitialized(): Promise<void> {
 export function createCDNRouter() {
   // Initialize local CDN on router creation
   ensureLocalCDNInitialized().catch((e) => {
-    console.warn(`[CDN] Local CDN initialization failed: ${e instanceof Error ? e.message : 'Unknown error'}`)
+    console.warn(
+      `[CDN] Local CDN initialization failed: ${e instanceof Error ? e.message : 'Unknown error'}`,
+    )
   })
 
-  return new Elysia({ prefix: '/cdn' })
-    .get('/health', () => {
-      const stats = cache.getStats()
-      const registry = getAppRegistry()
-      const apps = registry.getEnabledApps()
+  return (
+    new Elysia({ prefix: '/cdn' })
+      .get('/health', () => {
+        const stats = cache.getStats()
+        const registry = getAppRegistry()
+        const apps = registry.getEnabledApps()
 
-      return {
-        status: 'healthy' as const,
-        service: 'dws-cdn',
-        cache: {
-          entries: stats.entries,
-          sizeBytes: stats.sizeBytes,
-          maxSizeBytes: stats.maxSizeBytes,
-          hitRate: stats.hitRate,
-        },
-        apps: {
-          registered: apps.length,
-          names: apps.map((a) => a.name),
-        },
-      }
-    })
-    .get('/stats', () => cache.getStats())
-    .post(
-      '/invalidate',
-      ({ body }) => {
-        let purged = 0
-        for (const path of body.paths) {
-          purged += cache.purge(path)
+        return {
+          status: 'healthy' as const,
+          service: 'dws-cdn',
+          cache: {
+            entries: stats.entries,
+            sizeBytes: stats.sizeBytes,
+            maxSizeBytes: stats.maxSizeBytes,
+            hitRate: stats.hitRate,
+          },
+          apps: {
+            registered: apps.length,
+            names: apps.map((a) => a.name),
+          },
         }
-        return { success: true, entriesPurged: purged }
-      },
-      { body: t.Object({ paths: t.Array(t.String(), { minItems: 1 }) }) },
-    )
-    .post('/purge', () => {
-      const stats = cache.getStats()
-      cache.clear()
-      return { success: true, entriesPurged: stats.entries }
-    })
-    .get('/ipfs/:cid', async ({ params, request, set }) => {
-      const cid = params.cid
-      const url = new URL(request.url)
-      const cidPath = url.pathname.replace(`/cdn/ipfs/${cid}`, '') || '/'
-      const cacheKey = cache.generateKey({ path: `/ipfs/${cid}${cidPath}` })
+      })
+      .get('/stats', () => cache.getStats())
+      .post(
+        '/invalidate',
+        ({ body }) => {
+          let purged = 0
+          for (const path of body.paths) {
+            purged += cache.purge(path)
+          }
+          return { success: true, entriesPurged: purged }
+        },
+        { body: t.Object({ paths: t.Array(t.String(), { minItems: 1 }) }) },
+      )
+      .post('/purge', () => {
+        const stats = cache.getStats()
+        cache.clear()
+        return { success: true, entriesPurged: stats.entries }
+      })
+      .get('/ipfs/:cid', async ({ params, request, set }) => {
+        const cid = params.cid
+        const url = new URL(request.url)
+        const cidPath = url.pathname.replace(`/cdn/ipfs/${cid}`, '') || '/'
+        const cacheKey = cache.generateKey({ path: `/ipfs/${cid}${cidPath}` })
 
-      const { entry, status } = cache.get(cacheKey)
-      if (entry && (status === 'HIT' || status === 'STALE')) {
+        const { entry, status } = cache.get(cacheKey)
+        if (entry && (status === 'HIT' || status === 'STALE')) {
+          const headers: Record<string, string> = {
+            ...entry.metadata.headers,
+            'X-Cache': status,
+            'X-Served-By': 'dws-cdn',
+          }
+          return new Response(new Uint8Array(entry.data), { headers })
+        }
+
+        const result = await fetcher.fetch(
+          `/ipfs/${cid}${cidPath}`,
+          undefined,
+          {
+            headers: {},
+          },
+        )
+
+        if (!result.success) {
+          set.status = 404
+          return { error: result.error || 'Content not found' }
+        }
+
+        const cacheControl = result.headers['cache-control'] || ''
+        cache.set(cacheKey, result.body, {
+          contentType: result.headers['content-type'],
+          headers: result.headers,
+          origin: result.origin,
+          cacheControl,
+          immutable: cacheControl.includes('immutable'),
+        })
+
         const headers: Record<string, string> = {
-          ...entry.metadata.headers,
-          'X-Cache': status,
+          ...result.headers,
+          'X-Cache': 'MISS',
           'X-Served-By': 'dws-cdn',
         }
-        return new Response(new Uint8Array(entry.data), { headers })
-      }
-
-      const result = await fetcher.fetch(`/ipfs/${cid}${cidPath}`, undefined, {
-        headers: {},
+        return new Response(new Uint8Array(result.body), { headers })
       })
+      .get('/resolve/:name', async ({ params, set }) => {
+        const name = params.name
+        const fullName = name.endsWith('.jns') ? name : `${name}.jns`
 
-      if (!result.success) {
-        set.status = 404
-        return { error: result.error || 'Content not found' }
-      }
-
-      const cacheControl = result.headers['cache-control'] || ''
-      cache.set(cacheKey, result.body, {
-        contentType: result.headers['content-type'],
-        headers: result.headers,
-        origin: result.origin,
-        cacheControl,
-        immutable: cacheControl.includes('immutable'),
-      })
-
-      const headers: Record<string, string> = {
-        ...result.headers,
-        'X-Cache': 'MISS',
-        'X-Served-By': 'dws-cdn',
-      }
-      return new Response(new Uint8Array(result.body), { headers })
-    })
-    .get('/resolve/:name', async ({ params, set }) => {
-      const name = params.name
-      const fullName = name.endsWith('.jns') ? name : `${name}.jns`
-
-      const gateway = getJNSGateway()
-      if (!gateway) {
-        set.status = 503
-        return {
-          error:
-            'JNS contracts not configured. Set JNS_REGISTRY_ADDRESS and JNS_RESOLVER_ADDRESS.',
-        }
-      }
-
-      const contentHash = await gateway.resolveJNS(fullName)
-      if (!contentHash) {
-        set.status = 404
-        return { error: 'Name not found' }
-      }
-
-      return {
-        name: fullName,
-        contentHash: { protocol: contentHash.protocol, hash: contentHash.hash },
-        resolvedAt: Date.now(),
-      }
-    })
-    .get('/jns/:name/*', async ({ params, request, set }) => {
-      const name = params.name
-      const url = new URL(request.url)
-      const jnsPath = url.pathname.replace(`/cdn/jns/${name}`, '') || '/'
-
-      const gateway = getJNSGateway()
-      if (!gateway) {
-        set.status = 503
-        return { error: 'JNS not configured' }
-      }
-
-      const jnsApp = gateway.getApp()
-      const newRequest = new Request(`http://localhost/jns/${name}${jnsPath}`)
-      return jnsApp.fetch(newRequest)
-    })
-    .post(
-      '/warmup',
-      async ({ body }) => {
-        let success = 0
-        let failed = 0
-
-        for (const url of body.urls) {
-          const urlObj = new URL(url)
-          const result = await fetcher.fetch(urlObj.pathname, undefined, {
-            headers: {},
-          })
-          if (result.success) {
-            const cacheKey = cache.generateKey({ path: urlObj.pathname })
-            cache.set(cacheKey, result.body, {
-              contentType: result.headers['content-type'],
-              headers: result.headers,
-              origin: result.origin,
-            })
-            success++
-          } else {
-            failed++
+        const gateway = getJNSGateway()
+        if (!gateway) {
+          set.status = 503
+          return {
+            error:
+              'JNS contracts not configured. Set JNS_REGISTRY_ADDRESS and JNS_RESOLVER_ADDRESS.',
           }
         }
-        return { success, failed }
-      },
-      { body: t.Object({ urls: t.Array(t.String(), { minItems: 1 }) }) },
-    )
 
-    // === Jeju App Frontend Routes (Local Devnet) ===
+        const contentHash = await gateway.resolveJNS(fullName)
+        if (!contentHash) {
+          set.status = 404
+          return { error: 'Name not found' }
+        }
 
-    .get('/apps', () => {
-      const registry = getAppRegistry()
-      const apps = registry.getEnabledApps().map((app) => ({
-        name: app.name,
-        displayName: app.displayName,
-        jnsName: app.jnsName,
-        port: app.port,
-        spa: app.spa,
-        staticDir: app.staticDir,
-        cid: app.cid,
-        routes: {
-          frontend: `/cdn/apps/${app.name}/`,
-          proxy: `http://localhost:${app.port}`,
+        return {
+          name: fullName,
+          contentHash: {
+            protocol: contentHash.protocol,
+            hash: contentHash.hash,
+          },
+          resolvedAt: Date.now(),
+        }
+      })
+      .get('/jns/:name/*', async ({ params, request, set }) => {
+        const name = params.name
+        const url = new URL(request.url)
+        const jnsPath = url.pathname.replace(`/cdn/jns/${name}`, '') || '/'
+
+        const gateway = getJNSGateway()
+        if (!gateway) {
+          set.status = 503
+          return { error: 'JNS not configured' }
+        }
+
+        const jnsApp = gateway.getApp()
+        const newRequest = new Request(`http://localhost/jns/${name}${jnsPath}`)
+        return jnsApp.fetch(newRequest)
+      })
+      .post(
+        '/warmup',
+        async ({ body }) => {
+          let success = 0
+          let failed = 0
+
+          for (const url of body.urls) {
+            const urlObj = new URL(url)
+            const result = await fetcher.fetch(urlObj.pathname, undefined, {
+              headers: {},
+            })
+            if (result.success) {
+              const cacheKey = cache.generateKey({ path: urlObj.pathname })
+              cache.set(cacheKey, result.body, {
+                contentType: result.headers['content-type'],
+                headers: result.headers,
+                origin: result.origin,
+              })
+              success++
+            } else {
+              failed++
+            }
+          }
+          return { success, failed }
         },
-      }))
+        { body: t.Object({ urls: t.Array(t.String(), { minItems: 1 }) }) },
+      )
 
-      return {
-        mode: process.env.NODE_ENV === 'production' ? 'production' : 'devnet',
-        apps,
-        count: apps.length,
-      }
-    })
+      // === Jeju App Frontend Routes (Local Devnet) ===
 
-    .get('/apps/:appName', async ({ params, set }) => {
-      const { appName } = params
-      const registry = getAppRegistry()
-      const app = registry.getApp(appName)
+      .get('/apps', () => {
+        const registry = getAppRegistry()
+        const apps = registry.getEnabledApps().map((app) => ({
+          name: app.name,
+          displayName: app.displayName,
+          jnsName: app.jnsName,
+          port: app.port,
+          spa: app.spa,
+          staticDir: app.staticDir,
+          cid: app.cid,
+          routes: {
+            frontend: `/cdn/apps/${app.name}/`,
+            proxy: `http://localhost:${app.port}`,
+          },
+        }))
 
-      if (!app) {
-        set.status = 404
-        return { error: `App not found: ${appName}` }
-      }
+        return {
+          mode: process.env.NODE_ENV === 'production' ? 'production' : 'devnet',
+          apps,
+          count: apps.length,
+        }
+      })
 
-      return {
-        name: app.name,
-        displayName: app.displayName,
-        jnsName: app.jnsName,
-        port: app.port,
-        spa: app.spa,
-        staticDir: app.staticDir,
-        absoluteDir: app.absoluteDir,
-        cid: app.cid,
-        cacheRules: app.cacheRules,
-        routes: {
-          index: `/cdn/apps/${app.name}/`,
-          assets: `/cdn/apps/${app.name}/assets/`,
-        },
-      }
-    })
+      .get('/apps/:appName', async ({ params, set }) => {
+        const { appName } = params
+        const registry = getAppRegistry()
+        const app = registry.getApp(appName)
 
-    .get('/apps/:appName/*', async ({ params, request, set }) => {
-      const { appName } = params
-      const localCDN = getLocalCDNServer()
+        if (!app) {
+          set.status = 404
+          return { error: `App not found: ${appName}` }
+        }
 
-      // Construct request for local CDN
-      const url = new URL(request.url)
-      const appPath = url.pathname.replace(`/cdn/apps/${appName}`, '') || '/'
-      const cdnRequest = new Request(`http://localhost/apps/${appName}${appPath}`)
+        return {
+          name: app.name,
+          displayName: app.displayName,
+          jnsName: app.jnsName,
+          port: app.port,
+          spa: app.spa,
+          staticDir: app.staticDir,
+          absoluteDir: app.absoluteDir,
+          cid: app.cid,
+          cacheRules: app.cacheRules,
+          routes: {
+            index: `/cdn/apps/${app.name}/`,
+            assets: `/cdn/apps/${app.name}/assets/`,
+          },
+        }
+      })
 
-      const response = await localCDN.handleRequest(cdnRequest)
+      .get('/apps/:appName/*', async ({ params, request }) => {
+        const { appName } = params
+        const localCDN = getLocalCDNServer()
 
-      // Copy response headers
-      const headers = new Headers(response.headers)
-      set.status = response.status
+        const url = new URL(request.url)
+        const appPath = url.pathname.replace(`/cdn/apps/${appName}`, '') || '/'
+        const cdnRequest = new Request(
+          `http://localhost/apps/${appName}${appPath}`,
+        )
 
-      if (response.status === 200) {
-        const body = await response.arrayBuffer()
-        return new Response(body, { headers })
-      }
+        // Return the Response directly - Elysia passes through Response objects with headers intact
+        return localCDN.handleRequest(cdnRequest)
+      })
 
-      return response.json()
-    })
+      // Serve app by JNS name (e.g., /cdn/jns-app/dws.jeju/)
+      .get('/jns-app/:jnsName/*', async ({ params, request, set }) => {
+        const { jnsName } = params
+        const registry = getAppRegistry()
+        const apps = registry.getEnabledApps()
+        const app = apps.find(
+          (a) => a.jnsName === jnsName || a.jnsName === `${jnsName}.jeju`,
+        )
 
-    // Serve app by JNS name (e.g., /cdn/jns-app/dws.jeju/)
-    .get('/jns-app/:jnsName/*', async ({ params, request, set }) => {
-      const { jnsName } = params
-      const registry = getAppRegistry()
-      const apps = registry.getEnabledApps()
-      const app = apps.find((a) => a.jnsName === jnsName || a.jnsName === `${jnsName}.jeju`)
+        if (!app) {
+          set.status = 404
+          return { error: `App not found for JNS name: ${jnsName}` }
+        }
 
-      if (!app) {
-        set.status = 404
-        return { error: `App not found for JNS name: ${jnsName}` }
-      }
+        const localCDN = getLocalCDNServer()
+        const url = new URL(request.url)
+        const appPath =
+          url.pathname.replace(`/cdn/jns-app/${jnsName}`, '') || '/'
+        const cdnRequest = new Request(
+          `http://localhost/apps/${app.name}${appPath}`,
+        )
 
-      const localCDN = getLocalCDNServer()
-      const url = new URL(request.url)
-      const appPath = url.pathname.replace(`/cdn/jns-app/${jnsName}`, '') || '/'
-      const cdnRequest = new Request(`http://localhost/apps/${app.name}${appPath}`)
-
-      const response = await localCDN.handleRequest(cdnRequest)
-      const headers = new Headers(response.headers)
-      set.status = response.status
-
-      if (response.status === 200) {
-        const body = await response.arrayBuffer()
-        return new Response(body, { headers })
-      }
-
-      return response.json()
-    })
+        return localCDN.handleRequest(cdnRequest)
+      })
+  )
 }

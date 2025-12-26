@@ -370,7 +370,7 @@ describe('Anthropic Integration', () => {
             'x-jeju-address': TEST_USER,
           },
           body: JSON.stringify({
-            model: 'claude-3-haiku-20240307',
+            model: 'claude-sonnet-4-5',
             max_tokens: 10,
             messages: [{ role: 'user', content: 'Say test' }],
           }),

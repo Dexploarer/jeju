@@ -90,29 +90,61 @@ export class InfrastructureService {
       return false
     }
 
+    // Ensure data directory exists
+    const dataDir = join(this.rootDir, CQL_DATA_DIR)
+    const { mkdirSync } = await import('node:fs')
+    mkdirSync(dataDir, { recursive: true })
+
     cqlProcess = execa('bun', ['run', 'server'], {
       cwd: dbPath,
       env: {
         ...process.env,
         PORT: String(CQL_PORT),
         CQL_PORT: String(CQL_PORT),
-        CQL_DATA_DIR: join(this.rootDir, CQL_DATA_DIR),
+        CQL_DATA_DIR: dataDir,
       },
       stdio: 'pipe',
       detached: true,
     })
 
+    // Capture errors for debugging
+    let startupError = ''
+    cqlProcess.stderr?.on('data', (data: Buffer) => {
+      startupError += data.toString()
+    })
+
+    cqlProcess.on('error', (err) => {
+      logger.error(`CQL process error: ${err.message}`)
+    })
+
+    cqlProcess.on('exit', (code) => {
+      if (code !== 0 && code !== null) {
+        logger.error(`CQL exited with code ${code}`)
+        if (startupError) {
+          logger.debug(`CQL stderr: ${startupError.slice(0, 500)}`)
+        }
+      }
+    })
+
     cqlProcess.unref()
 
-    for (let i = 0; i < 30; i++) {
+    // Wait up to 30 seconds for CQL to start (60 * 500ms)
+    for (let i = 0; i < 60; i++) {
       await this.sleep(500)
       if (await this.isCQLRunning()) {
         logger.success(`CQL running on port ${CQL_PORT}`)
         return true
       }
+      // Log progress every 5 seconds
+      if (i > 0 && i % 10 === 0) {
+        logger.info(`  Still waiting for CQL... (${i / 2}s)`)
+      }
     }
 
-    logger.error('CQL failed to start within 15 seconds')
+    logger.error('CQL failed to start within 30 seconds')
+    if (startupError) {
+      logger.error(`CQL error output: ${startupError.slice(0, 500)}`)
+    }
     return false
   }
 
@@ -455,91 +487,111 @@ export class InfrastructureService {
 
   /**
    * Ensure all infrastructure is running
-   * Auto-starts what's missing
+   * Auto-starts what's missing - parallelized for speed
    */
   async ensureRunning(): Promise<boolean> {
     logger.header('INFRASTRUCTURE')
+    logger.info('Starting infrastructure in parallel...\n')
 
-    // Step 1: Start CQL first - it's the core database for all apps
-    logger.subheader('CQL (CovenantSQL)')
+    // Check what's already running in parallel
+    const [cqlRunning, dockerInstalled, dockerRunning, localnetRunning] =
+      await Promise.all([
+        this.isCQLRunning(),
+        this.isDockerInstalled(),
+        this.isDockerRunning(),
+        this.isLocalnetRunning(),
+      ])
 
-    if (!(await this.isCQLRunning())) {
-      const started = await this.startCQL()
-      if (!started) {
-        return false
-      }
-    } else {
-      logger.success(`CQL running on port ${CQL_PORT}`)
-    }
-
-    // Step 2: Check/start Docker
-    logger.subheader('Docker')
-
-    if (!(await this.isDockerInstalled())) {
+    // Fail fast if Docker isn't installed
+    if (!dockerInstalled) {
       logger.error('Docker is not installed')
       logger.info('  Install: https://docs.docker.com/get-docker/')
       return false
     }
 
-    if (!(await this.isDockerRunning())) {
-      const started = await this.startDocker()
-      if (!started) {
-        return false
-      }
+    // Start independent services in parallel
+    const startTasks: Promise<{ name: string; success: boolean }>[] = []
+
+    // CQL can start independently
+    if (!cqlRunning) {
+      startTasks.push(
+        this.startCQL().then((success) => ({ name: 'CQL', success })),
+      )
     } else {
-      logger.success('Docker running')
+      logger.success(`CQL already running on port ${CQL_PORT}`)
     }
 
-    // Step 3: Check/start Docker services (excludes CQL)
-    logger.subheader('Docker Services')
+    // Docker + services need to be sequential, but can run parallel to CQL
+    const dockerTask = async (): Promise<{ name: string; success: boolean }> => {
+      // Start Docker if not running
+      if (!dockerRunning) {
+        const started = await this.startDocker()
+        if (!started) {
+          return { name: 'Docker', success: false }
+        }
+      } else {
+        logger.success('Docker already running')
+      }
 
-    let dockerServices = await this.checkDockerServices()
-    const requiredNames: string[] = Object.entries(DOCKER_SERVICES)
-      .filter(([_, config]) => config.required)
-      .map(([_, config]) => config.name)
-    const unhealthyRequired = dockerServices.filter(
-      (s) => !s.healthy && requiredNames.includes(s.name),
-    )
-
-    if (unhealthyRequired.length > 0) {
-      logger.info(
-        `Starting: ${unhealthyRequired.map((s) => s.name).join(', ')}`,
+      // Now start Docker services
+      let dockerServices = await this.checkDockerServices()
+      const requiredNames: string[] = Object.entries(DOCKER_SERVICES)
+        .filter(([_, config]) => config.required)
+        .map(([_, config]) => config.name)
+      const unhealthyRequired = dockerServices.filter(
+        (s) => !s.healthy && requiredNames.includes(s.name),
       )
-      const started = await this.startDockerServices()
-      if (!started) {
-        return false
+
+      if (unhealthyRequired.length > 0) {
+        logger.info(
+          `Starting Docker services: ${unhealthyRequired.map((s) => s.name).join(', ')}`,
+        )
+        const started = await this.startDockerServices()
+        if (!started) {
+          return { name: 'Docker Services', success: false }
+        }
+        dockerServices = await this.checkDockerServices()
+      } else {
+        for (const service of dockerServices) {
+          if (service.healthy) {
+            logger.success(`${service.name} healthy`)
+          }
+        }
       }
-      dockerServices = await this.checkDockerServices()
-    } else {
-      for (const service of dockerServices) {
-        logger.success(`${service.name} healthy`)
+
+      // Verify required Docker services are healthy
+      const stillUnhealthy = dockerServices.filter(
+        (s) => !s.healthy && requiredNames.includes(s.name),
+      )
+      if (stillUnhealthy.length > 0) {
+        logger.error(
+          `Services not healthy: ${stillUnhealthy.map((s) => s.name).join(', ')}`,
+        )
+        return { name: 'Docker Services', success: false }
       }
+
+      return { name: 'Docker', success: true }
     }
 
-    // Verify required Docker services are healthy (optional services like Farcaster Hub can be unhealthy)
-    const requiredServiceNames: string[] = Object.entries(DOCKER_SERVICES)
-      .filter(([_, config]) => config.required)
-      .map(([_, config]) => config.name)
-    const stillUnhealthy = dockerServices.filter(
-      (s) => !s.healthy && requiredServiceNames.includes(s.name),
-    )
-    if (stillUnhealthy.length > 0) {
-      logger.error(
-        `Services not healthy: ${stillUnhealthy.map((s) => s.name).join(', ')}`,
+    startTasks.push(dockerTask())
+
+    // Localnet can start in parallel with everything else
+    if (!localnetRunning) {
+      startTasks.push(
+        this.startLocalnet().then((success) => ({ name: 'Localnet', success })),
       )
+    } else {
+      logger.success(`Localnet already running on port ${LOCALNET_PORT}`)
+    }
+
+    // Wait for all parallel tasks to complete
+    const results = await Promise.all(startTasks)
+
+    // Check all results
+    const failures = results.filter((r) => !r.success)
+    if (failures.length > 0) {
+      logger.error(`Failed to start: ${failures.map((f) => f.name).join(', ')}`)
       return false
-    }
-
-    // Step 4: Check/start localnet
-    logger.subheader('Localnet')
-
-    if (!(await this.isLocalnetRunning())) {
-      const started = await this.startLocalnet()
-      if (!started) {
-        return false
-      }
-    } else {
-      logger.success(`Localnet running on port ${LOCALNET_PORT}`)
     }
 
     logger.newline()
@@ -604,8 +656,10 @@ export class InfrastructureService {
       CQL_URL: getCQLBlockProducerUrl(),
       CQL_BLOCK_PRODUCER_ENDPOINT: getCQLBlockProducerUrl(),
       IPFS_API_URL: `http://127.0.0.1:${CORE_PORTS.IPFS_API.DEFAULT}`,
-      DA_URL: 'http://127.0.0.1:4010',
-      CACHE_URL: 'http://127.0.0.1:4115',
+      // Cache and DA are now provided by DWS
+      DA_URL: `http://127.0.0.1:${DWS_PORT}/da`,
+      CACHE_URL: `http://127.0.0.1:${DWS_PORT}/cache`,
+      DWS_URL: `http://127.0.0.1:${DWS_PORT}`,
       FARCASTER_HUB_URL: getFarcasterHubUrl(),
       CHAIN_ID: '31337',
     }

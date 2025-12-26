@@ -210,7 +210,9 @@ export class AgentIdentityService {
     })
 
     if (!result.txHash) {
-      throw new Error(`On-chain registration failed: no transaction hash returned for agent ${agentId}`)
+      throw new Error(
+        `On-chain registration failed: no transaction hash returned for agent ${agentId}`,
+      )
     }
 
     logger.info(`Agent registered on-chain`, {

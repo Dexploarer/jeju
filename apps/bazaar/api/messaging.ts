@@ -2,19 +2,122 @@
  * Bazaar Messaging Service
  *
  * Provides Farcaster feed integration for the Bazaar marketplace.
- * Uses the /bazaar channel for marketplace updates, NFT drops, etc.
+ * Each entity type (coin, item, collection, perp, prediction) has its own channel.
  */
 
 import {
+  createPoster,
   type FarcasterCast,
   FarcasterClient,
   type FarcasterProfile,
+  type PostedCast,
 } from '@jejunetwork/messaging'
-import type { Address } from 'viem'
+import type { Address, Hex } from 'viem'
 
 const HUB_URL = process.env.FARCASTER_HUB_URL ?? 'https://hub.pinata.cloud'
-const BAZAAR_CHANNEL_ID = 'bazaar'
-const BAZAAR_CHANNEL_URL = `https://warpcast.com/~/channel/${BAZAAR_CHANNEL_ID}`
+
+/**
+ * Channel types for different Bazaar entities
+ */
+export type BazaarChannelType =
+  | 'coin'
+  | 'item'
+  | 'collection'
+  | 'perp'
+  | 'prediction'
+
+/**
+ * Channel identifier for a specific entity
+ */
+export interface BazaarChannel {
+  type: BazaarChannelType
+  id: string
+  name: string
+  url: string
+  warpcastUrl: string
+}
+
+/**
+ * Generate channel URL for a Bazaar entity
+ * Channels follow the format: https://warpcast.com/~/channel/bazaar-{type}-{id}
+ */
+export function getChannelUrl(type: BazaarChannelType, id: string): string {
+  const channelId = `bazaar-${type}-${id.toLowerCase().replace(/[^a-z0-9]/g, '-')}`
+  return `https://warpcast.com/~/channel/${channelId}`
+}
+
+/**
+ * Generate channel info for a Bazaar entity
+ */
+export function getChannel(
+  type: BazaarChannelType,
+  id: string,
+  name: string,
+): BazaarChannel {
+  const channelId = `bazaar-${type}-${id.toLowerCase().replace(/[^a-z0-9]/g, '-')}`
+  return {
+    type,
+    id,
+    name,
+    url: `https://warpcast.com/~/channel/${channelId}`,
+    warpcastUrl: `https://warpcast.com/~/channel/${channelId}`,
+  }
+}
+
+/**
+ * Get channel for a coin by chain ID and address
+ */
+export function getCoinChannel(
+  chainId: number,
+  address: Address,
+  name: string,
+): BazaarChannel {
+  return getChannel('coin', `${chainId}-${address.slice(0, 10)}`, name)
+}
+
+/**
+ * Get channel for an NFT item
+ */
+export function getItemChannel(
+  collectionAddress: Address,
+  tokenId: string,
+  name: string,
+): BazaarChannel {
+  return getChannel(
+    'item',
+    `${collectionAddress.slice(0, 10)}-${tokenId}`,
+    name,
+  )
+}
+
+/**
+ * Get channel for an NFT collection
+ */
+export function getCollectionChannel(
+  address: Address,
+  name: string,
+): BazaarChannel {
+  return getChannel('collection', address.slice(0, 10), name)
+}
+
+/**
+ * Get channel for a perp market
+ */
+export function getPerpChannel(ticker: string): BazaarChannel {
+  return getChannel('perp', ticker.toLowerCase(), `$${ticker} Perp`)
+}
+
+/**
+ * Get channel for a prediction market
+ */
+export function getPredictionChannel(
+  marketId: string,
+  question: string,
+): BazaarChannel {
+  const shortQuestion =
+    question.length > 30 ? `${question.slice(0, 30)}...` : question
+  return getChannel('prediction', marketId, shortQuestion)
+}
 
 // Cache for profiles
 const profileCache = new Map<
@@ -46,7 +149,7 @@ export interface MarketplaceNotification {
     | 'price_alert'
   title: string
   body: string
-  data?: Record<string, unknown>
+  data?: Record<string, string | number>
 }
 
 class BazaarMessagingService {
@@ -57,19 +160,19 @@ class BazaarMessagingService {
   }
 
   /**
-   * Get the Bazaar channel feed
+   * Get feed for a specific channel
    */
-  async getChannelFeed(options?: {
-    limit?: number
-    cursor?: string
-  }): Promise<{ casts: BazaarFeedCast[]; cursor?: string }> {
-    const response = await this.hubClient.getCastsByChannel(
-      BAZAAR_CHANNEL_URL,
-      {
-        pageSize: options?.limit ?? 20,
-        pageToken: options?.cursor,
-      },
-    )
+  async getChannelFeed(
+    channelUrl: string,
+    options?: {
+      limit?: number
+      cursor?: string
+    },
+  ): Promise<{ casts: BazaarFeedCast[]; cursor?: string }> {
+    const response = await this.hubClient.getCastsByChannel(channelUrl, {
+      pageSize: options?.limit ?? 20,
+      pageToken: options?.cursor,
+    })
 
     const casts = await this.enrichCasts(response.messages)
 
@@ -80,8 +183,59 @@ class BazaarMessagingService {
   }
 
   /**
+   * Get feed for a Bazaar entity channel
+   */
+  async getEntityFeed(
+    type: BazaarChannelType,
+    id: string,
+    options?: {
+      limit?: number
+      cursor?: string
+    },
+  ): Promise<{ casts: BazaarFeedCast[]; cursor?: string }> {
+    const channelUrl = getChannelUrl(type, id)
+    return this.getChannelFeed(channelUrl, options)
+  }
+
+  /**
+   * Post to a channel (requires signer)
+   */
+  async postToChannel(params: {
+    channelUrl: string
+    text: string
+    fid: number
+    signerPrivateKey: Hex
+    embeds?: string[]
+  }): Promise<PostedCast> {
+    const poster = createPoster(params.fid, params.signerPrivateKey, HUB_URL)
+    return poster.castToChannel(params.text, params.channelUrl, {
+      embeds: params.embeds,
+    })
+  }
+
+  /**
+   * Post to a Bazaar entity channel
+   */
+  async postToEntityChannel(params: {
+    type: BazaarChannelType
+    id: string
+    text: string
+    fid: number
+    signerPrivateKey: Hex
+    embeds?: string[]
+  }): Promise<PostedCast> {
+    const channelUrl = getChannelUrl(params.type, params.id)
+    return this.postToChannel({
+      channelUrl,
+      text: params.text,
+      fid: params.fid,
+      signerPrivateKey: params.signerPrivateKey,
+      embeds: params.embeds,
+    })
+  }
+
+  /**
    * Get a user's profile
-   * Note: Returns null if profile fetch fails (Hub API limitations)
    */
   async getProfile(fid: number): Promise<FarcasterProfile | null> {
     const cached = profileCache.get(fid)
@@ -89,7 +243,6 @@ class BazaarMessagingService {
       return cached.profile
     }
 
-    // Profile fetch may fail due to Hub API limitations
     const profile = await this.hubClient.getProfile(fid).catch(() => null)
     if (profile) {
       profileCache.set(fid, { profile, cachedAt: Date.now() })
@@ -142,19 +295,24 @@ class BazaarMessagingService {
   /**
    * Create marketplace notification
    */
-  createNotification(payload: MarketplaceNotification): {
+  createNotification(
+    payload: MarketplaceNotification,
+    channel: BazaarChannel,
+  ): {
     type: string
     title: string
     body: string
-    data: Record<string, unknown>
+    data: Record<string, string | number>
     channel: string
+    channelUrl: string
   } {
     return {
       type: payload.type,
       title: payload.title,
       body: payload.body,
       data: payload.data ?? {},
-      channel: BAZAAR_CHANNEL_ID,
+      channel: channel.name,
+      channelUrl: channel.url,
     }
   }
 

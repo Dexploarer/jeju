@@ -76,7 +76,6 @@ export {
 export {
   createQueryWrapper,
   createTestQueryClient,
-  createTestQueryClientWithOptions,
   invalidateAndWait,
   QueryClient,
   QueryClientProvider,

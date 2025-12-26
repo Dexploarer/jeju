@@ -203,11 +203,18 @@ export function createWorkerdRouter(options: WorkerdRouterOptions) {
             codeBuffer = Buffer.from(await codeFile.arrayBuffer())
           }
         } else {
-          const jsonBody = expectValid(
-            DeployWorkerJsonBodySchema,
-            body,
-            'Deploy worker body',
-          )
+          const parseResult = DeployWorkerJsonBodySchema.safeParse(body)
+          if (!parseResult.success) {
+            set.status = 400
+            return {
+              error: 'Validation failed',
+              details: parseResult.error.issues.map((e) => ({
+                path: e.path.join('.'),
+                message: e.message,
+              })),
+            }
+          }
+          const jsonBody = parseResult.data
           name = jsonBody.name
           memoryMb = jsonBody.memoryMb ?? 128
           timeoutMs = jsonBody.timeoutMs ?? 30000

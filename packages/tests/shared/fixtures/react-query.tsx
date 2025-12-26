@@ -10,7 +10,9 @@ interface QueryClientOptions {
   refetchOnWindowFocus?: boolean
 }
 
-export function createTestQueryClient(options: QueryClientOptions = {}): QueryClient {
+export function createTestQueryClient(
+  options: QueryClientOptions = {},
+): QueryClient {
   return new QueryClient({
     defaultOptions: {
       queries: {
@@ -26,15 +28,15 @@ export function createTestQueryClient(options: QueryClientOptions = {}): QueryCl
   })
 }
 
-/** @deprecated Use createTestQueryClient(options) instead */
-export const createTestQueryClientWithOptions = createTestQueryClient
-
 interface TestQueryProviderProps {
   children: ReactNode
   client?: QueryClient
 }
 
-export function TestQueryProvider({ children, client }: TestQueryProviderProps): ReactElement {
+export function TestQueryProvider({
+  children,
+  client,
+}: TestQueryProviderProps): ReactElement {
   return (
     <QueryClientProvider client={client ?? createTestQueryClient()}>
       {children}
@@ -57,7 +59,8 @@ export async function waitForQueriesToSettle(
 ): Promise<void> {
   const deadline = Date.now() + timeout
   while (queryClient.isFetching() > 0 || queryClient.isMutating() > 0) {
-    if (Date.now() > deadline) throw new Error('Queries did not settle within timeout')
+    if (Date.now() > deadline)
+      throw new Error('Queries did not settle within timeout')
     await new Promise((r) => setTimeout(r, 50))
   }
 }

@@ -91,7 +91,9 @@ export async function waitForAuth(
   const deadline = Date.now() + timeout
 
   while (Date.now() < deadline) {
-    if (await isAuthenticated(page, { ...authOptions, timeout: pollInterval })) {
+    if (
+      await isAuthenticated(page, { ...authOptions, timeout: pollInterval })
+    ) {
       return true
     }
     await page.waitForTimeout(pollInterval)
@@ -105,7 +107,10 @@ interface LogoutOptions {
   timeout?: number
 }
 
-export async function logout(page: Page, options: LogoutOptions = {}): Promise<void> {
+export async function logout(
+  page: Page,
+  options: LogoutOptions = {},
+): Promise<void> {
   const {
     userMenuSelector = AUTH_SELECTORS.userMenu,
     logoutButtonSelector = AUTH_SELECTORS.logoutButton,
@@ -145,7 +150,9 @@ export async function ensureLoggedIn(
   }
 }
 
-export async function getDisplayedWalletAddress(page: Page): Promise<string | null> {
+export async function getDisplayedWalletAddress(
+  page: Page,
+): Promise<string | null> {
   const selectors = [
     '[data-testid="wallet-address"]',
     AUTH_SELECTORS.userMenu,

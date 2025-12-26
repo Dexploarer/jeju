@@ -2,12 +2,18 @@
  * DA Layer Integration Tests
  *
  * Tests the full DA layer integration with DWS server
+ *
+ * Requires: Full infrastructure (CQL, IPFS, Anvil)
  */
 
 import { describe, expect, it } from 'bun:test'
 import type { Address, Hex } from 'viem'
 import { keccak256, toBytes, toHex } from 'viem'
 import { app } from '../api/server'
+import { SKIP } from './infra-check'
+
+// Skip if infrastructure not available
+const skipAll = SKIP.NO_DISTRIBUTED
 
 // Test response types
 interface DAHealthResponse {
@@ -61,7 +67,7 @@ interface AgentCardResponse {
 const TEST_ADDRESS = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as Address
 const TEST_DATA = 'Hello, DA Layer!'
 
-describe('DA Layer HTTP API', () => {
+describe.skipIf(skipAll)('DA Layer HTTP API', () => {
   it('should return health status', async () => {
     const response = await app.request('/da/health')
     expect(response.status).toBe(200)
@@ -177,7 +183,7 @@ import {
   RollupDAAdapter,
 } from '../api/da/integrations'
 
-describe('DA Layer Rollup Integration', () => {
+describe.skipIf(skipAll)('DA Layer Rollup Integration', () => {
   it('should import rollup adapters', () => {
     expect(RollupDAAdapter).toBeDefined()
     expect(createRollupDAAdapter).toBeDefined()
@@ -201,7 +207,7 @@ describe('DA Layer Rollup Integration', () => {
   })
 })
 
-describe('DA Layer DWS Server Integration', () => {
+describe.skipIf(skipAll)('DA Layer DWS Server Integration', () => {
   it('should include DA in health check', async () => {
     const response = await app.request('/health')
     expect(response.status).toBe(200)

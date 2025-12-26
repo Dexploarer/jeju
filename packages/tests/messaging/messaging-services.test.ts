@@ -173,7 +173,9 @@ describe('Bazaar Messaging Service', () => {
   })
 
   test('getChannelFeed returns proper structure', async () => {
-    const { bazaarMessaging } = await import('../../../apps/bazaar/api/messaging')
+    const { bazaarMessaging } = await import(
+      '../../../apps/bazaar/api/messaging'
+    )
 
     const result = await bazaarMessaging.getChannelFeed({ limit: 5 })
 
@@ -185,7 +187,9 @@ describe('Bazaar Messaging Service', () => {
   })
 
   test('listingSoldNotification generates correct payload', async () => {
-    const { bazaarMessaging } = await import('../../../apps/bazaar/api/messaging')
+    const { bazaarMessaging } = await import(
+      '../../../apps/bazaar/api/messaging'
+    )
 
     const notification = bazaarMessaging.listingSoldNotification({
       nftName: 'Cool NFT #123',
@@ -202,7 +206,9 @@ describe('Bazaar Messaging Service', () => {
   })
 
   test('bidReceivedNotification generates correct payload', async () => {
-    const { bazaarMessaging } = await import('../../../apps/bazaar/api/messaging')
+    const { bazaarMessaging } = await import(
+      '../../../apps/bazaar/api/messaging'
+    )
 
     const notification = bazaarMessaging.bidReceivedNotification({
       nftName: 'Rare Item',
@@ -217,7 +223,9 @@ describe('Bazaar Messaging Service', () => {
   })
 
   test('auctionEndedNotification generates correct payload', async () => {
-    const { bazaarMessaging } = await import('../../../apps/bazaar/api/messaging')
+    const { bazaarMessaging } = await import(
+      '../../../apps/bazaar/api/messaging'
+    )
 
     const notification = bazaarMessaging.auctionEndedNotification({
       nftName: 'Prize NFT',
@@ -233,7 +241,9 @@ describe('Bazaar Messaging Service', () => {
   })
 
   test('collectionTrendingNotification generates correct payload', async () => {
-    const { bazaarMessaging } = await import('../../../apps/bazaar/api/messaging')
+    const { bazaarMessaging } = await import(
+      '../../../apps/bazaar/api/messaging'
+    )
 
     const notification = bazaarMessaging.collectionTrendingNotification({
       collectionName: 'Hot Collection',

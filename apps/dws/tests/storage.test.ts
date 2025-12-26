@@ -8,6 +8,8 @@
  * - IPFS compatibility
  * - Content integrity
  * - Concurrent operations
+ *
+ * Requires: IPFS and/or S3-compatible storage
  */
 
 import {
@@ -25,10 +27,11 @@ import {
   createBackendManager,
 } from '../api/storage/backends'
 import { resetMultiBackendManager } from '../api/storage/multi-backend'
+import { SKIP as INFRA_SKIP } from './infra-check'
 
 setDefaultTimeout(10000)
 
-const SKIP = process.env.SKIP_INTEGRATION === 'true'
+const SKIP = process.env.SKIP_INTEGRATION === 'true' || INFRA_SKIP.STORAGE
 
 // Test response types
 interface StorageHealthResponse {

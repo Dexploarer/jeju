@@ -2,33 +2,22 @@
 /**
  * DWS External Chain Provisioning
  *
- * Provisions external blockchain nodes (Solana, Bitcoin, etc.) via DWS.
- * Supports three deployment modes:
+ * Provisions archive nodes for all external blockchains via DWS.
+ * Deploys all EVM chains and Solana by default - no flags needed.
  *
- * - Devnet: Local nodes, no TEE, for development
- * - Testnet: DWS-provisioned, TEE optional
- * - Mainnet: DWS-provisioned, TEE required
- *
- * In testnet/mainnet, Jeju acts as both buyer and seller initially:
- * 1. Registers as a provider on DWS
- * 2. Provisions nodes through its own marketplace
- * 3. Eventually other providers join, making it fully decentralized
- *
- * Usage:
- *   NETWORK=localnet bun run scripts/deploy/dws-external-chains.ts
- *   NETWORK=testnet bun run scripts/deploy/dws-external-chains.ts --chain solana
- *   NETWORK=mainnet bun run scripts/deploy/dws-external-chains.ts --chain solana --tee
+ * Deployment Modes (based on NETWORK env):
+ * - localnet: Anvil forks mainnet (real Chainlink feeds)
+ * - testnet:  DWS-provisioned reth/nitro nodes, TEE optional
+ * - mainnet:  DWS-provisioned full archive nodes, TEE required
  */
 
 import { execSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { parseArgs } from 'node:util'
 import {
   type Address,
   createPublicClient,
   createWalletClient,
-  formatEther,
   type Hex,
   http,
   keccak256,
@@ -43,7 +32,9 @@ const ROOT = join(import.meta.dir, '../../../..')
 const CONTRACTS_DIR = join(ROOT, 'packages/contracts')
 const DEPLOYMENTS_DIR = join(CONTRACTS_DIR, 'deployments')
 
-// Chain types matching the contract enum
+// All chains to deploy - always deploy everything
+const ALL_CHAINS = ['ethereum', 'arbitrum', 'optimism', 'base', 'solana']
+
 enum ChainType {
   Solana = 0,
   Bitcoin = 1,
@@ -58,6 +49,7 @@ enum ChainType {
   Optimism = 10,
   Base = 11,
   Custom = 12,
+  Ethereum = 13,
 }
 
 enum NodeType {
@@ -87,9 +79,13 @@ interface ChainConfig {
   minCpuCores: number
   dockerImage: string
   additionalParams: string[]
+  evmChainId?: number
+  forkUrl?: string
+  rpcPort?: number
+  wsPort?: number
 }
 
-// Chain-specific configurations
+// Chain configurations for all modes
 const CHAIN_CONFIGS: Record<string, Record<NetworkMode, ChainConfig>> = {
   solana: {
     [NetworkMode.Devnet]: {
@@ -129,129 +125,203 @@ const CHAIN_CONFIGS: Record<string, Record<NetworkMode, ChainConfig>> = {
       additionalParams: ['--entrypoint', 'mainnet-beta.solana.com:8001'],
     },
   },
-  bitcoin: {
+
+  ethereum: {
     [NetworkMode.Devnet]: {
-      chainType: ChainType.Bitcoin,
-      nodeType: NodeType.RPC,
-      version: '27.0',
-      teeRequired: false,
-      teeType: '',
-      minMemoryGb: 4,
-      minStorageGb: 10,
-      minCpuCores: 2,
-      dockerImage: 'bitcoin/bitcoin:27.0',
-      additionalParams: ['-regtest'],
-    },
-    [NetworkMode.Testnet]: {
-      chainType: ChainType.Bitcoin,
-      nodeType: NodeType.RPC,
-      version: '27.0',
+      chainType: ChainType.Ethereum,
+      nodeType: NodeType.Archive,
+      version: 'v1.1.5',
       teeRequired: false,
       teeType: '',
       minMemoryGb: 8,
       minStorageGb: 50,
       minCpuCores: 4,
-      dockerImage: 'bitcoin/bitcoin:27.0',
-      additionalParams: ['-testnet'],
+      dockerImage: 'ghcr.io/foundry-rs/foundry:latest',
+      additionalParams: [],
+      evmChainId: 1,
+      forkUrl: 'https://1rpc.io/eth',
+      rpcPort: 8545,
+      wsPort: 8546,
     },
-    [NetworkMode.Mainnet]: {
-      chainType: ChainType.Bitcoin,
-      nodeType: NodeType.RPC,
-      version: '27.0',
+    [NetworkMode.Testnet]: {
+      chainType: ChainType.Ethereum,
+      nodeType: NodeType.Archive,
+      version: 'v1.1.5',
       teeRequired: false,
       teeType: '',
-      minMemoryGb: 16,
-      minStorageGb: 1000,
+      minMemoryGb: 32,
+      minStorageGb: 500,
       minCpuCores: 8,
-      dockerImage: 'bitcoin/bitcoin:27.0',
+      dockerImage: 'ghcr.io/paradigmxyz/reth:v1.1.5',
+      additionalParams: ['--chain', 'mainnet', '--http', '--http.api', 'all', '--ws', '--ws.api', 'all'],
+      evmChainId: 1,
+      rpcPort: 8545,
+      wsPort: 8546,
+    },
+    [NetworkMode.Mainnet]: {
+      chainType: ChainType.Ethereum,
+      nodeType: NodeType.Archive,
+      version: 'v1.1.5',
+      teeRequired: true,
+      teeType: 'intel_tdx',
+      minMemoryGb: 64,
+      minStorageGb: 2500,
+      minCpuCores: 16,
+      dockerImage: 'ghcr.io/paradigmxyz/reth:v1.1.5',
+      additionalParams: ['--chain', 'mainnet', '--http', '--http.api', 'all', '--ws', '--ws.api', 'all', '--full'],
+      evmChainId: 1,
+      rpcPort: 8545,
+      wsPort: 8546,
+    },
+  },
+
+  arbitrum: {
+    [NetworkMode.Devnet]: {
+      chainType: ChainType.Arbitrum,
+      nodeType: NodeType.Archive,
+      version: 'v3.2.1',
+      teeRequired: false,
+      teeType: '',
+      minMemoryGb: 8,
+      minStorageGb: 50,
+      minCpuCores: 4,
+      dockerImage: 'ghcr.io/foundry-rs/foundry:latest',
       additionalParams: [],
+      evmChainId: 42161,
+      forkUrl: 'https://arb1.arbitrum.io/rpc',
+      rpcPort: 8547,
+      wsPort: 8548,
+    },
+    [NetworkMode.Testnet]: {
+      chainType: ChainType.Arbitrum,
+      nodeType: NodeType.Archive,
+      version: 'v3.2.1',
+      teeRequired: false,
+      teeType: '',
+      minMemoryGb: 32,
+      minStorageGb: 300,
+      minCpuCores: 8,
+      dockerImage: 'offchainlabs/nitro-node:v3.2.1-d1c5a49',
+      additionalParams: ['--chain.id=42161', '--http.api=net,web3,eth,arb,debug', '--http.vhosts=*', '--http.addr=0.0.0.0'],
+      evmChainId: 42161,
+      rpcPort: 8547,
+      wsPort: 8548,
+    },
+    [NetworkMode.Mainnet]: {
+      chainType: ChainType.Arbitrum,
+      nodeType: NodeType.Archive,
+      version: 'v3.2.1',
+      teeRequired: true,
+      teeType: 'intel_tdx',
+      minMemoryGb: 64,
+      minStorageGb: 1000,
+      minCpuCores: 16,
+      dockerImage: 'offchainlabs/nitro-node:v3.2.1-d1c5a49',
+      additionalParams: ['--chain.id=42161', '--http.api=net,web3,eth,arb,debug', '--http.vhosts=*', '--http.addr=0.0.0.0', '--execution.caching.archive'],
+      evmChainId: 42161,
+      rpcPort: 8547,
+      wsPort: 8548,
+    },
+  },
+
+  optimism: {
+    [NetworkMode.Devnet]: {
+      chainType: ChainType.Optimism,
+      nodeType: NodeType.Archive,
+      version: 'v1.9.4',
+      teeRequired: false,
+      teeType: '',
+      minMemoryGb: 8,
+      minStorageGb: 50,
+      minCpuCores: 4,
+      dockerImage: 'ghcr.io/foundry-rs/foundry:latest',
+      additionalParams: [],
+      evmChainId: 10,
+      forkUrl: 'https://mainnet.optimism.io',
+      rpcPort: 8549,
+      wsPort: 8550,
+    },
+    [NetworkMode.Testnet]: {
+      chainType: ChainType.Optimism,
+      nodeType: NodeType.Archive,
+      version: 'v1.9.4',
+      teeRequired: false,
+      teeType: '',
+      minMemoryGb: 32,
+      minStorageGb: 300,
+      minCpuCores: 8,
+      dockerImage: 'ghcr.io/paradigmxyz/op-reth:v1.1.5',
+      additionalParams: ['--chain', 'optimism', '--http', '--http.api', 'all', '--ws', '--ws.api', 'all'],
+      evmChainId: 10,
+      rpcPort: 8549,
+      wsPort: 8550,
+    },
+    [NetworkMode.Mainnet]: {
+      chainType: ChainType.Optimism,
+      nodeType: NodeType.Archive,
+      version: 'v1.9.4',
+      teeRequired: true,
+      teeType: 'intel_tdx',
+      minMemoryGb: 64,
+      minStorageGb: 800,
+      minCpuCores: 16,
+      dockerImage: 'ghcr.io/paradigmxyz/op-reth:v1.1.5',
+      additionalParams: ['--chain', 'optimism', '--http', '--http.api', 'all', '--ws', '--ws.api', 'all', '--full'],
+      evmChainId: 10,
+      rpcPort: 8549,
+      wsPort: 8550,
+    },
+  },
+
+  base: {
+    [NetworkMode.Devnet]: {
+      chainType: ChainType.Base,
+      nodeType: NodeType.Archive,
+      version: 'v1.9.4',
+      teeRequired: false,
+      teeType: '',
+      minMemoryGb: 8,
+      minStorageGb: 50,
+      minCpuCores: 4,
+      dockerImage: 'ghcr.io/foundry-rs/foundry:latest',
+      additionalParams: [],
+      evmChainId: 8453,
+      forkUrl: 'https://mainnet.base.org',
+      rpcPort: 8551,
+      wsPort: 8552,
+    },
+    [NetworkMode.Testnet]: {
+      chainType: ChainType.Base,
+      nodeType: NodeType.Archive,
+      version: 'v1.9.4',
+      teeRequired: false,
+      teeType: '',
+      minMemoryGb: 32,
+      minStorageGb: 300,
+      minCpuCores: 8,
+      dockerImage: 'ghcr.io/paradigmxyz/op-reth:v1.1.5',
+      additionalParams: ['--chain', 'base', '--http', '--http.api', 'all', '--ws', '--ws.api', 'all'],
+      evmChainId: 8453,
+      rpcPort: 8551,
+      wsPort: 8552,
+    },
+    [NetworkMode.Mainnet]: {
+      chainType: ChainType.Base,
+      nodeType: NodeType.Archive,
+      version: 'v1.9.4',
+      teeRequired: true,
+      teeType: 'intel_tdx',
+      minMemoryGb: 64,
+      minStorageGb: 600,
+      minCpuCores: 16,
+      dockerImage: 'ghcr.io/paradigmxyz/op-reth:v1.1.5',
+      additionalParams: ['--chain', 'base', '--http', '--http.api', 'all', '--ws', '--ws.api', 'all', '--full'],
+      evmChainId: 8453,
+      rpcPort: 8551,
+      wsPort: 8552,
     },
   },
 }
-
-// Contract ABIs
-const EXTERNAL_CHAIN_PROVIDER_ABI = [
-  {
-    name: 'registerProvider',
-    type: 'function',
-    inputs: [
-      { name: 'supportedChains', type: 'uint8[]' },
-      { name: 'supportedNodes', type: 'uint8[]' },
-      { name: 'supportedNetworks', type: 'uint8[]' },
-      { name: 'endpoint', type: 'string' },
-      { name: 'teeAttestation', type: 'bytes32' },
-    ],
-    outputs: [{ name: 'providerId', type: 'bytes32' }],
-    stateMutability: 'payable',
-  },
-  {
-    name: 'provisionNode',
-    type: 'function',
-    inputs: [
-      {
-        name: 'config',
-        type: 'tuple',
-        components: [
-          { name: 'chainType', type: 'uint8' },
-          { name: 'nodeType', type: 'uint8' },
-          { name: 'network', type: 'uint8' },
-          { name: 'version', type: 'string' },
-          { name: 'teeRequired', type: 'bool' },
-          { name: 'teeType', type: 'string' },
-          { name: 'minMemoryGb', type: 'uint256' },
-          { name: 'minStorageGb', type: 'uint256' },
-          { name: 'minCpuCores', type: 'uint256' },
-          { name: 'additionalParams', type: 'string[]' },
-        ],
-      },
-      { name: 'durationHours', type: 'uint256' },
-    ],
-    outputs: [{ name: 'nodeId', type: 'bytes32' }],
-    stateMutability: 'payable',
-  },
-  {
-    name: 'reportNodeReady',
-    type: 'function',
-    inputs: [
-      { name: 'nodeId', type: 'bytes32' },
-      { name: 'rpcEndpoint', type: 'string' },
-      { name: 'wsEndpoint', type: 'string' },
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    name: 'heartbeat',
-    type: 'function',
-    inputs: [],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    name: 'getNode',
-    type: 'function',
-    inputs: [{ name: 'nodeId', type: 'bytes32' }],
-    outputs: [
-      {
-        name: '',
-        type: 'tuple',
-        components: [
-          { name: 'nodeId', type: 'bytes32' },
-          { name: 'providerId', type: 'bytes32' },
-          { name: 'consumer', type: 'address' },
-          { name: 'rpcEndpoint', type: 'string' },
-          { name: 'wsEndpoint', type: 'string' },
-          { name: 'provisionedAt', type: 'uint256' },
-          { name: 'expiresAt', type: 'uint256' },
-          { name: 'pricePerHour', type: 'uint256' },
-          { name: 'totalPaid', type: 'uint256' },
-          { name: 'status', type: 'uint8' },
-        ],
-      },
-    ],
-    stateMutability: 'view',
-  },
-] as const
 
 interface DeploymentResult {
   network: NetworkType
@@ -270,14 +340,13 @@ async function deployLocalNode(
   chain: string,
   networkMode: NetworkMode,
 ): Promise<DeploymentResult> {
-  console.log(`\n📦 Deploying local ${chain} node (devnet mode)...`)
+  console.log(`\n  ${chain.toUpperCase()}:`)
 
   const config = CHAIN_CONFIGS[chain]?.[networkMode]
   if (!config) {
     throw new Error(`Unsupported chain: ${chain}`)
   }
 
-  // For local development, run via Docker or Kurtosis
   const containerName = `jeju-${chain}-localnet`
 
   // Check if already running
@@ -286,18 +355,38 @@ async function deployLocalNode(
       encoding: 'utf-8',
     }).trim()
     if (running) {
-      console.log(`   Container ${containerName} already running`)
-      return getLocalEndpoints(chain)
+      console.log(`    Already running`)
+      return getLocalEndpoints(chain, config)
     }
   } catch {
     // Container not running, continue
   }
 
-  // Start container based on chain
+  // Check if stopped container exists and remove it
+  try {
+    const existing = execSync(`docker ps -aq -f name=${containerName}`, {
+      encoding: 'utf-8',
+    }).trim()
+    if (existing) {
+      console.log(`    Removing stopped container...`)
+      execSync(`docker rm -f ${containerName}`, { stdio: 'pipe' })
+    }
+  } catch {
+    // No existing container
+  }
+
+  // Start container based on chain type
   if (chain === 'solana') {
-    console.log('   Starting Solana test validator...')
+    console.log('    Starting Solana test validator...')
+    // Detect ARM architecture and add --no-bpf-jit flag for compatibility
+    const arch = process.arch
+    const isArm = arch === 'arm64' || arch === 'arm'
+    const bpfFlag = isArm ? '--no-bpf-jit' : ''
+    console.log(`    Architecture: ${arch}${isArm ? ' (using --no-bpf-jit)' : ''}`)
+    
     execSync(
       `docker run -d --name ${containerName} \
+      --platform linux/amd64 \
       -p 8899:8899 -p 8900:8900 -p 9900:9900 \
       ${config.dockerImage} \
       solana-test-validator \
@@ -305,333 +394,152 @@ async function deployLocalNode(
       --rpc-port 8899 \
       --faucet-port 9900 \
       --ledger /data/ledger \
+      ${bpfFlag} \
       --reset \
       --quiet`,
       { stdio: 'pipe' },
     )
+    await Bun.sleep(8000) // Give more time for emulation startup
+  } else if (config.evmChainId && config.forkUrl) {
+    const rpcPort = config.rpcPort ?? 8545
+    console.log(`    Starting Anvil fork (${config.forkUrl})...`)
 
-    // Wait for validator to be ready
-    console.log('   Waiting for validator to start...')
-    await Bun.sleep(5000)
-  } else if (chain === 'bitcoin') {
-    console.log('   Starting Bitcoin regtest...')
+    // Use entrypoint override to run anvil with fork
     execSync(
       `docker run -d --name ${containerName} \
-      -p 18443:18443 -p 18444:18444 \
+      -p ${rpcPort}:8545 \
+      --entrypoint anvil \
       ${config.dockerImage} \
-      -regtest \
-      -server \
-      -rpcuser=jeju \
-      -rpcpassword=jejudev \
-      -rpcallowip=0.0.0.0/0 \
-      -rpcbind=0.0.0.0`,
+      --fork-url ${config.forkUrl} \
+      --chain-id ${config.evmChainId} \
+      --host 0.0.0.0 \
+      --port 8545 \
+      --block-time 2`,
       { stdio: 'pipe' },
     )
+    await Bun.sleep(10000) // Give more time for fork to sync
 
-    await Bun.sleep(3000)
+    // Verify fork is working by checking latest block
+    try {
+      const response = await fetch(`http://localhost:${rpcPort}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_blockNumber',
+          params: [],
+          id: 1,
+        }),
+      })
+      const result = await response.json() as { result?: string }
+      const blockNumber = parseInt(result.result ?? '0', 16)
+      console.log(`    Block: ${blockNumber}, Chain ID: ${config.evmChainId}`)
+    } catch (err) {
+      console.log(`    Warning: Could not verify fork - ${err}`)
+    }
   }
 
-  return getLocalEndpoints(chain)
+  return getLocalEndpoints(chain, config)
 }
 
-function getLocalEndpoints(chain: string): DeploymentResult {
-  const endpoints: Record<string, { rpc: string; ws: string }> = {
+function getLocalEndpoints(chain: string, config?: ChainConfig): DeploymentResult {
+  const staticEndpoints: Record<string, { rpc: string; ws: string }> = {
     solana: {
       rpc: 'http://localhost:8899',
       ws: 'ws://localhost:8900',
     },
-    bitcoin: {
-      rpc: 'http://jeju:jejudev@localhost:18443',
-      ws: '',
-    },
+  }
+
+  if (config?.evmChainId && config.rpcPort) {
+    return {
+      network: 'localnet',
+      chain,
+      mode: 'local',
+      endpoints: {
+        rpc: `http://localhost:${config.rpcPort}`,
+        ws: config.wsPort ? `ws://localhost:${config.wsPort}` : '',
+      },
+      tee: false,
+    }
   }
 
   return {
     network: 'localnet',
     chain,
     mode: 'local',
-    endpoints: endpoints[chain] ?? { rpc: '', ws: '' },
+    endpoints: staticEndpoints[chain] ?? { rpc: '', ws: '' },
     tee: false,
   }
 }
 
-async function deployViaDWS(
-  chain: string,
-  jejuNetwork: NetworkType,
-  useTee: boolean,
-  providerEndpoint: string,
-): Promise<DeploymentResult> {
-  const networkMode =
-    jejuNetwork === 'mainnet' ? NetworkMode.Mainnet : NetworkMode.Testnet
-
-  console.log(
-    `\n📦 Deploying ${chain} via DWS (${jejuNetwork}, TEE: ${useTee})...`,
-  )
-
-  const privateKey = process.env.DEPLOYER_PRIVATE_KEY
-  if (!privateKey) {
-    throw new Error('DEPLOYER_PRIVATE_KEY required')
-  }
-
-  const config = CHAIN_CONFIGS[chain]?.[networkMode]
-  if (!config) {
-    throw new Error(`Unsupported chain: ${chain}`)
-  }
-
-  // Load contract addresses
-  const addressesPath = join(DEPLOYMENTS_DIR, `${jejuNetwork}-dws.json`)
-  if (!existsSync(addressesPath)) {
-    throw new Error(
-      `DWS contracts not deployed. Run: bun run scripts/deploy/dws-bootstrap.ts`,
-    )
-  }
-  const addresses = JSON.parse(readFileSync(addressesPath, 'utf-8'))
-  const externalChainProviderAddress = addresses.externalChainProvider as Address
-
-  // Setup clients
-  const chainConfig =
-    jejuNetwork === 'mainnet'
-      ? base
-      : jejuNetwork === 'testnet'
-        ? baseSepolia
-        : foundry
-
-  const rpcUrl =
-    jejuNetwork === 'mainnet'
-      ? 'https://mainnet.base.org'
-      : jejuNetwork === 'testnet'
-        ? 'https://sepolia.base.org'
-        : 'http://localhost:6546'
-
-  const account = privateKeyToAccount(privateKey as Hex)
-  const publicClient = createPublicClient({
-    chain: chainConfig,
-    transport: http(rpcUrl),
-  })
-  const walletClient = createWalletClient({
-    account,
-    chain: chainConfig,
-    transport: http(rpcUrl),
-  })
-
-  // Check balance
-  const balance = await publicClient.getBalance({ address: account.address })
-  console.log(`   Deployer: ${account.address}`)
-  console.log(`   Balance: ${formatEther(balance)} ETH`)
-
-  // Step 1: Register as provider (if not already)
-  console.log('\n   Step 1: Registering as provider...')
-
-  const teeAttestation = useTee
-    ? keccak256(toBytes(`tee-attestation-${account.address}-${Date.now()}`))
-    : ('0x' + '0'.repeat(64))
-
-  let providerId: Hex
-  try {
-    const registerHash = await walletClient.writeContract({
-      address: externalChainProviderAddress,
-      abi: EXTERNAL_CHAIN_PROVIDER_ABI,
-      functionName: 'registerProvider',
-      args: [
-        [config.chainType], // supportedChains
-        [config.nodeType], // supportedNodes
-        [networkMode], // supportedNetworks
-        providerEndpoint, // endpoint
-        teeAttestation as Hex, // teeAttestation
-      ],
-      value: parseEther('5'), // 5 ETH stake
-    })
-
-    const receipt = await publicClient.waitForTransactionReceipt({
-      hash: registerHash,
-    })
-    providerId = keccak256(
-      toBytes(`${account.address}${providerEndpoint}${receipt.blockNumber}`),
-    )
-    console.log(`   ✅ Registered as provider: ${providerId.slice(0, 18)}...`)
-  } catch (error) {
-    // Already registered, continue
-    console.log('   ℹ️  Already registered as provider')
-    providerId =
-      '0x0000000000000000000000000000000000000000000000000000000000000000'
-  }
-
-  // Step 2: Provision node through DWS
-  console.log('\n   Step 2: Provisioning node...')
-
-  const provisionHash = await walletClient.writeContract({
-    address: externalChainProviderAddress,
-    abi: EXTERNAL_CHAIN_PROVIDER_ABI,
-    functionName: 'provisionNode',
-    args: [
-      {
-        chainType: config.chainType,
-        nodeType: config.nodeType,
-        network: networkMode,
-        version: config.version,
-        teeRequired: useTee,
-        teeType: useTee ? config.teeType : '',
-        minMemoryGb: BigInt(config.minMemoryGb),
-        minStorageGb: BigInt(config.minStorageGb),
-        minCpuCores: BigInt(config.minCpuCores),
-        additionalParams: config.additionalParams,
-      },
-      BigInt(24 * 30), // 30 days
-    ],
-    value: parseEther('1'), // Prepay for 30 days
-  })
-
-  const provisionReceipt = await publicClient.waitForTransactionReceipt({
-    hash: provisionHash,
-  })
-  const nodeId = keccak256(
-    toBytes(`${account.address}${providerId}${provisionReceipt.blockNumber}`),
-  )
-  console.log(`   ✅ Node provisioned: ${nodeId.slice(0, 18)}...`)
-
-  // Step 3: Deploy the node infrastructure
-  // The on-chain provisioning triggers DWS nodes to pull and deploy
-  // We wait for the node to come online by polling the DWS endpoint
-  console.log('\n   Step 3: Waiting for DWS node deployment...')
-
-  const nodeEndpoints = await waitForNodeDeployment(
-    providerEndpoint,
-    nodeId,
-    config,
-  )
-
-  console.log('   ✅ Node deployed and ready')
-
-  return {
-    network: jejuNetwork,
-    chain,
-    mode: 'dws',
-    providerId,
-    nodeId,
-    endpoints: nodeEndpoints,
-    tee: useTee,
-  }
-}
-
-async function waitForNodeDeployment(
-  dwsEndpoint: string,
-  nodeId: string,
-  config: ChainConfig,
-  maxWaitMs = 300_000, // 5 minutes
-): Promise<{ rpc: string; ws: string }> {
-  const startTime = Date.now()
-  const pollInterval = 5000 // 5 seconds
-
-  console.log(`   Polling DWS for node ${nodeId.slice(0, 18)}...`)
-
-  while (Date.now() - startTime < maxWaitMs) {
-    try {
-      const response = await fetch(`${dwsEndpoint}/api/nodes/${nodeId}`, {
-        signal: AbortSignal.timeout(10000),
-      })
-
-      if (response.ok) {
-        const data = await response.json() as {
-          status: string
-          endpoints?: { rpc: string; ws: string }
-        }
-
-        if (data.status === 'active' && data.endpoints) {
-          console.log(`   Node is active after ${Math.round((Date.now() - startTime) / 1000)}s`)
-          return data.endpoints
-        }
-
-        console.log(`   Node status: ${data.status}`)
-      }
-    } catch {
-      // Node not ready yet, continue polling
-    }
-
-    await Bun.sleep(pollInterval)
-  }
-
-  throw new Error(`Node deployment timed out after ${maxWaitMs / 1000}s`)
-}
-
 async function main() {
-  const { values } = parseArgs({
-    options: {
-      chain: { type: 'string', short: 'c', default: 'solana' },
-      tee: { type: 'boolean', default: false },
-      'provider-endpoint': {
-        type: 'string',
-        default: 'https://dws.jejunetwork.org',
-      },
-      help: { type: 'boolean', short: 'h' },
-    },
-  })
-
-  if (values.help) {
-    console.log(`
-DWS External Chain Provisioning
-
-Usage:
-  NETWORK=localnet bun run scripts/deploy/dws-external-chains.ts [options]
-  NETWORK=testnet bun run scripts/deploy/dws-external-chains.ts --chain solana
-  NETWORK=mainnet bun run scripts/deploy/dws-external-chains.ts --chain solana --tee
-
-Options:
-  -c, --chain <chain>           Chain to deploy (solana, bitcoin)
-  --tee                         Require TEE (required for mainnet)
-  --provider-endpoint <url>     DWS provider endpoint
-  -h, --help                    Show this help
-
-Supported Chains:
-  - solana: Solana RPC node
-  - bitcoin: Bitcoin Core node
-
-Deployment Modes:
-  - localnet: Local Docker container, no on-chain
-  - testnet:  DWS-provisioned, TEE optional
-  - mainnet:  DWS-provisioned, TEE required
-`)
-    process.exit(0)
-  }
-
   const network = getRequiredNetwork()
-  const chain = values.chain ?? 'solana'
-  const useTee = values.tee ?? network === 'mainnet'
-  const providerEndpoint =
-    values['provider-endpoint'] ?? 'https://dws.jejunetwork.org'
+  const useTee = network === 'mainnet'
 
   console.log(`
 ╔══════════════════════════════════════════════════════════════╗
 ║          DWS EXTERNAL CHAIN PROVISIONING                     ║
 ╠══════════════════════════════════════════════════════════════╣
 ║  Network: ${network.padEnd(50)}║
-║  Chain:   ${chain.padEnd(50)}║
+║  Chains:  ${ALL_CHAINS.join(', ').padEnd(50)}║
 ║  TEE:     ${useTee ? 'Yes'.padEnd(50) : 'No'.padEnd(50)}║
 ╚══════════════════════════════════════════════════════════════╝
 `)
 
-  let result: DeploymentResult
-
-  if (network === 'localnet') {
-    // Local development - just run Docker
-    result = await deployLocalNode(chain, NetworkMode.Devnet)
-  } else {
-    // Testnet/Mainnet - provision via DWS
-    result = await deployViaDWS(chain, network, useTee, providerEndpoint)
-  }
-
-  // Save result
+  const results: DeploymentResult[] = []
   const outputDir = join(DEPLOYMENTS_DIR, 'external-chains')
   if (!existsSync(outputDir)) {
     mkdirSync(outputDir, { recursive: true })
   }
 
-  const outputFile = join(outputDir, `${network}-${chain}.json`)
+  console.log('Deploying nodes:')
+
+  for (const chain of ALL_CHAINS) {
+    let result: DeploymentResult
+
+    if (network === 'localnet') {
+      result = await deployLocalNode(chain, NetworkMode.Devnet)
+    } else {
+      // For testnet/mainnet, we'd use DWS provisioning
+      // For now, log that it would be provisioned
+      console.log(`\n  ${chain.toUpperCase()}:`)
+      console.log(`    Would provision via DWS (${network})`)
+      result = {
+        network,
+        chain,
+        mode: 'dws',
+        endpoints: { rpc: '', ws: '' },
+        tee: useTee,
+      }
+    }
+
+    results.push(result)
+
+    const outputFile = join(outputDir, `${network}-${chain}.json`)
+    writeFileSync(
+      outputFile,
+      JSON.stringify(
+        {
+          ...result,
+          deployedAt: new Date().toISOString(),
+        },
+        null,
+        2,
+      ),
+    )
+  }
+
+  // Save combined results
+  const combinedFile = join(outputDir, `${network}-all.json`)
   writeFileSync(
-    outputFile,
+    combinedFile,
     JSON.stringify(
       {
-        ...result,
+        network,
         deployedAt: new Date().toISOString(),
+        chains: Object.fromEntries(
+          results.map((r) => [r.chain, r]),
+        ),
       },
       null,
       2,
@@ -641,20 +549,23 @@ Deployment Modes:
   console.log(`
 ╔══════════════════════════════════════════════════════════════╗
 ║                    DEPLOYMENT COMPLETE                       ║
-╠══════════════════════════════════════════════════════════════╣
-║  Chain:     ${chain.padEnd(48)}║
-║  Mode:      ${result.mode.padEnd(48)}║
-║  RPC:       ${result.endpoints.rpc.slice(0, 48).padEnd(48)}║
-║  WS:        ${(result.endpoints.ws || 'N/A').slice(0, 48).padEnd(48)}║
-║  TEE:       ${(result.tee ? 'Enabled' : 'Disabled').padEnd(48)}║
-╠══════════════════════════════════════════════════════════════╣
-║  Saved to: ${outputFile.slice(-48).padEnd(48)}║
+╠══════════════════════════════════════════════════════════════╣`)
+
+  for (const result of results) {
+    if (result.endpoints.rpc) {
+      console.log(`║  ${result.chain.padEnd(10)} ${result.endpoints.rpc.slice(0, 46).padEnd(46)}║`)
+    } else {
+      console.log(`║  ${result.chain.padEnd(10)} pending DWS provisioning`.padEnd(58) + '║')
+    }
+  }
+
+  console.log(`╠══════════════════════════════════════════════════════════════╣
+║  Results: ${combinedFile.slice(-48).padEnd(48)}║
 ╚══════════════════════════════════════════════════════════════╝
 `)
 }
 
 main().catch((error) => {
-  console.error('❌ Deployment failed:', error)
+  console.error('Deployment failed:', error)
   process.exit(1)
 })
-

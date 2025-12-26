@@ -16,11 +16,7 @@ export function Header() {
   const navItems = [
     { href: '/', label: 'Home', icon: '🏠' },
     { href: '/agents', label: 'Agents', icon: '🤖' },
-    { href: '/characters', label: 'Characters', icon: '👤' },
     { href: '/chat', label: 'Chat', icon: '💬' },
-    { href: '/rooms', label: 'Rooms', icon: '🏛️' },
-    { href: '/autonomous', label: 'Autonomous', icon: '⚡' },
-    { href: '/feed', label: 'Feed', icon: '📣' },
   ]
 
   useEffect(() => {

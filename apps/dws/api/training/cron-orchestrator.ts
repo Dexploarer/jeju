@@ -27,7 +27,7 @@ const JsonValueSchema: z.ZodType<unknown> = z.lazy(() =>
     z.null(),
     z.array(JsonValueSchema),
     z.record(z.string(), JsonValueSchema),
-  ])
+  ]),
 )
 const TriggerResponseSchema = z.record(z.string(), JsonValueSchema)
 
@@ -246,7 +246,9 @@ export class TrainingCronOrchestrator {
       try {
         const responseText = await response.text()
         if (responseText.trim()) {
-          result.response = TriggerResponseSchema.parse(JSON.parse(responseText))
+          result.response = TriggerResponseSchema.parse(
+            JSON.parse(responseText),
+          )
         } else {
           result.response = {}
         }

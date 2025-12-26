@@ -148,12 +148,12 @@ export class AgentWalletService {
     for (const [symbol, tokenInfo] of Object.entries(KNOWN_TOKENS)) {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const balance = await (client as any).readContract({
+        const balance = (await (client as any).readContract({
           address: tokenInfo.address,
           abi: ERC20_ABI,
           functionName: 'balanceOf',
           args: [address],
-        }) as bigint
+        })) as bigint
         if (balance > 0n) {
           tokens[symbol] = balance
         }

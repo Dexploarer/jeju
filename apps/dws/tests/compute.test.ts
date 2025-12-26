@@ -152,7 +152,7 @@ describe.skipIf(SKIP)('Compute Service', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'gpt-4o',
+          model: 'gpt-5.2',
           messages: [{ role: 'user', content: 'Test' }],
         }),
       })

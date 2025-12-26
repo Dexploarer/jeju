@@ -25,11 +25,10 @@
  * ```
  */
 
-import { createHash } from 'node:crypto'
 import { readdir, readFile, stat } from 'node:fs/promises'
 import { join, relative } from 'node:path'
 import { getDWSUrl, getRpcUrl, getServiceUrl } from '@jejunetwork/config'
-import { z } from 'zod'
+import { bytesToHex, hash256 } from '@jejunetwork/shared'
 import type {
   CacheConfig,
   CDNRegion,
@@ -51,6 +50,7 @@ import {
   parseAbi,
 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
+import { z } from 'zod'
 
 // ============================================================================
 // Types
@@ -279,7 +279,7 @@ export class CDNClient {
             path: relativePath,
             contentType: this.getContentType(entry.name),
             size: fileStat.size,
-            hash: createHash('sha256').update(content).digest('hex'),
+            hash: bytesToHex(hash256(new Uint8Array(content))),
           })
         }
       }
@@ -355,7 +355,7 @@ export class CDNClient {
       rootCid = result.cid
     } else {
       // Fallback to computed hash if storage unavailable
-      rootCid = `Qm${createHash('sha256').update(JSON.stringify(manifest)).digest('hex').slice(0, 44)}`
+      rootCid = `Qm${bytesToHex(hash256(JSON.stringify(manifest))).slice(0, 44)}`
     }
 
     return {
@@ -371,7 +371,7 @@ export class CDNClient {
   private calculateContentHash(files: FileUpload[]): string {
     const sorted = [...files].sort((a, b) => a.path.localeCompare(b.path))
     const combined = sorted.map((f) => `${f.path}:${f.hash}`).join('|')
-    return `0x${createHash('sha256').update(combined).digest('hex')}`
+    return bytesToHex(hash256(combined))
   }
 
   /**

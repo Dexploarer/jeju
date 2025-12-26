@@ -10,21 +10,18 @@
  * - Concurrent operations
  */
 
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  test,
-} from 'bun:test'
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { gunzipSync, gzipSync } from 'node:zlib'
-import type { LLMCallLogRecord, TrajectoryRecord } from '../recording/trajectory-recorder'
+import type {
+  LLMCallLogRecord,
+  TrajectoryRecord,
+} from '../recording/trajectory-recorder'
 import {
   createStaticTrajectoryStorage,
   downloadTrajectoryBatch,
   getStaticTrajectoryStorage,
-  shutdownAllStaticStorage,
   StaticTrajectoryStorage,
+  shutdownAllStaticStorage,
   type TrajectoryBatchReference,
 } from '../storage/static-storage'
 
@@ -137,14 +134,21 @@ function createTestLLMCallLog(
 }
 
 // Mock fetch for DWS upload
-let mockFetchResponses: Array<{ ok: boolean; status: number; body: Record<string, unknown> | string }> = []
+let mockFetchResponses: Array<{
+  ok: boolean
+  status: number
+  body: Record<string, unknown> | string
+}> = []
 let fetchCalls: Array<{ url: string; options: RequestInit }> = []
 
 const originalFetch = globalThis.fetch
 function setupMockFetch() {
   fetchCalls = []
   // @ts-expect-error - mock fetch doesn't need preconnect
-  globalThis.fetch = async (url: string | URL | Request, options?: RequestInit) => {
+  globalThis.fetch = async (
+    url: string | URL | Request,
+    options?: RequestInit,
+  ) => {
     const urlString = url.toString()
     fetchCalls.push({ url: urlString, options: options ?? {} })
 
@@ -165,9 +169,10 @@ function setupMockFetch() {
         if (mockResponse.body instanceof ArrayBuffer) {
           return mockResponse.body
         }
-        const text = typeof mockResponse.body === 'string'
-          ? mockResponse.body
-          : JSON.stringify(mockResponse.body)
+        const text =
+          typeof mockResponse.body === 'string'
+            ? mockResponse.body
+            : JSON.stringify(mockResponse.body)
         return new TextEncoder().encode(text).buffer
       },
     } as Response
@@ -266,8 +271,9 @@ describe('StaticTrajectoryStorage', () => {
       // Should have auto-flushed
       expect(storage.getBufferStats().count).toBe(0)
       expect(flushedBatch).not.toBeNull()
-      expect(flushedBatch!.trajectoryCount).toBe(2)
-      expect(flushedBatch!.storageCid).toBe('QmTest123')
+      const batch = flushedBatch!
+      expect(batch.trajectoryCount).toBe(2)
+      expect(batch.storageCid).toBe('QmTest123')
     })
 
     test('associates LLM calls with trajectories', async () => {
@@ -338,7 +344,10 @@ describe('StaticTrajectoryStorage', () => {
       let uploadedData: Buffer | null = null
       const origFetch = globalThis.fetch
       // @ts-expect-error - mock fetch doesn't need preconnect
-      globalThis.fetch = async (_url: string | URL | Request, options?: RequestInit) => {
+      globalThis.fetch = async (
+        _url: string | URL | Request,
+        options?: RequestInit,
+      ) => {
         const body = options?.body as FormData
         if (body instanceof FormData) {
           const file = body.get('file') as Blob
@@ -358,7 +367,9 @@ describe('StaticTrajectoryStorage', () => {
         maxBufferSize: 10,
       })
 
-      const trajectory = createTestTrajectoryRecord({ archetype: 'test-archetype' })
+      const trajectory = createTestTrajectoryRecord({
+        archetype: 'test-archetype',
+      })
       await storage.saveTrajectory(trajectory)
       await storage.flush()
 
@@ -391,7 +402,10 @@ describe('StaticTrajectoryStorage', () => {
 
       const origFetch = globalThis.fetch
       // @ts-expect-error - mock fetch doesn't need preconnect
-      globalThis.fetch = async (_url: string | URL | Request, options?: RequestInit) => {
+      globalThis.fetch = async (
+        _url: string | URL | Request,
+        options?: RequestInit,
+      ) => {
         const body = options?.body as FormData
         if (body instanceof FormData) {
           const file = body.get('file') as Blob
@@ -599,9 +613,15 @@ describe('StaticTrajectoryStorage', () => {
         maxBufferSize: 10,
       })
 
-      await storage.saveTrajectory(createTestTrajectoryRecord({ archetype: 'trader' }))
-      await storage.saveTrajectory(createTestTrajectoryRecord({ archetype: 'degen' }))
-      await storage.saveTrajectory(createTestTrajectoryRecord({ archetype: 'researcher' }))
+      await storage.saveTrajectory(
+        createTestTrajectoryRecord({ archetype: 'trader' }),
+      )
+      await storage.saveTrajectory(
+        createTestTrajectoryRecord({ archetype: 'degen' }),
+      )
+      await storage.saveTrajectory(
+        createTestTrajectoryRecord({ archetype: 'researcher' }),
+      )
 
       const batch = await storage.flush()
 
@@ -622,7 +642,9 @@ describe('StaticTrajectoryStorage', () => {
         maxBufferSize: 10,
       })
 
-      await storage.saveTrajectory(createTestTrajectoryRecord({ archetype: null }))
+      await storage.saveTrajectory(
+        createTestTrajectoryRecord({ archetype: null }),
+      )
       const batch = await storage.flush()
 
       expect(batch?.archetype).toBeNull()
@@ -683,7 +705,9 @@ describe('StaticTrajectoryStorage', () => {
 
       await storage.saveTrajectory(createTestTrajectoryRecord())
 
-      await expect(storage.flush()).rejects.toThrow('Invalid DWS upload response')
+      await expect(storage.flush()).rejects.toThrow(
+        'Invalid DWS upload response',
+      )
     })
   })
 
@@ -774,7 +798,9 @@ describe('StaticTrajectoryStorage', () => {
     })
 
     test('shutdown is idempotent with empty buffer', async () => {
-      const storage = new StaticTrajectoryStorage({ appName: 'shutdown-empty-test' })
+      const storage = new StaticTrajectoryStorage({
+        appName: 'shutdown-empty-test',
+      })
 
       await storage.shutdown()
       await storage.shutdown() // Should not throw
@@ -800,31 +826,37 @@ describe('downloadTrajectoryBatch', () => {
     const compressed = gzipSync(Buffer.from(jsonlContent))
 
     // @ts-expect-error - mock fetch doesn't need preconnect
-    globalThis.fetch = async () => ({
-      ok: true,
-      status: 200,
-      arrayBuffer: async () => compressed.buffer.slice(
-        compressed.byteOffset,
-        compressed.byteOffset + compressed.byteLength,
-      ),
-    }) as Response
+    globalThis.fetch = async () =>
+      ({
+        ok: true,
+        status: 200,
+        arrayBuffer: async () =>
+          compressed.buffer.slice(
+            compressed.byteOffset,
+            compressed.byteOffset + compressed.byteLength,
+          ),
+      }) as Response
 
-    const result = await downloadTrajectoryBatch('QmTestCid', 'http://test-endpoint')
+    const result = await downloadTrajectoryBatch(
+      'QmTestCid',
+      'http://test-endpoint',
+    )
 
     expect(result.header.batchId).toBe('test-batch')
     expect(result.header.appName).toBe('test')
     expect(result.trajectories).toHaveLength(1)
-    expect(result.trajectories[0]!.trajectoryId).toBe('traj-1')
+    expect(result.trajectories[0]?.trajectoryId).toBe('traj-1')
     expect(result.llmCalls).toHaveLength(1)
-    expect(result.llmCalls[0]!.trajectoryId).toBe('traj-1')
+    expect(result.llmCalls[0]?.trajectoryId).toBe('traj-1')
   })
 
   test('throws on download failure', async () => {
     // @ts-expect-error - mock fetch doesn't need preconnect
-    globalThis.fetch = async () => ({
-      ok: false,
-      status: 404,
-    }) as Response
+    globalThis.fetch = async () =>
+      ({
+        ok: false,
+        status: 404,
+      }) as Response
 
     await expect(
       downloadTrajectoryBatch('QmNotFound', 'http://test-endpoint'),
@@ -836,14 +868,16 @@ describe('downloadTrajectoryBatch', () => {
     const compressed = gzipSync(Buffer.from(jsonlContent))
 
     // @ts-expect-error - mock fetch doesn't need preconnect
-    globalThis.fetch = async () => ({
-      ok: true,
-      status: 200,
-      arrayBuffer: async () => compressed.buffer.slice(
-        compressed.byteOffset,
-        compressed.byteOffset + compressed.byteLength,
-      ),
-    }) as Response
+    globalThis.fetch = async () =>
+      ({
+        ok: true,
+        status: 200,
+        arrayBuffer: async () =>
+          compressed.buffer.slice(
+            compressed.byteOffset,
+            compressed.byteOffset + compressed.byteLength,
+          ),
+      }) as Response
 
     await expect(
       downloadTrajectoryBatch('QmNoHeader', 'http://test-endpoint'),

@@ -274,7 +274,7 @@ fn main() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 
-    app.run(|app_handle, event| {
+    app.run(|_app_handle, event| {
         if let RunEvent::ExitRequested { api, .. } = event {
             // Prevent exit, minimize to tray
             api.prevent_exit();

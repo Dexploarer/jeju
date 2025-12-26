@@ -7,9 +7,24 @@
  * - mainnet: Jeju Mainnet for production (chain 420692)
  */
 
+import { getContract } from '@jejunetwork/config'
 import { getEnv } from '@jejunetwork/shared'
 import { type NetworkType, ZERO_ADDRESS } from '@jejunetwork/types'
 import type { Address } from 'viem'
+
+// Safe wrapper that returns ZERO_ADDRESS if contract not found
+function safeGetContract(
+  category: 'jns' | 'registry',
+  name: string,
+  network: NetworkType,
+): Address {
+  try {
+    const addr = getContract(category, name, network)
+    return (addr || ZERO_ADDRESS) as Address
+  } catch {
+    return ZERO_ADDRESS
+  }
+}
 
 export type { NetworkType }
 export type TEEMode = 'dstack' | 'phala' | 'simulated' | 'auto'
@@ -60,25 +75,28 @@ export const DEFAULT_IPFS_API =
 export const DEFAULT_IPFS_GATEWAY =
   getEnv('IPFS_GATEWAY_ENDPOINT') || IPFS_ENDPOINTS.localnet.gateway
 
-// Localnet addresses - read from environment or use defaults
-// These are populated by the bootstrap script and passed as env vars
-const LOCALNET_CONTRACTS = {
-  jnsRegistry: (getEnv('JNS_REGISTRY_ADDRESS') ||
-    getEnv('PUBLIC_JNS_REGISTRY_ADDRESS') ||
-    '0x0000000000000000000000000000000000000000') as Address,
-  jnsResolver: (getEnv('JNS_RESOLVER_ADDRESS') ||
-    getEnv('PUBLIC_JNS_RESOLVER_ADDRESS') ||
-    '0x0000000000000000000000000000000000000000') as Address,
-  appRegistry: (getEnv('APP_REGISTRY_ADDRESS') ||
-    getEnv('PUBLIC_APP_REGISTRY_ADDRESS') ||
-    '0x0000000000000000000000000000000000000000') as Address,
-  identityRegistry: (getEnv('IDENTITY_REGISTRY_ADDRESS') ||
-    getEnv('PUBLIC_IDENTITY_REGISTRY_ADDRESS') ||
-    '0x0000000000000000000000000000000000000000') as Address,
-  teeVerifier: (getEnv('TEE_VERIFIER_ADDRESS') ||
-    getEnv('PUBLIC_TEE_VERIFIER_ADDRESS') ||
-    '0x0000000000000000000000000000000000000000') as Address,
-} as const
+// Localnet addresses - read from @jejunetwork/config or environment overrides
+function getLocalnetContracts() {
+  return {
+    jnsRegistry: (getEnv('JNS_REGISTRY_ADDRESS') ||
+      getEnv('PUBLIC_JNS_REGISTRY_ADDRESS') ||
+      safeGetContract('jns', 'registry', 'localnet')) as Address,
+    jnsResolver: (getEnv('JNS_RESOLVER_ADDRESS') ||
+      getEnv('PUBLIC_JNS_RESOLVER_ADDRESS') ||
+      safeGetContract('jns', 'resolver', 'localnet')) as Address,
+    appRegistry: (getEnv('APP_REGISTRY_ADDRESS') ||
+      getEnv('PUBLIC_APP_REGISTRY_ADDRESS') ||
+      safeGetContract('registry', 'app', 'localnet')) as Address,
+    identityRegistry: (getEnv('IDENTITY_REGISTRY_ADDRESS') ||
+      getEnv('PUBLIC_IDENTITY_REGISTRY_ADDRESS') ||
+      safeGetContract('registry', 'identity', 'localnet')) as Address,
+    teeVerifier: (getEnv('TEE_VERIFIER_ADDRESS') ||
+      getEnv('PUBLIC_TEE_VERIFIER_ADDRESS') ||
+      ZERO_ADDRESS) as Address,
+  }
+}
+
+const LOCALNET_CONTRACTS = getLocalnetContracts()
 
 // Testnet addresses (Jeju Testnet deployment)
 const TESTNET_CONTRACTS = {

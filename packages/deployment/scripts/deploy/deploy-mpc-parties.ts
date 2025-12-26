@@ -247,7 +247,13 @@ async function registerParty(
     address: mpcRegistryAddress,
     abi: MPC_REGISTRY_ABI,
     functionName: 'registerParty',
-    args: [agentId, endpoint, 'intel_tdx', toHex(toBytes(attestation)) as `0x${string}`, stakeAmount],
+    args: [
+      agentId,
+      endpoint,
+      'intel_tdx',
+      toHex(toBytes(attestation)) as `0x${string}`,
+      stakeAmount,
+    ],
   })
 
   await publicClient.waitForTransactionReceipt({ hash: registerTx })
@@ -413,7 +419,11 @@ async function registerClusterKey(
     address: mpcRegistryAddress,
     abi: MPC_REGISTRY_ABI,
     functionName: 'setClusterPublicKey',
-    args: [clusterId, toHex(toBytes(groupPublicKey)) as `0x${string}`, groupAddress],
+    args: [
+      clusterId,
+      toHex(toBytes(groupPublicKey)) as `0x${string}`,
+      groupAddress,
+    ],
   })
 
   await publicClient.waitForTransactionReceipt({ hash: setKeyTx })

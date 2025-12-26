@@ -289,7 +289,6 @@ export async function getUserFeed(
   }
 }
 
-
 /**
  * Get trending feed
  */

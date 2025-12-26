@@ -10,14 +10,13 @@
  * - Edge cases
  */
 
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { resetAgent0Client } from '../client'
 import {
   AgentDiscoveryService,
   agentDiscoveryService,
-  type DiscoveredAgent,
   type DiscoveryFilter,
 } from '../discovery'
-import { resetAgent0Client } from '../client'
 
 // =============================================================================
 // Test Fixtures
@@ -45,14 +44,14 @@ const mockLocalAgent = {
   },
 }
 
-const mockInactiveAgent = {
+const _mockInactiveAgent = {
   ...mockLocalAgent,
   agentId: 'local-agent-2',
   name: 'Inactive Agent',
   status: 'INACTIVE',
 }
 
-const mockLowRepAgent = {
+const _mockLowRepAgent = {
   ...mockLocalAgent,
   agentId: 'local-agent-3',
   name: 'Low Rep Agent',
@@ -100,7 +99,10 @@ describe('Discovery Filters', () => {
       expect(result).toHaveProperty('items')
       expect(Array.isArray(result.items)).toBe(true)
       // nextCursor is optional
-      expect(result.nextCursor === undefined || typeof result.nextCursor === 'string').toBe(true)
+      expect(
+        result.nextCursor === undefined ||
+          typeof result.nextCursor === 'string',
+      ).toBe(true)
     })
 
     test('returns empty items array when no agents match', async () => {
@@ -337,16 +339,22 @@ describe('Pagination', () => {
   })
 
   test('sort option does not break request', async () => {
-    const result = await service.discoverAgents({}, { sort: ['trustScore:desc'] })
+    const result = await service.discoverAgents(
+      {},
+      { sort: ['trustScore:desc'] },
+    )
     expect(Array.isArray(result.items)).toBe(true)
   })
 
   test('all pagination options combined', async () => {
-    const result = await service.discoverAgents({}, { 
-      pageSize: 10,
-      cursor: 'next-page',
-      sort: ['name:asc', 'trustScore:desc']
-    })
+    const result = await service.discoverAgents(
+      {},
+      {
+        pageSize: 10,
+        cursor: 'next-page',
+        sort: ['name:asc', 'trustScore:desc'],
+      },
+    )
     expect(Array.isArray(result.items)).toBe(true)
     expect(result.items.length).toBeLessThanOrEqual(10)
   })
@@ -365,7 +373,7 @@ describe('Deduplication', () => {
 
   test('results are sorted by trust score descending', async () => {
     const result = await service.discoverAgents({})
-    
+
     // Verify sorting
     for (let i = 1; i < result.items.length; i++) {
       const prev = result.items[i - 1]
@@ -430,7 +438,7 @@ describe('Source Attribution', () => {
     const result = await service.discoverAgents({
       includeExternal: false,
     })
-    
+
     for (const agent of result.items) {
       expect(agent.source).toBe('local')
     }

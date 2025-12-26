@@ -3,11 +3,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
-import {
-  getCurrentRoute,
-  isAtRoute,
-  waitForServerHealthy,
-} from './navigation'
+import { getCurrentRoute, isAtRoute, waitForServerHealthy } from './navigation'
 
 // ============================================================================
 // waitForServerHealthy - Server Health Checking
@@ -215,9 +211,9 @@ describe('isAtRoute - Route Comparison', () => {
 
   test('rejects non-matching routes', () => {
     const page = createMockPage('http://localhost:3000/dashboard')
-    expect(isAtRoute(page as Parameters<typeof isAtRoute>[0], '/settings')).toBe(
-      false,
-    )
+    expect(
+      isAtRoute(page as Parameters<typeof isAtRoute>[0], '/settings'),
+    ).toBe(false)
   })
 
   test('matches root route', () => {

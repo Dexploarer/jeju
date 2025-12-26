@@ -1,6 +1,6 @@
 /**
  * App Registry - Discovers and manages Jeju app frontend configurations
- * 
+ *
  * Reads jeju-manifest.json files from all apps to:
  * - Serve static frontends via CDN
  * - Apply per-app cache rules
@@ -63,18 +63,18 @@ interface JejuManifest {
 }
 
 const DEFAULT_CACHE_RULES: CacheRule[] = [
-  { pattern: '/assets/**', ttl: 31536000, immutable: true },
-  { pattern: '/**/*.js', ttl: 86400 },
-  { pattern: '/**/*.css', ttl: 86400 },
-  { pattern: '/**/*.html', ttl: 60 },
-  { pattern: '/**/*.json', ttl: 300 },
-  { pattern: '/**/*.woff2', ttl: 31536000, immutable: true },
-  { pattern: '/**/*.woff', ttl: 31536000, immutable: true },
-  { pattern: '/**/*.ttf', ttl: 31536000, immutable: true },
-  { pattern: '/**/*.png', ttl: 604800 },
-  { pattern: '/**/*.jpg', ttl: 604800 },
-  { pattern: '/**/*.svg', ttl: 604800 },
-  { pattern: '/**/*.ico', ttl: 604800 },
+  { pattern: '/assets/**', ttl: 31536000, strategy: 'immutable' },
+  { pattern: '/**/*.js', ttl: 86400, strategy: 'static' },
+  { pattern: '/**/*.css', ttl: 86400, strategy: 'static' },
+  { pattern: '/**/*.html', ttl: 60, strategy: 'dynamic' },
+  { pattern: '/**/*.json', ttl: 300, strategy: 'dynamic' },
+  { pattern: '/**/*.woff2', ttl: 31536000, strategy: 'immutable' },
+  { pattern: '/**/*.woff', ttl: 31536000, strategy: 'immutable' },
+  { pattern: '/**/*.ttf', ttl: 31536000, strategy: 'immutable' },
+  { pattern: '/**/*.png', ttl: 604800, strategy: 'static' },
+  { pattern: '/**/*.jpg', ttl: 604800, strategy: 'static' },
+  { pattern: '/**/*.svg', ttl: 604800, strategy: 'static' },
+  { pattern: '/**/*.ico', ttl: 604800, strategy: 'static' },
 ]
 
 export class AppRegistry {
@@ -105,7 +105,9 @@ export class AppRegistry {
       const config = this.parseManifest(manifest, entry.name)
       if (config) {
         this.apps.set(config.name, config)
-        console.log(`[AppRegistry] Registered: ${config.name} -> ${config.staticDir}`)
+        console.log(
+          `[AppRegistry] Registered: ${config.name} -> ${config.staticDir}`,
+        )
       }
     }
 
@@ -113,14 +115,18 @@ export class AppRegistry {
     console.log(`[AppRegistry] Loaded ${this.apps.size} apps`)
   }
 
-  private parseManifest(manifest: JejuManifest, dirName: string): AppFrontendConfig | null {
+  private parseManifest(
+    manifest: JejuManifest,
+    dirName: string,
+  ): AppFrontendConfig | null {
     const cdnConfig = manifest.dws?.cdn ?? manifest.decentralization?.cdn
     const frontendConfig = manifest.decentralization?.frontend
 
     // Skip apps without frontend/CDN config
     if (!cdnConfig?.enabled && !frontendConfig) return null
 
-    const staticDir = manifest.dws?.cdn?.staticDir ?? frontendConfig?.buildDir ?? 'dist'
+    const staticDir =
+      manifest.dws?.cdn?.staticDir ?? frontendConfig?.buildDir ?? 'dist'
     const absoluteDir = join(this.appsDir, dirName, staticDir)
 
     const port = manifest.ports?.frontend ?? manifest.ports?.main ?? 0
@@ -138,7 +144,10 @@ export class AppRegistry {
       absoluteDir,
       port,
       spa: frontendConfig?.spa ?? true,
-      jnsName: frontendConfig?.jnsName ?? manifest.jns?.name ?? `${manifest.name}.jeju`,
+      jnsName:
+        frontendConfig?.jnsName ??
+        manifest.jns?.name ??
+        `${manifest.name}.jeju`,
       cacheRules,
       enabled: cdnConfig?.enabled ?? true,
     }
@@ -178,7 +187,9 @@ export function getAppRegistry(): AppRegistry {
   return registry
 }
 
-export async function initializeAppRegistry(appsDir?: string): Promise<AppRegistry> {
+export async function initializeAppRegistry(
+  appsDir?: string,
+): Promise<AppRegistry> {
   registry = new AppRegistry(appsDir)
   await registry.initialize()
   return registry

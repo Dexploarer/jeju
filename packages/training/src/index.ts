@@ -22,8 +22,6 @@ export {
 } from './apps/index.js'
 // Benchmark infrastructure
 export {
-  type A2AMethodParams,
-  type A2AResponse,
   // Types
   type AgentAction,
   type BenchmarkComparisonResult,
@@ -33,14 +31,7 @@ export {
   type BenchmarkGameSnapshot,
   type BenchmarkGameState,
   type BenchmarkRunConfig,
-  type BuySharesParams,
-  type BuySharesResult,
   type CausalEventType,
-  type ChatEntry,
-  type ClosePositionResult,
-  type CreateCommentResult,
-  type CreatePostResult,
-  type DashboardResult,
   type GroundTruth,
   type GroupChat,
   // Model registry
@@ -52,28 +43,21 @@ export {
   getModelsByProvider,
   getModelsByTier,
   type HiddenNarrativeFact,
-  type JoinGroupResult,
   MODEL_REGISTRY,
   type ModelConfig,
   type ModelProvider,
   type ModelTier,
-  type OpenPositionResult,
   type PerpetualMarket,
   type PerpMetrics,
-  type PortfolioPosition,
-  type PortfolioResult,
   type Post,
   type PredictionMarket,
   type PredictionMetrics,
   registerModel,
   type ScheduledCausalEvent,
   SeededRandom,
-  type SellSharesResult,
   type SimulatedAgent,
-  SimulationA2AInterface,
   type SimulationAgentState,
   type SimulationConfig,
-  SimulationEngine,
   type SimulationEngineState,
   type SimulationFeedPost,
   type SimulationGroupChat,
@@ -85,7 +69,6 @@ export {
   type Tick,
   type TickEvent,
   type TimingMetrics,
-  type TrendingTagEntry,
   type VolatilityBucket,
   validateModelId,
 } from './benchmark'
@@ -386,6 +369,7 @@ export {
   isEncryptedPayload,
   isIPFSUploadResult,
   isJsonRecord,
+  type LLMCallJSONLRecord,
   type ModelMetadata,
   type PolicyCondition,
   resetEncryptedTrajectoryStorage,
@@ -402,6 +386,7 @@ export {
   TrainingDbPersistence,
   type TrajectoryBatch,
   type TrajectoryBatchReference,
+  type TrajectoryJSONLRecord,
 } from './storage'
 
 // TEE training workers

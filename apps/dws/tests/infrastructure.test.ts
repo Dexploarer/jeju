@@ -7,12 +7,18 @@
  * - Request routing and load balancing
  * - TEE attestation verification
  * - Payment integration
+ *
+ * Requires: CQL, IPFS, Anvil, and optionally K8s
  */
 
 import { afterAll, describe, expect, setDefaultTimeout, test } from 'bun:test'
 import { getCurrentNetwork } from '@jejunetwork/config'
 import type { Address } from 'viem'
 import { app } from '../api/server'
+import { SKIP } from './infra-check'
+
+// Skip all if no infrastructure
+const skipAll = SKIP.NO_INFRA
 
 setDefaultTimeout(60000) // Infrastructure tests may take longer
 
@@ -56,7 +62,7 @@ interface PeersResponse {
 const isLocalnet = getCurrentNetwork() === 'localnet'
 const hasAnvil = process.env.RPC_URL?.includes('localhost:6545') || isLocalnet
 
-describe('Decentralized Infrastructure', () => {
+describe.skipIf(skipAll)('Decentralized Infrastructure', () => {
   // Health Checks
 
   describe('Infrastructure Health', () => {

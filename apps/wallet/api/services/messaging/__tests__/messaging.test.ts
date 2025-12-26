@@ -13,15 +13,16 @@
  * - Invalid inputs
  */
 
-import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { FarcasterClient, HubError } from '@jejunetwork/messaging'
-import { WalletMessagingService, messagingService } from '../index'
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { FarcasterClient } from '@jejunetwork/messaging'
 import type { Address } from 'viem'
 import { resetStorage } from '../../../../web/platform/storage'
+import { messagingService, WalletMessagingService } from '../index'
 
 const HUB_URL = 'https://hub.pinata.cloud'
 const TEST_ADDRESS = '0x1234567890123456789012345678901234567890' as Address
-const ALTERNATE_ADDRESS = '0xAbCdEf0123456789AbCdEf0123456789AbCdEf01' as Address
+const ALTERNATE_ADDRESS =
+  '0xAbCdEf0123456789AbCdEf0123456789AbCdEf01' as Address
 
 // Known FIDs for testing
 const KNOWN_FID_DWR = 3 // dwr.eth - very active user
@@ -77,11 +78,15 @@ describe('FarcasterClient - getCastsByFid', () => {
     expect(typeof cast.timestamp).toBe('number')
     expect(cast.timestamp).toBeGreaterThan(0)
 
-    console.log(`FID ${KNOWN_FID_DWR}: ${response.messages.length} casts, first: "${cast.text.substring(0, 50)}..."`)
+    console.log(
+      `FID ${KNOWN_FID_DWR}: ${response.messages.length} casts, first: "${cast.text.substring(0, 50)}..."`,
+    )
   })
 
   test('fetches casts for another known user (vitalik.eth)', async () => {
-    const response = await client.getCastsByFid(KNOWN_FID_VITALIK, { pageSize: 3 })
+    const response = await client.getCastsByFid(KNOWN_FID_VITALIK, {
+      pageSize: 3,
+    })
 
     expect(response).toBeDefined()
     expect(response.messages).toBeDefined()
@@ -100,7 +105,9 @@ describe('FarcasterClient - getCastsByFid', () => {
   })
 
   test('respects pageSize=100 (large request)', async () => {
-    const response = await client.getCastsByFid(KNOWN_FID_DWR, { pageSize: 100 })
+    const response = await client.getCastsByFid(KNOWN_FID_DWR, {
+      pageSize: 100,
+    })
     expect(response.messages).toBeDefined()
     // Should return up to 100 or whatever the user has
     console.log(`Large request returned ${response.messages.length} casts`)
@@ -108,7 +115,9 @@ describe('FarcasterClient - getCastsByFid', () => {
 
   // BOUNDARY: FID edge cases
   test('returns empty for non-existent FID', async () => {
-    const response = await client.getCastsByFid(NONEXISTENT_FID, { pageSize: 5 })
+    const response = await client.getCastsByFid(NONEXISTENT_FID, {
+      pageSize: 5,
+    })
     expect(response.messages).toBeDefined()
     expect(response.messages.length).toBe(0)
   })
@@ -380,9 +389,9 @@ describe('WalletMessagingService - Error Handling', () => {
   })
 
   test('getChannelFeed throws before initialization', async () => {
-    await expect(service.getChannelFeed('farcaster', { limit: 5 })).rejects.toThrow(
-      'Hub client not initialized',
-    )
+    await expect(
+      service.getChannelFeed('farcaster', { limit: 5 }),
+    ).rejects.toThrow('Hub client not initialized')
   })
 
   test('getUserFeed throws before initialization', async () => {
@@ -581,9 +590,9 @@ describe('WalletMessagingService - Conversation Muting', () => {
     await service.setConversationMuted('fc-123', true)
 
     const prefs = service.getPreferences()
-    expect(prefs.mutedConversations.filter((id) => id === 'fc-123').length).toBe(
-      1,
-    )
+    expect(
+      prefs.mutedConversations.filter((id) => id === 'fc-123').length,
+    ).toBe(1)
   })
 })
 
@@ -612,7 +621,6 @@ describe('WalletMessagingService - Event Listeners', () => {
     // Clean up
     unsubscribe()
   })
-
 })
 
 // ============================================================================
@@ -666,7 +674,9 @@ describe('Integration - Real Data Verification', () => {
   test('channel casts are returned from getCastsByChannel', async () => {
     const client = new FarcasterClient({ hubUrl: HUB_URL })
     const channelUrl = 'https://warpcast.com/~/channel/farcaster'
-    const response = await client.getCastsByChannel(channelUrl, { pageSize: 10 })
+    const response = await client.getCastsByChannel(channelUrl, {
+      pageSize: 10,
+    })
 
     // The Hub returns casts for the channel
     // Note: parentUrl may be set differently depending on Hub implementation
@@ -677,7 +687,9 @@ describe('Integration - Real Data Verification', () => {
     console.log(`Channel query returned ${response.messages.length} casts`)
     if (response.messages.length > 0) {
       const firstCast = response.messages[0]
-      console.log(`First cast FID: ${firstCast.fid}, parentUrl: ${firstCast.parentUrl ?? 'none'}`)
+      console.log(
+        `First cast FID: ${firstCast.fid}, parentUrl: ${firstCast.parentUrl ?? 'none'}`,
+      )
     }
 
     // If we got results, verify structure
