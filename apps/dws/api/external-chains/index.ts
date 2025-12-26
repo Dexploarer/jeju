@@ -361,29 +361,20 @@ export class ExternalRPCNodeService {
         '--block-time', '2',
       )
     } else if (config.chain === 'solana') {
-      // Force x86_64 platform for ARM Macs
-      args.push('--platform', 'linux/amd64')
       args.push(
         '-p', `${config.rpcPort}:8899`,
         '-p', `${config.wsPort}:8900`,
         '-p', '9900:9900',
       )
       args.push(config.dockerImage)
-      // Build solana-test-validator command
-      const solanaArgs = [
+      args.push(
         'solana-test-validator',
         '--bind-address', '0.0.0.0',
         '--rpc-port', '8899',
         '--faucet-port', '9900',
         '--reset',
         '--quiet',
-      ]
-      // Add --no-bpf-jit on ARM architecture for compatibility
-      if (process.arch === 'arm64' || process.arch === 'arm') {
-        console.log('[ExternalRPCNodes] ARM detected, using --no-bpf-jit for Solana')
-        solanaArgs.push('--no-bpf-jit')
-      }
-      args.push(...solanaArgs)
+      )
     } else if (config.chain === 'bitcoin') {
       args.push(
         '-p', `${config.rpcPort}:18443`,

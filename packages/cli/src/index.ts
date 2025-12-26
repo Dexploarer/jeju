@@ -14,7 +14,6 @@ import {
 } from '@jejunetwork/config'
 import chalk from 'chalk'
 import { Command } from 'commander'
-import { appCommand } from './commands/app'
 import { appsCommand } from './commands/apps'
 import { botsCommand } from './commands/bots'
 import { buildCommand } from './commands/build'
@@ -35,7 +34,6 @@ import { fundCommand } from './commands/fund'
 import { infraCommand } from './commands/infra'
 import { initCommand } from './commands/init'
 import { keysCommand } from './commands/keys'
-import { nodeCommand } from './commands/node'
 import { portsCommand } from './commands/ports'
 import { proxyCommand } from './commands/proxy'
 import { publishCommand } from './commands/publish'
@@ -106,7 +104,6 @@ program.addCommand(federationCommand)
 program.addCommand(superchainCommand)
 program.addCommand(computeCommand)
 program.addCommand(initCommand)
-program.addCommand(appCommand)
 program.addCommand(appsCommand)
 program.addCommand(portsCommand)
 program.addCommand(buildCommand)
@@ -121,7 +118,6 @@ program.addCommand(infraCommand)
 program.addCommand(cqlCommand)
 program.addCommand(tokenCommand)
 program.addCommand(dwsCommand)
-program.addCommand(nodeCommand)
 program.addCommand(validateCommand)
 program.addCommand(trainingCommand)
 program.addCommand(proxyCommand)
@@ -536,34 +532,6 @@ program.action(() => {
       '    Verify ownership transfer\n',
   )
 
-  console.log(chalk.bold('App Deployment:\n'))
-  console.log(
-    '  ' +
-      chalk.cyan(`${cliName} app deploy`) +
-      '        Deploy current directory to DWS',
-  )
-  console.log(
-    '  ' + chalk.cyan(`${cliName} app domains`) + '       Manage JNS domains',
-  )
-  console.log(
-    '  ' +
-      chalk.cyan(`${cliName} app env`) +
-      '           Manage environment variables',
-  )
-  console.log(
-    '  ' +
-      chalk.cyan(`${cliName} app logs`) +
-      '          View application logs',
-  )
-  console.log(
-    '  ' + chalk.cyan(`${cliName} app deployments`) + '   List deployments',
-  )
-  console.log(
-    '  ' +
-      chalk.cyan(`${cliName} app rollback`) +
-      '      Rollback to previous deployment\n',
-  )
-
   console.log(chalk.bold('DWS (Decentralized Web Services):\n'))
   console.log(
     '  ' +
@@ -591,42 +559,6 @@ program.action(() => {
   )
   console.log(
     `  ${chalk.cyan(`${cliName} dws pkg-search`)}    Search packages\n`,
-  )
-
-  console.log(chalk.bold('Node Operator:\n'))
-  console.log(
-    '  ' +
-      chalk.cyan(`${cliName} node init`) +
-      '         Initialize node configuration',
-  )
-  console.log(
-    '  ' +
-      chalk.cyan(`${cliName} node register`) +
-      '     Register node on-chain',
-  )
-  console.log(
-    '  ' + chalk.cyan(`${cliName} node start`) + '        Start the node',
-  )
-  console.log(
-    '  ' +
-      chalk.cyan(`${cliName} node stop`) +
-      '         Stop the running node',
-  )
-  console.log(
-    '  ' + chalk.cyan(`${cliName} node status`) + '       Check node status',
-  )
-  console.log(
-    '  ' + chalk.cyan(`${cliName} node earnings`) + '     View node earnings',
-  )
-  console.log(
-    '  ' +
-      chalk.cyan(`${cliName} node hardware`) +
-      '     Hardware requirements',
-  )
-  console.log(
-    '  ' +
-      chalk.cyan(`${cliName} node calculate`) +
-      '    Calculate requirements\n',
   )
 
   console.log(chalk.bold('Compute:\n'))
