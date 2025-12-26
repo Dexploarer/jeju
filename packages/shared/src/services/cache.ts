@@ -841,15 +841,6 @@ export function createCacheService(config: CacheConfig): CacheService {
 }
 
 export function getCacheServiceFromEnv(): CacheService {
-<<<<<<< HEAD
-  // Get cache URL from config (defaults based on network)
-  const endpoint = getDWSCacheUrl()
-  const namespace = 'default'
-=======
-  const endpoint = getDwsCacheEndpoint() ?? 'http://localhost:4015'
-  const namespace = getCacheNamespace()
-  const apiKey = getCacheApiKey()
->>>>>>> cd08d238c04fc8f92037e4eb995e7cddc3863234
 
   return createCacheService({
     endpoint,

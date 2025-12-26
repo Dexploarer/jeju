@@ -295,6 +295,7 @@ export {
 // SDK Client
 export {
   createOAuth3Client,
+  getOAuth3Client,
   type LinkOptions,
   type LoginOptions,
   OAuth3Client,
@@ -302,6 +303,7 @@ export {
   type OAuth3Event,
   type OAuth3EventHandler,
   type OAuth3EventType,
+  resetOAuth3Client,
   type SignMessageOptions,
   type TransactionOptions,
 } from './sdk/client.js'

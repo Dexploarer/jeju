@@ -553,11 +553,23 @@ describe('TrajectoryBatchProcessor', () => {
         }
 
         if (urlString.includes('/v1/chat/completions')) {
+          // Return RULER format for 2 merged trajectories
           return {
             ok: true,
             status: 200,
             json: async () => ({
-              choices: [{ message: { content: '{"score":0.6,"reasoning":"ok"}' } }],
+              choices: [
+                {
+                  message: {
+                    content: JSON.stringify({
+                      scores: [
+                        { trajectory_id: 'trajectory-1', explanation: 'Good', score: 0.5 },
+                        { trajectory_id: 'trajectory-2', explanation: 'Better', score: 0.7 },
+                      ],
+                    }),
+                  },
+                },
+              ],
             }),
           } as Response
         }

@@ -364,13 +364,6 @@ export class OnChainVerifier {
       return p
     })
 
-<<<<<<< HEAD
-    // Use type assertion for dynamic ABI - viem strict typing doesn't support runtime-constructed ABIs
-    const returnValue = (await client.readContract({
-=======
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const returnValue = await (client as any).readContract({
->>>>>>> cd08d238c04fc8f92037e4eb995e7cddc3863234
       address: condition.contractAddress,
       abi: methodAbi,
       functionName: condition.method,
