@@ -361,7 +361,6 @@ contract DelegatedNodeStaking is Ownable, Pausable, ReentrancyGuard {
     /**
      * @notice Distribute rewards to a node (called by reward sources: DWS, compute, etc.)
      * @param nodeId Node receiving rewards
-     * @param amount Reward amount in native token
      */
     function distributeRewards(bytes32 nodeId) external payable nonReentrant {
         NodeOperator storage node = nodes[nodeId];

@@ -51,3 +51,5 @@ export {
 } from './token-payment-router'
 export * from './x402'
 export * from './x402-client'
+// Resilience utilities for failover, caching, circuit breakers
+export * from './resilience'
