@@ -9,10 +9,13 @@
  * - localnet: Anvil forks mainnet (real Chainlink feeds)
  * - testnet:  DWS-provisioned reth/nitro nodes, TEE optional
  * - mainnet:  DWS-provisioned full archive nodes, TEE required
+ *
+ * For testnet/mainnet deployments, this script provisions containers
+ * through the DWS infrastructure, which runs on the permissionless network.
  */
 
 import { execSync } from 'node:child_process'
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
   type Address,
@@ -329,11 +332,43 @@ interface DeploymentResult {
   mode: 'local' | 'dws'
   providerId?: string
   nodeId?: string
+  containerId?: string
   endpoints: {
     rpc: string
     ws: string
   }
   tee: boolean
+  status: 'running' | 'pending' | 'failed'
+}
+
+// DWS API Configuration
+interface DWSContainerConfig {
+  image: string
+  tag: string
+  command: string[]
+  env: Record<string, string>
+  hardware: {
+    cpuCores: number
+    memoryMb: number
+    storageMb: number
+    gpuType: string
+    gpuCount: number
+    networkBandwidthMbps: number
+    publicIp: boolean
+    teePlatform: string
+  }
+  ports: Array<{
+    containerPort: number
+    protocol: 'tcp' | 'udp'
+    expose: boolean
+  }>
+  labels: Record<string, string>
+}
+
+const DWS_ENDPOINTS: Record<NetworkType, string> = {
+  localnet: 'http://localhost:4030',
+  testnet: 'https://dws.testnet.jejunetwork.org',
+  mainnet: 'https://dws.jejunetwork.org',
 }
 
 async function deployLocalNode(
@@ -442,7 +477,10 @@ async function deployLocalNode(
   return getLocalEndpoints(chain, config)
 }
 
-function getLocalEndpoints(chain: string, config?: ChainConfig): DeploymentResult {
+function getLocalEndpoints(
+  chain: string,
+  config?: ChainConfig,
+): DeploymentResult {
   const staticEndpoints: Record<string, { rpc: string; ws: string }> = {
     solana: {
       rpc: 'http://localhost:8899',
@@ -460,6 +498,7 @@ function getLocalEndpoints(chain: string, config?: ChainConfig): DeploymentResul
         ws: config.wsPort ? `ws://localhost:${config.wsPort}` : '',
       },
       tee: false,
+      status: 'running',
     }
   }
 
@@ -469,12 +508,131 @@ function getLocalEndpoints(chain: string, config?: ChainConfig): DeploymentResul
     mode: 'local',
     endpoints: staticEndpoints[chain] ?? { rpc: '', ws: '' },
     tee: false,
+    status: 'running',
+  }
+}
+
+/**
+ * Provision a chain node via DWS API
+ */
+async function deployDWSNode(
+  chain: string,
+  networkMode: NetworkMode,
+  network: NetworkType,
+  privateKey: string,
+): Promise<DeploymentResult> {
+  console.log(`\n  ${chain.toUpperCase()}:`)
+
+  const config = CHAIN_CONFIGS[chain]?.[networkMode]
+  if (!config) {
+    throw new Error(`Unsupported chain: ${chain}`)
+  }
+
+  const dwsEndpoint = DWS_ENDPOINTS[network]
+  const account = privateKeyToAccount(privateKey as `0x${string}`)
+
+  console.log(`    Provisioning via DWS (${dwsEndpoint})...`)
+
+  // Build container configuration for DWS
+  const containerConfig: DWSContainerConfig = {
+    image: config.dockerImage,
+    tag: 'latest',
+    command: config.additionalParams,
+    env: config.evmChainId
+      ? { CHAIN_ID: config.evmChainId.toString() }
+      : {},
+    hardware: {
+      cpuCores: config.minCpuCores,
+      memoryMb: config.minMemoryGb * 1024,
+      storageMb: config.minStorageGb * 1024,
+      gpuType: 'none',
+      gpuCount: 0,
+      networkBandwidthMbps: 1000,
+      publicIp: true,
+      teePlatform: config.teeRequired ? config.teeType : 'none',
+    },
+    ports: [
+      {
+        containerPort: config.rpcPort ?? 8545,
+        protocol: 'tcp',
+        expose: true,
+      },
+      ...(config.wsPort
+        ? [{ containerPort: config.wsPort, protocol: 'tcp' as const, expose: true }]
+        : []),
+    ],
+    labels: {
+      'jeju.chain': chain,
+      'jeju.network': network,
+      'jeju.type': 'external-chain',
+      'jeju.node-type': NodeType[config.nodeType].toLowerCase(),
+    },
+  }
+
+  // Sign the request
+  const timestamp = Date.now()
+  const message = JSON.stringify({ containerConfig, timestamp })
+  const signature = await account.signMessage({ message })
+
+  // Call DWS provisioning API
+  const response = await fetch(`${dwsEndpoint}/v1/containers/provision`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Signature': signature,
+      'X-Timestamp': timestamp.toString(),
+      'X-Address': account.address,
+    },
+    body: JSON.stringify({
+      config: containerConfig,
+      owner: account.address,
+      machineType: config.teeRequired ? 'tee-large' : 'xlarge',
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    console.log(`    Failed: ${error}`)
+    return {
+      network,
+      chain,
+      mode: 'dws',
+      endpoints: { rpc: '', ws: '' },
+      tee: config.teeRequired,
+      status: 'failed',
+    }
+  }
+
+  const result = (await response.json()) as {
+    containerId: string
+    endpoints: { rpc: string; ws?: string }
+    status: string
+  }
+
+  console.log(`    Container ID: ${result.containerId}`)
+  console.log(`    RPC Endpoint: ${result.endpoints.rpc}`)
+  if (result.endpoints.ws) {
+    console.log(`    WS Endpoint:  ${result.endpoints.ws}`)
+  }
+
+  return {
+    network,
+    chain,
+    mode: 'dws',
+    containerId: result.containerId,
+    endpoints: {
+      rpc: result.endpoints.rpc,
+      ws: result.endpoints.ws ?? '',
+    },
+    tee: config.teeRequired,
+    status: result.status === 'running' ? 'running' : 'pending',
   }
 }
 
 async function main() {
   const network = getRequiredNetwork()
   const useTee = network === 'mainnet'
+  const privateKey = process.env.DEPLOYER_PRIVATE_KEY || process.env.PRIVATE_KEY
 
   console.log(`
 ╔══════════════════════════════════════════════════════════════╗
@@ -500,16 +658,23 @@ async function main() {
     if (network === 'localnet') {
       result = await deployLocalNode(chain, NetworkMode.Devnet)
     } else {
-      // For testnet/mainnet, we'd use DWS provisioning
-      // For now, log that it would be provisioned
-      console.log(`\n  ${chain.toUpperCase()}:`)
-      console.log(`    Would provision via DWS (${network})`)
-      result = {
-        network,
-        chain,
-        mode: 'dws',
-        endpoints: { rpc: '', ws: '' },
-        tee: useTee,
+      // For testnet/mainnet, use DWS provisioning
+      const networkMode =
+        network === 'mainnet' ? NetworkMode.Mainnet : NetworkMode.Testnet
+
+      if (!privateKey) {
+        console.log(`\n  ${chain.toUpperCase()}:`)
+        console.log('    Skipped: DEPLOYER_PRIVATE_KEY not set')
+        result = {
+          network,
+          chain,
+          mode: 'dws',
+          endpoints: { rpc: '', ws: '' },
+          tee: useTee,
+          status: 'pending',
+        }
+      } else {
+        result = await deployDWSNode(chain, networkMode, network, privateKey)
       }
     }
 
@@ -537,25 +702,42 @@ async function main() {
       {
         network,
         deployedAt: new Date().toISOString(),
-        chains: Object.fromEntries(
-          results.map((r) => [r.chain, r]),
-        ),
+        chains: Object.fromEntries(results.map((r) => [r.chain, r])),
       },
       null,
       2,
     ),
   )
 
+  // Print summary
+  const runningCount = results.filter((r) => r.status === 'running').length
+  const pendingCount = results.filter((r) => r.status === 'pending').length
+  const failedCount = results.filter((r) => r.status === 'failed').length
+
   console.log(`
 ╔══════════════════════════════════════════════════════════════╗
-║                    DEPLOYMENT COMPLETE                       ║
+║                    DEPLOYMENT SUMMARY                        ║
+╠══════════════════════════════════════════════════════════════╣
+║  Running: ${String(runningCount).padEnd(49)}║
+║  Pending: ${String(pendingCount).padEnd(49)}║
+║  Failed:  ${String(failedCount).padEnd(49)}║
 ╠══════════════════════════════════════════════════════════════╣`)
 
   for (const result of results) {
+    const statusIcon =
+      result.status === 'running'
+        ? '✓'
+        : result.status === 'pending'
+          ? '◌'
+          : '✗'
     if (result.endpoints.rpc) {
-      console.log(`║  ${result.chain.padEnd(10)} ${result.endpoints.rpc.slice(0, 46).padEnd(46)}║`)
+      console.log(
+        `║  ${statusIcon} ${result.chain.padEnd(9)} ${result.endpoints.rpc.slice(0, 44).padEnd(44)}║`,
+      )
     } else {
-      console.log(`║  ${result.chain.padEnd(10)} pending DWS provisioning`.padEnd(58) + '║')
+      console.log(
+        `║  ${statusIcon} ${result.chain.padEnd(9)} ${result.status.padEnd(44)}║`,
+      )
     }
   }
 
@@ -563,6 +745,16 @@ async function main() {
 ║  Results: ${combinedFile.slice(-48).padEnd(48)}║
 ╚══════════════════════════════════════════════════════════════╝
 `)
+
+  // Print next steps for testnet/mainnet
+  if (network !== 'localnet') {
+    console.log(`
+Next Steps:
+1. Set contract addresses in deployment config
+2. Update RPC URLs in helmfile environment
+3. Run verification: bun run scripts/deploy/verify-external-chains.ts
+`)
+  }
 }
 
 main().catch((error) => {

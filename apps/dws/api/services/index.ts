@@ -207,8 +207,7 @@ export interface ServiceInstance {
   config: ServiceConfig
 }
 
-// Default service configurations - DEV ONLY
-// Production deployments MUST override passwords via env vars or config
+// Default service configurations
 const SERVICE_DEFAULTS: Record<ServiceType, Partial<ServiceConfig>> = {
   postgres: {
     version: '15',
@@ -221,7 +220,7 @@ const SERVICE_DEFAULTS: Record<ServiceType, Partial<ServiceConfig>> = {
       retries: 3,
     },
     env: {
-      POSTGRES_PASSWORD: process.env.DEFAULT_POSTGRES_PASSWORD || 'postgres',
+      POSTGRES_PASSWORD: 'postgres',
     },
   },
   redis: {
@@ -251,8 +250,8 @@ const SERVICE_DEFAULTS: Record<ServiceType, Partial<ServiceConfig>> = {
     resources: { cpuCores: 1, memoryMb: 512, storageMb: 10240 },
     ports: [{ container: 9000 }, { container: 9001 }],
     env: {
-      MINIO_ROOT_USER: process.env.DEFAULT_MINIO_USER || 'minioadmin',
-      MINIO_ROOT_PASSWORD: process.env.DEFAULT_MINIO_PASSWORD || 'minioadmin',
+      MINIO_ROOT_USER: 'minioadmin',
+      MINIO_ROOT_PASSWORD: 'minioadmin',
     },
   },
 }
