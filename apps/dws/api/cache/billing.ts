@@ -113,42 +113,25 @@ export interface InvoiceLineItem {
   total: bigint
 }
 
-// Payment Configuration
-
 export interface CachePaymentConfig {
-  /** Payment recipient (treasury) - MUST be set for production */
   paymentRecipient: Address
-  /** Network ID for payments */
   networkId: number
-  /** Payment asset (USDC, ETH, etc.) */
   assetAddress: Address
-  /** Base URL for payment callbacks */
   baseUrl: string
-  /** Platform fee in basis points (default: 500 = 5%) */
   platformFeeBps: number
-  /**
-   * Skip on-chain verification (for testing only).
-   * In production, this should be false and payments verified via RPC or indexer.
-   * When true, payment proofs are trusted without blockchain verification.
-   */
+  /** Trust proofs without on-chain verification (dev only) */
   trustPaymentProofs: boolean
-  /** RPC URL for on-chain verification (required if trustPaymentProofs is false) */
   rpcUrl?: string
 }
 
-// Default configuration - MUST be overridden for production
 const DEFAULT_PAYMENT_CONFIG: CachePaymentConfig = {
-  // Zero address indicates config not set - will fail validation
   paymentRecipient: '0x0000000000000000000000000000000000000000' as Address,
-  networkId: 420690, // Jeju testnet
+  networkId: 420690,
   assetAddress: '0x0000000000000000000000000000000000000000' as Address,
   platformFeeBps: 500,
   baseUrl: 'https://cache.dws.jeju.network',
-  // Default to trusting proofs for dev/testing - production MUST override
   trustPaymentProofs: true,
 }
-
-// x402 Payment Requirement Response
 
 export interface PaymentRequirement {
   x402Version: number
