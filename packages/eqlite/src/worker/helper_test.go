@@ -179,11 +179,11 @@ func initNode() (cleanupFunc func(), server *rpc.Server, err error) {
 	clientPubKeyStoreFile := filepath.Join(d, PubKeyStorePath+"_c")
 	utils.RemoveAll(clientPubKeyStoreFile + "*")
 	dupConfFile := filepath.Join(d, "config.yaml")
-	confFile := filepath.Join(filepath.Dir(testFile), "../test/node_standalone/config.yaml")
+	confFile := filepath.Join(filepath.Dir(testFile), "../../test/node_standalone/config.yaml")
 	if err = utils.DupConf(confFile, dupConfFile); err != nil {
 		return
 	}
-	privateKeyPath := filepath.Join(filepath.Dir(testFile), "../test/node_standalone/private.key")
+	privateKeyPath := filepath.Join(filepath.Dir(testFile), "../../test/node_standalone/private.key")
 
 	conf.GConf, _ = conf.LoadConfig(dupConfFile)
 	// reset the once

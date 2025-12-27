@@ -286,11 +286,11 @@ func TestMetaState(t *testing.T) {
 			})
 		})
 		Convey("When SQLChain are created", func() {
-			conf.GConf, err = conf.LoadConfig("../test/node_standalone/config.yaml")
+			conf.GConf, err = conf.LoadConfig("../../test/node_standalone/config.yaml")
 			So(err, ShouldBeNil)
 
-			privKeyFile := "../test/node_standalone/private.key"
-			pubKeyFile := "../test/node_standalone/public.keystore"
+			privKeyFile := "../../test/node_standalone/private.key"
+			pubKeyFile := "../../test/node_standalone/public.keystore"
 			os.Remove(pubKeyFile)
 			defer os.Remove(pubKeyFile)
 			route.Once.Reset()

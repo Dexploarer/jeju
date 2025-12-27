@@ -181,10 +181,16 @@ func TestEncryptIncCounterSimpleArgs(t *testing.T) {
 	}
 
 	_, _ = route.NewDHTService(PubKeyStorePath, new(consistent.KMSStorage), true)
-	_ = server.InitRPCServer(addr, "../keys/test.key", masterKey)
+	err = server.InitRPCServer(addr, "../../../keys/test.key", masterKey)
+	if err != nil {
+		t.Fatalf("InitRPCServer failed: %v", err)
+	}
 	go server.Serve()
 
 	publicKey, err := kms.GetLocalPublicKey()
+	if err != nil {
+		t.Fatalf("GetLocalPublicKey failed: %v", err)
+	}
 	nonce := asymmetric.GetPubKeyNonce(publicKey, 10, 100*time.Millisecond, nil)
 	serverNodeID := proto.NodeID(nonce.Hash.String())
 	_ = kms.SetPublicKey(serverNodeID, nonce.Nonce, publicKey)
@@ -215,7 +221,10 @@ func TestETLSBug(t *testing.T) {
 	}
 
 	_, _ = route.NewDHTService(PubKeyStorePath, new(consistent.KMSStorage), true)
-	_ = server.InitRPCServer(addr, "../keys/test.key", masterKey)
+	err = server.InitRPCServer(addr, "../../../keys/test.key", masterKey)
+	if err != nil {
+		t.Fatalf("InitRPCServer failed: %v", err)
+	}
 	go server.Serve()
 	defer server.Stop()
 
@@ -267,10 +276,16 @@ func TestEncPingFindNeighbor(t *testing.T) {
 		log.Fatal(err)
 	}
 
-	_ = server.InitRPCServer(addr, "../keys/test.key", masterKey)
+	err = server.InitRPCServer(addr, "../../../keys/test.key", masterKey)
+	if err != nil {
+		t.Fatalf("InitRPCServer failed: %v", err)
+	}
 	go server.Serve()
 
 	publicKey, err := kms.GetLocalPublicKey()
+	if err != nil {
+		t.Fatalf("GetLocalPublicKey failed: %v", err)
+	}
 	nonce := asymmetric.GetPubKeyNonce(publicKey, 10, 100*time.Millisecond, nil)
 	serverNodeID := proto.NodeID(nonce.Hash.String())
 	_ = kms.SetPublicKey(serverNodeID, nonce.Nonce, publicKey)

@@ -182,6 +182,12 @@ func translateShowByString(query string) string {
 	switch words[1] {
 	case "tables":
 		return `SELECT name FROM sqlite_master WHERE type = "table" AND name NOT LIKE "sqlite%"`
+	case "table":
+		// SHOW TABLE tablename -> PRAGMA table_info(tablename)
+		if len(words) >= 3 {
+			tableName := words[2]
+			return "PRAGMA table_info(" + tableName + ")"
+		}
 	case "index":
 		// SHOW INDEX FROM [TABLE] tablename
 		tableName := extractTableName(words, 2)
