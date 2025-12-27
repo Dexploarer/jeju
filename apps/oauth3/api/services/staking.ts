@@ -44,22 +44,36 @@ function getStakingContractAddress(): Address {
 
   // Try to load from localnet bootstrap output
   try {
-    const { readFileSync, existsSync } = require('fs')
-    const { join } = require('path')
-    
+    const { readFileSync, existsSync } = require('node:fs')
+    const { join } = require('node:path')
+
     // Look for localnet-complete.json in the monorepo
     const possiblePaths = [
-      join(process.cwd(), '../../packages/contracts/deployments/localnet-complete.json'),
-      join(process.cwd(), '../packages/contracts/deployments/localnet-complete.json'),
-      join(process.cwd(), 'packages/contracts/deployments/localnet-complete.json'),
+      join(
+        process.cwd(),
+        '../../packages/contracts/deployments/localnet-complete.json',
+      ),
+      join(
+        process.cwd(),
+        '../packages/contracts/deployments/localnet-complete.json',
+      ),
+      join(
+        process.cwd(),
+        'packages/contracts/deployments/localnet-complete.json',
+      ),
     ]
 
     for (const path of possiblePaths) {
       if (existsSync(path)) {
         const data = JSON.parse(readFileSync(path, 'utf-8'))
         const address = data?.contracts?.oauth3Staking
-        if (address && address !== '0x0000000000000000000000000000000000000000') {
-          console.log(`[Staking] Loaded staking contract from ${path}: ${address}`)
+        if (
+          address &&
+          address !== '0x0000000000000000000000000000000000000000'
+        ) {
+          console.log(
+            `[Staking] Loaded staking contract from ${path}: ${address}`,
+          )
           return address as Address
         }
       }

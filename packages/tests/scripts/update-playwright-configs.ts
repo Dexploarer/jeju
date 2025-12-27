@@ -3,7 +3,7 @@
  * Update all playwright.config.ts files to use @jejunetwork/config/ports
  */
 
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 interface AppManifest {
@@ -40,7 +40,10 @@ const DEFAULT_PORTS: Record<string, number> = {
 function findMonorepoRoot(): string {
   let dir = process.cwd()
   while (dir !== '/') {
-    if (existsSync(join(dir, 'bun.lock')) && existsSync(join(dir, 'packages'))) {
+    if (
+      existsSync(join(dir, 'bun.lock')) &&
+      existsSync(join(dir, 'packages'))
+    ) {
       return dir
     }
     dir = join(dir, '..')
@@ -48,7 +51,11 @@ function findMonorepoRoot(): string {
   return process.cwd()
 }
 
-function generatePlaywrightConfig(appName: string, portExpr: string, baseUrl?: string): string {
+function generatePlaywrightConfig(
+  appName: string,
+  portExpr: string,
+  baseUrl?: string,
+): string {
   const envVarCheck = APP_PORT_MAPPING[appName]
     ? `const PORT = ${portExpr}.get()`
     : `const PORT = ${portExpr}`
@@ -139,4 +146,3 @@ async function main() {
 }
 
 main().catch(console.error)
-

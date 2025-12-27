@@ -247,7 +247,9 @@ export class CrucibleTrainingClient {
 
     if (!response.ok && response.status !== 404) {
       const errorText = await response.text().catch(() => '')
-      throw new Error(`Failed to stop run ${runId}: ${response.status} ${errorText}`)
+      throw new Error(
+        `Failed to stop run ${runId}: ${response.status} ${errorText}`,
+      )
     }
 
     run.status = 'completed'

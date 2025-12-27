@@ -1440,8 +1440,10 @@ class CompleteBootstrapper {
 
       // Deploy Staking contract for OAuth3 tier verification
       // Constructor: (address _token, address _registry, address _oracle, address _treasury, address _owner)
-      const jejuToken = contracts.jeju ?? '0x0000000000000000000000000000000000000000'
-      const priceOracle = contracts.priceOracle ?? '0x0000000000000000000000000000000000000000'
+      const jejuToken =
+        contracts.jeju ?? '0x0000000000000000000000000000000000000000'
+      const priceOracle =
+        contracts.priceOracle ?? '0x0000000000000000000000000000000000000000'
       const staking = this.deployContractFromPackages(
         'src/staking/Staking.sol:Staking',
         [
@@ -1484,7 +1486,9 @@ class CompleteBootstrapper {
       }
 
       console.log('  ✅ OAuth3 deployed')
-      console.log('     ✨ TEEVerifier, IdentityRegistry, AppRegistry, Staking ready')
+      console.log(
+        '     ✨ TEEVerifier, IdentityRegistry, AppRegistry, Staking ready',
+      )
       return {
         teeVerifier,
         identityRegistry,
