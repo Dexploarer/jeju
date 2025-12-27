@@ -189,13 +189,10 @@ class ExtensionSecureStorage implements SecureStorageAdapter {
             keyDataB64 = btoa(String.fromCharCode(...keyData))
             saltB64 = btoa(String.fromCharCode(...salt))
 
-            // Capture the definitely-assigned values for the closure
-            const keyB64 = keyDataB64
-            const sltB64 = saltB64
             storage.set(
               {
-                [ExtensionSecureStorage.EXT_KEY]: keyB64,
-                [ExtensionSecureStorage.EXT_SALT]: sltB64,
+                [ExtensionSecureStorage.EXT_KEY]: keyDataB64,
+                [ExtensionSecureStorage.EXT_SALT]: saltB64,
               },
               () => {
                 if (chrome.runtime.lastError) {
@@ -204,12 +201,12 @@ class ExtensionSecureStorage implements SecureStorageAdapter {
                 }
                 resolve({
                   keyData: new Uint8Array(
-                    atob(keyB64)
+                    atob(keyDataB64)
                       .split('')
                       .map((c) => c.charCodeAt(0)),
                   ),
                   salt: new Uint8Array(
-                    atob(sltB64)
+                    atob(saltB64)
                       .split('')
                       .map((c) => c.charCodeAt(0)),
                   ),
@@ -219,12 +216,12 @@ class ExtensionSecureStorage implements SecureStorageAdapter {
           } else {
             resolve({
               keyData: new Uint8Array(
-                atob(keyDataB64 as string)
+                atob(keyDataB64)
                   .split('')
                   .map((c) => c.charCodeAt(0)),
               ),
               salt: new Uint8Array(
-                atob(saltB64 as string)
+                atob(saltB64)
                   .split('')
                   .map((c) => c.charCodeAt(0)),
               ),
@@ -242,7 +239,7 @@ class ExtensionSecureStorage implements SecureStorageAdapter {
 
     const keyMaterial = await crypto.subtle.importKey(
       'raw',
-      keyData.buffer as ArrayBuffer,
+      keyData,
       'PBKDF2',
       false,
       ['deriveKey'],
@@ -251,7 +248,7 @@ class ExtensionSecureStorage implements SecureStorageAdapter {
     this.encryptionKey = await crypto.subtle.deriveKey(
       {
         name: 'PBKDF2',
-        salt: salt.buffer as ArrayBuffer,
+        salt,
         iterations: 100000,
         hash: 'SHA-256',
       },
@@ -417,12 +414,8 @@ class CapacitorSecureStorage implements SecureStorageAdapter {
     const hasPlugin =
       typeof window !== 'undefined' &&
       'Capacitor' in window &&
-      (
-        window.Capacitor as
-          | { isPluginAvailable?: (name: string) => boolean }
-          | undefined
-      )?.isPluginAvailable?.('SecureStoragePlugin')
-    return Boolean(hasPlugin)
+      window.Capacitor?.isPluginAvailable?.('SecureStoragePlugin')
+    return hasPlugin
   }
 
   private async getOrCreateKeyMaterial(): Promise<{
@@ -475,19 +468,9 @@ class CapacitorSecureStorage implements SecureStorageAdapter {
 
     const { keyData, salt } = await this.getOrCreateKeyMaterial()
 
-    // Convert Uint8Array to ArrayBuffer for crypto.subtle
-    const keyDataBuffer = keyData.buffer.slice(
-      keyData.byteOffset,
-      keyData.byteOffset + keyData.byteLength,
-    ) as ArrayBuffer
-    const saltBuffer = salt.buffer.slice(
-      salt.byteOffset,
-      salt.byteOffset + salt.byteLength,
-    ) as ArrayBuffer
-
     const keyMaterial = await crypto.subtle.importKey(
       'raw',
-      keyDataBuffer,
+      keyData,
       'PBKDF2',
       false,
       ['deriveKey'],
@@ -496,7 +479,7 @@ class CapacitorSecureStorage implements SecureStorageAdapter {
     this.encryptionKey = await crypto.subtle.deriveKey(
       {
         name: 'PBKDF2',
-        salt: saltBuffer,
+        salt,
         iterations: 100000,
         hash: 'SHA-256',
       },

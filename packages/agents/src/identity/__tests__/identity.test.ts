@@ -177,12 +177,7 @@ describe('TransactionRequest', () => {
       maxPriorityFeePerGas: 2000000000n, // 2 gwei
     }
 
-    if (
-      tx.maxFeePerGas !== undefined &&
-      tx.maxPriorityFeePerGas !== undefined
-    ) {
-      expect(tx.maxFeePerGas).toBeGreaterThan(tx.maxPriorityFeePerGas)
-    }
+    expect(tx.maxFeePerGas).toBeGreaterThan(tx.maxPriorityFeePerGas!)
   })
 })
 

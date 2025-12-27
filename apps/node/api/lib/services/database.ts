@@ -15,7 +15,6 @@ import {
   type ExecResult,
   getCQL,
   type QueryResult,
-  type RentalInfo,
 } from '@jejunetwork/db'
 import type { Address, Hex } from 'viem'
 import { z } from 'zod'
@@ -249,7 +248,7 @@ export class DatabaseService {
     }
 
     // Get database info to verify it exists
-    const info = await this.cqlClient.getDatabaseInfo(databaseId)
+    const info = await this.cqlClient.getDatabase(databaseId)
     if (!info) {
       throw new Error(`Database ${databaseId} not found`)
     }
@@ -321,7 +320,7 @@ export class DatabaseService {
     }
 
     // Get current database state
-    const info = await this.cqlClient.getDatabaseInfo(databaseId)
+    const info = await this.cqlClient.getDatabase(databaseId)
     if (!info) {
       throw new Error(`Database ${databaseId} not found`)
     }
@@ -398,7 +397,7 @@ export class DatabaseService {
 
     const databases: DatabaseInfo[] = []
     for (const dbId of this.config.hostedDatabases) {
-      const info = await this.cqlClient.getDatabaseInfo(dbId)
+      const info = await this.cqlClient.getDatabase(dbId)
       if (info) {
         databases.push(info)
       }
@@ -407,13 +406,13 @@ export class DatabaseService {
   }
 
   /**
-   * Get rental information for databases this node serves
+   * Get available rental plans
    */
-  async listRentals(): Promise<RentalInfo[]> {
+  async listRentalPlans() {
     if (!this.cqlClient) {
       return []
     }
-    return this.cqlClient.listRentals()
+    return this.cqlClient.listPlans()
   }
 
   /**

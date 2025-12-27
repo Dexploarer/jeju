@@ -6,6 +6,13 @@
 import { existsSync, readdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
+interface AppManifest {
+  name: string
+  ports?: {
+    main?: number
+  }
+}
+
 // Port mapping from CORE_PORTS constant names to app names
 const APP_PORT_MAPPING: Record<string, string> = {
   gateway: 'CORE_PORTS.GATEWAY',
@@ -120,7 +127,7 @@ async function main() {
 
     // Special cases
     if (appName === 'documentation') {
-      baseUrl = `\`http://localhost:\${PORT}/jeju\``
+      baseUrl = '`http://localhost:${PORT}/jeju`'
     }
 
     if (!portExpr) {

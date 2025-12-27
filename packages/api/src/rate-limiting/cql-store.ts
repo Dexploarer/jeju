@@ -128,65 +128,57 @@ export class CQLRateLimitStore implements RateLimitStore {
     const now = Date.now()
     const resetAt = now + windowMs
 
-    // Get a connection for transaction support
-    const conn = await this.client.connect(this.databaseId)
-    const pool = this.client.getPool(this.databaseId)
+    // Use a transaction for atomic read-modify-write
+    const tx = await this.client.beginTransaction(this.databaseId)
 
     try {
-      // Use a transaction for atomic read-modify-write
-      const tx = await conn.beginTransaction()
+      // Get current entry
+      const result = await tx.query<{
+        count: number
+        reset_at: number
+      }>(`SELECT count, reset_at FROM ${RATE_LIMIT_TABLE} WHERE key = ?`, [
+        fullKey,
+      ])
 
-      try {
-        // Get current entry
-        const result = await tx.query<{
-          count: number
-          reset_at: number
-        }>(`SELECT count, reset_at FROM ${RATE_LIMIT_TABLE} WHERE key = ?`, [
-          fullKey,
-        ])
+      let newCount: number
+      let newResetAt: number
 
-        let newCount: number
-        let newResetAt: number
+      if (result.rows.length === 0) {
+        // New entry
+        newCount = 1
+        newResetAt = resetAt
+        await tx.exec(
+          `INSERT INTO ${RATE_LIMIT_TABLE} (key, count, reset_at, schema_version, updated_at)
+           VALUES (?, ?, ?, ?, ?)`,
+          [fullKey, newCount, newResetAt, SCHEMA_VERSION, now],
+        )
+      } else {
+        const current = result.rows[0]
 
-        if (result.rows.length === 0) {
-          // New entry
+        if (current.reset_at < now) {
+          // Window expired, start new window
           newCount = 1
           newResetAt = resetAt
-          await tx.exec(
-            `INSERT INTO ${RATE_LIMIT_TABLE} (key, count, reset_at, schema_version, updated_at)
-             VALUES (?, ?, ?, ?, ?)`,
-            [fullKey, newCount, newResetAt, SCHEMA_VERSION, now],
-          )
         } else {
-          const current = result.rows[0]
-
-          if (current.reset_at < now) {
-            // Window expired, start new window
-            newCount = 1
-            newResetAt = resetAt
-          } else {
-            // Increment within window
-            newCount = current.count + 1
-            newResetAt = current.reset_at
-          }
-
-          await tx.exec(
-            `UPDATE ${RATE_LIMIT_TABLE}
-             SET count = ?, reset_at = ?, updated_at = ?
-             WHERE key = ?`,
-            [newCount, newResetAt, now, fullKey],
-          )
+          // Increment within window
+          newCount = current.count + 1
+          newResetAt = current.reset_at
         }
 
-        await tx.commit()
-
-        return { count: newCount, resetAt: newResetAt }
-      } catch (error) {
-        await tx.rollback()
-        throw error
+        await tx.exec(
+          `UPDATE ${RATE_LIMIT_TABLE}
+           SET count = ?, reset_at = ?, updated_at = ?
+           WHERE key = ?`,
+          [newCount, newResetAt, now, fullKey],
+        )
       }
-    } finally {
-      pool.release(conn)
+
+      await tx.commit()
+
+      return { count: newCount, resetAt: newResetAt }
+    } catch (error) {
+      await tx.rollback()
+      throw error
     }
   }
 

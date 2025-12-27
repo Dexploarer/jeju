@@ -2,6 +2,7 @@ export * from './bridge'
 export * from './cdn'
 export * from './compute'
 export * from './cron'
+export * from './database'
 export * from './edge-coordinator'
 export * from './hybrid-torrent'
 export * from './oracle'
@@ -25,6 +26,7 @@ import {
 import { type CDNService, createCDNService } from './cdn'
 import { type ComputeService, createComputeService } from './compute'
 import { type CronService, createCronService } from './cron'
+import { createDatabaseService, type DatabaseService } from './database'
 import {
   createEdgeCoordinator,
   type EdgeCoordinator,
@@ -75,6 +77,7 @@ export interface NodeServices {
   staticAssets: StaticAssetService
   sequencer: SequencerService
   staking: StakingManagerService
+  database: DatabaseService
 }
 
 export interface NodeServicesConfig {
@@ -177,5 +180,6 @@ export function createNodeServices(
     staticAssets: createStaticAssetService(client, staticConfig),
     sequencer: createSequencerService(client, sequencerConfig),
     staking: createStakingManagerService(client, stakingConfig),
+    database: createDatabaseService(client),
   }
 }

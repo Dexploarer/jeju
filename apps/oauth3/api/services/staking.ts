@@ -4,7 +4,7 @@
  * REQUIRES staking contract - no fallback.
  */
 
-import type { Address, Chain } from 'viem'
+import type { Address } from 'viem'
 import { createPublicClient, http, parseAbi } from 'viem'
 import { foundry, mainnet, sepolia } from 'viem/chains'
 import {
@@ -34,17 +34,59 @@ function getRpcUrl(): string {
   return rpcUrl
 }
 
-// Get staking contract address - REQUIRED
+// Get staking contract address from env or localnet deployment
 function getStakingContractAddress(): Address {
-  const address = process.env.STAKING_CONTRACT_ADDRESS
-  if (!address) {
-    throw new Error(
-      'STAKING_CONTRACT_ADDRESS environment variable is required.\n' +
-        'Deploy the Staking contract first with: bun run scripts/deploy-staking.ts\n' +
-        'Use `bun run start` to start all dependencies.',
-    )
+  // First check environment variable
+  const envAddress = process.env.STAKING_CONTRACT_ADDRESS
+  if (envAddress) {
+    return envAddress as Address
   }
-  return address as Address
+
+  // Try to load from localnet bootstrap output
+  try {
+    const { readFileSync, existsSync } = require('node:fs')
+    const { join } = require('node:path')
+
+    // Look for localnet-complete.json in the monorepo
+    const possiblePaths = [
+      join(
+        process.cwd(),
+        '../../packages/contracts/deployments/localnet-complete.json',
+      ),
+      join(
+        process.cwd(),
+        '../packages/contracts/deployments/localnet-complete.json',
+      ),
+      join(
+        process.cwd(),
+        'packages/contracts/deployments/localnet-complete.json',
+      ),
+    ]
+
+    for (const path of possiblePaths) {
+      if (existsSync(path)) {
+        const data = JSON.parse(readFileSync(path, 'utf-8'))
+        const address = data?.contracts?.oauth3Staking
+        if (
+          address &&
+          address !== '0x0000000000000000000000000000000000000000'
+        ) {
+          console.log(
+            `[Staking] Loaded staking contract from ${path}: ${address}`,
+          )
+          return address as Address
+        }
+      }
+    }
+  } catch {
+    // Ignore errors loading from file
+  }
+
+  throw new Error(
+    'STAKING_CONTRACT_ADDRESS not found.\n' +
+      'Either set STAKING_CONTRACT_ADDRESS environment variable, or\n' +
+      'run `bun run start` (or `jeju dev`) to bootstrap contracts.',
+  )
 }
 
 // Create public client for on-chain reads
@@ -53,7 +95,7 @@ function getPublicClient() {
   const network = process.env.NETWORK ?? 'localnet'
 
   // Determine chain based on network
-  let chain: Chain
+  let chain
   switch (network) {
     case 'mainnet':
       chain = mainnet
@@ -98,7 +140,7 @@ export async function verifyStake(owner: Address): Promise<{
   const client = getPublicClient()
 
   // Get stake position from contract
-  type StakePosition = {
+  let position: {
     stakedAmount: bigint
     stakedAt: bigint
     linkedAgentId: bigint
@@ -108,15 +150,14 @@ export async function verifyStake(owner: Address): Promise<{
     isActive: boolean
     isFrozen: boolean
   }
-  let position: StakePosition
 
   try {
-    position = (await client.readContract({
+    position = await client.readContract({
       address: stakingAddress,
       abi: STAKING_ABI,
       functionName: 'getPosition',
       args: [owner],
-    })) as StakePosition
+    })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
     console.error(`[Staking] Contract call failed for ${owner}: ${message}`)
