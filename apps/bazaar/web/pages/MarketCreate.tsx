@@ -4,8 +4,26 @@
  */
 
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { keccak256, parseEther, toHex } from 'viem'
+import { PREDICTION_MARKET_ADDRESS } from '../../config'
+
+// ABI for createMarket function
+const PREDICTION_MARKET_ABI = [
+  {
+    inputs: [
+      { name: 'sessionId', type: 'bytes32' },
+      { name: 'question', type: 'string' },
+      { name: 'initialLiquidity', type: 'uint256' },
+    ],
+    name: 'createMarket',
+    outputs: [],
+    stateMutability: 'payable',
+    type: 'function',
+  },
+] as const
 
 type ResolutionType = 'manual' | 'date' | 'oracle'
 
@@ -29,7 +47,8 @@ const CATEGORIES = [
 ]
 
 export default function MarketCreatePage() {
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const navigate = useNavigate()
+  const { address, isConnected } = useAccount()
   const [form, setForm] = useState<MarketForm>({
     question: '',
     description: '',
@@ -38,6 +57,25 @@ export default function MarketCreatePage() {
     resolutionDate: '',
     initialLiquidity: '100',
   })
+
+  const { writeContract, data: txHash, isPending, error } = useWriteContract()
+  
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+    hash: txHash,
+  })
+
+  // Handle success
+  if (isSuccess && txHash) {
+    toast.success('Market created successfully!')
+    navigate('/markets')
+  }
+
+  // Handle error
+  if (error) {
+    toast.error(error.message || 'Failed to create market')
+  }
+
+  const isSubmitting = isPending || isConfirming
 
   const updateForm = <K extends keyof MarketForm>(
     key: K,
@@ -48,6 +86,11 @@ export default function MarketCreatePage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!isConnected || !address) {
+      toast.error('Please connect your wallet first')
+      return
+    }
 
     if (!form.question.trim()) {
       toast.error('Please enter a question')
@@ -70,13 +113,19 @@ export default function MarketCreatePage() {
       return
     }
 
-    setIsSubmitting(true)
-
-    // TODO: Implement contract interaction to create market
-    toast.info(
-      'Market creation coming soon. Connect your wallet to create markets.',
+    // Generate unique sessionId from question + timestamp
+    const sessionId = keccak256(
+      toHex(`${form.question}-${Date.now()}-${address}`)
     )
-    setIsSubmitting(false)
+
+    // Create market on-chain
+    writeContract({
+      address: PREDICTION_MARKET_ADDRESS,
+      abi: PREDICTION_MARKET_ABI,
+      functionName: 'createMarket',
+      args: [sessionId, form.question, parseEther(form.initialLiquidity)],
+      value: parseEther(form.initialLiquidity),
+    })
   }
 
   // Get minimum date (tomorrow)
@@ -386,10 +435,16 @@ export default function MarketCreatePage() {
 
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || !isConnected}
           className="btn-primary w-full py-3 text-lg font-semibold disabled:opacity-50"
         >
-          {isSubmitting ? 'Creating...' : 'Create Market'}
+          {!isConnected
+            ? 'Connect Wallet'
+            : isPending
+              ? 'Confirm in Wallet...'
+              : isConfirming
+                ? 'Creating Market...'
+                : 'Create Market'}
         </button>
       </form>
     </div>

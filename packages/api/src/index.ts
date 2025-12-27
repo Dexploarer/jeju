@@ -112,3 +112,8 @@ export {
   type RateLimitTier,
   RateLimitTiers,
 } from './rate-limiting/types.js'
+export {
+  type CQLRateLimitStoreConfig,
+  CQLRateLimitStore,
+  createCQLRateLimitStore,
+} from './rate-limiting/cql-store.js'

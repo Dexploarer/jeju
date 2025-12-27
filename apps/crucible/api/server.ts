@@ -7,6 +7,11 @@
  */
 
 import { cors } from '@elysiajs/cors'
+import {
+  extractAuthHeaders,
+  validateWalletSignatureFromHeaders,
+  type WalletSignatureConfig,
+} from '@jejunetwork/api'
 import type { ContractCategoryName } from '@jejunetwork/config'
 import {
   getCurrentNetwork,
@@ -100,6 +105,64 @@ function constantTimeCompare(a: string, b: string): boolean {
   return xor === 0
 }
 
+// Wallet signature config for ownership verification
+const walletSignatureConfig: WalletSignatureConfig = {
+  domain: 'crucible.jeju.network',
+  validityWindowMs: 5 * 60 * 1000, // 5 minutes
+}
+
+/**
+ * Verify that the caller owns or controls the specified agent.
+ * Requires cryptographic signature verification via x-jeju-* headers.
+ * Server's own wallet is also authorized for automated operations.
+ */
+async function verifyAgentOwnership(
+  agentId: bigint,
+  request: Request,
+  agentSdkInstance: ReturnType<typeof createAgentSDK>,
+  serverAccount: { address: `0x${string}` } | null,
+): Promise<{ authorized: boolean; reason?: string }> {
+  // Extract and validate wallet signature from headers
+  const headers = extractAuthHeaders(request.headers)
+  const signatureResult = await validateWalletSignatureFromHeaders(
+    headers,
+    walletSignatureConfig,
+  )
+
+  if (!signatureResult.valid) {
+    return {
+      authorized: false,
+      reason: signatureResult.error ?? 'Wallet signature verification failed. Required headers: x-jeju-address, x-jeju-timestamp, x-jeju-signature',
+    }
+  }
+
+  const callerAddress = signatureResult.user?.address
+  if (!callerAddress) {
+    return { authorized: false, reason: 'Could not extract address from signature' }
+  }
+
+  // Get agent from SDK to check ownership
+  const agent = await agentSdkInstance.getAgent(agentId)
+  if (!agent) {
+    return { authorized: false, reason: 'Agent not found' }
+  }
+
+  const callerLower = callerAddress.toLowerCase()
+  const ownerLower = agent.owner.toLowerCase()
+
+  // Check if caller is the owner
+  if (callerLower === ownerLower) {
+    return { authorized: true }
+  }
+
+  // Also allow the server's own wallet (for automated operations)
+  if (serverAccount && callerLower === serverAccount.address.toLowerCase()) {
+    return { authorized: true }
+  }
+
+  return { authorized: false, reason: 'Not authorized to modify this agent' }
+}
+
 // Metrics tracking
 const metrics = {
   requests: { total: 0, success: 0, error: 0 },
@@ -128,7 +191,11 @@ const ALLOWED_ORIGINS = (
 
 // API key for authenticated endpoints
 const API_KEY = process.env.API_KEY
-const REQUIRE_AUTH = process.env.REQUIRE_AUTH === 'true'
+// Default to requiring auth on non-localnet (testnet/mainnet)
+const NETWORK = getCurrentNetwork()
+const REQUIRE_AUTH =
+  process.env.REQUIRE_AUTH === 'true' ||
+  (process.env.REQUIRE_AUTH !== 'false' && NETWORK !== 'localnet')
 
 // Paths that don't require authentication
 const PUBLIC_PATHS = ['/health', '/metrics', '/.well-known']
@@ -384,7 +451,9 @@ app.use(
       'Content-Type',
       'Authorization',
       'X-API-Key',
-      'X-Wallet-Address',
+      'X-Jeju-Address',
+      'X-Jeju-Timestamp',
+      'X-Jeju-Signature',
     ],
     maxAge: 86400,
   }),
@@ -401,12 +470,13 @@ app.onBeforeHandle(({ request, set }): { error: string } | undefined => {
   }
 
   // Use IP or wallet address as rate limit key
+  // Note: wallet address is not verified here (would be expensive), IP is primary
   const clientIp =
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
     request.headers.get('x-real-ip') ??
     'unknown'
-  const walletAddress = request.headers.get('x-wallet-address') ?? ''
-  const key = walletAddress || clientIp
+  const walletAddress = request.headers.get('x-jeju-address') ?? ''
+  const key = clientIp || walletAddress || 'unknown'
 
   const now = Date.now()
 
@@ -529,7 +599,7 @@ app.get('/info', async ({ request }) => {
   const providedKey =
     request.headers.get('x-api-key') ??
     request.headers.get('authorization')?.replace('Bearer ', '')
-  const isAuthenticated = API_KEY && providedKey === API_KEY
+  const isAuthenticated = !!(API_KEY && providedKey && constantTimeCompare(providedKey, API_KEY))
 
   // Basic info for unauthenticated requests
   const basicInfo = {
@@ -808,7 +878,7 @@ app.post('/api/v1/agents/:agentId/fund', async ({ params, body, set }) => {
   }
 })
 
-app.post('/api/v1/agents/:agentId/memory', async ({ params, body }) => {
+app.post('/api/v1/agents/:agentId/memory', async ({ params, body, request, set }) => {
   const parsedParams = parseOrThrow(
     AgentIdParamSchema,
     params,
@@ -820,6 +890,14 @@ app.post('/api/v1/agents/:agentId/memory', async ({ params, body }) => {
     'Add memory request',
   )
   const agentId = BigInt(parsedParams.agentId)
+
+  // SECURITY: Verify caller owns this agent before allowing memory injection
+  const authResult = await verifyAgentOwnership(agentId, request, agentSdk, account)
+  if (!authResult.authorized) {
+    set.status = 403
+    return { error: authResult.reason }
+  }
+
   const memory = await agentSdk.addMemory(agentId, parsedBody.content, {
     importance: parsedBody.importance ?? undefined,
     roomId: parsedBody.roomId ?? undefined,
@@ -1063,13 +1141,21 @@ app.get('/api/v1/bots/:botId/metrics', ({ params }) => {
   return { metrics: bot.getMetrics() }
 })
 
-app.post('/api/v1/bots/:botId/stop', async ({ params }) => {
+app.post('/api/v1/bots/:botId/stop', async ({ params, request, set }) => {
   const parsedParams = parseOrThrow(
     BotIdParamSchema,
     params,
     'Bot ID parameter',
   )
   const agentId = BigInt(parsedParams.botId)
+
+  // SECURITY: Verify caller owns this bot's agent
+  const authResult = await verifyAgentOwnership(agentId, request, agentSdk, account)
+  if (!authResult.authorized) {
+    set.status = 403
+    return { error: authResult.reason }
+  }
+
   const bot = expect(
     tradingBots.get(agentId),
     `Bot not found: ${parsedParams.botId}`,
@@ -1079,13 +1165,21 @@ app.post('/api/v1/bots/:botId/stop', async ({ params }) => {
   return { success: true }
 })
 
-app.post('/api/v1/bots/:botId/start', async ({ params }) => {
+app.post('/api/v1/bots/:botId/start', async ({ params, request, set }) => {
   const parsedParams = parseOrThrow(
     BotIdParamSchema,
     params,
     'Bot ID parameter',
   )
   const agentId = BigInt(parsedParams.botId)
+
+  // SECURITY: Verify caller owns this bot's agent
+  const authResult = await verifyAgentOwnership(agentId, request, agentSdk, account)
+  if (!authResult.authorized) {
+    set.status = 403
+    return { error: authResult.reason }
+  }
+
   const bot = expect(
     tradingBots.get(agentId),
     `Bot not found: ${parsedParams.botId}`,
