@@ -75,9 +75,9 @@ export const CONTRACTS = {
   priceFeedAggregator: addr(contracts.oracle?.priceFeedAggregator),
 } as const
 
-// WalletConnect Project ID - placeholder for local dev
+// WalletConnect Project ID from environment
 export const WALLETCONNECT_PROJECT_ID =
-  NETWORK === 'localnet' ? '' : 'YOUR_PROJECT_ID'
+  process.env.WALLETCONNECT_PROJECT_ID || ''
 
 // Direct exports for prediction market contracts (with env var fallback for local dev)
 export const PREDICTION_MARKET_ADDRESS: Address =

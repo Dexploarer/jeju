@@ -101,6 +101,7 @@ import { createRPCRouter } from './routes/rpc'
 import { createS3Router } from './routes/s3'
 import { createScrapingRouter } from './routes/scraping'
 import { createNodeRouter } from './routes/node'
+import { createProxyRouter } from './routes/proxy'
 import { createStorageRouter } from './routes/storage'
 import { createVPNRouter } from './routes/vpn'
 import { createDefaultWorkerdRouter } from './routes/workerd'
@@ -708,6 +709,9 @@ app.use(createCacheRoutes())
 // Node operator routes
 app.use(createNodeRouter())
 
+// Reverse proxy for all Jeju services (indexer, monitoring, etc.)
+app.use(createProxyRouter())
+
 // Root-level /stats endpoint for vendor app compatibility
 // Returns cache stats in standard format
 app.get('/stats', () => {
@@ -788,13 +792,19 @@ function shutdown(signal: string) {
 if (import.meta.main) {
   const baseUrl = process.env.DWS_BASE_URL || `http://localhost:${PORT}`
 
-  // Warn about default passwords in production
+  // Validate required secrets in production
   if (isProduction) {
-    if (!process.env.DEFAULT_POSTGRES_PASSWORD) {
-      console.warn('[DWS] WARNING: Using default postgres password. Set DEFAULT_POSTGRES_PASSWORD in production.')
-    }
-    if (!process.env.DEFAULT_MINIO_PASSWORD) {
-      console.warn('[DWS] WARNING: Using default minio password. Set DEFAULT_MINIO_PASSWORD in production.')
+    const requiredSecrets = [
+      'DEFAULT_POSTGRES_PASSWORD',
+      'DEFAULT_MINIO_PASSWORD',
+      'VAULT_ENCRYPTION_SECRET',
+      'API_KEY_ENCRYPTION_SECRET',
+      'CI_ENCRYPTION_SECRET',
+    ]
+    const missing = requiredSecrets.filter((s) => !process.env[s])
+    if (missing.length > 0) {
+      console.error(`[DWS] CRITICAL: Missing required secrets in production: ${missing.join(', ')}`)
+      process.exit(1)
     }
   }
 
