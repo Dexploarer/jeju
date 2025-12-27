@@ -286,14 +286,11 @@ export function validateSecureSigningMode(): void {
     const foundDirectKeys = directKeyVars.filter((v) => process.env[v])
 
     if (foundDirectKeys.length > 0) {
-      console.warn(
-        `[SecureSigner] WARNING: Direct private key environment variables detected in production: ${foundDirectKeys.join(', ')}`,
+      throw new Error(
+        `SECURITY: Direct private key environment variables detected in production: ${foundDirectKeys.join(', ')}. ` +
+          'These MUST be migrated to KMS for side-channel attack protection. ' +
+          'Use SecureSigner with KMS instead of raw private keys.',
       )
-      console.warn(
-        '[SecureSigner] These should be migrated to KMS for side-channel attack protection.',
-      )
-      // In a future version, this should throw an error:
-      // throw new Error('Direct private keys not allowed in production. Use KMS.')
     }
   }
 }

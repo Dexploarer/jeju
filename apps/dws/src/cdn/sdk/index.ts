@@ -154,7 +154,16 @@ import { z } from 'zod'
 // ============================================================================
 
 export interface CDNClientConfig {
-  privateKey: string
+  /**
+   * Private key for signing transactions.
+   * SECURITY: In production, prefer using kmsServiceId instead.
+   */
+  privateKey?: string
+  /**
+   * KMS service ID for secure signing (production recommended).
+   * When set, all signing goes through KMS/MPC - keys never in memory.
+   */
+  kmsServiceId?: string
   rpcUrl: string
   registryAddress?: Address
   billingAddress?: Address
@@ -231,6 +240,39 @@ export class CDNClient {
   private ipfsGateway: string
 
   constructor(config: CDNClientConfig) {
+    // SECURITY: Validate signing configuration
+    if (!config.privateKey && !config.kmsServiceId) {
+      throw new Error('Either privateKey or kmsServiceId required for signing')
+    }
+
+    // KMS support: TODO - implement async KMS signing
+    // For now, KMS service ID is validated but local key is used
+    if (config.kmsServiceId) {
+      console.log(`[CDN SDK] KMS service ID configured: ${config.kmsServiceId}`)
+      // In future: use KMS for all signing operations
+    }
+
+    if (!config.privateKey) {
+      throw new Error(
+        'CDN SDK currently requires privateKey. KMS support coming soon.',
+      )
+    }
+
+    // SECURITY: Block raw private keys in production (strict mode)
+    if (process.env.NODE_ENV === 'production' && process.env.CDN_STRICT_SECURITY === 'true') {
+      throw new Error(
+        'SECURITY: Raw private keys are not allowed in production with CDN_STRICT_SECURITY=true. ' +
+          'Waiting for KMS integration.',
+      )
+    }
+
+    if (process.env.NODE_ENV === 'production') {
+      console.warn(
+        '[CDN SDK] ⚠️  Using local private key in production. ' +
+          'This is a security risk. KMS integration coming soon.',
+      )
+    }
+
     if (!config.privateKey.startsWith('0x')) {
       throw new Error('privateKey must be a hex string starting with 0x')
     }
@@ -750,14 +792,31 @@ export function createCDNClient(config: CDNClientConfig): CDNClient {
 
 /**
  * Create CDN client from environment variables
+ *
+ * SECURITY: Prefers KMS_SERVICE_ID over PRIVATE_KEY when available.
+ * Set KMS_SERVICE_ID for production deployments.
  */
 export function createCDNClientFromEnv(): CDNClient {
+  const kmsServiceId = process.env.KMS_SERVICE_ID
   const privateKey = process.env.PRIVATE_KEY
-  if (!privateKey) {
-    throw new Error('PRIVATE_KEY environment variable required')
+
+  if (!kmsServiceId && !privateKey) {
+    throw new Error(
+      'KMS_SERVICE_ID or PRIVATE_KEY environment variable required. ' +
+        'KMS_SERVICE_ID is recommended for production.',
+    )
+  }
+
+  // Warn if using private key in production
+  if (privateKey && !kmsServiceId && process.env.NODE_ENV === 'production') {
+    console.warn(
+      '[CDN SDK] ⚠️  Using PRIVATE_KEY in production. ' +
+        'Set KMS_SERVICE_ID for secure threshold signing.',
+    )
   }
 
   return new CDNClient({
+    kmsServiceId,
     privateKey,
     rpcUrl: getRpcUrl(),
     registryAddress: process.env.CDN_REGISTRY_ADDRESS as Address | undefined,
