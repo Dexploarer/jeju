@@ -366,20 +366,76 @@ export function createMessagingWorker(config: MessagingWorkerConfig) {
 
       // ============ Acknowledgements ============
 
-      .post('/message/:id/delivered', ({ params }) => {
+      .post('/message/:id/delivered', async ({ params, request, set }) => {
         const stored = messages.get(params.id)
         if (!stored) {
-          throw new Error('Message not found')
+          set.status = 404
+          return { error: 'Message not found' }
+        }
+
+        // Only recipient can mark as delivered
+        const signature = request.headers.get('x-jeju-signature') as Hex | null
+        const timestamp = request.headers.get('x-jeju-timestamp')
+
+        if (!signature || !timestamp) {
+          set.status = 401
+          return { error: 'Missing authentication headers' }
+        }
+
+        const ts = parseInt(timestamp, 10)
+        const now = Date.now()
+        if (Number.isNaN(ts) || ts < now - 5 * 60 * 1000 || ts > now + 30 * 1000) {
+          set.status = 401
+          return { error: 'Invalid or expired timestamp' }
+        }
+
+        const isValid = await verifyMessage({
+          address: stored.envelope.to,
+          message: `Mark delivered:${params.id}:${timestamp}`,
+          signature,
+        })
+
+        if (!isValid) {
+          set.status = 401
+          return { error: 'Invalid signature - only recipient can mark as delivered' }
         }
 
         stored.deliveredAt = Date.now()
         return { success: true }
       })
 
-      .post('/message/:id/read', ({ params }) => {
+      .post('/message/:id/read', async ({ params, request, set }) => {
         const stored = messages.get(params.id)
         if (!stored) {
-          throw new Error('Message not found')
+          set.status = 404
+          return { error: 'Message not found' }
+        }
+
+        // Only recipient can mark as read
+        const signature = request.headers.get('x-jeju-signature') as Hex | null
+        const timestamp = request.headers.get('x-jeju-timestamp')
+
+        if (!signature || !timestamp) {
+          set.status = 401
+          return { error: 'Missing authentication headers' }
+        }
+
+        const ts = parseInt(timestamp, 10)
+        const now = Date.now()
+        if (Number.isNaN(ts) || ts < now - 5 * 60 * 1000 || ts > now + 30 * 1000) {
+          set.status = 401
+          return { error: 'Invalid or expired timestamp' }
+        }
+
+        const isValid = await verifyMessage({
+          address: stored.envelope.to,
+          message: `Mark read:${params.id}:${timestamp}`,
+          signature,
+        })
+
+        if (!isValid) {
+          set.status = 401
+          return { error: 'Invalid signature - only recipient can mark as read' }
         }
 
         stored.readAt = Date.now()
