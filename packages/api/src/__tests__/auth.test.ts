@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, test } from 'bun:test'
-import { hasInfra } from '@jejunetwork/tests'
+import { hasInfra } from '@jejunetwork/tests/shared/live-infrastructure'
 import type { Address } from 'viem'
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 import {

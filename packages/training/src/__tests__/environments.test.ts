@@ -203,11 +203,11 @@ describe('Step', () => {
 
     // Verify increasing timestamps
     for (let i = 1; i < steps.length; i++) {
-      const currentStep = steps[i]
-      const previousStep = steps[i - 1]
-      if (!currentStep || !previousStep)
-        throw new Error(`Step at index ${i} or ${i - 1} is undefined`)
-      expect(currentStep.timestamp).toBeGreaterThan(previousStep.timestamp)
+      const current = steps[i]
+      const previous = steps[i - 1]
+      if (!current || !previous)
+        throw new Error(`Step at index ${i} is undefined`)
+      expect(current.timestamp).toBeGreaterThan(previous.timestamp)
     }
   })
 })

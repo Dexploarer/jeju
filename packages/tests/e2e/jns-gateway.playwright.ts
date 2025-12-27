@@ -11,8 +11,8 @@
  *   bunx playwright test packages/tests/e2e/jns-gateway.spec.ts --config packages/tests/smoke/synpress.config.ts
  */
 
-import { testWithSynpress } from '@synthetixio/synpress'
 import type { Page } from '@playwright/test'
+import { testWithSynpress } from '@synthetixio/synpress'
 import { MetaMask, metaMaskFixtures } from '@synthetixio/synpress/playwright'
 import { createWalletSetup } from '../shared/synpress.config.base'
 import { PASSWORD } from '../shared/utils'
@@ -33,7 +33,7 @@ const RPC_URL = process.env.JEJU_RPC_URL || 'http://localhost:6546'
 const JNS_GATEWAY_PORT = parseInt(process.env.JNS_GATEWAY_PORT || '4005', 10)
 const JNS_GATEWAY_URL = `http://localhost:${JNS_GATEWAY_PORT}`
 
-const chain = {
+const _chain = {
   id: 31337,
   name: 'Network Local',
   nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
@@ -99,7 +99,8 @@ test.describe('Wake Page Tests', () => {
   })
 
   test('should allow funding via wallet when wake page is shown', async (fixtures) => {
-    const { context, page, metamaskPage, extensionId } = fixtures as SynpressFixtures
+    const { context, page, metamaskPage, extensionId } =
+      fixtures as SynpressFixtures
     // This test requires:
     // 1. An unfunded app to show the wake page (set WAKE_PAGE_TEST_APP env var)
     // 2. A connected wallet with funds

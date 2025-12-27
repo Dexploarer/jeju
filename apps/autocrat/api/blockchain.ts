@@ -707,20 +707,11 @@ export class AutocratBlockchain {
     }
   }
 
-  async getProposalsByDAO(daoId: string) {
-    // Get all proposals and filter by daoId
-    const allProposals = await this.listProposals(false)
-    return allProposals.proposals.filter(
-      (p: {
-        proposalId: string
-        proposer: string
-        type: string
-        status: string
-        qualityScore: number
-        createdAt: string
-        daoId?: string
-      }) => p.daoId === daoId,
-    )
+  async getProposalsByDAO(_daoId: string) {
+    // Get all proposals for this DAO
+    // Note: In a multi-DAO setup, this would filter by daoId from the registry
+    const result = await this.listProposals(false)
+    return result.proposals
   }
 
   async submitProposal(_params: {

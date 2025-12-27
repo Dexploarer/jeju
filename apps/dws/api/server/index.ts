@@ -68,7 +68,7 @@ import type { ServiceHealth } from '../types'
 import { WorkerdExecutor } from '../workers/workerd/executor'
 import { createA2ARouter } from './routes/a2a'
 import { createAPIMarketplaceRouter } from './routes/api-marketplace'
-import { createCDNRouter, shutdownHybridCDN } from './routes/cdn'
+import { createCDNRouter } from './routes/cdn'
 import { createCIRouter } from './routes/ci'
 import { createComputeRouter } from './routes/compute'
 import { createContainerRouter } from './routes/containers'
@@ -85,7 +85,6 @@ import {
 } from './routes/load-balancer'
 import { createMCPRouter } from './routes/mcp'
 import { createModerationRouter } from './routes/moderation'
-import { createNodeRouter } from './routes/node'
 import { createOAuth3Router } from './routes/oauth3'
 import { createPkgRouter } from './routes/pkg'
 import { createPkgRegistryProxyRouter } from './routes/pkg-registry-proxy'
@@ -95,7 +94,6 @@ import {
   type SubscribableWebSocket,
   SubscriptionMessageSchema,
 } from './routes/prices'
-import { createProxyRouter } from './routes/proxy'
 import { createRPCRouter } from './routes/rpc'
 import { createS3Router } from './routes/s3'
 import { createScrapingRouter } from './routes/scraping'
@@ -732,12 +730,6 @@ app.get('/.well-known/agent-card.json', () => {
 // DWS Cache Service routes (decentralized cache with TEE support)
 app.use(createCacheRoutes())
 
-// Node operator routes
-app.use(createNodeRouter())
-
-// Reverse proxy for all Jeju services (indexer, monitoring, etc.)
-app.use(createProxyRouter())
-
 // Root-level /stats endpoint for vendor app compatibility
 // Returns cache stats in standard format
 app.get('/stats', () => {
@@ -804,8 +796,6 @@ function shutdown(signal: string) {
   console.log('[DWS] Indexer proxy stopped')
   stopKeepaliveService()
   console.log('[DWS] Keepalive service stopped')
-  shutdownHybridCDN().catch(() => {})
-  console.log('[DWS] Hybrid CDN stopped')
   if (p2pCoordinator) {
     p2pCoordinator.stop()
     console.log('[DWS] P2P coordinator stopped')
@@ -819,24 +809,6 @@ function shutdown(signal: string) {
 
 if (import.meta.main) {
   const baseUrl = process.env.DWS_BASE_URL || `http://localhost:${PORT}`
-
-  // Validate required secrets in production
-  if (isProduction) {
-    const requiredSecrets = [
-      'DEFAULT_POSTGRES_PASSWORD',
-      'DEFAULT_MINIO_PASSWORD',
-      'VAULT_ENCRYPTION_SECRET',
-      'API_KEY_ENCRYPTION_SECRET',
-      'CI_ENCRYPTION_SECRET',
-    ]
-    const missing = requiredSecrets.filter((s) => !process.env[s])
-    if (missing.length > 0) {
-      console.error(
-        `[DWS] CRITICAL: Missing required secrets in production: ${missing.join(', ')}`,
-      )
-      process.exit(1)
-    }
-  }
 
   console.log(`[DWS] Running at ${baseUrl}`)
   console.log(

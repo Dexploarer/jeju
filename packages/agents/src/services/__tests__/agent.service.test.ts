@@ -52,28 +52,23 @@ describe('AgentService', () => {
 })
 
 describe('AgentWithConfig structure', () => {
-  const baseCharacter = {
-    name: 'Test Agent',
-    bio: ['A test trading agent for automated trading strategies'],
-    modelProvider: 'openai' as const,
-    clients: [],
-    plugins: [],
-    settings: {},
-  }
-
   it('validates complete agent config', () => {
     const agent: AgentWithConfig = {
       id: 'agent-123',
       userId: 'user-456',
       name: 'Test Agent',
-      character: baseCharacter,
+      isActive: true,
       modelTier: 'standard',
       autonomousEnabled: true,
-      isActive: true,
       pointsBalance: 1000,
-      lifetimePnL: 500,
-      totalTrades: 10,
-      winRate: 0.6,
+      lifetimePnL: 0,
+      totalTrades: 0,
+      winRate: 0,
+      character: {
+        name: 'Test Agent',
+        system: 'You are a helpful trading agent.',
+        bio: ['A helpful trading agent'],
+      },
       systemPrompt: 'You are a helpful trading agent.',
       personality: 'Friendly and analytical',
       tradingStrategy: 'momentum',
@@ -95,14 +90,17 @@ describe('AgentWithConfig structure', () => {
       id: 'agent-123',
       userId: 'user-456',
       name: 'Minimal Agent',
-      character: baseCharacter,
+      isActive: true,
       modelTier: 'lite',
       autonomousEnabled: false,
-      isActive: true,
       pointsBalance: 0,
       lifetimePnL: 0,
       totalTrades: 0,
       winRate: 0,
+      character: {
+        name: 'Minimal Agent',
+        bio: [],
+      },
     }
 
     expect(agent.systemPrompt).toBeUndefined()
@@ -117,39 +115,43 @@ describe('AgentWithConfig structure', () => {
         id: 'agent-123',
         userId: 'user-456',
         name: 'Test',
-        character: baseCharacter,
+        isActive: true,
         modelTier: tier,
         autonomousEnabled: false,
-        isActive: true,
         pointsBalance: 0,
         lifetimePnL: 0,
         totalTrades: 0,
         winRate: 0,
+        character: {
+          name: 'Test',
+          bio: [],
+        },
       }
       expect(agent.modelTier).toBe(tier)
     }
   })
 
   it('supports active and inactive states', () => {
-    const activeAgent: AgentWithConfig = {
-      id: 'agent-123',
-      userId: 'user-456',
-      name: 'Test',
-      character: baseCharacter,
-      modelTier: 'lite',
-      autonomousEnabled: false,
-      isActive: true,
-      pointsBalance: 0,
-      lifetimePnL: 0,
-      totalTrades: 0,
-      winRate: 0,
-    }
-    expect(activeAgent.isActive).toBe(true)
+    const states = [true, false]
 
-    const inactiveAgent: AgentWithConfig = {
-      ...activeAgent,
-      isActive: false,
+    for (const isActive of states) {
+      const agent: AgentWithConfig = {
+        id: 'agent-123',
+        userId: 'user-456',
+        name: 'Test',
+        isActive,
+        modelTier: 'lite',
+        autonomousEnabled: false,
+        pointsBalance: 0,
+        lifetimePnL: 0,
+        totalTrades: 0,
+        winRate: 0,
+        character: {
+          name: 'Test',
+          bio: [],
+        },
+      }
+      expect(agent.isActive).toBe(isActive)
     }
-    expect(inactiveAgent.isActive).toBe(false)
   })
 })

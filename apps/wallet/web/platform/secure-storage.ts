@@ -56,7 +56,7 @@ class WebSecureStorage implements SecureStorageAdapter {
 
     // Create ArrayBuffer copies for TypeScript compatibility with crypto.subtle
     const keyDataBuffer = new Uint8Array(keyData).buffer as ArrayBuffer
-    const saltBuffer = new Uint8Array(salt).buffer as ArrayBuffer
+    const saltBuffer = new Uint8Array(salt).buffer as ArrayBuffer as ArrayBuffer
 
     const keyMaterial = await crypto.subtle.importKey(
       'raw',
@@ -186,48 +186,45 @@ class ExtensionSecureStorage implements SecureStorageAdapter {
             const keyData = crypto.getRandomValues(new Uint8Array(32))
             const salt = crypto.getRandomValues(new Uint8Array(16))
 
-            keyDataB64 = btoa(String.fromCharCode(...keyData))
-            saltB64 = btoa(String.fromCharCode(...salt))
+            const newKeyDataB64 = btoa(String.fromCharCode(...keyData))
+            const newSaltB64 = btoa(String.fromCharCode(...salt))
+            keyDataB64 = newKeyDataB64
+            saltB64 = newSaltB64
 
-            // Capture the definitely-assigned values for the closure
-            const keyB64 = keyDataB64
-            const sltB64 = saltB64
             storage.set(
               {
-                [ExtensionSecureStorage.EXT_KEY]: keyB64,
-                [ExtensionSecureStorage.EXT_SALT]: sltB64,
+                [ExtensionSecureStorage.EXT_KEY]: newKeyDataB64,
+                [ExtensionSecureStorage.EXT_SALT]: newSaltB64,
               },
               () => {
                 if (chrome.runtime.lastError) {
                   reject(new Error(chrome.runtime.lastError.message))
                   return
                 }
+                if (!newKeyDataB64 || !newSaltB64) {
+                  reject(new Error('Failed to retrieve key data'))
+                  return
+                }
+                const keyDataStr = atob(newKeyDataB64)
+                const saltStr = atob(newSaltB64)
                 resolve({
                   keyData: new Uint8Array(
-                    atob(keyB64)
-                      .split('')
-                      .map((c) => c.charCodeAt(0)),
+                    Array.from(keyDataStr, (c) => c.charCodeAt(0)),
                   ),
                   salt: new Uint8Array(
-                    atob(sltB64)
-                      .split('')
-                      .map((c) => c.charCodeAt(0)),
+                    Array.from(saltStr, (c) => c.charCodeAt(0)),
                   ),
                 })
               },
             )
           } else {
+            const keyDataStr = atob(keyDataB64)
+            const saltStr = atob(saltB64)
             resolve({
               keyData: new Uint8Array(
-                atob(keyDataB64 as string)
-                  .split('')
-                  .map((c) => c.charCodeAt(0)),
+                Array.from(keyDataStr, (c) => c.charCodeAt(0)),
               ),
-              salt: new Uint8Array(
-                atob(saltB64 as string)
-                  .split('')
-                  .map((c) => c.charCodeAt(0)),
-              ),
+              salt: new Uint8Array(Array.from(saltStr, (c) => c.charCodeAt(0))),
             })
           }
         },
@@ -240,18 +237,22 @@ class ExtensionSecureStorage implements SecureStorageAdapter {
 
     const { keyData, salt } = await this.getOrCreateKeyMaterial()
 
+    // Create a new ArrayBuffer to avoid SharedArrayBuffer issues
+    const keyBuffer = new Uint8Array(keyData).buffer as ArrayBuffer
     const keyMaterial = await crypto.subtle.importKey(
       'raw',
-      keyData.buffer as ArrayBuffer,
+      keyBuffer,
       'PBKDF2',
       false,
       ['deriveKey'],
     )
 
+    // Create a new ArrayBuffer for salt to avoid SharedArrayBuffer issues
+    const saltBuffer = new Uint8Array(salt).buffer as ArrayBuffer
     this.encryptionKey = await crypto.subtle.deriveKey(
       {
         name: 'PBKDF2',
-        salt: salt.buffer as ArrayBuffer,
+        salt: saltBuffer,
         iterations: 100000,
         hash: 'SHA-256',
       },
@@ -414,15 +415,13 @@ class CapacitorSecureStorage implements SecureStorageAdapter {
     if (!this.useNativeKeychain) return false
     // Check if SecureStoragePlugin is available (from @nicememes/capacitor-secure-storage-plugin)
     // This plugin uses iOS Keychain and Android EncryptedSharedPreferences
-    const hasPlugin =
-      typeof window !== 'undefined' &&
-      'Capacitor' in window &&
-      (
-        window.Capacitor as
-          | { isPluginAvailable?: (name: string) => boolean }
-          | undefined
-      )?.isPluginAvailable?.('SecureStoragePlugin')
-    return Boolean(hasPlugin)
+    if (typeof window === 'undefined' || !('Capacitor' in window)) {
+      return false
+    }
+    const capacitor = window.Capacitor as {
+      isPluginAvailable?: (name: string) => boolean
+    }
+    return capacitor?.isPluginAvailable?.('SecureStoragePlugin') ?? false
   }
 
   private async getOrCreateKeyMaterial(): Promise<{
@@ -475,24 +474,18 @@ class CapacitorSecureStorage implements SecureStorageAdapter {
 
     const { keyData, salt } = await this.getOrCreateKeyMaterial()
 
-    // Convert Uint8Array to ArrayBuffer for crypto.subtle
-    const keyDataBuffer = keyData.buffer.slice(
-      keyData.byteOffset,
-      keyData.byteOffset + keyData.byteLength,
-    ) as ArrayBuffer
-    const saltBuffer = salt.buffer.slice(
-      salt.byteOffset,
-      salt.byteOffset + salt.byteLength,
-    ) as ArrayBuffer
-
+    // Create a new ArrayBuffer to avoid SharedArrayBuffer issues
+    const keyBuffer = new Uint8Array(keyData).buffer as ArrayBuffer
     const keyMaterial = await crypto.subtle.importKey(
       'raw',
-      keyDataBuffer,
+      keyBuffer,
       'PBKDF2',
       false,
       ['deriveKey'],
     )
 
+    // Create a new ArrayBuffer for salt to avoid SharedArrayBuffer issues
+    const saltBuffer = new Uint8Array(salt).buffer as ArrayBuffer
     this.encryptionKey = await crypto.subtle.deriveKey(
       {
         name: 'PBKDF2',

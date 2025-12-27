@@ -8,33 +8,10 @@
  * - Lock file metadata
  */
 
-import {
-  AddressSchema,
-  HashSchema,
-  HexSchema,
-  JsonRpcErrorResponseSchema,
-  JsonRpcRequestSchema,
-  JsonRpcSuccessResponseSchema,
-} from '@jejunetwork/types'
+import { AddressSchema, HashSchema, HexSchema } from '@jejunetwork/types'
 import { z } from 'zod'
 
-// Re-export schemas from @jejunetwork/types
-export {
-  AddressSchema,
-  HashSchema,
-  HexSchema,
-  JsonRpcRequestSchema,
-  JsonRpcSuccessResponseSchema,
-  JsonRpcErrorResponseSchema,
-}
-
-// Import JSON-RPC types directly from @jejunetwork/types
-export type {
-  JsonRpcErrorResponse,
-  JsonRpcRequest,
-  JsonRpcResponse,
-  JsonRpcSuccessResponse,
-} from '@jejunetwork/types'
+// Import schemas and types directly from @jejunetwork/types instead of re-exporting
 
 // Additional Address & Hash Schemas (extend shared schemas)
 

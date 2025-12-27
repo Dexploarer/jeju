@@ -6,6 +6,7 @@
  */
 
 import { getEnv, getEnvBoolean, requireEnv } from '@jejunetwork/shared'
+import type { TEEAttestation } from '@jejunetwork/types'
 import { type Address, type Hex, keccak256, toBytes, toHex } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import {
@@ -36,7 +37,6 @@ import {
   KMSProviderType,
   type SignedMessage,
   type SignRequest,
-  type TEEAttestation,
   type TEEConfig,
 } from '../types.js'
 
@@ -103,7 +103,6 @@ export class TEEProvider implements KMSProvider {
 
       // SECURITY: Verify attestation BEFORE accepting enclave key
       if (data.attestation) {
-        // Cast validated attestation to TEEAttestation (Zod schema validates hex format)
         const attestation: TEEAttestation = {
           quote: data.attestation.quote as Hex,
           measurement: data.attestation.measurement as Hex,
@@ -184,15 +183,13 @@ export class TEEProvider implements KMSProvider {
           policy,
           providerType: KMSProviderType.TEE,
         }
-        const publicKey = result.publicKey as Hex
-        const address = result.address as Address
         this.keys.set(keyId, {
           metadata,
           encryptedPrivateKey: new Uint8Array(0),
-          publicKey,
-          address,
+          publicKey: result.publicKey as Hex,
+          address: result.address as Address,
         })
-        return { metadata, publicKey }
+        return { metadata, publicKey: result.publicKey as Hex }
       }
       log.warn('Remote key generation failed, using local generation')
     }
@@ -283,15 +280,14 @@ export class TEEProvider implements KMSProvider {
       })
 
       if (result) {
-        const signature = result.signature as Hex
         return {
           message: toHex(
             typeof request.message === 'string'
               ? toBytes(request.message as Hex)
               : request.message,
           ),
-          signature,
-          recoveryId: parseInt(signature.slice(130, 132), 16) - 27,
+          signature: result.signature as Hex,
+          recoveryId: parseInt(result.signature.slice(130, 132), 16) - 27,
           keyId: request.keyId,
           signedAt: Date.now(),
         }

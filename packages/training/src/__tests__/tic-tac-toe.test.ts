@@ -185,11 +185,14 @@ describe('TicTacToeEnv', () => {
     it('should have valid step structure', () => {
       const trajectory = env.generateRandomTrajectory('test-agent')
       const step = trajectory.steps[0]
-      if (!step) throw new Error('First step is undefined')
 
+      expect(step).toBeDefined()
+      if (!step) throw new Error('Step is undefined')
       expect(step.observation).toBeDefined()
       expect(step.action).toBeDefined()
       expect(step.action.type).toBe('move')
+      if (!step.action.parameters)
+        throw new Error('Action parameters are undefined')
       expect(typeof step.action.parameters.position).toBe('number')
     })
 
@@ -214,11 +217,14 @@ describe('TicTacToeEnv', () => {
         'agent-1',
         'agent-2',
       ])
-      expect(trajectories).toHaveLength(4)
-      expect(trajectories[0]?.agentId).toBe('agent-1')
-      expect(trajectories[1]?.agentId).toBe('agent-2')
-      expect(trajectories[2]?.agentId).toBe('agent-1')
-      expect(trajectories[3]?.agentId).toBe('agent-2')
+      if (!trajectories[0]) throw new Error('Trajectory 0 is undefined')
+      if (!trajectories[1]) throw new Error('Trajectory 1 is undefined')
+      if (!trajectories[2]) throw new Error('Trajectory 2 is undefined')
+      if (!trajectories[3]) throw new Error('Trajectory 3 is undefined')
+      expect(trajectories[0].agentId).toBe('agent-1')
+      expect(trajectories[1].agentId).toBe('agent-2')
+      expect(trajectories[2].agentId).toBe('agent-1')
+      expect(trajectories[3].agentId).toBe('agent-2')
     })
   })
 

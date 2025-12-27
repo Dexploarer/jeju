@@ -632,7 +632,7 @@ export class TrajectoryMetricsExtractor {
     const firstStep = steps[0]
     const lastStep = steps[steps.length - 1]
     if (!firstStep || !lastStep) {
-      throw new Error(`Invalid steps for trajectory ${params.trajectoryId}`)
+      throw new Error('Trajectory must have at least one step')
     }
     const startBalance = firstStep.environmentState?.agentBalance
     const endBalance = lastStep.environmentState?.agentBalance

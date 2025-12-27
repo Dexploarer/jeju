@@ -84,7 +84,6 @@ packages/contracts/deployments/*-31337.json
 .cache/
 .cache-synpress/
 vendor_examples/
-vendor/
 playwright-report/
 test-results/
 *.backup

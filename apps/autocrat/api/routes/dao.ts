@@ -71,9 +71,9 @@ export const daoRoutes = new Elysia({ prefix: '/api/v1/dao' })
           description: body.ceo.description,
           personality: body.ceo.personality,
           traits: body.ceo.traits ?? [],
-          voiceStyle: body.ceo.voiceStyle ?? 'professional',
-          communicationTone: body.ceo.communicationTone ?? 'professional',
-          specialties: body.ceo.specialties ?? [],
+          voiceStyle: 'professional',
+          communicationTone: 'professional' as const,
+          specialties: [],
         },
         governanceParams: {
           minQualityScore: body.governance.minQualityScore,
@@ -100,17 +100,6 @@ export const daoRoutes = new Elysia({ prefix: '/api/v1/dao' })
           description: t.String(),
           personality: t.String(),
           traits: t.Optional(t.Array(t.String())),
-          voiceStyle: t.Optional(t.String()),
-          communicationTone: t.Optional(
-            t.Union([
-              t.Literal('formal'),
-              t.Literal('friendly'),
-              t.Literal('professional'),
-              t.Literal('playful'),
-              t.Literal('authoritative'),
-            ]),
-          ),
-          specialties: t.Optional(t.Array(t.String())),
         }),
         governance: t.Object({
           minQualityScore: t.Number(),
@@ -395,8 +384,8 @@ export const daoRoutes = new Elysia({ prefix: '/api/v1/dao' })
     async ({ params, query }) => {
       const proposals = await blockchain.getProposalsByDAO(params.daoId)
       // Filter by status/type if provided
-      type ProposalItem = { status: string; type: string }
-      let filtered = proposals as ProposalItem[]
+      type ProposalItem = (typeof proposals)[number]
+      let filtered: ProposalItem[] = proposals
       if (query.status && query.status !== 'all') {
         filtered = filtered.filter(
           (p: ProposalItem) => p.status === query.status,

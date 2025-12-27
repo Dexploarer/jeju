@@ -113,8 +113,8 @@ const LOCALNET_ADDRESSES: ContractAddresses = {
   banManager: '0x0B306BF915C4d645ff596e518fAf3F9669b97016',
   cdnRegistry: '0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1',
   cdnBilling: '0x9A9f2CCfdE556A7E9Ff0848998Aa4a0CFD8863AE',
-  databaseProvider: '0x3Aa5ebB10DC797CAC828524e59A333d0A371443c',
   vpnRegistry: '0x322813FD9a801C5507C9544993C34b5A5B9B5b7b',
+  databaseProvider: '0x4A679253410272dd5232B3Ff7cF5dbB88f295319',
 }
 
 // Validate localnet addresses at module load time
@@ -248,13 +248,13 @@ export function getContractAddresses(chainId: number): ContractAddresses {
     ),
     cdnRegistry: safeGetAddress('cdn', 'registry', network, 'CDN_REGISTRY'),
     cdnBilling: safeGetAddress('cdn', 'billing', network, 'CDN_BILLING'),
+    vpnRegistry: safeGetAddress('vpn', 'registry', network, 'VPN_REGISTRY'),
     databaseProvider: safeGetAddress(
       'database',
       'provider',
       network,
       'DATABASE_PROVIDER',
     ),
-    vpnRegistry: safeGetAddress('vpn', 'registry', network, 'VPN_REGISTRY'),
   }
 }
 

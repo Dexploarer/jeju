@@ -170,9 +170,10 @@ describe('LiquidityPosition type', () => {
 
     expect(position.tickLower).toBeDefined()
     expect(position.tickUpper).toBeDefined()
-    if (position.tickLower !== undefined && position.tickUpper !== undefined) {
-      expect(position.tickLower).toBeLessThan(position.tickUpper)
+    if (position.tickLower === undefined || position.tickUpper === undefined) {
+      throw new Error('tickLower and tickUpper are required')
     }
+    expect(position.tickLower).toBeLessThan(position.tickUpper)
   })
 
   it('validates narrow range position', () => {
@@ -186,10 +187,11 @@ describe('LiquidityPosition type', () => {
       tickUpper: 100,
     }
 
-    if (position.tickLower !== undefined && position.tickUpper !== undefined) {
-      const tickRange = position.tickUpper - position.tickLower
-      expect(tickRange).toBe(100)
+    if (position.tickLower === undefined || position.tickUpper === undefined) {
+      throw new Error('tickLower and tickUpper are required')
     }
+    const tickRange = position.tickUpper - position.tickLower
+    expect(tickRange).toBe(100)
   })
 })
 

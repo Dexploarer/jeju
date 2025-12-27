@@ -11,7 +11,8 @@ import {
   type PublicClient,
   toHex,
 } from 'viem'
-import { type TEEAttestation, TEEProvider } from '../types.js'
+import type { TEEAttestation } from '@jejunetwork/types'
+import { TEEProvider } from '../types.js'
 import { NodeResourcesSchema, validateResponse } from '../validation.js'
 import { OAUTH3_TEE_VERIFIER_ABI } from './abis.js'
 import {
@@ -167,7 +168,7 @@ export class OAuth3ComputeService {
         measurement: attestation.measurement,
         reportData: attestation.reportData,
         timestamp: Number(attestation.timestamp) * 1000,
-        provider: teeType,
+        platform: teeType,
         verified: attestation.verified,
       },
       resources: {
@@ -275,7 +276,7 @@ export class OAuth3ComputeService {
         measurement: attestation.measurement,
         reportData: attestation.reportData,
         timestamp: Number(attestation.timestamp) * 1000,
-        provider: teeType,
+        platform: teeType,
         verified: attestation.verified,
       },
       stake,

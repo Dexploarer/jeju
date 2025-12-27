@@ -9,9 +9,21 @@
  */
 
 import { type CQLClient, getCQL } from '@jejunetwork/db'
-import { JsonValueSchema } from '@jejunetwork/types'
+import type { JsonValue } from '@jejunetwork/types'
 import { z } from 'zod'
 import type { Message, Task, TaskArtifact, TaskStore } from '../types/server'
+
+// Recursive JsonValue schema
+const JsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
+  z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.null(),
+    z.array(JsonValueSchema),
+    z.record(z.string(), JsonValueSchema),
+  ]),
+)
 
 // Zod schemas for validating parsed JSON from database
 const PartSchema = z.object({
@@ -27,14 +39,14 @@ const PartSchema = z.object({
     .optional(),
 })
 
-const MessageSchema: z.ZodType<Message> = z.object({
+const MessageSchema = z.object({
   role: z.enum(['user', 'agent']),
   messageId: z.string(),
   parts: z.array(PartSchema),
   kind: z.literal('message'),
 })
 
-const TaskArtifactSchema: z.ZodType<TaskArtifact> = z.object({
+const TaskArtifactSchema = z.object({
   artifactId: z.string(),
   name: z.string(),
   parts: z.array(PartSchema),
@@ -106,7 +118,8 @@ function rowToTask(row: TaskRow): Task {
   if (row.history) {
     const parsed = HistorySchema.safeParse(JSON.parse(row.history))
     if (parsed.success) {
-      history = parsed.data
+      // Type assertion safe because Zod validated the structure
+      history = parsed.data as Message[]
     } else {
       console.warn(
         `[A2A TaskStore] Invalid history JSON for task ${row.id}:`,
@@ -120,7 +133,8 @@ function rowToTask(row: TaskRow): Task {
   if (row.artifacts) {
     const parsed = ArtifactsSchema.safeParse(JSON.parse(row.artifacts))
     if (parsed.success) {
-      artifacts = parsed.data
+      // Type assertion safe because Zod validated the structure
+      artifacts = parsed.data as TaskArtifact[]
     } else {
       console.warn(
         `[A2A TaskStore] Invalid artifacts JSON for task ${row.id}:`,

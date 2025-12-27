@@ -24,7 +24,7 @@
  * 4. Earn spread between our quote and execution
  */
 
-import { EventEmitter } from 'node:events'
+import { WorkerdEventEmitter } from '../../utils/event-emitter'
 import {
   type Address,
   hexToBytes,
@@ -179,7 +179,7 @@ export interface CowSolution {
   prices: Record<string, bigint>
 }
 
-export class CowProtocolSolver extends EventEmitter {
+export class CowProtocolSolver extends WorkerdEventEmitter {
   private clients: Map<number, { public: PublicClient; wallet?: WalletClient }>
   private supportedChains: number[]
   private pollInterval: ReturnType<typeof setInterval> | null = null

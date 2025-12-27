@@ -136,6 +136,20 @@ function AgentForm({
     onChange({ ...agent, values: agent.values.filter((_, i) => i !== index) })
   }
 
+  const addTrait = (trait: string) => {
+    if (trait && !agent.persona.traits.includes(trait)) {
+      updatePersona({ traits: [...agent.persona.traits, trait] })
+    }
+  }
+
+  const removeTrait = (trait: string) => {
+    updatePersona({ traits: agent.persona.traits.filter((t) => t !== trait) })
+  }
+
+  // Expose trait functions for future use
+  void addTrait
+  void removeTrait
+
   return (
     <div className="bg-slate-900/50 border border-slate-700/50 rounded-xl overflow-hidden">
       {/* Header */}

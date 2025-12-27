@@ -1217,10 +1217,11 @@ export function createBridgeModule(
       })
 
       for (const log of logs) {
-        // Filter for transfers where user is sender
         const sender = log.args.sender
         const transferId = log.args.transferId
         if (!sender || !transferId) continue
+
+        // Filter for transfers where user is sender
         if (sender.toLowerCase() !== wallet.address.toLowerCase()) {
           continue
         }

@@ -11,7 +11,7 @@
  * 4. Earn relayer fee (typically 5-15 bps)
  */
 
-import { EventEmitter } from 'node:events'
+import { WorkerdEventEmitter } from '../../utils/event-emitter'
 import { expectValid, HexSchema } from '@jejunetwork/types'
 import {
   type Address,
@@ -125,7 +125,7 @@ const IS_DEPOSIT_FILLED_ABI = [
   },
 ] as const
 
-export class AcrossAdapter extends EventEmitter {
+export class AcrossAdapter extends WorkerdEventEmitter {
   private clients: Map<number, { public: PublicClient; wallet?: WalletClient }>
   private supportedChains: number[]
   private spokePoolAddresses: Record<number, Address>

@@ -37,13 +37,13 @@ import {
   type OAuth3StorageService,
 } from '../infrastructure/storage-integration.js'
 import { FarcasterProvider } from '../providers/farcaster.js'
+import type { TEEAttestation } from '@jejunetwork/types'
 import {
   AuthProvider,
   type JsonRecord,
   type LinkedProvider,
   type OAuth3Identity,
   type OAuth3Session,
-  type TEEAttestation,
   type VerifiableCredential,
 } from '../types.js'
 import {

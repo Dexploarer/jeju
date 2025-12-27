@@ -12,7 +12,7 @@
  * All integrations are fully permissionless - no API keys required.
  */
 
-import { EventEmitter } from 'node:events'
+import { WorkerdEventEmitter } from '../../utils/event-emitter'
 import type { Address, PublicClient, WalletClient } from 'viem'
 import { AcrossAdapter, type AcrossDeposit } from './across'
 import { type CowAuction, type CowOrder, CowProtocolSolver } from './cow'
@@ -43,7 +43,7 @@ export interface AggregatorConfig {
   isTestnet?: boolean
 }
 
-export class ExternalProtocolAggregator extends EventEmitter {
+export class ExternalProtocolAggregator extends WorkerdEventEmitter {
   private config: AggregatorConfig
   private clients: Map<number, { public: PublicClient; wallet?: WalletClient }>
 

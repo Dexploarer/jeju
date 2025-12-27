@@ -16,7 +16,6 @@ import {
   getCQL,
   type QueryParam,
   type QueryResult,
-  type RentalInfo,
 } from '@jejunetwork/db'
 import type { Address, Hex } from 'viem'
 import { z } from 'zod'
@@ -408,11 +407,13 @@ export class DatabaseService {
   }
 
   /**
-   * Get rental information for databases this node serves
+   * Get available rental plans
    */
-  async listRentals(): Promise<RentalInfo[]> {
-    // TODO: Implement when CQL client supports rental listing
-    return []
+  async listRentalPlans() {
+    if (!this.cqlClient) {
+      return []
+    }
+    return this.cqlClient.listPlans()
   }
 
   /**

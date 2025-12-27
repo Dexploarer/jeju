@@ -102,7 +102,12 @@ const STATUS_CONFIG: Record<ProposalStatus, { label: string; color: string }> =
       color: 'text-emerald-400 bg-emerald-500/20',
     },
     rejected: { label: 'Rejected', color: 'text-red-400 bg-red-500/20' },
-    vetoed: { label: 'Vetoed', color: 'text-rose-400 bg-rose-500/20' },
+    vetoed: { label: 'Vetoed', color: 'text-red-400 bg-red-500/20' },
+    executed: {
+      label: 'Executed',
+      color: 'text-emerald-400 bg-emerald-500/20',
+    },
+    cancelled: { label: 'Cancelled', color: 'text-slate-400 bg-slate-500/20' },
   }
 
 const SEVERITY_CONFIG: Record<
@@ -277,7 +282,7 @@ function ProposalView({
             <div className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-6">
               <div className="prose prose-invert prose-sm max-w-none">
                 {proposal.description.split('\n').map((line, i) => {
-                  const lineKey = `${line.slice(0, 20).replace(/\s+/g, '-')}-${i}`
+                  const lineKey = `desc-${i}-${line.substring(0, 20)}`
                   if (line.startsWith('## ')) {
                     return (
                       <h2

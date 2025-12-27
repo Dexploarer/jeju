@@ -22,6 +22,7 @@ import {
   type OAuth3Config,
   type OAuth3Event,
 } from '../sdk/client.js'
+import { TEEAttestationSchema } from '@jejunetwork/types'
 import type {
   AuthProvider,
   OAuth3Session,
@@ -47,22 +48,7 @@ const SessionCapabilitySchema = z.enum([
   SessionCapability.DELEGATE,
 ])
 
-// TEE provider schema
-const TEEProviderSchema = z.enum([
-  TEEProvider.DSTACK,
-  TEEProvider.PHALA,
-  TEEProvider.SIMULATED,
-])
-
-// TEE attestation schema
-const TEEAttestationSchema = z.object({
-  quote: HexSchema,
-  measurement: HexSchema,
-  reportData: HexSchema,
-  timestamp: z.number().int().positive(),
-  provider: TEEProviderSchema,
-  verified: z.boolean(),
-})
+// TEEAttestationSchema is imported from @jejunetwork/types
 
 // Full OAuth3Session schema with proper validation
 const OAuth3SessionSchema = z.object({

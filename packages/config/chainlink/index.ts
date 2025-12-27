@@ -251,7 +251,8 @@ export function getVRFConfig(chainId: number): VRFConfig {
   if (!config) {
     throw new Error(`Chainlink VRF not configured for chain ${chainId}`)
   }
-  return VRFChainConfigSchema.parse(config)
+  // JSON import doesn't preserve literal types, cast after validation
+  return config as VRFConfig
 }
 
 export function getAutomationConfig(chainId: number): AutomationConfig {
@@ -261,7 +262,8 @@ export function getAutomationConfig(chainId: number): AutomationConfig {
   if (!config) {
     throw new Error(`Chainlink Automation not configured for chain ${chainId}`)
   }
-  return AutomationChainConfigSchema.parse(config)
+  // JSON import doesn't preserve literal types, cast after validation
+  return config as AutomationConfig
 }
 
 export function getLinkTokenAddress(chainId: number): string {

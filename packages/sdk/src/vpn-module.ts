@@ -246,16 +246,20 @@ export function createVPNModule(
       })
 
       const endedSessionIds = new Set(
-        endedLogs
-          .map((log) => log.args.sessionId)
-          .filter((id): id is Hex => id !== undefined),
+        endedLogs.map((log) => log.args.sessionId),
       )
 
       // Return sessions that haven't ended
       for (const log of startedLogs) {
-        const { sessionId, user, node, timestamp } = log.args
+        const sessionId = log.args.sessionId
+        const user = log.args.user
+        const node = log.args.node
+        const timestamp = log.args.timestamp
         if (!sessionId || !user || !node || timestamp === undefined) continue
-        if (endedSessionIds.has(sessionId)) continue
+
+        if (endedSessionIds.has(sessionId)) {
+          continue
+        }
 
         sessions.push({
           sessionId,
@@ -296,19 +300,28 @@ export function createVPNModule(
         { bytesTransferred: bigint; timestamp: bigint }
       >()
       for (const log of endedLogs) {
-        const { sessionId, bytesTransferred, timestamp } = log.args
+        const sessionId = log.args.sessionId
+        const bytesTransferred = log.args.bytesTransferred
+        const timestamp = log.args.timestamp
         if (
-          sessionId &&
-          bytesTransferred !== undefined &&
-          timestamp !== undefined
-        ) {
-          endedMap.set(sessionId, { bytesTransferred, timestamp })
-        }
+          !sessionId ||
+          bytesTransferred === undefined ||
+          timestamp === undefined
+        )
+          continue
+
+        endedMap.set(sessionId, {
+          bytesTransferred,
+          timestamp,
+        })
       }
 
       // Build session history
       for (const log of startedLogs) {
-        const { sessionId, user, node, timestamp } = log.args
+        const sessionId = log.args.sessionId
+        const user = log.args.user
+        const node = log.args.node
+        const timestamp = log.args.timestamp
         if (!sessionId || !user || !node || timestamp === undefined) continue
 
         const endData = endedMap.get(sessionId)

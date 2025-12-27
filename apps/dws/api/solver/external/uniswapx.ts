@@ -11,7 +11,7 @@
  * 4. Filler earns spread between order price and execution
  */
 
-import { EventEmitter } from 'node:events'
+import { WorkerdEventEmitter } from '../../utils/event-emitter'
 import { expectValid } from '@jejunetwork/types'
 import type { Address, PublicClient, WalletClient } from 'viem'
 import { UniswapXOrdersResponseSchema } from '../../types'
@@ -168,7 +168,7 @@ const FILL_CALLBACK_ABI = [
 void EXECUTE_ABI
 void FILL_CALLBACK_ABI
 
-export class UniswapXAdapter extends EventEmitter {
+export class UniswapXAdapter extends WorkerdEventEmitter {
   private clients: Map<number, { public: PublicClient; wallet?: WalletClient }>
   private supportedChains: number[]
   private pollInterval: ReturnType<typeof setInterval> | null = null

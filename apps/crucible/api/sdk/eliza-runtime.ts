@@ -469,6 +469,7 @@ export class CrucibleAgentRuntime {
       }
 
       // Execute the Eliza action handler
+      // Cast through unknown as the mock objects don't fully implement Eliza types
       const handlerResult = await action.elizaHandler(
         this as unknown as Parameters<ElizaActionHandler>[0], // IAgentRuntime - we implement enough of the interface
         mockMessage as unknown as Parameters<ElizaActionHandler>[1],
@@ -485,9 +486,15 @@ export class CrucibleAgentRuntime {
         callbackResult,
       })
 
+      // Normalize the handler result for return
+      // Eliza handlers return void or ActionResult (string | object)
+      // Consider success if we got any non-null result
+      const success = handlerResult !== undefined && handlerResult !== null
+      const resultValue = callbackResult ?? { executed: success }
+
       return {
-        success: Boolean(handlerResult),
-        result: callbackResult ?? { executed: Boolean(handlerResult) },
+        success,
+        result: resultValue,
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err)

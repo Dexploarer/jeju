@@ -64,31 +64,6 @@ const AgentLogRowSchema = z.object({
   created_at: z.string(),
 })
 
-// Import Character type from @elizaos/core for runtime validation
-import type { Character } from '@elizaos/core'
-import type { JsonValue } from '@jejunetwork/types'
-
-// Character schema - validates basic JSON structure, cast to Character type
-const CharacterSchema = z
-  .object({
-    name: z.string(),
-    bio: z.union([z.string(), z.array(z.string())]),
-  })
-  .passthrough()
-
-// Metadata schema for log entries - matches JsonValue from @jejunetwork/types
-const JsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
-  z.union([
-    z.string(),
-    z.number(),
-    z.boolean(),
-    z.null(),
-    z.array(JsonValueSchema),
-    z.record(z.string(), JsonValueSchema),
-  ]),
-)
-const LogMetadataSchema = z.record(z.string(), JsonValueSchema)
-
 type AgentRow = z.infer<typeof AgentRowSchema>
 type AgentLogRow = z.infer<typeof AgentLogRowSchema>
 
@@ -106,10 +81,7 @@ export interface AgentWithConfig extends AgentConfig {
  * Convert database row to AgentConfig
  */
 function rowToAgentConfig(row: AgentRow): AgentConfig {
-  const parsedJson: unknown = JSON.parse(row.character)
-  // Validate basic structure and cast to Character type from @elizaos/core
-  CharacterSchema.parse(parsedJson)
-  const character = parsedJson as Character
+  const character = JSON.parse(row.character)
   return {
     id: row.id,
     userId: row.user_id,
@@ -133,11 +105,6 @@ function rowToAgentConfig(row: AgentRow): AgentConfig {
  * Convert database row to AgentLog
  */
 function rowToAgentLog(row: AgentLogRow): AgentLog {
-  let metadata: Record<string, JsonValue> | undefined
-  if (row.metadata) {
-    const parsedJson: unknown = JSON.parse(row.metadata)
-    metadata = LogMetadataSchema.parse(parsedJson)
-  }
   return {
     id: row.id,
     agentId: row.agent_id,
@@ -147,7 +114,7 @@ function rowToAgentLog(row: AgentLogRow): AgentLog {
     prompt: row.prompt ?? undefined,
     completion: row.completion ?? undefined,
     thinking: row.thinking ?? undefined,
-    metadata,
+    metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
     createdAt: new Date(row.created_at),
   }
 }
@@ -270,21 +237,16 @@ export class AgentService {
     if (!agent) return null
 
     const character = agent.character
-    const adjectives = character.adjectives ?? []
-    const topics = character.topics ?? []
-    const messageExamples = character.messageExamples ?? []
-
     return {
       ...agent,
       systemPrompt: character.system,
-      personality: adjectives.length > 0 ? adjectives.join(', ') : undefined,
-      tradingStrategy: topics.find((t) => t.toLowerCase().includes('trading')),
-      messageExamples:
-        messageExamples.length > 0
-          ? messageExamples
-              .map((e) => e[0]?.content?.text)
-              .filter((text): text is string => typeof text === 'string')
-          : undefined,
+      personality: character.adjectives?.join(', '),
+      tradingStrategy: character.topics?.find((t: string) =>
+        t.toLowerCase().includes('trading'),
+      ),
+      messageExamples: character.messageExamples?.map(
+        (e: { content: { text?: string } }[]) => e[0].content.text ?? '',
+      ),
     }
   }
 
@@ -392,12 +354,12 @@ export class AgentService {
       if (updates.personality !== undefined) {
         character.adjectives = updates.personality
           .split(',')
-          .map((a) => a.trim())
+          .map((a: string) => a.trim())
       }
       if (updates.tradingStrategy !== undefined) {
         const existingTopics = character.topics ?? []
         const topics = existingTopics.filter(
-          (t) => !t.toLowerCase().includes('trading'),
+          (t: string) => !t.toLowerCase().includes('trading'),
         )
         topics.push(updates.tradingStrategy)
         character.topics = topics
@@ -548,9 +510,9 @@ export class AgentService {
       message: `Deducted ${amount} points: ${reason}`,
       metadata: {
         reason,
-        relatedId: relatedId ?? null,
         amount,
-        balanceAfter: newBalance,
+        balanceAfter: Number(newBalance),
+        ...(relatedId && { relatedId }),
       },
     })
 

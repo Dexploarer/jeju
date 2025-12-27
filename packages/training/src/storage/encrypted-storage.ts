@@ -168,17 +168,13 @@ export class EncryptedTrajectoryStorage {
     if (!this.encryptionProvider) {
       // Fall back to unencrypted storage in development
       const dataHash = hashString(data)
-      const firstCondition = policy.conditions[0]
-      if (!firstCondition) {
-        throw new Error('No access control conditions provided')
-      }
       return {
         ciphertext: Buffer.from(data).toString('base64'),
         dataHash,
         accessControlConditions: policy.conditions,
         accessControlConditionType: 'unified',
         encryptedSymmetricKey: 'unencrypted',
-        chain: firstCondition.chainId,
+        chain: policy.conditions[0]?.chainId?.toString(),
       }
     }
 
@@ -198,18 +194,13 @@ export class EncryptedTrajectoryStorage {
 
     const dataHash = hashString(data)
 
-    const chainCondition = policy.conditions[0]
-    if (!chainCondition) {
-      throw new Error('No access control conditions provided')
-    }
-
     return {
       ciphertext: result.encryptedPayload,
       dataHash,
       accessControlConditions: policy.conditions,
       accessControlConditionType: 'unified',
       encryptedSymmetricKey: result.id,
-      chain: chainCondition.chainId,
+      chain: policy.conditions[0]?.chainId?.toString(),
     }
   }
 

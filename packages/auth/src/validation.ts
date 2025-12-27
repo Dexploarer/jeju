@@ -16,9 +16,10 @@ export {
   isHex,
   isValidAddress as isAddress,
   type JsonValue,
+  TEEAttestationSchema,
 } from '@jejunetwork/types'
 
-import { AddressSchema, HexSchema } from '@jejunetwork/types'
+import { AddressSchema, HexSchema, TEEAttestationSchema } from '@jejunetwork/types'
 
 export const Bytes32Schema = z
   .string()
@@ -40,14 +41,7 @@ export const OAuth3ConfigSchema = z.object({
 
 export type ValidatedOAuth3Config = z.infer<typeof OAuth3ConfigSchema>
 
-export const TEEAttestationSchema = z.object({
-  quote: HexSchema,
-  measurement: HexSchema,
-  reportData: HexSchema,
-  timestamp: z.number().int().positive(),
-  provider: z.nativeEnum(TEEProvider),
-  verified: z.boolean(),
-})
+// TEEAttestationSchema is imported from @jejunetwork/types
 
 export const OAuth3SessionSchema = z.object({
   sessionId: HexSchema,
@@ -57,7 +51,8 @@ export const OAuth3SessionSchema = z.object({
   capabilities: z.array(z.nativeEnum(SessionCapability)),
   /** Public key for verifying signatures - the signing key stays in the TEE */
   signingPublicKey: HexSchema,
-  attestation: TEEAttestationSchema,
+  /** Optional TEE attestation for the session - required for secure sessions */
+  attestation: TEEAttestationSchema.optional(),
 })
 
 export const CredentialSubjectSchema = z.object({

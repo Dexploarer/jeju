@@ -57,11 +57,10 @@ export class JudgePromptBuilder {
   ): { system: string; user: string } {
     const opts = { ...DEFAULT_OPTIONS, ...options }
 
-    const firstTrajectory = trajectories[0]
-    if (!firstTrajectory) {
-      throw new Error('No trajectories provided for comparison prompt')
+    if (trajectories.length === 0) {
+      throw new Error('At least one trajectory is required')
     }
-    const archetype = firstTrajectory.archetype ?? 'default'
+    const archetype = trajectories[0]?.archetype ?? 'default'
     const rubric = getArchetypeRubric(archetype)
     const priorityMetrics = getArchetypePriorityMetrics(archetype)
 
