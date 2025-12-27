@@ -21,7 +21,6 @@ import {
   getServicesConfig,
   getServiceUrl,
 } from '@jejunetwork/config'
-import { config as crucibleConfig, configureCrucible } from './config'
 import type { JsonObject } from '@jejunetwork/types'
 import { isHexString, isValidAddress } from '@jejunetwork/types'
 import { Elysia } from 'elysia'
@@ -39,6 +38,7 @@ import { BotInitializer } from './bots/initializer'
 import type { TradingBot } from './bots/trading-bot'
 import { characters, getCharacter, listCharacters } from './characters'
 import { checkDWSHealth } from './client/dws'
+import { configureCrucible, config as crucibleConfig } from './config'
 import { cronRoutes } from './cron'
 import { banCheckMiddleware } from './middleware/ban-check'
 import {
@@ -323,7 +323,8 @@ const config: CrucibleConfig = {
       storageApi: servicesConfig.storage.api,
       ipfsGateway: servicesConfig.storage.ipfsGateway,
       indexerGraphql: servicesConfig.indexer.graphql,
-eqliteEndpoint: crucibleConfig.eqliteEndpoint ?? servicesConfig.eqlite.blockProducer,
+      eqliteEndpoint:
+        crucibleConfig.eqliteEndpoint ?? servicesConfig.eqlite.blockProducer,
       dexCacheUrl: crucibleConfig.dexCacheUrl,
     }
   })(),
@@ -573,18 +574,22 @@ app.onAfterHandle(({ set }) => {
 // Global error handler - prevents stack trace leakage in production
 app.onError(({ error, set }) => {
   // Log full error for debugging
-  log.error('Unhandled error', {
-    message: error.message,
-    name: error.name,
-    stack: NETWORK === 'localnet' ? error.stack : undefined,
-  })
+  const errorObj = error instanceof Error ? error : new Error(String(error))
+  const errorLog: Record<string, string> = {
+    message: errorObj.message,
+    name: errorObj.name,
+  }
+  if (NETWORK === 'localnet' && errorObj.stack) {
+    errorLog.stack = errorObj.stack
+  }
+  log.error('Unhandled error', errorLog)
 
   // Return sanitized error to client
   set.status = 500
   return {
     error: 'Internal server error',
     // Only include message in localnet for debugging
-    message: NETWORK === 'localnet' ? error.message : undefined,
+    message: NETWORK === 'localnet' ? errorObj.message : undefined,
   }
 })
 
@@ -1377,7 +1382,7 @@ app.get('/api/v1/search/agents', async ({ query, set }) => {
 
 const port = crucibleConfig.apiPort
 if (Number.isNaN(port) || port <= 0 || port > 65535) {
-  throw new Error(`Invalid PORT: ${portStr}. Must be a valid port number`)
+  throw new Error(`Invalid PORT: ${port}. Must be a valid port number`)
 }
 
 // Mask wallet address in logs (show first 6 and last 4 chars)
@@ -1395,7 +1400,7 @@ configureCrucible({
   network: getCurrentNetwork(),
   apiKey: getEnvVar('API_KEY'),
   apiPort: getEnvNumber('API_PORT'),
-  requireAuth: getEnvVar('REQUIRE_AUTH'),
+  requireAuth: getEnvVar('REQUIRE_AUTH') === 'true',
   rateLimitMaxRequests: getEnvNumber('RATE_LIMIT_MAX_REQUESTS'),
   corsAllowedOrigins: getEnvVar('CORS_ALLOWED_ORIGINS'),
   privateKey: getEnvVar('PRIVATE_KEY'),
@@ -1403,9 +1408,9 @@ configureCrucible({
   computeMarketplaceUrl: getEnvVar('COMPUTE_MARKETPLACE_URL'),
   eqliteEndpoint: getEnvVar('EQLITE_ENDPOINT'),
   dexCacheUrl: getEnvVar('DEX_CACHE_URL'),
-  botsEnabled: getEnvVar('BOTS_ENABLED'),
-  autonomousEnabled: getEnvVar('AUTONOMOUS_ENABLED'),
-  enableBuiltinCharacters: getEnvVar('ENABLE_BUILTIN_CHARACTERS'),
+  botsEnabled: getEnvVar('BOTS_ENABLED') !== 'false',
+  autonomousEnabled: getEnvVar('AUTONOMOUS_ENABLED') === 'true',
+  enableBuiltinCharacters: getEnvVar('ENABLE_BUILTIN_CHARACTERS') !== 'false',
   defaultTickIntervalMs: getEnvNumber('TICK_INTERVAL_MS'),
   maxConcurrentAgents: getEnvNumber('MAX_CONCURRENT_AGENTS'),
   farcasterHubUrl: getEnvVar('FARCASTER_HUB_URL'),

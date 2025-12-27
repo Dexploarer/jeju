@@ -379,7 +379,10 @@ export function createMCPRouter(_ctx: MCPContext = {}) {
             type: 'object',
             properties: {
               key: { type: 'string', description: 'Cache key' },
-              namespace: { type: 'string', description: 'Cache namespace (default: default)' },
+              namespace: {
+                type: 'string',
+                description: 'Cache namespace (default: default)',
+              },
             },
             required: ['key'],
           },
@@ -393,7 +396,10 @@ export function createMCPRouter(_ctx: MCPContext = {}) {
               key: { type: 'string', description: 'Cache key' },
               value: { type: 'string', description: 'Value to store' },
               ttl: { type: 'number', description: 'TTL in seconds' },
-              namespace: { type: 'string', description: 'Cache namespace (default: default)' },
+              namespace: {
+                type: 'string',
+                description: 'Cache namespace (default: default)',
+              },
             },
             required: ['key', 'value'],
           },
@@ -404,8 +410,15 @@ export function createMCPRouter(_ctx: MCPContext = {}) {
           inputSchema: {
             type: 'object',
             properties: {
-              keys: { type: 'array', items: { type: 'string' }, description: 'Keys to delete' },
-              namespace: { type: 'string', description: 'Cache namespace (default: default)' },
+              keys: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Keys to delete',
+              },
+              namespace: {
+                type: 'string',
+                description: 'Cache namespace (default: default)',
+              },
             },
             required: ['keys'],
           },
@@ -421,8 +434,14 @@ export function createMCPRouter(_ctx: MCPContext = {}) {
           inputSchema: {
             type: 'object',
             properties: {
-              pattern: { type: 'string', description: 'Key pattern (default: *)' },
-              namespace: { type: 'string', description: 'Cache namespace (default: default)' },
+              pattern: {
+                type: 'string',
+                description: 'Key pattern (default: *)',
+              },
+              namespace: {
+                type: 'string',
+                description: 'Cache namespace (default: default)',
+              },
             },
           },
         },
@@ -664,7 +683,8 @@ export function createMCPRouter(_ctx: MCPContext = {}) {
 
           case 'dws_cache_get': {
             const key = getString(body.arguments, 'key')
-            const namespace = getOptionalString(body.arguments, 'namespace') ?? 'default'
+            const namespace =
+              getOptionalString(body.arguments, 'namespace') ?? 'default'
             const params = new URLSearchParams({ key, namespace })
             const response = await fetch(`${baseUrl}/cache/get?${params}`)
             const result = await response.json()
@@ -675,7 +695,8 @@ export function createMCPRouter(_ctx: MCPContext = {}) {
             const key = getString(body.arguments, 'key')
             const value = getString(body.arguments, 'value')
             const ttl = body.arguments.ttl as number | undefined
-            const namespace = getOptionalString(body.arguments, 'namespace') ?? 'default'
+            const namespace =
+              getOptionalString(body.arguments, 'namespace') ?? 'default'
             const response = await fetch(`${baseUrl}/cache/set`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -686,8 +707,15 @@ export function createMCPRouter(_ctx: MCPContext = {}) {
           }
 
           case 'dws_cache_del': {
-            const keys = body.arguments.keys as string[]
-            const namespace = getOptionalString(body.arguments, 'namespace') ?? 'default'
+            const keysValue = body.arguments.keys
+            if (!Array.isArray(keysValue)) {
+              throw new Error('keys must be an array')
+            }
+            const keys = keysValue.filter(
+              (k): k is string => typeof k === 'string',
+            )
+            const namespace =
+              getOptionalString(body.arguments, 'namespace') ?? 'default'
             const response = await fetch(`${baseUrl}/cache/del`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -705,7 +733,8 @@ export function createMCPRouter(_ctx: MCPContext = {}) {
 
           case 'dws_cache_keys': {
             const pattern = getOptionalString(body.arguments, 'pattern') ?? '*'
-            const namespace = getOptionalString(body.arguments, 'namespace') ?? 'default'
+            const namespace =
+              getOptionalString(body.arguments, 'namespace') ?? 'default'
             const params = new URLSearchParams({ pattern, namespace })
             const response = await fetch(`${baseUrl}/cache/keys?${params}`)
             const result = await response.json()

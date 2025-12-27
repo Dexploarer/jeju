@@ -64,7 +64,8 @@ function InfoRow({ label, value, copyable = false }: InfoRowProps) {
     setTimeout(() => setCopied(false), 2000)
   }, [value])
 
-  const displayValue = value.length > 20 ? `${value.slice(0, 8)}...${value.slice(-6)}` : value
+  const displayValue =
+    value.length > 20 ? `${value.slice(0, 8)}...${value.slice(-6)}` : value
 
   return (
     <div
@@ -75,7 +76,10 @@ function InfoRow({ label, value, copyable = false }: InfoRowProps) {
         {label}
       </span>
       <div className="flex items-center gap-2">
-        <span className="text-sm font-mono" style={{ color: 'var(--text-primary)' }}>
+        <span
+          className="text-sm font-mono"
+          style={{ color: 'var(--text-primary)' }}
+        >
           {displayValue}
         </span>
         {copyable && (
@@ -87,9 +91,15 @@ function InfoRow({ label, value, copyable = false }: InfoRowProps) {
             aria-label={copied ? 'Copied' : 'Copy to clipboard'}
           >
             {copied ? (
-              <Check className="w-4 h-4" style={{ color: 'var(--color-success)' }} />
+              <Check
+                className="w-4 h-4"
+                style={{ color: 'var(--color-success)' }}
+              />
             ) : (
-              <Copy className="w-4 h-4" style={{ color: 'var(--text-tertiary)' }} />
+              <Copy
+                className="w-4 h-4"
+                style={{ color: 'var(--text-tertiary)' }}
+              />
             )}
           </button>
         )}
@@ -100,7 +110,9 @@ function InfoRow({ label, value, copyable = false }: InfoRowProps) {
 
 export function SettingsTab({ dao }: SettingsTabProps) {
   const [visibility, setVisibility] = useState<DAOVisibility>(dao.visibility)
-  const [farcasterChannel, setFarcasterChannel] = useState(dao.farcasterChannel ?? '')
+  const [farcasterChannel, setFarcasterChannel] = useState(
+    dao.farcasterChannel ?? '',
+  )
   const [websiteUrl, setWebsiteUrl] = useState(dao.websiteUrl ?? '')
   const [discordUrl, setDiscordUrl] = useState(dao.discordUrl ?? '')
   const [twitterHandle, setTwitterHandle] = useState(dao.twitterHandle ?? '')
@@ -118,7 +130,15 @@ export function SettingsTab({ dao }: SettingsTabProps) {
       twitterHandle !== (dao.twitterHandle ?? '') ||
       githubOrg !== (dao.githubOrg ?? '')
     )
-  }, [visibility, farcasterChannel, websiteUrl, discordUrl, twitterHandle, githubOrg, dao])
+  }, [
+    visibility,
+    farcasterChannel,
+    websiteUrl,
+    discordUrl,
+    twitterHandle,
+    githubOrg,
+    dao,
+  ])
 
   const handleSave = useCallback(() => {
     setSaveError(null)
@@ -133,11 +153,21 @@ export function SettingsTab({ dao }: SettingsTabProps) {
       },
       {
         onError: (err) => {
-          setSaveError(err instanceof Error ? err.message : 'Failed to save settings')
+          setSaveError(
+            err instanceof Error ? err.message : 'Failed to save settings',
+          )
         },
-      }
+      },
     )
-  }, [visibility, farcasterChannel, websiteUrl, discordUrl, twitterHandle, githubOrg, updateDAO])
+  }, [
+    visibility,
+    farcasterChannel,
+    websiteUrl,
+    discordUrl,
+    twitterHandle,
+    githubOrg,
+    updateDAO,
+  ])
 
   const visibilityOptions: {
     value: DAOVisibility
@@ -177,12 +207,21 @@ export function SettingsTab({ dao }: SettingsTabProps) {
           }}
         >
           <div className="flex items-start gap-3">
-            <Shield className="w-5 h-5 shrink-0 mt-0.5" style={{ color: 'var(--color-warning)' }} />
+            <Shield
+              className="w-5 h-5 shrink-0 mt-0.5"
+              style={{ color: 'var(--color-warning)' }}
+            />
             <div>
-              <h4 className="font-medium" style={{ color: 'var(--color-warning)' }}>
+              <h4
+                className="font-medium"
+                style={{ color: 'var(--color-warning)' }}
+              >
                 Network DAO
               </h4>
-              <p className="text-sm mt-1" style={{ color: 'rgba(245, 158, 11, 0.8)' }}>
+              <p
+                className="text-sm mt-1"
+                style={{ color: 'rgba(245, 158, 11, 0.8)' }}
+              >
                 Network-level DAO with elevated permissions. Changes may affect
                 the entire Jeju Network.
               </p>
@@ -274,7 +313,9 @@ export function SettingsTab({ dao }: SettingsTabProps) {
                   <Icon
                     className="w-5 h-5"
                     style={{
-                      color: isSelected ? 'var(--color-primary)' : 'var(--text-secondary)',
+                      color: isSelected
+                        ? 'var(--color-primary)'
+                        : 'var(--text-secondary)',
                     }}
                     aria-hidden="true"
                   />
@@ -283,12 +324,17 @@ export function SettingsTab({ dao }: SettingsTabProps) {
                   <p
                     className="font-medium"
                     style={{
-                      color: isSelected ? 'var(--color-primary)' : 'var(--text-primary)',
+                      color: isSelected
+                        ? 'var(--color-primary)'
+                        : 'var(--text-primary)',
                     }}
                   >
                     {option.label}
                   </p>
-                  <p className="text-sm mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
+                  <p
+                    className="text-sm mt-0.5"
+                    style={{ color: 'var(--text-tertiary)' }}
+                  >
                     {option.description}
                   </p>
                 </div>
@@ -317,50 +363,87 @@ export function SettingsTab({ dao }: SettingsTabProps) {
         >
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <span className="block text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>
+              <span
+                className="block text-xs mb-1"
+                style={{ color: 'var(--text-tertiary)' }}
+              >
                 Min Quality Score
               </span>
-              <p className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+              <p
+                className="text-lg font-semibold"
+                style={{ color: 'var(--text-primary)' }}
+              >
                 {dao.governanceParams.minQualityScore}
               </p>
             </div>
             <div>
-              <span className="block text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>
+              <span
+                className="block text-xs mb-1"
+                style={{ color: 'var(--text-tertiary)' }}
+              >
                 Min Board Approvals
               </span>
-              <p className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+              <p
+                className="text-lg font-semibold"
+                style={{ color: 'var(--text-primary)' }}
+              >
                 {dao.governanceParams.minBoardApprovals}
               </p>
             </div>
             <div>
-              <span className="block text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>
+              <span
+                className="block text-xs mb-1"
+                style={{ color: 'var(--text-tertiary)' }}
+              >
                 Voting Period
               </span>
-              <p className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-                {Math.floor(dao.governanceParams.councilVotingPeriod / 86400)} days
+              <p
+                className="text-lg font-semibold"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                {Math.floor(dao.governanceParams.councilVotingPeriod / 86400)}{' '}
+                days
               </p>
             </div>
             <div>
-              <span className="block text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>
+              <span
+                className="block text-xs mb-1"
+                style={{ color: 'var(--text-tertiary)' }}
+              >
                 Grace Period
               </span>
-              <p className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+              <p
+                className="text-lg font-semibold"
+                style={{ color: 'var(--text-primary)' }}
+              >
                 {Math.floor(dao.governanceParams.gracePeriod / 86400)} days
               </p>
             </div>
             <div>
-              <span className="block text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>
+              <span
+                className="block text-xs mb-1"
+                style={{ color: 'var(--text-tertiary)' }}
+              >
                 Min Proposal Stake
               </span>
-              <p className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+              <p
+                className="text-lg font-semibold"
+                style={{ color: 'var(--text-primary)' }}
+              >
                 {dao.governanceParams.minProposalStake} ETH
               </p>
             </div>
             <div>
-              <span className="block text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>
+              <span
+                className="block text-xs mb-1"
+                style={{ color: 'var(--text-tertiary)' }}
+              >
                 Quorum
               </span>
-              <p className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+              <p
+                className="text-lg font-semibold"
+                style={{ color: 'var(--text-primary)' }}
+              >
                 {dao.governanceParams.quorumBps / 100}%
               </p>
             </div>
@@ -381,7 +464,8 @@ export function SettingsTab({ dao }: SettingsTabProps) {
                   : 'var(--text-tertiary)',
               }}
             >
-              CEO Veto: {dao.governanceParams.ceoVetoEnabled ? 'Enabled' : 'Disabled'}
+              CEO Veto:{' '}
+              {dao.governanceParams.ceoVetoEnabled ? 'Enabled' : 'Disabled'}
             </span>
             <span
               className="px-3 py-1.5 rounded-lg text-sm"
@@ -394,7 +478,10 @@ export function SettingsTab({ dao }: SettingsTabProps) {
                   : 'var(--text-tertiary)',
               }}
             >
-              Community Veto: {dao.governanceParams.communityVetoEnabled ? 'Enabled' : 'Disabled'}{' '}
+              Community Veto:{' '}
+              {dao.governanceParams.communityVetoEnabled
+                ? 'Enabled'
+                : 'Disabled'}{' '}
               ({dao.governanceParams.vetoThreshold}%)
             </span>
           </div>
@@ -403,11 +490,12 @@ export function SettingsTab({ dao }: SettingsTabProps) {
             className="pt-4 border-t"
             style={{ borderColor: 'var(--border)' }}
           >
-            <div className="flex items-start gap-2 text-sm" style={{ color: 'var(--text-tertiary)' }}>
+            <div
+              className="flex items-start gap-2 text-sm"
+              style={{ color: 'var(--text-tertiary)' }}
+            >
               <Info className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
-              <p>
-                Parameters require a parameter_change proposal to modify.
-              </p>
+              <p>Parameters require a parameter_change proposal to modify.</p>
             </div>
           </div>
         </div>
@@ -429,9 +517,15 @@ export function SettingsTab({ dao }: SettingsTabProps) {
                 className="w-10 h-10 rounded-lg flex items-center justify-center"
                 style={{ backgroundColor: 'rgba(139, 92, 246, 0.12)' }}
               >
-                <MessageSquare className="w-5 h-5" style={{ color: 'var(--color-secondary)' }} />
+                <MessageSquare
+                  className="w-5 h-5"
+                  style={{ color: 'var(--color-secondary)' }}
+                />
               </div>
-              <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
+              <p
+                className="font-medium"
+                style={{ color: 'var(--text-primary)' }}
+              >
                 Farcaster
               </p>
             </div>
@@ -458,9 +552,15 @@ export function SettingsTab({ dao }: SettingsTabProps) {
                 className="w-10 h-10 rounded-lg flex items-center justify-center"
                 style={{ backgroundColor: 'rgba(59, 130, 246, 0.12)' }}
               >
-                <Globe className="w-5 h-5" style={{ color: 'var(--color-info)' }} />
+                <Globe
+                  className="w-5 h-5"
+                  style={{ color: 'var(--color-info)' }}
+                />
               </div>
-              <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
+              <p
+                className="font-medium"
+                style={{ color: 'var(--text-primary)' }}
+              >
                 Website
               </p>
             </div>
@@ -489,7 +589,10 @@ export function SettingsTab({ dao }: SettingsTabProps) {
               >
                 <Users className="w-5 h-5" style={{ color: '#6366F1' }} />
               </div>
-              <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
+              <p
+                className="font-medium"
+                style={{ color: 'var(--text-primary)' }}
+              >
                 Discord
               </p>
             </div>
@@ -518,7 +621,10 @@ export function SettingsTab({ dao }: SettingsTabProps) {
               >
                 <Twitter className="w-5 h-5" style={{ color: '#0EA5E9' }} />
               </div>
-              <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
+              <p
+                className="font-medium"
+                style={{ color: 'var(--text-primary)' }}
+              >
                 Twitter / X
               </p>
             </div>
@@ -545,9 +651,15 @@ export function SettingsTab({ dao }: SettingsTabProps) {
                 className="w-10 h-10 rounded-lg flex items-center justify-center"
                 style={{ backgroundColor: 'var(--bg-secondary)' }}
               >
-                <GitBranch className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
+                <GitBranch
+                  className="w-5 h-5"
+                  style={{ color: 'var(--text-secondary)' }}
+                />
               </div>
-              <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
+              <p
+                className="font-medium"
+                style={{ color: 'var(--text-primary)' }}
+              >
                 GitHub
               </p>
             </div>
@@ -573,14 +685,23 @@ export function SettingsTab({ dao }: SettingsTabProps) {
           }}
         >
           <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" style={{ color: 'var(--color-error)' }} />
+            <AlertTriangle
+              className="w-5 h-5 shrink-0 mt-0.5"
+              style={{ color: 'var(--color-error)' }}
+            />
             <div>
-              <h4 className="font-medium" style={{ color: 'var(--color-error)' }}>
+              <h4
+                className="font-medium"
+                style={{ color: 'var(--color-error)' }}
+              >
                 Archive DAO
               </h4>
-              <p className="text-sm mt-1" style={{ color: 'rgba(239, 68, 68, 0.8)' }}>
-                Archiving disables governance and freezes the treasury. Requires CEO
-                approval. Reversal requires a network-level proposal.
+              <p
+                className="text-sm mt-1"
+                style={{ color: 'rgba(239, 68, 68, 0.8)' }}
+              >
+                Archiving disables governance and freezes the treasury. Requires
+                CEO approval. Reversal requires a network-level proposal.
               </p>
               <button
                 type="button"
@@ -614,7 +735,10 @@ export function SettingsTab({ dao }: SettingsTabProps) {
               border: '1px solid rgba(239, 68, 68, 0.3)',
             }}
           >
-            <AlertCircle className="w-4 h-4" style={{ color: 'var(--color-error)' }} />
+            <AlertCircle
+              className="w-4 h-4"
+              style={{ color: 'var(--color-error)' }}
+            />
             <span className="text-sm" style={{ color: 'var(--color-error)' }}>
               {saveError}
             </span>

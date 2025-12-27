@@ -108,7 +108,6 @@ export function Navigation() {
   return (
     <nav
       className="fixed left-0 top-0 bottom-0 w-64 bg-surface-950/95 backdrop-blur-lg border-r border-surface-800/50 flex flex-col z-30"
-      role="navigation"
       aria-label="Main navigation"
     >
       {/* Logo */}
@@ -140,10 +139,7 @@ export function Navigation() {
             aria-label="Search Factory"
             className="w-full pl-10 pr-12 py-2.5 bg-surface-900/80 border border-surface-800 rounded-xl text-sm text-surface-200 placeholder-surface-500 focus:outline-none focus:border-factory-500 focus:ring-2 focus:ring-factory-500/20 transition-all"
           />
-          <kbd
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-surface-500 bg-surface-800 px-1.5 py-0.5 rounded"
-            aria-hidden="true"
-          >
+          <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-surface-500 bg-surface-800 px-1.5 py-0.5 rounded">
             ⌘K
           </kbd>
         </div>
@@ -151,7 +147,7 @@ export function Navigation() {
 
       {/* Main Navigation */}
       <div className="flex-1 overflow-y-auto custom-scrollbar px-3 py-4">
-        <ul className="space-y-1" role="list">
+        <ul className="space-y-1">
           {navigation.map((item) => (
             <li key={item.name}>
               {isNavSection(item) ? (
@@ -187,7 +183,6 @@ export function Navigation() {
                         ? 'max-h-96 opacity-100'
                         : 'max-h-0 opacity-0',
                     )}
-                    role="list"
                   >
                     {item.children.map((child) => (
                       <li key={child.href}>
@@ -203,10 +198,7 @@ export function Navigation() {
                             isActive(child.href) ? 'page' : undefined
                           }
                         >
-                          <child.icon
-                            className="w-4 h-4"
-                            aria-hidden="true"
-                          />
+                          <child.icon className="w-4 h-4" aria-hidden="true" />
                           {child.name}
                         </Link>
                       </li>
@@ -235,7 +227,7 @@ export function Navigation() {
 
       {/* Bottom Navigation */}
       <div className="border-t border-surface-800/50 px-3 py-3">
-        <ul className="space-y-1" role="list">
+        <ul className="space-y-1">
           {bottomNav.map((item) => (
             <li key={item.name}>
               <Link

@@ -14,8 +14,8 @@ import {
   CORE_PORTS,
   type ContractCategoryName,
   getContract,
-  getEQLiteBlockProducerUrl,
   getCurrentNetwork,
+  getEQLiteBlockProducerUrl,
   getRpcUrl,
 } from '@jejunetwork/config'
 import { Elysia } from 'elysia'
@@ -859,12 +859,14 @@ const AGENTS_DB_ID =
     ? process.env.AGENTS_DATABASE_ID
     : undefined) ??
   'dws-agents'
-initRegistry({ eqliteUrl: EQLITE_URL, databaseId: AGENTS_DB_ID }).catch((err) => {
-  console.warn(
-    '[DWS] Agent registry init failed (EQLite may not be running):',
-    err.message,
-  )
-})
+initRegistry({ eqliteUrl: EQLITE_URL, databaseId: AGENTS_DB_ID }).catch(
+  (err) => {
+    console.warn(
+      '[DWS] Agent registry init failed (EQLite may not be running):',
+      err.message,
+    )
+  },
+)
 
 // Initialize agent executor with workerd
 const workerdExecutor = new WorkerdExecutor(backendManager)
@@ -919,34 +921,31 @@ function shutdown(signal: string) {
 
 if (import.meta.main) {
   // Configure route modules with injected config
-  const {
-    configureCDNRouterConfig,
-  } = await import('./routes/cdn')
-  const {
-    configureOAuth3RouterConfig,
-  } = await import('./routes/oauth3')
-  const {
-    configureProxyRouterConfig,
-  } = await import('./routes/proxy')
-  const {
-    configureDNSRouterConfig,
-  } = await import('../dns/routes')
-  const {
-    configureX402PaymentsConfig,
-  } = await import('../rpc/services/x402-payments')
+  const { configureCDNRouterConfig } = await import('./routes/cdn')
+  const { configureOAuth3RouterConfig } = await import('./routes/oauth3')
+  const { configureProxyRouterConfig } = await import('./routes/proxy')
+  const { configureDNSRouterConfig } = await import('../dns/routes')
+  const { configureX402PaymentsConfig } = await import(
+    '../rpc/services/x402-payments'
+  )
 
   // Inject configs from serverConfig and process.env (for backward compatibility)
   configureCDNRouterConfig({
     jnsRegistryAddress:
-      typeof process !== 'undefined' ? process.env.JNS_REGISTRY_ADDRESS : undefined,
+      typeof process !== 'undefined'
+        ? process.env.JNS_REGISTRY_ADDRESS
+        : undefined,
     jnsResolverAddress:
-      typeof process !== 'undefined' ? process.env.JNS_RESOLVER_ADDRESS : undefined,
-    rpcUrl:
-      typeof process !== 'undefined' ? process.env.RPC_URL : undefined,
+      typeof process !== 'undefined'
+        ? process.env.JNS_RESOLVER_ADDRESS
+        : undefined,
+    rpcUrl: typeof process !== 'undefined' ? process.env.RPC_URL : undefined,
     ipfsGatewayUrl:
       typeof process !== 'undefined' ? process.env.IPFS_GATEWAY_URL : undefined,
     arweaveGatewayUrl:
-      typeof process !== 'undefined' ? process.env.ARWEAVE_GATEWAY_URL : undefined,
+      typeof process !== 'undefined'
+        ? process.env.ARWEAVE_GATEWAY_URL
+        : undefined,
     jnsDomain:
       typeof process !== 'undefined' ? process.env.JNS_DOMAIN : undefined,
     cacheMb:
@@ -967,8 +966,7 @@ if (import.meta.main) {
         : undefined,
     jejuAppsDir:
       typeof process !== 'undefined' ? process.env.JEJU_APPS_DIR : undefined,
-    nodeEnv:
-      typeof process !== 'undefined' ? process.env.NODE_ENV : undefined,
+    nodeEnv: typeof process !== 'undefined' ? process.env.NODE_ENV : undefined,
   })
 
   configureOAuth3RouterConfig({
@@ -980,7 +978,9 @@ if (import.meta.main) {
     indexerUrl:
       typeof process !== 'undefined' ? process.env.INDEXER_URL : undefined,
     indexerGraphqlUrl:
-      typeof process !== 'undefined' ? process.env.INDEXER_GRAPHQL_URL : undefined,
+      typeof process !== 'undefined'
+        ? process.env.INDEXER_GRAPHQL_URL
+        : undefined,
     monitoringUrl:
       typeof process !== 'undefined' ? process.env.MONITORING_URL : undefined,
     prometheusUrl:
@@ -999,15 +999,23 @@ if (import.meta.main) {
     cfDomain:
       typeof process !== 'undefined' ? process.env.CF_DOMAIN : undefined,
     awsAccessKeyId:
-      typeof process !== 'undefined' ? process.env.AWS_ACCESS_KEY_ID : undefined,
+      typeof process !== 'undefined'
+        ? process.env.AWS_ACCESS_KEY_ID
+        : undefined,
     awsSecretAccessKey:
-      typeof process !== 'undefined' ? process.env.AWS_SECRET_ACCESS_KEY : undefined,
+      typeof process !== 'undefined'
+        ? process.env.AWS_SECRET_ACCESS_KEY
+        : undefined,
     awsHostedZoneId:
-      typeof process !== 'undefined' ? process.env.AWS_HOSTED_ZONE_ID : undefined,
+      typeof process !== 'undefined'
+        ? process.env.AWS_HOSTED_ZONE_ID
+        : undefined,
     awsDomain:
       typeof process !== 'undefined' ? process.env.AWS_DOMAIN : undefined,
     dnsMirrorDomain:
-      typeof process !== 'undefined' ? process.env.DNS_MIRROR_DOMAIN : undefined,
+      typeof process !== 'undefined'
+        ? process.env.DNS_MIRROR_DOMAIN
+        : undefined,
     dnsSyncInterval:
       typeof process !== 'undefined'
         ? parseInt(process.env.DNS_SYNC_INTERVAL || '300', 10)

@@ -14,7 +14,8 @@ import { cors } from '@elysiajs/cors'
 import { Elysia, t } from 'elysia'
 
 const PORT = parseInt(process.env.EQLITE_PORT ?? process.env.PORT ?? '4661', 10)
-const DATA_DIR = process.env.EQLITE_DATA_DIR ?? join(process.cwd(), '.data/eqlite')
+const DATA_DIR =
+  process.env.EQLITE_DATA_DIR ?? join(process.cwd(), '.data/eqlite')
 
 // Ensure data directory exists
 if (!existsSync(DATA_DIR)) {
@@ -70,13 +71,19 @@ function executeQuery(body: QueryBody): {
   const sql = body.sql.trim()
   const params = body.params ?? []
 
-  // Determine if this is a read or write query
+  // Determine if this is a read query or a write query that returns rows
   const isRead = /^(SELECT|PRAGMA|EXPLAIN)/i.test(sql)
+  const hasReturning = /RETURNING/i.test(sql)
 
-  if (isRead) {
+  if (isRead || hasReturning) {
     const stmt = db.prepare(sql)
     const rows = stmt.all(...params) as Record<string, unknown>[]
     const columns = rows.length > 0 ? Object.keys(rows[0]) : []
+
+    // For INSERT/UPDATE/DELETE with RETURNING, also increment block height
+    if (hasReturning && !isRead) {
+      blockHeight++
+    }
 
     return {
       success: true,
@@ -93,7 +100,7 @@ function executeQuery(body: QueryBody): {
 
     // Generate a pseudo-txHash for dev mode compatibility
     const pseudoTxHash = `0x${blockHeight.toString(16).padStart(64, '0')}`
-    
+
     return {
       success: true,
       rowsAffected: result.changes,
@@ -299,7 +306,9 @@ const app = new Elysia()
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`EQLite Server (SQLite-compat) running on http://localhost:${PORT}`)
+  console.log(
+    `EQLite Server (SQLite-compat) running on http://localhost:${PORT}`,
+  )
   console.log(`  Data directory: ${DATA_DIR}`)
   console.log(`  Mode: local development`)
   console.log(`  Health: http://localhost:${PORT}/health`)

@@ -2,7 +2,7 @@ import { DataSource, DefaultNamingStrategy } from 'typeorm'
 import { config } from '../config'
 import * as models from '../model'
 
-function requireEnv(name: string): string {
+function _requireEnv(name: string): string {
   const value = process.env[name]
   if (!value) throw new Error(`Missing required environment variable: ${name}`)
   return value
@@ -11,7 +11,7 @@ function requireEnv(name: string): string {
 const IS_PRODUCTION = config.isProduction
 const IS_EQLITE_ONLY_MODE = config.indexerMode === 'eqlite-only'
 
-function parsePort(portStr: string, defaultPort: number): number {
+function _parsePort(portStr: string, defaultPort: number): number {
   const port = parseInt(portStr, 10)
   if (Number.isNaN(port) || port <= 0 || port > 65535) {
     return defaultPort
@@ -19,7 +19,7 @@ function parsePort(portStr: string, defaultPort: number): number {
   return port
 }
 
-function parsePositiveInt(
+function _parsePositiveInt(
   value: string,
   defaultValue: number,
   name: string,

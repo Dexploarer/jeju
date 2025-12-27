@@ -16,10 +16,7 @@ import { z } from 'zod'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT_DIR = join(__dirname, '../../../..')
-const HELM_DIR = join(
-  ROOT_DIR,
-  'packages/deployment/kubernetes/helm/eqlite',
-)
+const HELM_DIR = join(ROOT_DIR, 'packages/deployment/kubernetes/helm/eqlite')
 
 const NetworkSchema = z.enum(['localnet', 'testnet', 'mainnet'])
 type Network = z.infer<typeof NetworkSchema>
@@ -142,7 +139,9 @@ async function main(): Promise<void> {
   console.log('='.repeat(60))
   console.log(`  Network: ${network}`)
   console.log('')
-  console.log('  Note: EQLite providers register in the unified ComputeRegistry')
+  console.log(
+    '  Note: EQLite providers register in the unified ComputeRegistry',
+  )
   console.log('  with serviceType = keccak256("database")')
   console.log('='.repeat(60))
 

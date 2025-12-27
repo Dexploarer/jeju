@@ -17,12 +17,12 @@ export default function AgentDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20" role="status">
+      <output className="flex flex-col items-center justify-center py-20">
         <LoadingSpinner size="lg" />
         <p className="mt-4 text-sm" style={{ color: 'var(--text-tertiary)' }}>
           Loading agent
         </p>
-      </div>
+      </output>
     )
   }
 
@@ -39,7 +39,8 @@ export default function AgentDetailPage() {
           Agent not found
         </h1>
         <p className="mb-6" style={{ color: 'var(--text-secondary)' }}>
-          {error?.message ?? 'The agent may have been removed or the ID is invalid.'}
+          {error?.message ??
+            'The agent may have been removed or the ID is invalid.'}
         </p>
         <Link to="/agents" className="btn-secondary">
           ← Back to Agents
@@ -67,11 +68,7 @@ export default function AgentDetailPage() {
       {/* Header */}
       <header className="flex flex-col sm:flex-row sm:items-start justify-between gap-6 mb-8">
         <div className="flex items-center gap-4">
-          <div
-            className="text-5xl"
-            role="img"
-            aria-label={botType.label}
-          >
+          <div className="text-5xl" role="img" aria-label={botType.label}>
             {botType.icon}
           </div>
           <div>
@@ -126,7 +123,10 @@ export default function AgentDetailPage() {
             </div>
             <div className="flex justify-between items-center">
               <dt style={{ color: 'var(--text-secondary)' }}>Last Active</dt>
-              <dd className="font-medium" style={{ color: 'var(--text-primary)' }}>
+              <dd
+                className="font-medium"
+                style={{ color: 'var(--text-primary)' }}
+              >
                 {agent.lastExecutedAt > 0
                   ? formatDistanceToNow(agent.lastExecutedAt)
                   : 'Never'}
@@ -134,7 +134,10 @@ export default function AgentDetailPage() {
             </div>
             <div className="flex justify-between items-center">
               <dt style={{ color: 'var(--text-secondary)' }}>Registered</dt>
-              <dd className="font-medium" style={{ color: 'var(--text-primary)' }}>
+              <dd
+                className="font-medium"
+                style={{ color: 'var(--text-primary)' }}
+              >
                 {formatDistanceToNow(agent.registeredAt)}
               </dd>
             </div>
@@ -155,7 +158,10 @@ export default function AgentDetailPage() {
               className="p-4 rounded-xl"
               style={{ backgroundColor: 'var(--bg-secondary)' }}
             >
-              <p className="text-sm mb-1" style={{ color: 'var(--text-tertiary)' }}>
+              <p
+                className="text-sm mb-1"
+                style={{ color: 'var(--text-tertiary)' }}
+              >
                 Balance
               </p>
               <p

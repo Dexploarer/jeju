@@ -27,9 +27,11 @@ const columnClasses = {
 
 export function StatsGrid({ stats, columns = 4 }: StatsGridProps) {
   return (
-    <div
-      className={clsx('grid gap-3 sm:gap-4 mb-6 sm:mb-8', columnClasses[columns])}
-      role="region"
+    <section
+      className={clsx(
+        'grid gap-3 sm:gap-4 mb-6 sm:mb-8',
+        columnClasses[columns],
+      )}
       aria-label="Statistics"
     >
       {stats.map((stat, index) => (
@@ -61,6 +63,6 @@ export function StatsGrid({ stats, columns = 4 }: StatsGridProps) {
           <p className="text-surface-500 text-sm mt-1">{stat.label}</p>
         </div>
       ))}
-    </div>
+    </section>
   )
 }

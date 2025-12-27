@@ -25,12 +25,35 @@ export function ContainersPage() {
   })
   const { stats, isLoading: statsLoading } = useContainerStats()
 
-  const statsData = useMemo(() => [
-    { label: 'Total Images', value: stats.totalImages.toString(), color: 'text-factory-400', loading: statsLoading },
-    { label: 'Running', value: stats.runningContainers.toString(), color: 'text-success-400', loading: statsLoading },
-    { label: 'Total Pulls', value: formatCompactNumber(stats.totalPulls), color: 'text-info-400', loading: statsLoading },
-    { label: 'Storage', value: stats.totalStorage, color: 'text-accent-400', loading: statsLoading },
-  ], [stats, statsLoading])
+  const statsData = useMemo(
+    () => [
+      {
+        label: 'Total Images',
+        value: stats.totalImages.toString(),
+        color: 'text-factory-400',
+        loading: statsLoading,
+      },
+      {
+        label: 'Running',
+        value: stats.runningContainers.toString(),
+        color: 'text-success-400',
+        loading: statsLoading,
+      },
+      {
+        label: 'Total Pulls',
+        value: formatCompactNumber(stats.totalPulls),
+        color: 'text-info-400',
+        loading: statsLoading,
+      },
+      {
+        label: 'Storage',
+        value: stats.totalStorage,
+        color: 'text-accent-400',
+        loading: statsLoading,
+      },
+    ],
+    [stats, statsLoading],
+  )
 
   return (
     <div className="page-container">
@@ -62,7 +85,11 @@ export function ContainersPage() {
         <EmptyState
           icon={Box}
           title="No container images found"
-          description={search ? 'Try a different search term' : 'Push an image to the registry'}
+          description={
+            search
+              ? 'Try a different search term'
+              : 'Push an image to the registry'
+          }
           actionLabel="Push Image"
           actionHref="/containers/push"
         />
@@ -78,9 +105,15 @@ export function ContainersPage() {
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
-                    <h3 className="font-semibold text-surface-100">{image.name}</h3>
-                    <span className="text-surface-500 text-sm">:{image.tag}</span>
-                    {image.isPublic && <span className="badge badge-info">Public</span>}
+                    <h3 className="font-semibold text-surface-100">
+                      {image.name}
+                    </h3>
+                    <span className="text-surface-500 text-sm">
+                      :{image.tag}
+                    </span>
+                    {image.isPublic && (
+                      <span className="badge badge-info">Public</span>
+                    )}
                   </div>
                   <p className="text-surface-400 text-sm line-clamp-2 mb-3">
                     {image.description ?? 'No description provided'}
@@ -94,7 +127,9 @@ export function ContainersPage() {
                       <Download className="w-4 h-4" aria-hidden="true" />
                       {formatCompactNumber(image.pulls)} pulls
                     </span>
-                    <span className="font-mono text-xs">{image.digest.slice(0, 12)}...</span>
+                    <span className="font-mono text-xs">
+                      {image.digest.slice(0, 12)}...
+                    </span>
                   </div>
                 </div>
                 <div className="text-left sm:text-right flex-shrink-0">

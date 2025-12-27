@@ -63,9 +63,8 @@ export function SearchBar({
 
         {/* Filter chips */}
         {filters && filters.length > 0 && onFilterChange && (
-          <div
-            className="flex gap-2 flex-wrap"
-            role="group"
+          <fieldset
+            className="flex gap-2 flex-wrap border-0"
             aria-label="Filter options"
           >
             {filters.map((filter) => (
@@ -84,7 +83,7 @@ export function SearchBar({
                 {filter.label}
               </button>
             ))}
-          </div>
+          </fieldset>
         )}
       </div>
     </div>

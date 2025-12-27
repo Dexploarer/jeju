@@ -583,7 +583,10 @@ export class MediaOptimizer {
     const outputId = createHash('sha256')
       .update(inputPath + JSON.stringify(options))
       .digest('hex')
-    const outputPath = joinPath(this.config.cacheDir, `${outputId}.${outputFormat}`)
+    const outputPath = joinPath(
+      this.config.cacheDir,
+      `${outputId}.${outputFormat}`,
+    )
 
     // Skip if already cached
     const exists = await fileExists(outputPath)
@@ -699,7 +702,10 @@ export class MediaOptimizer {
     const outputId = createHash('sha256')
       .update(inputPath + String(time) + String(width) + format)
       .digest('hex')
-    const outputPath = joinPath(this.config.cacheDir, `thumb_${outputId}.${format}`)
+    const outputPath = joinPath(
+      this.config.cacheDir,
+      `thumb_${outputId}.${format}`,
+    )
 
     const args = [
       '-i',
@@ -771,18 +777,21 @@ export class MediaOptimizer {
   private async runFFmpeg(ffmpegPath: string, args: string[]): Promise<void> {
     const result = await exec([ffmpegPath, ...args])
     if (result.exitCode !== 0) {
-      throw new Error(`FFmpeg failed with code ${result.exitCode}: ${result.stderr}`)
+      throw new Error(
+        `FFmpeg failed with code ${result.exitCode}: ${result.stderr}`,
+      )
     }
   }
 
   private async runCommand(cmd: string, args: string[]): Promise<string> {
     const result = await exec([cmd, ...args])
     if (result.exitCode !== 0) {
-      throw new Error(`Command failed with code ${result.exitCode}: ${result.stderr}`)
+      throw new Error(
+        `Command failed with code ${result.exitCode}: ${result.stderr}`,
+      )
     }
     return result.stdout
   }
-
 
   // ============ Caching ============
 

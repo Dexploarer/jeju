@@ -109,7 +109,12 @@ interface AgentFormProps {
   onRemove?: () => void
 }
 
-function AgentForm({ agent, onChange, isCEO = false, onRemove }: AgentFormProps) {
+function AgentForm({
+  agent,
+  onChange,
+  isCEO = false,
+  onRemove,
+}: AgentFormProps) {
   const [expanded, setExpanded] = useState(true)
   const preset = BOARD_ROLE_PRESETS[agent.role]
 
@@ -117,7 +122,7 @@ function AgentForm({ agent, onChange, isCEO = false, onRemove }: AgentFormProps)
     (updates: Partial<CreateAgentDraft['persona']>) => {
       onChange({ ...agent, persona: { ...agent.persona, ...updates } })
     },
-    [agent, onChange]
+    [agent, onChange],
   )
 
   const updateValue = useCallback(
@@ -126,7 +131,7 @@ function AgentForm({ agent, onChange, isCEO = false, onRemove }: AgentFormProps)
       newValues[index] = value
       onChange({ ...agent, values: newValues })
     },
-    [agent, onChange]
+    [agent, onChange],
   )
 
   const addValue = useCallback(() => {
@@ -137,7 +142,7 @@ function AgentForm({ agent, onChange, isCEO = false, onRemove }: AgentFormProps)
     (index: number) => {
       onChange({ ...agent, values: agent.values.filter((_, i) => i !== index) })
     },
-    [agent, onChange]
+    [agent, onChange],
   )
 
   return (
@@ -160,7 +165,9 @@ function AgentForm({ agent, onChange, isCEO = false, onRemove }: AgentFormProps)
           <div
             className="w-10 h-10 rounded-lg flex items-center justify-center"
             style={{
-              background: isCEO ? 'var(--gradient-accent)' : 'var(--gradient-secondary)',
+              background: isCEO
+                ? 'var(--gradient-accent)'
+                : 'var(--gradient-secondary)',
             }}
           >
             {isCEO ? (
@@ -170,7 +177,10 @@ function AgentForm({ agent, onChange, isCEO = false, onRemove }: AgentFormProps)
             )}
           </div>
           <div className="text-left">
-            <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+            <p
+              className="font-semibold"
+              style={{ color: 'var(--text-primary)' }}
+            >
               {agent.persona.name || (isCEO ? 'CEO' : preset.name)}
             </p>
             <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
@@ -194,9 +204,15 @@ function AgentForm({ agent, onChange, isCEO = false, onRemove }: AgentFormProps)
             </button>
           )}
           {expanded ? (
-            <ChevronUp className="w-5 h-5" style={{ color: 'var(--text-tertiary)' }} />
+            <ChevronUp
+              className="w-5 h-5"
+              style={{ color: 'var(--text-tertiary)' }}
+            />
           ) : (
-            <ChevronDown className="w-5 h-5" style={{ color: 'var(--text-tertiary)' }} />
+            <ChevronDown
+              className="w-5 h-5"
+              style={{ color: 'var(--text-tertiary)' }}
+            />
           )}
         </div>
       </button>
@@ -245,7 +261,9 @@ function AgentForm({ agent, onChange, isCEO = false, onRemove }: AgentFormProps)
                 <input
                   type="text"
                   value={agent.customRoleName ?? ''}
-                  onChange={(e) => onChange({ ...agent, customRoleName: e.target.value })}
+                  onChange={(e) =>
+                    onChange({ ...agent, customRoleName: e.target.value })
+                  }
                   placeholder="Custom role name"
                   className="input mt-2"
                 />
@@ -267,7 +285,9 @@ function AgentForm({ agent, onChange, isCEO = false, onRemove }: AgentFormProps)
               type="text"
               value={agent.persona.name}
               onChange={(e) => updatePersona({ name: e.target.value })}
-              placeholder={isCEO ? 'e.g., Eliza, Atlas' : `e.g., ${preset.name}`}
+              placeholder={
+                isCEO ? 'e.g., Eliza, Atlas' : `e.g., ${preset.name}`
+              }
               className="input"
             />
           </div>
@@ -285,7 +305,7 @@ function AgentForm({ agent, onChange, isCEO = false, onRemove }: AgentFormProps)
               id={`agent-bio-${isCEO ? 'ceo' : 'board'}`}
               value={agent.persona.bio}
               onChange={(e) => updatePersona({ bio: e.target.value })}
-                placeholder="What this agent focuses on and how they contribute"
+              placeholder="What this agent focuses on and how they contribute"
               rows={2}
               className="textarea"
             />
@@ -304,7 +324,7 @@ function AgentForm({ agent, onChange, isCEO = false, onRemove }: AgentFormProps)
               id={`agent-personality-${isCEO ? 'ceo' : 'board'}`}
               value={agent.persona.personality}
               onChange={(e) => updatePersona({ personality: e.target.value })}
-                placeholder="How this agent approaches decisions and communicates"
+              placeholder="How this agent approaches decisions and communicates"
               rows={2}
               className="textarea"
             />
@@ -339,12 +359,17 @@ function AgentForm({ agent, onChange, isCEO = false, onRemove }: AgentFormProps)
                     <p
                       className="text-sm font-medium"
                       style={{
-                        color: isSelected ? 'var(--color-primary)' : 'var(--text-primary)',
+                        color: isSelected
+                          ? 'var(--color-primary)'
+                          : 'var(--text-primary)',
                       }}
                     >
                       {model.name}
                     </p>
-                    <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                    <p
+                      className="text-xs"
+                      style={{ color: 'var(--text-tertiary)' }}
+                    >
                       {model.provider}
                     </p>
                   </button>
@@ -368,7 +393,9 @@ function AgentForm({ agent, onChange, isCEO = false, onRemove }: AgentFormProps)
                   <button
                     key={style.value}
                     type="button"
-                    onClick={() => onChange({ ...agent, decisionStyle: style.value })}
+                    onClick={() =>
+                      onChange({ ...agent, decisionStyle: style.value })
+                    }
                     className="flex-1 p-3 rounded-xl text-center transition-all"
                     style={{
                       backgroundColor: isSelected
@@ -382,12 +409,17 @@ function AgentForm({ agent, onChange, isCEO = false, onRemove }: AgentFormProps)
                     <p
                       className="text-sm font-medium"
                       style={{
-                        color: isSelected ? 'var(--color-primary)' : 'var(--text-primary)',
+                        color: isSelected
+                          ? 'var(--color-primary)'
+                          : 'var(--text-primary)',
                       }}
                     >
                       {style.label}
                     </p>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
+                    <p
+                      className="text-xs mt-0.5"
+                      style={{ color: 'var(--text-tertiary)' }}
+                    >
                       {style.description}
                     </p>
                   </button>
@@ -409,7 +441,9 @@ function AgentForm({ agent, onChange, isCEO = false, onRemove }: AgentFormProps)
               id={`comm-tone-${isCEO ? 'ceo' : 'board'}`}
               value={agent.persona.communicationTone}
               onChange={(e) =>
-                updatePersona({ communicationTone: e.target.value as CommunicationTone })
+                updatePersona({
+                  communicationTone: e.target.value as CommunicationTone,
+                })
               }
               className="select"
             >
@@ -432,7 +466,10 @@ function AgentForm({ agent, onChange, isCEO = false, onRemove }: AgentFormProps)
             </span>
             <div className="space-y-2">
               {agent.values.map((value, index) => (
-                <div key={`value-${index}`} className="flex gap-2">
+                <div
+                  key={value ? `${value}-${index}` : `empty-${index}`}
+                  className="flex gap-2"
+                >
                   <input
                     type="text"
                     value={value}
@@ -483,7 +520,10 @@ function AgentForm({ agent, onChange, isCEO = false, onRemove }: AgentFormProps)
                 step="5"
                 value={agent.weight}
                 onChange={(e) =>
-                  onChange({ ...agent, weight: Number.parseInt(e.target.value, 10) })
+                  onChange({
+                    ...agent,
+                    weight: Number.parseInt(e.target.value, 10),
+                  })
                 }
                 className="w-full accent-[var(--color-primary)]"
               />
@@ -521,11 +561,13 @@ export default function CreateDAOPage() {
     createBoardMember('CODE'),
     createBoardMember('COMMUNITY'),
   ])
-  const [governanceParams, setGovernanceParams] = useState(DEFAULT_GOVERNANCE_PARAMS)
+  const [governanceParams, setGovernanceParams] = useState(
+    DEFAULT_GOVERNANCE_PARAMS,
+  )
 
   const currentStepIndex = useMemo(
     () => STEPS.findIndex((s) => s.id === step),
-    [step]
+    [step],
   )
 
   const goNext = useCallback(() => {
@@ -547,16 +589,21 @@ export default function CreateDAOPage() {
   }, [])
 
   const removeBoardMember = useCallback((index: number) => {
-    setBoard((prev) => (prev.length > 3 ? prev.filter((_, i) => i !== index) : prev))
+    setBoard((prev) =>
+      prev.length > 3 ? prev.filter((_, i) => i !== index) : prev,
+    )
   }, [])
 
-  const updateBoardMember = useCallback((index: number, agent: CreateAgentDraft) => {
-    setBoard((prev) => {
-      const newBoard = [...prev]
-      newBoard[index] = agent
-      return newBoard
-    })
-  }, [])
+  const updateBoardMember = useCallback(
+    (index: number, agent: CreateAgentDraft) => {
+      setBoard((prev) => {
+        const newBoard = [...prev]
+        newBoard[index] = agent
+        return newBoard
+      })
+    },
+    [],
+  )
 
   const addTag = useCallback(() => {
     if (tagInput.trim() && !tags.includes(tagInput.trim())) {
@@ -589,7 +636,9 @@ export default function CreateDAOPage() {
         navigate(`/dao/${newDAO.daoId}`)
       },
       onError: (error) => {
-        setSubmitError(error instanceof Error ? error.message : 'Failed to create DAO')
+        setSubmitError(
+          error instanceof Error ? error.message : 'Failed to create DAO',
+        )
       },
     })
   }, [
@@ -612,7 +661,10 @@ export default function CreateDAOPage() {
       case 'ceo':
         return ceo.persona.name.trim().length >= 2
       case 'board':
-        return board.length >= 3 && board.every((b) => b.persona.name.trim().length >= 2)
+        return (
+          board.length >= 3 &&
+          board.every((b) => b.persona.name.trim().length >= 2)
+        )
       case 'governance':
         return true
       case 'review':
@@ -623,7 +675,10 @@ export default function CreateDAOPage() {
   }, [step, name, displayName, ceo, board])
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
+    <div
+      className="min-h-screen"
+      style={{ backgroundColor: 'var(--bg-primary)' }}
+    >
       {/* Header */}
       <header
         className="sticky top-0 z-50 backdrop-blur-xl border-b"
@@ -695,7 +750,9 @@ export default function CreateDAOPage() {
                       <Icon className="w-4 h-4" aria-hidden="true" />
                     )}
                   </div>
-                  <span className="hidden sm:inline text-sm font-medium">{s.label}</span>
+                  <span className="hidden sm:inline text-sm font-medium">
+                    {s.label}
+                  </span>
                 </button>
               )
             })}
@@ -728,12 +785,17 @@ export default function CreateDAOPage() {
                 type="text"
                 value={name}
                 onChange={(e) =>
-                  setName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))
+                  setName(
+                    e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'),
+                  )
                 }
                 placeholder="my-dao"
                 className="input"
               />
-              <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
+              <p
+                className="text-xs mt-1"
+                style={{ color: 'var(--text-tertiary)' }}
+              >
                 /dao/{name || 'your-dao'}
               </p>
             </div>
@@ -780,7 +842,10 @@ export default function CreateDAOPage() {
                 className="block text-sm font-medium mb-2"
                 style={{ color: 'var(--text-primary)' }}
               >
-                <MessageSquare className="w-4 h-4 inline mr-1" aria-hidden="true" />
+                <MessageSquare
+                  className="w-4 h-4 inline mr-1"
+                  aria-hidden="true"
+                />
                 Farcaster Channel (optional)
               </label>
               <input
@@ -878,7 +943,11 @@ export default function CreateDAOPage() {
                   key={`board-${agent.role}-${index}`}
                   agent={agent}
                   onChange={(a) => updateBoardMember(index, a)}
-                  onRemove={board.length > 3 ? () => removeBoardMember(index) : undefined}
+                  onRemove={
+                    board.length > 3
+                      ? () => removeBoardMember(index)
+                      : undefined
+                  }
                 />
               ))}
             </div>
@@ -979,7 +1048,8 @@ export default function CreateDAOPage() {
                     onChange={(e) =>
                       setGovernanceParams({
                         ...governanceParams,
-                        councilVotingPeriod: Number.parseInt(e.target.value, 10) * 86400,
+                        councilVotingPeriod:
+                          Number.parseInt(e.target.value, 10) * 86400,
                       })
                     }
                     className="input"
@@ -1024,7 +1094,9 @@ export default function CreateDAOPage() {
                     }
                     className="w-5 h-5 rounded accent-[var(--color-primary)]"
                   />
-                  <span style={{ color: 'var(--text-primary)' }}>Enable CEO Veto Power</span>
+                  <span style={{ color: 'var(--text-primary)' }}>
+                    Enable CEO Veto Power
+                  </span>
                 </label>
                 <label className="flex items-center gap-3 cursor-pointer">
                   <input
@@ -1039,7 +1111,8 @@ export default function CreateDAOPage() {
                     className="w-5 h-5 rounded accent-[var(--color-primary)]"
                   />
                   <span style={{ color: 'var(--text-primary)' }}>
-                    Enable Community Veto ({governanceParams.vetoThreshold}% threshold)
+                    Enable Community Veto ({governanceParams.vetoThreshold}%
+                    threshold)
                   </span>
                 </label>
               </div>
@@ -1098,7 +1171,10 @@ export default function CreateDAOPage() {
                     className="mt-2 text-sm"
                     style={{ color: 'var(--color-secondary)' }}
                   >
-                    <MessageSquare className="w-4 h-4 inline mr-1" aria-hidden="true" />
+                    <MessageSquare
+                      className="w-4 h-4 inline mr-1"
+                      aria-hidden="true"
+                    />
                     {farcasterChannel}
                   </p>
                 )}
@@ -1129,7 +1205,10 @@ export default function CreateDAOPage() {
                     >
                       {ceo.persona.name}
                     </p>
-                    <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                    <p
+                      className="text-xs"
+                      style={{ color: 'var(--text-tertiary)' }}
+                    >
                       {MODEL_OPTIONS.find((m) => m.id === ceo.modelId)?.name} ·{' '}
                       {ceo.decisionStyle}
                     </p>
@@ -1150,12 +1229,18 @@ export default function CreateDAOPage() {
                 </h4>
                 <div className="space-y-2">
                   {board.map((member, index) => (
-                    <div key={`review-${member.role}-${index}`} className="flex items-center gap-3">
+                    <div
+                      key={`review-${member.role}-${index}`}
+                      className="flex items-center gap-3"
+                    >
                       <div
                         className="w-8 h-8 rounded-lg flex items-center justify-center"
                         style={{ background: 'var(--gradient-secondary)' }}
                       >
-                        <Bot className="w-4 h-4 text-white" aria-hidden="true" />
+                        <Bot
+                          className="w-4 h-4 text-white"
+                          aria-hidden="true"
+                        />
                       </div>
                       <div>
                         <p
@@ -1164,7 +1249,10 @@ export default function CreateDAOPage() {
                         >
                           {member.persona.name}
                         </p>
-                        <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                        <p
+                          className="text-xs"
+                          style={{ color: 'var(--text-tertiary)' }}
+                        >
                           {member.role} · {member.weight}% weight
                         </p>
                       </div>
@@ -1189,13 +1277,17 @@ export default function CreateDAOPage() {
                     </p>
                   </div>
                   <div>
-                    <p style={{ color: 'var(--text-tertiary)' }}>Board Approvals</p>
+                    <p style={{ color: 'var(--text-tertiary)' }}>
+                      Board Approvals
+                    </p>
                     <p style={{ color: 'var(--text-primary)' }}>
                       {governanceParams.minBoardApprovals} required
                     </p>
                   </div>
                   <div>
-                    <p style={{ color: 'var(--text-tertiary)' }}>Voting Period</p>
+                    <p style={{ color: 'var(--text-tertiary)' }}>
+                      Voting Period
+                    </p>
                     <p style={{ color: 'var(--text-primary)' }}>
                       {governanceParams.councilVotingPeriod / 86400} days
                     </p>
@@ -1209,7 +1301,6 @@ export default function CreateDAOPage() {
                 </div>
               </div>
             </div>
-
           </div>
         )}
       </main>
@@ -1241,7 +1332,10 @@ export default function CreateDAOPage() {
           {step === 'review' ? (
             <div className="flex items-center gap-4">
               {submitError && (
-                <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--color-error)' }}>
+                <div
+                  className="flex items-center gap-2 text-sm"
+                  style={{ color: 'var(--color-error)' }}
+                >
                   <AlertCircle className="w-4 h-4" aria-hidden="true" />
                   {submitError}
                 </div>
@@ -1255,7 +1349,10 @@ export default function CreateDAOPage() {
               >
                 {createDAOMutation.isPending ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                    <Loader2
+                      className="w-4 h-4 animate-spin"
+                      aria-hidden="true"
+                    />
                     Creating...
                   </>
                 ) : (

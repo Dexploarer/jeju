@@ -18,6 +18,7 @@ import {
 function getDWSEndpoint(): string {
   return getDWSComputeUrl()
 }
+
 import { config } from './config'
 
 const MAX_EXECUTION_TIME = config.sandboxMaxTime // 1 hour

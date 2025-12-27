@@ -51,7 +51,10 @@ function ConnectorCard({ connector }: { connector: AgentConnector }) {
   const statusStyles = {
     active: { bg: 'rgba(16, 185, 129, 0.12)', color: 'var(--color-success)' },
     error: { bg: 'rgba(239, 68, 68, 0.12)', color: 'var(--color-error)' },
-    disconnected: { bg: 'rgba(148, 163, 184, 0.12)', color: 'var(--text-tertiary)' },
+    disconnected: {
+      bg: 'rgba(148, 163, 184, 0.12)',
+      color: 'var(--text-tertiary)',
+    },
   }[connector.status]
 
   return (
@@ -68,10 +71,17 @@ function ConnectorCard({ connector }: { connector: AgentConnector }) {
             className="w-10 h-10 rounded-lg flex items-center justify-center"
             style={{ backgroundColor: 'var(--surface)' }}
           >
-            <Icon className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} aria-hidden="true" />
+            <Icon
+              className="w-5 h-5"
+              style={{ color: 'var(--text-secondary)' }}
+              aria-hidden="true"
+            />
           </div>
           <div>
-            <h4 className="font-medium" style={{ color: 'var(--text-primary)' }}>
+            <h4
+              className="font-medium"
+              style={{ color: 'var(--text-primary)' }}
+            >
               {label}
             </h4>
             <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
@@ -81,28 +91,46 @@ function ConnectorCard({ connector }: { connector: AgentConnector }) {
         </div>
         <span
           className="px-2 py-0.5 text-xs font-semibold rounded-full"
-          style={{ backgroundColor: statusStyles.bg, color: statusStyles.color }}
+          style={{
+            backgroundColor: statusStyles.bg,
+            color: statusStyles.color,
+          }}
         >
           {connector.status}
         </span>
       </div>
 
       {connector.type === 'farcaster' && 'channelUrl' in connector.config && (
-        <div className="space-y-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+        <div
+          className="space-y-1 text-xs"
+          style={{ color: 'var(--text-secondary)' }}
+        >
           <p>
-            Channel: <span style={{ color: 'var(--text-primary)' }}>{connector.config.channelUrl}</span>
+            Channel:{' '}
+            <span style={{ color: 'var(--text-primary)' }}>
+              {connector.config.channelUrl}
+            </span>
           </p>
           <p>
-            FID: <span style={{ color: 'var(--text-primary)' }}>{connector.config.fid}</span>
+            FID:{' '}
+            <span style={{ color: 'var(--text-primary)' }}>
+              {connector.config.fid}
+            </span>
           </p>
           <div className="flex flex-wrap gap-2 mt-2">
             {connector.config.autoPost && (
-              <span className="px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--surface)' }}>
+              <span
+                className="px-2 py-0.5 rounded"
+                style={{ backgroundColor: 'var(--surface)' }}
+              >
                 Auto-post
               </span>
             )}
             {connector.config.monitorMentions && (
-              <span className="px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--surface)' }}>
+              <span
+                className="px-2 py-0.5 rounded"
+                style={{ backgroundColor: 'var(--surface)' }}
+              >
                 Monitor mentions
               </span>
             )}
@@ -111,18 +139,30 @@ function ConnectorCard({ connector }: { connector: AgentConnector }) {
       )}
 
       {connector.type === 'github' && 'repoUrl' in connector.config && (
-        <div className="space-y-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+        <div
+          className="space-y-1 text-xs"
+          style={{ color: 'var(--text-secondary)' }}
+        >
           <p>
-            Repo: <span style={{ color: 'var(--text-primary)' }}>{connector.config.repoUrl}</span>
+            Repo:{' '}
+            <span style={{ color: 'var(--text-primary)' }}>
+              {connector.config.repoUrl}
+            </span>
           </p>
           <div className="flex flex-wrap gap-2 mt-2">
             {connector.config.autoReviewPRs && (
-              <span className="px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--surface)' }}>
+              <span
+                className="px-2 py-0.5 rounded"
+                style={{ backgroundColor: 'var(--surface)' }}
+              >
                 Auto-review PRs
               </span>
             )}
             {connector.config.webhookEnabled && (
-              <span className="px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--surface)' }}>
+              <span
+                className="px-2 py-0.5 rounded"
+                style={{ backgroundColor: 'var(--surface)' }}
+              >
                 Webhook
               </span>
             )}
@@ -189,10 +229,12 @@ export function AgentDetailModal({ agent, onClose }: AgentDetailModalProps) {
     if (!modal) return
 
     const focusableElements = modal.querySelectorAll(
-      'button, a[href], input, [tabindex]:not([tabindex="-1"])'
+      'button, a[href], input, [tabindex]:not([tabindex="-1"])',
     )
     const firstElement = focusableElements[0] as HTMLElement
-    const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement
+    const lastElement = focusableElements[
+      focusableElements.length - 1
+    ] as HTMLElement
 
     const handleTab = (e: KeyboardEvent) => {
       if (e.key !== 'Tab') return
@@ -235,7 +277,10 @@ export function AgentDetailModal({ agent, onClose }: AgentDetailModalProps) {
       <button
         type="button"
         className="absolute inset-0 cursor-default border-none"
-        style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(4px)' }}
+        style={{
+          backgroundColor: 'rgba(0, 0, 0, 0.6)',
+          backdropFilter: 'blur(4px)',
+        }}
         onClick={onClose}
         aria-label="Close modal"
       />
@@ -281,7 +326,10 @@ export function AgentDetailModal({ agent, onClose }: AgentDetailModalProps) {
                   style={{ color: 'var(--text-tertiary)' }}
                 >
                   {copied ? (
-                    <Check className="w-3 h-3" style={{ color: 'var(--color-success)' }} />
+                    <Check
+                      className="w-3 h-3"
+                      style={{ color: 'var(--color-success)' }}
+                    />
                   ) : (
                     <Copy className="w-3 h-3" aria-hidden="true" />
                   )}
@@ -297,7 +345,11 @@ export function AgentDetailModal({ agent, onClose }: AgentDetailModalProps) {
             style={{ backgroundColor: 'var(--bg-secondary)' }}
             aria-label="Close"
           >
-            <X className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} aria-hidden="true" />
+            <X
+              className="w-5 h-5"
+              style={{ color: 'var(--text-secondary)' }}
+              aria-hidden="true"
+            />
           </button>
         </div>
 
@@ -309,7 +361,10 @@ export function AgentDetailModal({ agent, onClose }: AgentDetailModalProps) {
               className="rounded-xl p-3 text-center"
               style={{ backgroundColor: 'var(--bg-secondary)' }}
             >
-              <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+              <p
+                className="text-2xl font-bold"
+                style={{ color: 'var(--text-primary)' }}
+              >
                 {agent.decisionsCount}
               </p>
               <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
@@ -320,7 +375,10 @@ export function AgentDetailModal({ agent, onClose }: AgentDetailModalProps) {
               className="rounded-xl p-3 text-center"
               style={{ backgroundColor: 'var(--bg-secondary)' }}
             >
-              <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+              <p
+                className="text-2xl font-bold"
+                style={{ color: 'var(--text-primary)' }}
+              >
                 {agent.approvalRate}%
               </p>
               <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
@@ -331,7 +389,10 @@ export function AgentDetailModal({ agent, onClose }: AgentDetailModalProps) {
               className="rounded-xl p-3 text-center"
               style={{ backgroundColor: 'var(--bg-secondary)' }}
             >
-              <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+              <p
+                className="text-2xl font-bold"
+                style={{ color: 'var(--text-primary)' }}
+              >
                 {agent.weight}
               </p>
               <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
@@ -342,7 +403,10 @@ export function AgentDetailModal({ agent, onClose }: AgentDetailModalProps) {
               className="rounded-xl p-3 text-center"
               style={{ backgroundColor: 'var(--bg-secondary)' }}
             >
-              <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
+              <p
+                className="text-lg font-bold"
+                style={{ color: 'var(--text-primary)' }}
+              >
                 {formatLastActive}
               </p>
               <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
@@ -362,31 +426,49 @@ export function AgentDetailModal({ agent, onClose }: AgentDetailModalProps) {
             >
               {agent.persona.bio && (
                 <div>
-                  <p className="text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>
+                  <p
+                    className="text-xs mb-1"
+                    style={{ color: 'var(--text-tertiary)' }}
+                  >
                     Bio
                   </p>
-                  <p style={{ color: 'var(--text-primary)' }}>{agent.persona.bio}</p>
+                  <p style={{ color: 'var(--text-primary)' }}>
+                    {agent.persona.bio}
+                  </p>
                 </div>
               )}
               {agent.persona.personality && (
                 <div>
-                  <p className="text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>
+                  <p
+                    className="text-xs mb-1"
+                    style={{ color: 'var(--text-tertiary)' }}
+                  >
                     Personality
                   </p>
-                  <p style={{ color: 'var(--text-primary)' }}>{agent.persona.personality}</p>
+                  <p style={{ color: 'var(--text-primary)' }}>
+                    {agent.persona.personality}
+                  </p>
                 </div>
               )}
               {agent.persona.voiceStyle && (
                 <div>
-                  <p className="text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>
+                  <p
+                    className="text-xs mb-1"
+                    style={{ color: 'var(--text-tertiary)' }}
+                  >
                     Voice Style
                   </p>
-                  <p style={{ color: 'var(--text-primary)' }}>{agent.persona.voiceStyle}</p>
+                  <p style={{ color: 'var(--text-primary)' }}>
+                    {agent.persona.voiceStyle}
+                  </p>
                 </div>
               )}
               {agent.persona.traits.length > 0 && (
                 <div>
-                  <p className="text-xs mb-2" style={{ color: 'var(--text-tertiary)' }}>
+                  <p
+                    className="text-xs mb-2"
+                    style={{ color: 'var(--text-tertiary)' }}
+                  >
                     Traits
                   </p>
                   <div className="flex flex-wrap gap-2">
@@ -407,7 +489,10 @@ export function AgentDetailModal({ agent, onClose }: AgentDetailModalProps) {
               )}
               {agent.persona.specialties.length > 0 && (
                 <div>
-                  <p className="text-xs mb-2" style={{ color: 'var(--text-tertiary)' }}>
+                  <p
+                    className="text-xs mb-2"
+                    style={{ color: 'var(--text-tertiary)' }}
+                  >
                     Specialties
                   </p>
                   <div className="flex flex-wrap gap-2">
@@ -440,10 +525,16 @@ export function AgentDetailModal({ agent, onClose }: AgentDetailModalProps) {
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                  <h4
+                    className="font-medium"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
                     {agent.modelName}
                   </h4>
-                  <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                  <p
+                    className="text-sm"
+                    style={{ color: 'var(--text-tertiary)' }}
+                  >
                     {agent.modelProvider}
                   </p>
                 </div>
@@ -457,7 +548,10 @@ export function AgentDetailModal({ agent, onClose }: AgentDetailModalProps) {
                   Active
                 </span>
               </div>
-              <div className="mt-3 flex items-center gap-4 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+              <div
+                className="mt-3 flex items-center gap-4 text-xs"
+                style={{ color: 'var(--text-tertiary)' }}
+              >
                 <span>ID: {agent.modelId}</span>
                 <span>·</span>
                 <span>Decision Style: {agent.decisionStyle}</span>
@@ -482,9 +576,15 @@ export function AgentDetailModal({ agent, onClose }: AgentDetailModalProps) {
                       className="w-6 h-6 shrink-0 rounded-full flex items-center justify-center"
                       style={{ backgroundColor: 'rgba(6, 214, 160, 0.15)' }}
                     >
-                      <Check className="w-3 h-3" style={{ color: 'var(--color-primary)' }} />
+                      <Check
+                        className="w-3 h-3"
+                        style={{ color: 'var(--color-primary)' }}
+                      />
                     </div>
-                    <p className="text-sm" style={{ color: 'var(--text-primary)' }}>
+                    <p
+                      className="text-sm"
+                      style={{ color: 'var(--text-primary)' }}
+                    >
                       {value}
                     </p>
                   </div>
@@ -509,8 +609,13 @@ export function AgentDetailModal({ agent, onClose }: AgentDetailModalProps) {
                   border: '1px solid var(--border)',
                 }}
               >
-                <Zap className="w-8 h-8 mx-auto mb-2" style={{ color: 'var(--text-tertiary)' }} />
-                <p style={{ color: 'var(--text-tertiary)' }}>No active connectors</p>
+                <Zap
+                  className="w-8 h-8 mx-auto mb-2"
+                  style={{ color: 'var(--text-tertiary)' }}
+                />
+                <p style={{ color: 'var(--text-tertiary)' }}>
+                  No active connectors
+                </p>
               </div>
             )}
           </Section>
@@ -526,7 +631,10 @@ export function AgentDetailModal({ agent, onClose }: AgentDetailModalProps) {
             >
               {agent.context.customInstructions && (
                 <div>
-                  <p className="text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>
+                  <p
+                    className="text-xs mb-1"
+                    style={{ color: 'var(--text-tertiary)' }}
+                  >
                     Custom Instructions
                   </p>
                   <p
@@ -542,7 +650,10 @@ export function AgentDetailModal({ agent, onClose }: AgentDetailModalProps) {
               )}
               {agent.context.linkedRepos.length > 0 && (
                 <div>
-                  <p className="text-xs mb-2" style={{ color: 'var(--text-tertiary)' }}>
+                  <p
+                    className="text-xs mb-2"
+                    style={{ color: 'var(--text-tertiary)' }}
+                  >
                     Linked Repositories
                   </p>
                   <div className="flex flex-wrap gap-2">
@@ -568,7 +679,10 @@ export function AgentDetailModal({ agent, onClose }: AgentDetailModalProps) {
               )}
               {agent.context.linkedPackages.length > 0 && (
                 <div>
-                  <p className="text-xs mb-2" style={{ color: 'var(--text-tertiary)' }}>
+                  <p
+                    className="text-xs mb-2"
+                    style={{ color: 'var(--text-tertiary)' }}
+                  >
                     Linked Packages
                   </p>
                   <div className="flex flex-wrap gap-2">
@@ -591,7 +705,10 @@ export function AgentDetailModal({ agent, onClose }: AgentDetailModalProps) {
               {!agent.context.customInstructions &&
                 agent.context.linkedRepos.length === 0 &&
                 agent.context.linkedPackages.length === 0 && (
-                  <p className="text-center py-4" style={{ color: 'var(--text-tertiary)' }}>
+                  <p
+                    className="text-center py-4"
+                    style={{ color: 'var(--text-tertiary)' }}
+                  >
                     No linked context
                   </p>
                 )}

@@ -10,27 +10,33 @@
  */
 
 import {
-  EQLiteNodeManager,
-  EQLiteNodeRole,
-  EQLiteNodeStatus,
   createEQLiteNode,
   type EQLiteNodeConfig,
-  type EQLiteNodeState,
+  type EQLiteNodeManager,
+  EQLiteNodeRole,
+  EQLiteNodeStatus,
 } from '@jejunetwork/db'
-import type { Address, Hex, PublicClient, WalletClient } from 'viem'
+import type {
+  Address,
+  Chain,
+  Hex,
+  HttpTransport,
+  PublicClient,
+  WalletClient,
+} from 'viem'
 import {
   createPublicClient,
   createWalletClient,
+  defineChain,
   encodeFunctionData,
   http,
   keccak256,
   toBytes,
-  toHex,
 } from 'viem'
-import { privateKeyToAccount } from 'viem/accounts'
-import { z } from 'zod'
+import { type PrivateKeyAccount, privateKeyToAccount } from 'viem/accounts'
+import { base, baseSepolia } from 'viem/chains'
 import { NodeRegistry } from './node-registry'
-import type { NetworkConfig, NodeCapability, NodeConfig } from './types'
+import type { NetworkConfig, NodeCapability } from './types'
 
 // ============================================================================
 // Types
@@ -157,25 +163,47 @@ export class EQLiteNodeService {
   private nodeManager: EQLiteNodeManager | null = null
   private nodeRegistry: NodeRegistry
   private publicClient: PublicClient
-  private walletClient: WalletClient
+  private walletClient: WalletClient<HttpTransport, Chain, PrivateKeyAccount>
+  private chain: Chain
   private dwsAgentId: bigint | null = null
 
   constructor(config: EQLiteNodeServiceConfig) {
     this.config = config
 
     // Initialize node registry
-    this.nodeRegistry = new NodeRegistry(config.networkConfig, config.privateKey)
+    this.nodeRegistry = new NodeRegistry(
+      config.networkConfig,
+      config.privateKey,
+    )
 
     // Initialize viem clients
     const account = privateKeyToAccount(config.privateKey)
+    this.chain = this.getChainFromConfig(config.networkConfig)
 
     this.publicClient = createPublicClient({
+      chain: this.chain,
       transport: http(config.networkConfig.rpcUrl),
     })
 
     this.walletClient = createWalletClient({
       account,
+      chain: this.chain,
       transport: http(config.networkConfig.rpcUrl),
+    })
+  }
+
+  private getChainFromConfig(config: NetworkConfig): Chain {
+    if (config.chainId === 8453) return base
+    if (config.chainId === 84532) return baseSepolia
+    return defineChain({
+      id: config.chainId,
+      name:
+        config.environment === 'localnet'
+          ? 'Localnet'
+          : `Chain ${config.chainId}`,
+      nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+      rpcUrls: { default: { http: [config.rpcUrl] } },
+      testnet: config.environment !== 'mainnet',
     })
   }
 
@@ -191,50 +219,67 @@ export class EQLiteNodeService {
     region?: string
   }): Promise<EQLiteNodeInfo> {
     const nodeId = keccak256(
-      toBytes(`eqlite-${params.role}-${Date.now()}-${this.config.privateKey.slice(0, 10)}`),
+      toBytes(
+        `eqlite-${params.role}-${Date.now()}-${this.config.privateKey.slice(0, 10)}`,
+      ),
     ) as Hex
 
-    console.log(`[EQLite Service] Starting ${EQLiteNodeRole[params.role]} node: ${nodeId}`)
+    const roleName =
+      params.role === EQLiteNodeRole.BLOCK_PRODUCER
+        ? 'blockproducer'
+        : params.role === EQLiteNodeRole.MINER
+          ? 'miner'
+          : params.role === EQLiteNodeRole.ADAPTER
+            ? 'adapter'
+            : 'fullnode'
+    console.log(`[EQLite Service] Starting ${roleName} node: ${nodeId}`)
 
     // 1. Create EQLite node manager
-    const nodeConfig: Partial<EQLiteNodeConfig> & { role: EQLiteNodeRole } = {
+    const nodeConfig: EQLiteNodeConfig = {
       nodeId,
       role: params.role,
-      workingDir: `${this.config.workingDir}/${nodeId.slice(2, 10)}`,
+      dataDir: `${this.config.workingDir}/${nodeId.slice(2, 10)}`,
       listenAddr: params.listenAddr ?? '0.0.0.0:4661',
-      rpcPort: params.rpcPort ?? 4661,
-      p2pPort: params.p2pPort ?? 4662,
-      privateKeyPath: `${this.config.workingDir}/keys/private.key`,
+      rpcAddr: params.rpcPort ? `0.0.0.0:${params.rpcPort}` : undefined,
       teeEnabled: this.config.teeEnabled,
-      teeProvider: this.config.teeEnabled ? 'intel_tdx' : 'simulator',
-      teeEndpoint: this.config.teeEndpoint,
+      teePlatform: this.config.teeEnabled ? 'intel_tdx' : 'any',
     }
 
-    this.nodeManager = createEQLiteNode(nodeConfig)
+    this.nodeManager = await createEQLiteNode(nodeConfig)
 
-    // 2. Initialize and start EQLite node
-    await this.nodeManager.initialize()
-    await this.nodeManager.start()
+    // 2. Node is already started by createEQLiteNode
+    if (!this.nodeManager) {
+      throw new Error('Failed to create EQLite node manager')
+    }
 
     const state = this.nodeManager.getState()
 
     // 3. Register on EQLite Registry (on-chain)
     const endpoint = `http://localhost:${params.rpcPort ?? 4661}`
 
-    await this.registerOnChain(nodeId, params.role, endpoint, params.stakeAmount)
+    await this.registerOnChain(
+      nodeId,
+      params.role,
+      endpoint,
+      params.stakeAmount,
+    )
 
     // 4. Submit TEE attestation if available
-    if (state.mrEnclave && state.attestation) {
+    if (state.attestation?.report) {
+      const attestation = state.attestation
+      const reportHash = keccak256(toBytes(attestation.report))
       await this.submitAttestationOnChain(
         nodeId,
-        state.attestation as Hex,
-        state.mrEnclave,
+        attestation.report as Hex,
+        reportHash,
       )
     }
 
     // 5. Register in DWS node registry
     const capability: NodeCapability =
-      params.role === EQLiteNodeRole.BLOCK_PRODUCER ? 'eqlite-bp' : 'eqlite-miner'
+      params.role === EQLiteNodeRole.BLOCK_PRODUCER
+        ? 'eqlite-bp'
+        : 'eqlite-miner'
 
     const dwsResult = await this.nodeRegistry.registerNode({
       endpoint,
@@ -263,13 +308,12 @@ export class EQLiteNodeService {
     return {
       nodeId,
       role: params.role,
-      status: EQLiteNodeStatus.ACTIVE,
+      status: EQLiteNodeStatus.RUNNING,
       endpoint,
       dwsAgentId: dwsResult.agentId,
       registryNodeId: nodeId,
-      databaseCount: 0,
+      databaseCount: state.databaseCount,
       totalQueries: 0,
-      mrEnclave: state.mrEnclave as Hex | undefined,
     }
   }
 
@@ -291,15 +335,17 @@ export class EQLiteNodeService {
 
     const state = this.nodeManager.getState()
 
+    const config = this.nodeManager.getConfig()
+    const rpcPort = config.rpcAddr?.split(':')[1] ?? '4661'
+    const endpoint = `http://localhost:${rpcPort}`
     return {
-      nodeId: state.nodeId,
+      nodeId: state.nodeId as Hex,
       role: state.role,
       status: state.status,
-      endpoint: state.endpoint,
+      endpoint,
       dwsAgentId: this.dwsAgentId ?? undefined,
       databaseCount: state.databaseCount,
-      totalQueries: state.totalQueries,
-      mrEnclave: state.mrEnclave as Hex | undefined,
+      totalQueries: 0,
     }
   }
 
@@ -364,7 +410,9 @@ export class EQLiteNodeService {
     await this.publicClient.waitForTransactionReceipt({ hash: txHash })
 
     console.log(`[EQLite Service] Database created: ${databaseId}`)
-    console.log(`[EQLite Service] Assigned to miners: ${selectedMiners.join(', ')}`)
+    console.log(
+      `[EQLite Service] Assigned to miners: ${selectedMiners.join(', ')}`,
+    )
 
     return databaseId
   }
@@ -425,7 +473,7 @@ export class EQLiteNodeService {
 
       const state = this.nodeManager.getState()
 
-      if (state.status !== EQLiteNodeStatus.ACTIVE) {
+      if (state.status !== EQLiteNodeStatus.RUNNING) {
         return
       }
 
@@ -433,7 +481,7 @@ export class EQLiteNodeService {
       const data = encodeFunctionData({
         abi: EQLITE_REGISTRY_ABI,
         functionName: 'heartbeat',
-        args: [nodeId, BigInt(state.totalQueries)],
+        args: [nodeId, BigInt(0)],
       })
 
       try {
@@ -466,5 +514,3 @@ export function createEQLiteNodeService(
 ): EQLiteNodeService {
   return new EQLiteNodeService(config)
 }
-
-

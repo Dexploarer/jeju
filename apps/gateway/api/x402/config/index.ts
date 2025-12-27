@@ -27,8 +27,15 @@ export interface FacilitatorConfig {
   kmsSecretId: string | null
 }
 
-function getEnvAddress(configValue: string | undefined, defaultValue: Address): Address {
-  if (!configValue || !configValue.startsWith('0x') || configValue.length !== 42)
+function getEnvAddress(
+  configValue: string | undefined,
+  defaultValue: Address,
+): Address {
+  if (
+    !configValue ||
+    !configValue.startsWith('0x') ||
+    configValue.length !== 42
+  )
     return defaultValue
   return configValue as Address
 }
@@ -57,7 +64,10 @@ export function getConfig(): FacilitatorConfig {
     usdcAddress: getEnvAddress(gatewayConfig.usdcAddress, chainConfig.usdc),
     privateKey: getEnvPrivateKey(),
     protocolFeeBps: gatewayConfig.protocolFeeBps,
-    feeRecipient: getEnvAddress(gatewayConfig.feeRecipientAddress, ZERO_ADDRESS),
+    feeRecipient: getEnvAddress(
+      gatewayConfig.feeRecipientAddress,
+      ZERO_ADDRESS,
+    ),
     maxPaymentAge: gatewayConfig.maxPaymentAge,
     minAmount: gatewayConfig.minPaymentAmount,
     serviceName: getServiceName('x402 Facilitator'),

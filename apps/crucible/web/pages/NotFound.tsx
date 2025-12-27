@@ -7,7 +7,11 @@ import { Link } from 'react-router-dom'
 export default function NotFoundPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
-      <div className="text-7xl md:text-8xl mb-6 animate-float" role="img" aria-label="Fire">
+      <div
+        className="text-7xl md:text-8xl mb-6 animate-float"
+        role="img"
+        aria-label="Fire"
+      >
         🔥
       </div>
       <h1 className="text-5xl md:text-6xl font-bold mb-3 font-display text-gradient">

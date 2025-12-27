@@ -1,5 +1,4 @@
 import { ZERO_ADDRESS } from '@jejunetwork/types'
-import { config as nodeConfig } from '../config'
 import type { Address, Hex } from 'viem'
 import {
   createPublicClient,
@@ -16,6 +15,7 @@ import {
   JitoTipFloorResponseSchema,
   JupiterPriceResponseSchema,
 } from '../../../lib/validation'
+import { config as nodeConfig } from '../../config'
 
 // Dynamic import: Lazy load to avoid native module issues with @solana/web3.js
 type ArbitrageExecutorModule = typeof import('./arbitrage-executor')

@@ -40,9 +40,11 @@ import {
 
 export function MessagesPage() {
   const { isConnected: walletConnected } = useAccount()
-  const { data: farcasterStatus, isLoading: statusLoading } = useFarcasterStatus()
+  const { data: farcasterStatus, isLoading: statusLoading } =
+    useFarcasterStatus()
   const { data: messagingStatus } = useMessagingStatus()
-  const { data: conversationsData, isLoading: conversationsLoading } = useConversations()
+  const { data: conversationsData, isLoading: conversationsLoading } =
+    useConversations()
   const reconnect = useReconnect()
 
   const [selectedFid, setSelectedFid] = useState<number | null>(null)
@@ -72,11 +74,16 @@ export function MessagesPage() {
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 lg:px-8 py-4 border-b border-surface-800/50 bg-surface-950/80 backdrop-blur-lg">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-factory-500/15 border border-factory-500/20 flex items-center justify-center">
-            <MessageSquare className="w-5 h-5 text-factory-400" aria-hidden="true" />
+            <MessageSquare
+              className="w-5 h-5 text-factory-400"
+              aria-hidden="true"
+            />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-bold text-surface-50 font-display">Messages</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-surface-50 font-display">
+                Messages
+              </h1>
               {messagingStatus?.unreadCount ? (
                 <span className="px-2 py-0.5 text-xs rounded-full bg-factory-500 text-white">
                   {messagingStatus.unreadCount}
@@ -95,7 +102,9 @@ export function MessagesPage() {
             <div
               className={clsx(
                 'w-2 h-2 rounded-full',
-                messagingStatus?.connected ? 'bg-success-400' : 'bg-surface-500',
+                messagingStatus?.connected
+                  ? 'bg-success-400'
+                  : 'bg-surface-500',
               )}
               aria-hidden="true"
             />
@@ -112,7 +121,12 @@ export function MessagesPage() {
               disabled={reconnect.isPending}
               aria-label="Reconnect"
             >
-              <RefreshCw className={clsx('w-4 h-4', reconnect.isPending && 'animate-spin')} />
+              <RefreshCw
+                className={clsx(
+                  'w-4 h-4',
+                  reconnect.isPending && 'animate-spin',
+                )}
+              />
             </button>
           )}
         </div>
@@ -135,13 +149,21 @@ export function MessagesPage() {
           <div className="flex-1 overflow-y-auto custom-scrollbar">
             {conversationsLoading ? (
               <div className="p-8 flex items-center justify-center">
-                <Loader2 className="w-6 h-6 animate-spin text-surface-500" aria-hidden="true" />
+                <Loader2
+                  className="w-6 h-6 animate-spin text-surface-500"
+                  aria-hidden="true"
+                />
               </div>
             ) : conversations.length === 0 ? (
               <div className="p-8 text-center">
-                <MessageSquare className="w-10 h-10 mx-auto mb-3 text-surface-600" aria-hidden="true" />
+                <MessageSquare
+                  className="w-10 h-10 mx-auto mb-3 text-surface-600"
+                  aria-hidden="true"
+                />
                 <p className="text-surface-400 text-sm">No messages yet</p>
-                <p className="text-surface-500 text-xs mt-1">Start a conversation</p>
+                <p className="text-surface-500 text-xs mt-1">
+                  Start a conversation
+                </p>
               </div>
             ) : (
               <div className="divide-y divide-surface-800/50">
@@ -179,7 +201,10 @@ export function MessagesPage() {
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-surface-800/50 flex items-center justify-center">
-                  <MessageSquare className="w-8 h-8 text-surface-600" aria-hidden="true" />
+                  <MessageSquare
+                    className="w-8 h-8 text-surface-600"
+                    aria-hidden="true"
+                  />
                 </div>
                 <h3 className="text-lg font-semibold text-surface-300 mb-2 font-display">
                   Select a conversation
@@ -211,12 +236,20 @@ function ConversationItem({
     const days = Math.floor(diff / 86400000)
 
     if (days === 0) {
-      return new Date(timestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+      return new Date(timestamp).toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+      })
     }
     if (days < 7) {
-      return new Date(timestamp).toLocaleDateString('en-US', { weekday: 'short' })
+      return new Date(timestamp).toLocaleDateString('en-US', {
+        weekday: 'short',
+      })
     }
-    return new Date(timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    return new Date(timestamp).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+    })
   }, [])
 
   return (
@@ -244,7 +277,9 @@ function ConversationItem({
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-1">
             <span className="font-medium text-surface-100 truncate">
-              {conversation.otherUser?.displayName || conversation.otherUser?.username || 'Unknown'}
+              {conversation.otherUser?.displayName ||
+                conversation.otherUser?.username ||
+                'Unknown'}
             </span>
             {conversation.lastMessage && (
               <span className="text-xs text-surface-500 flex-shrink-0 ml-2">
@@ -304,11 +339,16 @@ function NewConversation({
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         {isLoading ? (
           <div className="p-8 flex items-center justify-center">
-            <Loader2 className="w-6 h-6 animate-spin text-surface-500" aria-hidden="true" />
+            <Loader2
+              className="w-6 h-6 animate-spin text-surface-500"
+              aria-hidden="true"
+            />
           </div>
         ) : query.length < 2 ? (
           <div className="p-8 text-center">
-            <p className="text-surface-500 text-sm">Enter a username to search</p>
+            <p className="text-surface-500 text-sm">
+              Enter a username to search
+            </p>
           </div>
         ) : searchResults?.users.length === 0 ? (
           <div className="p-8 text-center">
@@ -325,14 +365,20 @@ function NewConversation({
               >
                 <div className="flex items-center gap-3">
                   {user.pfpUrl ? (
-                    <img src={user.pfpUrl} alt={user.username} className="w-10 h-10 rounded-full object-cover" />
+                    <img
+                      src={user.pfpUrl}
+                      alt={user.username}
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
                   ) : (
                     <div className="w-10 h-10 rounded-full bg-surface-700 flex items-center justify-center text-surface-400">
                       {user.username.slice(0, 2).toUpperCase()}
                     </div>
                   )}
                   <div>
-                    <p className="font-medium text-surface-100">{user.displayName || user.username}</p>
+                    <p className="font-medium text-surface-100">
+                      {user.displayName || user.username}
+                    </p>
                     <p className="text-sm text-surface-400">@{user.username}</p>
                   </div>
                 </div>
@@ -367,7 +413,7 @@ function MessageThread({ recipientFid }: { recipientFid: number }) {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  }, [])
 
   const handleSend = async () => {
     if (!messageText.trim()) return
@@ -392,7 +438,9 @@ function MessageThread({ recipientFid }: { recipientFid: number }) {
           <div className="w-8 h-8 rounded-full bg-surface-700 flex items-center justify-center text-surface-400 text-sm">
             {recipientFid}
           </div>
-          <span className="font-medium text-surface-100">FID: {recipientFid}</span>
+          <span className="font-medium text-surface-100">
+            FID: {recipientFid}
+          </span>
         </div>
 
         <div className="relative">
@@ -446,7 +494,10 @@ function MessageThread({ recipientFid }: { recipientFid: number }) {
       <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-6 h-6 animate-spin text-surface-500" aria-hidden="true" />
+            <Loader2
+              className="w-6 h-6 animate-spin text-surface-500"
+              aria-hidden="true"
+            />
           </div>
         ) : messages.length === 0 ? (
           <div className="text-center py-8">
@@ -454,10 +505,14 @@ function MessageThread({ recipientFid }: { recipientFid: number }) {
               <Lock className="w-6 h-6 text-surface-600" aria-hidden="true" />
             </div>
             <p className="text-surface-400 text-sm">Messages are encrypted</p>
-            <p className="text-surface-500 text-xs mt-1">Send a message to start</p>
+            <p className="text-surface-500 text-xs mt-1">
+              Send a message to start
+            </p>
           </div>
         ) : (
-          messages.map((message) => <MessageBubble key={message.id} message={message} />)
+          messages.map((message) => (
+            <MessageBubble key={message.id} message={message} />
+          ))
         )}
         <div ref={messagesEndRef} />
       </div>
@@ -483,7 +538,11 @@ function MessageThread({ recipientFid }: { recipientFid: number }) {
             disabled={!messageText.trim() || sendMessage.isPending}
             aria-label="Send message"
           >
-            {sendMessage.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            {sendMessage.isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
           </button>
         </div>
       </div>
@@ -493,11 +552,19 @@ function MessageThread({ recipientFid }: { recipientFid: number }) {
 
 function MessageBubble({ message }: { message: Message }) {
   const formatTime = useCallback((timestamp: number) => {
-    return new Date(timestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+    return new Date(timestamp).toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+    })
   }, [])
 
   return (
-    <div className={clsx('flex', message.isFromMe ? 'justify-end' : 'justify-start')}>
+    <div
+      className={clsx(
+        'flex',
+        message.isFromMe ? 'justify-end' : 'justify-start',
+      )}
+    >
       <div
         className={clsx(
           'max-w-[70%] rounded-2xl px-4 py-2',
@@ -507,8 +574,18 @@ function MessageBubble({ message }: { message: Message }) {
         )}
       >
         <p className="whitespace-pre-wrap break-words">{message.text}</p>
-        <div className={clsx('flex items-center gap-1 mt-1', message.isFromMe ? 'justify-end' : 'justify-start')}>
-          <span className={clsx('text-xs', message.isFromMe ? 'text-white/60' : 'text-surface-500')}>
+        <div
+          className={clsx(
+            'flex items-center gap-1 mt-1',
+            message.isFromMe ? 'justify-end' : 'justify-start',
+          )}
+        >
+          <span
+            className={clsx(
+              'text-xs',
+              message.isFromMe ? 'text-white/60' : 'text-surface-500',
+            )}
+          >
             {formatTime(message.timestamp)}
           </span>
           {message.isFromMe &&

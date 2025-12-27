@@ -19,9 +19,13 @@
  * ```
  */
 
-import { getEQLiteUrl, getNetworkName, isProductionEnv } from '@jejunetwork/config'
-import { existsSync, mkdirSync } from 'fs'
-import { join } from 'path'
+import { existsSync, mkdirSync } from 'node:fs'
+import { join } from 'node:path'
+import {
+  getEQLiteUrl,
+  getNetworkName,
+  isProductionEnv,
+} from '@jejunetwork/config'
 
 /** EQLite node roles aligned with Jeju staking */
 export const EQLiteNodeRole = {
@@ -31,7 +35,8 @@ export const EQLiteNodeRole = {
   FULLNODE: 'fullnode',
 } as const
 
-export type EQLiteNodeRole = (typeof EQLiteNodeRole)[keyof typeof EQLiteNodeRole]
+export type EQLiteNodeRole =
+  (typeof EQLiteNodeRole)[keyof typeof EQLiteNodeRole]
 
 /** Node operational status */
 export const EQLiteNodeStatus = {
@@ -42,7 +47,8 @@ export const EQLiteNodeStatus = {
   ERROR: 'error',
 } as const
 
-export type EQLiteNodeStatus = (typeof EQLiteNodeStatus)[keyof typeof EQLiteNodeStatus]
+export type EQLiteNodeStatus =
+  (typeof EQLiteNodeStatus)[keyof typeof EQLiteNodeStatus]
 
 /** TEE attestation information */
 export interface TEEAttestation {
@@ -166,7 +172,10 @@ export class EQLiteNodeManager {
 
   /** Check if node is running */
   isRunning(): boolean {
-    return this.state.status === EQLiteNodeStatus.RUNNING || this.state.status === EQLiteNodeStatus.SYNCING
+    return (
+      this.state.status === EQLiteNodeStatus.RUNNING ||
+      this.state.status === EQLiteNodeStatus.SYNCING
+    )
   }
 
   /**
@@ -233,8 +242,13 @@ export class EQLiteNodeManager {
   /**
    * Get node health status
    */
-  async getHealth(): Promise<{ healthy: boolean; details: Record<string, unknown> }> {
-    const endpoint = getEQLiteUrl() ?? `http://localhost:${this.config.httpAddr?.split(':')[1] ?? '8546'}`
+  async getHealth(): Promise<{
+    healthy: boolean
+    details: Record<string, unknown>
+  }> {
+    const endpoint =
+      getEQLiteUrl() ??
+      `http://localhost:${this.config.httpAddr?.split(':')[1] ?? '8546'}`
 
     try {
       const response = await fetch(`${endpoint}/v1/status`, {
@@ -245,7 +259,7 @@ export class EQLiteNodeManager {
         return { healthy: false, details: { error: `HTTP ${response.status}` } }
       }
 
-      const data = await response.json() as Record<string, unknown>
+      const data = (await response.json()) as Record<string, unknown>
       return {
         healthy: true,
         details: {
@@ -270,7 +284,7 @@ export class EQLiteNodeManager {
     const bytes = new Uint8Array(32)
     crypto.getRandomValues(bytes)
     return Array.from(bytes)
-      .map(b => b.toString(16).padStart(2, '0'))
+      .map((b) => b.toString(16).padStart(2, '0'))
       .join('')
   }
 
@@ -282,7 +296,9 @@ export class EQLiteNodeManager {
     if (isDev) {
       return {
         platform: 'simulated',
-        report: Buffer.from(JSON.stringify({ nodeId: this.config.nodeId, timestamp: Date.now() })).toString('base64'),
+        report: Buffer.from(
+          JSON.stringify({ nodeId: this.config.nodeId, timestamp: Date.now() }),
+        ).toString('base64'),
         timestamp: Date.now(),
         signature: 'simulated-signature',
         simulated: true,
@@ -316,7 +332,9 @@ export class EQLiteNodeManager {
       if (health.healthy) {
         return // Node already running externally
       }
-      throw new Error(`EQLite binary not found at ${eqliteBinaryPath} and no running node detected`)
+      throw new Error(
+        `EQLite binary not found at ${eqliteBinaryPath} and no running node detected`,
+      )
     }
 
     // Build command line arguments (kept for future spawning implementation)
@@ -324,12 +342,15 @@ export class EQLiteNodeManager {
 
     // Note: In a real implementation, we'd spawn the process here
     // For now, we assume the node is managed externally (Docker/systemd)
-    throw new Error('Local EQLite process spawning not implemented - use Docker or start manually')
+    throw new Error(
+      'Local EQLite process spawning not implemented - use Docker or start manually',
+    )
   }
 
   private getEQLiteBinaryPath(): string {
     const role = this.config.role
-    const binary = role === EQLiteNodeRole.BLOCK_PRODUCER ? 'eqlited' : 'eqlite-minerd'
+    const binary =
+      role === EQLiteNodeRole.BLOCK_PRODUCER ? 'eqlited' : 'eqlite-minerd'
 
     // Check common locations
     const paths = [
@@ -370,12 +391,17 @@ export class EQLiteNodeManager {
       const health = await this.getHealth()
 
       if (health.healthy && health.details) {
-        this.state.blockHeight = (health.details.blockHeight as number) ?? this.state.blockHeight
-        this.state.peerCount = (health.details.peerCount as number) ?? this.state.peerCount
-        this.state.databaseCount = (health.details.databases as number) ?? this.state.databaseCount
+        this.state.blockHeight =
+          (health.details.blockHeight as number) ?? this.state.blockHeight
+        this.state.peerCount =
+          (health.details.peerCount as number) ?? this.state.peerCount
+        this.state.databaseCount =
+          (health.details.databases as number) ?? this.state.databaseCount
 
         if (this.state.startTime) {
-          this.state.uptime = Math.floor((Date.now() - this.state.startTime.getTime()) / 1000)
+          this.state.uptime = Math.floor(
+            (Date.now() - this.state.startTime.getTime()) / 1000,
+          )
         }
       } else {
         if (this.state.status === EQLiteNodeStatus.RUNNING) {
@@ -390,7 +416,9 @@ export class EQLiteNodeManager {
 /**
  * Create and start a EQLite node
  */
-export async function createEQLiteNode(config: EQLiteNodeConfig): Promise<EQLiteNodeManager> {
+export async function createEQLiteNode(
+  config: EQLiteNodeConfig,
+): Promise<EQLiteNodeManager> {
   const manager = new EQLiteNodeManager(config)
   await manager.start()
   return manager
@@ -403,11 +431,7 @@ export async function isEQLiteAvailable(endpoint?: string): Promise<boolean> {
   const url = endpoint ?? getEQLiteUrl() ?? 'http://localhost:4661'
 
   // Try multiple health endpoints
-  const endpoints = [
-    `${url}/v1/status`,
-    `${url}/status`,
-    `${url}/health`,
-  ]
+  const endpoints = [`${url}/v1/status`, `${url}/status`, `${url}/health`]
 
   for (const ep of endpoints) {
     try {
@@ -415,9 +439,7 @@ export async function isEQLiteAvailable(endpoint?: string): Promise<boolean> {
       if (response.ok) {
         return true
       }
-    } catch {
-      continue
-    }
+    } catch {}
   }
 
   return false

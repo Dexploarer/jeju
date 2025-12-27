@@ -25,11 +25,7 @@ export function AgentCard({ agent }: AgentCardProps) {
       <article className="card p-6 h-full">
         {/* Header */}
         <div className="flex items-start justify-between gap-3 mb-4">
-          <div
-            className="text-4xl flex-shrink-0"
-            role="img"
-            aria-hidden="true"
-          >
+          <div className="text-4xl flex-shrink-0" role="img" aria-hidden="true">
             {botType.icon}
           </div>
           <div className="flex flex-col items-end gap-2">
@@ -59,7 +55,10 @@ export function AgentCard({ agent }: AgentCardProps) {
         >
           <div className="flex justify-between items-center">
             <dt>Executions</dt>
-            <dd className="font-semibold tabular-nums" style={{ color: 'var(--text-primary)' }}>
+            <dd
+              className="font-semibold tabular-nums"
+              style={{ color: 'var(--text-primary)' }}
+            >
               {agent.executionCount.toLocaleString()}
             </dd>
           </div>

@@ -24,7 +24,7 @@
  * ```
  */
 
-import { getEQLiteBlockProducerUrl, getDWSEndpoint } from '@jejunetwork/config'
+import { getDWSEndpoint, getEQLiteBlockProducerUrl } from '@jejunetwork/config'
 import { z } from 'zod'
 
 // Schemas
@@ -236,10 +236,7 @@ export class BackupService {
   /**
    * Restore from a backup
    */
-  async restore(
-    backupId: string,
-    options: RestoreOptions = {},
-  ): Promise<void> {
+  async restore(backupId: string, options: RestoreOptions = {}): Promise<void> {
     const startTime = Date.now()
 
     if (this.debug) {
@@ -377,9 +374,7 @@ export class BackupService {
     }, intervalMs)
 
     if (this.debug) {
-      console.log(
-        `[Backup] Started scheduled backups every ${intervalMs}ms`,
-      )
+      console.log(`[Backup] Started scheduled backups every ${intervalMs}ms`)
     }
   }
 
@@ -529,9 +524,12 @@ export class BackupService {
   }
 
   private async downloadFromStorage(cid: string): Promise<Buffer> {
-    const response = await fetch(`${this.dwsEndpoint}/storage/download/${cid}`, {
-      signal: AbortSignal.timeout(this.timeout),
-    })
+    const response = await fetch(
+      `${this.dwsEndpoint}/storage/download/${cid}`,
+      {
+        signal: AbortSignal.timeout(this.timeout),
+      },
+    )
 
     if (!response.ok) {
       throw new Error(`Download failed: ${response.statusText}`)
@@ -656,4 +654,3 @@ export function createBackupService(
 ): BackupService {
   return new BackupService(config)
 }
-

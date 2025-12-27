@@ -35,11 +35,11 @@ import {
 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { z } from 'zod'
-import { config as nodeConfig } from '../config'
 import {
   type OracleAttestation,
   OracleAttestationSchema,
 } from '../../../lib/validation'
+import { config as nodeConfig } from '../../config'
 
 // Configuration Schema
 
@@ -238,8 +238,7 @@ export class HybridTorrentService {
         'udp://tracker.openbittorrent.com:80',
         'udp://tracker.opentrackr.org:31337',
       ],
-      seedingOracleUrl:
-        config.seedingOracleUrl ?? nodeConfig.seedingOracleUrl,
+      seedingOracleUrl: config.seedingOracleUrl ?? nodeConfig.seedingOracleUrl,
       ...config,
     })
 

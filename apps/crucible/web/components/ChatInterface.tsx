@@ -40,14 +40,14 @@ export function ChatInterface({
 
   useEffect(() => {
     scrollToBottom()
-  }, [messages, scrollToBottom])
+  }, [scrollToBottom])
 
   // Clear messages when switching characters
   useEffect(() => {
     setMessages([])
     setInput('')
     inputRef.current?.focus()
-  }, [characterId])
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -89,11 +89,7 @@ export function ChatInterface({
         className="flex items-center gap-3 p-4 border-b flex-shrink-0"
         style={{ borderColor: 'var(--border)' }}
       >
-        <div
-          className="text-2xl"
-          role="img"
-          aria-label="Agent"
-        >
+        <div className="text-2xl" role="img" aria-label="Agent">
           🤖
         </div>
         <div className="min-w-0 flex-1">
@@ -111,9 +107,7 @@ export function ChatInterface({
             Ready
           </p>
         </div>
-        {roomId && (
-          <span className="badge-info text-xs">{roomId}</span>
-        )}
+        {roomId && <span className="badge-info text-xs">{roomId}</span>}
       </div>
 
       {/* Messages Area */}
@@ -149,7 +143,9 @@ export function ChatInterface({
           >
             <div
               className={
-                message.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-agent'
+                message.role === 'user'
+                  ? 'chat-bubble-user'
+                  : 'chat-bubble-agent'
               }
             >
               <p className="whitespace-pre-wrap">{message.content}</p>
@@ -183,11 +179,9 @@ export function ChatInterface({
                     >
                       <span
                         className={
-                          action.success
-                            ? 'text-green-400'
-                            : 'text-red-400'
+                          action.success ? 'text-green-400' : 'text-red-400'
                         }
-                        aria-label={action.success ? 'Success' : 'Failed'}
+                        title={action.success ? 'Success' : 'Failed'}
                       >
                         {action.success ? '✓' : '✗'}
                       </span>

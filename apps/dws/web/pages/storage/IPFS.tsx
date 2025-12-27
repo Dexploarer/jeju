@@ -187,9 +187,7 @@ export default function IPFSPage() {
           <div className="empty-state">
             <Globe size={48} />
             <h3>Ready for permanent storage</h3>
-            <p>
-              Upload files to IPFS for immutable, content-addressed storage
-            </p>
+            <p>Upload files to IPFS for immutable, content-addressed storage</p>
             <button
               type="button"
               className="btn btn-primary"

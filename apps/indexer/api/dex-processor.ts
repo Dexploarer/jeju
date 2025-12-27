@@ -4,7 +4,6 @@
 
 import type { Store } from '@subsquid/typeorm-store'
 import type { Hex } from 'viem'
-import { config } from './config'
 import {
   CandleInterval,
   DEX,
@@ -15,6 +14,7 @@ import {
   Token,
   TokenCandle,
 } from '../src/model'
+import { config } from './config'
 import type { ProcessorContext } from './processor'
 import {
   type BlockHeader,

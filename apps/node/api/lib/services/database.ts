@@ -9,9 +9,9 @@
  */
 
 import {
+  type DatabaseInfo,
   type EQLiteClient,
   type EQLiteConfig,
-  type DatabaseInfo,
   type ExecResult,
   getEQLite,
   type QueryParam,

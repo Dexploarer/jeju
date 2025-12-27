@@ -64,9 +64,12 @@ export class InfrastructureService {
 
   async isEQLiteRunning(): Promise<boolean> {
     try {
-      const response = await fetch(`http://127.0.0.1:${EQLITE_PORT}/v1/status`, {
-        signal: AbortSignal.timeout(2000),
-      })
+      const response = await fetch(
+        `http://127.0.0.1:${EQLITE_PORT}/v1/status`,
+        {
+          signal: AbortSignal.timeout(2000),
+        },
+      )
       return response.ok
     } catch {
       return false
@@ -92,17 +95,23 @@ export class InfrastructureService {
 
     if (!existsSync(composeFile)) {
       logger.error('EQLite compose file not found')
-      logger.info('Expected at: packages/deployment/docker/eqlite-internal.compose.yaml')
+      logger.info(
+        'Expected at: packages/deployment/docker/eqlite-internal.compose.yaml',
+      )
       logger.info('Build with: cd packages/eqlite && make docker')
       return false
     }
 
     logger.step('Starting EQLite cluster...')
 
-    eqliteProcess = execa('docker', ['compose', '-f', composeFile, 'up', '-d'], {
-      cwd: this.rootDir,
-      stdio: 'pipe',
-    })
+    eqliteProcess = execa(
+      'docker',
+      ['compose', '-f', composeFile, 'up', '-d'],
+      {
+        cwd: this.rootDir,
+        stdio: 'pipe',
+      },
+    )
 
     let startupError = ''
     eqliteProcess.stderr?.on('data', (data: Buffer) => {
@@ -112,7 +121,9 @@ export class InfrastructureService {
     try {
       await eqliteProcess
     } catch (err) {
-      logger.error(`EQLite cluster failed to start: ${startupError || String(err)}`)
+      logger.error(
+        `EQLite cluster failed to start: ${startupError || String(err)}`,
+      )
       return false
     }
 

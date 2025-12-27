@@ -154,7 +154,7 @@ async function startApiServer(): Promise<void> {
     DWS_URL,
     GATEWAY_URL: getCoreAppUrl('NODE_EXPLORER_API'),
     INDEXER_URL: getIndexerGraphqlUrl(),
-EQLITE_NODES: getEQLiteBlockProducerUrl(),
+    EQLITE_NODES: getEQLiteBlockProducerUrl(),
     EQLITE_DATABASE_ID: process.env.EQLITE_DATABASE_ID || 'dev-bazaar',
     EQLITE_PRIVATE_KEY: process.env.EQLITE_PRIVATE_KEY || '',
   })

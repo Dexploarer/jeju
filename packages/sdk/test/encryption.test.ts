@@ -231,7 +231,10 @@ describe('Email Encryption', () => {
       const recipient = generateKeyPair()
 
       for (let i = 0; i < 10; i++) {
-        const encrypted = await encryptEmail('Test message', recipient.publicKey)
+        const encrypted = await encryptEmail(
+          'Test message',
+          recipient.publicKey,
+        )
 
         // All encryptions should have valid structure
         expect(encrypted.ciphertext.startsWith('0x')).toBe(true)
@@ -397,7 +400,10 @@ describe('Email Encryption', () => {
         ['alice', alice.publicKey],
       ])
 
-      const result = await encryptForMultipleRecipients('Test message', recipients)
+      const result = await encryptForMultipleRecipients(
+        'Test message',
+        recipients,
+      )
 
       const aliceKey = result.recipientKeys.get('alice')
       expect(aliceKey).toBeDefined()

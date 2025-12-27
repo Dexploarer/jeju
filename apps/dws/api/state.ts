@@ -6,9 +6,9 @@
  */
 
 import {
+  getCurrentNetwork,
   getEQLiteMinerUrl,
   getEQLiteUrl,
-  getCurrentNetwork,
 } from '@jejunetwork/config'
 import {
   type ExecResult,

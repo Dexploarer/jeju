@@ -195,7 +195,12 @@ function setupErrorCapture(page: import('@playwright/test').Page): {
     errors.push(`PageError: ${error.message}`)
   })
 
-  return { errors, get hasKnownBug() { return hasKnownBug } }
+  return {
+    errors,
+    get hasKnownBug() {
+      return hasKnownBug
+    },
+  }
 }
 
 async function runAIVerification(

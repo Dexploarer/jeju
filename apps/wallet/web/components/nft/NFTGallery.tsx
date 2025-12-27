@@ -79,7 +79,10 @@ export function NFTGallery({ address, onTransfer }: NFTGalleryProps) {
         </div>
         <div className="flex items-center gap-3">
           {/* View Toggle */}
-          <div className="flex bg-secondary rounded-xl p-1" role="group" aria-label="View mode">
+          <fieldset
+            className="flex bg-secondary rounded-xl p-1 border-0"
+            aria-label="View mode"
+          >
             <button
               type="button"
               onClick={() => setViewMode('grid')}
@@ -98,7 +101,7 @@ export function NFTGallery({ address, onTransfer }: NFTGalleryProps) {
             >
               <List className="w-4 h-4" />
             </button>
-          </div>
+          </fieldset>
 
           {/* Refresh */}
           <button
@@ -114,7 +117,10 @@ export function NFTGallery({ address, onTransfer }: NFTGalleryProps) {
       </div>
 
       {/* Chain Filter */}
-      <div className="flex gap-2 overflow-x-auto pb-2" role="group" aria-label="Filter by chain">
+      <fieldset
+        className="flex gap-2 overflow-x-auto pb-2 border-0"
+        aria-label="Filter by chain"
+      >
         <button
           type="button"
           onClick={() => setSelectedChain('all')}
@@ -142,7 +148,7 @@ export function NFTGallery({ address, onTransfer }: NFTGalleryProps) {
             {chain.name}
           </button>
         ))}
-      </div>
+      </fieldset>
 
       {/* Empty State */}
       {totalNFTs === 0 && (
@@ -249,7 +255,9 @@ function NFTCard({ nft, viewMode, onTransfer }: NFTCardProps) {
         </div>
 
         {/* Chain */}
-        <div className="text-xs font-medium text-purple-400 bg-purple-500/10 px-2 py-1 rounded-lg hidden sm:block">{chain.name}</div>
+        <div className="text-xs font-medium text-purple-400 bg-purple-500/10 px-2 py-1 rounded-lg hidden sm:block">
+          {chain.name}
+        </div>
 
         {/* Actions */}
         <div className="flex items-center gap-1">
@@ -324,7 +332,9 @@ function NFTCard({ nft, viewMode, onTransfer }: NFTCardProps) {
         <div className="text-sm text-muted-foreground truncate">
           {nft.collectionName ?? 'Unknown'}
         </div>
-        <div className="text-xs font-medium text-purple-400 mt-2">{chain.name}</div>
+        <div className="text-xs font-medium text-purple-400 mt-2">
+          {chain.name}
+        </div>
       </div>
     </div>
   )

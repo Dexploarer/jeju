@@ -11,6 +11,7 @@ import {
 import { Elysia } from 'elysia'
 import { type AutonomousAgentRunner, createAgentRunner } from '../autonomous'
 import { loadBlueTeamCharacters, loadRedTeamCharacters } from '../characters'
+import { config } from '../config'
 import { createLogger } from '../sdk/logger'
 
 const log = createLogger('CronRoutes')

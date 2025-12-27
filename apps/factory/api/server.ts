@@ -4,7 +4,7 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { cors } from '@elysiajs/cors'
 import { openapi } from '@elysiajs/openapi'
-import { getEnvVar, getEnvNumber } from '@jejunetwork/config'
+import { CORE_PORTS, getEnvNumber, getEnvVar } from '@jejunetwork/config'
 import { Elysia } from 'elysia'
 import { configureFactory, getFactoryConfig } from './config'
 import { a2aRoutes } from './routes/a2a'
@@ -32,7 +32,9 @@ import { repoSettingsRoutes } from './routes/repo-settings'
 
 const config = getFactoryConfig()
 // When running with frontend dev server, API uses port + 1 (frontend proxies to us)
-const API_PORT_OFFSET = process.env.API_PORT_OFFSET ? Number(process.env.API_PORT_OFFSET) : 0
+const API_PORT_OFFSET = process.env.API_PORT_OFFSET
+  ? Number(process.env.API_PORT_OFFSET)
+  : 0
 const PORT = config.port + API_PORT_OFFSET
 const isDev = config.isDev
 

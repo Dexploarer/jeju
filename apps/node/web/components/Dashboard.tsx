@@ -52,7 +52,8 @@ export function Dashboard() {
     {
       label: 'Active Services',
       value: `${runningServices.length} / ${services.length}`,
-      subtitle: runningServices.length > 0 ? 'Working for you' : 'Ready when you are',
+      subtitle:
+        runningServices.length > 0 ? 'Working for you' : 'Ready when you are',
       icon: <Server size={20} />,
       color: 'text-blue-400',
       bgColor: 'bg-blue-500/10',
@@ -60,7 +61,8 @@ export function Dashboard() {
     {
       label: 'Trading Bots',
       value: `${runningBots.length} active`,
-      subtitle: runningBots.length > 0 ? 'Finding opportunities' : 'Ready to trade',
+      subtitle:
+        runningBots.length > 0 ? 'Finding opportunities' : 'Ready to trade',
       icon: <Bot size={20} />,
       color: 'text-purple-400',
       bgColor: 'bg-purple-500/10',
@@ -82,10 +84,12 @@ export function Dashboard() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
             Dashboard
-            {hasEarnings && <PartyPopper size={24} className="text-jeju-400 animate-float" />}
+            {hasEarnings && (
+              <PartyPopper size={24} className="text-jeju-400 animate-float" />
+            )}
           </h1>
           <p className="text-volcanic-400 mt-1">
-            {hasEarnings 
+            {hasEarnings
               ? 'Your node is earning rewards right now.'
               : 'Enable services to start earning.'}
           </p>
@@ -93,7 +97,9 @@ export function Dashboard() {
         {runningServices.length > 0 && (
           <div className="flex items-center gap-2 px-4 py-2 bg-jeju-500/10 border border-jeju-500/20 rounded-xl">
             <div className="w-2 h-2 bg-jeju-500 rounded-full animate-pulse" />
-            <span className="text-jeju-400 text-sm font-medium">Node Active</span>
+            <span className="text-jeju-400 text-sm font-medium">
+              Node Active
+            </span>
           </div>
         )}
       </div>
@@ -123,10 +129,14 @@ export function Dashboard() {
                   </p>
                 )}
                 {stat.subtitle && !stat.change && (
-                  <p className="text-xs text-volcanic-500 mt-2">{stat.subtitle}</p>
+                  <p className="text-xs text-volcanic-500 mt-2">
+                    {stat.subtitle}
+                  </p>
                 )}
               </div>
-              <div className={`p-3 rounded-xl ${stat.bgColor} ${stat.color} shrink-0`}>
+              <div
+                className={`p-3 rounded-xl ${stat.bgColor} ${stat.color} shrink-0`}
+              >
                 {stat.icon}
               </div>
             </div>
@@ -144,13 +154,18 @@ export function Dashboard() {
                 <Sparkles size={18} className="text-jeju-400" />
                 Earnings Over Time
               </h2>
-              <p className="text-xs text-volcanic-500 mt-1">Your earnings history</p>
+              <p className="text-xs text-volcanic-500 mt-1">
+                Your earnings history
+              </p>
             </div>
             <div className="flex gap-1 bg-volcanic-800/50 p-1 rounded-lg">
               <button type="button" className="btn-ghost text-sm px-3 py-1.5">
                 24h
               </button>
-              <button type="button" className="btn-secondary text-sm px-3 py-1.5">
+              <button
+                type="button"
+                className="btn-secondary text-sm px-3 py-1.5"
+              >
                 7d
               </button>
               <button type="button" className="btn-ghost text-sm px-3 py-1.5">
@@ -204,8 +219,12 @@ export function Dashboard() {
                 <span className="font-medium">
                   {hardware ? (
                     hardware.gpus.length > 0 ? (
-                      <span className="text-jeju-400">{hardware.gpus.length} ready</span>
-                    ) : 'None detected'
+                      <span className="text-jeju-400">
+                        {hardware.gpus.length} ready
+                      </span>
+                    ) : (
+                      'None detected'
+                    )
                   ) : (
                     <span className="inline-block w-14 h-4 bg-volcanic-700 rounded animate-pulse" />
                   )}
@@ -216,7 +235,9 @@ export function Dashboard() {
                   <Clock size={14} />
                   Uptime
                 </span>
-                <span className="font-medium text-emerald-400">{formatDuration(totalUptime)}</span>
+                <span className="font-medium text-emerald-400">
+                  {formatDuration(totalUptime)}
+                </span>
               </div>
             </div>
           </div>
@@ -269,7 +290,9 @@ export function Dashboard() {
                   >
                     <div className="flex items-center gap-2">
                       <span className="status-healthy" />
-                      <span className="text-sm font-medium">{service.metadata.name}</span>
+                      <span className="text-sm font-medium">
+                        {service.metadata.name}
+                      </span>
                     </div>
                     <span className="text-xs text-volcanic-400 bg-volcanic-800/50 px-2 py-1 rounded">
                       {formatDuration(service.status.uptime_seconds)}
@@ -286,7 +309,9 @@ export function Dashboard() {
               <div className="text-center py-6">
                 <Server size={32} className="mx-auto text-volcanic-600 mb-3" />
                 <p className="text-sm text-volcanic-500">No services running</p>
-                <p className="text-xs text-volcanic-600 mt-1">Enable services to start earning</p>
+                <p className="text-xs text-volcanic-600 mt-1">
+                  Enable services to start earning
+                </p>
               </div>
             )}
           </div>
@@ -302,7 +327,9 @@ export function Dashboard() {
             </div>
             <div>
               <h2 className="text-lg font-semibold">Earnings Projections</h2>
-              <p className="text-xs text-volcanic-500">Based on your current setup</p>
+              <p className="text-xs text-volcanic-500">
+                Based on your current setup
+              </p>
             </div>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">

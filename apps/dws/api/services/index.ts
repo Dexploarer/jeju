@@ -591,7 +591,12 @@ export async function provisionService(
 
     // Add command for eqlite (EQLite block producer)
     if (config.type === 'eqlite') {
-      dockerArgs.push('-config', '/config/config.yaml', '-role', 'blockproducer')
+      dockerArgs.push(
+        '-config',
+        '/config/config.yaml',
+        '-role',
+        'blockproducer',
+      )
     }
 
     const createResult = await dockerCommand(dockerArgs)

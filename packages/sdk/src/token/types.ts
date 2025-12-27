@@ -3,4 +3,3 @@
  * Import directly from @jejunetwork/token instead of this file.
  */
 
-

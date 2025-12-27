@@ -25,7 +25,7 @@
  * ```
  */
 
-import type { Server, Socket } from 'bun'
+import type { Socket } from 'bun'
 import type { CacheEngine } from './engine'
 
 // RESP Protocol Constants
@@ -397,12 +397,15 @@ const COMMANDS: Record<string, CommandHandler> = {
       parseInt(args[2], 10),
       withScores,
     )
-    if (withScores && Array.isArray(result) && result[0]?.member) {
-      const flat: string[] = []
-      for (const item of result as Array<{ member: string; score: number }>) {
-        flat.push(item.member, item.score.toString())
+    if (withScores && Array.isArray(result) && result.length > 0) {
+      const firstItem = result[0]
+      if (typeof firstItem === 'object' && 'member' in firstItem) {
+        const flat: string[] = []
+        for (const item of result as Array<{ member: string; score: number }>) {
+          flat.push(item.member, item.score.toString())
+        }
+        return flat
       }
-      return flat
     }
     return result as string[]
   },
@@ -411,12 +414,15 @@ const COMMANDS: Record<string, CommandHandler> = {
     const max = args[2] === '+inf' ? Infinity : parseFloat(args[2])
     const withScores = args.some((a) => a.toUpperCase() === 'WITHSCORES')
     const result = engine.zrangebyscore(ns, args[0], min, max, withScores)
-    if (withScores && Array.isArray(result) && result[0]?.member) {
-      const flat: string[] = []
-      for (const item of result as Array<{ member: string; score: number }>) {
-        flat.push(item.member, item.score.toString())
+    if (withScores && Array.isArray(result) && result.length > 0) {
+      const firstItem = result[0]
+      if (typeof firstItem === 'object' && 'member' in firstItem) {
+        const flat: string[] = []
+        for (const item of result as Array<{ member: string; score: number }>) {
+          flat.push(item.member, item.score.toString())
+        }
+        return flat
       }
-      return flat
     }
     return result as string[]
   },
@@ -428,8 +434,8 @@ const COMMANDS: Record<string, CommandHandler> = {
   ZREM: (engine, ns, args) => engine.zrem(ns, args[0], ...args.slice(1)),
 
   // Pub/Sub commands
-  PUBLISH: (engine, ns, args) => engine.publish(args[0], args[1]),
-  PUBSUB: (engine, ns, args) => {
+  PUBLISH: (engine, _ns, args) => engine.publish(args[0], args[1]),
+  PUBSUB: (engine, _ns, args) => {
     const subcommand = args[0].toUpperCase()
     if (subcommand === 'CHANNELS') {
       return engine.pubsubChannels(args[1])
@@ -494,7 +500,7 @@ export interface RedisProtocolConfig {
 export class RedisProtocolServer {
   private engine: CacheEngine
   private config: RedisProtocolConfig
-  private server: Server | null = null
+  private server: ReturnType<typeof Bun.serve> | null = null
   private clients = new Set<Socket>()
 
   constructor(engine: CacheEngine, config: RedisProtocolConfig) {
@@ -518,7 +524,7 @@ export class RedisProtocolServer {
 
       fetch(request, server) {
         // Upgrade to WebSocket for pub/sub (optional)
-        if (server.upgrade(request)) {
+        if (server.upgrade(request, { data: null })) {
           return
         }
         return new Response('Redis Protocol Server', { status: 200 })
@@ -526,11 +532,11 @@ export class RedisProtocolServer {
 
       // Handle TCP connections
       socket: {
-        open(socket) {
+        open(socket: Socket) {
           self.clients.add(socket)
         },
 
-        async data(socket, data) {
+        async data(socket: Socket, data: Buffer) {
           const parser = new RESPParser()
           parser.feed(data.toString())
 
@@ -543,15 +549,22 @@ export class RedisProtocolServer {
           }
         },
 
-        close(socket) {
+        close(socket: Socket) {
           self.clients.delete(socket)
         },
 
-        error(socket, error) {
+        error(socket: Socket, error: Error) {
           console.error('[Redis Protocol] Socket error:', error)
           self.clients.delete(socket)
         },
       },
+    } as Parameters<typeof Bun.serve>[0] & {
+      socket: {
+        open: (socket: Socket) => void
+        data: (socket: Socket, data: Buffer) => Promise<void>
+        close: (socket: Socket) => void
+        error: (socket: Socket, error: Error) => void
+      }
     })
 
     console.log(
@@ -626,4 +639,3 @@ export function createRedisProtocolServer(
 ): RedisProtocolServer {
   return new RedisProtocolServer(engine, config)
 }
-

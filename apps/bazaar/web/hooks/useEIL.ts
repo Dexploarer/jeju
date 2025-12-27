@@ -111,7 +111,7 @@ export function useEILConfig() {
 
   const networkConfig = getNetworkConfig()
   const chainConfig = networkConfig.chains[chainId]
-  
+
   // Handle case where chain config doesn't exist
   const paymasterAddress = chainConfig?.crossChainPaymaster
   const crossChainPaymaster = parseOptionalAddress(paymasterAddress)

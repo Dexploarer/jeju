@@ -2,7 +2,6 @@
 
 import { getContract } from '@jejunetwork/config'
 import { identityRegistryAbi } from '@jejunetwork/contracts'
-import { isValidAddress } from '@jejunetwork/types'
 import { type Address, createPublicClient, http } from 'viem'
 import { getFactoryConfig } from '../config'
 
@@ -68,7 +67,9 @@ class DWSClient {
   }): Promise<void> {
     const factoryConfig = getFactoryConfig()
     const rpcUrl = initConfig?.rpcUrl ?? factoryConfig.rpcUrl
-    this.registryAddress = getRegistryAddress(initConfig?.identityRegistryAddress)
+    this.registryAddress = getRegistryAddress(
+      initConfig?.identityRegistryAddress,
+    )
 
     this.publicClient = createPublicClient({
       transport: http(rpcUrl),

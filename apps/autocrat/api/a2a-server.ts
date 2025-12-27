@@ -12,7 +12,6 @@ import {
   ZERO_ADDRESS,
 } from '@jejunetwork/types'
 import { Elysia, t } from 'elysia'
-import { config } from './config'
 import { formatEther, parseEther } from 'viem'
 import { z } from 'zod'
 import type { AutocratConfig, AutocratVote } from '../lib'
@@ -37,6 +36,7 @@ import {
   type DeliberationRequest,
 } from './agents/runtime'
 import type { AutocratBlockchain } from './blockchain'
+import { config } from './config'
 import {
   checkOllama,
   generateResearch,

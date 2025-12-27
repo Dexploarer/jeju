@@ -95,7 +95,9 @@ export class EQLiteSyncService {
     }
 
     if (!EQLITE_ENABLED) {
-      console.log('[EQLiteSync] Disabled - set EQLITE_SYNC_ENABLED=true to enable')
+      console.log(
+        '[EQLiteSync] Disabled - set EQLITE_SYNC_ENABLED=true to enable',
+      )
       return
     }
 
@@ -212,7 +214,9 @@ export class EQLiteSyncService {
 
     await this.saveSyncState(state)
 
-    console.log(`[EQLiteSync] Synced ${records.length} records from ${tableName}`)
+    console.log(
+      `[EQLiteSync] Synced ${records.length} records from ${tableName}`,
+    )
   }
 
   private async upsertToEQLite(
@@ -291,7 +295,9 @@ export class EQLiteSyncService {
     await this.client
       .exec(sql, params.map(convertToQueryParam), EQLITE_DATABASE_ID)
       .catch((err: Error) => {
-        console.warn(`[EQLiteSync] Upsert to ${tableName} warning: ${err.message}`)
+        console.warn(
+          `[EQLiteSync] Upsert to ${tableName} warning: ${err.message}`,
+        )
       })
   }
 
@@ -502,4 +508,3 @@ export function resetEQLiteSync(): void {
 }
 
 // For EQLiteClient type, import directly from @jejunetwork/db
-

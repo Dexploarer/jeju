@@ -14,10 +14,6 @@ import { z } from 'zod'
 import type { AuthConfig, AuthSession, AuthToken } from '../../lib/types'
 import { AuthProvider } from '../../lib/types'
 import {
-  createHtmlPage,
-  escapeHtml,
-} from '../shared/html-templates'
-import {
   authCodeState,
   clientState,
   initializeState,
@@ -26,6 +22,7 @@ import {
   sessionState,
   verifyClientSecret,
 } from '../services/state'
+import { createHtmlPage, escapeHtml } from '../shared/html-templates'
 
 // Zod schema for JWT payload validation
 const JwtPayloadSchema = z.object({

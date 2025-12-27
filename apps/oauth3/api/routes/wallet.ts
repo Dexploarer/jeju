@@ -6,12 +6,12 @@ import { Elysia, t } from 'elysia'
 import type { Address, Hex } from 'viem'
 import { isAddress, isHex, verifyMessage } from 'viem'
 import type { AuthConfig, WalletAuthChallenge } from '../../lib/types'
+import { authCodeState, clientState, sessionState } from '../services/state'
 import {
   createHtmlPage,
   escapeHtml,
   escapeJsString,
 } from '../shared/html-templates'
-import { authCodeState, clientState, sessionState } from '../services/state'
 
 /**
  * Validate redirect URI against client's registered patterns.

@@ -196,7 +196,10 @@ function App() {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-3 space-y-1 overflow-y-auto" role="navigation" aria-label="Main navigation">
+          <nav
+            className="flex-1 p-3 space-y-1 overflow-y-auto"
+            aria-label="Main navigation"
+          >
             {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
               <button
                 type="button"
@@ -246,7 +249,8 @@ function App() {
                 </div>
                 <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
                   <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                  {aggregatedBalances.length} asset{aggregatedBalances.length !== 1 ? 's' : ''} across all chains
+                  {aggregatedBalances.length} asset
+                  {aggregatedBalances.length !== 1 ? 's' : ''} across all chains
                 </div>
               </div>
             </div>
@@ -570,7 +574,11 @@ function PortfolioView({
           <h3 className="font-semibold mb-4">Why Use This Wallet?</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { emoji: '⚡', title: 'Bridgeless', desc: 'Move tokens instantly' },
+              {
+                emoji: '⚡',
+                title: 'Bridgeless',
+                desc: 'Move tokens instantly',
+              },
               { emoji: '🔗', title: 'Multi-Chain', desc: 'One unified view' },
               { emoji: '🤖', title: 'AI Agent', desc: 'Just ask for it' },
               { emoji: '🛡️', title: 'Secure', desc: 'Preview before signing' },

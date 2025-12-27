@@ -17,7 +17,8 @@ export function getDatabase(): EQLiteClient {
   if (!dbClient) {
     dbClient = getEQLite({
       blockProducerEndpoint:
-        process.env.EQLITE_BLOCK_PRODUCER_ENDPOINT || getEQLiteBlockProducerUrl(),
+        process.env.EQLITE_BLOCK_PRODUCER_ENDPOINT ||
+        getEQLiteBlockProducerUrl(),
       databaseId: DATABASE_ID,
       timeout: 30000,
       debug: process.env.NODE_ENV !== 'production',

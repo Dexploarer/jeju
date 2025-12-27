@@ -21,9 +21,9 @@ const NotFoundPage = lazy(() => import('./pages/NotFound'))
 
 function PageLoader() {
   return (
-    <div className="flex flex-col items-center justify-center py-20" role="status">
+    <output className="flex flex-col items-center justify-center py-20">
       <LoadingSpinner size="lg" label="Loading" />
-    </div>
+    </output>
   )
 }
 
@@ -57,12 +57,13 @@ function Layout({ children }: { children: React.ReactNode }) {
       <footer
         className="border-t py-8 mt-auto"
         style={{ borderColor: 'var(--border)' }}
-        role="contentinfo"
       >
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <span className="text-2xl" aria-hidden="true">🔥</span>
+              <span className="text-2xl" aria-hidden="true">
+                🔥
+              </span>
               <span className="font-bold text-gradient font-display">
                 Crucible
               </span>

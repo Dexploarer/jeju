@@ -251,9 +251,9 @@ export default jejuPlugin
 
 // EQLite Database Plugin - decentralized database for ElizaOS agents
 export {
+  checkMigrationStatus,
   EQLITE_SCHEMA,
   EQLiteDatabaseAdapter,
-  checkMigrationStatus,
   eqliteDatabasePlugin,
   runEQLiteMigrations,
 } from './db'

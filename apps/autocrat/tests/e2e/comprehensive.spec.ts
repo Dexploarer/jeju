@@ -188,7 +188,12 @@ function setupErrorCapture(page: import('@playwright/test').Page): {
     errors.push(`PageError: ${error.message}`)
   })
 
-  return { errors, get hasKnownBug() { return hasKnownBug } }
+  return {
+    errors,
+    get hasKnownBug() {
+      return hasKnownBug
+    },
+  }
 }
 
 // Helper for AI verification with caching
@@ -281,7 +286,10 @@ test.describe('Autocrat - DAO List Page Components', () => {
 
     // Network DAO filter button (shield icon)
     await expect(
-      page.locator('button').filter({ has: page.locator('svg') }).last(),
+      page
+        .locator('button')
+        .filter({ has: page.locator('svg') })
+        .last(),
     ).toBeVisible()
 
     await page.screenshot({
@@ -367,9 +375,7 @@ test.describe('Autocrat - Create DAO Wizard', () => {
     await expect(
       page.locator('textarea[placeholder*="What does your DAO do"]'),
     ).toBeVisible()
-    await expect(
-      page.locator('input[placeholder*="my-channel"]'),
-    ).toBeVisible()
+    await expect(page.locator('input[placeholder*="my-channel"]')).toBeVisible()
 
     // Continue button should be disabled until form is valid
     const continueBtn = page.locator('button:has-text("Continue")')
@@ -478,10 +484,7 @@ test.describe('Autocrat - Create DAO Wizard', () => {
       .locator('input[placeholder*="Treasury"]')
       .first()
       .fill('Treasury Agent')
-    await page
-      .locator('input[placeholder*="Code"]')
-      .first()
-      .fill('Code Agent')
+    await page.locator('input[placeholder*="Code"]').first().fill('Code Agent')
     await page
       .locator('input[placeholder*="Community"]')
       .first()

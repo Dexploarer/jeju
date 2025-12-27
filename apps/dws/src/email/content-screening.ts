@@ -89,9 +89,21 @@ async function ensureScreeningTables(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_moderation_queue_processed ON email_moderation_queue(processed, created_at)
   `
 
-  await eqliteClient.exec(createAccountFlagsTable, [], EMAIL_SCREENING_DATABASE_ID)
-  await eqliteClient.exec(createAccountFlagsIndex, [], EMAIL_SCREENING_DATABASE_ID)
-  await eqliteClient.exec(createAccountStatsTable, [], EMAIL_SCREENING_DATABASE_ID)
+  await eqliteClient.exec(
+    createAccountFlagsTable,
+    [],
+    EMAIL_SCREENING_DATABASE_ID,
+  )
+  await eqliteClient.exec(
+    createAccountFlagsIndex,
+    [],
+    EMAIL_SCREENING_DATABASE_ID,
+  )
+  await eqliteClient.exec(
+    createAccountStatsTable,
+    [],
+    EMAIL_SCREENING_DATABASE_ID,
+  )
   await eqliteClient.exec(
     createModerationQueueTable,
     [],
@@ -779,7 +791,9 @@ Return ONLY valid JSON:
       EMAIL_SCREENING_DATABASE_ID,
     )
 
-    console.log(`[ContentScreening] Review queued in EQLite for ${review.account}`)
+    console.log(
+      `[ContentScreening] Review queued in EQLite for ${review.account}`,
+    )
     console.warn(
       `[ContentScreening] Moderation review pending for ${review.account}: ${review.recommendation}`,
     )

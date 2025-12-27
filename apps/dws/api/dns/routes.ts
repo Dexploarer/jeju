@@ -8,7 +8,7 @@
  * - DNS mirroring management
  */
 
-import { getContract, getRpcUrl, createAppConfig } from '@jejunetwork/config'
+import { createAppConfig, getContract, getRpcUrl } from '@jejunetwork/config'
 import { Elysia, t } from 'elysia'
 import type { Address } from 'viem'
 import { createDNSMirror } from './dns-mirror'

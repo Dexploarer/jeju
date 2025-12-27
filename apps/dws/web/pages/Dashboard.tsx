@@ -380,15 +380,26 @@ function ConsumerDashboard({
           {cacheStats ? (
             <div style={{ display: 'grid', gap: '1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Total Keys</span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
+                <span style={{ color: 'var(--text-secondary)' }}>
+                  Total Keys
+                </span>
+                <span
+                  style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}
+                >
                   {cacheStats.shared.totalKeys.toLocaleString()}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Memory Used</span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
-                  {(cacheStats.shared.usedMemoryBytes / (1024 * 1024)).toFixed(2)} MB
+                <span style={{ color: 'var(--text-secondary)' }}>
+                  Memory Used
+                </span>
+                <span
+                  style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}
+                >
+                  {(cacheStats.shared.usedMemoryBytes / (1024 * 1024)).toFixed(
+                    2,
+                  )}{' '}
+                  MB
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -400,7 +411,9 @@ function ConsumerDashboard({
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Cache Nodes</span>
+                <span style={{ color: 'var(--text-secondary)' }}>
+                  Cache Nodes
+                </span>
                 <span style={{ fontFamily: 'var(--font-mono)' }}>
                   {cacheStats.global.totalNodes}
                 </span>
@@ -529,7 +542,9 @@ function RecentActivity() {
       {recentActivities.length === 0 ? (
         <div className="empty-state" style={{ padding: '1.5rem' }}>
           <Activity size={32} />
-          <p style={{ fontSize: '0.9rem', marginBottom: 0 }}>No recent activity</p>
+          <p style={{ fontSize: '0.9rem', marginBottom: 0 }}>
+            No recent activity
+          </p>
         </div>
       ) : (
         <div style={{ display: 'grid', gap: '0' }}>

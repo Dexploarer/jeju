@@ -1,6 +1,5 @@
 import { getExternalRpc } from '@jejunetwork/config'
 import { expectHex } from '@jejunetwork/types'
-import { config as nodeConfig } from '../config'
 import {
   type Address,
   type Chain,
@@ -18,6 +17,7 @@ import {
 import { type PrivateKeyAccount, privateKeyToAccount } from 'viem/accounts'
 import { arbitrum, base, mainnet, optimism } from 'viem/chains'
 import { z } from 'zod'
+import { config as nodeConfig } from '../../config'
 
 // Client types with generic chain/transport to avoid strict type checking issues
 interface EVMClientPair {

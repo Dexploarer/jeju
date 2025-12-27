@@ -25,12 +25,35 @@ export function GitPage() {
   })
   const { stats, isLoading: statsLoading } = useRepositoryStats()
 
-  const statsData = useMemo(() => [
-    { label: 'Total Repos', value: stats.totalRepos.toString(), color: 'text-accent-400', loading: statsLoading },
-    { label: 'Public Repos', value: stats.publicRepos.toString(), color: 'text-info-400', loading: statsLoading },
-    { label: 'Total Stars', value: stats.totalStars.toString(), color: 'text-warning-400', loading: statsLoading },
-    { label: 'Contributors', value: stats.contributors.toString(), color: 'text-success-400', loading: statsLoading },
-  ], [stats, statsLoading])
+  const statsData = useMemo(
+    () => [
+      {
+        label: 'Total Repos',
+        value: stats.totalRepos.toString(),
+        color: 'text-accent-400',
+        loading: statsLoading,
+      },
+      {
+        label: 'Public Repos',
+        value: stats.publicRepos.toString(),
+        color: 'text-info-400',
+        loading: statsLoading,
+      },
+      {
+        label: 'Total Stars',
+        value: stats.totalStars.toString(),
+        color: 'text-warning-400',
+        loading: statsLoading,
+      },
+      {
+        label: 'Contributors',
+        value: stats.contributors.toString(),
+        color: 'text-success-400',
+        loading: statsLoading,
+      },
+    ],
+    [stats, statsLoading],
+  )
 
   return (
     <div className="page-container">
@@ -62,7 +85,11 @@ export function GitPage() {
         <EmptyState
           icon={GitBranch}
           title="No repositories found"
-          description={search ? 'Try a different search term' : 'Create a repo to host your code'}
+          description={
+            search
+              ? 'Try a different search term'
+              : 'Create a repo to host your code'
+          }
           actionLabel="New Repo"
           actionHref="/git/new"
         />
@@ -78,7 +105,9 @@ export function GitPage() {
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
-                    <h3 className="font-semibold text-surface-100">{repo.fullName}</h3>
+                    <h3 className="font-semibold text-surface-100">
+                      {repo.fullName}
+                    </h3>
                     {repo.isPrivate && (
                       <span className="flex items-center gap-1.5 text-surface-400 text-sm">
                         <Lock className="w-4 h-4" aria-hidden="true" />
@@ -98,7 +127,10 @@ export function GitPage() {
                   <div className="flex flex-wrap items-center gap-4 text-sm text-surface-500">
                     {repo.language && (
                       <span className="flex items-center gap-1.5">
-                        <span className="w-3 h-3 rounded-full bg-info-400" aria-hidden="true" />
+                        <span
+                          className="w-3 h-3 rounded-full bg-info-400"
+                          aria-hidden="true"
+                        />
                         {repo.language}
                       </span>
                     )}

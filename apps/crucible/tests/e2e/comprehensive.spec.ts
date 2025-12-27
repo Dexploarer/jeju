@@ -154,7 +154,12 @@ function setupErrorCapture(page: import('@playwright/test').Page): {
     errors.push(`PageError: ${error.message}`)
   })
 
-  return { errors, get hasKnownBug() { return hasKnownBug } }
+  return {
+    errors,
+    get hasKnownBug() {
+      return hasKnownBug
+    },
+  }
 }
 
 async function runAIVerification(
@@ -379,7 +384,12 @@ test.describe('Crucible - Chat Page Components', () => {
     await page.waitForTimeout(300)
 
     // Click each room type
-    for (const roomType of ['Collaboration', 'Adversarial', 'Debate', 'Council']) {
+    for (const roomType of [
+      'Collaboration',
+      'Adversarial',
+      'Debate',
+      'Council',
+    ]) {
       await page.click(`button:has-text("${roomType}")`)
       await page.waitForTimeout(200)
     }

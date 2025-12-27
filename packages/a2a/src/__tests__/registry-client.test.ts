@@ -29,8 +29,10 @@ describeIfChain('RegistryClient', () => {
     // Create registry client with live chain
     client = new RegistryClient({
       rpcUrl: chainConfig.rpcUrl,
-      identityRegistryAddress: chainConfig.accounts.deployer.address as `0x${string}`, // Placeholder
-      reputationSystemAddress: chainConfig.accounts.deployer.address as `0x${string}`, // Placeholder
+      identityRegistryAddress: chainConfig.accounts.deployer
+        .address as `0x${string}`, // Placeholder
+      reputationSystemAddress: chainConfig.accounts.deployer
+        .address as `0x${string}`, // Placeholder
     })
   })
 

@@ -1,17 +1,17 @@
-import { beforeEach, afterEach, describe, expect, it } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
+import { unlink } from 'node:fs/promises'
 import type { Address } from 'viem'
 import {
-  ConsistentHashRing,
-  ReplicationManager,
-  ReplicationMode,
-  RegionalRouter,
   AOFPersistence,
   ClusterManager,
+  ConsistentHashRing,
+  RegionalRouter,
+  ReplicationManager,
+  ReplicationMode,
 } from '../api/cache/cluster'
 import { CacheEngine } from '../api/cache/engine'
 import type { CacheNode } from '../api/cache/types'
 import { CacheTier } from '../api/cache/types'
-import { unlink } from 'node:fs/promises'
 
 // Helper to create mock nodes
 function createMockNode(
@@ -628,4 +628,3 @@ describe('Cluster Integration', () => {
     expect(replicas.length).toBe(2)
   })
 })
-

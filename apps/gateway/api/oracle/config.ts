@@ -18,11 +18,6 @@ import { config as gatewayConfig } from '../config'
 type NetworkConfig = OracleNetworkConfig
 type ConfigFileData = OracleConfigFileData
 
-const REQUIRED_PRIVATE_KEYS = [
-  'operatorPrivateKey',
-  'workerPrivateKey',
-] as const
-
 const REQUIRED_ADDRESSES = [
   'feedRegistry',
   'reportVerifier',

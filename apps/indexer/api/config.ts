@@ -1,4 +1,9 @@
-import { createAppConfig, getEnvNumber, getEnvVar, isProductionEnv } from '@jejunetwork/config'
+import {
+  createAppConfig,
+  getEnvNumber,
+  getEnvVar,
+  isProductionEnv,
+} from '@jejunetwork/config'
 
 export interface IndexerConfig {
   // Database

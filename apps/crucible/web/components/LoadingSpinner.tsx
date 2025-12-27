@@ -22,11 +22,7 @@ export function LoadingSpinner({
   }
 
   return (
-    <div
-      className={`${sizeClasses[size]} ${className}`}
-      role="status"
-      aria-label={label}
-    >
+    <output className={`${sizeClasses[size]} ${className}`} aria-label={label}>
       <div
         className="w-full h-full rounded-full animate-spin"
         style={{
@@ -39,6 +35,6 @@ export function LoadingSpinner({
         aria-hidden="true"
       />
       <span className="sr-only">{label}</span>
-    </div>
+    </output>
   )
 }

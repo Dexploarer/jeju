@@ -15,8 +15,8 @@ import {
 } from 'viem'
 import { base, baseSepolia } from 'viem/chains'
 import { normalize } from 'viem/ens'
-import { config } from './config'
 import { ResolvedContentSchema } from '../lib/validation'
+import { config } from './config'
 import {
   isDevModeEnabled,
   printDevProxyStatus,

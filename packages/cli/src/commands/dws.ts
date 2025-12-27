@@ -10,8 +10,8 @@ import {
 import { join, normalize, resolve } from 'node:path'
 import {
   CORE_PORTS,
-  getEQLiteBlockProducerUrl,
   getDWSUrl,
+  getEQLiteBlockProducerUrl,
 } from '@jejunetwork/config'
 import { toError } from '@jejunetwork/types'
 import { Command } from 'commander'

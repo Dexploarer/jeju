@@ -413,11 +413,10 @@ export async function updateAgentStatus(
   status: AgentStatus,
 ): Promise<void> {
   const now = Date.now()
-  await eqliteExec('UPDATE agents SET status = ?, updated_at = ? WHERE id = ?', [
-    status,
-    now,
-    id,
-  ])
+  await eqliteExec(
+    'UPDATE agents SET status = ?, updated_at = ? WHERE id = ?',
+    [status, now, id],
+  )
 }
 
 export async function terminateAgent(
@@ -432,11 +431,10 @@ export async function terminateAgent(
 
   const now = Date.now()
 
-  await eqliteExec('UPDATE agents SET status = ?, updated_at = ? WHERE id = ?', [
-    'terminated',
-    now,
-    id,
-  ])
+  await eqliteExec(
+    'UPDATE agents SET status = ?, updated_at = ? WHERE id = ?',
+    ['terminated', now, id],
+  )
 
   // Disable cron triggers
   await eqliteExec(
@@ -581,7 +579,10 @@ export async function getAgentStats(
 
 // EQLite Helpers
 
-async function eqliteQuery<T>(sql: string, params: SqlParam[] = []): Promise<T[]> {
+async function eqliteQuery<T>(
+  sql: string,
+  params: SqlParam[] = [],
+): Promise<T[]> {
   if (!registryConfig) {
     throw new Error(
       '[AgentRegistry] Registry not initialized - call initRegistry first',

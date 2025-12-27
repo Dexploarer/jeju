@@ -357,7 +357,7 @@ async function createDeploymentBundle(): Promise<void> {
         routes: ['/api/*', '/health', '/.well-known/*'],
       },
     },
-dws: {
+    dws: {
       regions: ['global'],
       tee: { preferred: true, required: false },
       database: { type: 'eqlite', migrations: 'migrations/' },

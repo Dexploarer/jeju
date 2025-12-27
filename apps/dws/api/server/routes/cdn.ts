@@ -7,8 +7,12 @@
  * - Cache management
  */
 
-import { getContract, getRpcUrl, getServiceUrl } from '@jejunetwork/config'
-import { createAppConfig } from '@jejunetwork/config'
+import {
+  createAppConfig,
+  getContract,
+  getRpcUrl,
+  getServiceUrl,
+} from '@jejunetwork/config'
 import { Elysia, t } from 'elysia'
 import type { Address } from 'viem'
 import { getAppRegistry } from '../../../src/cdn/app-registry'
@@ -49,7 +53,9 @@ const { config: cdnRouterConfig, configure: configureCDNRouter } =
     jejuAppsDir: '/apps',
   })
 
-export function configureCDNRouterConfig(config: Partial<CDNRouterConfig>): void {
+export function configureCDNRouterConfig(
+  config: Partial<CDNRouterConfig>,
+): void {
   configureCDNRouter(config)
 }
 

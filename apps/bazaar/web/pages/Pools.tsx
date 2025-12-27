@@ -49,7 +49,9 @@ function PoolRow({
   onSelect,
 }: PoolRowProps) {
   const { poolState } = useTFMMPoolState(isSelected ? address : null)
-  const { balance: userBalance } = useTFMMUserBalance(isSelected ? address : null)
+  const { balance: userBalance } = useTFMMUserBalance(
+    isSelected ? address : null,
+  )
 
   return (
     <article
@@ -67,12 +69,16 @@ function PoolRow({
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           {/* Pool Info */}
           <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${STRATEGY_COLORS[strategy] ?? 'from-gray-500 to-gray-600'} flex items-center justify-center`}>
+            <div
+              className={`w-10 h-10 rounded-xl bg-gradient-to-br ${STRATEGY_COLORS[strategy] ?? 'from-gray-500 to-gray-600'} flex items-center justify-center`}
+            >
               <Droplets className="w-5 h-5 text-white" />
             </div>
             <div className="min-w-0">
               <h3 className="font-semibold text-primary truncate">{name}</h3>
-              <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium uppercase bg-gradient-to-r ${STRATEGY_COLORS[strategy] ?? 'from-gray-500 to-gray-600'} text-white`}>
+              <span
+                className={`inline-block px-2 py-0.5 rounded text-xs font-medium uppercase bg-gradient-to-r ${STRATEGY_COLORS[strategy] ?? 'from-gray-500 to-gray-600'} text-white`}
+              >
                 {strategy}
               </span>
             </div>
@@ -107,11 +113,16 @@ function PoolRow({
 
       {/* Expanded Details */}
       {isSelected && poolState && (
-        <div className="px-4 pb-4 pt-0 border-t animate-fade-in" style={{ borderColor: 'var(--border)' }}>
+        <div
+          className="px-4 pb-4 pt-0 border-t animate-fade-in"
+          style={{ borderColor: 'var(--border)' }}
+        >
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4">
             <div>
               <p className="text-xs text-tertiary">Tokens</p>
-              <p className="font-medium text-primary">{poolState.tokens.length} assets</p>
+              <p className="font-medium text-primary">
+                {poolState.tokens.length} assets
+              </p>
             </div>
             <div>
               <p className="text-xs text-tertiary">Swap Fee</p>
@@ -122,12 +133,17 @@ function PoolRow({
             <div>
               <p className="text-xs text-tertiary">Total Supply</p>
               <p className="font-medium text-primary">
-                {Number(formatUnits(poolState.totalSupply, 18)).toLocaleString()} LP
+                {Number(
+                  formatUnits(poolState.totalSupply, 18),
+                ).toLocaleString()}{' '}
+                LP
               </p>
             </div>
             <div>
               <p className="text-xs text-tertiary">Your Balance</p>
-              <p className={`font-medium ${userBalance > 0n ? 'text-success' : 'text-tertiary'}`}>
+              <p
+                className={`font-medium ${userBalance > 0n ? 'text-success' : 'text-tertiary'}`}
+              >
                 {Number(formatUnits(userBalance, 18)).toLocaleString()} LP
               </p>
             </div>
@@ -209,9 +225,10 @@ export default function PoolsPage() {
 
   // Calculate aggregate stats
   const totalTVL = pools.reduce((sum, p) => sum + p.metrics.tvlUsd, 0)
-  const avgAPY = pools.length > 0
-    ? pools.reduce((sum, p) => sum + p.metrics.apyPercent, 0) / pools.length
-    : 0
+  const avgAPY =
+    pools.length > 0
+      ? pools.reduce((sum, p) => sum + p.metrics.apyPercent, 0) / pools.length
+      : 0
   const totalVolume = pools.reduce((sum, p) => sum + p.metrics.volume24hUsd, 0)
 
   return (
@@ -274,7 +291,9 @@ export default function PoolsPage() {
             >
               {field === 'volume' ? '24h Vol' : field}
               {sortField === field && (
-                <span className="ml-1">{sortDirection === 'desc' ? '↓' : '↑'}</span>
+                <span className="ml-1">
+                  {sortDirection === 'desc' ? '↓' : '↑'}
+                </span>
               )}
             </button>
           ))}
@@ -309,7 +328,9 @@ export default function PoolsPage() {
               volume24h={pool.volume24h}
               isSelected={selectedPool === pool.address}
               onSelect={() =>
-                setSelectedPool(selectedPool === pool.address ? null : pool.address)
+                setSelectedPool(
+                  selectedPool === pool.address ? null : pool.address,
+                )
               }
             />
           ))}

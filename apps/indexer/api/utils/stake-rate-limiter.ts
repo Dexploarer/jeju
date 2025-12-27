@@ -1,7 +1,6 @@
 import { getChainlinkFeed, hasChainlinkSupport } from '@jejunetwork/config'
 import { AddressSchema, validateOrThrow } from '@jejunetwork/types'
 import { Elysia } from 'elysia'
-import { config as indexerConfig } from '../config'
 import {
   type Address,
   type Chain,
@@ -11,6 +10,7 @@ import {
   type PublicClient,
   type Transport,
 } from 'viem'
+import { config as indexerConfig } from '../config'
 import { loadNetworkConfig } from '../network-config'
 import { inferChainFromRpcUrl } from './chain-utils'
 
@@ -104,7 +104,8 @@ function getContracts() {
     chain,
     transport: http(netConfig.rpcUrl),
   })
-  const { identityRegistry, banManager, nodeStakingManager } = netConfig.contracts
+  const { identityRegistry, banManager, nodeStakingManager } =
+    netConfig.contracts
   const stakingAddr = indexerConfig.stakingAddress ?? nodeStakingManager
 
   contracts = {

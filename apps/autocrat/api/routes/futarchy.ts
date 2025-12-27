@@ -4,10 +4,9 @@
 
 import { ZERO_ADDRESS } from '@jejunetwork/types'
 import { Elysia, t } from 'elysia'
-import { config } from '../config'
 import { toAddress } from '../../lib'
 import { type FutarchyConfig, getFutarchyClient } from '../futarchy'
-import { config } from '../shared-state'
+import { autocratConfig, config } from '../shared-state'
 
 const ZERO_ADDR = ZERO_ADDRESS
 
@@ -15,7 +14,7 @@ const futarchyConfig: FutarchyConfig = {
   rpcUrl: config.rpcUrl,
   councilAddress: toAddress(config.contracts.council),
   predictionMarketAddress: ZERO_ADDR,
-  operatorKey: config.operatorKey ?? config.privateKey,
+  operatorKey: autocratConfig.operatorKey ?? autocratConfig.privateKey,
 }
 const futarchy = getFutarchyClient(futarchyConfig)
 

@@ -63,7 +63,9 @@ export function ConnectionStats({ connection }: ConnectionStatsProps) {
         <StatBox
           icon={<ArrowDown className="w-4 h-4 text-accent" />}
           label="Download"
-          value={formatBytes(stats?.bytes_down ?? validatedConnection.bytes_down)}
+          value={formatBytes(
+            stats?.bytes_down ?? validatedConnection.bytes_down,
+          )}
         />
         <StatBox
           icon={<ArrowUp className="w-4 h-4 text-accent-secondary" />}
@@ -86,7 +88,9 @@ export function ConnectionStats({ connection }: ConnectionStatsProps) {
         <div className="mt-4 pt-4 border-t border-border">
           <div className="flex justify-between text-sm">
             <span className="text-muted">VPN IP</span>
-            <span className="font-mono text-accent">{validatedConnection.local_ip}</span>
+            <span className="font-mono text-accent">
+              {validatedConnection.local_ip}
+            </span>
           </div>
         </div>
       )}

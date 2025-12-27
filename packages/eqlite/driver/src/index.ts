@@ -36,35 +36,37 @@
  */
 
 // Core connection
-export { Connection } from "./Connection"
-export type { ConnectionConfig } from "./ConnectionConfig"
+export { Connection } from './Connection'
+export type { ConnectionConfig } from './ConnectionConfig'
 
 // Connection pooling
-export { ConnectionPool, createPool, type PoolConfig } from "./ConnectionPool"
+export { ConnectionPool, createPool, type PoolConfig } from './ConnectionPool'
 
 // Node discovery
 export {
+  createDiscovery,
+  type DiscoveryConfig,
   EQLITE_REGISTRY_ABI,
   EQLiteDiscovery,
-  createDiscovery,
   type EQLiteNode,
-  type DiscoveryConfig,
-} from "./Discovery"
+} from './Discovery'
 
 // Transactions
 export {
   Transaction,
-  withTransaction,
   type TransactionOptions,
-} from "./Transaction"
+  withTransaction,
+} from './Transaction'
 
 // Factory functions
-import { Connection } from "./Connection"
-import type { ConnectionConfig } from "./ConnectionConfig"
+import { Connection } from './Connection'
+import type { ConnectionConfig } from './ConnectionConfig'
 
 /**
  * Create a new connection instance
  */
-export function createConnection(config: ConnectionConfig): Promise<Connection> {
+export function createConnection(
+  config: ConnectionConfig,
+): Promise<Connection> {
   return new Connection(config).connect()
 }

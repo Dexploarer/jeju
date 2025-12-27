@@ -7,10 +7,10 @@ import { createInterface } from 'node:readline'
 import { parseArgs } from 'node:util'
 import {
   getChainId,
-  getEQLiteMinerUrl,
-  getEQLiteUrl,
   getCurrentNetwork,
   getEnvVar,
+  getEQLiteMinerUrl,
+  getEQLiteUrl,
   getRpcUrl,
 } from '@jejunetwork/config'
 import { expectAddress, expectHex } from '@jejunetwork/types'
@@ -19,6 +19,7 @@ import { formatEther } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { z } from 'zod'
 import { JsonRpcResultResponseSchema } from '../../lib/validation'
+import { configureNode, config as nodeConfig } from '../config'
 import { createNodeClient } from '../lib/contracts'
 import type { ServiceRequirements } from '../lib/hardware'
 import {
@@ -28,7 +29,6 @@ import {
   meetsRequirements,
 } from '../lib/hardware'
 import { createNodeServices } from '../lib/services'
-import { config as nodeConfig, configureNode } from '../config'
 
 const CliAppConfigSchema = z.object({
   version: z.string().regex(/^\d+\.\d+\.\d+/, 'Version must be semver format'),
@@ -636,7 +636,7 @@ async function startDatabaseService(
       queryTimeoutMs: 30000,
     })
 
-await databaseService.start()
+    await databaseService.start()
     log(
       'success',
       `Database (EQLite) service started - BP: ${blockProducerEndpoint}`,

@@ -33,7 +33,9 @@ export function Header() {
   useEffect(() => {
     setMounted(true)
     const savedTheme = localStorage.getItem('bazaar-theme')
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    const prefersDark = window.matchMedia(
+      '(prefers-color-scheme: dark)',
+    ).matches
     const shouldBeDark = savedTheme ? savedTheme === 'dark' : prefersDark
     setIsDark(shouldBeDark)
     document.documentElement.classList.toggle('dark', shouldBeDark)
@@ -43,7 +45,7 @@ export function Header() {
   useEffect(() => {
     setMobileMenuOpen(false)
     setAccountDropdownOpen(false)
-  }, [pathname])
+  }, [])
 
   // Prevent scroll when mobile menu is open
   useEffect(() => {
@@ -129,9 +131,10 @@ export function Header() {
                     aria-current={active ? 'page' : undefined}
                     className={`
                       px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 focus-ring
-                      ${active
-                        ? 'bg-primary-soft text-primary-color shadow-glow-sm'
-                        : 'text-secondary hover:text-primary hover:bg-surface-secondary'
+                      ${
+                        active
+                          ? 'bg-primary-soft text-primary-color shadow-glow-sm'
+                          : 'text-secondary hover:text-primary hover:bg-surface-secondary'
                       }
                     `}
                   >
@@ -148,7 +151,9 @@ export function Header() {
                 type="button"
                 onClick={toggleTheme}
                 className="p-2 md:p-2.5 rounded-xl bg-surface-secondary hover:bg-surface-elevated transition-all duration-200 hover:scale-105 focus-ring"
-                aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+                aria-label={
+                  isDark ? 'Switch to light theme' : 'Switch to dark theme'
+                }
               >
                 <span className="text-lg" aria-hidden="true">
                   {isDark ? '☀️' : '🌙'}
@@ -163,7 +168,9 @@ export function Header() {
                   <>
                     <button
                       type="button"
-                      onClick={() => setAccountDropdownOpen(!accountDropdownOpen)}
+                      onClick={() =>
+                        setAccountDropdownOpen(!accountDropdownOpen)
+                      }
                       className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface-secondary hover:bg-surface-elevated transition-all duration-200 focus-ring"
                       aria-expanded={accountDropdownOpen}
                       aria-haspopup="menu"
@@ -236,7 +243,10 @@ export function Header() {
                             <span aria-hidden="true">⚙️</span>
                             <span className="font-medium">Settings</span>
                           </Link>
-                          <div className="border-t" style={{ borderColor: 'var(--border)' }} />
+                          <div
+                            className="border-t"
+                            style={{ borderColor: 'var(--border)' }}
+                          />
                           <button
                             type="button"
                             onClick={handleDisconnect}
@@ -318,7 +328,10 @@ export function Header() {
       >
         <div className="flex flex-col h-full">
           {/* Mobile Menu Header */}
-          <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--border)' }}>
+          <div
+            className="flex items-center justify-between p-4 border-b"
+            style={{ borderColor: 'var(--border)' }}
+          >
             <span className="text-lg font-bold text-gradient">Menu</span>
             <button
               type="button"
@@ -356,9 +369,10 @@ export function Header() {
                   className={`
                     flex items-center gap-3 px-6 py-4 text-base font-medium transition-colors
                     animate-fade-in-up stagger-${index + 1}
-                    ${active
-                      ? 'bg-primary-soft border-r-4 border-primary-color text-primary-color'
-                      : 'hover:bg-surface-secondary text-primary'
+                    ${
+                      active
+                        ? 'bg-primary-soft border-r-4 border-primary-color text-primary-color'
+                        : 'hover:bg-surface-secondary text-primary'
                     }
                   `}
                   aria-current={active ? 'page' : undefined}
@@ -367,7 +381,9 @@ export function Header() {
                     borderColor: active ? 'var(--color-primary)' : undefined,
                   }}
                 >
-                  <span className="text-xl" aria-hidden="true">{item.icon}</span>
+                  <span className="text-xl" aria-hidden="true">
+                    {item.icon}
+                  </span>
                   {item.label}
                 </Link>
               )
@@ -375,7 +391,10 @@ export function Header() {
           </div>
 
           {/* Mobile Wallet Section */}
-          <div className="p-4 border-t" style={{ borderColor: 'var(--border)' }}>
+          <div
+            className="p-4 border-t"
+            style={{ borderColor: 'var(--border)' }}
+          >
             {!address ? (
               <AuthButton className="w-full" />
             ) : (

@@ -23,13 +23,13 @@ import { z } from 'zod'
 import type {
   ACLRule,
   BlockProducerInfo,
+  CreateRentalRequest,
+  DatabaseConfig,
+  DatabaseInfo,
   EQLiteConfig,
   EQLiteConnection,
   EQLiteConnectionPool,
   EQLiteTransaction,
-  CreateRentalRequest,
-  DatabaseConfig,
-  DatabaseInfo,
   ExecResult,
   GrantRequest,
   QueryParam,
@@ -78,8 +78,10 @@ const QueryResponseSchema = z
     columns: z.array(z.string()),
     blockHeight: z.number().int().nonnegative(),
     executionTime: z.number().int().nonnegative().optional(),
+    // Additional fields for dev mode compatibility
+    success: z.boolean().optional(),
   })
-  .strict()
+  .passthrough()
 
 const ExecResponseSchema = z
   .object({
@@ -388,7 +390,9 @@ class EQLiteConnectionImpl implements EQLiteConnection {
     if (!response.ok) {
       const errorText = await response.text()
       if (this.debug)
-        console.error(`[EQLite] ${type} error: ${response.status} - ${errorText}`)
+        console.error(
+          `[EQLite] ${type} error: ${response.status} - ${errorText}`,
+        )
       throw new Error(`EQLite ${type} failed: ${response.status}`)
     }
 
@@ -973,7 +977,8 @@ const DEFAULT_TIMEOUT = 30000
  */
 export function getEQLite(config?: Partial<EQLiteConfig>): EQLiteClient {
   if (!eqliteClient) {
-    const blockProducerEndpoint = config?.blockProducerEndpoint ?? getEQLiteUrl()
+    const blockProducerEndpoint =
+      config?.blockProducerEndpoint ?? getEQLiteUrl()
     const minerEndpoint = config?.minerEndpoint ?? getEQLiteMinerUrl()
 
     if (!blockProducerEndpoint) {
@@ -985,7 +990,8 @@ export function getEQLite(config?: Partial<EQLiteConfig>): EQLiteClient {
     const resolvedConfig = {
       blockProducerEndpoint,
       minerEndpoint,
-      privateKey: config?.privateKey ?? (getEqlitePrivateKey() as Hex | undefined),
+      privateKey:
+        config?.privateKey ?? (getEqlitePrivateKey() as Hex | undefined),
       databaseId: config?.databaseId ?? getEqliteDatabaseId(),
       timeout:
         config?.timeout ?? parseTimeout(getEqliteTimeout(), DEFAULT_TIMEOUT),
@@ -1005,4 +1011,3 @@ export async function resetEQLite(): Promise<void> {
     eqliteClient = null
   }
 }
-

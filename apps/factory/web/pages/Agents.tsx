@@ -70,21 +70,51 @@ export function AgentsPage() {
     })
   }, [agents, search])
 
-  const stats = useMemo(() => ({
-    total: agents.length,
-    active: agents.filter((a) => a.status === 'active').length,
-    totalTasks: agents.reduce((sum, a) => sum + a.metrics.tasksCompleted, 0),
-    avgReputation: agents.length > 0
-      ? Math.round(agents.reduce((sum, a) => sum + a.metrics.reputation, 0) / agents.length)
-      : 0,
-  }), [agents])
+  const stats = useMemo(
+    () => ({
+      total: agents.length,
+      active: agents.filter((a) => a.status === 'active').length,
+      totalTasks: agents.reduce((sum, a) => sum + a.metrics.tasksCompleted, 0),
+      avgReputation:
+        agents.length > 0
+          ? Math.round(
+              agents.reduce((sum, a) => sum + a.metrics.reputation, 0) /
+                agents.length,
+            )
+          : 0,
+    }),
+    [agents],
+  )
 
-  const statsData = useMemo(() => [
-    { label: 'Total Agents', value: stats.total.toString(), color: 'text-accent-400', loading: isLoading },
-    { label: 'Active', value: stats.active.toString(), color: 'text-success-400', loading: isLoading },
-    { label: 'Tasks Completed', value: formatCompactNumber(stats.totalTasks), color: 'text-info-400', loading: isLoading },
-    { label: 'Avg. Reputation', value: stats.avgReputation.toString(), color: 'text-warning-400', loading: isLoading },
-  ], [stats, isLoading])
+  const statsData = useMemo(
+    () => [
+      {
+        label: 'Total Agents',
+        value: stats.total.toString(),
+        color: 'text-accent-400',
+        loading: isLoading,
+      },
+      {
+        label: 'Active',
+        value: stats.active.toString(),
+        color: 'text-success-400',
+        loading: isLoading,
+      },
+      {
+        label: 'Tasks Completed',
+        value: formatCompactNumber(stats.totalTasks),
+        color: 'text-info-400',
+        loading: isLoading,
+      },
+      {
+        label: 'Avg. Reputation',
+        value: stats.avgReputation.toString(),
+        color: 'text-warning-400',
+        loading: isLoading,
+      },
+    ],
+    [stats, isLoading],
+  )
 
   return (
     <div className="page-container">
@@ -109,7 +139,10 @@ export function AgentsPage() {
             className="flex-1 mb-0 p-0 border-0 bg-transparent shadow-none"
           />
 
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Agent type filters">
+          <fieldset
+            className="flex flex-wrap gap-2 border-0"
+            aria-label="Agent type filters"
+          >
             {typeFilters.map((type) => (
               <button
                 key={type.value}
@@ -126,14 +159,19 @@ export function AgentsPage() {
                 {type.label}
               </button>
             ))}
-          </div>
+          </fieldset>
 
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Status filters">
+          <fieldset
+            className="flex flex-wrap gap-2 border-0"
+            aria-label="Status filters"
+          >
             {statusFilters.map((status) => (
               <button
                 key={status.value}
                 type="button"
-                onClick={() => setStatusFilter(status.value as AgentStatus | 'all')}
+                onClick={() =>
+                  setStatusFilter(status.value as AgentStatus | 'all')
+                }
                 className={clsx(
                   'px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-all',
                   statusFilter === status.value
@@ -145,7 +183,7 @@ export function AgentsPage() {
                 {status.label}
               </button>
             ))}
-          </div>
+          </fieldset>
         </div>
       </div>
 
@@ -159,7 +197,11 @@ export function AgentsPage() {
         <EmptyState
           icon={Bot}
           title="No agents found"
-          description={search ? 'Try a different search term' : 'Deploy an agent to automate tasks'}
+          description={
+            search
+              ? 'Try a different search term'
+              : 'Deploy an agent to automate tasks'
+          }
           actionLabel="Deploy Agent"
           actionHref="/agents/deploy"
         />
@@ -175,11 +217,18 @@ export function AgentsPage() {
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-accent-500/15 flex items-center justify-center">
-                    <Bot className="w-5 h-5 text-accent-400" aria-hidden="true" />
+                    <Bot
+                      className="w-5 h-5 text-accent-400"
+                      aria-hidden="true"
+                    />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-surface-100">{agent.name}</h3>
-                    <p className="text-surface-500 text-sm">{typeLabels[agent.type]}</p>
+                    <h3 className="font-semibold text-surface-100">
+                      {agent.name}
+                    </h3>
+                    <p className="text-surface-500 text-sm">
+                      {typeLabels[agent.type]}
+                    </p>
                   </div>
                 </div>
                 <span className={clsx('badge', statusColors[agent.status])}>
@@ -193,7 +242,9 @@ export function AgentsPage() {
 
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
-                  <p className="text-surface-100 font-semibold">{agent.metrics.tasksCompleted}</p>
+                  <p className="text-surface-100 font-semibold">
+                    {agent.metrics.tasksCompleted}
+                  </p>
                   <p className="text-surface-500 text-xs">Tasks</p>
                 </div>
                 <div>
@@ -203,7 +254,9 @@ export function AgentsPage() {
                   <p className="text-surface-500 text-xs">Success</p>
                 </div>
                 <div>
-                  <p className="text-surface-100 font-semibold">{agent.metrics.reputation}</p>
+                  <p className="text-surface-100 font-semibold">
+                    {agent.metrics.reputation}
+                  </p>
                   <p className="text-surface-500 text-xs">Rep</p>
                 </div>
               </div>

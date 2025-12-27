@@ -265,7 +265,10 @@ export class TusUploadManager {
 
   // ============ Upload Creation ============
 
-  async createUpload(request: TusUploadCreateRequest, owner?: Address): Promise<TusUpload> {
+  async createUpload(
+    request: TusUploadCreateRequest,
+    owner?: Address,
+  ): Promise<TusUpload> {
     const uploadId = `upload_${Date.now()}_${randomBytes(12).toString('hex')}`
     const now = Date.now()
 
@@ -359,7 +362,10 @@ export class TusUploadManager {
 
   // ============ Upload Patching (Chunk Upload) ============
 
-  async patchUpload(uploadId: string, request: TusUploadPatchRequest): Promise<TusUpload> {
+  async patchUpload(
+    uploadId: string,
+    request: TusUploadPatchRequest,
+  ): Promise<TusUpload> {
     const upload = this.uploads.get(uploadId)
     if (!upload) {
       throw new Error('Upload not found')
@@ -781,7 +787,9 @@ export class TusUploadManager {
     await writeFileAsync(metadataPath, content)
   }
 
-  private async loadUploadMetadata(uploadId: string): Promise<TusUpload | undefined> {
+  private async loadUploadMetadata(
+    uploadId: string,
+  ): Promise<TusUpload | undefined> {
     const metadataPath = this.getMetadataPath(uploadId)
     const exists = await fileExists(metadataPath)
     if (!exists) {

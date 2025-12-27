@@ -8,7 +8,6 @@ import { startA2AServer } from './a2a-server'
 import { config } from './config'
 import { startMCPServer } from './mcp-server'
 import { startRestServer } from './rest-server'
-import { getEQLiteSync } from './utils/eqlite-sync'
 import {
   closeDataSource,
   getDataSourceWithRetry,
@@ -17,6 +16,7 @@ import {
   setSchemaVerified,
   verifyDatabaseSchema,
 } from './utils/db'
+import { getEQLiteSync } from './utils/eqlite-sync'
 
 async function main(): Promise<void> {
   console.log('🚀 Starting Indexer API servers...')

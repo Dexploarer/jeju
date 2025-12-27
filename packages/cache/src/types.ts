@@ -142,7 +142,8 @@ export const CacheErrorCode = {
   RATE_LIMITED: 'RATE_LIMITED',
 } as const
 
-export type CacheErrorCode = (typeof CacheErrorCode)[keyof typeof CacheErrorCode]
+export type CacheErrorCode =
+  (typeof CacheErrorCode)[keyof typeof CacheErrorCode]
 
 /**
  * Cache error class

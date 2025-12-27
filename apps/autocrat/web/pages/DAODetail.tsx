@@ -89,7 +89,9 @@ function LoadingState() {
           className="w-10 h-10 animate-spin mx-auto mb-4"
           style={{ color: 'var(--color-primary)' }}
         />
-        <p style={{ color: 'var(--text-secondary)' }}>Loading organization...</p>
+        <p style={{ color: 'var(--text-secondary)' }}>
+          Loading organization...
+        </p>
       </div>
     </div>
   )
@@ -114,9 +116,15 @@ function ErrorState({ error, onRetry }: ErrorStateProps) {
             border: '1px solid rgba(239, 68, 68, 0.3)',
           }}
         >
-          <AlertCircle className="w-10 h-10" style={{ color: 'var(--color-error)' }} />
+          <AlertCircle
+            className="w-10 h-10"
+            style={{ color: 'var(--color-error)' }}
+          />
         </div>
-        <h2 className="text-xl font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
+        <h2
+          className="text-xl font-semibold mb-2"
+          style={{ color: 'var(--text-primary)' }}
+        >
           Failed to load organization
         </h2>
         <p className="mb-6" style={{ color: 'var(--text-secondary)' }}>
@@ -164,9 +172,15 @@ function NotFoundState() {
             border: '1px solid var(--border)',
           }}
         >
-          <AlertCircle className="w-10 h-10" style={{ color: 'var(--text-tertiary)' }} />
+          <AlertCircle
+            className="w-10 h-10"
+            style={{ color: 'var(--text-tertiary)' }}
+          />
         </div>
-        <h2 className="text-xl font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
+        <h2
+          className="text-xl font-semibold mb-2"
+          style={{ color: 'var(--text-primary)' }}
+        >
           Organization not found
         </h2>
         <p className="mb-6" style={{ color: 'var(--text-secondary)' }}>
@@ -197,7 +211,7 @@ export default function DAODetailPage() {
     (tab: TabId) => {
       setSearchParams({ tab })
     },
-    [setSearchParams]
+    [setSearchParams],
   )
 
   const handleRetry = useCallback(() => {
@@ -218,7 +232,10 @@ export default function DAODetailPage() {
       links.push({ href: dao.websiteUrl, label: 'Website' })
     }
     if (dao.githubOrg) {
-      links.push({ href: `https://github.com/${dao.githubOrg}`, label: 'GitHub' })
+      links.push({
+        href: `https://github.com/${dao.githubOrg}`,
+        label: 'GitHub',
+      })
     }
     return links
   }, [dao])
@@ -278,7 +295,9 @@ export default function DAODetailPage() {
             {/* DAO Info */}
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-3 mb-2">
-                <h1 className="text-2xl md:text-3xl font-bold text-white">{dao.displayName}</h1>
+                <h1 className="text-2xl md:text-3xl font-bold text-white">
+                  {dao.displayName}
+                </h1>
                 <span
                   className="px-2.5 py-1 text-xs font-semibold rounded-full"
                   style={{
@@ -313,7 +332,9 @@ export default function DAODetailPage() {
                     <Crown className="w-4 h-4 text-white" aria-hidden="true" />
                   </div>
                   <div>
-                    <p className="text-white font-medium">{dao.ceo.persona.name}</p>
+                    <p className="text-white font-medium">
+                      {dao.ceo.persona.name}
+                    </p>
                     <p className="text-xs text-white/60">CEO</p>
                   </div>
                 </div>
@@ -325,7 +346,9 @@ export default function DAODetailPage() {
                     <Users className="w-4 h-4 text-white" aria-hidden="true" />
                   </div>
                   <div>
-                    <p className="text-white font-medium">{dao.board.length} Members</p>
+                    <p className="text-white font-medium">
+                      {dao.board.length} Members
+                    </p>
                     <p className="text-xs text-white/60">Board</p>
                   </div>
                 </div>
@@ -399,8 +422,12 @@ export default function DAODetailPage() {
                   onClick={() => setActiveTab(tab.id)}
                   className="flex items-center gap-2 px-4 py-3.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap"
                   style={{
-                    borderColor: isActive ? 'var(--color-primary)' : 'transparent',
-                    color: isActive ? 'var(--color-primary)' : 'var(--text-secondary)',
+                    borderColor: isActive
+                      ? 'var(--color-primary)'
+                      : 'transparent',
+                    color: isActive
+                      ? 'var(--color-primary)'
+                      : 'var(--text-secondary)',
                   }}
                   aria-selected={isActive}
                   role="tab"

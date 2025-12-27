@@ -8,9 +8,8 @@
  * - Cluster health monitoring
  */
 
-import type { CacheNode, CacheTier } from './types'
-import { CacheError, CacheErrorCode, CacheEventType } from './types'
 import type { CacheEngine } from './engine'
+import type { CacheNode, CacheTier } from './types'
 
 // ============================================
 // Consistent Hashing
@@ -169,7 +168,8 @@ export const ReplicationMode = {
   ASYNC: 'async',
   SYNC: 'sync',
 } as const
-export type ReplicationMode = (typeof ReplicationMode)[keyof typeof ReplicationMode]
+export type ReplicationMode =
+  (typeof ReplicationMode)[keyof typeof ReplicationMode]
 
 /**
  * Replication configuration
@@ -375,7 +375,10 @@ export class ReplicationManager {
   /**
    * Execute a replication operation on an engine
    */
-  private async executeOp(engine: CacheEngine, op: ReplicationOp): Promise<void> {
+  private async executeOp(
+    engine: CacheEngine,
+    op: ReplicationOp,
+  ): Promise<void> {
     switch (op.type) {
       case 'set':
         if (op.value !== undefined) {
@@ -575,7 +578,10 @@ const DEFAULT_AOF_CONFIG: AOFConfig = {
 export class AOFPersistence {
   private config: AOFConfig
   private buffer: AOFEntry[] = []
-  private fileHandle: { write: (data: string) => Promise<void>; close: () => Promise<void> } | null = null
+  private fileHandle: {
+    write: (data: string) => Promise<void>
+    close: () => Promise<void>
+  } | null = null
   private bytesWritten = 0
   private flushInterval: ReturnType<typeof setInterval> | null = null
   private engine: CacheEngine | null = null
@@ -757,7 +763,11 @@ export class AOFPersistence {
   /**
    * Log a ZADD operation
    */
-  logZAdd(namespace: string, key: string, members: Array<{ member: string; score: number }>): void {
+  logZAdd(
+    namespace: string,
+    key: string,
+    members: Array<{ member: string; score: number }>,
+  ): void {
     if (!this.config.enabled) return
 
     const args = members.flatMap((m) => [String(m.score), m.member])
@@ -774,7 +784,11 @@ export class AOFPersistence {
   /**
    * Get AOF stats
    */
-  getStats(): { enabled: boolean; bytesWritten: number; pendingEntries: number } {
+  getStats(): {
+    enabled: boolean
+    bytesWritten: number
+    pendingEntries: number
+  } {
     return {
       enabled: this.config.enabled,
       bytesWritten: this.bytesWritten,
@@ -790,7 +804,7 @@ export class AOFPersistence {
 
     const entries = this.buffer.splice(0, this.buffer.length)
     const lines = entries.map((e) => this.serializeEntry(e))
-    const data = lines.join('\n') + '\n'
+    const data = `${lines.join('\n')}\n`
 
     await this.fileHandle.write(data)
     this.bytesWritten += data.length
@@ -863,7 +877,8 @@ export class AOFPersistence {
 
     switch (entry.op) {
       case 'set': {
-        const ttl = entry.args.length > 1 ? parseInt(entry.args[1], 10) : undefined
+        const ttl =
+          entry.args.length > 1 ? parseInt(entry.args[1], 10) : undefined
         this.engine.set(entry.namespace, entry.key, entry.args[0], { ttl })
         break
       }
@@ -871,10 +886,19 @@ export class AOFPersistence {
         this.engine.del(entry.namespace, entry.key)
         break
       case 'expire':
-        this.engine.expire(entry.namespace, entry.key, parseInt(entry.args[0], 10))
+        this.engine.expire(
+          entry.namespace,
+          entry.key,
+          parseInt(entry.args[0], 10),
+        )
         break
       case 'hset':
-        this.engine.hset(entry.namespace, entry.key, entry.args[0], entry.args[1])
+        this.engine.hset(
+          entry.namespace,
+          entry.key,
+          entry.args[0],
+          entry.args[1],
+        )
         break
       case 'lpush':
         this.engine.lpush(entry.namespace, entry.key, ...entry.args)
@@ -913,7 +937,6 @@ export class AOFPersistence {
     const writer = tempFile.writer()
 
     // Write current state
-    const stats = this.engine.getStats()
     const namespaces = this.engine.getAllNamespaceStats()
 
     for (const ns of namespaces) {
@@ -922,7 +945,7 @@ export class AOFPersistence {
         const type = this.engine.type(ns.namespace, key)
         const entry = this.createSnapshotEntry(ns.namespace, key, type)
         if (entry) {
-          writer.write(this.serializeEntry(entry) + '\n')
+          writer.write(`${this.serializeEntry(entry)}\n`)
         }
       }
     }
@@ -933,7 +956,7 @@ export class AOFPersistence {
     const fs = await import('node:fs/promises')
     await fs.rename(tempPath, this.config.filePath)
 
-    this.bytesWritten = (await Bun.file(this.config.filePath).size)
+    this.bytesWritten = await Bun.file(this.config.filePath).size
 
     console.log(`[AOF] Rewrite complete, new size: ${this.bytesWritten} bytes`)
   }
@@ -941,7 +964,11 @@ export class AOFPersistence {
   /**
    * Create a snapshot entry for a key
    */
-  private createSnapshotEntry(namespace: string, key: string, type: string): AOFEntry | null {
+  private createSnapshotEntry(
+    namespace: string,
+    key: string,
+    type: string,
+  ): AOFEntry | null {
     if (!this.engine) return null
 
     const now = Date.now()
@@ -996,7 +1023,10 @@ export class AOFPersistence {
         }
       }
       case 'zset': {
-        const range = this.engine.zrange(namespace, key, 0, -1, true) as Array<{ member: string; score: number }>
+        const range = this.engine.zrange(namespace, key, 0, -1, true) as Array<{
+          member: string
+          score: number
+        }>
         if (range.length === 0) return null
         return {
           timestamp: now,
@@ -1048,7 +1078,10 @@ export class ClusterManager {
     this.config = { ...DEFAULT_CLUSTER_CONFIG, ...config }
 
     this.hashRing = new ConsistentHashRing(this.config.virtualNodesPerNode)
-    this.replication = new ReplicationManager(this.hashRing, this.config.replication)
+    this.replication = new ReplicationManager(
+      this.hashRing,
+      this.config.replication,
+    )
     this.router = new RegionalRouter(this.hashRing, this.config.localRegion)
     this.aof = new AOFPersistence(this.config.aof)
   }
@@ -1144,7 +1177,11 @@ export class ClusterManager {
   getStatus(): {
     nodes: number
     regions: RegionLatency[]
-    replication: { mode: ReplicationMode; pendingOps: number; replicaCount: number }
+    replication: {
+      mode: ReplicationMode
+      pendingOps: number
+      replicaCount: number
+    }
     aof: { enabled: boolean; bytesWritten: number; pendingEntries: number }
   } {
     return {
@@ -1193,4 +1230,3 @@ export function resetClusterManager(): void {
     clusterManager = null
   }
 }
-

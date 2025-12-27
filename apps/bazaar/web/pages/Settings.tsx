@@ -19,10 +19,26 @@ const TABS = [
   { id: 'theme' as const, label: 'Theme', icon: Palette },
 ]
 
-const THEME_OPTIONS: Array<{ value: ThemeOption; label: string; description: string }> = [
-  { value: 'light', label: 'Light', description: 'Light background with dark text' },
-  { value: 'dark', label: 'Dark', description: 'Dark background with light text' },
-  { value: 'system', label: 'System', description: 'Match your device settings' },
+const THEME_OPTIONS: Array<{
+  value: ThemeOption
+  label: string
+  description: string
+}> = [
+  {
+    value: 'light',
+    label: 'Light',
+    description: 'Light background with dark text',
+  },
+  {
+    value: 'dark',
+    label: 'Dark',
+    description: 'Dark background with light text',
+  },
+  {
+    value: 'system',
+    label: 'System',
+    description: 'Match your device settings',
+  },
 ]
 
 export default function SettingsPage() {
@@ -38,7 +54,9 @@ export default function SettingsPage() {
   useEffect(() => {
     setMounted(true)
     // Load saved theme preference
-    const savedTheme = localStorage.getItem('bazaar-theme') as ThemeOption | null
+    const savedTheme = localStorage.getItem(
+      'bazaar-theme',
+    ) as ThemeOption | null
     if (savedTheme && ['light', 'dark', 'system'].includes(savedTheme)) {
       setTheme(savedTheme)
     }
@@ -49,7 +67,9 @@ export default function SettingsPage() {
     localStorage.setItem('bazaar-theme', newTheme)
     // Apply theme
     if (newTheme === 'system') {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+      const prefersDark = window.matchMedia(
+        '(prefers-color-scheme: dark)',
+      ).matches
       document.documentElement.classList.toggle('dark', prefersDark)
     } else {
       document.documentElement.classList.toggle('dark', newTheme === 'dark')
@@ -66,7 +86,9 @@ export default function SettingsPage() {
   if (!isConnected) {
     return (
       <div className="max-w-2xl mx-auto text-center py-20 animate-fade-in">
-        <div className="text-6xl mb-4 animate-float" aria-hidden="true">⚙️</div>
+        <div className="text-6xl mb-4 animate-float" aria-hidden="true">
+          ⚙️
+        </div>
         <h1 className="text-2xl font-bold text-primary mb-4">Settings</h1>
         <p className="text-secondary mb-8">
           Connect your wallet to access settings
@@ -97,7 +119,6 @@ export default function SettingsPage() {
       <nav
         className="flex gap-2 border-b mb-8"
         style={{ borderColor: 'var(--border)' }}
-        role="tablist"
         aria-label="Settings sections"
       >
         {TABS.map((tab) => {
@@ -128,7 +149,11 @@ export default function SettingsPage() {
 
       {/* Profile Tab */}
       {activeTab === 'profile' && (
-        <section className="space-y-6 animate-fade-in" role="tabpanel" aria-labelledby="profile-tab">
+        <section
+          className="space-y-6 animate-fade-in"
+          role="tabpanel"
+          aria-labelledby="profile-tab"
+        >
           <div>
             <label
               htmlFor="displayName"
@@ -183,7 +208,11 @@ export default function SettingsPage() {
 
       {/* Theme Tab */}
       {activeTab === 'theme' && mounted && (
-        <section className="space-y-4 animate-fade-in" role="tabpanel" aria-labelledby="theme-tab">
+        <section
+          className="space-y-4 animate-fade-in"
+          role="tabpanel"
+          aria-labelledby="theme-tab"
+        >
           <h2 className="text-lg font-medium text-primary mb-4">
             Theme Preference
           </h2>
@@ -197,7 +226,8 @@ export default function SettingsPage() {
                   theme === option.value ? 'border-primary-color' : ''
                 }`}
                 style={{
-                  borderColor: theme === option.value ? 'var(--color-primary)' : undefined,
+                  borderColor:
+                    theme === option.value ? 'var(--color-primary)' : undefined,
                 }}
               >
                 <input
@@ -213,9 +243,7 @@ export default function SettingsPage() {
                   <p className="font-medium text-primary capitalize">
                     {option.label}
                   </p>
-                  <p className="text-sm text-secondary">
-                    {option.description}
-                  </p>
+                  <p className="text-sm text-secondary">{option.description}</p>
                 </div>
               </label>
             ))}

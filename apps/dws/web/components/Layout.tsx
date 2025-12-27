@@ -285,7 +285,7 @@ export default function Layout({
   // Close sidebar when route changes (mobile)
   useEffect(() => {
     setSidebarOpen(false)
-  }, [location.pathname])
+  }, [])
 
   // Close mobile sidebar on resize to desktop
   useEffect(() => {

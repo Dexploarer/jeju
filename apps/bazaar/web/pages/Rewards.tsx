@@ -47,7 +47,9 @@ export default function RewardsPage() {
   if (!isConnected) {
     return (
       <div className="max-w-2xl mx-auto text-center py-20 animate-fade-in">
-        <div className="text-6xl mb-4 animate-float" aria-hidden="true">🎁</div>
+        <div className="text-6xl mb-4 animate-float" aria-hidden="true">
+          🎁
+        </div>
         <h1 className="text-2xl font-bold text-primary mb-4">Rewards</h1>
         <p className="text-secondary mb-8">
           Connect your wallet to view and earn rewards
@@ -70,7 +72,10 @@ export default function RewardsPage() {
       {/* Header */}
       <header className="mb-8">
         <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gradient-warm flex items-center gap-3 mb-2">
-          <span className="text-3xl md:text-4xl animate-bounce-subtle" aria-hidden="true">
+          <span
+            className="text-3xl md:text-4xl animate-bounce-subtle"
+            aria-hidden="true"
+          >
             🎁
           </span>
           <span>Rewards</span>
@@ -146,9 +151,21 @@ export default function RewardsPage() {
         </h2>
         <ol className="space-y-4">
           {[
-            { step: '1', title: 'Share Your Link', desc: 'Send your unique referral link to friends' },
-            { step: '2', title: 'Friends Sign Up', desc: 'They connect their wallet and start trading' },
-            { step: '3', title: 'Earn Points', desc: 'Get rewarded for every friend who joins' },
+            {
+              step: '1',
+              title: 'Share Your Link',
+              desc: 'Send your unique referral link to friends',
+            },
+            {
+              step: '2',
+              title: 'Friends Sign Up',
+              desc: 'They connect their wallet and start trading',
+            },
+            {
+              step: '3',
+              title: 'Earn Points',
+              desc: 'Get rewarded for every friend who joins',
+            },
           ].map((item) => (
             <li key={item.step} className="flex items-start gap-4">
               <div className="w-8 h-8 rounded-full gradient-warm flex items-center justify-center text-white font-bold shrink-0">

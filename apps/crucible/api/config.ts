@@ -5,10 +5,9 @@
 
 import {
   createAppConfig,
-  getEnvVar,
-  getEnvBool,
-  getEnvNumber,
   getCurrentNetwork,
+  getEnvNumber,
+  getEnvVar,
   getServicesConfig,
 } from '@jejunetwork/config'
 
@@ -50,9 +49,6 @@ export interface CrucibleConfig {
   dwsUrl?: string
   ipfsGateway?: string
 
-  // EQLite
-  eqliteEndpoint?: string
-
   // Cron
   cronSecret?: string
 
@@ -79,12 +75,12 @@ const { config, configure: setCrucibleConfig } =
     privateKey: getEnvVar('PRIVATE_KEY'),
     autocratTreasuryAddress: getEnvVar('AUTOCRAT_TREASURY_ADDRESS'),
     computeMarketplaceUrl: getEnvVar('COMPUTE_MARKETPLACE_URL'),
-    eqliteEndpoint: getEnvVar('EQLITE_ENDPOINT') ?? servicesConfig.eqlite.blockProducer,
+    eqliteEndpoint:
+      getEnvVar('EQLITE_ENDPOINT') ?? servicesConfig.eqlite.blockProducer,
     dexCacheUrl: getEnvVar('DEX_CACHE_URL'),
     botsEnabled: getEnvVar('BOTS_ENABLED') !== 'false',
     autonomousEnabled: getEnvVar('AUTONOMOUS_ENABLED') === 'true',
-    enableBuiltinCharacters:
-      getEnvVar('ENABLE_BUILTIN_CHARACTERS') !== 'false',
+    enableBuiltinCharacters: getEnvVar('ENABLE_BUILTIN_CHARACTERS') !== 'false',
     defaultTickIntervalMs: getEnvNumber('TICK_INTERVAL_MS') ?? 60_000,
     maxConcurrentAgents: getEnvNumber('MAX_CONCURRENT_AGENTS') ?? 10,
     farcasterHubUrl:

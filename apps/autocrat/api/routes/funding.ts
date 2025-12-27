@@ -5,10 +5,9 @@
 import { getChainId } from '@jejunetwork/config'
 import { ZERO_ADDRESS } from '@jejunetwork/types'
 import { Elysia, t } from 'elysia'
-import { config } from '../config'
 import { createDAOService, type DAOService } from '../dao-service'
 import { type FundingOracle, getFundingOracle } from '../funding-oracle'
-import { config } from '../shared-state'
+import { autocratConfig, config } from '../shared-state'
 
 const ZERO_ADDR = ZERO_ADDRESS
 
@@ -22,7 +21,7 @@ function initServices() {
       chainId: getChainId(),
       daoRegistryAddress: config.contracts.daoRegistry,
       daoFundingAddress: config.contracts.daoFunding,
-      privateKey: config.operatorKey ?? config.privateKey,
+      privateKey: autocratConfig.operatorKey ?? autocratConfig.privateKey,
     })
     fundingOracle = getFundingOracle()
   }

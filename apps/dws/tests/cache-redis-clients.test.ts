@@ -8,11 +8,23 @@
  * - node-redis (official Redis client)
  */
 
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'bun:test'
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from 'bun:test'
+import { assertNotNull } from '@jejunetwork/shared'
 import Redis from 'ioredis'
 import { createClient } from 'redis'
 import { CacheEngine } from '../api/cache/engine'
-import { createRedisProtocolServer, type RedisProtocolServer } from '../api/cache/redis-protocol'
+import {
+  createRedisProtocolServer,
+  type RedisProtocolServer,
+} from '../api/cache/redis-protocol'
 
 const TEST_PORT = 16379 // Use non-standard port for testing
 
@@ -355,8 +367,8 @@ describe('Redis Client Compatibility', () => {
         const results = await pipeline.exec()
 
         expect(results).not.toBeNull()
-        expect(results![2][1]).toBe('v1')
-        expect(results![3][1]).toBe('v2')
+        expect(results?.[2][1]).toBe('v1')
+        expect(results?.[3][1]).toBe('v2')
       })
     })
   })
@@ -486,7 +498,10 @@ describe('Real-world Usage Patterns', () => {
 
   beforeAll(async () => {
     engine = new CacheEngine({ maxMemoryMb: 64 })
-    server = createRedisProtocolServer(engine, { port: TEST_PORT + 1, namespace: 'realworld' })
+    server = createRedisProtocolServer(engine, {
+      port: TEST_PORT + 1,
+      namespace: 'realworld',
+    })
     await server.start()
 
     redis = new Redis({
@@ -516,7 +531,8 @@ describe('Real-world Usage Patterns', () => {
 
     // Retrieve session
     const retrieved = await redis.get(sessionId)
-    expect(JSON.parse(retrieved!)).toEqual({
+    assertNotNull(retrieved, 'Session data should exist')
+    expect(JSON.parse(retrieved)).toEqual({
       userId: 123,
       email: 'user@example.com',
       roles: ['user', 'admin'],
@@ -579,10 +595,12 @@ describe('Real-world Usage Patterns', () => {
 
     // Process jobs (FIFO)
     const job1 = await redis.lpop(queue)
-    expect(JSON.parse(job1!).type).toBe('welcome')
+    assertNotNull(job1, 'Job should exist')
+    expect(JSON.parse(job1).type).toBe('welcome')
 
     const job2 = await redis.lpop(queue)
-    expect(JSON.parse(job2!).type).toBe('verify')
+    assertNotNull(job2, 'Job should exist')
+    expect(JSON.parse(job2).type).toBe('verify')
 
     // Check remaining
     expect(await redis.llen(queue)).toBe(1)
@@ -639,7 +657,8 @@ describe('Real-world Usage Patterns', () => {
 
     // Check cache
     const cached = await redis.get(cacheKey)
-    expect(JSON.parse(cached!)).toEqual(products)
+    assertNotNull(cached, 'Cached data should exist')
+    expect(JSON.parse(cached)).toEqual(products)
 
     // TTL should be set
     const ttl = await redis.ttl(cacheKey)
@@ -647,4 +666,3 @@ describe('Real-world Usage Patterns', () => {
     expect(ttl).toBeLessThanOrEqual(300)
   })
 })
-

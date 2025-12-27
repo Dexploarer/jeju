@@ -5,7 +5,15 @@
  */
 
 import { clsx } from 'clsx'
-import { Copy, ExternalLink, Heart, MessageCircle, MoreHorizontal, Repeat2, Trash2 } from 'lucide-react'
+import {
+  Copy,
+  ExternalLink,
+  Heart,
+  MessageCircle,
+  MoreHorizontal,
+  Repeat2,
+  Trash2,
+} from 'lucide-react'
 import { useCallback, useState } from 'react'
 import type { Cast } from '../../hooks/useFarcaster'
 import {
@@ -25,7 +33,12 @@ interface CastCardProps {
   compact?: boolean
 }
 
-export function CastCard({ cast, onReply, onViewProfile, compact }: CastCardProps) {
+export function CastCard({
+  cast,
+  onReply,
+  onViewProfile,
+  compact,
+}: CastCardProps) {
   const { data: status } = useFarcasterStatus()
   const [showMenu, setShowMenu] = useState(false)
 
@@ -71,7 +84,10 @@ export function CastCard({ cast, onReply, onViewProfile, compact }: CastCardProp
   }, [cast])
 
   const handleOpenWarpcast = useCallback(() => {
-    window.open(`https://warpcast.com/${cast.author.username}/${cast.hash.slice(0, 10)}`, '_blank')
+    window.open(
+      `https://warpcast.com/${cast.author.username}/${cast.hash.slice(0, 10)}`,
+      '_blank',
+    )
     setShowMenu(false)
   }, [cast])
 
@@ -109,8 +125,12 @@ export function CastCard({ cast, onReply, onViewProfile, compact }: CastCardProp
               >
                 {cast.author.displayName || cast.author.username}
               </button>
-              <span className="text-surface-500 text-sm truncate">@{cast.author.username}</span>
-              <span className="text-surface-600" aria-hidden="true">·</span>
+              <span className="text-surface-500 text-sm truncate">
+                @{cast.author.username}
+              </span>
+              <span className="text-surface-600" aria-hidden="true">
+                ·
+              </span>
               <span className="text-surface-500 text-sm flex-shrink-0">
                 {formatShortRelativeTime(cast.timestamp)}
               </span>
@@ -171,12 +191,16 @@ export function CastCard({ cast, onReply, onViewProfile, compact }: CastCardProp
           {/* Channel badge */}
           {cast.channel && (
             <div className="mb-2">
-              <span className="badge badge-info text-xs">/{cast.channel.id}</span>
+              <span className="badge badge-info text-xs">
+                /{cast.channel.id}
+              </span>
             </div>
           )}
 
           {/* Content */}
-          <div className="text-surface-100 whitespace-pre-wrap break-words mb-3">{cast.text}</div>
+          <div className="text-surface-100 whitespace-pre-wrap break-words mb-3">
+            {cast.text}
+          </div>
 
           {/* Embeds */}
           {cast.embeds.length > 0 && (
@@ -191,7 +215,11 @@ export function CastCard({ cast, onReply, onViewProfile, compact }: CastCardProp
                     className="block p-3 rounded-xl bg-surface-900/80 border border-surface-800 hover:border-surface-700 transition-colors"
                   >
                     {embed.url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
-                      <img src={embed.url} alt="Embedded content" className="max-w-full max-h-80 rounded-lg" />
+                      <img
+                        src={embed.url}
+                        alt="Embedded content"
+                        className="max-w-full max-h-80 rounded-lg"
+                      />
                     ) : (
                       <div className="flex items-center gap-2 text-factory-400 text-sm">
                         <ExternalLink className="w-4 h-4" aria-hidden="true" />
@@ -223,10 +251,16 @@ export function CastCard({ cast, onReply, onViewProfile, compact }: CastCardProp
               type="button"
               className={clsx(
                 'flex items-center gap-1.5 px-2 py-1 rounded-full hover:bg-success-500/10 transition-colors group',
-                cast.reactions.viewerRecasted ? 'text-success-400' : 'text-surface-500 hover:text-success-400',
+                cast.reactions.viewerRecasted
+                  ? 'text-success-400'
+                  : 'text-surface-500 hover:text-success-400',
               )}
               onClick={handleRecast}
-              disabled={!isConnected || recastMutation.isPending || unrecastMutation.isPending}
+              disabled={
+                !isConnected ||
+                recastMutation.isPending ||
+                unrecastMutation.isPending
+              }
               aria-label={`Recast (${cast.reactions.recasts} recasts)`}
               aria-pressed={cast.reactions.viewerRecasted}
             >
@@ -244,10 +278,16 @@ export function CastCard({ cast, onReply, onViewProfile, compact }: CastCardProp
               type="button"
               className={clsx(
                 'flex items-center gap-1.5 px-2 py-1 rounded-full hover:bg-error-500/10 transition-colors group',
-                cast.reactions.viewerLiked ? 'text-error-400' : 'text-surface-500 hover:text-error-400',
+                cast.reactions.viewerLiked
+                  ? 'text-error-400'
+                  : 'text-surface-500 hover:text-error-400',
               )}
               onClick={handleLike}
-              disabled={!isConnected || likeMutation.isPending || unlikeMutation.isPending}
+              disabled={
+                !isConnected ||
+                likeMutation.isPending ||
+                unlikeMutation.isPending
+              }
               aria-label={`Like (${cast.reactions.likes} likes)`}
               aria-pressed={cast.reactions.viewerLiked}
             >

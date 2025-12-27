@@ -244,15 +244,15 @@ export default function FaucetTab() {
               >
                 JEJU Faucet
               </h1>
-                <p
-                  style={{
-                    color: 'rgba(255,255,255,0.8)',
-                    fontSize: '0.9375rem',
-                    margin: 0,
-                  }}
-                >
-                  Grab testnet tokens to build, test, and explore
-                </p>
+              <p
+                style={{
+                  color: 'rgba(255,255,255,0.8)',
+                  fontSize: '0.9375rem',
+                  margin: 0,
+                }}
+              >
+                Grab testnet tokens to build, test, and explore
+              </p>
             </div>
           </div>
 
@@ -584,8 +584,8 @@ export default function FaucetTab() {
                     lineHeight: 1.5,
                   }}
                 >
-                  Quick registration in the Identity Registry unlocks the faucet.
-                  It keeps bots out and tokens flowing to real builders.
+                  Quick registration in the Identity Registry unlocks the
+                  faucet. It keeps bots out and tokens flowing to real builders.
                 </p>
                 <button
                   type="button"

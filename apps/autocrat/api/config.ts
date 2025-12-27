@@ -5,9 +5,8 @@
 
 import {
   createAppConfig,
-  getEnvVar,
-  getEnvBool,
   getEnvNumber,
+  getEnvVar,
   isProductionEnv,
 } from '@jejunetwork/config'
 
@@ -56,8 +55,8 @@ export interface AutocratConfig {
   nodeEnv: string
 }
 
-const { config, configure: setAutocratConfig } = createAppConfig<AutocratConfig>(
-  {
+const { config, configure: setAutocratConfig } =
+  createAppConfig<AutocratConfig>({
     rpcUrl: getEnvVar('RPC_URL') ?? '',
     network: (getEnvVar('JEJU_NETWORK') ?? 'testnet') as
       | 'mainnet'
@@ -83,8 +82,7 @@ const { config, configure: setAutocratConfig } = createAppConfig<AutocratConfig>
       getEnvVar('FARCASTER_HUB_URL') ?? 'https://hub.pinata.cloud',
     isProduction: isProductionEnv(),
     nodeEnv: getEnvVar('NODE_ENV') ?? 'development',
-  },
-)
+  })
 
 export { config }
 

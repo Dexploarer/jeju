@@ -1,9 +1,9 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import {
-  getEQLiteBlockProducerUrl,
   getCurrentNetwork,
   getDWSComputeUrl,
+  getEQLiteBlockProducerUrl,
 } from '@jejunetwork/config'
 import { expectHex } from '@jejunetwork/types'
 import type { Hex } from 'viem'
@@ -20,7 +20,8 @@ import type { DeployResult } from './lib/types'
 
 const NETWORK = getCurrentNetwork()
 const COMPUTE_API = process.env.COMPUTE_API || getDWSComputeUrl(NETWORK)
-const EQLITE_ENDPOINT = process.env.EQLITE_ENDPOINT || getEQLiteBlockProducerUrl()
+const EQLITE_ENDPOINT =
+  process.env.EQLITE_ENDPOINT || getEQLiteBlockProducerUrl()
 
 interface ComputeClient {
   registerService(config: ServiceConfig): Promise<{ success: boolean }>

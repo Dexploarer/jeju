@@ -3,8 +3,8 @@ import type { CDNRegion } from '@jejunetwork/types'
 import { expectAddress, expectHex, toBigInt } from '@jejunetwork/types'
 import type { Address, Hex } from 'viem'
 import { z } from 'zod'
+import { config as nodeConfig } from '../../config'
 import { CDN_REGISTRY_ABI } from '../abis'
-import { config } from '../config'
 import { getChain, type NodeClient } from '../contracts'
 
 /** Type for CDN edge node as returned by getEdgeNode contract call */

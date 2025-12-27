@@ -7,8 +7,8 @@
 
 export { EQLiteDatabaseAdapter } from './adapter'
 export {
-  EQLITE_SCHEMA,
   checkMigrationStatus,
+  EQLITE_SCHEMA,
   runEQLiteMigrations,
 } from './migrations'
 export { eqliteDatabasePlugin } from './plugin'

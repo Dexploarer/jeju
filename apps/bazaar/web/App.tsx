@@ -13,39 +13,38 @@ import { WagmiProvider } from 'wagmi'
 import { BanCheckWrapper } from './components/BanCheckWrapper'
 import { Header } from './components/Header'
 import { chainId, rpcUrl, wagmiConfig } from './config/wagmi'
-
+import AuthCallbackPage from './pages/AuthCallback'
+import CoinCreatePage from './pages/CoinCreate'
+import CoinDetailPage from './pages/CoinDetail'
+import CoinLaunchPage from './pages/CoinLaunch'
+import CoinsPage from './pages/Coins'
 // Direct imports for dev mode (no code splitting)
 import HomePage from './pages/Home'
-import SwapPage from './pages/Swap'
-import PoolsPage from './pages/Pools'
-import PerpsPage from './pages/Perps'
-import PerpsDetailPage from './pages/PerpsDetail'
-import CoinsPage from './pages/Coins'
-import CoinDetailPage from './pages/CoinDetail'
-import CoinCreatePage from './pages/CoinCreate'
-import CoinLaunchPage from './pages/CoinLaunch'
-import JejuICOPage from './pages/JejuICO'
-import JejuWhitepaperPage from './pages/JejuWhitepaper'
-import MarketsPage from './pages/Markets'
-import MarketCreatePage from './pages/MarketCreate'
-import MarketDetailPage from './pages/MarketDetail'
-import PredictionDetailPage from './pages/PredictionDetail'
-import ItemsPage from './pages/Items'
 import ItemDetailPage from './pages/ItemDetail'
 import ItemMintPage from './pages/ItemMint'
-import NamesPage from './pages/Names'
+import ItemsPage from './pages/Items'
+import JejuICOPage from './pages/JejuICO'
+import JejuWhitepaperPage from './pages/JejuWhitepaper'
 import LiquidityPage from './pages/Liquidity'
-import TFMMPage from './pages/TFMM'
+import MarketCreatePage from './pages/MarketCreate'
+import MarketDetailPage from './pages/MarketDetail'
+import MarketsPage from './pages/Markets'
+import NamesPage from './pages/Names'
+import NotFoundPage from './pages/NotFound'
+import PerpsPage from './pages/Perps'
+import PerpsDetailPage from './pages/PerpsDetail'
+import PoolsPage from './pages/Pools'
 import PortfolioPage from './pages/Portfolio'
+import PredictionDetailPage from './pages/PredictionDetail'
 import ProfileDetailPage from './pages/ProfileDetail'
 import RewardsPage from './pages/Rewards'
 import SettingsPage from './pages/Settings'
 import SharePnLPage from './pages/SharePnL'
 import ShareReferralPage from './pages/ShareReferral'
-import TrendingTagPage from './pages/TrendingTag'
+import SwapPage from './pages/Swap'
+import TFMMPage from './pages/TFMM'
 import TrendingGroupPage from './pages/TrendingGroup'
-import AuthCallbackPage from './pages/AuthCallback'
-import NotFoundPage from './pages/NotFound'
+import TrendingTagPage from './pages/TrendingTag'
 
 function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -96,12 +95,18 @@ function Layout({ children }: { children: React.ReactNode }) {
       >
         <BanCheckWrapper>{children}</BanCheckWrapper>
       </main>
-      <footer className="border-t py-8 mt-auto" style={{ borderColor: 'var(--border)' }}>
+      <footer
+        className="border-t py-8 mt-auto"
+        style={{ borderColor: 'var(--border)' }}
+      >
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             {/* Brand */}
             <Link to="/" className="flex items-center gap-2 group">
-              <span className="text-2xl group-hover:animate-bounce-subtle" aria-hidden="true">
+              <span
+                className="text-2xl group-hover:animate-bounce-subtle"
+                aria-hidden="true"
+              >
                 🏝️
               </span>
               <span className="font-bold text-gradient">Bazaar</span>
@@ -124,9 +129,7 @@ function Layout({ children }: { children: React.ReactNode }) {
             </nav>
 
             {/* Tagline */}
-            <p className="text-sm text-tertiary">
-              Powered by the network
-            </p>
+            <p className="text-sm text-tertiary">Powered by the network</p>
           </div>
         </div>
       </footer>
@@ -159,15 +162,27 @@ export function App() {
             <Route path="/coins/create" element={<CoinCreatePage />} />
             <Route path="/coins/launch" element={<CoinLaunchPage />} />
             <Route path="/coins/jeju-ico" element={<JejuICOPage />} />
-            <Route path="/coins/jeju-ico/whitepaper" element={<JejuWhitepaperPage />} />
-            <Route path="/coins/:chainId/:address" element={<CoinDetailPage />} />
+            <Route
+              path="/coins/jeju-ico/whitepaper"
+              element={<JejuWhitepaperPage />}
+            />
+            <Route
+              path="/coins/:chainId/:address"
+              element={<CoinDetailPage />}
+            />
             <Route path="/markets" element={<MarketsPage />} />
             <Route path="/markets/create" element={<MarketCreatePage />} />
             <Route path="/markets/:id" element={<MarketDetailPage />} />
             <Route path="/markets/perps" element={<PerpsPage />} />
-            <Route path="/markets/perps/:ticker" element={<PerpsDetailPage />} />
+            <Route
+              path="/markets/perps/:ticker"
+              element={<PerpsDetailPage />}
+            />
             <Route path="/markets/predictions" element={<MarketsPage />} />
-            <Route path="/markets/predictions/:id" element={<PredictionDetailPage />} />
+            <Route
+              path="/markets/predictions/:id"
+              element={<PredictionDetailPage />}
+            />
             <Route path="/items" element={<ItemsPage />} />
             <Route path="/items/mint" element={<ItemMintPage />} />
             <Route path="/items/:id" element={<ItemDetailPage />} />
@@ -179,7 +194,10 @@ export function App() {
             <Route path="/rewards" element={<RewardsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/share/pnl/:userId" element={<SharePnLPage />} />
-            <Route path="/share/referral/:userId" element={<ShareReferralPage />} />
+            <Route
+              path="/share/referral/:userId"
+              element={<ShareReferralPage />}
+            />
             <Route path="/trending" element={<TrendingTagPage />} />
             <Route path="/trending/:tag" element={<TrendingTagPage />} />
             <Route path="/trending/group" element={<TrendingGroupPage />} />

@@ -7,8 +7,8 @@ import QRCode from 'qrcode'
 import type { Address, Hex } from 'viem'
 import { isAddress, isHex, verifyMessage } from 'viem'
 import type { AuthConfig } from '../../lib/types'
-import { createHtmlPage, escapeJsString } from '../shared/html-templates'
 import { authCodeState, clientState, sessionState } from '../services/state'
+import { createHtmlPage, escapeJsString } from '../shared/html-templates'
 
 /**
  * Validate redirect URI against client's registered patterns.
@@ -247,7 +247,12 @@ export function createFarcasterRouter(_config: AuthConfig) {
         const warpcastUri = `https://warpcast.com/~/sign-in-with-farcaster?nonce=${nonce}&domain=${domain}`
         const qrDataUrl = await generateQRDataUrl(warpcastUri)
 
-        const html = generateFarcasterPage(nonce, domain, qrDataUrl, warpcastUri)
+        const html = generateFarcasterPage(
+          nonce,
+          domain,
+          qrDataUrl,
+          warpcastUri,
+        )
         return new Response(html, {
           headers: { 'Content-Type': 'text/html; charset=utf-8' },
         })

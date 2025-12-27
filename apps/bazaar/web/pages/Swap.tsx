@@ -140,7 +140,9 @@ export default function SwapPage() {
     <div className="max-w-lg mx-auto animate-fade-in">
       {/* Page Header */}
       <header className="text-center mb-8">
-        <div className="text-5xl mb-3 animate-float" aria-hidden="true">🔄</div>
+        <div className="text-5xl mb-3 animate-float" aria-hidden="true">
+          🔄
+        </div>
         <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gradient-warm mb-2">
           Swap
         </h1>
@@ -153,7 +155,8 @@ export default function SwapPage() {
       <div className="space-y-3 mb-6">
         {!eilAvailable && (
           <InfoCard variant="warning">
-            Cross-chain swaps require EIL integration. Only same-chain ETH transfers are available.
+            Cross-chain swaps require EIL integration. Only same-chain ETH
+            transfers are available.
           </InfoCard>
         )}
 
@@ -293,8 +296,12 @@ export default function SwapPage() {
         {isCrossChainSwap && (
           <div className="mb-4 p-4 rounded-xl bg-surface-secondary animate-fade-in">
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-lg" aria-hidden="true">🌉</span>
-              <span className="font-medium text-primary">Cross-Chain Transfer</span>
+              <span className="text-lg" aria-hidden="true">
+                🌉
+              </span>
+              <span className="font-medium text-primary">
+                Cross-Chain Transfer
+              </span>
             </div>
             <dl className="space-y-2 text-sm">
               <div className="flex justify-between">
@@ -309,7 +316,9 @@ export default function SwapPage() {
               </div>
               <div className="flex justify-between">
                 <dt className="text-tertiary">Bridge Fee</dt>
-                <dd className="text-primary">{formatEther(feeEstimate.totalFee)} ETH</dd>
+                <dd className="text-primary">
+                  {formatEther(feeEstimate.totalFee)} ETH
+                </dd>
               </div>
             </dl>
           </div>
@@ -325,7 +334,9 @@ export default function SwapPage() {
               </div>
               <div className="flex justify-between">
                 <dt className="text-tertiary">Network Fee</dt>
-                <dd className="text-primary">{formatEther(feeEstimate.totalFee)} ETH</dd>
+                <dd className="text-primary">
+                  {formatEther(feeEstimate.totalFee)} ETH
+                </dd>
               </div>
             </dl>
           </div>

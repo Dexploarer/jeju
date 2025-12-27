@@ -72,7 +72,9 @@ function BalanceCard({ balance }: { balance: TreasuryBalance }) {
         </div>
         <div
           className="flex items-center gap-1 text-xs"
-          style={{ color: isPositive ? 'var(--color-success)' : 'var(--color-error)' }}
+          style={{
+            color: isPositive ? 'var(--color-success)' : 'var(--color-error)',
+          }}
         >
           {isPositive ? (
             <TrendingUp className="w-3 h-3" aria-hidden="true" />
@@ -83,7 +85,10 @@ function BalanceCard({ balance }: { balance: TreasuryBalance }) {
         </div>
       </div>
       <div>
-        <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+        <p
+          className="text-2xl font-bold"
+          style={{ color: 'var(--text-primary)' }}
+        >
           {balance.balance}
         </p>
         <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
@@ -146,9 +151,12 @@ function TransactionRow({ tx }: { tx: TreasuryTransaction }) {
       <div className="text-right">
         <p
           className="font-medium"
-          style={{ color: isInflow ? 'var(--color-success)' : 'var(--color-error)' }}
+          style={{
+            color: isInflow ? 'var(--color-success)' : 'var(--color-error)',
+          }}
         >
-          {isInflow ? '+' : '-'}{tx.amount} {tx.token}
+          {isInflow ? '+' : '-'}
+          {tx.amount} {tx.token}
         </p>
         <a
           href={`https://etherscan.io/tx/${tx.txHash}`}
@@ -166,7 +174,13 @@ function TransactionRow({ tx }: { tx: TreasuryTransaction }) {
 }
 
 export function TreasuryTab({ dao }: TreasuryTabProps) {
-  const { data: treasuryData, isLoading, isError, error, refetch } = useTreasury(dao.daoId)
+  const {
+    data: treasuryData,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useTreasury(dao.daoId)
 
   const balances: TreasuryBalance[] = treasuryData?.balances ?? []
   const transactions: TreasuryTransaction[] = treasuryData?.transactions ?? []
@@ -177,7 +191,7 @@ export function TreasuryTab({ dao }: TreasuryTabProps) {
     }
     return balances.reduce(
       (sum, b) => sum + Number.parseFloat(b.usdValue.replace(/,/g, '')),
-      0
+      0,
     )
   }, [treasuryData, balances])
 
@@ -206,9 +220,15 @@ export function TreasuryTab({ dao }: TreasuryTabProps) {
             border: '1px solid rgba(239, 68, 68, 0.3)',
           }}
         >
-          <AlertCircle className="w-8 h-8" style={{ color: 'var(--color-error)' }} />
+          <AlertCircle
+            className="w-8 h-8"
+            style={{ color: 'var(--color-error)' }}
+          />
         </div>
-        <h3 className="text-lg font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+        <h3
+          className="text-lg font-medium mb-2"
+          style={{ color: 'var(--text-primary)' }}
+        >
           Failed to load treasury
         </h3>
         <p
@@ -316,34 +336,58 @@ export function TreasuryTab({ dao }: TreasuryTabProps) {
         >
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <p className="text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>
+              <p
+                className="text-xs mb-1"
+                style={{ color: 'var(--text-tertiary)' }}
+              >
                 Min Stake
               </p>
-              <p className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+              <p
+                className="text-lg font-semibold"
+                style={{ color: 'var(--text-primary)' }}
+              >
                 {dao.fundingConfig.minStake} ETH
               </p>
             </div>
             <div>
-              <p className="text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>
+              <p
+                className="text-xs mb-1"
+                style={{ color: 'var(--text-tertiary)' }}
+              >
                 Max Stake
               </p>
-              <p className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+              <p
+                className="text-lg font-semibold"
+                style={{ color: 'var(--text-primary)' }}
+              >
                 {dao.fundingConfig.maxStake} ETH
               </p>
             </div>
             <div>
-              <p className="text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>
+              <p
+                className="text-xs mb-1"
+                style={{ color: 'var(--text-tertiary)' }}
+              >
                 Matching Multiplier
               </p>
-              <p className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+              <p
+                className="text-lg font-semibold"
+                style={{ color: 'var(--text-primary)' }}
+              >
                 {dao.fundingConfig.matchingMultiplier}x
               </p>
             </div>
             <div>
-              <p className="text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>
+              <p
+                className="text-xs mb-1"
+                style={{ color: 'var(--text-tertiary)' }}
+              >
                 Treasury Fee
               </p>
-              <p className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+              <p
+                className="text-lg font-semibold"
+                style={{ color: 'var(--text-primary)' }}
+              >
                 {dao.fundingConfig.treasuryFeePercent}%
               </p>
             </div>
@@ -363,7 +407,8 @@ export function TreasuryTab({ dao }: TreasuryTabProps) {
                   : 'var(--text-tertiary)',
               }}
             >
-              Quadratic Funding: {dao.fundingConfig.quadraticEnabled ? 'Enabled' : 'Disabled'}
+              Quadratic Funding:{' '}
+              {dao.fundingConfig.quadraticEnabled ? 'Enabled' : 'Disabled'}
             </span>
             <span style={{ color: 'var(--text-tertiary)' }}>
               CEO Weight Cap: {dao.fundingConfig.ceoWeightCap}%
@@ -399,7 +444,9 @@ export function TreasuryTab({ dao }: TreasuryTabProps) {
               border: '1px solid var(--border)',
             }}
           >
-            <p style={{ color: 'var(--text-tertiary)' }}>No transaction history</p>
+            <p style={{ color: 'var(--text-tertiary)' }}>
+              No transaction history
+            </p>
           </div>
         ) : (
           <div className="space-y-3">

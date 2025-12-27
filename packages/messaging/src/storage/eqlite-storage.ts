@@ -448,7 +448,9 @@ export class EQLiteMessageStorage {
 
 let storage: EQLiteMessageStorage | null = null
 
-export function createEQLiteStorage(_config?: EQLiteConfig): EQLiteMessageStorage {
+export function createEQLiteStorage(
+  _config?: EQLiteConfig,
+): EQLiteMessageStorage {
   // Config parameter reserved for future EQLite connection customization
   return new EQLiteMessageStorage()
 }

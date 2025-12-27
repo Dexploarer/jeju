@@ -656,7 +656,8 @@ describe('Relay Server Edge Cases', () => {
 
   test('health endpoint includes EQLite availability status', async () => {
     const response = await fetch(`${BASE_URL}/health`)
-    const data: { stats?: { eqliteAvailable?: boolean } } = await response.json()
+    const data: { stats?: { eqliteAvailable?: boolean } } =
+      await response.json()
 
     expect(typeof data.stats?.eqliteAvailable).toBe('boolean')
   })

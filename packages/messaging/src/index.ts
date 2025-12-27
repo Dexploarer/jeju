@@ -326,9 +326,9 @@ export * from './sdk'
 // Storage adapters
 export {
   type ConsistencyLevel,
+  createEQLiteStorage,
   type EQLiteConfig,
   EQLiteMessageStorage,
-  createEQLiteStorage,
   getEQLiteStorage,
   resetEQLiteStorage,
   type StoredConversation,

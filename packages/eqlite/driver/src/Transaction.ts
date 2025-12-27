@@ -5,14 +5,18 @@
  * Note: EQLite has limited atomicity - transactions work best on leader nodes.
  */
 
-import type { Connection } from "./Connection"
+import type { Connection } from './Connection'
 
 export interface TransactionOptions {
   /**
    * Transaction isolation level
    * EQLite supports: READ_UNCOMMITTED, READ_COMMITTED, REPEATABLE_READ, SERIALIZABLE
    */
-  isolationLevel?: "READ_UNCOMMITTED" | "READ_COMMITTED" | "REPEATABLE_READ" | "SERIALIZABLE"
+  isolationLevel?:
+    | 'READ_UNCOMMITTED'
+    | 'READ_COMMITTED'
+    | 'REPEATABLE_READ'
+    | 'SERIALIZABLE'
 
   /**
    * Transaction timeout in milliseconds
@@ -38,13 +42,13 @@ export class Transaction {
    */
   async begin(): Promise<void> {
     if (this.started) {
-      throw new Error("Transaction already started")
+      throw new Error('Transaction already started')
     }
     if (this.completed) {
-      throw new Error("Transaction already completed")
+      throw new Error('Transaction already completed')
     }
 
-    let sql = "BEGIN"
+    let sql = 'BEGIN'
 
     if (this.options.isolationLevel) {
       sql = `BEGIN TRANSACTION ISOLATION LEVEL ${this.options.isolationLevel}`
@@ -57,7 +61,10 @@ export class Transaction {
   /**
    * Execute a query within the transaction
    */
-  async query(sql: string, values?: unknown[]): Promise<Record<string, unknown>[] | null> {
+  async query(
+    sql: string,
+    values?: unknown[],
+  ): Promise<Record<string, unknown>[] | null> {
     this.ensureActive()
     return this.connection.query(sql, values)
   }
@@ -65,7 +72,10 @@ export class Transaction {
   /**
    * Execute a write operation within the transaction
    */
-  async exec(sql: string, values?: unknown[]): Promise<Record<string, unknown>[] | null> {
+  async exec(
+    sql: string,
+    values?: unknown[],
+  ): Promise<Record<string, unknown>[] | null> {
     this.ensureActive()
     return this.connection.exec(sql, values)
   }
@@ -75,7 +85,7 @@ export class Transaction {
    */
   async commit(): Promise<void> {
     this.ensureActive()
-    await this.connection.exec("COMMIT")
+    await this.connection.exec('COMMIT')
     this.completed = true
   }
 
@@ -88,7 +98,7 @@ export class Transaction {
     }
 
     try {
-      await this.connection.exec("ROLLBACK")
+      await this.connection.exec('ROLLBACK')
     } finally {
       this.completed = true
     }
@@ -127,10 +137,10 @@ export class Transaction {
 
   private ensureActive(): void {
     if (!this.started) {
-      throw new Error("Transaction not started")
+      throw new Error('Transaction not started')
     }
     if (this.completed) {
-      throw new Error("Transaction already completed")
+      throw new Error('Transaction already completed')
     }
   }
 }
@@ -141,7 +151,7 @@ export class Transaction {
 export async function withTransaction<T>(
   connection: Connection,
   fn: (tx: Transaction) => Promise<T>,
-  options: TransactionOptions = {}
+  options: TransactionOptions = {},
 ): Promise<T> {
   const tx = new Transaction(connection, options)
 
@@ -155,4 +165,3 @@ export async function withTransaction<T>(
     throw error
   }
 }
-

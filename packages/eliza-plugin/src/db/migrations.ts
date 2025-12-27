@@ -233,7 +233,10 @@ export async function runEQLiteMigrations(
 
   for (const tableName of tableOrder) {
     const sql = EQLITE_SCHEMA[tableName]
-    logger.debug({ src: 'eqlite-migrations', table: tableName }, 'Creating table')
+    logger.debug(
+      { src: 'eqlite-migrations', table: tableName },
+      'Creating table',
+    )
     await eqlite.exec(sql, [], dbId)
   }
 

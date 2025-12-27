@@ -11,13 +11,13 @@ import { cors } from '@elysiajs/cors'
 import {
   CORE_PORTS,
   getCoreAppUrl,
-  getEQLiteBlockProducerUrl,
   getCurrentNetwork,
   getEnvVar,
+  getEQLiteBlockProducerUrl,
   getIndexerGraphqlUrl,
   getL2RpcUrl,
 } from '@jejunetwork/config'
-import { type EQLiteClient, createTable, getEQLite } from '@jejunetwork/db'
+import { createTable, type EQLiteClient, getEQLite } from '@jejunetwork/db'
 import { expect as expectExists, expectValid } from '@jejunetwork/types'
 import { Elysia } from 'elysia'
 import {
@@ -25,8 +25,8 @@ import {
   TFMMGetQuerySchema,
   TFMMPostRequestSchema,
 } from '../schemas/api'
-import { config, configureBazaar } from './config'
 import { handleA2ARequest, handleAgentCard } from './a2a-server'
+import { config, configureBazaar } from './config'
 import { createIntelRouter } from './intel'
 import { handleMCPInfo, handleMCPRequest } from './mcp-server'
 import {
@@ -460,7 +460,7 @@ if (isMainModule) {
     DWS_URL: getCoreAppUrl('DWS_API'),
     GATEWAY_URL: getCoreAppUrl('NODE_EXPLORER_API'),
     INDEXER_URL: getIndexerGraphqlUrl(),
-EQLITE_NODES: getEQLiteBlockProducerUrl(),
+    EQLITE_NODES: getEQLiteBlockProducerUrl(),
     EQLITE_DATABASE_ID: config.eqliteDatabaseId,
     EQLITE_PRIVATE_KEY: config.eqlitePrivateKey || '',
   })

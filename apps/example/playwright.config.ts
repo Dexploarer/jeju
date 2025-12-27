@@ -1,6 +1,6 @@
 /**
  * Example Playwright Configuration
- * 
+ *
  * Use DEV_MODE=1 to test against dev server on port 4501
  * Otherwise tests against production server on port 4500
  */

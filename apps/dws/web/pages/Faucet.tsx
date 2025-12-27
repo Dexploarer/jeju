@@ -480,9 +480,7 @@ export default function FaucetPage() {
               borderRadius: 'var(--radius-md)',
             }}
           >
-            <div
-              style={{ fontWeight: 600, marginBottom: '0.25rem' }}
-            >
+            <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>
               {claimResult.success ? 'Claim Successful' : 'Claim Failed'}
             </div>
             <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
@@ -570,10 +568,7 @@ export default function FaucetPage() {
       </div>
 
       <div style={{ textAlign: 'center' }}>
-        <Link
-          to="/"
-          style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}
-        >
+        <Link to="/" style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
           ← Back to Dashboard
         </Link>
       </div>

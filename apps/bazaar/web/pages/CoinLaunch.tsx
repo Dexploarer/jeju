@@ -25,7 +25,9 @@ export default function CoinLaunchPage() {
       {/* Header */}
       <header className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-gradient-warm flex items-center gap-3 mb-2">
-          <span className="text-3xl animate-bounce-subtle" aria-hidden="true">🚀</span>
+          <span className="text-3xl animate-bounce-subtle" aria-hidden="true">
+            🚀
+          </span>
           <span>Launch Token</span>
         </h1>
         <p className="text-secondary">
@@ -37,7 +39,8 @@ export default function CoinLaunchPage() {
       <InfoCard variant="info" className="mb-6">
         <p className="font-medium mb-1">How it works</p>
         <p className="text-sm opacity-80">
-          Your token will be launched with an automated bonding curve. The price increases as more people buy, creating fair price discovery.
+          Your token will be launched with an automated bonding curve. The price
+          increases as more people buy, creating fair price discovery.
         </p>
       </InfoCard>
 
@@ -126,7 +129,8 @@ export default function CoinLaunchPage() {
             required
           />
           <p className="text-xs text-tertiary mt-1">
-            The amount of ETH to seed the bonding curve. More liquidity = less price impact.
+            The amount of ETH to seed the bonding curve. More liquidity = less
+            price impact.
           </p>
         </div>
 
@@ -140,7 +144,9 @@ export default function CoinLaunchPage() {
               </div>
               <div>
                 <p className="font-semibold text-primary">{name}</p>
-                <p className="text-sm text-tertiary">${symbol} • {liquidity} ETH liquidity</p>
+                <p className="text-sm text-tertiary">
+                  ${symbol} • {liquidity} ETH liquidity
+                </p>
               </div>
             </div>
           </div>

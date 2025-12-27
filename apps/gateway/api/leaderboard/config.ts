@@ -1,7 +1,7 @@
-import { getEQLiteUrl, getDWSUrl } from '@jejunetwork/config'
-import { config } from '../config'
+import { getDWSUrl, getEQLiteUrl } from '@jejunetwork/config'
 import { CHAIN_ID, CONTRACTS, NETWORK } from '../../lib/config'
 import { CHAIN_IDS } from '../../lib/config/networks'
+import { config } from '../config'
 
 export const LEADERBOARD_DB = {
   databaseId: config.leaderboardEqliteDatabaseId,

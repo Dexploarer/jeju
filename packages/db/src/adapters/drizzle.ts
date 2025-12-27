@@ -308,7 +308,9 @@ function createDrizzleEQLite(
       // Extract just the SQL statement type (SELECT, INSERT, UPDATE, DELETE)
       const statementType =
         query.trim().split(/\s+/)[0].toUpperCase() ?? 'QUERY'
-      console.log(`[EQLite Drizzle] ${statementType} (params: ${params.length})`)
+      console.log(
+        `[EQLite Drizzle] ${statementType} (params: ${params.length})`,
+      )
     } else if (typeof config?.logger === 'object') {
       // Custom loggers receive full data - they're responsible for their own filtering
       config.logger.logQuery(query, params)

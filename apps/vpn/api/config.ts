@@ -1,4 +1,9 @@
-import { createAppConfig, getEnvNumber, getEnvVar, isProductionEnv } from '@jejunetwork/config'
+import {
+  createAppConfig,
+  getEnvNumber,
+  getEnvVar,
+  isProductionEnv,
+} from '@jejunetwork/config'
 
 export interface VPNConfig {
   // Server
@@ -32,8 +37,11 @@ const { config, configure: setVPNConfig } = createAppConfig<VPNConfig>({
   isProduction: isProductionEnv(),
 
   // URLs
-  publicUrl: getEnvVar('PUBLIC_URL') ?? `http://localhost:${getEnvNumber('PORT') ?? 4050}`,
-  coordinatorUrl: getEnvVar('COORDINATOR_URL') ?? 'https://vpn-coordinator.jejunetwork.org',
+  publicUrl:
+    getEnvVar('PUBLIC_URL') ??
+    `http://localhost:${getEnvNumber('PORT') ?? 4050}`,
+  coordinatorUrl:
+    getEnvVar('COORDINATOR_URL') ?? 'https://vpn-coordinator.jejunetwork.org',
   rpcUrl: getEnvVar('RPC_URL') ?? 'https://mainnet.base.org',
 
   // Chain

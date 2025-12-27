@@ -8,12 +8,12 @@
 // EQLite service management (runs ON DWS)
 export {
   ensureEQLiteService,
-  getEQLiteEndpoint,
+  getDatabaseConnectionInfo,
   getEQLiteClientPort,
+  getEQLiteEndpoint,
   getEQLiteStatus,
   isEQLiteHealthy,
   provisionAppDatabase,
-  getDatabaseConnectionInfo,
 } from './eqlite-service'
 // Keepalive service for database health monitoring
 export {

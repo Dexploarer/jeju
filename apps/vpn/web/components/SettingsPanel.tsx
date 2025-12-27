@@ -71,7 +71,12 @@ interface SettingRowProps {
   onToggle: () => void
 }
 
-function SettingRow({ title, description, enabled, onToggle }: SettingRowProps) {
+function SettingRow({
+  title,
+  description,
+  enabled,
+  onToggle,
+}: SettingRowProps) {
   return (
     <div className="flex items-center justify-between py-1">
       <div className="flex-1 min-w-0 pr-4">
@@ -144,7 +149,9 @@ export function SettingsPanel() {
             title="Auto Connect"
             description="Connect when app launches"
             enabled={config.auto_connect}
-            onToggle={() => updateConfig({ auto_connect: !config.auto_connect })}
+            onToggle={() =>
+              updateConfig({ auto_connect: !config.auto_connect })
+            }
           />
         </div>
       </div>
@@ -171,7 +178,9 @@ export function SettingsPanel() {
             title="Minimize to Tray"
             description="Keep running quietly in system tray"
             enabled={config.minimize_to_tray}
-            onToggle={() => updateConfig({ minimize_to_tray: !config.minimize_to_tray })}
+            onToggle={() =>
+              updateConfig({ minimize_to_tray: !config.minimize_to_tray })
+            }
           />
         </div>
       </div>
@@ -294,7 +303,9 @@ export function SettingsPanel() {
       <div className="flex items-center gap-3 p-4 bg-accent/5 border border-accent/20 rounded-xl">
         <Heart className="w-5 h-5 text-accent flex-shrink-0" />
         <p className="text-sm text-muted-light">
-          <span className="text-white font-medium">You're helping the network.</span>{' '}
+          <span className="text-white font-medium">
+            You're helping the network.
+          </span>{' '}
           Thanks for using Jeju VPN.
         </p>
       </div>

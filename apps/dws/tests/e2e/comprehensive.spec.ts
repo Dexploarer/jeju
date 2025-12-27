@@ -383,9 +383,7 @@ function setupErrorCapture(page: import('@playwright/test').Page): {
     const msg = error.message
     // Skip known bugs that are non-critical for page functionality
     if (
-      msg.includes(
-        "Cannot read properties of undefined (reading 'archive')",
-      ) || // Email page bug
+      msg.includes("Cannot read properties of undefined (reading 'archive')") || // Email page bug
       msg.includes('Cannot read properties of undefined') // Other undefined access
     ) {
       console.warn(`   ⚠️ Known bug on page: ${msg}`)
@@ -395,7 +393,12 @@ function setupErrorCapture(page: import('@playwright/test').Page): {
     errors.push(`PageError: ${msg}`)
   })
 
-  return { errors, get hasKnownBug() { return hasKnownBug } }
+  return {
+    errors,
+    get hasKnownBug() {
+      return hasKnownBug
+    },
+  }
 }
 
 // Helper for AI verification with caching
@@ -411,9 +414,7 @@ async function runAIVerification(
   let verification: typeof cached.result
 
   if (cached) {
-    console.log(
-      `\n📦 Using cached verification (hash: ${imageHash})`,
-    )
+    console.log(`\n📦 Using cached verification (hash: ${imageHash})`)
     verification = cached.result
   } else {
     console.log(`\n🔍 Running AI verification...`)

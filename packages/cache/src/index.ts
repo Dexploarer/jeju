@@ -49,12 +49,12 @@ export { CacheClient, createCacheClient } from './client'
 
 // Types
 export {
-  // Error handling
-  CacheError,
-  CacheErrorCode,
   // Types
   type CacheClientConfig,
   type CacheEntry,
+  // Error handling
+  CacheError,
+  CacheErrorCode,
   type CacheResponse,
   type CacheServerConfig,
   type CacheSetOptions,

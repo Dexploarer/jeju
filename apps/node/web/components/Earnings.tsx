@@ -31,9 +31,7 @@ export function Earnings() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Earnings</h1>
-          <p className="text-volcanic-400 mt-1">
-            How your node is doing
-          </p>
+          <p className="text-volcanic-400 mt-1">How your node is doing</p>
         </div>
 
         <button type="button" className="btn-secondary flex items-center gap-2">
