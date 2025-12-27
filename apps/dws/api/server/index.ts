@@ -68,7 +68,7 @@ import type { ServiceHealth } from '../types'
 import { WorkerdExecutor } from '../workers/workerd/executor'
 import { createA2ARouter } from './routes/a2a'
 import { createAPIMarketplaceRouter } from './routes/api-marketplace'
-import { createCDNRouter } from './routes/cdn'
+import { createCDNRouter, shutdownHybridCDN } from './routes/cdn'
 import { createCIRouter } from './routes/ci'
 import { createComputeRouter } from './routes/compute'
 import { createContainerRouter } from './routes/containers'
@@ -796,6 +796,8 @@ function shutdown(signal: string) {
   console.log('[DWS] Indexer proxy stopped')
   stopKeepaliveService()
   console.log('[DWS] Keepalive service stopped')
+  shutdownHybridCDN().catch(() => {})
+  console.log('[DWS] Hybrid CDN stopped')
   if (p2pCoordinator) {
     p2pCoordinator.stop()
     console.log('[DWS] P2P coordinator stopped')

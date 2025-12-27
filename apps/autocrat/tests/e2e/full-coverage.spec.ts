@@ -5,7 +5,7 @@
  */
 
 import { CORE_PORTS } from '@jejunetwork/config'
-import { test, expect } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 
 const BASE_URL = `http://localhost:${CORE_PORTS.AUTOCRAT_WEB.get()}`
 
@@ -85,7 +85,7 @@ test.describe('Autocrat - Navigation', () => {
 
     for (const link of navLinks.slice(0, 5)) {
       const href = await link.getAttribute('href')
-      if (href && href.startsWith('/') && !href.startsWith('//')) {
+      if (href?.startsWith('/') && !href.startsWith('//')) {
         await link.click()
         await page.waitForLoadState('domcontentloaded')
         await expect(page.locator('body')).toBeVisible()

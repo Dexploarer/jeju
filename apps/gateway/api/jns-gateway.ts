@@ -249,7 +249,10 @@ export class JNSGateway {
     // Helper to handle host-based JNS routing
     const handleHostBasedRouting = async (
       request: Request,
-      set: { status?: number | string; headers: Record<string, string | number> },
+      set: {
+        status?: number | string
+        headers: Record<string, string | number>
+      },
     ): Promise<Response | string | object | null> => {
       const host = request.headers.get('host') ?? ''
       // Match various JNS patterns:

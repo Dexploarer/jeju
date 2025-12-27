@@ -255,7 +255,7 @@ describe('DAO List Fetching', () => {
       }),
     )
 
-    const response = await fetch(`${API_BASE}/dao/active`)
+    const _response = await fetch(`${API_BASE}/dao/active`)
     expect(fetchMock).toHaveBeenCalledWith(`${API_BASE}/dao/active`)
   })
 

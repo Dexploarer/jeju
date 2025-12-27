@@ -89,10 +89,10 @@ export {
 export {
   getMachineProvisioner,
   initializeMachineProvisioner,
-  MachineProvisioner,
   type MachineAllocation,
   type MachineCapabilities,
   type MachinePromise,
+  MachineProvisioner,
   type MachineSpecs,
   type ProvisionerEnvironment,
 } from './machine-provisioner'

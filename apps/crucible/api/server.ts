@@ -317,13 +317,17 @@ let tradingBots: Map<bigint, TradingBot> = new Map()
 
 // Seed DWS infrastructure (external chain nodes + bots) on startup
 async function seedDWSInfrastructure(): Promise<void> {
-  const treasuryAddress = config.contracts.autocratTreasury ??
-    (account?.address ?? '0x0000000000000000000000000000000000000001')
+  const treasuryAddress =
+    config.contracts.autocratTreasury ??
+    account?.address ??
+    '0x0000000000000000000000000000000000000001'
 
   try {
     // Dynamic import to avoid circular dependency
     const dws = await import('@jejunetwork/dws')
-    const result = await dws.seedInfrastructure(treasuryAddress as `0x${string}`)
+    const result = await dws.seedInfrastructure(
+      treasuryAddress as `0x${string}`,
+    )
     log.info('DWS infrastructure seeded', {
       nodesReady: result.nodesReady,
       botsRunning: result.botsRunning,

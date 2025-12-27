@@ -276,7 +276,7 @@ export class AppDeployer {
             name: svc.name,
             status: svc.status === 'running' ? 'running' : 'stopped',
             endpoint: svc.endpoint,
-            port: svc.ports[0]?.host,
+            port: svc.ports[0].host,
           })
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error)
@@ -329,7 +329,7 @@ export class AppDeployer {
       // Create the app's database
       await createDatabase(instance.id, appName.replace(/-/g, '_'))
 
-      const port = instance.ports[0]?.host ?? 25432
+      const port = instance.ports[0].host ?? 25432
 
       return {
         type: 'postgres',
@@ -404,7 +404,7 @@ export class AppDeployer {
         name: s.name,
         status: s.status === 'running' ? 'running' : 'stopped',
         endpoint: s.endpoint,
-        port: s.ports[0]?.host,
+        port: s.ports[0].host,
       })),
     }
   }

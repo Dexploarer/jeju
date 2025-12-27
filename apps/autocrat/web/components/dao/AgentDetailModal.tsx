@@ -5,11 +5,9 @@
  */
 
 import {
-  Activity,
   Bot,
   Brain,
   Check,
-  ChevronRight,
   Copy,
   ExternalLink,
   FileText,

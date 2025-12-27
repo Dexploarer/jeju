@@ -25,8 +25,8 @@ export {
 export {
   type ContainerDeployConfig,
   ContainerProvisioner,
-  getContainerProvisioner,
   type GPUType,
+  getContainerProvisioner,
   type HardwareSpec,
   type MachineType,
   type NodeAllocation,

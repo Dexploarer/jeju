@@ -417,9 +417,9 @@ export async function provisionService(
   const mergedConfig: ServiceConfig = {
     ...defaults,
     ...config,
-    resources: { ...defaults?.resources, ...config.resources },
-    env: { ...defaults?.env, ...config.env },
-    ports: config.ports.length > 0 ? config.ports : (defaults?.ports ?? []),
+    resources: { ...defaults.resources, ...config.resources },
+    env: { ...defaults.env, ...config.env },
+    ports: config.ports.length > 0 ? config.ports : (defaults.ports ?? []),
   }
 
   const containerName = `dws-${config.type}-${config.name}`

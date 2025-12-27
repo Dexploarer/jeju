@@ -82,7 +82,7 @@ async function generateResponse(
   if (!choice) {
     throw new Error('DWS inference returned no choices')
   }
-  return choice.message?.content ?? ''
+  return choice.message.content ?? ''
 }
 
 /**
@@ -148,7 +148,7 @@ export class CrucibleAgentRuntime {
       const pluginModule = await import('@jejunetwork/eliza-plugin')
       jejuPlugin = pluginModule.jejuPlugin
 
-      if (jejuPlugin?.actions) {
+      if (jejuPlugin.actions) {
         jejuActions = (jejuPlugin.actions as Action[]).map((action) => ({
           name: action.name,
           description:
@@ -188,17 +188,17 @@ export class CrucibleAgentRuntime {
     }
 
     // Topics
-    if (char.topics?.length) {
+    if (char.topics.length) {
       parts.push(`You are knowledgeable about: ${char.topics.join(', ')}.`)
     }
 
     // Adjectives
-    if (char.adjectives?.length) {
+    if (char.adjectives.length) {
       parts.push(`Your personality traits: ${char.adjectives.join(', ')}.`)
     }
 
     // Style
-    if (char.style?.all?.length) {
+    if (char.style.all.length) {
       parts.push(`Communication style: ${char.style.all.join(' ')}`)
     }
 
