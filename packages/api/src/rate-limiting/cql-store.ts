@@ -128,12 +128,6 @@ export class CQLRateLimitStore implements RateLimitStore {
     const now = Date.now()
     const newResetAt = now + windowMs
 
-<<<<<<< HEAD
-    // Get a connection for transaction
-    const conn = await this.client.connect(this.databaseId)
-    // Use a transaction for atomic read-modify-write
-    const tx = await conn.beginTransaction()
-=======
     // First, try to get current entry
     const result = await this.client.query<{
       count: number
@@ -143,7 +137,6 @@ export class CQLRateLimitStore implements RateLimitStore {
       [fullKey],
       this.databaseId,
     )
->>>>>>> 17ff846a3f7bd8b486043013e1d9d7c122b06553
 
     let newCount: number
     let finalResetAt: number

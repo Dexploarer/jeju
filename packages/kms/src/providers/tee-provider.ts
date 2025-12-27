@@ -103,29 +103,17 @@ export class TEEProvider implements KMSProvider {
 
       // SECURITY: Verify attestation BEFORE accepting enclave key
       if (data.attestation) {
-<<<<<<< HEAD
-        // TEEClient validates these are hex strings via Zod
-=======
->>>>>>> 17ff846a3f7bd8b486043013e1d9d7c122b06553
         const attestation: TEEAttestation = {
           quote: data.attestation.quote as Hex,
           measurement: data.attestation.measurement as Hex,
           timestamp: data.attestation.timestamp,
           verified: data.attestation.verified,
-<<<<<<< HEAD
-          verifierSignature: data.attestation.verifierSignature as Hex | undefined,
-        }
-        const attestationValid = await this.attestationVerifier.verify(
-          attestation,
-        )
-=======
           verifierSignature: data.attestation.verifierSignature as
             | Hex
             | undefined,
         }
         const attestationValid =
           await this.attestationVerifier.verify(attestation)
->>>>>>> 17ff846a3f7bd8b486043013e1d9d7c122b06553
         if (!attestationValid.valid) {
           throw new Error(
             `Remote TEE attestation verification failed: ${attestationValid.error ?? 'unknown error'}`,
@@ -201,17 +189,10 @@ export class TEEProvider implements KMSProvider {
         this.keys.set(keyId, {
           metadata,
           encryptedPrivateKey: new Uint8Array(0),
-<<<<<<< HEAD
-          publicKey,
-          address,
-        })
-        return { metadata, publicKey }
-=======
           publicKey: result.publicKey as Hex,
           address: result.address as Address,
         })
         return { metadata, publicKey: result.publicKey as Hex }
->>>>>>> 17ff846a3f7bd8b486043013e1d9d7c122b06553
       }
       log.warn('Remote key generation failed, using local generation')
     }
@@ -310,13 +291,8 @@ export class TEEProvider implements KMSProvider {
               ? toBytes(request.message as Hex)
               : request.message,
           ),
-<<<<<<< HEAD
-          signature,
-          recoveryId: parseInt(signature.slice(130, 132), 16) - 27,
-=======
           signature: result.signature as Hex,
           recoveryId: parseInt(result.signature.slice(130, 132), 16) - 27,
->>>>>>> 17ff846a3f7bd8b486043013e1d9d7c122b06553
           keyId: request.keyId,
           signedAt: Date.now(),
         }

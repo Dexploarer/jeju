@@ -490,16 +490,11 @@ export class AttestationVerifier {
         signatureBytes.set(r, 0)
         signatureBytes.set(s, 32)
 
-<<<<<<< HEAD
-        // Convert signature to compact format for verification
-        const isValid = secp256k1.verify(signature.toCompactRawBytes(), messageHash, pubKeyBytes)
-=======
         const isValid = secp256k1.verify(
           signatureBytes,
           messageHash,
           pubKeyBytes,
         )
->>>>>>> 17ff846a3f7bd8b486043013e1d9d7c122b06553
         if (isValid) {
           log.info('Attestation signature verified', {
             verifierKey: trustedPubKey.slice(0, 20),

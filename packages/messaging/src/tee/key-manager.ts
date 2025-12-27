@@ -72,20 +72,6 @@ interface MockKeyStore {
 }
 
 // TEE Provider interface (matches @jejunetwork/kms TEEProvider)
-<<<<<<< HEAD
-// Import actual types from KMS for type safety
-import type {
-  AccessControlPolicy,
-  GeneratedKey,
-  KeyCurve,
-  KeyType,
-  SignedMessage,
-  SignRequest,
-  TEEAttestation as KMSTEEAttestation,
-} from '@jejunetwork/kms'
-
-=======
->>>>>>> 17ff846a3f7bd8b486043013e1d9d7c122b06553
 interface TEEProviderInterface {
   connect(): Promise<void>
   disconnect(): Promise<void>
@@ -96,11 +82,6 @@ interface TEEProviderInterface {
     curve: KeyCurve,
     policy: AccessControlPolicy,
   ): Promise<GeneratedKey>
-<<<<<<< HEAD
-  sign(request: SignRequest): Promise<SignedMessage>
-  getAttestation(keyId?: string): Promise<KMSTEEAttestation>
-  verifyAttestation(attestation: KMSTEEAttestation): Promise<boolean>
-=======
   sign(request: {
     keyId: string
     message: Uint8Array | string
@@ -109,7 +90,6 @@ interface TEEProviderInterface {
   getAttestation(keyId?: string): Promise<TEEAttestation>
   verifyAttestation(attestation: TEEAttestation): Promise<boolean>
   getStatus(): { connected: boolean; mode: 'remote' | 'local' }
->>>>>>> 17ff846a3f7bd8b486043013e1d9d7c122b06553
 }
 
 /**
@@ -660,21 +640,6 @@ export class TEEXMTPKeyManager {
       // Use real TEE provider
       await this.ensureTEEConnected()
 
-<<<<<<< HEAD
-      const keyType: KeyType =
-        request.type === 'ed25519' ? 'signing' : 'encryption'
-      const keyCurve: KeyCurve = request.type === 'ed25519' ? 'ed25519' : 'x25519'
-      const owner: Address =
-        request.policy?.owner ??
-        '0x0000000000000000000000000000000000000000'
-      const accessPolicy = this.toAccessControlPolicy(request.policy)
-
-      const result = await this.teeProvider.generateKey(
-        owner,
-        keyType,
-        keyCurve,
-        accessPolicy,
-=======
       // Note: KMS doesn't support x25519 directly, but ed25519 keys can be converted
       // For x25519 requests, we use ed25519 in TEE and convert the public key
       const curve: KeyCurve = 'ed25519'
@@ -694,7 +659,6 @@ export class TEEXMTPKeyManager {
         request.type === 'ed25519' ? 'signing' : 'encryption',
         curve,
         kmsPolicy,
->>>>>>> 17ff846a3f7bd8b486043013e1d9d7c122b06553
       )
 
       return {

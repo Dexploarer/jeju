@@ -629,11 +629,7 @@ export function createKMSAPIWorker(config: KMSAPIConfig) {
         const keyBuffer = new Uint8Array(derivedKey).buffer
         const keyMaterial = await crypto.subtle.importKey(
           'raw',
-<<<<<<< HEAD
-          toArrayBuffer(derivedKey),
-=======
           keyBuffer,
->>>>>>> 17ff846a3f7bd8b486043013e1d9d7c122b06553
           'AES-GCM',
           false,
           ['encrypt'],
@@ -700,11 +696,7 @@ export function createKMSAPIWorker(config: KMSAPIConfig) {
         const keyBuffer = new Uint8Array(derivedKey).buffer
         const keyMaterial = await crypto.subtle.importKey(
           'raw',
-<<<<<<< HEAD
-          toArrayBuffer(derivedKey),
-=======
           keyBuffer,
->>>>>>> 17ff846a3f7bd8b486043013e1d9d7c122b06553
           'AES-GCM',
           false,
           ['decrypt'],
