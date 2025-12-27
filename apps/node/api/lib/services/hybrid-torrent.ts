@@ -717,7 +717,7 @@ export class HybridTorrentService {
     if (!parsed.success) {
       torrentOracleAttestations.inc({ status: 'error' })
       throw new Error(
-        `Invalid oracle attestation response: ${parsed.error.issues[0]?.message}`,
+        `Invalid oracle attestation response: ${parsed.error.issues[0].message}`,
       )
     }
     torrentOracleAttestations.inc({ status: 'success' })

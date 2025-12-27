@@ -27,7 +27,6 @@ import {
   createWalletClient,
   type Hex,
   http,
-  keccak256,
   parseEther,
   toBytes,
   toHex,
@@ -229,12 +228,12 @@ async function deployBridge(
   validators: Address[],
   account: ReturnType<typeof privateKeyToAccount>,
 ): Promise<Address> {
-  const publicClient = createPublicClient({
+  const _publicClient = createPublicClient({
     chain: baseSepolia,
     transport: http(chain.rpcUrl),
   })
 
-  const walletClient = createWalletClient({
+  const _walletClient = createWalletClient({
     account,
     chain: baseSepolia,
     transport: http(chain.rpcUrl),
@@ -244,7 +243,7 @@ async function deployBridge(
   const deployCmd = `cd ${CONTRACTS_DIR} && forge create src/federation/FederationBridge.sol:FederationBridge \
     --rpc-url ${chain.rpcUrl} \
     --private-key ${account.address} \
-    --constructor-args ${peerChainId} "${validators.join(',')}" ${Math.ceil(validators.length * 2 / 3)} \
+    --constructor-args ${peerChainId} "${validators.join(',')}" ${Math.ceil((validators.length * 2) / 3)} \
     --json`
 
   const output = execSync(deployCmd, {
@@ -295,16 +294,22 @@ async function testCrossChainMessage(
     address: config.bridgeContracts.aws,
     abi: FEDERATION_BRIDGE_ABI,
     functionName: 'sendMessage',
-    args: [BigInt(config.gcpChain.chainId), targetAddress, testMessage as `0x${string}`],
+    args: [
+      BigInt(config.gcpChain.chainId),
+      targetAddress,
+      testMessage as `0x${string}`,
+    ],
     value: parseEther('0.001'),
     account,
   })
 
   const txHash = await awsWalletClient.writeContract(request)
-  const receipt = await awsPublicClient.waitForTransactionReceipt({ hash: txHash })
+  const receipt = await awsPublicClient.waitForTransactionReceipt({
+    hash: txHash,
+  })
 
   // Extract messageId from logs
-  const messageId = receipt.logs[0]?.topics[1] as Hex
+  const messageId = receipt.logs[0].topics[1] as Hex
 
   console.log(`    Transaction: ${txHash}`)
   console.log(`    Message ID: ${messageId}`)
@@ -339,9 +344,7 @@ async function testCrossChainMessage(
 /**
  * Get federation status
  */
-async function getFederationStatus(
-  config: FederationConfig,
-): Promise<{
+async function getFederationStatus(config: FederationConfig): Promise<{
   aws: { connected: boolean; blockNumber: bigint; validators: Address[] }
   gcp: { connected: boolean; blockNumber: bigint; validators: Address[] }
   bridgesSynced: boolean

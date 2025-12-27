@@ -845,9 +845,9 @@ describe('downloadTrajectoryBatch', () => {
     expect(result.header.batchId).toBe('test-batch')
     expect(result.header.appName).toBe('test')
     expect(result.trajectories).toHaveLength(1)
-    expect(result.trajectories[0]?.trajectoryId).toBe('traj-1')
+    expect(result.trajectories[0].trajectoryId).toBe('traj-1')
     expect(result.llmCalls).toHaveLength(1)
-    expect(result.llmCalls[0]?.trajectoryId).toBe('traj-1')
+    expect(result.llmCalls[0].trajectoryId).toBe('traj-1')
   })
 
   test('throws on download failure', async () => {

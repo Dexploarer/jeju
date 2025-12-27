@@ -12,6 +12,11 @@
  */
 
 export {
+  type AppConfigOptions,
+  createAppConfig,
+  createPlaywrightConfig,
+} from './shared/playwright.config.base'
+export {
   createSmokeTestConfig,
   createSynpressConfig,
   createWalletSetup,
@@ -22,12 +27,6 @@ export {
   type WalletSetupOptions,
   type WalletSetupResult,
 } from './shared/synpress.config.base'
-
-export {
-  type AppConfigOptions,
-  createAppConfig,
-  createPlaywrightConfig,
-} from './shared/playwright.config.base'
 
 // Re-export test utilities that don't use @jejunetwork/config
 export {
@@ -40,4 +39,3 @@ export {
   TEST_ACCOUNTS,
   TEST_WALLET_ADDRESS,
 } from './shared/utils'
-

@@ -316,7 +316,7 @@ export async function callMCPTool(
       return makeResult({
         action: 'sign-and-send',
         transaction: {
-          to: contracts?.swapRouter ?? contracts?.poolManager ?? '0x',
+          to: contracts.swapRouter ?? contracts.poolManager ?? '0x',
           data: '0x...',
         },
         note: 'Swap transaction prepared',

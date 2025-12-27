@@ -15,20 +15,9 @@
  */
 
 import { execSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import {
-  type Address,
-  createPublicClient,
-  createWalletClient,
-  type Hex,
-  http,
-  keccak256,
-  parseEther,
-  toBytes,
-} from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
-import { base, baseSepolia, foundry } from 'viem/chains'
 import { getRequiredNetwork, type NetworkType } from '../shared'
 
 const ROOT = join(import.meta.dir, '../../../..')
@@ -156,7 +145,16 @@ const CHAIN_CONFIGS: Record<string, Record<NetworkMode, ChainConfig>> = {
       minStorageGb: 500,
       minCpuCores: 8,
       dockerImage: 'ghcr.io/paradigmxyz/reth:v1.1.5',
-      additionalParams: ['--chain', 'mainnet', '--http', '--http.api', 'all', '--ws', '--ws.api', 'all'],
+      additionalParams: [
+        '--chain',
+        'mainnet',
+        '--http',
+        '--http.api',
+        'all',
+        '--ws',
+        '--ws.api',
+        'all',
+      ],
       evmChainId: 1,
       rpcPort: 8545,
       wsPort: 8546,
@@ -171,7 +169,17 @@ const CHAIN_CONFIGS: Record<string, Record<NetworkMode, ChainConfig>> = {
       minStorageGb: 2500,
       minCpuCores: 16,
       dockerImage: 'ghcr.io/paradigmxyz/reth:v1.1.5',
-      additionalParams: ['--chain', 'mainnet', '--http', '--http.api', 'all', '--ws', '--ws.api', 'all', '--full'],
+      additionalParams: [
+        '--chain',
+        'mainnet',
+        '--http',
+        '--http.api',
+        'all',
+        '--ws',
+        '--ws.api',
+        'all',
+        '--full',
+      ],
       evmChainId: 1,
       rpcPort: 8545,
       wsPort: 8546,
@@ -205,7 +213,12 @@ const CHAIN_CONFIGS: Record<string, Record<NetworkMode, ChainConfig>> = {
       minStorageGb: 300,
       minCpuCores: 8,
       dockerImage: 'offchainlabs/nitro-node:v3.2.1-d1c5a49',
-      additionalParams: ['--chain.id=42161', '--http.api=net,web3,eth,arb,debug', '--http.vhosts=*', '--http.addr=0.0.0.0'],
+      additionalParams: [
+        '--chain.id=42161',
+        '--http.api=net,web3,eth,arb,debug',
+        '--http.vhosts=*',
+        '--http.addr=0.0.0.0',
+      ],
       evmChainId: 42161,
       rpcPort: 8547,
       wsPort: 8548,
@@ -220,7 +233,13 @@ const CHAIN_CONFIGS: Record<string, Record<NetworkMode, ChainConfig>> = {
       minStorageGb: 1000,
       minCpuCores: 16,
       dockerImage: 'offchainlabs/nitro-node:v3.2.1-d1c5a49',
-      additionalParams: ['--chain.id=42161', '--http.api=net,web3,eth,arb,debug', '--http.vhosts=*', '--http.addr=0.0.0.0', '--execution.caching.archive'],
+      additionalParams: [
+        '--chain.id=42161',
+        '--http.api=net,web3,eth,arb,debug',
+        '--http.vhosts=*',
+        '--http.addr=0.0.0.0',
+        '--execution.caching.archive',
+      ],
       evmChainId: 42161,
       rpcPort: 8547,
       wsPort: 8548,
@@ -254,7 +273,16 @@ const CHAIN_CONFIGS: Record<string, Record<NetworkMode, ChainConfig>> = {
       minStorageGb: 300,
       minCpuCores: 8,
       dockerImage: 'ghcr.io/paradigmxyz/op-reth:v1.1.5',
-      additionalParams: ['--chain', 'optimism', '--http', '--http.api', 'all', '--ws', '--ws.api', 'all'],
+      additionalParams: [
+        '--chain',
+        'optimism',
+        '--http',
+        '--http.api',
+        'all',
+        '--ws',
+        '--ws.api',
+        'all',
+      ],
       evmChainId: 10,
       rpcPort: 8549,
       wsPort: 8550,
@@ -269,7 +297,17 @@ const CHAIN_CONFIGS: Record<string, Record<NetworkMode, ChainConfig>> = {
       minStorageGb: 800,
       minCpuCores: 16,
       dockerImage: 'ghcr.io/paradigmxyz/op-reth:v1.1.5',
-      additionalParams: ['--chain', 'optimism', '--http', '--http.api', 'all', '--ws', '--ws.api', 'all', '--full'],
+      additionalParams: [
+        '--chain',
+        'optimism',
+        '--http',
+        '--http.api',
+        'all',
+        '--ws',
+        '--ws.api',
+        'all',
+        '--full',
+      ],
       evmChainId: 10,
       rpcPort: 8549,
       wsPort: 8550,
@@ -303,7 +341,16 @@ const CHAIN_CONFIGS: Record<string, Record<NetworkMode, ChainConfig>> = {
       minStorageGb: 300,
       minCpuCores: 8,
       dockerImage: 'ghcr.io/paradigmxyz/op-reth:v1.1.5',
-      additionalParams: ['--chain', 'base', '--http', '--http.api', 'all', '--ws', '--ws.api', 'all'],
+      additionalParams: [
+        '--chain',
+        'base',
+        '--http',
+        '--http.api',
+        'all',
+        '--ws',
+        '--ws.api',
+        'all',
+      ],
       evmChainId: 8453,
       rpcPort: 8551,
       wsPort: 8552,
@@ -318,7 +365,17 @@ const CHAIN_CONFIGS: Record<string, Record<NetworkMode, ChainConfig>> = {
       minStorageGb: 600,
       minCpuCores: 16,
       dockerImage: 'ghcr.io/paradigmxyz/op-reth:v1.1.5',
-      additionalParams: ['--chain', 'base', '--http', '--http.api', 'all', '--ws', '--ws.api', 'all', '--full'],
+      additionalParams: [
+        '--chain',
+        'base',
+        '--http',
+        '--http.api',
+        'all',
+        '--ws',
+        '--ws.api',
+        'all',
+        '--full',
+      ],
       evmChainId: 8453,
       rpcPort: 8551,
       wsPort: 8552,
@@ -377,7 +434,7 @@ async function deployLocalNode(
 ): Promise<DeploymentResult> {
   console.log(`\n  ${chain.toUpperCase()}:`)
 
-  const config = CHAIN_CONFIGS[chain]?.[networkMode]
+  const config = CHAIN_CONFIGS[chain][networkMode]
   if (!config) {
     throw new Error(`Unsupported chain: ${chain}`)
   }
@@ -417,8 +474,10 @@ async function deployLocalNode(
     const arch = process.arch
     const isArm = arch === 'arm64' || arch === 'arm'
     const bpfFlag = isArm ? '--no-bpf-jit' : ''
-    console.log(`    Architecture: ${arch}${isArm ? ' (using --no-bpf-jit)' : ''}`)
-    
+    console.log(
+      `    Architecture: ${arch}${isArm ? ' (using --no-bpf-jit)' : ''}`,
+    )
+
     execSync(
       `docker run -d --name ${containerName} \
       --platform linux/amd64 \
@@ -466,7 +525,7 @@ async function deployLocalNode(
           id: 1,
         }),
       })
-      const result = await response.json() as { result?: string }
+      const result = (await response.json()) as { result?: string }
       const blockNumber = parseInt(result.result ?? '0', 16)
       console.log(`    Block: ${blockNumber}, Chain ID: ${config.evmChainId}`)
     } catch (err) {
@@ -523,7 +582,7 @@ async function deployDWSNode(
 ): Promise<DeploymentResult> {
   console.log(`\n  ${chain.toUpperCase()}:`)
 
-  const config = CHAIN_CONFIGS[chain]?.[networkMode]
+  const config = CHAIN_CONFIGS[chain][networkMode]
   if (!config) {
     throw new Error(`Unsupported chain: ${chain}`)
   }
@@ -538,9 +597,7 @@ async function deployDWSNode(
     image: config.dockerImage,
     tag: 'latest',
     command: config.additionalParams,
-    env: config.evmChainId
-      ? { CHAIN_ID: config.evmChainId.toString() }
-      : {},
+    env: config.evmChainId ? { CHAIN_ID: config.evmChainId.toString() } : {},
     hardware: {
       cpuCores: config.minCpuCores,
       memoryMb: config.minMemoryGb * 1024,
@@ -558,7 +615,13 @@ async function deployDWSNode(
         expose: true,
       },
       ...(config.wsPort
-        ? [{ containerPort: config.wsPort, protocol: 'tcp' as const, expose: true }]
+        ? [
+            {
+              containerPort: config.wsPort,
+              protocol: 'tcp' as const,
+              expose: true,
+            },
+          ]
         : []),
     ],
     labels: {

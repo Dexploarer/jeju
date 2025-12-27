@@ -234,7 +234,7 @@ export class ExecutorSDK {
         BigInt(request.input.roomId),
         request.agentId,
         inferenceResult.content,
-        actions[0]?.type,
+        actions[0].type,
       )
       roomMessages.push(message)
     }
@@ -458,7 +458,7 @@ export class ExecutorSDK {
     const receipt = await this.publicClient.waitForTransactionReceipt({
       hash: txHash,
     })
-    const triggerId = receipt.logs[0]?.topics[1]
+    const triggerId = receipt.logs[0].topics[1]
     if (!triggerId) {
       throw new Error('Failed to extract trigger ID from transaction receipt')
     }

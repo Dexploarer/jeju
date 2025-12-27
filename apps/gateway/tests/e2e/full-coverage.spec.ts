@@ -5,7 +5,7 @@
  * Runs with standard Playwright (no synpress/wallet required).
  */
 
-import { test, expect } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 
 const GATEWAY_URL = process.env.GATEWAY_URL || 'http://localhost:4013'
 
@@ -32,7 +32,9 @@ test.describe('Gateway - Full Coverage', () => {
   })
 
   test('should have proper meta tags', async ({ page }) => {
-    const viewport = await page.locator('meta[name="viewport"]').getAttribute('content')
+    const viewport = await page
+      .locator('meta[name="viewport"]')
+      .getAttribute('content')
     expect(viewport).toBeTruthy()
   })
 
@@ -70,7 +72,9 @@ test.describe('Gateway - Bridge Page', () => {
     await page.waitForLoadState('domcontentloaded')
 
     // Look for token selector or input
-    const tokenSelector = page.locator('[data-testid*="token"], select, [role="combobox"]')
+    const tokenSelector = page.locator(
+      '[data-testid*="token"], select, [role="combobox"]',
+    )
     const hasTokenSelector = (await tokenSelector.count()) > 0
 
     if (hasTokenSelector) {
@@ -82,7 +86,9 @@ test.describe('Gateway - Bridge Page', () => {
     await page.goto(`${GATEWAY_URL}/bridge`)
     await page.waitForLoadState('domcontentloaded')
 
-    const amountInput = page.locator('input[type="number"], input[placeholder*="amount" i], input[placeholder*="0"]')
+    const amountInput = page.locator(
+      'input[type="number"], input[placeholder*="amount" i], input[placeholder*="0"]',
+    )
     const hasAmountInput = (await amountInput.count()) > 0
 
     if (hasAmountInput) {
@@ -105,8 +111,12 @@ test.describe('Gateway - Liquidity Page', () => {
     await page.waitForLoadState('networkidle')
 
     // Look for pool list or "no positions" message
-    const pools = page.locator('[data-testid*="pool"], table, .pool, [class*="pool"]')
-    const noPositions = page.locator('text=/no.*position/i, text=/connect.*wallet/i')
+    const pools = page.locator(
+      '[data-testid*="pool"], table, .pool, [class*="pool"]',
+    )
+    const noPositions = page.locator(
+      'text=/no.*position/i, text=/connect.*wallet/i',
+    )
 
     const hasPools = (await pools.count()) > 0
     const hasNoPositions = (await noPositions.count()) > 0
@@ -149,7 +159,9 @@ test.describe('Gateway - Paymaster Page', () => {
     await page.goto(`${GATEWAY_URL}/paymaster`)
     await page.waitForLoadState('networkidle')
 
-    const paymasterUI = page.locator('[data-testid*="paymaster"], .paymaster, button:has-text(/create|deploy/i)')
+    const paymasterUI = page.locator(
+      '[data-testid*="paymaster"], .paymaster, button:has-text(/create|deploy/i)',
+    )
     const hasPaymasterUI = (await paymasterUI.count()) > 0
 
     if (hasPaymasterUI) {
@@ -194,7 +206,7 @@ test.describe('Gateway - Navigation', () => {
 
     for (const link of navLinks.slice(0, 5)) {
       const href = await link.getAttribute('href')
-      if (href && href.startsWith('/') && !href.startsWith('//')) {
+      if (href?.startsWith('/') && !href.startsWith('//')) {
         await link.click()
         await page.waitForLoadState('domcontentloaded')
         await expect(page.locator('body')).toBeVisible()
@@ -240,14 +252,20 @@ test.describe('Gateway - Form Interactions', () => {
     await page.waitForLoadState('networkidle')
 
     // Find and fill any visible inputs
-    const inputs = await page.locator('input:visible:not([type="hidden"])').all()
+    const inputs = await page
+      .locator('input:visible:not([type="hidden"])')
+      .all()
 
     for (const input of inputs.slice(0, 5)) {
       const type = await input.getAttribute('type')
       const placeholder = await input.getAttribute('placeholder')
 
       try {
-        if (type === 'number' || placeholder?.includes('amount') || placeholder?.includes('0')) {
+        if (
+          type === 'number' ||
+          placeholder?.includes('amount') ||
+          placeholder?.includes('0')
+        ) {
           await input.fill('1.0')
         } else if (type === 'text') {
           await input.fill('test')
@@ -267,10 +285,12 @@ test.describe('Gateway - Error States', () => {
     await page.goto(`${GATEWAY_URL}/nonexistent-page-12345`)
 
     // Should show 404 or redirect to home
-    const is404 = page.url().includes('nonexistent') || await page.locator('text=/404|not found/i').isVisible()
-    const redirectedHome = page.url() === GATEWAY_URL || page.url() === `${GATEWAY_URL}/`
+    const is404 =
+      page.url().includes('nonexistent') ||
+      (await page.locator('text=/404|not found/i').isVisible())
+    const redirectedHome =
+      page.url() === GATEWAY_URL || page.url() === `${GATEWAY_URL}/`
 
     expect(is404 || redirectedHome).toBe(true)
   })
 })
-

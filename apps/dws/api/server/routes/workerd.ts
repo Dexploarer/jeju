@@ -295,7 +295,7 @@ export function createWorkerdRouter(options: WorkerdRouterOptions) {
         // Register on-chain if decentralized
         if (registry && enableDecentralized) {
           const endpoint =
-            routerConfig?.localEndpoint ?? DEFAULT_ROUTER_CONFIG.localEndpoint
+            routerConfig.localEndpoint ?? DEFAULT_ROUTER_CONFIG.localEndpoint
           await registry
             .registerWorker(worker, endpoint)
             .catch((err: Error) => {

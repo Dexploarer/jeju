@@ -493,7 +493,7 @@ Reviewed-by: Alice <alice@example.com>`
         parentOid = lastCommit.oid
       }
 
-      const history = await store.walkCommits(lastCommit?.oid, 3)
+      const history = await store.walkCommits(lastCommit.oid, 3)
       expect(history).toHaveLength(3)
     })
 

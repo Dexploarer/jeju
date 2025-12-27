@@ -123,8 +123,8 @@ export default function EmailPage() {
   const emails = getCurrentEmails().filter(
     (email: EmailEntry) =>
       !searchQuery ||
-      email.subject?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      email.from?.toLowerCase().includes(searchQuery.toLowerCase()),
+      email.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      email.from.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
   return (
