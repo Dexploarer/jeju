@@ -93,7 +93,7 @@ class MockWorkerdWithInference implements IWorkerdExecutor {
 
   async deployWorker(worker: WorkerdWorkerDefinition): Promise<void> {
     // Extract character from bindings
-    const characterBinding = worker.bindings?.find(
+    const characterBinding = worker.bindings.find(
       (b) => b.name === 'AGENT_CHARACTER',
     )
     const character = characterBinding?.value
@@ -171,7 +171,7 @@ class MockWorkerdWithInference implements IWorkerdExecutor {
     const lowerMessage = userMessage.toLowerCase()
 
     if (lowerMessage.includes('hello') || lowerMessage.includes('hi')) {
-      return `Hello! I'm ${character.name}. ${character.bio?.[0] ?? 'How can I help you today?'}`
+      return `Hello! I'm ${character.name}. ${character.bio[0] ?? 'How can I help you today?'}`
     }
 
     if (lowerMessage.includes('help')) {
@@ -182,7 +182,7 @@ class MockWorkerdWithInference implements IWorkerdExecutor {
       lowerMessage.includes('who are you') ||
       lowerMessage.includes('what are you')
     ) {
-      return `I'm ${character.name}. ${character.bio?.join(' ') ?? character.system}`
+      return `I'm ${character.name}. ${character.bio.join(' ') ?? character.system}`
     }
 
     // Default response

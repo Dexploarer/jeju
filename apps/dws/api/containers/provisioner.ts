@@ -26,7 +26,6 @@ import * as scheduler from './scheduler'
 import type {
   ComputeNode,
   ContainerImage,
-  ContainerInstance,
   ContainerResources,
   ContainerState,
 } from './types'
@@ -43,7 +42,12 @@ export type GPUType =
   | 'amd-mi300x'
   | 'none'
 
-export type TEEPlatform = 'intel-sgx' | 'intel-tdx' | 'amd-sev' | 'nvidia-cc' | 'none'
+export type TEEPlatform =
+  | 'intel-sgx'
+  | 'intel-tdx'
+  | 'amd-sev'
+  | 'nvidia-cc'
+  | 'none'
 
 export interface HardwareSpec {
   // CPU configuration
@@ -81,9 +85,15 @@ export interface HardwareSpec {
 export const HardwareSpecSchema = z.object({
   cpuCores: z.number().min(1).max(256),
   cpuArchitecture: z.enum(['amd64', 'arm64']).default('amd64'),
-  memoryMb: z.number().min(128).max(2048 * 1024), // Up to 2TB
+  memoryMb: z
+    .number()
+    .min(128)
+    .max(2048 * 1024), // Up to 2TB
   memoryType: z.enum(['standard', 'high-bandwidth']).optional(),
-  storageMb: z.number().min(1024).max(100 * 1024 * 1024), // Up to 100TB
+  storageMb: z
+    .number()
+    .min(1024)
+    .max(100 * 1024 * 1024), // Up to 100TB
   storageType: z.enum(['ssd', 'nvme', 'hdd']).default('ssd'),
   storageIops: z.number().optional(),
   gpuType: z
@@ -485,11 +495,11 @@ const MACHINE_TYPES: MachineType[] = [
 // Contract interaction
 
 const RPC_URL = process.env.RPC_URL || getRpcUrl()
-const COMPUTE_MARKETPLACE_ADDRESS = process.env.COMPUTE_MARKETPLACE_ADDRESS as
+const _COMPUTE_MARKETPLACE_ADDRESS = process.env.COMPUTE_MARKETPLACE_ADDRESS as
   | Address
   | undefined
 
-const COMPUTE_MARKETPLACE_ABI = [
+const _COMPUTE_MARKETPLACE_ABI = [
   {
     name: 'provisionContainer',
     type: 'function',
@@ -549,8 +559,6 @@ const containersByOwner = new Map<Address, Set<string>>()
 // Main Provisioner Class
 
 export class ContainerProvisioner {
-  private client: PublicClient
-
   constructor() {
     this.client = getPublicClient()
   }
@@ -629,7 +637,11 @@ export class ContainerProvisioner {
       tag?: string
       command?: string[]
       env?: Record<string, string>
-      ports?: Array<{ containerPort: number; protocol?: 'tcp' | 'udp'; expose?: boolean }>
+      ports?: Array<{
+        containerPort: number
+        protocol?: 'tcp' | 'udp'
+        expose?: boolean
+      }>
     },
   ): Promise<ProvisionedContainer> {
     const machineType = this.getMachineType(machineTypeId)
@@ -647,11 +659,12 @@ export class ContainerProvisioner {
       maxReplicas: 10,
       scaleToZero: false,
       cooldownSeconds: 300,
-      ports: imageConfig.ports?.map((p) => ({
-        containerPort: p.containerPort,
-        protocol: p.protocol ?? 'tcp',
-        expose: p.expose ?? false,
-      })) ?? [],
+      ports:
+        imageConfig.ports?.map((p) => ({
+          containerPort: p.containerPort,
+          protocol: p.protocol ?? 'tcp',
+          expose: p.expose ?? false,
+        })) ?? [],
       terminationGracePeriodSeconds: 30,
       restartPolicy: 'always',
       labels: { 'dws.machine-type': machineTypeId },
@@ -664,7 +677,11 @@ export class ContainerProvisioner {
   /**
    * Scale container replicas
    */
-  async scale(containerId: string, owner: Address, replicas: number): Promise<void> {
+  async scale(
+    containerId: string,
+    owner: Address,
+    replicas: number,
+  ): Promise<void> {
     const container = provisionedContainers.get(containerId)
     if (!container) {
       throw new Error(`Container not found: ${containerId}`)
@@ -806,7 +823,9 @@ export class ContainerProvisioner {
 
     if (filter?.owner) {
       const ownerLower = filter.owner.toLowerCase()
-      containers = containers.filter((c) => c.owner.toLowerCase() === ownerLower)
+      containers = containers.filter(
+        (c) => c.owner.toLowerCase() === ownerLower,
+      )
     }
 
     return containers
@@ -833,14 +852,14 @@ export class ContainerProvisioner {
       'nvidia-l4': 0,
       'amd-mi250x': 0,
       'amd-mi300x': 0,
-      'none': 0,
+      none: 0,
     }
     const teeUsage: Record<TEEPlatform, number> = {
       'intel-sgx': 0,
       'intel-tdx': 0,
       'amd-sev': 0,
       'nvidia-cc': 0,
-      'none': 0,
+      none: 0,
     }
 
     let totalReplicas = 0
@@ -856,12 +875,14 @@ export class ContainerProvisioner {
 
       gpuUsage[container.config.hardware.gpuType] +=
         container.currentReplicas * container.config.hardware.gpuCount
-      teeUsage[container.config.hardware.teePlatform] += container.currentReplicas
+      teeUsage[container.config.hardware.teePlatform] +=
+        container.currentReplicas
     }
 
     return {
       totalContainers: containers.length,
-      runningContainers: containers.filter((c) => c.status === 'running').length,
+      runningContainers: containers.filter((c) => c.status === 'running')
+        .length,
       totalReplicas,
       machineTypeUsage,
       gpuUsage,
@@ -896,7 +917,9 @@ export class ContainerProvisioner {
     console.log(`[Provisioner] Container ${container.id} is now running`)
   }
 
-  private async findSuitableNodes(hardware: HardwareSpec): Promise<ComputeNode[]> {
+  private async findSuitableNodes(
+    hardware: HardwareSpec,
+  ): Promise<ComputeNode[]> {
     const allNodes = scheduler.getAllNodes()
 
     return allNodes.filter((node) => {
@@ -993,7 +1016,9 @@ export class ContainerProvisioner {
       )
 
       if (!reservation) {
-        throw new Error(`Failed to reserve resources on node ${scheduleResult.nodeId}`)
+        throw new Error(
+          `Failed to reserve resources on node ${scheduleResult.nodeId}`,
+        )
       }
 
       // Deploy container on node
@@ -1047,9 +1072,11 @@ export class ContainerProvisioner {
         scheduler.updateNodeResources(allocation.nodeId, {
           cpu: node.resources.availableCpu + container.config.hardware.cpuCores,
           memoryMb:
-            node.resources.availableMemoryMb + container.config.hardware.memoryMb,
+            node.resources.availableMemoryMb +
+            container.config.hardware.memoryMb,
           storageMb:
-            node.resources.availableStorageMb + container.config.hardware.storageMb,
+            node.resources.availableStorageMb +
+            container.config.hardware.storageMb,
         })
       }
 
@@ -1102,11 +1129,14 @@ export class ContainerProvisioner {
     }
 
     // Send deployment request to node
-    const deployResponse = await fetch(`${node.endpoint}/v1/containers/create`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(dockerConfig),
-    })
+    const deployResponse = await fetch(
+      `${node.endpoint}/v1/containers/create`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dockerConfig),
+      },
+    )
 
     if (!deployResponse.ok) {
       const error = await deployResponse.text()
@@ -1121,7 +1151,9 @@ export class ContainerProvisioner {
     const node = scheduler.getNode(nodeId)
     if (!node) return
 
-    console.log(`[Provisioner] Stopping instance ${instanceId} on node ${nodeId}`)
+    console.log(
+      `[Provisioner] Stopping instance ${instanceId} on node ${nodeId}`,
+    )
 
     const stopResponse = await fetch(
       `${node.endpoint}/v1/containers/${instanceId}/stop`,

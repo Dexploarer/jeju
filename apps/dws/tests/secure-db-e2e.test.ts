@@ -22,7 +22,9 @@ let serviceAvailable = false
 describe('Secure Database Provisioning', () => {
   beforeAll(async () => {
     try {
-      const resp = await fetch(`${DWS_ENDPOINT}/database/health`, { signal: AbortSignal.timeout(5000) })
+      const resp = await fetch(`${DWS_ENDPOINT}/database/health`, {
+        signal: AbortSignal.timeout(5000),
+      })
       serviceAvailable = resp.ok
     } catch {
       serviceAvailable = false

@@ -4,7 +4,7 @@
  * Comprehensive tests covering all pages, buttons, forms, and user flows.
  */
 
-import { test, expect } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 
 const BASE_URL = process.env.CRUCIBLE_URL || 'http://localhost:4020'
 
@@ -29,7 +29,9 @@ test.describe('Crucible - Full Coverage', () => {
   })
 
   test('should have proper meta tags', async ({ page }) => {
-    const viewport = await page.locator('meta[name="viewport"]').getAttribute('content')
+    const viewport = await page
+      .locator('meta[name="viewport"]')
+      .getAttribute('content')
     expect(viewport).toBeTruthy()
   })
 
@@ -56,12 +58,11 @@ test.describe('Crucible - Full Coverage', () => {
 })
 
 test.describe('Crucible - Navigation', () => {
-
-    test('should navigate to Home', async ({ page }) => {
-      await page.goto(`${BASE_URL}/`)
-      await page.waitForLoadState('domcontentloaded')
-      await expect(page.locator('body')).toBeVisible()
-    })
+  test('should navigate to Home', async ({ page }) => {
+    await page.goto(`${BASE_URL}/`)
+    await page.waitForLoadState('domcontentloaded')
+    await expect(page.locator('body')).toBeVisible()
+  })
 
   test('should navigate via links', async ({ page }) => {
     await page.goto(BASE_URL)
@@ -71,7 +72,7 @@ test.describe('Crucible - Navigation', () => {
 
     for (const link of navLinks.slice(0, 5)) {
       const href = await link.getAttribute('href')
-      if (href && href.startsWith('/') && !href.startsWith('//')) {
+      if (href?.startsWith('/') && !href.startsWith('//')) {
         await link.click()
         await page.waitForLoadState('domcontentloaded')
         await expect(page.locator('body')).toBeVisible()
@@ -112,7 +113,9 @@ test.describe('Crucible - Form Interactions', () => {
     await page.goto(BASE_URL)
     await page.waitForLoadState('networkidle')
 
-    const inputs = await page.locator('input:visible:not([type="hidden"])').all()
+    const inputs = await page
+      .locator('input:visible:not([type="hidden"])')
+      .all()
 
     for (const input of inputs.slice(0, 5)) {
       const type = await input.getAttribute('type')
@@ -136,8 +139,11 @@ test.describe('Crucible - Error States', () => {
   test('should handle 404 pages', async ({ page }) => {
     await page.goto(`${BASE_URL}/nonexistent-page-12345`)
 
-    const is404 = page.url().includes('nonexistent') || await page.locator('text=/404|not found/i').isVisible()
-    const redirectedHome = page.url() === BASE_URL || page.url() === `${BASE_URL}/`
+    const is404 =
+      page.url().includes('nonexistent') ||
+      (await page.locator('text=/404|not found/i').isVisible())
+    const redirectedHome =
+      page.url() === BASE_URL || page.url() === `${BASE_URL}/`
 
     expect(is404 || redirectedHome).toBe(true)
   })

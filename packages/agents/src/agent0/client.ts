@@ -303,9 +303,9 @@ export class Agent0Client implements IAgent0Client {
     )
 
     return {
-      items: (result?.items ?? []).map((a) => this.toSearchResult(a)),
-      nextCursor: result?.nextCursor,
-      meta: result?.meta ? this.toMeta(result.meta) : undefined,
+      items: (result.items ?? []).map((a) => this.toSearchResult(a)),
+      nextCursor: result.nextCursor,
+      meta: result.meta ? this.toMeta(result.meta) : undefined,
     }
   }
 
@@ -331,9 +331,9 @@ export class Agent0Client implements IAgent0Client {
     )
 
     return {
-      items: (result?.items ?? []).map((a) => this.toSearchResult(a)),
-      nextCursor: result?.nextCursor,
-      meta: result?.meta ? this.toMeta(result.meta) : undefined,
+      items: (result.items ?? []).map((a) => this.toSearchResult(a)),
+      nextCursor: result.nextCursor,
+      meta: result.meta ? this.toMeta(result.meta) : undefined,
     }
   }
 
@@ -507,7 +507,7 @@ export class Agent0Client implements IAgent0Client {
       params?.minScore,
       params?.maxScore,
     )
-    return list?.map((f) => this.toFeedback(f)) ?? []
+    return list.map((f) => this.toFeedback(f)) ?? []
   }
 
   async revokeFeedback(

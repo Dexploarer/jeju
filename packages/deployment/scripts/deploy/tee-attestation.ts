@@ -28,7 +28,6 @@ import {
   type Hex,
   http,
   keccak256,
-  parseEther,
   toBytes,
   toHex,
 } from 'viem'
@@ -40,7 +39,12 @@ const ROOT = join(import.meta.dir, '../../../..')
 const DEPLOYMENTS_DIR = join(ROOT, 'packages/contracts/deployments')
 
 // TEE Platform Types
-type TEEPlatform = 'intel-tdx' | 'intel-sgx' | 'amd-sev-snp' | 'nvidia-cc' | 'none'
+type TEEPlatform =
+  | 'intel-tdx'
+  | 'intel-sgx'
+  | 'amd-sev-snp'
+  | 'nvidia-cc'
+  | 'none'
 
 interface TEEAttestation {
   platform: TEEPlatform
@@ -163,7 +167,9 @@ async function generateAttestation(
   node: TEENodeConfig,
   network: NetworkType,
 ): Promise<TEEAttestation> {
-  console.log(`  Generating attestation for ${node.nodeId} (${node.platform})...`)
+  console.log(
+    `  Generating attestation for ${node.nodeId} (${node.platform})...`,
+  )
 
   // For localnet/testnet without real TEE, generate simulated attestation
   if (network === 'localnet' || !hasRealTEEHardware(node.platform)) {
@@ -234,9 +240,7 @@ function generateSimulatedAttestation(node: TEENodeConfig): TEEAttestation {
     toBytes(`${node.nodeId}:${node.platform}:${timestamp}`),
   )
   const mrSigner = keccak256(toBytes(node.address))
-  const reportData = keccak256(
-    toBytes(`${mrEnclave}:${mrSigner}:${timestamp}`),
-  )
+  const reportData = keccak256(toBytes(`${mrEnclave}:${mrSigner}:${timestamp}`))
 
   // Simulate quote (in real TEE, this comes from hardware)
   const quoteData = new Uint8Array(256)
@@ -270,10 +274,9 @@ async function generateIntelTDXAttestation(
   // This requires running inside a TDX VM
   const reportData = keccak256(toBytes(`${node.nodeId}:${Date.now()}`))
 
-  const tdxQuote = execSync(
-    `tdx-cli quote --report-data ${reportData}`,
-    { encoding: 'utf-8' },
-  ).trim()
+  const tdxQuote = execSync(`tdx-cli quote --report-data ${reportData}`, {
+    encoding: 'utf-8',
+  }).trim()
 
   const quoteData = JSON.parse(tdxQuote) as {
     quote: string
@@ -302,10 +305,9 @@ async function generateIntelSGXAttestation(
   // Use Intel SGX SDK to generate attestation
   const reportData = keccak256(toBytes(`${node.nodeId}:${Date.now()}`))
 
-  const sgxQuote = execSync(
-    `sgx-quote generate --report-data ${reportData}`,
-    { encoding: 'utf-8' },
-  ).trim()
+  const sgxQuote = execSync(`sgx-quote generate --report-data ${reportData}`, {
+    encoding: 'utf-8',
+  }).trim()
 
   const quoteData = JSON.parse(sgxQuote) as {
     quote: string
@@ -395,7 +397,11 @@ async function registerWithDWS(
   const account = privateKeyToAccount(privateKey as `0x${string}`)
 
   const timestamp = Date.now()
-  const message = JSON.stringify({ nodeId: node.nodeId, attestation, timestamp })
+  const message = JSON.stringify({
+    nodeId: node.nodeId,
+    attestation,
+    timestamp,
+  })
   const signature = await account.signMessage({ message })
 
   const response = await fetch(`${dwsEndpoint}/containers/nodes`, {
@@ -510,7 +516,9 @@ async function verifyOnChain(
 async function main() {
   const network = getRequiredNetwork()
   const privateKey = process.env.DEPLOYER_PRIVATE_KEY || process.env.PRIVATE_KEY
-  const teeRegistryAddress = process.env.TEE_REGISTRY_ADDRESS as Address | undefined
+  const teeRegistryAddress = process.env.TEE_REGISTRY_ADDRESS as
+    | Address
+    | undefined
 
   console.log(`
 ╔══════════════════════════════════════════════════════════════╗
@@ -581,12 +589,21 @@ async function main() {
     // Generate attestation
     const attestation = await generateAttestation(node, network)
     result.attestation = attestation
-    console.log(`    Attestation generated: ${attestation.mrEnclave.slice(0, 20)}...`)
+    console.log(
+      `    Attestation generated: ${attestation.mrEnclave.slice(0, 20)}...`,
+    )
 
     // Register with DWS
     if (privateKey) {
-      const dwsResult = await registerWithDWS(node, attestation, network, privateKey)
-      console.log(`    Registered with DWS: ${dwsResult.success ? 'Yes' : 'No'}`)
+      const dwsResult = await registerWithDWS(
+        node,
+        attestation,
+        network,
+        privateKey,
+      )
+      console.log(
+        `    Registered with DWS: ${dwsResult.success ? 'Yes' : 'No'}`,
+      )
     } else {
       console.log('    Skipping DWS registration (no PRIVATE_KEY)')
     }
@@ -602,7 +619,9 @@ async function main() {
       )
       result.registeredOnChain = onChainResult.success
       result.txHash = onChainResult.txHash
-      console.log(`    Registered on-chain: ${onChainResult.txHash.slice(0, 20)}...`)
+      console.log(
+        `    Registered on-chain: ${onChainResult.txHash.slice(0, 20)}...`,
+      )
 
       // Verify on-chain
       const verified = await verifyOnChain(
@@ -614,7 +633,9 @@ async function main() {
       result.verified = verified
       console.log(`    Verified on-chain: ${verified ? 'Yes' : 'No'}`)
     } else {
-      console.log('    Skipping on-chain registration (no TEE_REGISTRY_ADDRESS)')
+      console.log(
+        '    Skipping on-chain registration (no TEE_REGISTRY_ADDRESS)',
+      )
     }
 
     results.push(result)

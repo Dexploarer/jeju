@@ -522,7 +522,10 @@ export class InfrastructureService {
     }
 
     // Docker + services need to be sequential, but can run parallel to CQL
-    const dockerTask = async (): Promise<{ name: string; success: boolean }> => {
+    const dockerTask = async (): Promise<{
+      name: string
+      success: boolean
+    }> => {
       // Start Docker if not running
       if (!dockerRunning) {
         const started = await this.startDocker()
