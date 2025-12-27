@@ -31,6 +31,8 @@ export interface WorkerdConfig {
   subrequestLimit: number
   /** Runtime mode */
   mode: WorkerdRuntimeMode
+  /** DWS exec API URL for file/process operations (workerd-compatible) */
+  execUrl?: string
 }
 
 export const DEFAULT_WORKERD_CONFIG: WorkerdConfig = {

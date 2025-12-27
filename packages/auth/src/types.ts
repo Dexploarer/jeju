@@ -5,11 +5,12 @@
  * threshold MPC signing, and W3C Verifiable Credentials.
  */
 
-import type { Address, Hex } from 'viem'
 import type { TEEAttestation as SharedTEEAttestation } from '@jejunetwork/types'
+import type { Address, Hex } from 'viem'
 
 // Re-export TEEAttestation from shared types
 export type { TEEAttestation } from '@jejunetwork/types'
+
 // Local type alias for use in this file
 type TEEAttestation = SharedTEEAttestation
 

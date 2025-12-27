@@ -20,7 +20,7 @@ import { base } from 'viem/chains'
 type ViemPublicClient = ReturnType<typeof createPublicClient>
 type ViemWalletClient = ReturnType<typeof createWalletClient>
 
-import * as http from 'node:http'
+// Workerd-compatible: Metrics server uses Fetch API handler instead of node:http
 import type { CDNRegion } from '@jejunetwork/types'
 import { Counter, Gauge, Histogram, Registry } from 'prom-client'
 import type { EdgeCache } from '../cache/edge-cache'
@@ -179,7 +179,7 @@ export class NodeStatsReporter {
     requests: number
   }> = []
   private reportInterval: ReturnType<typeof setInterval> | null = null
-  private metricsServer: http.Server | null = null
+  private metricsHandler: ((req: Request) => Promise<Response>) | null = null
 
   // Current period stats
   private currentBytes = 0
@@ -258,44 +258,50 @@ export class NodeStatsReporter {
       clearInterval(this.reportInterval)
       this.reportInterval = null
     }
-    if (this.metricsServer) {
-      this.metricsServer.close()
-      this.metricsServer = null
-    }
+    this.metricsHandler = null
 
     // Final report
     await this.generateAndSubmitReport()
   }
 
-  private async startMetricsServer(): Promise<void> {
-    this.metricsServer = http.createServer(async (req, res) => {
-      if (req.url === '/metrics') {
-        res.setHeader('Content-Type', metricsRegistry.contentType)
-        res.end(await metricsRegistry.metrics())
-      } else if (req.url === '/health') {
-        res.setHeader('Content-Type', 'application/json')
-        res.end(
-          JSON.stringify({
+  /**
+   * Get Fetch API handler for metrics endpoint (workerd-compatible)
+   * This should be registered as a route in the main Elysia app
+   */
+  getMetricsHandler(): (req: Request) => Promise<Response> {
+    if (!this.metricsHandler) {
+      this.metricsHandler = async (req: Request): Promise<Response> => {
+        const url = new URL(req.url)
+
+        if (url.pathname === '/metrics') {
+          return new Response(await metricsRegistry.metrics(), {
+            headers: { 'Content-Type': metricsRegistry.contentType },
+          })
+        }
+
+        if (url.pathname === '/health') {
+          return Response.json({
             status: 'healthy',
             uptime: Date.now() - this.startTime,
-          }),
-        )
-      } else if (req.url === '/stats') {
-        res.setHeader('Content-Type', 'application/json')
-        res.end(JSON.stringify(this.generateReport()))
-      } else {
-        res.writeHead(404)
-        res.end('Not found')
+          })
+        }
+
+        if (url.pathname === '/stats') {
+          return Response.json(this.generateReport())
+        }
+
+        return new Response('Not found', { status: 404 })
       }
-    })
+    }
+    return this.metricsHandler
+  }
 
-    const server = this.metricsServer
-    await new Promise<void>((resolve) => {
-      server.listen(this.config.metricsPort, resolve)
-    })
-
+  private async startMetricsServer(): Promise<void> {
+    // In workerd, metrics are served via Fetch API handler, not a separate server
+    // The handler should be registered in the main Elysia app
+    this.metricsHandler = this.getMetricsHandler()
     console.log(
-      `[NodeStatsReporter] Metrics on port ${this.config.metricsPort}`,
+      `[NodeStatsReporter] Metrics handler ready (register at /metrics, /health, /stats)`,
     )
   }
 

@@ -24,7 +24,6 @@
  * 4. Earn spread between our quote and execution
  */
 
-import { WorkerdEventEmitter } from '../../utils/event-emitter'
 import {
   type Address,
   hexToBytes,
@@ -34,6 +33,7 @@ import {
   type WalletClient,
 } from 'viem'
 import { z } from 'zod'
+import { WorkerdEventEmitter } from '../../utils/event-emitter'
 
 // Zod schemas for CoW API responses
 const CowApiQuoteSchema = z.object({

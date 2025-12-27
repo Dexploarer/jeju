@@ -21,6 +21,7 @@ const OAuthCallbackSchema = z.object({
   error: z.string().optional(),
 })
 
+import type { TEEAttestation } from '@jejunetwork/types'
 import { CHAIN_IDS, DEFAULT_RPC } from '../infrastructure/config.js'
 import {
   createDecentralizedDiscovery,
@@ -37,7 +38,6 @@ import {
   type OAuth3StorageService,
 } from '../infrastructure/storage-integration.js'
 import { FarcasterProvider } from '../providers/farcaster.js'
-import type { TEEAttestation } from '@jejunetwork/types'
 import {
   AuthProvider,
   type JsonRecord,

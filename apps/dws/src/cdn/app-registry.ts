@@ -39,7 +39,9 @@ async function exec(
   return response.json() as Promise<ExecResult>
 }
 
-async function readdir(path: string): Promise<Array<{ name: string; isDirectory: () => boolean }>> {
+async function readdir(
+  path: string,
+): Promise<Array<{ name: string; isDirectory: () => boolean }>> {
   const result = await exec(['sh', '-c', `ls -la "${path}" | tail -n +2`])
   if (result.exitCode !== 0) {
     return []
@@ -76,13 +78,6 @@ async function stat(path: string): Promise<{ isFile: () => boolean } | null> {
 
 function join(...parts: string[]): string {
   return parts.join('/').replace(/\/+/g, '/')
-}
-
-function resolve(...parts: string[]): string {
-  if (parts.length === 0) return '/'
-  if (parts[0].startsWith('/')) return join(...parts)
-  // In workerd, use absolute paths - no process.cwd()
-  return join('/', ...parts)
 }
 
 export interface AppFrontendConfig {
@@ -165,7 +160,7 @@ export class AppRegistry {
   async initialize(): Promise<void> {
     if (this.initialized) return
 
-    const entries = await readdir(this.appsDir, { withFileTypes: true })
+    const entries = await readdir(this.appsDir)
 
     for (const entry of entries) {
       if (!entry.isDirectory()) continue
@@ -175,7 +170,7 @@ export class AppRegistry {
 
       if (!manifestExists) continue
 
-      const manifestContent = await readFile(manifestPath, 'utf-8')
+      const manifestContent = await readFile(manifestPath)
       const manifest: JejuManifest = JSON.parse(manifestContent)
 
       const config = this.parseManifest(manifest, entry.name)

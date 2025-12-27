@@ -39,6 +39,7 @@ export {
   ERC20ReadAbi,
   ERC20WriteAbi,
 } from './abis'
+
 // PascalCase aliases - import from generated and re-export
 import {
   banManagerAbi,

@@ -18,6 +18,7 @@ function randomBytes(length: number): Buffer {
   crypto.getRandomValues(arr)
   return Buffer.from(arr)
 }
+
 import type { Address } from 'viem'
 import { keccak256, toHex } from 'viem'
 

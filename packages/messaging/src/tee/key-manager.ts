@@ -15,7 +15,6 @@ import type {
   KeyCurve,
   KeyType,
 } from '@jejunetwork/kms'
-import type { TEEAttestation } from '@jejunetwork/types'
 import {
   bytesToHex,
   createLogger,
@@ -27,6 +26,7 @@ import {
   randomBytes,
   toHex,
 } from '@jejunetwork/shared'
+import type { TEEAttestation } from '@jejunetwork/types'
 
 const log = createLogger('tee-key-manager')
 

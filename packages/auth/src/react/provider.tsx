@@ -4,6 +4,7 @@
  * Wraps your app to provide OAuth3 authentication context.
  */
 
+import { TEEAttestationSchema } from '@jejunetwork/types'
 import {
   createContext,
   type ReactNode,
@@ -22,13 +23,12 @@ import {
   type OAuth3Config,
   type OAuth3Event,
 } from '../sdk/client.js'
-import { TEEAttestationSchema } from '@jejunetwork/types'
 import type {
   AuthProvider,
   OAuth3Session,
   VerifiableCredential,
 } from '../types.js'
-import { SessionCapability, TEEProvider } from '../types.js'
+import { SessionCapability } from '../types.js'
 
 // Hex string schema - validates 0x-prefixed hex strings
 const HexSchema = z

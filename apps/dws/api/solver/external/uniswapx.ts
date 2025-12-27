@@ -11,10 +11,10 @@
  * 4. Filler earns spread between order price and execution
  */
 
-import { WorkerdEventEmitter } from '../../utils/event-emitter'
 import { expectValid } from '@jejunetwork/types'
 import type { Address, PublicClient, WalletClient } from 'viem'
 import { UniswapXOrdersResponseSchema } from '../../types'
+import { WorkerdEventEmitter } from '../../utils/event-emitter'
 
 // UniswapX Reactor addresses
 export const UNISWAPX_REACTORS: Record<number, Address> = {

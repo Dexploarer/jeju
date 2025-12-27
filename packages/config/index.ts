@@ -2075,6 +2075,20 @@ export {
   printApiKeyStatus,
 } from './api-keys'
 
+// Chainlink Configuration
+export type {
+  AutomationConfig,
+  ChainlinkFeed,
+  VRFConfig,
+} from './chainlink'
+export {
+  getAutomationConfig,
+  getChainlinkFeed,
+  getChainlinkFeeds,
+  getVRFConfig,
+  hasChainlinkSupport,
+} from './chainlink'
+
 // Node.js-only modules (internal, not exported)
 // These modules use node:fs and are internal implementation details.
 // They are exported from their source files but not from the barrel:
