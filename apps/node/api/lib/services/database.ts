@@ -15,7 +15,6 @@ import {
   type ExecResult,
   getCQL,
   type QueryResult,
-  type RentalInfo,
 } from '@jejunetwork/db'
 import type { Address, Hex } from 'viem'
 import { z } from 'zod'

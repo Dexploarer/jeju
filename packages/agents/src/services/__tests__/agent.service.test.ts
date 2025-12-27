@@ -102,7 +102,7 @@ describe('AgentWithConfig structure', () => {
 
   it('supports all model tiers', () => {
     const tiers: AgentWithConfig['modelTier'][] = ['lite', 'standard', 'pro']
-    
+
     for (const tier of tiers) {
       const agent: AgentWithConfig = {
         id: 'agent-123',
@@ -127,7 +127,7 @@ describe('AgentWithConfig structure', () => {
       'inactive',
       'suspended',
     ]
-    
+
     for (const status of statuses) {
       const agent: AgentWithConfig = {
         id: 'agent-123',
@@ -146,4 +146,3 @@ describe('AgentWithConfig structure', () => {
     }
   })
 })
-

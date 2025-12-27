@@ -33,7 +33,6 @@ import {
   getStorageApiEndpoint,
 } from '@jejunetwork/config'
 import { bytesToHex, hash256 } from '@jejunetwork/shared'
-import { z } from 'zod'
 import type {
   CacheConfig,
   CDNRegion,

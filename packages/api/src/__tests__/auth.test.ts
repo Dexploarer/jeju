@@ -6,6 +6,10 @@
  */
 
 import { describe, expect, test } from 'bun:test'
+import {
+  describeWithInfra,
+  hasInfra,
+} from '@jeju/tests/shared/live-infrastructure'
 import type { Address } from 'viem'
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 import {
@@ -31,10 +35,6 @@ import {
   type OAuth3Config,
   type WalletSignatureConfig,
 } from '../auth/types'
-import {
-  describeWithInfra,
-  hasInfra,
-} from '@jeju/tests/shared/live-infrastructure'
 
 // Check if OAuth3 TEE service is available for live tests
 const OAUTH3_AVAILABLE = await hasInfra({ gateway: true })

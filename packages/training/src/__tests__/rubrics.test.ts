@@ -231,10 +231,7 @@ describe('EvaluationResult', () => {
       { score: 2, weight: 0.3 }, // timing
     ]
 
-    const weightedTotal = scores.reduce(
-      (sum, s) => sum + s.score * s.weight,
-      0,
-    )
+    const weightedTotal = scores.reduce((sum, s) => sum + s.score * s.weight, 0)
 
     expect(weightedTotal).toBeCloseTo(3.1, 1) // 1.6 + 0.9 + 0.6
   })
@@ -300,10 +297,8 @@ describe('Rubric versioning', () => {
     const v2 = parseVersion('1.1.0')
 
     // Compare major.minor
-    const isNewer =
-      v2[0] > v1[0] || (v2[0] === v1[0] && v2[1] > v1[1])
+    const isNewer = v2[0] > v1[0] || (v2[0] === v1[0] && v2[1] > v1[1])
 
     expect(isNewer).toBe(true)
   })
 })
-

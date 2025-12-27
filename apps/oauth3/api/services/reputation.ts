@@ -6,7 +6,7 @@
 
 import type { Address } from 'viem'
 import { createPublicClient, http, parseAbi } from 'viem'
-import { mainnet, sepolia, foundry } from 'viem/chains'
+import { foundry, mainnet, sepolia } from 'viem/chains'
 import { MIN_REPUTATION_SCORE } from '../../lib/types'
 
 // Reputation provider registry ABI (minimal)
@@ -59,8 +59,6 @@ function getPublicClient() {
     case 'testnet':
       chain = sepolia
       break
-    case 'localnet':
-    case 'anvil':
     default:
       chain = foundry
       break
