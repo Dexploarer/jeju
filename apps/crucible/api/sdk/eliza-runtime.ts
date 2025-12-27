@@ -471,23 +471,21 @@ export class CrucibleAgentRuntime {
       // Execute the Eliza action handler
       const handlerResult = await action.elizaHandler(
         this as unknown as Parameters<ElizaActionHandler>[0], // IAgentRuntime - we implement enough of the interface
-        mockMessage as unknown as Parameters<ElizaActionHandler>[1],
-        mockState as unknown as Parameters<ElizaActionHandler>[2],
-        {
-          actionParams: params,
-        } as unknown as Parameters<ElizaActionHandler>[3],
-        callback as unknown as Parameters<ElizaActionHandler>[4],
+        mockMessage as Parameters<ElizaActionHandler>[1],
+        mockState as Parameters<ElizaActionHandler>[2],
+        { actionParams: params } as Parameters<ElizaActionHandler>[3],
+        callback as Parameters<ElizaActionHandler>[4],
       )
 
       this.log.info('Action executed', {
         actionName,
-        handlerResult: String(handlerResult),
+        handlerResult,
         callbackResult,
       })
 
       return {
-        success: Boolean(handlerResult),
-        result: callbackResult ?? { executed: Boolean(handlerResult) },
+        success: handlerResult === true,
+        result: callbackResult ?? { executed: handlerResult },
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err)

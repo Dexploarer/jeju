@@ -6,6 +6,14 @@
 
 import { describe, expect, it } from 'bun:test'
 
+// IPFS CID
+interface CID {
+  version: 0 | 1
+  codec: string
+  hash: string
+  toString(): string
+}
+
 // Storage result
 interface StorageResult {
   cid: string

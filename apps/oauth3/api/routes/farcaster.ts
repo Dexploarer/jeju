@@ -12,7 +12,7 @@ import { authCodeState, clientState, sessionState } from '../services/state'
 /**
  * HTML escape to prevent XSS in rendered templates.
  */
-export function escapeHtml(unsafe: string): string {
+function _escapeHtml(unsafe: string): string {
   return unsafe
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')

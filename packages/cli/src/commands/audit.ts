@@ -160,6 +160,7 @@ function createExportCommand(): Command {
       }
 
       const { writeFileSync } = require('node:fs')
+      const { join } = require('node:path')
 
       const days = parseInt(options.days, 10)
       const events = keyAudit.getRecentEvents(days)

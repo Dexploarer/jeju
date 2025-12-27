@@ -9,7 +9,6 @@
  */
 
 import { type CQLClient, getCQL } from '@jejunetwork/db'
-import { JsonValueSchema } from '@jejunetwork/types'
 import { z } from 'zod'
 import type { Message, Task, TaskArtifact, TaskStore } from '../types/server'
 
@@ -17,7 +16,7 @@ import type { Message, Task, TaskArtifact, TaskStore } from '../types/server'
 const PartSchema = z.object({
   kind: z.enum(['text', 'data', 'file']),
   text: z.string().optional(),
-  data: z.record(z.string(), JsonValueSchema).optional(),
+  data: z.record(z.unknown()).optional(),
   file: z
     .object({
       name: z.string(),

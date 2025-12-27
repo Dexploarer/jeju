@@ -30,7 +30,9 @@ if (!ZodFunctionProto.returns) {
 
 // Add .args() method for Zod 3 compatibility if not present
 if (!ZodFunctionProto.args) {
-  ZodFunctionProto.args = function (..._items: z.ZodTypeAny[]) {
+  ZodFunctionProto.args = function <T extends z.ZodTuple<[], z.ZodUnknown>>(
+    ..._items: T['items']
+  ) {
     return this
   }
 }

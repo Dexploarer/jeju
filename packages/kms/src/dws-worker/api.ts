@@ -627,10 +627,7 @@ export function createKMSAPIWorker(config: KMSAPIConfig) {
         // Encrypt using AES-256-GCM (via Web Crypto)
         const keyMaterial = await crypto.subtle.importKey(
           'raw',
-          derivedKey.buffer.slice(
-            derivedKey.byteOffset,
-            derivedKey.byteOffset + derivedKey.byteLength,
-          ) as ArrayBuffer,
+          derivedKey,
           'AES-GCM',
           false,
           ['encrypt'],
@@ -695,10 +692,7 @@ export function createKMSAPIWorker(config: KMSAPIConfig) {
 
         const keyMaterial = await crypto.subtle.importKey(
           'raw',
-          derivedKey.buffer.slice(
-            derivedKey.byteOffset,
-            derivedKey.byteOffset + derivedKey.byteLength,
-          ) as ArrayBuffer,
+          derivedKey,
           'AES-GCM',
           false,
           ['decrypt'],

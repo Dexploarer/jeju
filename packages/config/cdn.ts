@@ -15,12 +15,7 @@
  */
 
 import { z } from 'zod'
-import {
-  getContract,
-  getCurrentNetwork,
-  getDWSUrl,
-  getServiceUrl,
-} from './index'
+import { getContract, getCurrentNetwork, getServiceUrl } from './index'
 
 // CDN Regions - matches on-chain enum
 export const CDN_REGIONS = [
@@ -197,11 +192,11 @@ export const EdgeNodeConfigSchema = z.object({
   /** Public endpoint URL */
   endpoint: z.string().url().optional(),
   /** Edge cache config */
-  cache: EdgeCacheConfigSchema.optional(),
+  cache: EdgeCacheConfigSchema.default({}),
   /** P2P config */
-  p2p: P2PConfigSchema.optional(),
+  p2p: P2PConfigSchema.default({}),
   /** Coordination config */
-  coordination: CoordinationConfigSchema.optional(),
+  coordination: CoordinationConfigSchema.default({}),
   /** Max concurrent connections */
   maxConnections: z.number().int().positive().default(10000),
   /** Request timeout (ms) */
@@ -241,9 +236,9 @@ export type StakingConfig = z.infer<typeof StakingConfigSchema>
 
 export const CDNConfigSchema = z.object({
   /** Edge node config */
-  edge: EdgeNodeConfigSchema.optional(),
+  edge: EdgeNodeConfigSchema.default({}),
   /** Staking config */
-  staking: StakingConfigSchema.optional(),
+  staking: StakingConfigSchema.default({}),
 })
 
 export type CDNConfig = z.infer<typeof CDNConfigSchema>
@@ -264,7 +259,9 @@ export function getCDNConfig(overrides?: Partial<CDNConfig>): CDNConfig {
   const network = getCurrentNetwork()
 
   // Get service URLs from config
-  const dwsApiUrl = getDWSUrl()
+  const dwsApiUrl = getServiceUrl('dws', 'api')
+  const _nodeApiUrl = getServiceUrl('node', 'api')
+  const nodeCdnUrl = getServiceUrl('node', 'cdn')
   const ipfsGatewayUrl = getServiceUrl('storage', 'ipfsGateway')
 
   // Build default config from services.json
@@ -272,7 +269,7 @@ export function getCDNConfig(overrides?: Partial<CDNConfig>): CDNConfig {
     edge: {
       region: 'global',
       port: 4020,
-      endpoint: undefined, // Set by node operator via config overrides
+      endpoint: nodeCdnUrl ?? undefined,
       cache: {
         maxSizeBytes: 512 * 1024 * 1024,
         maxEntries: 100000,

@@ -183,8 +183,7 @@ describe('Score aggregation', () => {
 
     let discounted = 0
     for (let i = 0; i < rewards.length; i++) {
-      const reward = rewards[i] ?? 0
-      discounted += reward * gamma ** i
+      discounted += rewards[i] * gamma ** i
     }
 
     expect(discounted).toBeGreaterThan(1.8)
