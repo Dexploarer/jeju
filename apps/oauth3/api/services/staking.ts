@@ -4,7 +4,7 @@
  * REQUIRES staking contract - no fallback.
  */
 
-import type { Address } from 'viem'
+import type { Address, Chain } from 'viem'
 import { createPublicClient, http, parseAbi } from 'viem'
 import { foundry, mainnet, sepolia } from 'viem/chains'
 import {
@@ -53,7 +53,7 @@ function getPublicClient() {
   const network = process.env.NETWORK ?? 'localnet'
 
   // Determine chain based on network
-  let chain
+  let chain: Chain
   switch (network) {
     case 'mainnet':
       chain = mainnet
@@ -98,7 +98,7 @@ export async function verifyStake(owner: Address): Promise<{
   const client = getPublicClient()
 
   // Get stake position from contract
-  let position: {
+  type StakePosition = {
     stakedAmount: bigint
     stakedAt: bigint
     linkedAgentId: bigint
@@ -108,14 +108,15 @@ export async function verifyStake(owner: Address): Promise<{
     isActive: boolean
     isFrozen: boolean
   }
+  let position: StakePosition
 
   try {
-    position = await client.readContract({
+    position = (await client.readContract({
       address: stakingAddress,
       abi: STAKING_ABI,
       functionName: 'getPosition',
       args: [owner],
-    })
+    })) as StakePosition
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
     console.error(`[Staking] Contract call failed for ${owner}: ${message}`)

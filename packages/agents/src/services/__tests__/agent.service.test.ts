@@ -52,19 +52,28 @@ describe('AgentService', () => {
 })
 
 describe('AgentWithConfig structure', () => {
+  const baseCharacter = {
+    name: 'Test Agent',
+    bio: ['A test trading agent for automated trading strategies'],
+    modelProvider: 'openai' as const,
+    clients: [],
+    plugins: [],
+    settings: {},
+  }
+
   it('validates complete agent config', () => {
     const agent: AgentWithConfig = {
       id: 'agent-123',
       userId: 'user-456',
       name: 'Test Agent',
-      status: 'active',
+      character: baseCharacter,
       modelTier: 'standard',
-      autonomousTrading: true,
-      autonomousPosting: true,
-      autonomousCommenting: false,
-      autonomousDMs: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      autonomousEnabled: true,
+      isActive: true,
+      pointsBalance: 1000,
+      lifetimePnL: 500,
+      totalTrades: 10,
+      winRate: 0.6,
       systemPrompt: 'You are a helpful trading agent.',
       personality: 'Friendly and analytical',
       tradingStrategy: 'momentum',
@@ -72,9 +81,9 @@ describe('AgentWithConfig structure', () => {
     }
 
     expect(agent.id).toBe('agent-123')
-    expect(agent.status).toBe('active')
+    expect(agent.isActive).toBe(true)
     expect(agent.modelTier).toBe('standard')
-    expect(agent.autonomousTrading).toBe(true)
+    expect(agent.autonomousEnabled).toBe(true)
     expect(agent.systemPrompt).toBeDefined()
     expect(agent.personality).toBeDefined()
     expect(agent.tradingStrategy).toBe('momentum')
@@ -86,14 +95,14 @@ describe('AgentWithConfig structure', () => {
       id: 'agent-123',
       userId: 'user-456',
       name: 'Minimal Agent',
-      status: 'active',
+      character: baseCharacter,
       modelTier: 'lite',
-      autonomousTrading: false,
-      autonomousPosting: false,
-      autonomousCommenting: false,
-      autonomousDMs: false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      autonomousEnabled: false,
+      isActive: true,
+      pointsBalance: 0,
+      lifetimePnL: 0,
+      totalTrades: 0,
+      winRate: 0,
     }
 
     expect(agent.systemPrompt).toBeUndefined()
@@ -102,48 +111,45 @@ describe('AgentWithConfig structure', () => {
 
   it('supports all model tiers', () => {
     const tiers: AgentWithConfig['modelTier'][] = ['lite', 'standard', 'pro']
-    
+
     for (const tier of tiers) {
       const agent: AgentWithConfig = {
         id: 'agent-123',
         userId: 'user-456',
         name: 'Test',
-        status: 'active',
+        character: baseCharacter,
         modelTier: tier,
-        autonomousTrading: false,
-        autonomousPosting: false,
-        autonomousCommenting: false,
-        autonomousDMs: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        autonomousEnabled: false,
+        isActive: true,
+        pointsBalance: 0,
+        lifetimePnL: 0,
+        totalTrades: 0,
+        winRate: 0,
       }
       expect(agent.modelTier).toBe(tier)
     }
   })
 
-  it('supports all agent statuses', () => {
-    const statuses: AgentWithConfig['status'][] = [
-      'active',
-      'inactive',
-      'suspended',
-    ]
-    
-    for (const status of statuses) {
-      const agent: AgentWithConfig = {
-        id: 'agent-123',
-        userId: 'user-456',
-        name: 'Test',
-        status,
-        modelTier: 'lite',
-        autonomousTrading: false,
-        autonomousPosting: false,
-        autonomousCommenting: false,
-        autonomousDMs: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }
-      expect(agent.status).toBe(status)
+  it('supports active and inactive states', () => {
+    const activeAgent: AgentWithConfig = {
+      id: 'agent-123',
+      userId: 'user-456',
+      name: 'Test',
+      character: baseCharacter,
+      modelTier: 'lite',
+      autonomousEnabled: false,
+      isActive: true,
+      pointsBalance: 0,
+      lifetimePnL: 0,
+      totalTrades: 0,
+      winRate: 0,
     }
+    expect(activeAgent.isActive).toBe(true)
+
+    const inactiveAgent: AgentWithConfig = {
+      ...activeAgent,
+      isActive: false,
+    }
+    expect(inactiveAgent.isActive).toBe(false)
   })
 })
-

@@ -130,7 +130,8 @@ function padToGoodOffset(
 
     if (item.overrides) {
       for (let i = 0; i < item.overrides.length; i++) {
-        if (item.overrides[i].set_advantage_to_zero) {
+        const override = item.overrides[i]
+        if (override?.set_advantage_to_zero) {
           scores[i] = 0
         }
       }

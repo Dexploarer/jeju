@@ -9,8 +9,8 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
+import { resetCQL } from './client.js'
 import { DatabaseManager, type DatabaseManagerConfig } from './manager'
-import { getCQL, resetCQL } from './client.js'
 
 // Skip tests if CQL is not available
 const CQL_ENDPOINT = process.env.CQL_ENDPOINT ?? 'http://localhost:4661'
@@ -67,16 +67,20 @@ describe.skipIf(SKIP_LIVE)('DatabaseManager (Live Integration)', () => {
   it('should execute schema DDL on initialization', async () => {
     manager = new DatabaseManager({
       ...defaultConfig,
-      schema: ['CREATE TABLE IF NOT EXISTS test_table (id TEXT PRIMARY KEY, name TEXT)'],
+      schema: [
+        'CREATE TABLE IF NOT EXISTS test_table (id TEXT PRIMARY KEY, name TEXT)',
+      ],
       indexes: ['CREATE INDEX IF NOT EXISTS idx_test ON test_table(id)'],
     })
 
     await manager.start()
 
     expect(manager.isHealthy()).toBe(true)
-    
+
     // Verify table was created by querying it
-    const result = await manager.query('SELECT name FROM sqlite_master WHERE type="table" AND name="test_table"')
+    const result = await manager.query(
+      'SELECT name FROM sqlite_master WHERE type="table" AND name="test_table"',
+    )
     expect(result.rowCount).toBeGreaterThanOrEqual(0) // Table might exist or not depending on DB
   })
 
@@ -95,7 +99,9 @@ describe.skipIf(SKIP_LIVE)('DatabaseManager (Live Integration)', () => {
   it('should execute queries through the manager', async () => {
     manager = new DatabaseManager({
       ...defaultConfig,
-      schema: ['CREATE TABLE IF NOT EXISTS query_test (id TEXT PRIMARY KEY, name TEXT)'],
+      schema: [
+        'CREATE TABLE IF NOT EXISTS query_test (id TEXT PRIMARY KEY, name TEXT)',
+      ],
     })
     await manager.start()
 
@@ -118,7 +124,9 @@ describe.skipIf(SKIP_LIVE)('DatabaseManager (Live Integration)', () => {
     })
     await manager.start()
 
-    const result = await manager.exec('INSERT INTO exec_test (id) VALUES (?)', ['test-1'])
+    const result = await manager.exec('INSERT INTO exec_test (id) VALUES (?)', [
+      'test-1',
+    ])
 
     expect(result.rowsAffected).toBe(1)
   })
@@ -138,7 +146,7 @@ describe.skipIf(SKIP_LIVE)('DatabaseManager (Live Integration)', () => {
 
     manager = new DatabaseManager({
       ...defaultConfig,
-      onHealthChange: (healthy) => {
+      onHealthChange: (_healthy) => {
         healthChanged = true
       },
       onReady: () => {

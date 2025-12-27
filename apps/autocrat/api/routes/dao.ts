@@ -71,12 +71,15 @@ export const daoRoutes = new Elysia({ prefix: '/api/v1/dao' })
           description: body.ceo.description,
           personality: body.ceo.personality,
           traits: body.ceo.traits ?? [],
+          voiceStyle: body.ceo.voiceStyle ?? 'professional',
+          communicationTone: body.ceo.communicationTone ?? 'professional',
+          specialties: body.ceo.specialties ?? [],
         },
         governanceParams: {
           minQualityScore: body.governance.minQualityScore,
           councilVotingPeriod: body.governance.councilVotingPeriod,
           gracePeriod: body.governance.gracePeriod,
-          minProposalStake: body.governance.minProposalStake,
+          minProposalStake: BigInt(body.governance.minProposalStake),
           quorumBps: body.governance.quorumBps,
         },
       })
@@ -97,6 +100,17 @@ export const daoRoutes = new Elysia({ prefix: '/api/v1/dao' })
           description: t.String(),
           personality: t.String(),
           traits: t.Optional(t.Array(t.String())),
+          voiceStyle: t.Optional(t.String()),
+          communicationTone: t.Optional(
+            t.Union([
+              t.Literal('formal'),
+              t.Literal('friendly'),
+              t.Literal('professional'),
+              t.Literal('playful'),
+              t.Literal('authoritative'),
+            ]),
+          ),
+          specialties: t.Optional(t.Array(t.String())),
         }),
         governance: t.Object({
           minQualityScore: t.Number(),
@@ -181,7 +195,7 @@ export const daoRoutes = new Elysia({ prefix: '/api/v1/dao' })
         minQualityScore: body.minQualityScore,
         councilVotingPeriod: body.councilVotingPeriod,
         gracePeriod: body.gracePeriod,
-        minProposalStake: body.minProposalStake,
+        minProposalStake: BigInt(body.minProposalStake),
         quorumBps: body.quorumBps,
       })
       return service.getDAOFull(params.daoId)

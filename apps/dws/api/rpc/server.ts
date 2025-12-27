@@ -65,6 +65,12 @@ const PurchaseCreditsSchema = z.object({
   amount: z.string().regex(/^\d+$/, 'Amount must be a numeric string'),
 })
 
+const PurchaseCreditsResultSchema = z.object({
+  success: z.boolean(),
+  newBalance: z.bigint().optional(),
+  error: z.string().optional(),
+})
+
 // MCP types
 interface ChainInfo {
   chainId: number
@@ -604,10 +610,11 @@ export const rpcApp = new Elysia({ name: 'rpc-gateway' })
     }
 
     const { txHash, amount } = validated.data
-    const result = await purchaseCredits(address, txHash, BigInt(amount))
+    const rawResult = await purchaseCredits(address, txHash, BigInt(amount))
+    const result = PurchaseCreditsResultSchema.parse(rawResult)
     return {
       success: result.success,
-      newBalance: result.newBalance.toString(),
+      newBalance: (result.newBalance ?? 0n).toString(),
       message: 'Credits added to your account',
     }
   })

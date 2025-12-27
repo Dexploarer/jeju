@@ -196,12 +196,18 @@ describe('Step', () => {
 
     // Verify sequential step numbers
     for (let i = 0; i < steps.length; i++) {
-      expect(steps[i].stepNumber).toBe(i)
+      const step = steps[i]
+      if (!step) throw new Error(`Step ${i} is undefined`)
+      expect(step.stepNumber).toBe(i)
     }
 
     // Verify increasing timestamps
     for (let i = 1; i < steps.length; i++) {
-      expect(steps[i].timestamp).toBeGreaterThan(steps[i - 1].timestamp)
+      const currentStep = steps[i]
+      const previousStep = steps[i - 1]
+      if (!currentStep || !previousStep)
+        throw new Error(`Step at index ${i} or ${i - 1} is undefined`)
+      expect(currentStep.timestamp).toBeGreaterThan(previousStep.timestamp)
     }
   })
 })
@@ -322,4 +328,3 @@ describe('Episode termination', () => {
     expect(hasTimedOut).toBe(true)
   })
 })
-

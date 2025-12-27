@@ -185,8 +185,8 @@ describe('TicTacToeEnv', () => {
     it('should have valid step structure', () => {
       const trajectory = env.generateRandomTrajectory('test-agent')
       const step = trajectory.steps[0]
+      if (!step) throw new Error('First step is undefined')
 
-      expect(step).toBeDefined()
       expect(step.observation).toBeDefined()
       expect(step.action).toBeDefined()
       expect(step.action.type).toBe('move')
@@ -214,10 +214,11 @@ describe('TicTacToeEnv', () => {
         'agent-1',
         'agent-2',
       ])
-      expect(trajectories[0].agentId).toBe('agent-1')
-      expect(trajectories[1].agentId).toBe('agent-2')
-      expect(trajectories[2].agentId).toBe('agent-1')
-      expect(trajectories[3].agentId).toBe('agent-2')
+      expect(trajectories).toHaveLength(4)
+      expect(trajectories[0]?.agentId).toBe('agent-1')
+      expect(trajectories[1]?.agentId).toBe('agent-2')
+      expect(trajectories[2]?.agentId).toBe('agent-1')
+      expect(trajectories[3]?.agentId).toBe('agent-2')
     })
   })
 

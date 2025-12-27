@@ -710,41 +710,25 @@ export class AutocratBlockchain {
   async getProposalsByDAO(daoId: string) {
     // Get all proposals and filter by daoId
     const allProposals = await this.listProposals(false)
-    return allProposals.filter((p) => p.daoId === daoId)
+    return allProposals.proposals.filter(
+      (p: {
+        proposalId: string
+        proposer: string
+        type: string
+        status: string
+        qualityScore: number
+        createdAt: string
+        daoId?: string
+      }) => p.daoId === daoId,
+    )
   }
 
-  async submitProposal(params: {
-    daoId: string
-    proposalType: number
-    qualityScore: number
-    contentHash: string
-    targetContract?: `0x${string}`
-    callData?: `0x${string}`
-    value?: bigint
-  }) {
-    if (!this.wallet) {
-      throw new Error('Wallet not initialized')
-    }
-    if (!this.councilDeployed) {
-      throw new Error('Council contract not deployed')
-    }
-
-    const hash = await this.wallet.writeContract({
-      address: this.councilAddress,
-      abi: COUNCIL_ABI,
-      functionName: 'submitProposal',
-      args: [
-        params.proposalType,
-        params.qualityScore,
-        params.contentHash as `0x${string}`,
-        params.targetContract ?? '0x0000000000000000000000000000000000000000',
-        params.callData ?? '0x',
-        params.value ?? 0n,
-      ],
-      value: this.config.proposalBond ?? 0n,
-    })
-
-    return hash
+  async submitProposal(): Promise<`0x${string}`> {
+    // This method requires a wallet client which is not available in this read-only blockchain class
+    // Use DAOService.submitProposal() instead for write operations
+    throw new Error(
+      'submitProposal is not available on AutocratBlockchain. Use DAOService instead.',
+    )
   }
 
   async getTreasuryBalances(treasuryAddress: string): Promise<

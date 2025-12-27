@@ -15,7 +15,12 @@
  */
 
 import { z } from 'zod'
-import { getContract, getCurrentNetwork, getServiceUrl } from './index'
+import {
+  getContract,
+  getCurrentNetwork,
+  getDWSUrl,
+  getServiceUrl,
+} from './index'
 
 // CDN Regions - matches on-chain enum
 export const CDN_REGIONS = [
@@ -192,11 +197,11 @@ export const EdgeNodeConfigSchema = z.object({
   /** Public endpoint URL */
   endpoint: z.string().url().optional(),
   /** Edge cache config */
-  cache: EdgeCacheConfigSchema.default({}),
+  cache: EdgeCacheConfigSchema.optional(),
   /** P2P config */
-  p2p: P2PConfigSchema.default({}),
+  p2p: P2PConfigSchema.optional(),
   /** Coordination config */
-  coordination: CoordinationConfigSchema.default({}),
+  coordination: CoordinationConfigSchema.optional(),
   /** Max concurrent connections */
   maxConnections: z.number().int().positive().default(10000),
   /** Request timeout (ms) */
@@ -236,9 +241,9 @@ export type StakingConfig = z.infer<typeof StakingConfigSchema>
 
 export const CDNConfigSchema = z.object({
   /** Edge node config */
-  edge: EdgeNodeConfigSchema.default({}),
+  edge: EdgeNodeConfigSchema.optional(),
   /** Staking config */
-  staking: StakingConfigSchema.default({}),
+  staking: StakingConfigSchema.optional(),
 })
 
 export type CDNConfig = z.infer<typeof CDNConfigSchema>
@@ -259,9 +264,7 @@ export function getCDNConfig(overrides?: Partial<CDNConfig>): CDNConfig {
   const network = getCurrentNetwork()
 
   // Get service URLs from config
-  const dwsApiUrl = getServiceUrl('dws', 'api')
-  const _nodeApiUrl = getServiceUrl('node', 'api')
-  const nodeCdnUrl = getServiceUrl('node', 'cdn')
+  const dwsApiUrl = getDWSUrl()
   const ipfsGatewayUrl = getServiceUrl('storage', 'ipfsGateway')
 
   // Build default config from services.json
@@ -269,7 +272,7 @@ export function getCDNConfig(overrides?: Partial<CDNConfig>): CDNConfig {
     edge: {
       region: 'global',
       port: 4020,
-      endpoint: nodeCdnUrl ?? undefined,
+      endpoint: undefined, // Set by node operator via config overrides
       cache: {
         maxSizeBytes: 512 * 1024 * 1024,
         maxEntries: 100000,

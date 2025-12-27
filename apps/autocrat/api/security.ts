@@ -331,6 +331,7 @@ export const securityMiddleware = new Elysia({ name: 'security' })
         retryAfter: Math.ceil(RATE_LIMIT_WINDOW_MS / 1000),
       }
     }
+    return undefined
   })
 
   // API key validation for admin endpoints
@@ -374,6 +375,7 @@ export const securityMiddleware = new Elysia({ name: 'security' })
       })
       return { error: 'Invalid API key' }
     }
+    return undefined
   })
 
 /**

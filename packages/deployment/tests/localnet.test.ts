@@ -101,8 +101,8 @@ describe('getArchitecture', () => {
 
 describe('parsePortFromUrl', () => {
   it('should parse port from standard URLs', () => {
-    expect(parsePortFromUrl('http://localhost:6545')).toBe(8545)
-    expect(parsePortFromUrl('http://localhost:6546')).toBe(9545)
+    expect(parsePortFromUrl('http://localhost:6545')).toBe(6545)
+    expect(parsePortFromUrl('http://localhost:6546')).toBe(6546)
     expect(parsePortFromUrl('http://0.0.0.0:9545')).toBe(9545)
   })
 
@@ -140,8 +140,8 @@ describe('parsePortFromUrl', () => {
 
 describe('constructRpcUrl', () => {
   it('should construct valid URLs', () => {
-    expect(constructRpcUrl('127.0.0.1', 8545)).toBe('http://127.0.0.1:6545')
-    expect(constructRpcUrl('localhost', 9545)).toBe('http://localhost:6546')
+    expect(constructRpcUrl('127.0.0.1', 8545)).toBe('http://127.0.0.1:8545')
+    expect(constructRpcUrl('localhost', 9545)).toBe('http://localhost:9545')
   })
 
   it('should handle different hosts', () => {

@@ -293,8 +293,7 @@ describe('Worker Builder', () => {
     expect(builder).toBeDefined()
   })
 
-  // Skip actual build test - requires Bun build which may not work in all test environments
-  it.skip('should build worker from Elysia app', async () => {
+  it('should build worker from Elysia app', async () => {
     const builder = new WorkerBuilder(TEST_DIR)
     const config = parseServerlessConfig(MOCK_MANIFEST)
 

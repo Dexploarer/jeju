@@ -946,7 +946,7 @@ export default function AgentEditPage() {
         >
           <div className="space-y-2">
             {values.map((value, index) => (
-              <div key={index} className="flex gap-2">
+              <div key={`value-${value}`} className="flex gap-2">
                 <input
                   type="text"
                   value={value}

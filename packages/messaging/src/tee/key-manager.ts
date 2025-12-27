@@ -143,7 +143,7 @@ export class TEEXMTPKeyManager {
 
       this.teeProvider = getTEEProvider({
         endpoint: this.config.kmsEndpoint,
-      }) as TEEProviderInterface
+      }) as unknown as TEEProviderInterface
 
       await this.teeProvider.connect()
 

@@ -58,7 +58,11 @@ describe('RubricCriterion', () => {
 
     expect(criterion.levels).toHaveLength(5)
     expect(criterion.weight).toBeLessThanOrEqual(1)
-    expect(criterion.levels[0].score).toBeLessThan(criterion.levels[4].score)
+    const firstLevel = criterion.levels[0]
+    const lastLevel = criterion.levels[4]
+    if (!firstLevel || !lastLevel)
+      throw new Error('Missing required rubric level')
+    expect(firstLevel.score).toBeLessThan(lastLevel.score)
   })
 
   it('validates social engagement criterion', () => {
@@ -231,10 +235,7 @@ describe('EvaluationResult', () => {
       { score: 2, weight: 0.3 }, // timing
     ]
 
-    const weightedTotal = scores.reduce(
-      (sum, s) => sum + s.score * s.weight,
-      0,
-    )
+    const weightedTotal = scores.reduce((sum, s) => sum + s.score * s.weight, 0)
 
     expect(weightedTotal).toBeCloseTo(3.1, 1) // 1.6 + 0.9 + 0.6
   })
@@ -294,16 +295,23 @@ describe('Rubric versioning', () => {
   })
 
   it('compares rubric versions', () => {
-    const parseVersion = (v: string) => v.split('.').map(Number)
+    const parseVersion = (v: string): [number, number, number] => {
+      const parts = v.split('.').map(Number)
+      const major = parts[0]
+      const minor = parts[1]
+      const patch = parts[2]
+      if (major === undefined || minor === undefined || patch === undefined) {
+        throw new Error(`Invalid version format: ${v}`)
+      }
+      return [major, minor, patch]
+    }
 
     const v1 = parseVersion('1.0.0')
     const v2 = parseVersion('1.1.0')
 
     // Compare major.minor
-    const isNewer =
-      v2[0] > v1[0] || (v2[0] === v1[0] && v2[1] > v1[1])
+    const isNewer = v2[0] > v1[0] || (v2[0] === v1[0] && v2[1] > v1[1])
 
     expect(isNewer).toBe(true)
   })
 })
-

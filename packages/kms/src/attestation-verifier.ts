@@ -490,7 +490,11 @@ export class AttestationVerifier {
           BigInt(`0x${Buffer.from(s).toString('hex')}`),
         )
 
-        const isValid = secp256k1.verify(signature, messageHash, pubKeyBytes)
+        const isValid = secp256k1.verify(
+          signature.toCompactRawBytes(),
+          messageHash,
+          pubKeyBytes,
+        )
         if (isValid) {
           log.info('Attestation signature verified', {
             verifierKey: trustedPubKey.slice(0, 20),
