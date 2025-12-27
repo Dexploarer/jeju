@@ -27,8 +27,10 @@ let localCDNInitialized = false
 function getJNSGateway(): JNSGateway | null {
   if (jnsGateway) return jnsGateway
 
-  const jnsRegistry = process.env.JNS_REGISTRY_ADDRESS || getContract('naming', 'jnsRegistry')
-  const jnsResolver = process.env.JNS_RESOLVER_ADDRESS || getContract('naming', 'jnsResolver')
+  const jnsRegistry =
+    process.env.JNS_REGISTRY_ADDRESS || getContract('jns', 'jnsRegistry')
+  const jnsResolver =
+    process.env.JNS_RESOLVER_ADDRESS || getContract('jns', 'jnsResolver')
 
   if (
     !jnsRegistry ||
@@ -46,7 +48,10 @@ function getJNSGateway(): JNSGateway | null {
     rpcUrl,
     jnsRegistryAddress: jnsRegistry as Address,
     jnsResolverAddress: jnsResolver as Address,
-    ipfsGateway: process.env.IPFS_GATEWAY_URL ?? getServiceUrl('storage', 'ipfsGateway') ?? 'https://ipfs.io',
+    ipfsGateway:
+      process.env.IPFS_GATEWAY_URL ??
+      getServiceUrl('storage', 'ipfsGateway') ??
+      'https://ipfs.io',
     arweaveGateway: process.env.ARWEAVE_GATEWAY_URL ?? 'https://arweave.net',
     domain: process.env.JNS_DOMAIN ?? 'jejunetwork.org',
   }
@@ -72,8 +77,8 @@ async function ensureLocalCDNInitialized(): Promise<void> {
   const isDevnet =
     process.env.NODE_ENV !== 'production' || process.env.DEVNET === 'true'
   if (isDevnet) {
-    const appsDir =
-      process.env.JEJU_APPS_DIR ?? process.cwd().replace('/apps/dws', '/apps')
+    // Use env var or default path (workerd-compatible - no process.cwd())
+    const appsDir = process.env.JEJU_APPS_DIR ?? '/apps'
     await initializeLocalCDN({ appsDir, cacheEnabled: true })
     console.log(`[CDN] Local CDN initialized for devnet (apps: ${appsDir})`)
   }

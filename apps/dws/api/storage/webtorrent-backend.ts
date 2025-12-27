@@ -189,7 +189,10 @@ export class WebTorrentBackend extends WorkerdEventEmitter {
     private: 0,
   }
 
-  constructor(config: Partial<WebTorrentConfig> = {}, storageBackend?: BackendManager) {
+  constructor(
+    config: Partial<WebTorrentConfig> = {},
+    storageBackend?: BackendManager,
+  ) {
     super()
     this.config = { ...DEFAULT_CONFIG, ...config }
 
@@ -433,7 +436,10 @@ export class WebTorrentBackend extends WorkerdEventEmitter {
   /**
    * Download content from S3 storage by CID
    */
-  async downloadFromStorage(cid: string, tier: ContentTier = 'popular'): Promise<Buffer | null> {
+  async downloadFromStorage(
+    cid: string,
+    tier: ContentTier = 'popular',
+  ): Promise<Buffer | null> {
     if (!this.s3) return null
 
     // List objects with CID prefix to find the content
@@ -494,7 +500,10 @@ export class WebTorrentBackend extends WorkerdEventEmitter {
       // Fallback to S3 storage
       const metadata = this.torrentMetadata.get(infoHash)
       if (metadata) {
-        const stored = await this.downloadFromStorage(metadata.cid, metadata.tier)
+        const stored = await this.downloadFromStorage(
+          metadata.cid,
+          metadata.tier,
+        )
         if (stored) return stored
       }
       throw new Error(`Torrent not in client: ${infoHash}`)

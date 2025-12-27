@@ -11,7 +11,6 @@
  * 4. Earn relayer fee (typically 5-15 bps)
  */
 
-import { WorkerdEventEmitter } from '../../utils/event-emitter'
 import { expectValid, HexSchema } from '@jejunetwork/types'
 import {
   type Address,
@@ -23,6 +22,7 @@ import {
   type WalletClient,
 } from 'viem'
 import { z } from 'zod'
+import { WorkerdEventEmitter } from '../../utils/event-emitter'
 
 // Across SpokePool addresses (mainnet)
 export const ACROSS_SPOKE_POOLS: Record<number, Address> = {

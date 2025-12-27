@@ -7,9 +7,9 @@
  * 3. Providing concentrated liquidity just before settlement
  */
 
-import { WorkerdEventEmitter } from '../../utils/event-emitter'
 import { readContract } from '@jejunetwork/contracts'
 import type { Address, PublicClient, WalletClient } from 'viem'
+import { WorkerdEventEmitter } from '../../utils/event-emitter'
 
 // Uniswap V3 NonfungiblePositionManager
 export const POSITION_MANAGER: Record<number, Address> = {

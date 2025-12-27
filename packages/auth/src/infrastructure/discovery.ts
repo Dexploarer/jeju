@@ -3,6 +3,7 @@
  */
 
 import { getRpcUrl } from '@jejunetwork/config'
+import type { TEEAttestation } from '@jejunetwork/types'
 import { toError, ZERO_ADDRESS } from '@jejunetwork/types'
 import {
   type Address,
@@ -13,7 +14,6 @@ import {
   type PublicClient,
   toBytes,
 } from 'viem'
-import type { TEEAttestation } from '@jejunetwork/types'
 import { AuthProvider, TEEProvider } from '../types.js'
 import {
   ProvidersListResponseSchema,

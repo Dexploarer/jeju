@@ -108,9 +108,9 @@ function validateApiKey(apiKey: string): boolean {
   if (apiKeyBuf.length !== validKeyBuf.length) {
     // Compare against dummy to maintain constant time
     const dummyBuf = Buffer.alloc(apiKeyBuf.length)
-    let dummyResult = 0
+    let _dummyResult = 0
     for (let i = 0; i < apiKeyBuf.length; i++) {
-      dummyResult |= apiKeyBuf[i] ^ dummyBuf[i]
+      _dummyResult |= apiKeyBuf[i] ^ dummyBuf[i]
     }
     return false
   }

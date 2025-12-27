@@ -3,6 +3,7 @@
  */
 
 import { getRpcUrl } from '@jejunetwork/config'
+import type { TEEAttestation } from '@jejunetwork/types'
 import {
   type Address,
   createPublicClient,
@@ -11,7 +12,6 @@ import {
   type PublicClient,
   toHex,
 } from 'viem'
-import type { TEEAttestation } from '@jejunetwork/types'
 import { TEEProvider } from '../types.js'
 import { NodeResourcesSchema, validateResponse } from '../validation.js'
 import { OAUTH3_TEE_VERIFIER_ABI } from './abis.js'

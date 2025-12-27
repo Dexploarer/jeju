@@ -57,6 +57,7 @@ async function stat(path: string): Promise<{ isFile: () => boolean } | null> {
 function join(...parts: string[]): string {
   return parts.join('/').replace(/\/+/g, '/')
 }
+
 import {
   type AppFrontendConfig,
   getAppRegistry,
@@ -147,7 +148,7 @@ async function serveFile(
   const contentType = getContentType(requestPath)
   const cacheControl = getCacheControl(app, requestPath)
 
-  return new Response(content, {
+  return new Response(new Uint8Array(content), {
     headers: {
       'Content-Type': contentType,
       'Content-Length': String(content.length),

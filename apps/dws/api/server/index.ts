@@ -830,8 +830,7 @@ if (import.meta.main) {
 
   // Initialize local CDN for devnet (serves all Jeju app frontends)
   if (!isProduction || process.env.DEVNET === 'true') {
-    const appsDir =
-      process.env.JEJU_APPS_DIR ?? process.cwd().replace('/apps/dws', '/apps')
+    const appsDir = process.env.JEJU_APPS_DIR ?? '/apps'
     initializeLocalCDN({ appsDir, cacheEnabled: true })
       .then(() => {
         const localCDN = getLocalCDNServer()

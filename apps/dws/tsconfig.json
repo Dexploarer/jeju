@@ -9,5 +9,18 @@
     "types": ["bun", "react", "react-dom"]
   },
   "include": ["api/**/*", "web/**/*", "lib/**/*", "src/**/*"],
-  "exclude": ["node_modules", "dist", "api/**/*.test.ts", "api/**/*-test.ts", "api/**/__tests__/**", "tests/**/*", "api/email", "api/email/**", "src/email", "src/email/**"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "api/**/*.test.ts",
+    "api/**/*-test.ts",
+    "api/**/__tests__/**",
+    "tests/**/*",
+    "api/email",
+    "api/email/**",
+    "src/email",
+    "src/email/**",
+    "api/dns/**",
+    "api/workers/workerd/**"
+  ]
 }

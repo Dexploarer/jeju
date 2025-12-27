@@ -5,8 +5,10 @@
  */
 
 import type { Address, Hex } from 'viem'
+
 // Re-export TEEAttestation from @jejunetwork/types for backwards compatibility
 export type { TEEAttestation } from '@jejunetwork/types'
+
 import type { TEEAttestation } from '@jejunetwork/types'
 
 export interface TEEKeyConfig {

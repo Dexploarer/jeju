@@ -12,14 +12,58 @@
  * - Secure memory handling
  */
 
+import { readFileSync, writeFileSync } from 'node:fs'
+// Workerd-compatible: Uses Web Crypto API and shared crypto utilities
 import {
-  createCipheriv,
-  createDecipheriv,
-  createHash,
+  decryptAesGcm,
+  deriveKeyScrypt,
+  encryptAesGcm,
+  hash256,
   randomBytes,
-  scrypt,
-} from 'node:crypto'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+} from '@jejunetwork/shared'
+
+// DWS Exec API for file operations (workerd-compatible)
+interface ExecResult {
+  exitCode: number
+  stdout: string
+  stderr: string
+}
+
+const execUrl = process.env.DWS_EXEC_URL ?? 'http://localhost:4020/exec'
+
+async function exec(
+  command: string[],
+  options?: { stdin?: string },
+): Promise<ExecResult> {
+  const response = await fetch(execUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ command, ...options }),
+  })
+  if (!response.ok) {
+    throw new Error(`Exec API error: ${response.status}`)
+  }
+  return response.json() as Promise<ExecResult>
+}
+
+async function fileExists(path: string): Promise<boolean> {
+  const result = await exec(['test', '-f', path])
+  return result.exitCode === 0
+}
+
+async function readFile(path: string): Promise<Buffer> {
+  const result = await exec(['cat', path])
+  if (result.exitCode !== 0) {
+    throw new Error(`Failed to read ${path}: ${result.stderr}`)
+  }
+  return Buffer.from(result.stdout, 'utf-8')
+}
+
+async function writeFile(path: string, content: Buffer): Promise<void> {
+  await exec(['sh', '-c', `cat > "${path}"`], {
+    stdin: content.toString('base64'),
+  })
+}
 
 // Simple logger since @jejunetwork/shared may not be available
 const log = {
@@ -44,7 +88,7 @@ const DB_ENCRYPTION_KEY_ENV = 'FACTORY_DB_ENCRYPTION_KEY'
 const KEY_DERIVATION_SALT_ENV = 'FACTORY_DB_KEY_SALT'
 
 /** Encryption algorithm */
-const ALGORITHM = 'aes-256-gcm'
+const _ALGORITHM = 'aes-256-gcm'
 
 /** IV length in bytes */
 const IV_LENGTH = 12
@@ -111,26 +155,17 @@ async function getEncryptionKey(): Promise<Buffer> {
     )
   }
 
-  // Derive key using scrypt
-  return new Promise((resolve, reject) => {
-    const masterKeyBuffer = Buffer.from(masterKey, 'hex')
-
-    scrypt(
-      masterKeyBuffer,
-      keySalt as Buffer,
-      KEY_LENGTH,
-      SCRYPT_PARAMS,
-      (err, key) => {
-        if (err) {
-          reject(new Error(`Key derivation failed: ${err.message}`))
-          return
-        }
-        derivedKey = key
-        log.info('Database encryption key derived successfully')
-        resolve(key)
-      },
-    )
+  // Derive key using scrypt (workerd-compatible via @noble/hashes)
+  const masterKeyBuffer = Buffer.from(masterKey, 'hex')
+  const derived = await deriveKeyScrypt(masterKeyBuffer, keySalt as Buffer, {
+    N: SCRYPT_PARAMS.N,
+    r: SCRYPT_PARAMS.r,
+    p: SCRYPT_PARAMS.p,
+    dkLen: KEY_LENGTH,
   })
+  derivedKey = Buffer.from(derived)
+  log.info('Database encryption key derived successfully')
+  return derivedKey
 }
 
 /**
@@ -154,32 +189,32 @@ export function clearEncryptionKey(): void {
 // ============================================================================
 
 /**
- * Encrypt a buffer using AES-256-GCM
+ * Encrypt a buffer using AES-256-GCM (workerd-compatible)
  */
-function encryptBuffer(plaintext: Buffer, key: Buffer): Buffer {
+async function encryptBuffer(plaintext: Buffer, key: Buffer): Promise<Buffer> {
   const iv = randomBytes(IV_LENGTH)
-  const cipher = createCipheriv(ALGORITHM, key, iv)
-
-  const ciphertext = Buffer.concat([cipher.update(plaintext), cipher.final()])
-  const authTag = cipher.getAuthTag()
+  const { ciphertext, tag } = await encryptAesGcm(
+    new Uint8Array(plaintext),
+    new Uint8Array(key),
+  )
 
   // Format: header(14) + version(1) + iv(12) + authTag(16) + salt(32) + ciphertext
   const result = Buffer.concat([
     ENCRYPTED_HEADER,
     Buffer.from([1]), // Version 1
-    iv,
-    authTag,
-    keySalt ?? randomBytes(32),
-    ciphertext,
+    Buffer.from(iv),
+    Buffer.from(tag),
+    keySalt ?? Buffer.from(randomBytes(32)),
+    Buffer.from(ciphertext),
   ])
 
   return result
 }
 
 /**
- * Decrypt a buffer using AES-256-GCM
+ * Decrypt a buffer using AES-256-GCM (workerd-compatible)
  */
-function decryptBuffer(encrypted: Buffer, key: Buffer): Buffer {
+async function decryptBuffer(encrypted: Buffer, key: Buffer): Promise<Buffer> {
   // Parse the encrypted format
   const headerEnd = ENCRYPTED_HEADER.length
   const header = encrypted.subarray(0, headerEnd)
@@ -202,15 +237,14 @@ function decryptBuffer(encrypted: Buffer, key: Buffer): Buffer {
   const authTag = encrypted.subarray(authTagStart, saltStart)
   const ciphertext = encrypted.subarray(ciphertextStart)
 
-  const decipher = createDecipheriv(ALGORITHM, key, iv)
-  decipher.setAuthTag(authTag)
+  const plaintext = await decryptAesGcm(
+    new Uint8Array(ciphertext),
+    new Uint8Array(key),
+    new Uint8Array(iv),
+    new Uint8Array(authTag),
+  )
 
-  const plaintext = Buffer.concat([
-    decipher.update(ciphertext),
-    decipher.final(),
-  ])
-
-  return plaintext
+  return Buffer.from(plaintext)
 }
 
 // ============================================================================
@@ -218,18 +252,24 @@ function decryptBuffer(encrypted: Buffer, key: Buffer): Buffer {
 // ============================================================================
 
 /**
- * Check if a file is encrypted
+ * Check if a file is encrypted (workerd-compatible)
  */
-export function isFileEncrypted(filePath: string): boolean {
-  if (!existsSync(filePath)) {
+export async function isFileEncrypted(filePath: string): Promise<boolean> {
+  if (!(await fileExists(filePath))) {
     return false
   }
 
-  const header = Buffer.alloc(ENCRYPTED_HEADER.length)
-  const fd = require('node:fs').openSync(filePath, 'r')
-  require('node:fs').readSync(fd, header, 0, header.length, 0)
-  require('node:fs').closeSync(fd)
-
+  // Read header via DWS exec API
+  const result = await exec([
+    'head',
+    '-c',
+    String(ENCRYPTED_HEADER.length),
+    filePath,
+  ])
+  if (result.exitCode !== 0) {
+    return false
+  }
+  const header = Buffer.from(result.stdout, 'utf-8')
   return header.equals(ENCRYPTED_HEADER)
 }
 
@@ -246,20 +286,20 @@ export async function encryptDatabaseFile(
     return
   }
 
-  if (!existsSync(sourcePath)) {
+  if (!(await fileExists(sourcePath))) {
     throw new Error(`Source file not found: ${sourcePath}`)
   }
 
-  if (isFileEncrypted(sourcePath)) {
+  if (await isFileEncrypted(sourcePath)) {
     log.info('Database is already encrypted', { path: sourcePath })
     return
   }
 
-  const plaintext = readFileSync(sourcePath)
-  const encrypted = encryptBuffer(plaintext, key)
+  const plaintext = await readFile(sourcePath)
+  const encrypted = await encryptBuffer(plaintext, key)
 
   const outputPath = destPath ?? sourcePath
-  writeFileSync(outputPath, encrypted)
+  await writeFile(outputPath, encrypted)
 
   log.info('Database encrypted successfully', {
     source: sourcePath,
@@ -282,20 +322,20 @@ export async function decryptDatabaseFile(
     return
   }
 
-  if (!existsSync(sourcePath)) {
+  if (!(await fileExists(sourcePath))) {
     throw new Error(`Source file not found: ${sourcePath}`)
   }
 
-  if (!isFileEncrypted(sourcePath)) {
+  if (!(await isFileEncrypted(sourcePath))) {
     log.info('Database is not encrypted', { path: sourcePath })
     return
   }
 
-  const encrypted = readFileSync(sourcePath)
-  const plaintext = decryptBuffer(encrypted, key)
+  const encrypted = await readFile(sourcePath)
+  const plaintext = await decryptBuffer(encrypted, key)
 
   const outputPath = destPath ?? sourcePath
-  writeFileSync(outputPath, plaintext)
+  await writeFile(outputPath, plaintext)
 
   log.info('Database decrypted successfully', {
     source: sourcePath,
@@ -314,25 +354,25 @@ export async function loadEncryptedDatabase(
 ): Promise<Buffer | null> {
   const key = await getEncryptionKey()
 
-  if (!existsSync(filePath)) {
+  if (!(await fileExists(filePath))) {
     return null
   }
 
   // If no encryption key, return file as-is
   if (key.length === 0) {
-    return readFileSync(filePath)
+    return await readFile(filePath)
   }
 
   // Check if file is encrypted
-  if (!isFileEncrypted(filePath)) {
+  if (!(await isFileEncrypted(filePath))) {
     log.warn('Database file is not encrypted - consider encrypting it', {
       path: filePath,
     })
-    return readFileSync(filePath)
+    return await readFile(filePath)
   }
 
-  const encrypted = readFileSync(filePath)
-  return decryptBuffer(encrypted, key)
+  const encrypted = await readFile(filePath)
+  return await decryptBuffer(encrypted, key)
 }
 
 /**
@@ -346,12 +386,12 @@ export async function saveEncryptedDatabase(
 
   // If no encryption key, save as-is
   if (key.length === 0) {
-    writeFileSync(filePath, data)
+    await writeFile(filePath, data)
     return
   }
 
-  const encrypted = encryptBuffer(data, key)
-  writeFileSync(filePath, encrypted)
+  const encrypted = await encryptBuffer(data, key)
+  await writeFile(filePath, encrypted)
 
   log.debug('Database saved with encryption', {
     path: filePath,
@@ -373,16 +413,17 @@ export async function encryptField(plaintext: string): Promise<string> {
   }
 
   const iv = randomBytes(IV_LENGTH)
-  const cipher = createCipheriv(ALGORITHM, key, iv)
-
-  const ciphertext = Buffer.concat([
-    cipher.update(Buffer.from(plaintext, 'utf8')),
-    cipher.final(),
-  ])
-  const authTag = cipher.getAuthTag()
+  const { ciphertext, tag } = await encryptAesGcm(
+    new TextEncoder().encode(plaintext),
+    new Uint8Array(key),
+  )
 
   // Format: iv + authTag + ciphertext, base64 encoded
-  const result = Buffer.concat([iv, authTag, ciphertext])
+  const result = Buffer.concat([
+    Buffer.from(iv),
+    Buffer.from(tag),
+    Buffer.from(ciphertext),
+  ])
   return `enc:${result.toString('base64')}`
 }
 
@@ -406,15 +447,14 @@ export async function decryptField(encrypted: string): Promise<string> {
   const authTag = data.subarray(IV_LENGTH, IV_LENGTH + AUTH_TAG_LENGTH)
   const ciphertext = data.subarray(IV_LENGTH + AUTH_TAG_LENGTH)
 
-  const decipher = createDecipheriv(ALGORITHM, key, iv)
-  decipher.setAuthTag(authTag)
+  const plaintext = await decryptAesGcm(
+    new Uint8Array(ciphertext),
+    new Uint8Array(key),
+    new Uint8Array(iv),
+    new Uint8Array(authTag),
+  )
 
-  const plaintext = Buffer.concat([
-    decipher.update(ciphertext),
-    decipher.final(),
-  ])
-
-  return plaintext.toString('utf8')
+  return new TextDecoder().decode(plaintext)
 }
 
 /**
@@ -431,8 +471,11 @@ export function isFieldEncrypted(value: string): boolean {
 /**
  * Calculate a checksum for database integrity verification
  */
-export function calculateChecksum(data: Buffer): string {
-  return createHash('sha256').update(data).digest('hex')
+export async function calculateChecksum(data: Buffer): Promise<string> {
+  const hash = await hash256(new Uint8Array(data))
+  return Array.from(hash)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
 }
 
 /**
@@ -447,7 +490,7 @@ export async function verifyDatabaseIntegrity(
     return { valid: false, checksum: '' }
   }
 
-  const checksum = calculateChecksum(data)
+  const checksum = await calculateChecksum(data)
   const valid = expectedChecksum ? checksum === expectedChecksum : true
 
   return { valid, checksum }

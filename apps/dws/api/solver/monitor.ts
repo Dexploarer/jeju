@@ -1,5 +1,5 @@
-import { WorkerdEventEmitter } from '../utils/event-emitter'
 import type { PublicClient } from 'viem'
+import { WorkerdEventEmitter } from '../utils/event-emitter'
 import { bytes32ToAddress, INPUT_SETTLERS } from './contracts'
 
 export interface IntentEvent {

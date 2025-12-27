@@ -13,6 +13,7 @@
 function randomUUID(): string {
   return crypto.randomUUID()
 }
+
 import { Elysia } from 'elysia'
 import { z } from 'zod'
 

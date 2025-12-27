@@ -7,7 +7,7 @@
 
 import type { Hex } from 'viem'
 import { z } from 'zod'
-import { AuthProvider, SessionCapability, TEEProvider } from './types.js'
+import { AuthProvider, SessionCapability } from './types.js'
 
 export {
   AddressSchema,
@@ -19,7 +19,11 @@ export {
   TEEAttestationSchema,
 } from '@jejunetwork/types'
 
-import { AddressSchema, HexSchema, TEEAttestationSchema } from '@jejunetwork/types'
+import {
+  AddressSchema,
+  HexSchema,
+  TEEAttestationSchema,
+} from '@jejunetwork/types'
 
 export const Bytes32Schema = z
   .string()
