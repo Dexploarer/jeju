@@ -25,7 +25,7 @@
  * ```
  */
 
-import type { Socket } from 'bun'
+import type { Socket, TCPSocketListener } from 'bun'
 import type { CacheEngine } from './engine'
 
 // RESP Protocol Constants
@@ -171,6 +171,13 @@ class RESPParser {
    */
   hasMore(): boolean {
     return this.buffer.length > 0
+  }
+
+  /**
+   * Clear the buffer
+   */
+  clear(): void {
+    this.buffer = ''
   }
 }
 
@@ -409,6 +416,31 @@ const COMMANDS: Record<string, CommandHandler> = {
     }
     return result as string[]
   },
+  ZREVRANGE: (engine, ns, args) => {
+    const withScores = args.some((a) => a.toUpperCase() === 'WITHSCORES')
+    // Get full sorted set and reverse for proper high-to-low ordering
+    const allResult = engine.zrange(ns, args[0], 0, -1, true) as Array<{
+      member: string
+      score: number
+    }>
+    const reversed = [...allResult].reverse()
+
+    const start = parseInt(args[1], 10)
+    const stop = parseInt(args[2], 10)
+    const len = reversed.length
+    const normalizedStart = start < 0 ? Math.max(len + start, 0) : start
+    const normalizedStop = stop < 0 ? len + stop + 1 : stop + 1
+    const slice = reversed.slice(normalizedStart, normalizedStop)
+
+    if (withScores) {
+      const flat: string[] = []
+      for (const item of slice) {
+        flat.push(item.member, item.score.toString())
+      }
+      return flat
+    }
+    return slice.map((m) => m.member)
+  },
   ZRANGEBYSCORE: (engine, ns, args) => {
     const min = args[1] === '-inf' ? -Infinity : parseFloat(args[1])
     const max = args[2] === '+inf' ? Infinity : parseFloat(args[2])
@@ -495,19 +527,28 @@ export interface RedisProtocolConfig {
 }
 
 /**
+ * Client connection state
+ */
+interface ClientState {
+  parser: RESPParser
+  authenticated: boolean
+}
+
+/**
  * Redis protocol server
  */
 export class RedisProtocolServer {
   private engine: CacheEngine
-  private config: RedisProtocolConfig
-  private server: ReturnType<typeof Bun.serve> | null = null
-  private clients = new Set<Socket>()
+  private config: Required<RedisProtocolConfig>
+  private server: TCPSocketListener<ClientState> | null = null
+  private clientCount = 0
 
   constructor(engine: CacheEngine, config: RedisProtocolConfig) {
     this.engine = engine
     this.config = {
       host: '0.0.0.0',
       namespace: 'default',
+      password: '',
       ...config,
     }
   }
@@ -518,53 +559,43 @@ export class RedisProtocolServer {
   async start(): Promise<void> {
     const self = this
 
-    this.server = Bun.serve({
-      port: this.config.port,
+    this.server = Bun.listen<ClientState>({
       hostname: this.config.host,
-
-      fetch(request, server) {
-        // Upgrade to WebSocket for pub/sub (optional)
-        if (server.upgrade(request, { data: null })) {
-          return
-        }
-        return new Response('Redis Protocol Server', { status: 200 })
-      },
-
-      // Handle TCP connections
+      port: this.config.port,
       socket: {
-        open(socket: Socket) {
-          self.clients.add(socket)
+        open(socket: Socket<ClientState>) {
+          self.clientCount++
+          socket.data = {
+            parser: new RESPParser(),
+            authenticated: !self.config.password, // Auto-auth if no password
+          }
         },
 
-        async data(socket: Socket, data: Buffer) {
-          const parser = new RESPParser()
-          parser.feed(data.toString())
+        async data(socket: Socket<ClientState>, data: Buffer) {
+          const state = socket.data
+          if (!state) {
+            console.error('[Redis Protocol] Socket data is undefined')
+            return
+          }
+          state.parser.feed(data.toString())
 
           while (true) {
-            const command = parser.parse()
+            const command = state.parser.parse()
             if (!command) break
 
-            const response = await self.handleCommand(command)
+            const response = await self.handleCommand(command, state)
             socket.write(response)
           }
         },
 
-        close(socket: Socket) {
-          self.clients.delete(socket)
+        close(_socket: Socket<ClientState>) {
+          self.clientCount--
         },
 
-        error(socket: Socket, error: Error) {
+        error(_socket: Socket<ClientState>, error: Error) {
           console.error('[Redis Protocol] Socket error:', error)
-          self.clients.delete(socket)
         },
       },
-    } as Parameters<typeof Bun.serve>[0] & {
-      socket: {
-        open: (socket: Socket) => void
-        data: (socket: Socket, data: Buffer) => Promise<void>
-        close: (socket: Socket) => void
-        error: (socket: Socket, error: Error) => void
-      }
     })
 
     console.log(
@@ -580,13 +611,15 @@ export class RedisProtocolServer {
       this.server.stop()
       this.server = null
     }
-    this.clients.clear()
   }
 
   /**
    * Handle a Redis command
    */
-  private async handleCommand(args: string[]): Promise<string> {
+  private async handleCommand(
+    args: string[],
+    state: ClientState,
+  ): Promise<string> {
     if (args.length === 0) {
       return encodeRESP('ERR empty command')
     }
@@ -599,17 +632,27 @@ export class RedisProtocolServer {
       return encodePONG()
     }
 
+    // Check authentication
+    if (!state.authenticated && cmd !== 'AUTH') {
+      return encodeRESP('NOAUTH Authentication required')
+    }
+
+    // Handle AUTH
+    if (cmd === 'AUTH') {
+      if (this.config.password && cmdArgs[0] !== this.config.password) {
+        return encodeRESP('ERR invalid password')
+      }
+      state.authenticated = true
+      return encodeOK()
+    }
+
     const handler = COMMANDS[cmd]
     if (!handler) {
       return encodeRESP(`ERR unknown command '${cmd}'`)
     }
 
     try {
-      const result = await handler(
-        this.engine,
-        this.config.namespace ?? 'default',
-        cmdArgs,
-      )
+      const result = await handler(this.engine, this.config.namespace, cmdArgs)
 
       if (result === 'OK') {
         return encodeOK()
@@ -627,6 +670,13 @@ export class RedisProtocolServer {
    */
   getPort(): number {
     return this.config.port
+  }
+
+  /**
+   * Get connected client count
+   */
+  getClientCount(): number {
+    return this.clientCount
   }
 }
 

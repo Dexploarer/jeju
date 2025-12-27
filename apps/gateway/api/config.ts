@@ -122,7 +122,7 @@ const { config, configure: setGatewayConfig } = createAppConfig<GatewayConfig>({
 
   // Leaderboard
   leaderboardEqliteDatabaseId:
-    getEnvVar('LEADERBOARD_EQLite_DATABASE_ID') ?? 'leaderboard',
+    getEnvVar('LEADERBOARD_EQLITE_DATABASE_ID') ?? 'leaderboard',
   leaderboardDebug: !isProductionEnv(),
   attestationOraclePrivateKey: getEnvVar('ATTESTATION_ORACLE_PRIVATE_KEY'),
   leaderboardDomain:

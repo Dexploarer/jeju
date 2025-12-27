@@ -403,6 +403,18 @@ class EQLiteConnectionImpl implements EQLiteConnection {
         `[EQLite] ${type}: executed (${executionTime}ms, params: ${params?.length ?? 0})`,
       )
 
+    // EQLite returns HTTP 200 with success: false for errors
+    if (
+      typeof rawResult === 'object' &&
+      rawResult !== null &&
+      'success' in rawResult &&
+      rawResult.success === false
+    ) {
+      const errorMsg =
+        'error' in rawResult ? String(rawResult.error) : 'Unknown error'
+      throw new Error(`EQLite ${type} failed: ${errorMsg}`)
+    }
+
     if (type === 'query') {
       const result = QueryResponseSchema.parse(rawResult)
       return {
