@@ -97,6 +97,8 @@ import {
 import { createRPCRouter } from './routes/rpc'
 import { createS3Router } from './routes/s3'
 import { createScrapingRouter } from './routes/scraping'
+import { createNodeRouter } from './routes/node'
+import { createProxyRouter } from './routes/proxy'
 import { createStorageRouter } from './routes/storage'
 import { createVPNRouter } from './routes/vpn'
 import { createDefaultWorkerdRouter } from './routes/workerd'
@@ -730,6 +732,12 @@ app.get('/.well-known/agent-card.json', () => {
 // DWS Cache Service routes (decentralized cache with TEE support)
 app.use(createCacheRoutes())
 
+// Node operator routes
+app.use(createNodeRouter())
+
+// Reverse proxy for all Jeju services (indexer, monitoring, etc.)
+app.use(createProxyRouter())
+
 // Root-level /stats endpoint for vendor app compatibility
 // Returns cache stats in standard format
 app.get('/stats', () => {
@@ -811,6 +819,22 @@ function shutdown(signal: string) {
 
 if (import.meta.main) {
   const baseUrl = process.env.DWS_BASE_URL || `http://localhost:${PORT}`
+
+  // Validate required secrets in production
+  if (isProduction) {
+    const requiredSecrets = [
+      'DEFAULT_POSTGRES_PASSWORD',
+      'DEFAULT_MINIO_PASSWORD',
+      'VAULT_ENCRYPTION_SECRET',
+      'API_KEY_ENCRYPTION_SECRET',
+      'CI_ENCRYPTION_SECRET',
+    ]
+    const missing = requiredSecrets.filter((s) => !process.env[s])
+    if (missing.length > 0) {
+      console.error(`[DWS] CRITICAL: Missing required secrets in production: ${missing.join(', ')}`)
+      process.exit(1)
+    }
+  }
 
   console.log(`[DWS] Running at ${baseUrl}`)
   console.log(

@@ -705,9 +705,8 @@ describe('StaticTrajectoryStorage', () => {
 
       await storage.saveTrajectory(createTestTrajectoryRecord())
 
-      await expect(storage.flush()).rejects.toThrow(
-        'Invalid DWS upload response',
-      )
+      // Zod validation throws when cid is missing
+      await expect(storage.flush()).rejects.toThrow('invalid_type')
     })
   })
 
@@ -816,10 +815,10 @@ describe('downloadTrajectoryBatch', () => {
   })
 
   test('downloads and parses valid batch', async () => {
-    // Create mock compressed JSONL
+    // Create mock compressed JSONL with correct schema (rewardComponents must be array, id required)
     const jsonlContent = [
       '{"_type":"header","batchId":"test-batch","appName":"test","trajectoryCount":1,"timestamp":"2024-01-01T00:00:00Z"}',
-      '{"_type":"trajectory","trajectoryId":"traj-1","agentId":"agent-1","archetype":"trader","appName":"test","startTime":"2024-01-01T00:00:00Z","endTime":"2024-01-01T00:01:00Z","durationMs":60000,"windowId":"w1","scenarioId":"s1","steps":[],"rewardComponents":{},"metrics":{},"metadata":{},"totalReward":0.5}',
+      '{"_type":"trajectory","id":"traj-id-1","trajectoryId":"traj-1","agentId":"agent-1","archetype":"trader","appName":"test","startTime":"2024-01-01T00:00:00Z","endTime":"2024-01-01T00:01:00Z","durationMs":60000,"windowId":"w1","scenarioId":"s1","steps":[],"rewardComponents":[],"metrics":{},"metadata":{},"totalReward":0.5}',
       '{"_type":"llm_call","id":"llm-1","trajectoryId":"traj-1","stepId":"step-1","callId":"call-1","timestamp":"2024-01-01T00:00:00Z","latencyMs":100,"model":"test","purpose":"action","actionType":"buy","systemPrompt":"sys","userPrompt":"usr","messages":[],"response":"resp","reasoning":null,"temperature":0.7,"maxTokens":1024,"metadata":{}}',
     ].join('\n')
 
