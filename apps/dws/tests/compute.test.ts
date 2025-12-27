@@ -21,7 +21,7 @@ import {
   registerNode,
   unregisterNode,
 } from '../api/compute/inference-node'
-import { app, dwsRequest } from './setup'
+import { dwsRequest } from './setup'
 
 setDefaultTimeout(10000)
 

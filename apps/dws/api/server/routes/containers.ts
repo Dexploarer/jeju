@@ -502,8 +502,14 @@ export function createContainerRouter() {
               cpu: mt.hardware.cpuCores,
               memory: `${Math.round(mt.hardware.memoryMb / 1024)}GB`,
               storage: `${Math.round(mt.hardware.storageMb / 1024)}GB`,
-              gpu: mt.hardware.gpuType !== 'none' ? `${mt.hardware.gpuCount}x ${mt.hardware.gpuType}` : 'None',
-              tee: mt.hardware.teePlatform !== 'none' ? mt.hardware.teePlatform : 'None',
+              gpu:
+                mt.hardware.gpuType !== 'none'
+                  ? `${mt.hardware.gpuCount}x ${mt.hardware.gpuType}`
+                  : 'None',
+              tee:
+                mt.hardware.teePlatform !== 'none'
+                  ? mt.hardware.teePlatform
+                  : 'None',
             },
             available: mt.available,
           })),

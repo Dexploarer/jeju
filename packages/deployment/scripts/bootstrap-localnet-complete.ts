@@ -1515,7 +1515,7 @@ class CompleteBootstrapper {
               listing.price,
               '604800', // 7 days
             ],
-            `  Listed #${listing.tokenId} for ${parseInt(listing.price) / 1e18} ETH`,
+            `  Listed #${listing.tokenId} for ${parseInt(listing.price, 10) / 1e18} ETH`,
           )
         }
         console.log('  ✅ Sample listings created')

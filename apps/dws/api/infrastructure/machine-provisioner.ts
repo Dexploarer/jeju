@@ -19,12 +19,12 @@
  */
 
 import { getRpcUrl } from '@jejunetwork/config'
-import type { Address, Hex, PublicClient, WalletClient } from 'viem'
+import type { Address, Hex } from 'viem'
 import { createPublicClient, createWalletClient, http, parseEther } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { z } from 'zod'
 import * as scheduler from '../containers/scheduler'
-import type { ComputeNode, ContainerResources } from '../containers/types'
+import type { ComputeNode } from '../containers/types'
 
 // Machine Specification Types
 
@@ -77,10 +77,16 @@ export const MachineSpecsSchema = z.object({
   cpuModel: z.string(),
   cpuArchitecture: z.enum(['amd64', 'arm64']),
   cpuFrequencyMhz: z.number().min(1000).max(10000),
-  memoryMb: z.number().min(512).max(4 * 1024 * 1024), // Up to 4TB
+  memoryMb: z
+    .number()
+    .min(512)
+    .max(4 * 1024 * 1024), // Up to 4TB
   memoryType: z.enum(['ddr4', 'ddr5']),
   memoryFrequencyMhz: z.number().min(1600).max(8000),
-  storageMb: z.number().min(10240).max(1024 * 1024 * 1024), // Up to 1PB
+  storageMb: z
+    .number()
+    .min(10240)
+    .max(1024 * 1024 * 1024), // Up to 1PB
   storageType: z.enum(['ssd', 'nvme', 'hdd']),
   storageIops: z.number().min(100),
   networkBandwidthMbps: z.number().min(100),
@@ -88,7 +94,9 @@ export const MachineSpecsSchema = z.object({
   gpuType: z.string().nullable(),
   gpuCount: z.number().min(0).max(8),
   gpuMemoryMb: z.number().min(0),
-  teePlatform: z.enum(['intel-sgx', 'intel-tdx', 'amd-sev', 'nvidia-cc']).nullable(),
+  teePlatform: z
+    .enum(['intel-sgx', 'intel-tdx', 'amd-sev', 'nvidia-cc'])
+    .nullable(),
   teeMemoryMb: z.number().min(0),
   region: z.string(),
   zone: z.string(),
@@ -144,7 +152,13 @@ export interface MachineAllocation {
   capabilities: MachineCapabilities
 
   // Activation state
-  status: 'pending' | 'activating' | 'active' | 'failed' | 'terminating' | 'terminated'
+  status:
+    | 'pending'
+    | 'activating'
+    | 'active'
+    | 'failed'
+    | 'terminating'
+    | 'terminated'
   nodeId: string | null
   endpoint: string | null
 
@@ -215,8 +229,6 @@ const DEFAULT_CONFIGS: Record<ProvisionerEnvironment, ProvisionerConfig> = {
 
 export class MachineProvisioner {
   private config: ProvisionerConfig
-  private publicClient: PublicClient | null = null
-  private walletClient: WalletClient | null = null
 
   // State
   private promises = new Map<string, MachinePromise>()
@@ -242,7 +254,9 @@ export class MachineProvisioner {
     })
 
     if (privateKey ?? this.config.privateKey) {
-      const account = privateKeyToAccount((privateKey ?? this.config.privateKey) as Hex)
+      const account = privateKeyToAccount(
+        (privateKey ?? this.config.privateKey) as Hex,
+      )
       this.walletClient = createWalletClient({
         account,
         transport: http(this.config.rpcUrl),
@@ -430,7 +444,9 @@ export class MachineProvisioner {
 
     // Reserve the machine
     if (promise.status !== 'available') {
-      throw new Error(`Machine ${promise.id} is not available: ${promise.status}`)
+      throw new Error(
+        `Machine ${promise.id} is not available: ${promise.status}`,
+      )
     }
 
     promise.status = 'reserved'
@@ -470,7 +486,10 @@ export class MachineProvisioner {
 
     // Start async activation
     this.activateMachine(allocation, promise).catch((err) => {
-      console.error(`[MachineProvisioner] Activation failed for ${allocationId}:`, err)
+      console.error(
+        `[MachineProvisioner] Activation failed for ${allocationId}:`,
+        err,
+      )
       allocation.status = 'failed'
       promise.status = 'available'
       promise.allocatedTo = null
@@ -572,10 +591,14 @@ export class MachineProvisioner {
         machines = machines.filter((m) => m.specs.cpuCores >= filter.minCpu)
       }
       if (filter.minMemoryMb) {
-        machines = machines.filter((m) => m.specs.memoryMb >= filter.minMemoryMb)
+        machines = machines.filter(
+          (m) => m.specs.memoryMb >= filter.minMemoryMb,
+        )
       }
       if (filter.gpuRequired) {
-        machines = machines.filter((m) => m.capabilities.gpu && m.specs.gpuCount > 0)
+        machines = machines.filter(
+          (m) => m.capabilities.gpu && m.specs.gpuCount > 0,
+        )
       }
       if (filter.teeRequired) {
         machines = machines.filter(
@@ -645,10 +668,12 @@ export class MachineProvisioner {
       environment: this.config.environment,
       totalMachines: machines.length,
       availableMachines: availableMachines.length,
-      allocatedMachines: machines.filter((m) => m.status === 'allocated').length,
+      allocatedMachines: machines.filter((m) => m.status === 'allocated')
+        .length,
       offlineMachines: machines.filter((m) => m.status === 'offline').length,
       totalAllocations: allocations.length,
-      activeAllocations: allocations.filter((a) => a.status === 'active').length,
+      activeAllocations: allocations.filter((a) => a.status === 'active')
+        .length,
       totalCpuCores: machines.reduce((sum, m) => sum + m.specs.cpuCores, 0),
       availableCpuCores: availableMachines.reduce(
         (sum, m) => sum + m.specs.cpuCores,
@@ -696,7 +721,8 @@ export class MachineProvisioner {
 
       // Check GPU
       if (requirements.gpuRequired) {
-        if (!promise.capabilities.gpu || promise.specs.gpuCount === 0) return false
+        if (!promise.capabilities.gpu || promise.specs.gpuCount === 0)
+          return false
         if (
           requirements.gpuType &&
           promise.specs.gpuType !== requirements.gpuType
@@ -707,7 +733,8 @@ export class MachineProvisioner {
 
       // Check TEE
       if (requirements.teeRequired) {
-        if (!promise.capabilities.tee || !promise.specs.teePlatform) return false
+        if (!promise.capabilities.tee || !promise.specs.teePlatform)
+          return false
       }
 
       // Check region
@@ -829,7 +856,9 @@ export class MachineProvisioner {
     )
   }
 
-  private async deactivateMachine(allocation: MachineAllocation): Promise<void> {
+  private async deactivateMachine(
+    allocation: MachineAllocation,
+  ): Promise<void> {
     const promise = this.promises.get(allocation.promiseId)
     if (!promise) return
 
@@ -891,7 +920,7 @@ export class MachineProvisioner {
           allocation.status === 'activating'
         ) {
           const promise = this.promises.get(allocation.promiseId)
-          if (promise && promise.allocatedAt) {
+          if (promise?.allocatedAt) {
             if (now - promise.allocatedAt > this.config.allocationTimeoutMs) {
               console.log(
                 `[MachineProvisioner] Allocation ${allocation.id} timed out`,

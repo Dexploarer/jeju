@@ -324,7 +324,9 @@ async function deployAppsOnchain(
   const startedBackends = backendStartTasks.filter(Boolean)
   for (const backend of startedBackends) {
     if (backend) {
-      logger.success(`  ${backend.name} backend started on port ${backend.port}`)
+      logger.success(
+        `  ${backend.name} backend started on port ${backend.port}`,
+      )
     }
   }
 
@@ -567,7 +569,11 @@ async function printReady(
   ]
   if (proxyEnabled) {
     // Build RPC URL dynamically with actual port (omit :80)
-    const rpcDomainUrl = formatLocalUrl('rpc', DOMAIN_CONFIG.localDomain, displayPort)
+    const rpcDomainUrl = formatLocalUrl(
+      'rpc',
+      DOMAIN_CONFIG.localDomain,
+      displayPort,
+    )
     chainRows.push({
       label: 'L2 RPC (domain)',
       value: rpcDomainUrl,
@@ -593,7 +599,11 @@ async function printReady(
 
       const displayName = app.displayName || app.name
       const slug = app.name.toLowerCase().replace(/\s+/g, '-')
-      const localUrl = formatLocalUrl(slug, DOMAIN_CONFIG.localDomain, displayPort)
+      const localUrl = formatLocalUrl(
+        slug,
+        DOMAIN_CONFIG.localDomain,
+        displayPort,
+      )
       logger.table([
         {
           label: displayName,
@@ -614,7 +624,11 @@ async function printReady(
       const domainName = svc.name.toLowerCase().replace(/\s+/g, '-')
 
       if (proxyEnabled && port) {
-        const localUrl = formatLocalUrl(domainName, DOMAIN_CONFIG.localDomain, displayPort)
+        const localUrl = formatLocalUrl(
+          domainName,
+          DOMAIN_CONFIG.localDomain,
+          displayPort,
+        )
         logger.table([
           {
             label: svc.name,

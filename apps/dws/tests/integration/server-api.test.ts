@@ -244,9 +244,7 @@ describe('Error Handling', () => {
 
   test('handles concurrent requests', async () => {
     // Fire 10 concurrent requests
-    const requests = Array.from({ length: 10 }, () =>
-      fetch(`${dwsUrl}/health`),
-    )
+    const requests = Array.from({ length: 10 }, () => fetch(`${dwsUrl}/health`))
 
     const responses = await Promise.all(requests)
 
@@ -262,7 +260,7 @@ describe('Rate Limiting', () => {
     const res = await fetch(`${dwsUrl}/health`)
 
     // Check for common rate limit headers
-    const headers = res.headers
+    const _headers = res.headers
     // May or may not have these depending on config
     expect(res.status).toBe(200)
   })

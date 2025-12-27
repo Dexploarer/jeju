@@ -162,7 +162,7 @@ const app = new Elysia()
 
     return {
       rowsAffected: result.changes,
-      lastInsertId: result.lastInsertRowid?.toString(),
+      lastInsertId: result.lastInsertRowid.toString(),
       txHash,
       blockHeight,
       gasUsed: '0',

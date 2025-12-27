@@ -11,14 +11,19 @@
  * Run with: bun test tests/dws-deployment-pipeline.test.ts
  */
 
-import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from 'bun:test'
-import type { Address, Hex } from 'viem'
+import {
+  afterAll,
+  beforeAll,
+  describe,
+  expect,
+  setDefaultTimeout,
+  test,
+} from 'bun:test'
+import type { Address } from 'viem'
 import {
   type ContainerDeployConfig,
-  ContainerProvisioner,
+  type ContainerProvisioner,
   getContainerProvisioner,
-  type HardwareSpec,
-  type MachineType,
   type ProvisionedContainer,
 } from '../api/containers/provisioner'
 import {
@@ -30,14 +35,14 @@ import {
 import type { ComputeNode } from '../api/containers/types'
 import {
   getKubernetesBridge,
-  KubernetesBridge,
+  type KubernetesBridge,
 } from '../api/infrastructure/kubernetes-bridge'
 import {
   getMachineProvisioner,
   type MachineAllocation,
   type MachineCapabilities,
   type MachinePromise,
-  MachineProvisioner,
+  type MachineProvisioner,
   type MachineSpecs,
 } from '../api/infrastructure/machine-provisioner'
 
@@ -62,8 +67,10 @@ function createMockNode(
       totalMemoryMb: specs.totalMemoryMb ?? 65536,
       totalStorageMb: specs.totalStorageMb ?? 512000,
       availableCpu: specs.availableCpu ?? specs.totalCpu ?? 16,
-      availableMemoryMb: specs.availableMemoryMb ?? specs.totalMemoryMb ?? 65536,
-      availableStorageMb: specs.availableStorageMb ?? specs.totalStorageMb ?? 512000,
+      availableMemoryMb:
+        specs.availableMemoryMb ?? specs.totalMemoryMb ?? 65536,
+      availableStorageMb:
+        specs.availableStorageMb ?? specs.totalStorageMb ?? 512000,
       gpuTypes: specs.gpuTypes ?? ['nvidia-t4'],
     },
     capabilities: ['compute', 'storage', 'gpu'],
@@ -155,7 +162,9 @@ describe('Container Provisioner', () => {
       expect(container.config.tag).toBe('alpine')
       expect(container.config.hardware.cpuCores).toBe(2)
       expect(container.config.hardware.memoryMb).toBe(2048)
-      expect(container.status).toMatch(/pending|allocating|provisioning|running/)
+      expect(container.status).toMatch(
+        /pending|allocating|provisioning|running/,
+      )
 
       provisionedContainer = container
     })
@@ -213,12 +222,16 @@ describe('Container Provisioner', () => {
       const allContainers = provisioner.listContainers()
       expect(allContainers.length).toBeGreaterThan(0)
 
-      const runningContainers = provisioner.listContainers({ status: 'running' })
-      const pendingContainers = provisioner.listContainers({ status: 'pending' })
+      const runningContainers = provisioner.listContainers({
+        status: 'running',
+      })
+      const pendingContainers = provisioner.listContainers({
+        status: 'pending',
+      })
 
-      expect(runningContainers.length + pendingContainers.length).toBeLessThanOrEqual(
-        allContainers.length,
-      )
+      expect(
+        runningContainers.length + pendingContainers.length,
+      ).toBeLessThanOrEqual(allContainers.length)
     })
 
     test('stops a running container', async () => {
@@ -357,7 +370,9 @@ describe('Machine Provisioner', () => {
     test('lists available machines', () => {
       const availableMachines = machineProvisioner.listAvailableMachines()
       expect(availableMachines.length).toBeGreaterThan(0)
-      expect(availableMachines.every((m) => m.status === 'available')).toBe(true)
+      expect(availableMachines.every((m) => m.status === 'available')).toBe(
+        true,
+      )
     })
 
     test('filters machines by requirements', () => {
@@ -382,14 +397,19 @@ describe('Machine Provisioner', () => {
 
       if (teeMachines.length > 0) {
         expect(teeMachines.every((m) => m.capabilities.tee)).toBe(true)
-        expect(teeMachines.every((m) => m.specs.teePlatform !== null)).toBe(true)
+        expect(teeMachines.every((m) => m.specs.teePlatform !== null)).toBe(
+          true,
+        )
       }
     })
 
     test('gets machines by operator', () => {
-      const operatorMachines = machineProvisioner.getOperatorMachines(OPERATOR_ADDRESS)
+      const operatorMachines =
+        machineProvisioner.getOperatorMachines(OPERATOR_ADDRESS)
       expect(operatorMachines.length).toBeGreaterThan(0)
-      expect(operatorMachines.every((m) => m.operator === OPERATOR_ADDRESS)).toBe(true)
+      expect(
+        operatorMachines.every((m) => m.operator === OPERATOR_ADDRESS),
+      ).toBe(true)
     })
   })
 
@@ -418,7 +438,8 @@ describe('Machine Provisioner', () => {
     })
 
     test('gets user allocations', () => {
-      const userAllocations = machineProvisioner.getUserAllocations(TEST_ADDRESS)
+      const userAllocations =
+        machineProvisioner.getUserAllocations(TEST_ADDRESS)
       expect(userAllocations.length).toBeGreaterThan(0)
       expect(userAllocations.every((a) => a.user === TEST_ADDRESS)).toBe(true)
     })
@@ -572,7 +593,10 @@ describe('Kubernetes Bridge', () => {
                       {
                         name: 'DATABASE_URL',
                         valueFrom: {
-                          configMapKeyRef: { name: 'app-config', key: 'DATABASE_URL' },
+                          configMapKeyRef: {
+                            name: 'app-config',
+                            key: 'DATABASE_URL',
+                          },
                         },
                       },
                       {
@@ -680,11 +704,11 @@ describe('Kubernetes Bridge', () => {
       expect(deployment.ingresses.size).toBe(1)
 
       const service = [...deployment.services.values()][0]
-      expect(service?.type).toBe('LoadBalancer')
+      expect(service.type).toBe('LoadBalancer')
 
       const ingress = [...deployment.ingresses.values()][0]
-      expect(ingress?.hosts).toContain('app.example.com')
-      expect(ingress?.tls).toBe(true)
+      expect(ingress.hosts).toContain('app.example.com')
+      expect(ingress.tls).toBe(true)
     })
   })
 
@@ -707,10 +731,12 @@ describe('Kubernetes Bridge', () => {
       const productionDeployments = bridge.listDeployments('production')
 
       // Each namespace should have its deployments
-      expect(stagingDeployments.every((d) => d.namespace === 'staging')).toBe(true)
-      expect(productionDeployments.every((d) => d.namespace === 'production')).toBe(
+      expect(stagingDeployments.every((d) => d.namespace === 'staging')).toBe(
         true,
       )
+      expect(
+        productionDeployments.every((d) => d.namespace === 'production'),
+      ).toBe(true)
     })
   })
 
@@ -931,16 +957,24 @@ describe('Multi-Tenant Isolation', () => {
     const provisioner = getContainerProvisioner()
 
     // Tenant A provisions a container
-    const containerA = await provisioner.provisionFromMachineType(TENANT_A, 'micro', {
-      image: 'nginx',
-      tag: 'alpine',
-    })
+    const containerA = await provisioner.provisionFromMachineType(
+      TENANT_A,
+      'micro',
+      {
+        image: 'nginx',
+        tag: 'alpine',
+      },
+    )
 
     // Tenant B provisions a container
-    const containerB = await provisioner.provisionFromMachineType(TENANT_B, 'micro', {
-      image: 'nginx',
-      tag: 'alpine',
-    })
+    const containerB = await provisioner.provisionFromMachineType(
+      TENANT_B,
+      'micro',
+      {
+        image: 'nginx',
+        tag: 'alpine',
+      },
+    )
 
     // Verify isolation
     expect(containerA.owner).toBe(TENANT_A)
@@ -954,9 +988,9 @@ describe('Multi-Tenant Isolation', () => {
     expect(tenantBContainers.every((c) => c.owner === TENANT_B)).toBe(true)
 
     // Tenant B cannot stop Tenant A's container
-    await expect(
-      provisioner.stop(containerA.id, TENANT_B),
-    ).rejects.toThrow('Not authorized')
+    await expect(provisioner.stop(containerA.id, TENANT_B)).rejects.toThrow(
+      'Not authorized',
+    )
 
     // Cleanup
     await provisioner.terminate(containerA.id, TENANT_A)

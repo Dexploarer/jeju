@@ -12,7 +12,7 @@
  */
 
 import { Elysia, t } from 'elysia'
-import type { Address, Hex } from 'viem'
+import type { Address } from 'viem'
 import { z } from 'zod'
 import {
   type ContainerDeployConfig,
@@ -20,7 +20,6 @@ import {
   type HardwareSpec,
   type ProvisionedContainer,
 } from '../containers/provisioner'
-import type { JSONValue } from '../shared/validation'
 
 // Kubernetes Types
 
@@ -126,7 +125,9 @@ const KubePodSpecSchema = z.object({
         key: z.string().optional(),
         operator: z.enum(['Exists', 'Equal']).optional(),
         value: z.string().optional(),
-        effect: z.enum(['NoSchedule', 'PreferNoSchedule', 'NoExecute']).optional(),
+        effect: z
+          .enum(['NoSchedule', 'PreferNoSchedule', 'NoExecute'])
+          .optional(),
       }),
     )
     .optional(),
@@ -166,7 +167,9 @@ const KubeServicePortSchema = z.object({
 })
 
 const KubeServiceSpecSchema = z.object({
-  type: z.enum(['ClusterIP', 'NodePort', 'LoadBalancer', 'ExternalName']).optional(),
+  type: z
+    .enum(['ClusterIP', 'NodePort', 'LoadBalancer', 'ExternalName'])
+    .optional(),
   selector: z.record(z.string()).optional(),
   ports: z.array(KubeServicePortSchema),
   clusterIP: z.string().optional(),
@@ -391,7 +394,7 @@ export class KubernetesBridge {
     // Create deployment state
     const deploymentState: DWSDeploymentState = {
       id: deploymentId,
-      name: deploymentManifests[0]?.metadata.name ?? deploymentId,
+      name: deploymentManifests[0].metadata.name ?? deploymentId,
       namespace,
       manifests,
       containers: new Map(),
@@ -413,7 +416,7 @@ export class KubernetesBridge {
     this.namespaceDeployments.set(namespace, nsDeployments)
 
     // Deploy workloads
-    const provisioner = getContainerProvisioner()
+    const _provisioner = getContainerProvisioner()
 
     for (const deploymentManifest of deploymentManifests) {
       const containers = await this.deployKubeDeployment(
@@ -607,7 +610,7 @@ export class KubernetesBridge {
     const ports =
       kubeContainer.ports?.map((p) => ({
         containerPort: p.containerPort,
-        protocol: p.protocol?.toLowerCase() as 'tcp' | 'udp',
+        protocol: p.protocol.toLowerCase() as 'tcp' | 'udp',
         expose: false,
       })) ?? []
 
@@ -677,7 +680,9 @@ export class KubernetesBridge {
     }
   }
 
-  private translateResources(resources?: KubeResourceRequirements): HardwareSpec {
+  private translateResources(
+    resources?: KubeResourceRequirements,
+  ): HardwareSpec {
     const limits = resources?.limits ?? {}
     const requests = resources?.requests ?? {}
 
@@ -754,7 +759,7 @@ export class KubernetesBridge {
           typeof p.targetPort === 'number'
             ? p.targetPort
             : parseInt(p.targetPort ?? String(p.port), 10),
-        protocol: p.protocol?.toLowerCase() as 'tcp' | 'udp',
+        protocol: p.protocol.toLowerCase() as 'tcp' | 'udp',
       })),
       clusterIP,
     }
@@ -782,7 +787,7 @@ export class KubernetesBridge {
       if (rule.host) {
         hosts.push(rule.host)
       }
-      for (const path of rule.http?.paths ?? []) {
+      for (const path of rule.http.paths ?? []) {
         paths.push({
           path: path.path,
           serviceName: path.backend.service.name,
@@ -850,7 +855,7 @@ export function createKubernetesBridgeRouter() {
         }),
       },
     )
-    .get('/deployments', ({ headers, query }) => {
+    .get('/deployments', ({ query }) => {
       const deployments = bridge.listDeployments(query.namespace)
       return {
         deployments: deployments.map((d) => ({

@@ -57,9 +57,7 @@ function createMockTrajectoryJSONL(
           reward: t.totalReward,
         },
       ],
-      rewardComponents: [
-        { name: 'base', value: t.totalReward, weight: 1.0 },
-      ],
+      rewardComponents: [{ name: 'base', value: t.totalReward, weight: 1.0 }],
       metrics: {},
       metadata: {},
       totalReward: t.totalReward,
