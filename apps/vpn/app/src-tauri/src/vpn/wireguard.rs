@@ -91,8 +91,7 @@ impl WireGuardTunnel {
         let private_key = parse_base64_key(&self.config.private_key)?;
         let peer_pubkey = parse_base64_key(&self.config.peer_pubkey)?;
 
-        let static_secret = StaticSecret::try_from(private_key)
-            .map_err(|_| VPNError::TunnelError("Invalid private key".to_string()))?;
+        let static_secret = StaticSecret::from(private_key);
 
         let peer_public = PublicKey::from(peer_pubkey);
 
@@ -255,13 +254,12 @@ async fn run_tunnel_loop(
     // Initiate handshake
     {
         let mut tunn_guard = tunn.lock();
-        match tunn_guard.format_handshake_initiation(&mut send_buf, false) {
-            TunnResult::WriteToNetwork(data) => {
-                if let Err(e) = socket.send(data) {
-                    tracing::warn!("Failed to send handshake initiation: {}", e);
-                }
+        if let TunnResult::WriteToNetwork(data) =
+            tunn_guard.format_handshake_initiation(&mut send_buf, false)
+        {
+            if let Err(e) = socket.send(data) {
+                tracing::warn!("Failed to send handshake initiation: {}", e);
             }
-            _ => {}
         }
     }
 
@@ -416,7 +414,7 @@ pub fn generate_keypair() -> (String, String) {
     let mut private_key_bytes = [0u8; 32];
     rand::thread_rng().fill_bytes(&mut private_key_bytes);
 
-    let static_secret = StaticSecret::try_from(private_key_bytes).expect("Valid key bytes");
+    let static_secret = StaticSecret::from(private_key_bytes);
     let public_key = PublicKey::from(&static_secret);
 
     let private_key = base64::engine::general_purpose::STANDARD.encode(private_key_bytes);
@@ -438,8 +436,7 @@ pub fn derive_public_key(private_key: &str) -> Result<String, VPNError> {
     use base64::Engine;
 
     let private_bytes = parse_base64_key(private_key)?;
-    let static_secret = StaticSecret::try_from(private_bytes)
-        .map_err(|_| VPNError::TunnelError("Invalid private key".to_string()))?;
+    let static_secret = StaticSecret::from(private_bytes);
 
     let public_key = PublicKey::from(&static_secret);
     Ok(base64::engine::general_purpose::STANDARD.encode(public_key.as_bytes()))
