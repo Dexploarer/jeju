@@ -331,12 +331,21 @@ async function dockerRequest(
   return fetch(url, options)
 }
 
+// SECURITY: Allowlist of environment variable prefixes users can set
+const ALLOWED_ENV_PREFIXES = ['DWS_APP_', 'APP_', 'NODE_ENV', 'TZ']
+
+function filterUserEnv(env: Record<string, string>): string[] {
+  return Object.entries(env)
+    .filter(([key]) => ALLOWED_ENV_PREFIXES.some((prefix) => key.startsWith(prefix)))
+    .map(([k, v]) => `${k}=${v}`)
+}
+
 const runtime: ContainerRuntime = {
   async create(instance, image, request) {
     const containerConfig = {
       Image: `${image.namespace}/${image.name}:${image.tag}`,
       Cmd: request.command ?? [],
-      Env: Object.entries(request.env ?? {}).map(([k, v]) => `${k}=${v}`),
+      Env: filterUserEnv(request.env ?? {}),
       HostConfig: {
         Memory: instance.resources.memoryMb * 1024 * 1024,
         NanoCpus: instance.resources.cpuCores * 1e9,

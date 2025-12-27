@@ -39,6 +39,7 @@ import { proxyCommand } from './commands/proxy'
 import { publishCommand } from './commands/publish'
 import { seedCommand } from './commands/seed'
 import { serviceCommand } from './commands/service'
+import { startCommand } from './commands/start'
 import { setupCommand } from './commands/setup'
 import { statusCommand } from './commands/status'
 import { superchainCommand } from './commands/superchain'
@@ -94,6 +95,7 @@ program
 
 // Core commands
 program.addCommand(devCommand)
+program.addCommand(startCommand)
 program.addCommand(testCommand)
 program.addCommand(deployCommand)
 program.addCommand(keysCommand)

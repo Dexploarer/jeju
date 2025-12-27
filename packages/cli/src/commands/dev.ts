@@ -48,7 +48,7 @@ let proxyEnabled = false
 
 export const devCommand = new Command('dev')
   .description(
-    'Start development environment (bootstraps contracts + deploys apps on-chain)',
+    'Start development environment with HMR (bootstraps contracts + deploys apps)',
   )
   .option('--minimal', 'Localnet only (no apps)')
   .option(
@@ -96,11 +96,12 @@ async function startDev(options: {
   seed?: boolean
 }): Promise<void> {
   logger.header('JEJU DEV')
+  logger.info('Development mode with HMR\n')
 
   const rootDir = process.cwd()
   setupSignalHandlers()
 
-  // Step 1: Ensure all infrastructure is running (Docker, services, localnet)
+  // Start infrastructure (CQL, Docker services, localnet) - parallelized for speed
   infrastructureService = createInfrastructureService(rootDir)
   const infraReady = await infrastructureService.ensureRunning()
 
@@ -545,12 +546,7 @@ async function printReady(
         value: `http://127.0.0.1:${DEFAULT_PORTS.ipfs}`,
         status: 'ok' as const,
       },
-      { label: 'Cache', value: 'http://127.0.0.1:4115', status: 'ok' as const },
-      {
-        label: 'DA Server',
-        value: 'http://127.0.0.1:4010',
-        status: 'ok' as const,
-      },
+      { label: 'DWS', value: 'http://127.0.0.1:4030', status: 'ok' as const },
     ])
   }
 
