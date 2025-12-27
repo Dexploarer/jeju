@@ -599,10 +599,9 @@ async function startDatabaseService(
   databaseService: ReturnType<typeof createNodeServices>['database'],
   config: CliAppConfig,
 ) {
-  const blockProducerEndpoint =
-    process.env.CQL_BLOCK_PRODUCER_ENDPOINT ?? 'https://cql.jejunetwork.org'
-  const minerEndpoint =
-    process.env.CQL_MINER_ENDPOINT ?? 'http://localhost:4661'
+  // Get CQL endpoints from config (respects env var overrides)
+  const blockProducerEndpoint = getCQLUrl(config.network)
+  const minerEndpoint = getCQLMinerUrl(config.network)
 
   if (!config.privateKey) {
     log('warn', 'Database service requires private key - skipping')
@@ -625,7 +624,7 @@ async function startDatabaseService(
     })
 
     await databaseService.start()
-    log('success', 'Database (CQL) service started')
+    log('success', `Database (CQL) service started - BP: ${blockProducerEndpoint}`)
 
     // Periodically log stats
     setInterval(() => {
