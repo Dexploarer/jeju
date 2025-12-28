@@ -22,7 +22,6 @@ export interface TradingBotOptions {
   strategies: TradingBotStrategy[]
   chains: TradingBotChain[]
   treasuryAddress?: Address
-  privateKey: `0x${string}`
   maxConcurrentExecutions: number
   useFlashbots: boolean
   contractAddresses?: Record<string, Address>

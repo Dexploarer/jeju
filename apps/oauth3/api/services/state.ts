@@ -3,6 +3,7 @@
  * Set USE_MEMORY_STATE=true to use in-memory storage for development/testing
  */
 
+import { getLocalhostHost, isProductionEnv } from '@jejunetwork/config'
 import type { EQLiteClient } from '@jejunetwork/db'
 import type { Address, Hex } from 'viem'
 import type {
@@ -53,7 +54,7 @@ async function getEQLiteClient(): Promise<EQLiteClient> {
     eqliteClient = getEQLite({
       databaseId: EQLITE_DATABASE_ID,
       timeout: 30000,
-      debug: process.env.NODE_ENV !== 'production',
+      debug: !isProductionEnv(),
     })
 
     const healthy = await eqliteClient.isHealthy()
@@ -598,8 +599,8 @@ export async function initializeState(): Promise<void> {
         'https://cloud.elizaos.com/*',
         'https://eliza.cloud/*',
         'https://*.elizaos.ai/*',
-        'http://localhost:3000/*',
-        'http://localhost:3001/*',
+        `http://${getLocalhostHost()}:3000/*`,
+        `http://${getLocalhostHost()}:3001/*`,
         'http://127.0.0.1:3000/*',
         'http://127.0.0.1:3001/*',
       ],

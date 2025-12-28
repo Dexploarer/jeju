@@ -14,7 +14,13 @@ function randomUUID(): string {
   return crypto.randomUUID()
 }
 
-import { createAppConfig } from '@jejunetwork/config'
+import {
+  CORE_PORTS,
+  createAppConfig,
+  getIndexerGraphqlUrl,
+  getIndexerRestUrl,
+  getLocalhostHost,
+} from '@jejunetwork/config'
 import { Elysia } from 'elysia'
 import { z } from 'zod'
 
@@ -79,13 +85,15 @@ interface ProxyRouterConfig {
   [key: string]: string | undefined
 }
 
+const localhost = getLocalhostHost()
+const gatewayPort = CORE_PORTS.GATEWAY.get()
 const { config: proxyConfig, configure: configureProxyRouter } =
   createAppConfig<ProxyRouterConfig>({
-    indexerUrl: 'http://127.0.0.1:4352',
-    indexerGraphqlUrl: 'http://127.0.0.1:4350',
-    monitoringUrl: 'http://127.0.0.1:9091',
-    prometheusUrl: 'http://127.0.0.1:9090',
-    gatewayUrl: 'http://127.0.0.1:4200',
+    indexerUrl: getIndexerRestUrl(),
+    indexerGraphqlUrl: getIndexerGraphqlUrl(),
+    monitoringUrl: `http://${localhost}:9091`,
+    prometheusUrl: `http://${localhost}:9090`,
+    gatewayUrl: `http://${localhost}:${gatewayPort}`,
   })
 
 export function configureProxyRouterConfig(
@@ -95,10 +103,11 @@ export function configureProxyRouterConfig(
 }
 
 function getProxyTargets(): ProxyTarget[] {
+  const localhostHost = getLocalhostHost()
   return [
     {
       name: 'indexer',
-      upstream: proxyConfig.indexerUrl ?? 'http://127.0.0.1:4352',
+      upstream: proxyConfig.indexerUrl ?? getIndexerRestUrl(),
       pathPrefix: '/indexer',
       stripPrefix: true,
       healthPath: '/health',
@@ -107,7 +116,7 @@ function getProxyTargets(): ProxyTarget[] {
     },
     {
       name: 'indexer-graphql',
-      upstream: proxyConfig.indexerGraphqlUrl ?? 'http://127.0.0.1:4350',
+      upstream: proxyConfig.indexerGraphqlUrl ?? getIndexerGraphqlUrl(),
       pathPrefix: '/graphql',
       stripPrefix: false,
       healthPath: '/',
@@ -116,7 +125,7 @@ function getProxyTargets(): ProxyTarget[] {
     },
     {
       name: 'monitoring',
-      upstream: proxyConfig.monitoringUrl ?? 'http://127.0.0.1:9091',
+      upstream: proxyConfig.monitoringUrl ?? `http://${localhostHost}:9091`,
       pathPrefix: '/monitoring',
       stripPrefix: true,
       healthPath: '/.well-known/agent-card.json',
@@ -125,7 +134,7 @@ function getProxyTargets(): ProxyTarget[] {
     },
     {
       name: 'prometheus',
-      upstream: proxyConfig.prometheusUrl ?? 'http://127.0.0.1:9090',
+      upstream: proxyConfig.prometheusUrl ?? `http://${localhostHost}:9090`,
       pathPrefix: '/prometheus',
       stripPrefix: true,
       healthPath: '/-/healthy',
@@ -134,7 +143,7 @@ function getProxyTargets(): ProxyTarget[] {
     },
     {
       name: 'gateway',
-      upstream: proxyConfig.gatewayUrl ?? 'http://127.0.0.1:4200',
+      upstream: proxyConfig.gatewayUrl ?? `http://${localhostHost}:${CORE_PORTS.GATEWAY.get()}`,
       pathPrefix: '/gateway',
       stripPrefix: true,
       healthPath: '/health',

@@ -2,18 +2,8 @@
  * Wallet utilities for network SDK
  * Supports both EOA and ERC-4337 Smart Accounts
  *
- * ⚠️ SECURITY WARNING FOR TEE/PRODUCTION ENVIRONMENTS ⚠️
- *
- * This wallet implementation handles private keys in memory.
- * For production deployments, especially in TEE environments where
- * side-channel attacks are possible, use createKMSWallet() instead.
- *
- * KMS-backed wallets:
- * - Never expose private keys in process memory
- * - Use MPC (2-of-3 or 3-of-5) threshold signing
- * - No single party ever has the complete key
- *
- * @see createKMSWallet in './kms-wallet' for secure signing
+ * For production use, see createKMSWallet in './kms-wallet' for
+ * MPC-backed signing where keys never exist in memory.
  */
 
 import type { NetworkType } from '@jejunetwork/types'
@@ -40,12 +30,14 @@ import {
 } from 'viem/accounts'
 import { getChainConfig, getContract, getServicesConfig } from './config'
 
+import { getCurrentNetwork } from '@jejunetwork/config'
+
 /**
  * Check if running in a production environment where local keys are dangerous
  */
 function isProductionEnvironment(): boolean {
   const env = process.env.NODE_ENV
-  const network = process.env.JEJU_NETWORK ?? process.env.NETWORK
+  const network = getCurrentNetwork()
   return (
     env === 'production' ||
     network === 'mainnet' ||
@@ -124,11 +116,7 @@ function getNetworkChain(network: NetworkType): Chain {
 
 /**
  * Create a wallet from a private key, mnemonic, or pre-configured account.
- *
- * ⚠️ SECURITY WARNING: This function handles private keys in memory.
- * For production/TEE environments, use createKMSWallet() instead.
- *
- * @deprecated For production use. Use createKMSWallet() for secure signing.
+ * For production use, prefer createKMSWallet() for secure signing.
  */
 export async function createWallet(config: WalletConfig): Promise<JejuWallet> {
   const chain = getNetworkChain(config.network)

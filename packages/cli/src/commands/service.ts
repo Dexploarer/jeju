@@ -1,5 +1,6 @@
 /** Manage long-running network services */
 
+import { getLocalhostHost } from '@jejunetwork/config'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { spawn } from 'bun'
@@ -441,10 +442,11 @@ async function startZKBridge(options: {
   runningServices.set('zkbridge', proc)
 
   logger.success('ZK bridge orchestrator started')
-  logger.info(`Relayer:  http://127.0.0.1:${config.ports.relayer}`)
-  logger.info(`Prover:   http://127.0.0.1:${config.ports.prover}`)
+  const localhost = getLocalhostHost()
+  logger.info(`Relayer:  http://${localhost}:${config.ports.relayer}`)
+  logger.info(`Prover:   http://${localhost}:${config.ports.prover}`)
   logger.info(
-    `Health:   http://127.0.0.1:${config.ports.health}/monitoring/health`,
+    `Health:   http://${localhost}:${config.ports.health}/monitoring/health`,
   )
   logger.newline()
   logger.info('Press Ctrl+C to stop')

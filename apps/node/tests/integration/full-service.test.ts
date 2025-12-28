@@ -32,10 +32,7 @@ interface TestAccount {
   address: Address
 }
 
-/**
- * @deprecated Test accounts with raw private keys
- * These are only used for legacy test compatibility
- */
+/** Test accounts for KMS-backed signing (addresses are derived from keyIds) */
 const TEST_ACCOUNTS: TestAccount[] = [
   {
     keyId: 'test-key-1',

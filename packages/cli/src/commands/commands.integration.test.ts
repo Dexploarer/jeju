@@ -11,6 +11,10 @@
  *   jeju test --mode integration --package cli
  */
 
+import {
+  getChainId,
+  getL2RpcUrl,
+} from '@jejunetwork/config'
 import { beforeAll, describe, expect, test } from 'bun:test'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -21,8 +25,8 @@ const CLI_PATH = join(__dirname, '..', 'index.ts')
 const ROOT_DIR = join(__dirname, '..', '..', '..', '..')
 
 // Test configuration
-const RPC_URL = process.env.L2_RPC_URL || 'http://127.0.0.1:6546'
-const CHAIN_ID = process.env.CHAIN_ID || '31337'
+const RPC_URL = getL2RpcUrl()
+const CHAIN_ID = String(getChainId())
 
 async function runCLI(
   args: string[],

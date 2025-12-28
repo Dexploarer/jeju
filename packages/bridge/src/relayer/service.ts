@@ -118,12 +118,8 @@ export interface EVMChainConfig {
   rpcUrl: string
   bridgeAddress: string
   lightClientAddress: string
-  /**
-   * @deprecated Use kmsConfig for production - privateKey is vulnerable to side-channel attacks
-   */
-  privateKey?: string
-  /** KMS configuration for secure signing (recommended for production) */
-  kmsConfig?: {
+  /** KMS configuration for secure signing */
+  kmsConfig: {
     endpoint: string
     keyId: string
     apiKey?: string
@@ -132,20 +128,13 @@ export interface EVMChainConfig {
 
 /**
  * Solana Chain Configuration
- *
- * SECURITY: For production, use kmsConfig instead of keypairPath.
- * Direct keypair usage is vulnerable to TEE side-channel attacks.
  */
 export interface SolanaChainConfig {
   rpcUrl: string
   bridgeProgramId: string
   evmLightClientProgramId: string
-  /**
-   * @deprecated Use kmsConfig for production - keypair files are vulnerable to side-channel attacks
-   */
-  keypairPath?: string
-  /** KMS configuration for secure signing (recommended for production) */
-  kmsConfig?: {
+  /** KMS configuration for secure signing */
+  kmsConfig: {
     endpoint: string
     keyId: string
     apiKey?: string

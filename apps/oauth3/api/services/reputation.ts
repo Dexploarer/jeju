@@ -4,6 +4,11 @@
  * REQUIRES contracts - no fallback.
  */
 
+import {
+  getCurrentNetwork,
+  getRpcUrl,
+  tryGetContract,
+} from '@jejunetwork/config'
 import type { Address } from 'viem'
 import { createPublicClient, http, parseAbi } from 'viem'
 import { foundry, mainnet, sepolia } from 'viem/chains'
@@ -21,34 +26,31 @@ const MODERATION_ABI = parseAbi([
   'function moderatorReputation(address) view returns (uint256 successfulBans, uint256 unsuccessfulBans, uint256 totalSlashedFrom, uint256 totalSlashedOthers, uint256 reputationScore, uint256 lastReportTimestamp, uint256 reportCooldownUntil, uint256 dailyReportCount, uint256 weeklyReportCount, uint256 reportDayStart, uint256 reportWeekStart, uint256 consecutiveWins, uint256 lastActivityTimestamp, uint256 activeReportCount)',
 ])
 
-// Get RPC URL from environment - REQUIRED
-function getRpcUrl(): string {
-  const rpcUrl = process.env.RPC_URL
-  if (!rpcUrl) {
-    throw new Error(
-      'RPC_URL environment variable is required.\n' +
-        'For local development with anvil: RPC_URL=http://localhost:8545\n' +
-        'Use `bun run start` to start all dependencies including anvil.',
-    )
-  }
-  return rpcUrl
+// Get RPC URL from config with env override
+function getRpcUrlFromConfig(): string {
+  const network = getCurrentNetwork()
+  return process.env.RPC_URL ?? getRpcUrl(network)
 }
 
 // Get reputation registry contract address (optional - can use only moderation)
 function getReputationRegistryAddress(): Address | null {
-  const address = process.env.REPUTATION_REGISTRY_ADDRESS
+  const network = getCurrentNetwork()
+  const address = process.env.REPUTATION_REGISTRY_ADDRESS ??
+    tryGetContract('reputation', 'registry', network)
   return address ? (address as Address) : null
 }
 
 // Get moderation contract address (optional - can use only reputation registry)
 function getModerationAddress(): Address | null {
-  const address = process.env.MODERATION_CONTRACT_ADDRESS
+  const network = getCurrentNetwork()
+  const address = process.env.MODERATION_CONTRACT_ADDRESS ??
+    tryGetContract('moderation', 'marketplace', network)
   return address ? (address as Address) : null
 }
 
 function getPublicClient() {
-  const rpcUrl = getRpcUrl()
-  const network = process.env.NETWORK ?? 'localnet'
+  const rpcUrl = getRpcUrlFromConfig()
+  const network = getCurrentNetwork()
 
   let chain: typeof mainnet | typeof sepolia | typeof foundry
   switch (network) {

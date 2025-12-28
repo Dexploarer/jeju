@@ -3,7 +3,7 @@
  *
  * Secure storage and management of cloud provider credentials:
  * - AWS, GCP, Azure, Hetzner, OVH, DigitalOcean API keys
- * - Encrypted at rest using KMS
+ * - Encrypted at rest using AES-256-GCM
  * - Never exposed to users or logs
  * - Scoped access per provisioner
  *
@@ -12,6 +12,21 @@
  * - Only provisioner service can decrypt credentials
  * - Credentials never returned in API responses
  * - All access is audited
+ *
+ * @environment DWS_VAULT_KEY - Master encryption key (required in production)
+ *   - Must be at least 32 characters
+ *   - Used to derive per-owner encryption keys
+ *   - In development: Falls back to insecure dev key with warning
+ *   - In production (NODE_ENV=production or JEJU_NETWORK=mainnet): Required, will throw if not set
+ *
+ * @example
+ * ```bash
+ * # Generate a secure vault key
+ * openssl rand -base64 32
+ *
+ * # Set in .env
+ * DWS_VAULT_KEY=your-generated-key-at-least-32-chars
+ * ```
  */
 
 import type { Address } from 'viem'
@@ -64,6 +79,7 @@ export interface CredentialCreateRequest {
   region?: string
   scopes?: string[]
   expiresAt?: number
+  skipVerification?: boolean // For testing only - skips API verification
 }
 
 export const CredentialCreateSchema = z.object({
@@ -89,12 +105,31 @@ export const CredentialCreateSchema = z.object({
  * - Key derived from master key + owner address using HKDF-like derivation
  */
 
+// Development fallback key - NEVER use in production
+const DEV_VAULT_KEY = 'dev-only-key-do-not-use-in-prod-32chars'
+let vaultKeyWarningLogged = false
+
 function getVaultKey(): string {
   const key = process.env.DWS_VAULT_KEY
-  if (!key || key.length < 32) {
-    throw new Error('DWS_VAULT_KEY must be set and at least 32 characters for production use')
+  
+  if (key && key.length >= 32) {
+    return key
   }
-  return key
+  
+  // In production, fail hard
+  const isProduction = process.env.NODE_ENV === 'production' || process.env.JEJU_NETWORK === 'mainnet'
+  if (isProduction) {
+    throw new Error('CRITICAL: DWS_VAULT_KEY must be set and at least 32 characters in production')
+  }
+  
+  // In development, use fallback but warn loudly (once)
+  if (!vaultKeyWarningLogged) {
+    console.warn('⚠️  WARNING: DWS_VAULT_KEY not set - using insecure development key')
+    console.warn('⚠️  Set DWS_VAULT_KEY in .env for production use')
+    vaultKeyWarningLogged = true
+  }
+  
+  return DEV_VAULT_KEY
 }
 
 function deriveKey(owner: Address): Uint8Array {
@@ -112,10 +147,13 @@ async function encrypt(plaintext: string, owner: Address): Promise<string> {
   // Generate random 12-byte IV for GCM
   const iv = crypto.getRandomValues(new Uint8Array(12))
   
-  // Import key for Web Crypto
+  // Import key for Web Crypto - ensure ArrayBuffer type
+  const keyBuffer = new ArrayBuffer(key.length)
+  new Uint8Array(keyBuffer).set(key)
+  
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
-    key,
+    keyBuffer,
     { name: 'AES-GCM' },
     false,
     ['encrypt'],
@@ -147,13 +185,16 @@ async function decrypt(ciphertext: string, owner: Address): Promise<string> {
     throw new Error('Invalid ciphertext: too short')
   }
   
-  const iv = combined.subarray(0, 12)
-  const encrypted = combined.subarray(12)
+  const iv = new Uint8Array(combined.subarray(0, 12))
+  const encrypted = new Uint8Array(combined.subarray(12))
   
-  // Import key for Web Crypto
+  // Import key for Web Crypto - ensure ArrayBuffer type
+  const keyBuffer = new ArrayBuffer(key.length)
+  new Uint8Array(keyBuffer).set(key)
+  
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
-    key,
+    keyBuffer,
     { name: 'AES-GCM' },
     false,
     ['decrypt'],
@@ -218,10 +259,12 @@ export class CredentialVault {
       lastError: null,
     }
 
-    // Verify credential works before storing
-    const verifyResult = await this.verifyCredential(validated.provider, validated.apiKey, validated.apiSecret)
-    if (!verifyResult.valid) {
-      throw new Error(`Credential verification failed: ${verifyResult.error}`)
+    // Verify credential works before storing (unless explicitly skipped for testing)
+    if (!request.skipVerification) {
+      const verifyResult = await this.verifyCredential(validated.provider, validated.apiKey, validated.apiSecret)
+      if (!verifyResult.valid) {
+        throw new Error(`Credential verification failed: ${verifyResult.error}`)
+      }
     }
 
     // Store

@@ -1,5 +1,5 @@
 import { cors } from '@elysiajs/cors'
-import { getNetworkName } from '@jejunetwork/config'
+import { getLocalhostHost, getNetworkName } from '@jejunetwork/config'
 import { validateOrNull } from '@jejunetwork/types'
 import { Elysia } from 'elysia'
 import { z } from 'zod'
@@ -57,10 +57,11 @@ const getAllowedOrigins = (): string | string[] => {
     return env.CORS_ORIGINS.split(',').map((o) => o.trim())
   }
   if (isLocalnet) {
+    const host = getLocalhostHost()
     return [
-      'http://localhost:4500',
-      'http://localhost:4501',
-      'http://localhost:3000',
+      `http://${host}:4500`,
+      `http://${host}:4501`,
+      `http://${host}:3000`,
     ]
   }
   return []

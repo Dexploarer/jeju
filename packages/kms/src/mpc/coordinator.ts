@@ -6,8 +6,6 @@
  * This coordinator reconstructs the full private key during signing.
  * For production use, prefer the SecureSigningService from signing-service.ts
  * or FROSTCoordinator from frost-signing.ts which NEVER reconstructs keys.
- *
- * @deprecated Use SecureSigningService or FROSTCoordinator for production
  */
 
 import { getEnv, getEnvOrDefault, logger } from '@jejunetwork/shared'
@@ -405,7 +403,7 @@ export class MPCCoordinator {
    * - Development and testing
    * - Scenarios where single-TEE security is acceptable
    *
-   * @deprecated Use FROST-based distributed signing for production
+   * NOTE: Use FROST-based distributed signing for production
    */
   private async aggregateSignature(
     session: MPCSignSession,

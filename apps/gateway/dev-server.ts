@@ -3,7 +3,11 @@ import { join, resolve } from 'node:path'
 import {
   CORE_PORTS,
   getChainId,
+  getIndexerGraphqlUrl,
   getIpfsApiUrl,
+  getLocalhostHost,
+  getOAuth3Url,
+  getRpcGatewayUrl,
   getRpcUrl,
   getWsUrl,
 } from '@jejunetwork/config'
@@ -87,16 +91,16 @@ async function build() {
       'import.meta.env.PUBLIC_WS_URL': JSON.stringify(getWsUrl('localnet')),
       'import.meta.env.PUBLIC_IPFS_API': JSON.stringify(getIpfsApiUrl()),
       'import.meta.env.PUBLIC_IPFS_GATEWAY': JSON.stringify(
-        'http://127.0.0.1:4180',
+        getIpfsGatewayUrl(),
       ),
       'import.meta.env.PUBLIC_INDEXER_URL': JSON.stringify(
-        `http://127.0.0.1:${CORE_PORTS.INDEXER_GRAPHQL.get()}/graphql`,
+        getIndexerGraphqlUrl(),
       ),
       'import.meta.env.PUBLIC_RPC_GATEWAY_URL': JSON.stringify(
-        `http://127.0.0.1:${CORE_PORTS.RPC_GATEWAY.get()}`,
+        getRpcGatewayUrl(),
       ),
       'import.meta.env.PUBLIC_OAUTH3_AGENT_URL': JSON.stringify(
-        `http://127.0.0.1:${CORE_PORTS.OAUTH3_API.get()}`,
+        getOAuth3Url(),
       ),
       'import.meta.env.PUBLIC_WALLETCONNECT_PROJECT_ID':
         JSON.stringify('YOUR_PROJECT_ID'),
@@ -136,7 +140,8 @@ const server = Bun.serve({
 
     // Proxy API requests to the backend server
     if (path.startsWith('/api/')) {
-      const apiUrl = `http://localhost:${API_PORT}${path}${url.search}`
+      const host = getLocalhostHost()
+      const apiUrl = `http://${host}:${API_PORT}${path}${url.search}`
       const response = await fetch(apiUrl, {
         method: req.method,
         headers: req.headers,
@@ -183,7 +188,8 @@ const server = Bun.serve({
   },
 })
 
-console.log(`Dev server running at http://localhost:${PORT}`)
+const host = getLocalhostHost()
+console.log(`Dev server running at http://${host}:${PORT}`)
 
 const watcher = watch(
   './web',

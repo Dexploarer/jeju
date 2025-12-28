@@ -17,7 +17,12 @@
 
 import { existsSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
-import { getIpfsApiUrl } from '@jejunetwork/config'
+import {
+  getContract,
+  getIpfsApiUrl,
+  getLocalhostHost,
+  getRpcUrl,
+} from '@jejunetwork/config'
 import { spawn } from 'bun'
 import {
   type Address,
@@ -434,7 +439,7 @@ async function deploy(config: DeployConfig): Promise<DeployResult> {
   // Get gateway URL
   const gatewayUrl =
     config.network === 'localnet'
-      ? `http://localhost:4180/ipfs/${cid}`
+      ? `http://${getLocalhostHost()}:4180/ipfs/${cid}`
       : `https://dweb.link/ipfs/${cid}`
 
   return {
@@ -484,31 +489,31 @@ async function parseArgs(): Promise<DeployConfig> {
     jnsName = manifest.jns?.name ?? jnsName
   }
 
-  // Network-specific configuration
+  // Network-specific configuration - use config package
   const networkConfigs = {
     localnet: {
-      ipfsApiUrl: getIpfsApiUrl(),
-      rpcUrl: process.env.RPC_URL ?? 'http://localhost:6546',
+      ipfsApiUrl: getIpfsApiUrl('localnet'),
+      rpcUrl: getRpcUrl('localnet'),
       jnsRegistryAddress: (process.env.JNS_REGISTRY_ADDRESS ??
-        '0x0000000000000000000000000000000000000000') as Address,
+        getContract('jns', 'registry')) as Address,
       jnsResolverAddress: (process.env.JNS_RESOLVER_ADDRESS ??
-        '0x0000000000000000000000000000000000000000') as Address,
+        getContract('jns', 'resolver')) as Address,
     },
     testnet: {
-      ipfsApiUrl: process.env.IPFS_API_URL ?? 'https://ipfs.infura.io:5001',
-      rpcUrl: process.env.RPC_URL ?? 'https://sepolia.base.org',
+      ipfsApiUrl: getIpfsApiUrl('testnet'),
+      rpcUrl: getRpcUrl('testnet'),
       jnsRegistryAddress: (process.env.JNS_REGISTRY_ADDRESS ??
-        '0x0000000000000000000000000000000000000000') as Address,
+        getContract('jns', 'registry', 'testnet')) as Address,
       jnsResolverAddress: (process.env.JNS_RESOLVER_ADDRESS ??
-        '0x0000000000000000000000000000000000000000') as Address,
+        getContract('jns', 'resolver', 'testnet')) as Address,
     },
     mainnet: {
-      ipfsApiUrl: process.env.IPFS_API_URL ?? 'https://ipfs.infura.io:5001',
-      rpcUrl: process.env.RPC_URL ?? 'https://mainnet.base.org',
+      ipfsApiUrl: getIpfsApiUrl('mainnet'),
+      rpcUrl: getRpcUrl('mainnet'),
       jnsRegistryAddress: (process.env.JNS_REGISTRY_ADDRESS ??
-        '0x0000000000000000000000000000000000000000') as Address,
+        getContract('jns', 'registry', 'mainnet')) as Address,
       jnsResolverAddress: (process.env.JNS_RESOLVER_ADDRESS ??
-        '0x0000000000000000000000000000000000000000') as Address,
+        getContract('jns', 'resolver', 'mainnet')) as Address,
     },
   }
 

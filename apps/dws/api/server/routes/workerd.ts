@@ -3,7 +3,14 @@
  * V8 isolate-based serverless worker deployment and invocation
  */
 
-import { getCurrentNetwork, getRpcUrl } from '@jejunetwork/config'
+import {
+  getContract,
+  getCurrentNetwork,
+  getDWSUrl,
+  getLocalhostHost,
+  getRpcUrl,
+  tryGetContract,
+} from '@jejunetwork/config'
 import {
   expectJson,
   expectValid,
@@ -823,17 +830,17 @@ const NETWORK_DEFAULTS: Record<
   localnet: {
     rpcUrl: getRpcUrl('localnet'),
     // Default to zero address - decentralized mode disabled unless contract is deployed
-    identityRegistry: (process.env.IDENTITY_REGISTRY_ADDRESS ||
+    identityRegistry: (tryGetContract('registry', 'identity', 'localnet') ||
       '0x0000000000000000000000000000000000000000') as Address,
   },
   testnet: {
-    rpcUrl: process.env.BASE_SEPOLIA_RPC_URL || 'https://sepolia.base.org',
-    identityRegistry: (process.env.TESTNET_IDENTITY_REGISTRY_ADDRESS ||
+    rpcUrl: getRpcUrl('testnet'),
+    identityRegistry: (tryGetContract('registry', 'identity', 'testnet') ||
       '0x0000000000000000000000000000000000000000') as Address,
   },
   mainnet: {
-    rpcUrl: process.env.BASE_RPC_URL || 'https://mainnet.base.org',
-    identityRegistry: (process.env.MAINNET_IDENTITY_REGISTRY_ADDRESS ||
+    rpcUrl: getRpcUrl('mainnet'),
+    identityRegistry: (tryGetContract('registry', 'identity', 'mainnet') ||
       '0x0000000000000000000000000000000000000000') as Address,
   },
 }
@@ -845,8 +852,8 @@ export function createDefaultWorkerdRouter(backend: BackendManager) {
   const defaults = NETWORK_DEFAULTS[network]
   const chain = getChainForNetwork(network)
 
-  const rpcUrl = getRpcUrl() || defaults.rpcUrl
-  const registryAddress = (process.env.IDENTITY_REGISTRY_ADDRESS ||
+  const rpcUrl = getRpcUrl(network) || defaults.rpcUrl
+  const registryAddress = (tryGetContract('registry', 'identity', network) ||
     defaults.identityRegistry) as Address
   const privateKey = process.env.PRIVATE_KEY as `0x${string}` | undefined
 
@@ -854,10 +861,12 @@ export function createDefaultWorkerdRouter(backend: BackendManager) {
   const enableDecentralized =
     registryAddress !== '0x0000000000000000000000000000000000000000'
 
+  const host = getLocalhostHost()
   const dwsEndpoint =
     process.env.DWS_ENDPOINT ||
     process.env.DWS_BASE_URL ||
-    `http://localhost:${process.env.DWS_PORT || process.env.PORT || '4030'}`
+    getDWSUrl() ||
+    `http://${host}:${process.env.DWS_PORT || process.env.PORT || '4030'}`
 
   console.log(`[Workerd] Network: ${network}`)
   console.log(`[Workerd] RPC URL: ${rpcUrl}`)

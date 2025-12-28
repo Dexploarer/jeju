@@ -8,6 +8,7 @@
  * - Integrate with TEE for data integrity
  */
 
+import { isProductionEnv } from '@jejunetwork/config'
 import type { Address, Hex } from 'viem'
 import { keccak256, toBytes } from 'viem'
 import { type PrivateKeyAccount, privateKeyToAccount } from 'viem/accounts'
@@ -95,7 +96,7 @@ export class DAOperator {
     if (this.initialized) return
 
     const { kmsKeyId, ownerAddress } = this.config
-    const isProduction = process.env.NODE_ENV === 'production'
+    const isProduction = isProductionEnv()
 
     if (kmsKeyId && ownerAddress) {
       this.secureSigner = await createSecureSigner(ownerAddress, kmsKeyId)

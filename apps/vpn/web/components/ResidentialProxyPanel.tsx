@@ -20,7 +20,6 @@ export function ResidentialProxyPanel() {
   const {
     status,
     settings,
-    stats,
     isLoading,
     updateSettings,
     toggleEnabled,
@@ -218,7 +217,7 @@ export function ResidentialProxyPanel() {
           <div className="card">
             <Wifi className="w-5 h-5 text-[#00aa55] mb-2" />
             <div className="text-lg font-semibold">
-              {formatBytes(BigInt(status.total_bytes_shared))}
+              {formatBytes(Number(BigInt(status.total_bytes_shared)))}
             </div>
             <div className="text-xs text-[#606070]">Bandwidth Shared</div>
           </div>

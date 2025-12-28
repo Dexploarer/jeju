@@ -1,10 +1,7 @@
 /**
  * KMS-based Signer for Autocrat
  *
- * @deprecated Use @jejunetwork/kms directly:
- * ```typescript
- * import { createKMSSigner, KMSSigner } from '@jejunetwork/kms'
- * ```
+ * Uses @jejunetwork/kms for all signing operations.
  */
 
 import { isProductionEnv } from '@jejunetwork/config'
@@ -212,4 +209,5 @@ export async function createKMSHttpWalletClient(
     transport: http(config.rpcUrl),
   })
 }
+
 

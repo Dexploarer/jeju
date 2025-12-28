@@ -1,5 +1,8 @@
 import { cors } from '@elysiajs/cors'
 import {
+  getContract,
+  getCurrentNetwork,
+  isProductionEnv,
   RPC_CHAINS as CHAINS,
   getRpcChain as getChain,
   getRpcMainnetChains as getMainnetChains,
@@ -103,7 +106,7 @@ type RpcMcpToolResult =
   | McpErrorResult
 
 const CORS_ORIGINS_ENV = process.env.CORS_ORIGINS?.split(',').filter(Boolean)
-const isProduction = process.env.NODE_ENV === 'production'
+const isProduction = isProductionEnv()
 const CORS_ORIGINS =
   isProduction && CORS_ORIGINS_ENV?.length ? CORS_ORIGINS_ENV : ['*']
 
@@ -701,15 +704,18 @@ export const rpcApp = new Elysia({ name: 'rpc-gateway' })
           },
         }
       })
-      .get('/stake', () => ({
-        contract: process.env.RPC_STAKING_ADDRESS || 'Not deployed',
-        pricing: 'USD-denominated (dynamic based on JEJU price)',
-        tiers: {
-          FREE: { minUsd: 0, rateLimit: 10, description: '10 requests/minute' },
-          BASIC: {
-            minUsd: 10,
-            rateLimit: 100,
-            description: '100 requests/minute',
+      .get('/stake', () => {
+        const network = getCurrentNetwork()
+        const stakingAddress = getContract('rpc', 'staking', network) || 'Not deployed'
+        return {
+          contract: stakingAddress,
+          pricing: 'USD-denominated (dynamic based on JEJU price)',
+          tiers: {
+            FREE: { minUsd: 0, rateLimit: 10, description: '10 requests/minute' },
+            BASIC: {
+              minUsd: 10,
+              rateLimit: 100,
+              description: '100 requests/minute',
           },
           PRO: {
             minUsd: 100,

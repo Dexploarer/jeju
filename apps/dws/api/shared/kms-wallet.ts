@@ -41,8 +41,12 @@ import {
   toHex,
 } from 'viem'
 
-// KMS endpoint
-const KMS_ENDPOINT = process.env.KMS_ENDPOINT ?? 'http://localhost:4030/kms'
+import { getKmsUrl, getCurrentNetwork, isProductionEnv } from '@jejunetwork/config'
+
+// KMS endpoint - env override takes precedence, then config
+const KMS_ENDPOINT =
+  (typeof process !== 'undefined' ? process.env.KMS_ENDPOINT : undefined) ??
+  getKmsUrl(getCurrentNetwork())
 
 interface KMSSignResult {
   signature: Hex
@@ -170,12 +174,6 @@ async function createKMSAccount(
     return requestKMSSignature(kmsKeyId, hash, ownerAddress)
   }
 
-  async function signTypedData(_typedData: TypedDataDefinition): Promise<Hex> {
-    throw new Error(
-      'signTypedData not yet implemented for KMS wallet - use signMessage with pre-hashed EIP-712 data',
-    )
-  }
-
   return {
     address: keyInfo.address,
     type: 'local',
@@ -183,8 +181,12 @@ async function createKMSAccount(
     source: 'custom' as const,
     signMessage,
     signTransaction,
-    signTypedData,
-  }
+    signTypedData: async () => {
+      throw new Error(
+        'signTypedData not yet implemented for KMS wallet - use signMessage with pre-hashed EIP-712 data',
+      )
+    },
+  } as LocalAccount
 }
 
 /**
@@ -335,7 +337,7 @@ export async function getOrCreateKMSKey(
   }
 
   // In production, key must exist
-  if (process.env.NODE_ENV === 'production') {
+  if (isProductionEnv()) {
     throw new Error(
       `${serviceName.toUpperCase()}_KMS_KEY_ID must be set in production`,
     )

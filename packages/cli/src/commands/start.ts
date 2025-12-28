@@ -1,8 +1,13 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import {
+  getDwsUrl,
   getEQLiteBlockProducerUrl,
   getFarcasterHubUrl,
+  getIpfsGatewayUrl,
+  getL1RpcUrl,
+  getL2RpcUrl,
+  getLocalhostHost,
 } from '@jejunetwork/config'
 import { Command } from 'commander'
 import { execa } from 'execa'
@@ -76,7 +81,7 @@ async function startProduction(options: { minimal?: boolean }): Promise<void> {
     process.exit(1)
   }
 
-  const l2RpcUrl = `http://127.0.0.1:${DEFAULT_PORTS.l2Rpc}`
+  const l2RpcUrl = getL2RpcUrl()
 
   // Step 2: Bootstrap contracts
   logger.step('Bootstrapping contracts...')
@@ -258,7 +263,7 @@ async function deployAppsProduction(
         NODE_ENV: 'production',
         PORT: String(apiPort),
         JEJU_RPC_URL: rpcUrl,
-        JEJU_DWS_ENDPOINT: 'http://localhost:4030',
+        JEJU_DWS_ENDPOINT: `http://${getLocalhostHost()}:4030`,
         JEJU_NETWORK: 'localnet',
         EQLITE_BLOCK_PRODUCER_ENDPOINT: getEQLiteBlockProducerUrl(),
         WORKER_REGISTRY_ADDRESS: dwsContracts.workerRegistry,
@@ -392,10 +397,10 @@ async function printReady(
       },
       {
         label: 'IPFS',
-        value: `http://127.0.0.1:${DEFAULT_PORTS.ipfs}`,
+        value: getIpfsGatewayUrl(),
         status: 'ok' as const,
       },
-      { label: 'DWS', value: 'http://127.0.0.1:4030', status: 'ok' as const },
+      { label: 'DWS', value: getDwsUrl(), status: 'ok' as const },
     ])
   }
 
@@ -403,7 +408,7 @@ async function printReady(
   const chainRows = [
     {
       label: 'L1 RPC',
-      value: `http://127.0.0.1:${DEFAULT_PORTS.l1Rpc}`,
+      value: getL1RpcUrl(),
       status: 'ok' as const,
     },
     { label: 'L2 RPC', value: rpcUrl, status: 'ok' as const },
@@ -453,8 +458,9 @@ async function printReady(
 
       const port = svc.port
       if (port) {
+        const localhost = getLocalhostHost()
         logger.table([
-          { label: svc.name, value: `http://127.0.0.1:${port}`, status: 'ok' },
+          { label: svc.name, value: `http://${localhost}:${port}`, status: 'ok' },
         ])
       }
     }

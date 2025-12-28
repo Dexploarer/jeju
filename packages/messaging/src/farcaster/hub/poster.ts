@@ -72,9 +72,9 @@ export class FarcasterPoster {
   private readonly network: FarcasterNetwork
 
   /**
-   * @deprecated For production, use KMSFarcasterPoster which keeps
+   * For production, use KMSFarcasterPoster which keeps
    * private keys inside the KMS enclave. This constructor stores
-   * the private key in memory, making it vulnerable to side-channel attacks.
+   * the private key in memory.
    */
   constructor(config: FarcasterPosterConfig) {
     // Security check - prevent local key usage in production

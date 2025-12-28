@@ -14,6 +14,15 @@
  * - All sessions are logged for audit
  * - Automatic key rotation
  * - Connection timeouts and idle disconnect
+ *
+ * @environment DWS_VAULT_KEY - Encryption key for SSH private keys (required in production)
+ *   - Must be at least 32 characters
+ *   - SSH keys are encrypted with AES-256-GCM using this key
+ *   - In development: Falls back to insecure dev key with warning
+ *   - In production (NODE_ENV=production or JEJU_NETWORK=mainnet): Required
+ *
+ * @limitation Terminal resize requires PTY support - resize() has limited functionality
+ * @limitation Key rotation is not fully implemented - rotateExpiredKeys() only logs
  */
 
 import { Elysia } from 'elysia'
@@ -22,6 +31,7 @@ import type { ServerWebSocket } from 'bun'
 import { randomBytes } from 'crypto'
 import type { Address, Hex } from 'viem'
 import { verifyMessage } from 'viem'
+import { getLocalhostHost } from '@jejunetwork/config'
 
 // ============ Types ============
 
@@ -735,21 +745,52 @@ export class SSHGateway {
 
     for (const credential of credentials.values()) {
       if (now - credential.rotatedAt > this.config.keyRotationIntervalMs) {
-        console.log(`[SSHGateway] Key rotation needed for ${credential.computeId}`)
-        // In production, would trigger key rotation workflow
-        // This would involve generating new key, deploying to instance, updating credential
+        // Key rotation is not implemented - just log for now
+        // In a full implementation, this would:
+        // 1. Generate new SSH keypair
+        // 2. Deploy public key to the compute instance via cloud-init or SSH
+        // 3. Update the stored credential with new private key
+        // 4. Verify connectivity with new key
+        // 5. Remove old key from instance
+        console.warn(`[SSHGateway] Key rotation overdue for ${credential.computeId} - rotation not implemented`)
       }
     }
+  }
+
+  // Development fallback key constant
+  private static readonly DEV_VAULT_KEY = 'dev-ssh-key-do-not-use-in-prod-32ch'
+  private static vaultKeyWarned = false
+
+  /**
+   * Get vault key with dev fallback
+   */
+  private getVaultKey(): string {
+    const key = process.env.DWS_VAULT_KEY
+    
+    if (key && key.length >= 32) {
+      return key
+    }
+    
+    // In production, fail hard
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.JEJU_NETWORK === 'mainnet'
+    if (isProduction) {
+      throw new Error('CRITICAL: DWS_VAULT_KEY must be set for SSH key encryption in production')
+    }
+    
+    // In development, use fallback but warn
+    if (!SSHGateway.vaultKeyWarned) {
+      console.warn('⚠️  WARNING: DWS_VAULT_KEY not set - SSH keys using insecure dev encryption')
+      SSHGateway.vaultKeyWarned = true
+    }
+    
+    return SSHGateway.DEV_VAULT_KEY
   }
 
   /**
    * Encrypt SSH private key using AES-256-GCM
    */
   private async encryptKey(key: string): Promise<string> {
-    const vaultKey = process.env.DWS_VAULT_KEY
-    if (!vaultKey || vaultKey.length < 32) {
-      throw new Error('DWS_VAULT_KEY must be set and at least 32 characters')
-    }
+    const vaultKey = this.getVaultKey()
 
     // Derive encryption key
     const keyMaterial = new TextEncoder().encode(vaultKey + ':ssh-key-vault')
@@ -788,10 +829,7 @@ export class SSHGateway {
    * Decrypt SSH private key
    */
   private async decryptKey(encrypted: string): Promise<string> {
-    const vaultKey = process.env.DWS_VAULT_KEY
-    if (!vaultKey || vaultKey.length < 32) {
-      throw new Error('DWS_VAULT_KEY must be set')
-    }
+    const vaultKey = this.getVaultKey()
 
     // Derive encryption key
     const keyMaterial = new TextEncoder().encode(vaultKey + ':ssh-key-vault')
@@ -913,7 +951,7 @@ export function createSSHGatewayRouter(gateway: SSHGateway) {
   // Start session
   router.post('/session', async ({ body, request }) => {
     const { token } = body as { token: string }
-    const clientIp = request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip') ?? '127.0.0.1'
+    const clientIp = request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip') ?? getLocalhostHost()
 
     const session = await gateway.startSession({ token, clientIp })
     return { sessionId: session.id }

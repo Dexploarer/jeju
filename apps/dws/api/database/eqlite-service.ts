@@ -10,7 +10,11 @@
  * EQLite runs ON DWS, not as a separate deployment.
  */
 
-import { INFRA_PORTS } from '@jejunetwork/config'
+import {
+  getEQLiteBlockProducerUrl,
+  getLocalhostHost,
+  INFRA_PORTS,
+} from '@jejunetwork/config'
 import type { Address } from 'viem'
 import {
   getServiceByName,
@@ -85,7 +89,7 @@ async function initializeEQLite(): Promise<ServiceInstance> {
       { name: 'eqlite-config', mountPath: '/config' },
     ],
     healthCheck: {
-      command: ['curl', '-sf', 'http://localhost:8546/v1/status'],
+      command: ['curl', '-sf', `${getEQLiteBlockProducerUrl()}/v1/status`],
       interval: 10000,
       timeout: 5000,
       retries: 5,
@@ -113,11 +117,12 @@ async function initializeEQLite(): Promise<ServiceInstance> {
 export function getEQLiteEndpoint(): string {
   if (!eqliteServiceInstance) {
     // Return default endpoint - service may not be initialized yet
-    return `http://127.0.0.1:${EQLITE_HTTP_PORT}`
+    return getEQLiteBlockProducerUrl()
   }
 
   const httpPort = eqliteServiceInstance.ports.find((p) => p.container === 8546)
-  return `http://127.0.0.1:${httpPort?.host ?? EQLITE_HTTP_PORT}`
+  const localhost = getLocalhostHost()
+  return `http://${localhost}:${httpPort?.host ?? EQLITE_HTTP_PORT}`
 }
 
 /**

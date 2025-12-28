@@ -9,12 +9,51 @@ import {
   ResidentialProxyStatsSchema,
 } from '../../lib/schemas'
 
+// Initial state values - NOT used as error fallback, only for initial render
+const INITIAL_STATUS: ResidentialProxyStatus = {
+  is_registered: false,
+  is_active: false,
+  stake_amount: '0',
+  total_bytes_shared: '0',
+  total_sessions: 0,
+  total_earnings: '0',
+  pending_rewards: '0',
+  current_connections: 0,
+  uptime_score: 0,
+  success_rate: 0,
+  coordinator_connected: false,
+}
+
+const INITIAL_SETTINGS: ResidentialProxySettings = {
+  enabled: false,
+  node_type: 'residential',
+  max_bandwidth_mbps: 100,
+  max_concurrent_connections: 50,
+  allowed_ports: [80, 443, 8080, 8443],
+  blocked_domains: [],
+  schedule_enabled: false,
+}
+
+const INITIAL_STATS: ResidentialProxyStats = {
+  bytes_shared_today: '0',
+  bytes_shared_week: '0',
+  bytes_shared_month: '0',
+  sessions_today: 0,
+  sessions_week: 0,
+  avg_session_duration_ms: 0,
+  peak_bandwidth_mbps: 0,
+  earnings_today: '0',
+  earnings_week: '0',
+  earnings_month: '0',
+}
+
 export function useResidentialProxy() {
-  const [status, setStatus] = useState<ResidentialProxyStatus | null>(null)
-  const [settings, setSettings] = useState<ResidentialProxySettings | null>(null)
-  const [stats, setStats] = useState<ResidentialProxyStats | null>(null)
+  const [status, setStatus] = useState<ResidentialProxyStatus>(INITIAL_STATUS)
+  const [settings, setSettings] = useState<ResidentialProxySettings>(INITIAL_SETTINGS)
+  const [stats, setStats] = useState<ResidentialProxyStats>(INITIAL_STATS)
   const [error, setError] = useState<Error | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [hasInitialized, setHasInitialized] = useState(false)
   const mountedRef = useRef(true)
   const fetchIdRef = useRef(0)
 
@@ -25,6 +64,8 @@ export function useResidentialProxy() {
       const thisFetchId = ++fetchIdRef.current
 
       try {
+        setError(null)
+
         const [statusData, settingsData, statsData] = await Promise.all([
           invoke('get_residential_proxy_status', {}, ResidentialProxyStatusSchema),
           invoke('get_residential_proxy_settings', {}, ResidentialProxySettingsSchema),
@@ -35,51 +76,23 @@ export function useResidentialProxy() {
           setStatus(statusData)
           setSettings(settingsData)
           setStats(statsData)
-          setError(null)
           setIsLoading(false)
+          setHasInitialized(true)
         }
       } catch (err) {
         if (mountedRef.current && thisFetchId === fetchIdRef.current) {
-          // If the commands don't exist yet, use defaults
-          const defaultSettings: ResidentialProxySettings = {
-            enabled: false,
-            node_type: 'residential',
-            max_bandwidth_mbps: 100,
-            max_concurrent_connections: 50,
-            allowed_ports: [80, 443, 8080, 8443],
-            blocked_domains: [],
-            schedule_enabled: false,
-          }
-          const defaultStatus: ResidentialProxyStatus = {
-            is_registered: false,
-            is_active: false,
-            stake_amount: '0',
-            total_bytes_shared: '0',
-            total_sessions: 0,
-            total_earnings: '0',
-            pending_rewards: '0',
-            current_connections: 0,
-            uptime_score: 0,
-            success_rate: 0,
-            coordinator_connected: false,
-          }
-          const defaultStats: ResidentialProxyStats = {
-            bytes_shared_today: '0',
-            bytes_shared_week: '0',
-            bytes_shared_month: '0',
-            sessions_today: 0,
-            sessions_week: 0,
-            avg_session_duration_ms: 0,
-            peak_bandwidth_mbps: 0,
-            earnings_today: '0',
-            earnings_week: '0',
-            earnings_month: '0',
-          }
+          const errorInstance =
+            err instanceof Error ? err : new Error(String(err))
 
-          setSettings(defaultSettings)
-          setStatus(defaultStatus)
-          setStats(defaultStats)
-          setError(null)
+          // Only set error if we've already initialized once (API is available)
+          // On first load, the API might not exist yet
+          if (hasInitialized) {
+            setError(errorInstance)
+            console.error('[useResidentialProxy] Failed to fetch data:', errorInstance)
+          } else {
+            // First load - API endpoints might not exist yet, keep initial state
+            console.warn('[useResidentialProxy] Initial fetch failed, service may not be deployed:', errorInstance.message)
+          }
           setIsLoading(false)
         }
       }
@@ -92,7 +105,7 @@ export function useResidentialProxy() {
       mountedRef.current = false
       clearInterval(interval)
     }
-  }, [])
+  }, [hasInitialized])
 
   const updateSettings = useCallback(
     async (newSettings: ResidentialProxySettings) => {
@@ -107,8 +120,6 @@ export function useResidentialProxy() {
   )
 
   const toggleEnabled = useCallback(async () => {
-    if (!settings) return
-
     const newSettings = { ...settings, enabled: !settings.enabled }
     await updateSettings(newSettings)
   }, [settings, updateSettings])
@@ -116,7 +127,11 @@ export function useResidentialProxy() {
   const register = useCallback(async (stakeAmount: string) => {
     await invoke('register_residential_proxy', { stake_amount: stakeAmount })
     // Refresh status after registration
-    const newStatus = await invoke('get_residential_proxy_status', {}, ResidentialProxyStatusSchema)
+    const newStatus = await invoke(
+      'get_residential_proxy_status',
+      {},
+      ResidentialProxyStatusSchema,
+    )
     if (mountedRef.current) {
       setStatus(newStatus)
     }
@@ -125,7 +140,11 @@ export function useResidentialProxy() {
   const claimRewards = useCallback(async () => {
     await invoke('claim_residential_proxy_rewards', {})
     // Refresh status after claiming
-    const newStatus = await invoke('get_residential_proxy_status', {}, ResidentialProxyStatusSchema)
+    const newStatus = await invoke(
+      'get_residential_proxy_status',
+      {},
+      ResidentialProxyStatusSchema,
+    )
     if (mountedRef.current) {
       setStatus(newStatus)
     }
@@ -137,6 +156,7 @@ export function useResidentialProxy() {
     stats,
     error,
     isLoading,
+    hasInitialized,
     updateSettings,
     toggleEnabled,
     register,

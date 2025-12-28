@@ -8,6 +8,7 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { join } from 'node:path'
+import { getL2RpcUrl } from '@jejunetwork/config'
 import { bytesToHex, hash256, hash512, randomBytes } from '@jejunetwork/shared'
 import { Command } from 'commander'
 import { execa } from 'execa'
@@ -1455,7 +1456,7 @@ async function showKeys(network: NetworkType, showPrivate: boolean) {
     logger.subheader('MetaMask Configuration')
     logger.newline()
     logger.info('Network Name:   Network Localnet')
-    logger.info('RPC URL:        http://127.0.0.1:6546')
+    logger.info(`RPC URL:        ${getL2RpcUrl()}`)
     logger.info('Chain ID:       31337')
     logger.info('Currency:       ETH')
     logger.newline()

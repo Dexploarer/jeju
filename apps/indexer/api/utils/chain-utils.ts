@@ -1,17 +1,12 @@
 import type { Chain } from 'viem'
+import { isLocalnet } from '@jejunetwork/config'
 
 export function inferChainFromRpcUrl(rpcUrl: string): Chain {
   if (!rpcUrl || rpcUrl.trim().length === 0) {
     throw new Error('rpcUrl is required and must be a non-empty string')
   }
 
-  if (
-    rpcUrl.includes('localhost') ||
-    rpcUrl.includes('127.0.0.1') ||
-    rpcUrl.includes(':6545') ||
-    rpcUrl.includes(':6546') ||
-    rpcUrl.includes(':6547')
-  ) {
+  if (isLocalnet(rpcUrl)) {
     return {
       id: 31337,
       name: 'Local Network',

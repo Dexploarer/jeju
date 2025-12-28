@@ -3,6 +3,7 @@
  */
 
 import { cors } from '@elysiajs/cors'
+import { getLocalhostHost } from '@jejunetwork/config'
 import { validateOrThrow } from '@jejunetwork/types'
 import { Elysia } from 'elysia'
 import { z } from 'zod'
@@ -675,7 +676,8 @@ export async function startA2AServer(): Promise<void> {
 
   app.listen(A2A_PORT)
 
-  console.log(`📡 A2A Server running on http://localhost:${A2A_PORT}`)
+  const host = getLocalhostHost()
+  console.log(`📡 A2A Server running on http://${host}:${A2A_PORT}`)
 }
 
 export { AGENT_CARD as INDEXER_AGENT_CARD }

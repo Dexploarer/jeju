@@ -13,8 +13,95 @@
  * - Avoid overloading single nodes
  */
 
-import type { Address } from 'viem'
+import {
+  type Address,
+  createPublicClient,
+  decodeFunctionResult,
+  encodeFunctionData,
+  http,
+} from 'viem'
 import { RPC_URLS, JEJU_CHAIN_ID } from '../../../lib/config/networks'
+
+// Contract ABI fragments for MultiChainRPCRegistry
+const MULTI_CHAIN_RPC_REGISTRY_ABI = [
+  {
+    type: 'function',
+    name: 'getQualifiedProviders',
+    inputs: [
+      { name: 'chainId', type: 'uint64' },
+      { name: 'minUptime', type: 'uint256' },
+      { name: 'requireArchive', type: 'bool' },
+      { name: 'maxCount', type: 'uint16' },
+    ],
+    outputs: [
+      { name: 'providers', type: 'address[]' },
+      { name: 'scores', type: 'uint256[]' },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getNode',
+    inputs: [{ name: 'node', type: 'address' }],
+    outputs: [
+      {
+        name: '',
+        type: 'tuple',
+        components: [
+          { name: 'operator', type: 'address' },
+          { name: 'region', type: 'string' },
+          { name: 'stake', type: 'uint256' },
+          { name: 'jejuStake', type: 'uint256' },
+          { name: 'registeredAt', type: 'uint256' },
+          { name: 'agentId', type: 'uint256' },
+          { name: 'isActive', type: 'bool' },
+          { name: 'isFrozen', type: 'bool' },
+          { name: 'totalRequests', type: 'uint256' },
+          { name: 'totalComputeUnits', type: 'uint256' },
+          { name: 'totalErrors', type: 'uint256' },
+          { name: 'lastSeen', type: 'uint64' },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getChainEndpoint',
+    inputs: [
+      { name: 'node', type: 'address' },
+      { name: 'chainId', type: 'uint64' },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'tuple',
+        components: [
+          { name: 'chainId', type: 'uint64' },
+          { name: 'endpoint', type: 'string' },
+          { name: 'isActive', type: 'bool' },
+          { name: 'isArchive', type: 'bool' },
+          { name: 'isWebSocket', type: 'bool' },
+          { name: 'blockHeight', type: 'uint64' },
+          { name: 'lastUpdated', type: 'uint64' },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'nodePerformance',
+    inputs: [{ name: 'node', type: 'address' }],
+    outputs: [
+      { name: 'uptimeScore', type: 'uint256' },
+      { name: 'successRate', type: 'uint256' },
+      { name: 'avgLatencyMs', type: 'uint256' },
+      { name: 'lastUpdated', type: 'uint256' },
+    ],
+    stateMutability: 'view',
+  },
+] as const
 
 // Get Jeju RPC URL
 const JEJU_RPC_URL = RPC_URLS[JEJU_CHAIN_ID as keyof typeof RPC_URLS]
@@ -47,34 +134,9 @@ interface NodeWithScore {
   latencyMs: number
 }
 
-interface ContractEndpoint {
-  chainId: bigint
-  endpoint: string
-  isActive: boolean
-  isArchive: boolean
-  isWebSocket: boolean
-  blockHeight: bigint
-  lastUpdated: bigint
-}
-
-interface ContractNode {
-  operator: Address
-  region: string
-  stake: bigint
-  jejuStake: bigint
-  registeredAt: bigint
-  agentId: bigint
-  isActive: boolean
-  isFrozen: boolean
-  totalRequests: bigint
-  totalComputeUnits: bigint
-  totalErrors: bigint
-  lastSeen: bigint
-}
-
 // Cache for node data
 interface NodeCache {
-  nodes: Map<number, NodeWithScore[]> // chainId -> nodes
+  nodes: Map<number, NodeWithScore[]>
   lastUpdated: Map<number, number>
 }
 
@@ -87,13 +149,15 @@ const CACHE_TTL_MS = 60_000 // 1 minute cache
 
 export class DecentralizedNodeSelector {
   private registryAddress: Address
-  private rpcUrl: string
+  private client: ReturnType<typeof createPublicClient>
   private enabled: boolean
 
   constructor(registryAddress: Address, rpcUrl?: string) {
     this.registryAddress = registryAddress
-    this.rpcUrl = rpcUrl ?? JEJU_RPC_URL
-    this.enabled = true
+    this.client = createPublicClient({
+      transport: http(rpcUrl ?? JEJU_RPC_URL),
+    })
+    this.enabled = registryAddress !== '0x0000000000000000000000000000000000000000'
   }
 
   /**
@@ -112,7 +176,7 @@ export class DecentralizedNodeSelector {
       return this.filterAndRank(cached, criteria)
     }
 
-    // Fetch from contract using direct RPC call
+    // Fetch from contract
     const nodesWithDetails = await this.fetchQualifiedProviders(
       chainId,
       minUptime,
@@ -128,7 +192,7 @@ export class DecentralizedNodeSelector {
   }
 
   /**
-   * Fetch qualified providers from contract
+   * Fetch qualified providers from contract with proper ABI encoding/decoding
    */
   private async fetchQualifiedProviders(
     chainId: number,
@@ -136,30 +200,30 @@ export class DecentralizedNodeSelector {
     requireArchive: boolean,
     maxNodes: number,
   ): Promise<NodeWithScore[]> {
-    // Call contract using JSON-RPC
-    const response = await fetch(this.rpcUrl, {
+    // Encode the function call
+    const callData = encodeFunctionData({
+      abi: MULTI_CHAIN_RPC_REGISTRY_ABI,
+      functionName: 'getQualifiedProviders',
+      args: [BigInt(chainId), BigInt(minUptime), requireArchive, maxNodes],
+    })
+
+    // Make the call
+    const response = await fetch(this.client.transport.url as string, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         jsonrpc: '2.0',
         method: 'eth_call',
-        params: [
-          {
-            to: this.registryAddress,
-            data: this.encodeGetQualifiedProviders(
-              chainId,
-              minUptime,
-              requireArchive,
-              maxNodes,
-            ),
-          },
-          'latest',
-        ],
+        params: [{ to: this.registryAddress, data: callData }, 'latest'],
         id: 1,
       }),
     })
 
-    const result = (await response.json()) as { result?: string; error?: { message: string } }
+    const result = (await response.json()) as {
+      result?: string
+      error?: { message: string }
+    }
+
     if (result.error) {
       console.error('[NodeSelector] Contract call failed:', result.error)
       return []
@@ -169,28 +233,156 @@ export class DecentralizedNodeSelector {
       return []
     }
 
-    // Decode response (simplified - actual decoding would parse ABI)
-    // For now, return empty and let fallback to static endpoints
-    return []
+    // Decode the response
+    const decoded = decodeFunctionResult({
+      abi: MULTI_CHAIN_RPC_REGISTRY_ABI,
+      functionName: 'getQualifiedProviders',
+      data: result.result as `0x${string}`,
+    }) as [Address[], bigint[]]
+
+    const [providers, scores] = decoded
+
+    if (!providers || providers.length === 0) {
+      return []
+    }
+
+    // Fetch node details for each provider
+    const nodesWithDetails: NodeWithScore[] = []
+
+    for (let i = 0; i < providers.length; i++) {
+      const providerAddress = providers[i]
+      const score = scores[i]
+
+      // Get endpoint for this chain
+      const endpoint = await this.getEndpointForChain(providerAddress, chainId)
+      if (!endpoint) continue
+
+      // Get node info for region
+      const nodeInfo = await this.getNodeInfo(providerAddress)
+      if (!nodeInfo) continue
+
+      nodesWithDetails.push({
+        address: providerAddress,
+        endpoint,
+        region: nodeInfo.region,
+        score,
+        latencyMs: 0, // Will be populated by live measurements
+      })
+    }
+
+    return nodesWithDetails
   }
 
   /**
-   * Encode getQualifiedProviders call
+   * Get the RPC endpoint for a node on a specific chain
    */
-  private encodeGetQualifiedProviders(
+  private async getEndpointForChain(
+    node: Address,
     chainId: number,
-    minUptime: number,
-    requireArchive: boolean,
-    maxCount: number,
-  ): string {
-    // Function selector: keccak256("getQualifiedProviders(uint64,uint256,bool,uint16)")
-    const selector = '0x8b7afe2e'
-    const chainIdHex = chainId.toString(16).padStart(64, '0')
-    const minUptimeHex = minUptime.toString(16).padStart(64, '0')
-    const requireArchiveHex = requireArchive ? '1'.padStart(64, '0') : '0'.padStart(64, '0')
-    const maxCountHex = maxCount.toString(16).padStart(64, '0')
+  ): Promise<string | null> {
+    const callData = encodeFunctionData({
+      abi: MULTI_CHAIN_RPC_REGISTRY_ABI,
+      functionName: 'getChainEndpoint',
+      args: [node, BigInt(chainId)],
+    })
 
-    return `${selector}${chainIdHex}${minUptimeHex}${requireArchiveHex}${maxCountHex}`
+    const response = await fetch(this.client.transport.url as string, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'eth_call',
+        params: [{ to: this.registryAddress, data: callData }, 'latest'],
+        id: 1,
+      }),
+    })
+
+    const result = (await response.json()) as {
+      result?: string
+      error?: { message: string }
+    }
+
+    if (result.error || !result.result || result.result === '0x') {
+      return null
+    }
+
+    const decoded = decodeFunctionResult({
+      abi: MULTI_CHAIN_RPC_REGISTRY_ABI,
+      functionName: 'getChainEndpoint',
+      data: result.result as `0x${string}`,
+    }) as {
+      chainId: bigint
+      endpoint: string
+      isActive: boolean
+      isArchive: boolean
+      isWebSocket: boolean
+      blockHeight: bigint
+      lastUpdated: bigint
+    }
+
+    if (!decoded.isActive || !decoded.endpoint) {
+      return null
+    }
+
+    return decoded.endpoint
+  }
+
+  /**
+   * Get node info (region, etc)
+   */
+  private async getNodeInfo(
+    node: Address,
+  ): Promise<{ region: string } | null> {
+    const callData = encodeFunctionData({
+      abi: MULTI_CHAIN_RPC_REGISTRY_ABI,
+      functionName: 'getNode',
+      args: [node],
+    })
+
+    const response = await fetch(this.client.transport.url as string, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'eth_call',
+        params: [{ to: this.registryAddress, data: callData }, 'latest'],
+        id: 1,
+      }),
+    })
+
+    const result = (await response.json()) as {
+      result?: string
+      error?: { message: string }
+    }
+
+    if (result.error || !result.result || result.result === '0x') {
+      return null
+    }
+
+    const decoded = decodeFunctionResult({
+      abi: MULTI_CHAIN_RPC_REGISTRY_ABI,
+      functionName: 'getNode',
+      data: result.result as `0x${string}`,
+    }) as {
+      operator: Address
+      region: string
+      stake: bigint
+      jejuStake: bigint
+      registeredAt: bigint
+      agentId: bigint
+      isActive: boolean
+      isFrozen: boolean
+      totalRequests: bigint
+      totalComputeUnits: bigint
+      totalErrors: bigint
+      lastSeen: bigint
+    }
+
+    if (!decoded.isActive || decoded.isFrozen) {
+      return null
+    }
+
+    return { region: decoded.region }
   }
 
   /**
@@ -245,7 +437,8 @@ export class DecentralizedNodeSelector {
     )
     if (node) {
       // Exponential moving average
-      node.latencyMs = node.latencyMs === 0 ? latencyMs : node.latencyMs * 0.7 + latencyMs * 0.3
+      node.latencyMs =
+        node.latencyMs === 0 ? latencyMs : node.latencyMs * 0.7 + latencyMs * 0.3
     }
   }
 
@@ -316,8 +509,8 @@ export class DecentralizedNodeSelector {
     // Filter by region if specified
     if (criteria.preferRegion) {
       const preferredRegion = criteria.preferRegion.toLowerCase()
-      const inRegion = filtered.filter(
-        (n) => n.region.toLowerCase().includes(preferredRegion),
+      const inRegion = filtered.filter((n) =>
+        n.region.toLowerCase().includes(preferredRegion),
       )
       if (inRegion.length > 0) {
         // Boost scores for preferred region

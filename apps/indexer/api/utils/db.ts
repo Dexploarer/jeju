@@ -1,3 +1,4 @@
+import { isProductionEnv } from '@jejunetwork/config'
 import { DataSource, DefaultNamingStrategy } from 'typeorm'
 import { config } from '../config'
 import * as models from '../model'
@@ -182,7 +183,7 @@ export async function getDataSource(): Promise<DataSource | null> {
   await dataSource.initialize()
   postgresAvailable = true
   // Don't log connection details in production to prevent side-channel leakage
-  if (process.env.NODE_ENV !== 'production') {
+  if (!isProductionEnv()) {
     console.log(
       `[DB] Connected: ${dbConfig.host}:${dbConfig.port}/${dbConfig.database}`,
     )

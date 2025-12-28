@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { getCurrentNetwork } from '@jejunetwork/config'
+import { getCurrentNetwork, getLocalhostHost } from '@jejunetwork/config'
 import type { NetworkType } from '@jejunetwork/types'
 import {
   createConfig,
@@ -147,9 +147,10 @@ async function main(): Promise<void> {
 
     console.log()
     console.log('[OK] Oracle node running')
+    const host = getLocalhostHost()
     console.log(`    Network: ${network} (chainId: ${config.chainId})`)
-    console.log(`    Metrics: http://localhost:${config.metricsPort}/metrics`)
-    console.log(`    Health:  http://localhost:${config.metricsPort}/health`)
+    console.log(`    Metrics: http://${host}:${config.metricsPort}/metrics`)
+    console.log(`    Health:  http://${host}:${config.metricsPort}/health`)
     console.log()
     console.log('Press Ctrl+C to stop')
   } catch (err) {

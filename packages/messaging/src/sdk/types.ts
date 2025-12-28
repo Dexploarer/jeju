@@ -157,8 +157,7 @@ export type MessageEventHandler = (event: MessageEvent) => void
 export interface MessagingClientConfig extends MessagingClientConfigBase {
   /** Signer function for transactions */
   signer?: (message: string) => Promise<string>
-
-  /** Pre-derived messaging key pair */
+  /** Key pair for encryption - DEVELOPMENT ONLY */
   keyPair?: {
     publicKey: Uint8Array
     privateKey: Uint8Array
@@ -308,19 +307,9 @@ export interface KMSEncryptionProvider {
  * This protects against side-channel attacks on the TEE enclave.
  */
 export interface SecureMessagingClientConfig extends MessagingClientConfigBase {
-  /** KMS signer for signature operations (recommended) */
-  kmsSigner?: KMSSigner
+  /** KMS signer for signature operations */
+  kmsSigner: KMSSigner
 
-  /** KMS encryption provider for E2E encryption (recommended) */
-  kmsEncryption?: KMSEncryptionProvider
-
-  /**
-   * @deprecated Use kmsSigner instead.
-   * Raw key pairs expose private keys to application memory,
-   * making them vulnerable to side-channel attacks.
-   */
-  keyPair?: {
-    publicKey: Uint8Array
-    privateKey: Uint8Array
-  }
+  /** KMS encryption provider for E2E encryption */
+  kmsEncryption: KMSEncryptionProvider
 }

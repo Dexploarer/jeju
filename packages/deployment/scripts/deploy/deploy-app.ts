@@ -8,9 +8,11 @@ import { join } from 'node:path'
  */
 import { parseArgs } from 'node:util'
 import {
+  getContract,
   getContractAddress,
   getDeployerConfig,
   getIpfsApiUrl,
+  getRpcUrl,
 } from '@jejunetwork/config'
 import {
   type Address,
@@ -456,14 +458,14 @@ async function main() {
   const deployerConfig = getDeployerConfig()
   const privateKey = deployerConfig.privateKey as Hex
 
-  const rpcUrl = process.env.RPC_URL ?? 'http://localhost:6546'
+  const rpcUrl = getRpcUrl()
   const ipfsApiUrl = getIpfsApiUrl()
 
   // Get contract addresses from config (env vars can override)
   const jnsRegistrar = (process.env.JNS_REGISTRAR ??
-    getContractAddress('jnsRegistrar')) as Address
+    getContract('jns', 'registrar')) as Address
   const jnsResolver = (process.env.JNS_RESOLVER ??
-    getContractAddress('jnsResolver')) as Address
+    getContract('jns', 'resolver')) as Address
 
   // Keepalive registry is optional
   let keepaliveRegistry: Address | null = null

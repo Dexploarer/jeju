@@ -15,10 +15,20 @@ import { cors } from '@elysiajs/cors'
 import {
   CORE_PORTS,
   type ContractCategoryName,
+  getApiKey,
   getContract,
   getCurrentNetwork,
+  getDWSComputeUrl,
   getEQLiteBlockProducerUrl,
+  getIpfsGatewayUrl,
+  getKMSUrl,
+  getL1RpcUrl,
+  getLocalhostHost,
+  getOAuth3Url,
   getRpcUrl,
+  getServiceUrl,
+  isLocalnet,
+  isProductionEnv,
 } from '@jejunetwork/config'
 import { Elysia } from 'elysia'
 import type { Address, Hex } from 'viem'
@@ -158,8 +168,7 @@ interface RateLimitEntry {
 const rateLimitStore = new Map<string, RateLimitEntry>()
 const RATE_LIMIT_WINDOW_MS = 60 * 1000
 const RATE_LIMIT_MAX =
-  (serverConfig.nodeEnv ??
-    (typeof process !== 'undefined' ? process.env.NODE_ENV : undefined)) ===
+  (serverConfig.nodeEnv ?? (isProductionEnv() ? 'production' : 'development')) ===
   'test'
     ? 100000
     : 1000
@@ -279,9 +288,7 @@ const app = new Elysia()
 const backendManager = createBackendManager()
 
 // Environment validation - require addresses in production
-const nodeEnv =
-  serverConfig.nodeEnv ??
-  (typeof process !== 'undefined' ? process.env.NODE_ENV : undefined)
+const nodeEnv = serverConfig.nodeEnv ?? (isProductionEnv() ? 'production' : 'development')
 const isProduction = nodeEnv === 'production'
 const NETWORK = getCurrentNetwork()
 const ZERO_ADDR = '0x0000000000000000000000000000000000000000' as Address
@@ -382,7 +389,7 @@ const emailRelayConfig = {
   emailRegistryAddress: getContractOrZero('registry', 'email'),
   emailStakingAddress: getContractOrZero('staking', 'email'),
   jnsAddress: getContractOrZero('registry', 'jns'),
-  dwsEndpoint: `http://localhost:${PORT}`,
+  dwsEndpoint: `http://${getLocalhostHost()}:${PORT}`,
   emailDomain:
     serverConfig.emailDomain ??
     (typeof process !== 'undefined' ? process.env.EMAIL_DOMAIN : undefined) ??
@@ -467,7 +474,7 @@ app
           const oauth3Url =
             serverConfig.oauth3AgentUrl ??
             process.env.OAUTH3_AGENT_URL ??
-            'http://localhost:4200'
+            getOAuth3Url(NETWORK)
           try {
             const response = await fetch(`${oauth3Url}/health`, {
               signal: AbortSignal.timeout(2000),
@@ -685,7 +692,8 @@ const daConfig = {
     serverConfig.daOperatorEndpoint ??
     serverConfig.baseUrl ??
     (typeof process !== 'undefined' ? process.env.DWS_BASE_URL : undefined) ??
-    `http://localhost:${PORT}`,
+    getServiceUrl('dws', 'api', NETWORK) ??
+    `http://${getLocalhostHost()}:${PORT}`,
   operatorRegion:
     serverConfig.daOperatorRegion ??
     (typeof process !== 'undefined'
@@ -825,10 +833,12 @@ app.get('/_internal/peers', () => {
 
 // Agent card for discovery
 app.get('/.well-known/agent-card.json', () => {
+  const host = getLocalhostHost()
   const baseUrl =
     serverConfig.baseUrl ??
     (typeof process !== 'undefined' ? process.env.DWS_BASE_URL : undefined) ??
-    `http://localhost:${PORT}`
+    getServiceUrl('dws', 'api', NETWORK) ??
+    `http://${host}:${PORT}`
   return {
     name: 'DWS',
     description: 'Decentralized Web Services',
@@ -1000,17 +1010,10 @@ if (import.meta.main) {
 
   // Inject configs from serverConfig and process.env (for backward compatibility)
   configureCDNRouterConfig({
-    jnsRegistryAddress:
-      typeof process !== 'undefined'
-        ? process.env.JNS_REGISTRY_ADDRESS
-        : undefined,
-    jnsResolverAddress:
-      typeof process !== 'undefined'
-        ? process.env.JNS_RESOLVER_ADDRESS
-        : undefined,
-    rpcUrl: typeof process !== 'undefined' ? process.env.RPC_URL : undefined,
-    ipfsGatewayUrl:
-      typeof process !== 'undefined' ? process.env.IPFS_GATEWAY_URL : undefined,
+    jnsRegistryAddress: getContractOrZero('registry', 'jns'),
+    jnsResolverAddress: getContractOrZero('registry', 'jnsResolver'),
+    rpcUrl: getRpcUrl(NETWORK),
+    ipfsGatewayUrl: getIpfsGatewayUrl(NETWORK),
     arweaveGatewayUrl:
       typeof process !== 'undefined'
         ? process.env.ARWEAVE_GATEWAY_URL
@@ -1029,39 +1032,27 @@ if (import.meta.main) {
       typeof process !== 'undefined'
         ? parseInt(process.env.DWS_CDN_DEFAULT_TTL || '3600', 10)
         : undefined,
-    isDevnet:
-      typeof process !== 'undefined'
-        ? process.env.DEVNET === 'true'
-        : undefined,
+    isDevnet: isLocalnet(NETWORK) || serverConfig.devnet,
     jejuAppsDir:
       typeof process !== 'undefined' ? process.env.JEJU_APPS_DIR : undefined,
-    nodeEnv: typeof process !== 'undefined' ? process.env.NODE_ENV : undefined,
+    nodeEnv: serverConfig.nodeEnv ?? (isProductionEnv() ? 'production' : 'development'),
   })
 
   configureOAuth3RouterConfig({
-    agentUrl: process.env.OAUTH3_AGENT_URL ?? 'http://localhost:4200',
+    agentUrl: serverConfig.oauth3AgentUrl ?? getOAuth3Url(NETWORK),
   })
 
   configureProxyRouterConfig({
-    indexerUrl:
-      typeof process !== 'undefined' ? process.env.INDEXER_URL : undefined,
-    indexerGraphqlUrl:
-      typeof process !== 'undefined'
-        ? process.env.INDEXER_GRAPHQL_URL
-        : undefined,
-    monitoringUrl:
-      typeof process !== 'undefined' ? process.env.MONITORING_URL : undefined,
-    prometheusUrl:
-      typeof process !== 'undefined' ? process.env.PROMETHEUS_URL : undefined,
-    gatewayUrl:
-      typeof process !== 'undefined' ? process.env.GATEWAY_URL : undefined,
+    indexerUrl: getServiceUrl('indexer', 'api', NETWORK),
+    indexerGraphqlUrl: getServiceUrl('indexer', 'graphql', NETWORK),
+    monitoringUrl: getServiceUrl('monitoring', 'api', NETWORK),
+    prometheusUrl: getServiceUrl('monitoring', 'prometheus', NETWORK),
+    gatewayUrl: getServiceUrl('gateway', 'api', NETWORK),
   })
 
   configureDNSRouterConfig({
-    ethRpcUrl:
-      typeof process !== 'undefined' ? process.env.ETH_RPC_URL : undefined,
-    cfApiToken:
-      typeof process !== 'undefined' ? process.env.CF_API_TOKEN : undefined,
+    ethRpcUrl: getL1RpcUrl(NETWORK),
+    cfApiToken: getApiKey('cloudflare'),
     cfZoneId:
       typeof process !== 'undefined' ? process.env.CF_ZONE_ID : undefined,
     cfDomain:
@@ -1088,10 +1079,8 @@ if (import.meta.main) {
       typeof process !== 'undefined'
         ? parseInt(process.env.DNS_SYNC_INTERVAL || '300', 10)
         : undefined,
-    gatewayEndpoint:
-      typeof process !== 'undefined' ? process.env.GATEWAY_ENDPOINT : undefined,
-    ipfsGateway:
-      typeof process !== 'undefined' ? process.env.IPFS_GATEWAY : undefined,
+    gatewayEndpoint: getServiceUrl('gateway', 'api', NETWORK),
+    ipfsGateway: getIpfsGatewayUrl(NETWORK),
   })
 
   configureX402PaymentsConfig({
@@ -1105,10 +1094,11 @@ if (import.meta.main) {
         : undefined,
   })
 
+  const host = getLocalhostHost()
   const baseUrl =
     serverConfig.baseUrl ??
     (typeof process !== 'undefined' ? process.env.DWS_BASE_URL : undefined) ??
-    `http://localhost:${PORT}`
+    `http://${host}:${PORT}`
 
   console.log(`[DWS] Running at ${baseUrl}`)
   console.log(
@@ -1134,9 +1124,7 @@ if (import.meta.main) {
     (typeof process !== 'undefined' ? process.env.JEJU_APPS_DIR : undefined) ??
     join(import.meta.dir, '../../../../apps') // Default to monorepo apps directory
   if (
-    (!isProduction ||
-      serverConfig.devnet ||
-      (typeof process !== 'undefined' && process.env.DEVNET === 'true')) &&
+    (!isProduction || serverConfig.devnet || isLocalnet(NETWORK)) &&
     existsSync(appsDir)
   ) {
     initializeLocalCDN({ appsDir, cacheEnabled: true })
@@ -1319,13 +1307,13 @@ if (import.meta.main) {
           (typeof process !== 'undefined'
             ? process.env.DWS_INFERENCE_URL
             : undefined) ??
-          `http://127.0.0.1:${PORT}/compute`,
+          getDWSComputeUrl(NETWORK),
         kmsUrl:
           serverConfig.kmsUrl ??
           (typeof process !== 'undefined'
             ? process.env.DWS_KMS_URL
             : undefined) ??
-          `http://127.0.0.1:${PORT}/kms`,
+          getKMSUrl(NETWORK),
         eqliteUrl: EQLITE_URL,
       })
       console.log('[DWS] Agent executor initialized')

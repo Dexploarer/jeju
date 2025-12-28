@@ -4,7 +4,12 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { cors } from '@elysiajs/cors'
 import { openapi } from '@elysiajs/openapi'
-import { CORE_PORTS, getEnvNumber, getEnvVar } from '@jejunetwork/config'
+import {
+  CORE_PORTS,
+  getEnvNumber,
+  getEnvVar,
+  getLocalhostHost,
+} from '@jejunetwork/config'
 import { Elysia } from 'elysia'
 import { configureFactory, getFactoryConfig } from './config'
 import { closeDB, initDB } from './db/client'
@@ -251,9 +256,10 @@ if (import.meta.main) {
     })
   }
 
+  const host = getLocalhostHost()
   app.listen(PORT, () => {
-    console.log(`🏭 Factory API running at http://localhost:${PORT}`)
-    console.log(`📚 API docs at http://localhost:${PORT}/swagger`)
+    console.log(`🏭 Factory API running at http://${host}:${PORT}`)
+    console.log(`📚 API docs at http://${host}:${PORT}/swagger`)
     if (hasStaticFiles) {
       console.log(`📁 Serving static files from ${STATIC_DIR}`)
     }

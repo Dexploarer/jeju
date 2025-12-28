@@ -3,7 +3,7 @@
  * Shared payment handling for Git and Pkg services
  */
 
-import { isProductionEnv } from '@jejunetwork/config'
+import { getCurrentNetwork, getRpcUrl, isProductionEnv } from '@jejunetwork/config'
 import { ZERO_ADDRESS } from '@jejunetwork/types'
 import type { Address, Hex } from 'viem'
 import { createPublicClient, http, isAddress } from 'viem'
@@ -161,7 +161,10 @@ export async function verifyPayment(
 
   // In production, verify on-chain
   if (isProductionEnv()) {
-    const rpcUrl = process.env.RPC_URL
+    const network = getCurrentNetwork()
+    const rpcUrl =
+      (typeof process !== 'undefined' ? process.env.RPC_URL : undefined) ??
+      getRpcUrl(network)
     if (!rpcUrl) {
       return {
         valid: false,

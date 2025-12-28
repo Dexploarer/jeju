@@ -23,8 +23,6 @@ export interface FacilitatorConfig {
   rpcUrl: string
   facilitatorAddress: Address
   usdcAddress: Address
-  /** @deprecated Use KMS service ID instead */
-  privateKey: null
   protocolFeeBps: number
   feeRecipient: Address
   maxPaymentAge: number
@@ -32,7 +30,7 @@ export interface FacilitatorConfig {
   serviceName: string
   serviceVersion: string
   serviceUrl: string
-  /** KMS service ID for signing (replaces private key) */
+  /** KMS service ID for signing */
   kmsServiceId: string
 }
 
@@ -65,8 +63,6 @@ export function getConfig(): FacilitatorConfig {
       chainConfig.facilitator,
     ),
     usdcAddress: getEnvAddress(gatewayConfig.usdcAddress, chainConfig.usdc),
-    // SECURITY: No private key - use KMS service ID
-    privateKey: null,
     protocolFeeBps: gatewayConfig.protocolFeeBps,
     feeRecipient: getEnvAddress(
       gatewayConfig.feeRecipientAddress,
@@ -150,21 +146,3 @@ export async function getConfigStatus(): Promise<{
   }
 }
 
-/**
- * @deprecated Use KMS signer instead of direct private key access.
- * This function is kept for backwards compatibility but always returns null.
- */
-export async function getPrivateKeyFromKMS(): Promise<null> {
-  console.warn(
-    '[X402 Config] getPrivateKeyFromKMS is deprecated. Use KMS signer via getKMSSigner(serviceId)',
-  )
-  return null
-}
-
-/**
- * @deprecated No longer needed as keys are not cached.
- */
-export async function clearKMSKeyCache(): Promise<void> {
-  // No-op - keys are no longer cached
-  clearClientCache()
-}

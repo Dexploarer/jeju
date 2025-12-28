@@ -20,6 +20,7 @@ import {
   getRpcUrl,
   getServicesConfig,
   getServiceUrl,
+  isProductionEnv,
 } from '@jejunetwork/config'
 import type { JsonObject } from '@jejunetwork/types'
 import { isHexString, isValidAddress } from '@jejunetwork/types'
@@ -241,7 +242,7 @@ function shouldUseKMS(): boolean {
   if (useKms === 'true') return true
   if (useKms === 'false') return false
   // Default: use KMS in production, allow direct signing in localnet
-  return NETWORK !== 'localnet'
+  return isProductionEnv() || NETWORK !== 'localnet'
 }
 
 function getOptionalAddress(

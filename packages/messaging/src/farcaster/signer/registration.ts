@@ -302,39 +302,6 @@ export class SignerRegistration {
   }
 
   /**
-   * Build message hash for signed key request (for manual signing)
-   * @deprecated Use buildSignedKeyRequestTypedData with wallet.signTypedData() instead
-   */
-  buildSignedKeyRequestMessage(params: {
-    publicKey: Hex
-    requestFid: number
-    deadline: number
-  }): Hex {
-    // Compute EIP-712 struct hash
-    const structHash = keccak256(
-      encodeAbiParameters(
-        [
-          { type: 'bytes32' }, // type hash
-          { type: 'uint256' }, // requestFid
-          { type: 'bytes32' }, // keccak256(key)
-          { type: 'uint256' }, // deadline
-        ],
-        [
-          keccak256(
-            new TextEncoder().encode(
-              'SignedKeyRequest(uint256 requestFid,bytes key,uint256 deadline)',
-            ),
-          ),
-          BigInt(params.requestFid),
-          keccak256(params.publicKey),
-          BigInt(params.deadline),
-        ],
-      ),
-    )
-    return structHash
-  }
-
-  /**
    * Encode signed key request metadata for on-chain submission using proper ABI encoding
    */
   private encodeSignedKeyRequestMetadata(params: {

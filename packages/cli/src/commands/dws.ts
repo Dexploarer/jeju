@@ -12,6 +12,8 @@ import {
   CORE_PORTS,
   getDWSUrl,
   getEQLiteBlockProducerUrl,
+  getL2RpcUrl,
+  getLocalhostHost,
 } from '@jejunetwork/config'
 import { toError } from '@jejunetwork/types'
 import { Command } from 'commander'
@@ -389,7 +391,7 @@ async function startDwsDev(options: {
     process.exit(1)
   }
 
-  const rpcUrl = `http://127.0.0.1:${DEFAULT_PORTS.l2Rpc}`
+  const rpcUrl = getL2RpcUrl()
 
   if (options.bootstrap !== false) {
     const bootstrapFile = join(
@@ -1560,7 +1562,8 @@ async function seedRegionalNodes(options: {
 
     logger.step('Seeding local TEE worker node...')
 
-    const endpoint = options.endpoint ?? 'http://localhost:4040'
+    const host = getLocalhostHost()
+    const endpoint = options.endpoint ?? `http://${host}:4040`
     const teePlatform = options.tee ?? 'simulator'
 
     logger.keyValue('Endpoint', endpoint)
@@ -1667,8 +1670,9 @@ async function verifyTeeGpu(options: { network: string }): Promise<void> {
   }
 
   if (options.network === 'localnet') {
-    env.RPC_URL = `http://localhost:${DEFAULT_PORTS.l2Rpc}`
-    env.DWS_ENDPOINT = 'http://localhost:4030'
+    const host = getLocalhostHost()
+    env.RPC_URL = `http://${host}:${DEFAULT_PORTS.l2Rpc}`
+    env.DWS_ENDPOINT = `http://${host}:4030`
   } else if (options.network === 'testnet') {
     env.RPC_URL = 'https://testnet-rpc.jejunetwork.org'
     env.DWS_ENDPOINT = 'https://testnet-dws.jejunetwork.org'

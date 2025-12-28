@@ -8,7 +8,11 @@
  * - No centralized cloud provider is required
  */
 
-import { getIpfsApiUrl } from '@jejunetwork/config'
+import {
+  getIpfsApiUrl,
+  getIpfsGatewayUrl,
+  getL1RpcUrl,
+} from '@jejunetwork/config'
 import type { Address, Hex } from 'viem'
 
 // Node Types - What capabilities a DWS node can provide
@@ -390,7 +394,7 @@ export const NETWORK_CONFIGS: Record<NetworkEnvironment, NetworkConfig> = {
   localnet: {
     environment: 'localnet',
     chainId: 31337,
-    rpcUrl: 'http://localhost:6545',
+    rpcUrl: getL1RpcUrl(),
     contracts: {
       identityRegistry: '0x5FbDB2315678afecb367f032d93F642f64180aa3',
       workerRegistry: '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
@@ -399,7 +403,7 @@ export const NETWORK_CONFIGS: Record<NetworkEnvironment, NetworkConfig> = {
       stakingManager: '0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9',
     },
     ipfs: {
-      gateway: 'http://127.0.0.1:8080',
+      gateway: getIpfsGatewayUrl(),
       apiUrl: getIpfsApiUrl(),
     },
     p2p: {

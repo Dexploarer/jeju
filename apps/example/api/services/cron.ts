@@ -1,4 +1,5 @@
 import { treaty } from '@elysiajs/eden'
+import { getLocalhostHost } from '@jejunetwork/config'
 import { expectAddress } from '@jejunetwork/types'
 import { Elysia, t } from 'elysia'
 import type { Address } from 'viem'
@@ -6,8 +7,9 @@ import type { CronJob } from '../../lib/types'
 import { getNextMidnight } from '../../lib/utils'
 import { getDatabase } from '../db/client'
 
-const CRON_ENDPOINT = process.env.CRON_ENDPOINT || 'http://localhost:4200/cron'
-const WEBHOOK_BASE = process.env.WEBHOOK_BASE || 'http://localhost:4500'
+const host = getLocalhostHost()
+const CRON_ENDPOINT = process.env.CRON_ENDPOINT || `http://${host}:4200/cron`
+const WEBHOOK_BASE = process.env.WEBHOOK_BASE || `http://${host}:4500`
 const CRON_TIMEOUT = 10000
 
 interface Reminder {

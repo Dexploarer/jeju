@@ -14,7 +14,10 @@
  * 3. Periodic re-verification
  */
 
-import { getDWSComputeUrl } from '@jejunetwork/config'
+import {
+  getDWSComputeUrl,
+  getIpfsGatewayUrl,
+} from '@jejunetwork/config'
 import { getEQLite, type EQLiteClient } from '@jejunetwork/db'
 import type { Address, Hex } from 'viem'
 import { keccak256, toBytes } from 'viem'
@@ -592,7 +595,7 @@ export class DeploymentModerationService {
     // Fetch code from IPFS
     let code: string
     try {
-      const ipfsGateway = process.env.IPFS_GATEWAY ?? 'http://127.0.0.1:8080'
+      const ipfsGateway = process.env.IPFS_GATEWAY ?? getIpfsGatewayUrl()
       const response = await fetch(`${ipfsGateway}/ipfs/${codeCid}`, {
         signal: AbortSignal.timeout(this.config.scanTimeoutMs),
       })

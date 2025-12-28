@@ -1,3 +1,11 @@
+import {
+  getChainId,
+  getCurrentNetwork,
+  getLocalhostHost,
+  getRpcUrl,
+  isProductionEnv,
+  tryGetContract,
+} from '@jejunetwork/config'
 import { Elysia, t } from 'elysia'
 import {
   type Address,
@@ -15,14 +23,17 @@ import {
 import { createKMSWalletClient, isKMSAvailable } from '../../shared/kms-wallet'
 
 // Get contract address from config
+const network = getCurrentNetwork()
 const TDX_VERIFIER_ADDRESS = (process.env.TDX_ATTESTATION_VERIFIER_ADDRESS ||
+  tryGetContract('tee', 'attestationVerifier', network) ||
   '0x0000000000000000000000000000000000000000') as Address
-const RPC_URL = process.env.RPC_URL || 'http://localhost:8545'
+const RPC_URL = process.env.RPC_URL || getRpcUrl(network)
 const VERIFIER_PRIVATE_KEY = process.env.TEE_VERIFIER_PRIVATE_KEY as
   | `0x${string}`
   | undefined
+const host = getLocalhostHost()
 const DSTACK_ENDPOINT =
-  process.env.DSTACK_ATTESTATION_ENDPOINT || 'http://localhost:8090'
+  process.env.DSTACK_ATTESTATION_ENDPOINT || `http://${host}:8090`
 
 // KMS configuration for TEE verifier key
 const TEE_VERIFIER_KMS_KEY_ID = process.env.TEE_VERIFIER_KMS_KEY_ID
@@ -42,7 +53,7 @@ function createDstackClientAdapter() {
       mode: string
     }): Promise<{ valid: boolean; tcbValid?: boolean; reason?: string }> {
       // SECURITY: Only skip verification in non-production with explicit flag
-      const isProduction = process.env.NODE_ENV === 'production'
+      const isProduction = isProductionEnv()
       if (process.env.DSTACK_SKIP_VERIFICATION === 'true') {
         if (isProduction) {
           console.error(
@@ -110,7 +121,7 @@ let verifierService: AttestationVerifierService | null = null
  */
 async function getVerifierService(): Promise<AttestationVerifierService> {
   if (!verifierService) {
-    const isProduction = process.env.NODE_ENV === 'production'
+    const isProduction = isProductionEnv()
 
     let walletClient: ReturnType<typeof createWalletClient> | undefined
 
@@ -122,7 +133,7 @@ async function getVerifierService(): Promise<AttestationVerifierService> {
         try {
           // Create a minimal chain config for the KMS wallet
           const chain: Chain = {
-            id: parseInt(process.env.CHAIN_ID ?? '1', 10),
+            id: getChainId(network),
             name: 'Ethereum',
             nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
             rpcUrls: { default: { http: [RPC_URL] } },

@@ -88,19 +88,3 @@ export type SecureTransactionExecutor = ReturnType<
   typeof createSecureTransactionExecutor
 >
 
-/**
- * Migration helper: Wrap existing NodeClient with secure transaction support
- *
- * @deprecated Use SecureNodeClient directly instead
- */
-export function wrapWithSecureTransactions(
-  publicClient: PublicClient,
-  keyId: string,
-  chainId: number,
-): SecureTransactionExecutor {
-  return createSecureTransactionExecutor({
-    keyId,
-    chainId,
-    publicClient,
-  })
-}

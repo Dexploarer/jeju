@@ -3,7 +3,7 @@
  * Sets up and manages trading bots for the Crucible
  */
 
-import type { Address, Hex, PublicClient, WalletClient } from 'viem'
+import type { Address, Hex, PublicClient } from 'viem'
 import { encodeFunctionData, parseAbi, parseEther } from 'viem'
 import type { CrucibleConfig } from '../../lib/types'
 import type { AgentSDK } from '../sdk/agent'
@@ -62,15 +62,8 @@ export interface BotInitializerConfig {
   crucibleConfig: CrucibleConfig
   agentSdk: AgentSDK
   publicClient: PublicClient
-  /**
-   * @deprecated Use kmsSigner for production. walletClient only for localnet.
-   */
-  walletClient?: WalletClient
-  /**
-   * KMS-backed signer for threshold signing (production).
-   * When provided, all write operations use KMS instead of walletClient.
-   */
-  kmsSigner?: KMSSigner
+  /** KMS-backed signer for threshold signing */
+  kmsSigner: KMSSigner
   treasuryAddress?: Address
 }
 
@@ -90,8 +83,7 @@ class TradingBotImpl implements TradingBot {
   private startTime = 0
   private options: TradingBotOptions
   private publicClient: PublicClient
-  private walletClient?: WalletClient
-  private kmsSigner?: KMSSigner
+  private kmsSigner: KMSSigner
   private priceCache: Map<Address, { price: bigint; timestamp: number }> =
     new Map()
   private readonly PRICE_CACHE_TTL_MS = 5000
@@ -100,14 +92,12 @@ class TradingBotImpl implements TradingBot {
     config: TradingBotConfig,
     options: TradingBotOptions,
     publicClient: PublicClient,
-    walletClient?: WalletClient,
-    kmsSigner?: KMSSigner,
+    kmsSigner: KMSSigner,
   ) {
     this.id = config.id
     this.config = config
     this.options = options
     this.publicClient = publicClient
-    this.walletClient = walletClient
     this.kmsSigner = kmsSigner
     this.state = {
       lastTradeTimestamp: 0,
@@ -120,48 +110,31 @@ class TradingBotImpl implements TradingBot {
   }
 
   /**
-   * Execute a transaction using KMS or wallet
+   * Execute a transaction using KMS
    */
   private async executeTransaction(params: {
     to: Address
     data: Hex
     value?: bigint
-    chain?: Parameters<WalletClient['sendTransaction']>[0]['chain']
   }): Promise<Hex> {
-    // Prefer KMS signer if available
-    if (this.kmsSigner?.isInitialized()) {
-      return this.kmsSigner.signTransaction({
-        to: params.to,
-        data: params.data,
-        value: params.value ?? 0n,
-      })
+    if (!this.kmsSigner.isInitialized()) {
+      throw new Error('KMS signer not initialized')
     }
-
-    // Fallback to wallet client (localnet only)
-    if (this.walletClient?.account) {
-      return this.walletClient.sendTransaction({
-        to: params.to,
-        data: params.data,
-        value: params.value ?? 0n,
-        account: this.walletClient.account,
-        chain: params.chain,
-      })
-    }
-
-    throw new Error('No signer available - configure KMS or wallet')
+    return this.kmsSigner.signTransaction({
+      to: params.to,
+      data: params.data,
+      value: params.value ?? 0n,
+    })
   }
 
   /**
    * Get the signer's address
    */
   private getSignerAddress(): Address {
-    if (this.kmsSigner?.isInitialized()) {
-      return this.kmsSigner.getAddress()
+    if (!this.kmsSigner.isInitialized()) {
+      throw new Error('KMS signer not initialized')
     }
-    if (this.walletClient?.account) {
-      return this.walletClient.account.address
-    }
-    throw new Error('No signer available')
+    return this.kmsSigner.getAddress()
   }
 
   async start(): Promise<void> {
@@ -625,9 +598,11 @@ export class BotInitializer {
   }
 
   async initializeBot(config: TradingBotConfig): Promise<TradingBot> {
-    const privateKey = this.config.crucibleConfig.privateKey
-    if (!privateKey) {
-      throw new Error('Private key required for bot initialization')
+    // Verify we have a signer (KMS preferred)
+    const hasKMS = this.config.kmsSigner?.isInitialized()
+    const hasWallet = !!this.config.walletClient
+    if (!hasKMS && !hasWallet) {
+      throw new Error('Signer required for bot initialization (KMS or wallet)')
     }
 
     const options: TradingBotOptions = {
@@ -644,7 +619,9 @@ export class BotInitializer {
         },
       ],
       chains: [],
-      privateKey: privateKey as Hex,
+      // Pass placeholder - actual signing uses KMS/wallet
+      privateKey:
+        '0x0000000000000000000000000000000000000000000000000000000000000000' as Hex,
       maxConcurrentExecutions: 5,
       useFlashbots: this.config.crucibleConfig.network !== 'localnet',
     }

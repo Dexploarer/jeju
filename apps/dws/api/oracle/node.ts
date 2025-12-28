@@ -1,4 +1,10 @@
-import { getChainId, getRpcUrl } from '@jejunetwork/config'
+import {
+  getChainId,
+  getContract,
+  getCurrentNetwork,
+  getRpcUrl,
+  isProductionEnv,
+} from '@jejunetwork/config'
 import {
   COMMITTEE_MANAGER_ABI,
   FEED_REGISTRY_ABI,
@@ -337,7 +343,7 @@ export class OracleNode {
   private async initializeSecureSigning(): Promise<void> {
     if (this.initialized) return
 
-    const isProduction = process.env.NODE_ENV === 'production'
+    const isProduction = isProductionEnv()
     const kmsKeyId = process.env.ORACLE_KMS_KEY_ID
     const ownerAddress = process.env.ORACLE_OWNER_ADDRESS as Address | undefined
 
@@ -412,7 +418,8 @@ export class OracleNode {
 // Default config from environment
 export function createNodeConfig(): OracleNodeConfig {
   const zeroAddress = '0x0000000000000000000000000000000000000000' as Address
-  const isProduction = process.env.NODE_ENV === 'production'
+  const isProduction = isProductionEnv()
+  const network = getCurrentNetwork()
 
   // SECURITY: Private keys MUST be set in production - no test key fallbacks
   const operatorKey = process.env.OPERATOR_PRIVATE_KEY
@@ -436,14 +443,14 @@ export function createNodeConfig(): OracleNodeConfig {
     '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d' as Hex
 
   return {
-    rpcUrl: getRpcUrl(),
-    chainId: getChainId(),
+    rpcUrl: getRpcUrl(network),
+    chainId: getChainId(network),
     operatorPrivateKey: (operatorKey ?? DEV_OPERATOR_KEY) as Hex,
     workerPrivateKey: (workerKey ?? DEV_WORKER_KEY) as Hex,
 
-    feedRegistry: (process.env.FEED_REGISTRY_ADDRESS || zeroAddress) as Address,
+    feedRegistry: (process.env.FEED_REGISTRY_ADDRESS || getContract('oracle', 'feedRegistry', network) || zeroAddress) as Address,
     reportVerifier: (process.env.REPORT_VERIFIER_ADDRESS ||
-      zeroAddress) as Address,
+      getContract('oracle', 'reportVerifier', network) || zeroAddress) as Address,
     committeeManager: (process.env.COMMITTEE_MANAGER_ADDRESS ||
       zeroAddress) as Address,
     feeRouter: (process.env.FEE_ROUTER_ADDRESS || zeroAddress) as Address,

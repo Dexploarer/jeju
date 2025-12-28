@@ -20,6 +20,7 @@
 import { execSync } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { getL2RpcUrl, isLocalnet } from '@jejunetwork/config'
 import {
   bootstrapPerps,
   bootstrapPredictionMarkets,
@@ -27,7 +28,7 @@ import {
   savePredictionMarketDeployment,
 } from '../lib/bootstrap'
 
-const RPC_URL = process.env.JEJU_RPC_URL || 'http://127.0.0.1:6546'
+const RPC_URL = process.env.JEJU_RPC_URL || getL2RpcUrl()
 const ANVIL_DEFAULT_KEY =
   '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'
 
@@ -35,9 +36,7 @@ function getDeployerKey(): string {
   const envKey = process.env.PRIVATE_KEY
   if (envKey) return envKey
 
-  const isLocalRpc =
-    RPC_URL.includes('127.0.0.1') || RPC_URL.includes('localhost')
-  if (!isLocalRpc) {
+  if (!isLocalnet(RPC_URL)) {
     throw new Error(
       'PRIVATE_KEY environment variable required for non-local deployments.',
     )
@@ -377,8 +376,9 @@ function printSummary(result: SeedResult): void {
   console.log(`\nPrediction Markets: ${result.predictionMarkets}`)
   console.log(`Perp Markets: ${result.perpMarkets}`)
 
+  const host = getLocalhostHost()
   console.log('\nNext Steps:')
-  console.log('  1. Open Bazaar: http://localhost:4006')
+  console.log(`  1. Open Bazaar: http://${host}:4006`)
   console.log('  2. Connect wallet (use Anvil dev account)')
   console.log('  3. Browse Coins, Items, and Prediction markets')
   console.log('')

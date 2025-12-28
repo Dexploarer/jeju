@@ -854,7 +854,7 @@ export class ManagedDatabaseService {
   ) {
     this.backend = backend
     this.poolManager = new ConnectionPoolManager()
-    this.provisioner = new DatabaseProvisioner(backend)
+    this.provisioner = new DatabaseProvisioner()
     this.backupManager = new BackupManager(backend)
 
     this.registryAddress = config.registryAddress

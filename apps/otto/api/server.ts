@@ -4,6 +4,7 @@
 
 import { createHmac } from 'node:crypto'
 import { cors } from '@elysiajs/cors'
+import { getLocalhostHost } from '@jejunetwork/config'
 import { expectAddress, expectHex, expectValid } from '@jejunetwork/types'
 import { Elysia } from 'elysia'
 import { z } from 'zod'
@@ -311,18 +312,19 @@ async function main() {
   console.log('========================================')
   console.log('')
   const port = config.port
+  const host = getLocalhostHost()
 
-  console.log(`HTTP server: http://localhost:${port}`)
-  console.log(`   Health: http://localhost:${port}/health`)
-  console.log(`   Status: http://localhost:${port}/status`)
+  console.log(`HTTP server: http://${host}:${port}`)
+  console.log(`   Health: http://${host}:${port}/health`)
+  console.log(`   Status: http://${host}:${port}/status`)
   console.log('')
   console.log('Miniapps:')
-  console.log(`   Web:       http://localhost:${port}/miniapp/`)
-  console.log(`   Telegram:  http://localhost:${port}/miniapp/telegram`)
-  console.log(`   Farcaster: http://localhost:${port}/miniapp/farcaster`)
+  console.log(`   Web:       http://${host}:${port}/miniapp/`)
+  console.log(`   Telegram:  http://${host}:${port}/miniapp/telegram`)
+  console.log(`   Farcaster: http://${host}:${port}/miniapp/farcaster`)
   console.log('')
-  console.log(`Frame: http://localhost:${port}/frame`)
-  console.log(`API:   http://localhost:${port}/api/chat`)
+  console.log(`Frame: http://${host}:${port}/frame`)
+  console.log(`API:   http://${host}:${port}/api/chat`)
   console.log('')
   console.log('ElizaOS Plugin: ottoPlugin')
   console.log('ElizaOS Character: ottoCharacter')

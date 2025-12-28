@@ -15,6 +15,7 @@
  * Encryption/decryption operations are performed remotely.
  */
 
+import { isProductionEnv } from '@jejunetwork/config'
 import { hash256 } from '@jejunetwork/shared'
 import { keccak256, toHex } from 'viem'
 
@@ -90,7 +91,7 @@ export class HSMKDF {
   async initialize(): Promise<void> {
     if (this.initialized) return
 
-    const isProduction = process.env.NODE_ENV === 'production'
+    const isProduction = isProductionEnv()
 
     if (this.localMode) {
       if (isProduction) {

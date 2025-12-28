@@ -1,3 +1,4 @@
+import { getLocalhostHost } from '@jejunetwork/config'
 import { serve } from 'bun'
 import { getChainName, IS_TESTNET, JEJU_CHAIN_ID } from '../lib/config/networks'
 import {
@@ -19,7 +20,8 @@ async function main() {
     fetch: leaderboardApp.fetch,
   })
 
-  console.log(`📊 Leaderboard Server running on http://localhost:${PORT}`)
+  const host = getLocalhostHost()
+  console.log(`📊 Leaderboard Server running on http://${host}:${PORT}`)
   console.log(
     `   Network: ${getChainName(JEJU_CHAIN_ID)} (${IS_TESTNET ? 'testnet' : 'mainnet'})`,
   )
@@ -27,8 +29,8 @@ async function main() {
   console.log(
     `   Oracle: ${LEADERBOARD_CONFIG.oracle.isEnabled ? 'enabled' : 'disabled'}`,
   )
-  console.log(`   API: http://localhost:${PORT}/api`)
-  console.log(`   Health: http://localhost:${PORT}/health`)
+  console.log(`   API: http://${host}:${PORT}/api`)
+  console.log(`   Health: http://${host}:${PORT}/health`)
 }
 
 main().catch((err) => {

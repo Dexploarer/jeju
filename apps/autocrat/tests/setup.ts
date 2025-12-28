@@ -16,20 +16,28 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { createPublicClient, http } from 'viem'
 import { localhost } from 'viem/chains'
+import {
+  getL2RpcUrl,
+  getLocalhostHost,
+  getDWSUrl,
+  getAutocratUrl,
+} from '@jejunetwork/config'
 
 // Default ports - Kurtosis L2 where contracts are deployed
 const L2_RPC_PORT = 6546
 const API_PORT = parseInt(process.env.API_PORT || '8010', 10)
 const DWS_PORT = parseInt(process.env.DWS_PORT || '4030', 10)
 
-// Service URLs
+// Service URLs - use config functions for consistency
 const RPC_URL =
   process.env.RPC_URL ||
   process.env.L2_RPC_URL ||
   process.env.JEJU_RPC_URL ||
-  `http://127.0.0.1:${L2_RPC_PORT}`
-const API_URL = process.env.API_URL || `http://127.0.0.1:${API_PORT}`
-const DWS_URL = process.env.DWS_URL || `http://127.0.0.1:${DWS_PORT}`
+  getL2RpcUrl()
+const API_URL =
+  process.env.API_URL ||
+  `http://${getLocalhostHost()}:${API_PORT}`
+const DWS_URL = process.env.DWS_URL || getDWSUrl()
 
 // Track managed processes for cleanup
 const managedProcesses: ChildProcess[] = []
@@ -230,7 +238,7 @@ async function startJejuDev(): Promise<boolean> {
   })
 
   // Wait for L2 to be ready (up to 2 minutes)
-  const l2Url = `http://127.0.0.1:${L2_RPC_PORT}`
+  const l2Url = getL2RpcUrl()
   for (let i = 0; i < 120; i++) {
     await Bun.sleep(1000)
     const status = await checkChain(l2Url)
@@ -280,7 +288,8 @@ async function startJejuDev(): Promise<boolean> {
 export async function startApiServer(
   port: number = API_PORT,
 ): Promise<boolean> {
-  const status = await checkApi(`http://127.0.0.1:${port}`)
+  const apiUrl = `http://${getLocalhostHost()}:${port}`
+  const status = await checkApi(apiUrl)
   if (status.available) {
     console.log(`✅ API server already running on port ${port}`)
     return true
@@ -298,7 +307,7 @@ export async function startApiServer(
 
   for (let i = 0; i < 60; i++) {
     await Bun.sleep(500)
-    const check = await checkApi(`http://127.0.0.1:${port}`)
+    const check = await checkApi(apiUrl)
     if (check.available) {
       console.log(`✅ API server started on port ${port}`)
       return true
@@ -310,7 +319,8 @@ export async function startApiServer(
 }
 
 export async function startDws(port: number = DWS_PORT): Promise<boolean> {
-  const status = await checkDws(`http://127.0.0.1:${port}`)
+  const host = getLocalhostHost()
+  const status = await checkDws(`http://${host}:${port}`)
   if (status.available) {
     console.log(`✅ DWS already running on port ${port}`)
     return true
@@ -326,9 +336,10 @@ export async function startDws(port: number = DWS_PORT): Promise<boolean> {
   })
   managedProcesses.push(dws)
 
+  const host = getLocalhostHost()
   for (let i = 0; i < 60; i++) {
     await Bun.sleep(500)
-    const check = await checkDws(`http://127.0.0.1:${port}`)
+    const check = await checkDws(`http://${host}:${port}`)
     if (check.available) {
       console.log(`✅ DWS started on port ${port}`)
       return true
@@ -373,7 +384,7 @@ export async function ensureServices(
     banManager: '',
   }
 
-  const rpcUrl = `http://127.0.0.1:${L2_RPC_PORT}`
+  const rpcUrl = getL2RpcUrl()
 
   if (chain) {
     await ensureChain()
@@ -410,7 +421,7 @@ export async function ensureServices(
 }
 
 async function ensureChain(): Promise<string> {
-  const l2Url = `http://127.0.0.1:${L2_RPC_PORT}`
+  const l2Url = getL2RpcUrl()
   const status = await checkChain(l2Url)
 
   if (status.available) {
@@ -460,7 +471,7 @@ async function ensureDws(): Promise<string> {
 // ============================================================================
 
 export async function getTestEnv(): Promise<TestEnv> {
-  const rpcUrl = `http://127.0.0.1:${L2_RPC_PORT}`
+  const rpcUrl = getL2RpcUrl()
   const [chainStatus, apiStatus, dwsStatus] = await Promise.all([
     checkChain(rpcUrl),
     checkApi(),

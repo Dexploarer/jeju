@@ -6,6 +6,7 @@
  */
 
 import { cors } from '@elysiajs/cors'
+import { getLocalhostHost } from '@jejunetwork/config'
 import { Elysia } from 'elysia'
 import type { Address } from 'viem'
 import { isAddress } from 'viem'
@@ -91,8 +92,9 @@ async function createApp(env: Env) {
   if (env.DISCORD_CLIENT_SECRET)
     process.env.DISCORD_CLIENT_SECRET = env.DISCORD_CLIENT_SECRET
 
+  const host = getLocalhostHost()
   const config: AuthConfig = {
-    rpcUrl: env.RPC_URL ?? 'http://localhost:8545',
+    rpcUrl: env.RPC_URL ?? `http://${host}:8545`,
     mpcRegistryAddress: parseAddress(env.MPC_REGISTRY_ADDRESS, ZERO_ADDRESS),
     identityRegistryAddress: parseAddress(
       env.IDENTITY_REGISTRY_ADDRESS,

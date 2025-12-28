@@ -14,6 +14,8 @@
 import {
   getKmsServiceUrl,
   getRpcUrl,
+  getServiceUrl,
+  getCurrentNetwork,
   isProductionEnv,
 } from '@jejunetwork/config'
 import {
@@ -76,10 +78,18 @@ type EthSyncingResult = z.infer<typeof EthSyncingResponseSchema>['result']
 // Configuration
 // ============================================================================
 
-const NODE_ID = process.env.NODE_ID
-const OPERATOR_ADDRESS = process.env.OPERATOR_ADDRESS as Address | undefined
-const KMS_KEY_ID = process.env.KMS_KEY_ID
-const KMS_ENDPOINT = process.env.KMS_ENDPOINT ?? getKmsServiceUrl()
+const NODE_ID =
+  typeof process !== 'undefined' ? process.env.NODE_ID : undefined
+const OPERATOR_ADDRESS =
+  typeof process !== 'undefined'
+    ? (process.env.OPERATOR_ADDRESS as Address | undefined)
+    : undefined
+// KMS_KEY_ID is a secret - keep as env var
+const KMS_KEY_ID =
+  typeof process !== 'undefined' ? process.env.KMS_KEY_ID : undefined
+const KMS_ENDPOINT =
+  (typeof process !== 'undefined' ? process.env.KMS_ENDPOINT : undefined) ??
+  getKmsServiceUrl()
 
 if (!NODE_ID) {
   throw new Error('NODE_ID environment variable is required')
@@ -107,9 +117,12 @@ if (IS_PRODUCTION) {
   }
 }
 
+const network = getCurrentNetwork()
 const NODE_EXPLORER_API =
-  process.env.NODE_EXPLORER_API ?? 'https://nodes.jejunetwork.org/api'
-const RPC_URL = process.env.RPC_URL ?? getRpcUrl()
+  process.env.NODE_EXPLORER_API ?? getServiceUrl('gateway', 'api', network) ?? 'https://nodes.jejunetwork.org/api'
+const RPC_URL =
+  (typeof process !== 'undefined' ? process.env.RPC_URL : undefined) ??
+  getRpcUrl(network)
 const HEARTBEAT_INTERVAL = process.env.HEARTBEAT_INTERVAL
 const INTERVAL = HEARTBEAT_INTERVAL ? parseInt(HEARTBEAT_INTERVAL, 10) : 300000
 

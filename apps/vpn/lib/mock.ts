@@ -113,6 +113,44 @@ const mockState: MockState = {
   autoStart: false,
 }
 
+// Residential proxy mock state
+const mockResidentialProxyState = {
+  status: {
+    is_registered: false,
+    is_active: false,
+    stake_amount: '0',
+    total_bytes_shared: '0',
+    total_sessions: 0,
+    total_earnings: '0',
+    pending_rewards: '0',
+    current_connections: 0,
+    uptime_score: 0,
+    success_rate: 0,
+    coordinator_connected: false,
+  },
+  settings: {
+    enabled: false,
+    node_type: 'residential' as const,
+    max_bandwidth_mbps: 100,
+    max_concurrent_connections: 50,
+    allowed_ports: [80, 443, 8080, 8443],
+    blocked_domains: [] as string[],
+    schedule_enabled: false,
+  },
+  stats: {
+    bytes_shared_today: '0',
+    bytes_shared_week: '0',
+    bytes_shared_month: '0',
+    sessions_today: 0,
+    sessions_week: 0,
+    avg_session_duration_ms: 0,
+    peak_bandwidth_mbps: 0,
+    earnings_today: '0',
+    earnings_week: '0',
+    earnings_month: '0',
+  },
+}
+
 const mockNodes: VPNNode[] = [
   {
     node_id: '0x1234567890abcdef1234567890abcdef12345678',
@@ -506,6 +544,54 @@ const handlers: Record<string, MockHandler> = {
   get_public_key: async (): Promise<string> => {
     // Mock WireGuard public key (base64 encoded 32 bytes)
     return 'dGVzdC1wdWJsaWMta2V5LWZvci1kZXZlbG9wbWVudA=='
+  },
+
+  // Residential Proxy / Bandwidth Sharing Mock Handlers
+  get_residential_proxy_status: async () => {
+    return mockResidentialProxyState.status
+  },
+
+  get_residential_proxy_settings: async () => {
+    return mockResidentialProxyState.settings
+  },
+
+  get_residential_proxy_stats: async () => {
+    return mockResidentialProxyState.stats
+  },
+
+  set_residential_proxy_settings: async (
+    args: Record<string, unknown>,
+  ): Promise<null> => {
+    const settings = args.settings as Partial<typeof mockResidentialProxyState.settings>
+    mockResidentialProxyState.settings = {
+      ...mockResidentialProxyState.settings,
+      ...settings,
+    }
+    return null
+  },
+
+  register_residential_proxy: async (
+    args: Record<string, unknown>,
+  ) => {
+    const stakeAmount = args.stake_amount as string
+    mockResidentialProxyState.status = {
+      ...mockResidentialProxyState.status,
+      is_registered: true,
+      stake_amount: stakeAmount,
+    }
+    return { success: true, node_address: '0x1234...', stake_amount: stakeAmount }
+  },
+
+  claim_residential_proxy_rewards: async () => {
+    const pending = mockResidentialProxyState.status.pending_rewards
+    mockResidentialProxyState.status = {
+      ...mockResidentialProxyState.status,
+      pending_rewards: '0',
+      total_earnings: (
+        BigInt(mockResidentialProxyState.status.total_earnings) + BigInt(pending)
+      ).toString(),
+    }
+    return { success: true, claimed_amount: pending }
   },
 }
 

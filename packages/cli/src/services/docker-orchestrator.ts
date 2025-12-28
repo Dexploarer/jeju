@@ -2,7 +2,13 @@
 
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { CORE_PORTS } from '@jejunetwork/config'
+import {
+  CORE_PORTS,
+  getLocalhostHost,
+  getL1RpcUrl,
+  getL2RpcUrl,
+  getIpfsApiUrl,
+} from '@jejunetwork/config'
 import { execa } from 'execa'
 import { logger } from '../lib/logger'
 
@@ -282,25 +288,26 @@ export class DockerOrchestrator {
   }
 
   getEnvVars(): Record<string, string> {
+    const host = getLocalhostHost()
     const env: Record<string, string> = {
-      L1_RPC_URL: 'http://127.0.0.1:6545',
-      L2_RPC_URL: 'http://127.0.0.1:6546',
-      JEJU_RPC_URL: 'http://127.0.0.1:6546',
+      L1_RPC_URL: getL1RpcUrl(),
+      L2_RPC_URL: getL2RpcUrl(),
+      JEJU_RPC_URL: getL2RpcUrl(),
       CHAIN_ID: '31337',
-      DATABASE_URL: 'postgresql://jeju:jeju@127.0.0.1:5432/jeju',
-      REDIS_URL: 'redis://127.0.0.1:6379',
-      IPFS_API_URL: `http://127.0.0.1:${CORE_PORTS.IPFS_API.DEFAULT}`,
-      IPFS_GATEWAY_URL: 'http://127.0.0.1:8080',
+      DATABASE_URL: `postgresql://jeju:jeju@${host}:5432/jeju`,
+      REDIS_URL: `redis://${host}:6379`,
+      IPFS_API_URL: getIpfsApiUrl(),
+      IPFS_GATEWAY_URL: `http://${host}:8080`,
     }
 
     if (this.config.profile === 'full' || this.config.profile === 'solana') {
-      env.SOLANA_RPC_URL = 'http://127.0.0.1:8899'
-      env.SOLANA_WS_URL = 'ws://127.0.0.1:8900'
+      env.SOLANA_RPC_URL = `http://${host}:8899`
+      env.SOLANA_WS_URL = `ws://${host}:8900`
     }
 
     if (this.config.profile === 'full') {
-      env.ARBITRUM_RPC_URL = 'http://127.0.0.1:8547'
-      env.BASE_RPC_URL = 'http://127.0.0.1:8548'
+      env.ARBITRUM_RPC_URL = `http://${host}:8547`
+      env.BASE_RPC_URL = `http://${host}:8548`
     }
 
     return env

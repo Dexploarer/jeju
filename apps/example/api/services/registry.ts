@@ -5,7 +5,7 @@ import {
   type TEENodeInfo,
   TEEProvider,
 } from '@jejunetwork/auth'
-import { getNetworkName, getRpcUrl } from '@jejunetwork/config'
+import { getLocalhostHost, getNetworkName, getRpcUrl } from '@jejunetwork/config'
 import { AddressSchema, expectAddress, expectHex } from '@jejunetwork/types'
 import {
   type Address,
@@ -181,8 +181,11 @@ class RegistryServiceImpl implements RegistryService {
   }
 
   private getMockTEENode(nodeId: Address): TEENodeInfo {
+    const network = getCurrentNetwork()
+    const host = getLocalhostHost()
     const teeAgentUrl =
-      process.env.OAUTH3_TEE_AGENT_URL || 'http://localhost:8004'
+      process.env.OAUTH3_TEE_AGENT_URL || 
+      (network === 'localnet' ? `http://${host}:8004` : getOAuth3Url(network))
     const mockAttestation: TEEAttestation = {
       quote: MOCK_HEX_ZERO,
       measurement: MOCK_HEX_ZERO,

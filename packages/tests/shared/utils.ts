@@ -344,33 +344,63 @@ export async function waitForService(
 
 // Environment Utilities
 
+import {
+  getChainId as getConfigChainId,
+  getL1RpcUrl,
+  getRpcUrl as getConfigRpcUrl,
+  getServiceUrl,
+} from '@jejunetwork/config'
+
 /**
  * Get the effective RPC URL from environment
+ * Uses config package with fallback to test defaults
  */
 export function getRpcUrl(): string {
-  return process.env.L2_RPC_URL ?? process.env.JEJU_RPC_URL ?? JEJU_RPC_URL
+  try {
+    return getConfigRpcUrl()
+  } catch {
+    return process.env.L2_RPC_URL ?? process.env.JEJU_RPC_URL ?? JEJU_RPC_URL
+  }
 }
 
 /**
  * Get the effective chain ID from environment
+ * Uses config package with fallback to test defaults
  */
 export function getChainId(): number {
-  const envChainId = process.env.CHAIN_ID
-  return envChainId ? parseInt(envChainId, 10) : JEJU_CHAIN_ID
+  try {
+    return getConfigChainId()
+  } catch {
+    const envChainId = process.env.CHAIN_ID
+    return envChainId ? parseInt(envChainId, 10) : JEJU_CHAIN_ID
+  }
 }
 
 /**
  * Get test environment URLs
+ * Uses config package where available, falls back to defaults
  */
 export function getTestEnv(): Record<string, string> {
-  return {
-    L1_RPC_URL: process.env.L1_RPC_URL ?? 'http://127.0.0.1:6545',
-    L2_RPC_URL: process.env.L2_RPC_URL ?? 'http://127.0.0.1:6546',
-    JEJU_RPC_URL: process.env.JEJU_RPC_URL ?? 'http://127.0.0.1:6546',
-    CHAIN_ID: process.env.CHAIN_ID ?? '31337',
-    INDEXER_GRAPHQL_URL:
-      process.env.INDEXER_GRAPHQL_URL ?? 'http://127.0.0.1:4350/graphql',
-    ORACLE_URL: process.env.ORACLE_URL ?? 'http://127.0.0.1:4301',
-    SOLANA_RPC_URL: process.env.SOLANA_RPC_URL ?? 'http://127.0.0.1:8899',
+  try {
+    return {
+      L1_RPC_URL: getL1RpcUrl(),
+      L2_RPC_URL: getConfigRpcUrl(),
+      JEJU_RPC_URL: getConfigRpcUrl(),
+      CHAIN_ID: String(getConfigChainId()),
+      INDEXER_GRAPHQL_URL: getServiceUrl('indexer', 'graphql'),
+      ORACLE_URL: getServiceUrl('oracle'),
+      SOLANA_RPC_URL: process.env.SOLANA_RPC_URL ?? 'http://127.0.0.1:8899',
+    }
+  } catch {
+    return {
+      L1_RPC_URL: process.env.L1_RPC_URL ?? 'http://127.0.0.1:6545',
+      L2_RPC_URL: process.env.L2_RPC_URL ?? 'http://127.0.0.1:6546',
+      JEJU_RPC_URL: process.env.JEJU_RPC_URL ?? 'http://127.0.0.1:6546',
+      CHAIN_ID: process.env.CHAIN_ID ?? '31337',
+      INDEXER_GRAPHQL_URL:
+        process.env.INDEXER_GRAPHQL_URL ?? 'http://127.0.0.1:4350/graphql',
+      ORACLE_URL: process.env.ORACLE_URL ?? 'http://127.0.0.1:4301',
+      SOLANA_RPC_URL: process.env.SOLANA_RPC_URL ?? 'http://127.0.0.1:8899',
+    }
   }
 }

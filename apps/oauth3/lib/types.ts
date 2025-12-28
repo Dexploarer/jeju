@@ -36,20 +36,8 @@ export interface AuthSession {
   sessionId: string
   userId: string
   provider: AuthProvider
-  /**
-   * @deprecated Use encryptedPII instead. Plain PII is insecure.
-   */
-  address?: Address
-  /**
-   * @deprecated Use encryptedPII instead.
-   */
-  fid?: number
-  /**
-   * @deprecated Use encryptedPII instead.
-   */
-  email?: string
   /** Encrypted PII (address, email, fid) */
-  encryptedPII?: EncryptedSessionPII
+  encryptedPII: EncryptedSessionPII
   createdAt: number
   expiresAt: number
   metadata: Record<string, string>
@@ -200,13 +188,8 @@ export interface HashedClientSecret {
 
 export interface RegisteredClient {
   clientId: string
-  /**
-   * @deprecated Use clientSecretHash instead. Plain secrets are insecure.
-   * Only present for migration purposes.
-   */
-  clientSecret?: Hex
   /** Hashed client secret (secure storage) */
-  clientSecretHash?: HashedClientSecret
+  clientSecretHash: HashedClientSecret
   name: string
   redirectUris: string[]
   allowedProviders: AuthProvider[]
@@ -273,19 +256,12 @@ export interface AuthConfig {
   mpcRegistryAddress: Address
   identityRegistryAddress: Address
   serviceAgentId: string
-  /**
-   * @deprecated Use KMS-backed signing instead.
-   * This field will be removed in favor of MPC threshold signing.
-   */
-  jwtSecret: string
-  /** MPC key ID for JWT signing (replaces jwtSecret) */
-  jwtSigningKeyId?: string
+  /** MPC key ID for JWT signing */
+  jwtSigningKeyId: string
   /** MPC signer address for JWT verification */
-  jwtSignerAddress?: Address
+  jwtSignerAddress: Address
   sessionDuration: number
   allowedOrigins: string[]
   /** Chain ID for KMS access policies */
   chainId?: string
-  /** Whether running in dev mode (no MPC) */
-  devMode?: boolean
 }
