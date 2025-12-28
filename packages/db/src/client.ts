@@ -13,7 +13,6 @@ import {
   getEqliteTimeout,
   getLogLevel,
   isEqliteDebug,
-  isProductionEnv,
 } from '@jejunetwork/config'
 import { createPool, type Pool } from 'generic-pool'
 import pino from 'pino'
@@ -78,8 +77,9 @@ const QueryResponseSchema = z
     columns: z.array(z.string()),
     blockHeight: z.number().int().nonnegative(),
     executionTime: z.number().int().nonnegative().optional(),
+    success: z.boolean().optional(),
   })
-  .strict()
+  .passthrough()
 
 const ExecResponseSchema = z
   .object({
@@ -208,9 +208,6 @@ const EQLiteConfigSchema = z
 const log = pino({
   name: 'eqlite',
   level: getLogLevel(),
-  transport: !isProductionEnv()
-    ? { target: 'pino-pretty', options: { colorize: true } }
-    : undefined,
 })
 
 // Native Circuit Breaker implementation

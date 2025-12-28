@@ -8,8 +8,10 @@
  * - Cluster health monitoring
  */
 
-import type { CacheNode, CacheTier } from './types'
-import { CacheError, CacheErrorCode, CacheEventType } from './types'
+import {
+  type CacheNode,
+  type CacheTier,
+} from './types'
 import type { CacheEngine } from './engine'
 
 // ============================================
@@ -913,7 +915,6 @@ export class AOFPersistence {
     const writer = tempFile.writer()
 
     // Write current state
-    const stats = this.engine.getStats()
     const namespaces = this.engine.getAllNamespaceStats()
 
     for (const ns of namespaces) {

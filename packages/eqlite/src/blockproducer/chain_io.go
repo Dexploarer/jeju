@@ -81,12 +81,6 @@ func (c *Chain) nextNonce(addr proto.AccountAddress) (n pi.AccountNonce, err err
 	log.Debugf("nextNonce addr: %s, nonce %d", addr.String(), n)
 	return
 }
-
-// loadAccountTokenBalance returns token balance (always 0 - balances now on EQLiteRegistry).
-func (c *Chain) loadAccountTokenBalance(addr proto.AccountAddress, tt types.TokenType) (balance uint64, ok bool) {
-	return 0, false
-}
-
 func (c *Chain) loadSQLChainProfile(databaseID proto.DatabaseID) (profile *types.SQLChainProfile, ok bool) {
 	c.RLock()
 	defer c.RUnlock()

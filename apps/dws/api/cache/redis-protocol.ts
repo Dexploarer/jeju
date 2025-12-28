@@ -25,8 +25,9 @@
  * ```
  */
 
-import type { Socket, TCPSocketListener } from 'bun'
+import type { TCPSocketListener } from 'bun'
 import type { CacheEngine } from './engine'
+import type { SortedSetMember } from './types'
 
 // RESP Protocol Constants
 const CRLF = '\r\n'
@@ -404,9 +405,9 @@ const COMMANDS: Record<string, CommandHandler> = {
       parseInt(args[2], 10),
       withScores,
     )
-    if (withScores && Array.isArray(result) && result[0]?.member) {
+    if (withScores && Array.isArray(result) && result.length > 0 && typeof result[0] === 'object') {
       const flat: string[] = []
-      for (const item of result as Array<{ member: string; score: number }>) {
+      for (const item of result as SortedSetMember[]) {
         flat.push(item.member, item.score.toString())
       }
       return flat
@@ -440,9 +441,9 @@ const COMMANDS: Record<string, CommandHandler> = {
     const max = args[2] === '+inf' ? Infinity : parseFloat(args[2])
     const withScores = args.some((a) => a.toUpperCase() === 'WITHSCORES')
     const result = engine.zrangebyscore(ns, args[0], min, max, withScores)
-    if (withScores && Array.isArray(result) && result[0]?.member) {
+    if (withScores && Array.isArray(result) && result.length > 0 && typeof result[0] === 'object') {
       const flat: string[] = []
-      for (const item of result as Array<{ member: string; score: number }>) {
+      for (const item of result as SortedSetMember[]) {
         flat.push(item.member, item.score.toString())
       }
       return flat
@@ -457,8 +458,8 @@ const COMMANDS: Record<string, CommandHandler> = {
   ZREM: (engine, ns, args) => engine.zrem(ns, args[0], ...args.slice(1)),
 
   // Pub/Sub commands
-  PUBLISH: (engine, ns, args) => engine.publish(args[0], args[1]),
-  PUBSUB: (engine, ns, args) => {
+  PUBLISH: (engine, _ns, args) => engine.publish(args[0], args[1]),
+  PUBSUB: (engine, _ns, args) => {
     const subcommand = args[0].toUpperCase()
     if (subcommand === 'CHANNELS') {
       return engine.pubsubChannels(args[1])
@@ -580,7 +581,7 @@ export class RedisProtocolServer {
           self.clientCount--
         },
 
-        error(socket, error) {
+        error(_socket, error) {
           console.error('[Redis Protocol] Socket error:', error)
         },
       },

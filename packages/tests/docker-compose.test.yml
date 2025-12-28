@@ -4,6 +4,7 @@
 # Profiles:
 #   - chain: L1 + L2 only (no build required)
 #   - services: Chain + databases + IPFS (no build required)
+#   - apps: Same as services (for app testing)
 #   - full: Everything including multi-chain
 #
 # Apps (indexer, gateway, etc.) should be started separately via `bun run dev`
@@ -95,7 +96,7 @@ services:
 
   postgres:
     image: postgres:16-alpine
-    profiles: [services, full]
+    profiles: [services, apps, full]
     container_name: jeju-postgres
     environment:
       # WARNING: Test-only credentials - DO NOT use in production
@@ -116,7 +117,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    profiles: [services, full]
+    profiles: [services, apps, full]
     container_name: jeju-redis
     ports:
       - "6379:6379"
@@ -132,7 +133,7 @@ services:
 
   ipfs:
     image: ipfs/kubo:latest
-    profiles: [services, full]
+    profiles: [services, apps, full]
     container_name: jeju-ipfs
     ports:
       - "4001:4001"       # P2P

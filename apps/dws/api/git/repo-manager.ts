@@ -72,6 +72,8 @@ const REPO_REGISTRY_ABI = [
       { name: 'repoId', type: 'bytes32', indexed: true },
       { name: 'owner', type: 'address', indexed: true },
       { name: 'name', type: 'string', indexed: false },
+      { name: 'agentId', type: 'uint256', indexed: false },
+      { name: 'visibility', type: 'uint8', indexed: false },
     ],
   },
   // Functions

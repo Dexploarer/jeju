@@ -686,7 +686,8 @@ export function createMCPRouter(_ctx: MCPContext = {}) {
           }
 
           case 'dws_cache_del': {
-            const keys = body.arguments.keys as string[]
+            const keysArg = body.arguments.keys
+            const keys = Array.isArray(keysArg) ? keysArg as string[] : [String(keysArg)]
             const namespace = getOptionalString(body.arguments, 'namespace') ?? 'default'
             const response = await fetch(`${baseUrl}/cache/del`, {
               method: 'POST',

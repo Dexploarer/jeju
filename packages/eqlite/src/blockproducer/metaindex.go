@@ -8,24 +8,6 @@ import (
 	"eqlite/src/types"
 )
 
-// safeAdd provides a safe add method with upper overflow check for uint64.
-func safeAdd(x, y *uint64) (err error) {
-	if *x+*y < *x {
-		return ErrBalanceOverflow
-	}
-	*x += *y
-	return
-}
-
-// safeAdd provides a safe sub method with lower overflow check for uint64.
-func safeSub(x, y *uint64) (err error) {
-	if *x < *y {
-		return ErrInsufficientBalance
-	}
-	*x -= *y
-	return
-}
-
 type metaIndex struct {
 	accounts  map[proto.AccountAddress]*types.Account
 	databases map[proto.DatabaseID]*types.SQLChainProfile

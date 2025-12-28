@@ -44,17 +44,17 @@ services:
       - "4660:4661"  # Different port to avoid conflict
       - "8546:8546"  # HTTP API
     volumes:
-      - ./eqlite-config:/config:ro
+      - ./eqlite-config:/config
       - eqlite-bp-0-data:/data
     networks:
       eqlite-internal:
         ipv4_address: 172.29.0.2
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8546/v1/status"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+      test: ["CMD", "sh", "-c", "echo -n | nc -w1 localhost 4661"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
     restart: unless-stopped
 
   # ============================================================================
@@ -72,13 +72,13 @@ services:
       EQLITE_CONF: /config/bp-1.yaml
       EQLITE_NODE_ID: bp-1
     volumes:
-      - ./eqlite-config:/config:ro
+      - ./eqlite-config:/config
       - eqlite-bp-1-data:/data
     networks:
       eqlite-internal:
         ipv4_address: 172.29.0.3
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8546/v1/status"]
+      test: ["CMD", "sh", "-c", "echo -n | nc -w1 localhost 4661"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -100,13 +100,13 @@ services:
       EQLITE_CONF: /config/bp-2.yaml
       EQLITE_NODE_ID: bp-2
     volumes:
-      - ./eqlite-config:/config:ro
+      - ./eqlite-config:/config
       - eqlite-bp-2-data:/data
     networks:
       eqlite-internal:
         ipv4_address: 172.29.0.4
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8546/v1/status"]
+      test: ["CMD", "sh", "-c", "echo -n | nc -w1 localhost 4661"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -132,13 +132,13 @@ services:
       EQLITE_CONF: /config/miner-0.yaml
       EQLITE_NODE_ID: miner-0
     volumes:
-      - ./eqlite-config:/config:ro
+      - ./eqlite-config:/config
       - eqlite-miner-0-data:/data
     networks:
       eqlite-internal:
         ipv4_address: 172.29.0.5
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8546/v1/status"]
+      test: ["CMD", "sh", "-c", "echo -n | nc -w1 localhost 4661"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -160,13 +160,13 @@ services:
       EQLITE_CONF: /config/miner-1.yaml
       EQLITE_NODE_ID: miner-1
     volumes:
-      - ./eqlite-config:/config:ro
+      - ./eqlite-config:/config
       - eqlite-miner-1-data:/data
     networks:
       eqlite-internal:
         ipv4_address: 172.29.0.6
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8546/v1/status"]
+      test: ["CMD", "sh", "-c", "echo -n | nc -w1 localhost 4661"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -188,13 +188,13 @@ services:
       EQLITE_CONF: /config/miner-2.yaml
       EQLITE_NODE_ID: miner-2
     volumes:
-      - ./eqlite-config:/config:ro
+      - ./eqlite-config:/config
       - eqlite-miner-2-data:/data
     networks:
       eqlite-internal:
         ipv4_address: 172.29.0.7
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8546/v1/status"]
+      test: ["CMD", "sh", "-c", "echo -n | nc -w1 localhost 4661"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -222,13 +222,13 @@ services:
     ports:
       - "4661:4661"  # HTTP API
     volumes:
-      - ./eqlite-config:/config:ro
+      - ./eqlite-config:/config
       - eqlite-adapter-data:/data
     networks:
       eqlite-internal:
         ipv4_address: 172.29.0.10
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:4661/v1/status"]
+      test: ["CMD", "sh", "-c", "echo -n | nc -w1 localhost 4661"]
       interval: 5s
       timeout: 3s
       retries: 10

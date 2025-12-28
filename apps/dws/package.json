@@ -9,8 +9,11 @@
     "./api/utils/event-emitter": "./api/utils/event-emitter.ts"
   },
   "scripts": {
-    "dev": "concurrently \"bun run scripts/dev-frontend.ts\" \"bun run api/server/index.ts\"",
-    "dev:old": "concurrently \"PORT=4031 bun index.html\" \"bun run api/server/index.ts\"",
+    "dev": "bun run scripts/dev-with-infra.ts",
+    "dev:simple": "concurrently \"bun run scripts/dev-frontend.ts\" \"bun run api/server/index.ts\"",
+    "dev:api": "NETWORK=localnet PORT=4030 bun run api/server/index.ts",
+    "dev:frontend": "PORT=4031 bun run scripts/dev-frontend.ts",
+    "deploy:contracts": "bun run scripts/deploy-contracts.ts",
     "build": "bun build api/index.ts --outdir dist --target bun && bun build.web.ts",
     "build:web": "bun build.web.ts",
     "start": "bun run api/server/index.ts",
@@ -20,7 +23,6 @@
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.954.0",
-    "cockatiel": "^3.2.1",
     "@elysiajs/cors": "^1.4.0",
     "@elysiajs/eden": "^1.4.5",
     "@jejunetwork/api": "workspace:*",
@@ -40,6 +42,8 @@
     "@solana/buffer-layout": "^4.0.1",
     "@solana/web3.js": "^1.98.0",
     "@tanstack/react-query": "^5.79.0",
+    "@types/sharp": "^0.32.0",
+    "cockatiel": "^3.2.1",
     "croner": "^9.0.0",
     "elysia": "^1.4.19",
     "lru-cache": "11.2.4",
@@ -47,6 +51,7 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.6.1",
+    "sharp": "^0.34.5",
     "viem": "2.43.3",
     "wagmi": "^2.17.4",
     "webtorrent": "^2.8.5",

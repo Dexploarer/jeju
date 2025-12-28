@@ -47,7 +47,7 @@ const agent = (id: string, name: string, prompt: string) => ({
 export function getConfig(): CouncilConfig {
   return {
     rpcUrl: getRpcUrl(),
-    daoId: config.defaultDao,
+    daoId: autocratConfig.defaultDao,
     contracts: {
       council: getContractAddr('governance', 'council'),
       ceoAgent: getContractAddr('governance', 'ceoAgent'),
@@ -99,7 +99,7 @@ export function getConfig(): CouncilConfig {
       specialties: ['governance', 'strategy'],
     },
     // Default CEO model - can be overridden by DAO creator or governance vote
-    ceoModelId: config.ceoModelId,
+    ceoModelId: autocratConfig.ceoModelId,
     fundingConfig: {
       minStake: BigInt('1000000000000000'),
       maxStake: BigInt('100000000000000000000'),
