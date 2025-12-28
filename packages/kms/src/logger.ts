@@ -21,21 +21,10 @@ type LogValue =
 /** Structured log data - strongly typed instead of Record<string, unknown> */
 type LogData = Record<string, LogValue>
 
-const isProduction = getEnv('NODE_ENV') === 'production'
 const logLevel = (getEnv('LOG_LEVEL')?.toLowerCase() as LogLevel) ?? 'info'
 
 const baseLogger = pino({
   level: logLevel,
-  transport: !isProduction
-    ? {
-        target: 'pino-pretty',
-        options: {
-          colorize: true,
-          translateTime: 'SYS:standard',
-          ignore: 'pid,hostname',
-        },
-      }
-    : undefined,
   formatters: {
     level: (label: string) => ({ level: label }),
   },

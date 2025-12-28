@@ -1,50 +1,51 @@
-# Jeju EQLite (EQLite) Multi-Stage Build
+# Jeju EQLite Multi-Stage Build
 #
 # Builds EQLite from the internal packages/eqlite source code.
-# Produces: eqlited, eqlite-minerd, eqlite (CLI), eqlite-adapter
+# Produces: eqlited, eqlite-minerd, eqlite (CLI), eqlite-proxy
 #
 # Build:
-#   docker build -t jeju-eqlite:latest -f eqlite-internal.Dockerfile ../../eqlite
+#   docker compose -f eqlite-internal.compose.yaml build
 #
 # Run:
 #   docker run -e EQLITE_ROLE=miner jeju-eqlite:latest
 
-ARG GO_VERSION=1.21
-
 # ============================================================================
-# Stage 1: Builder
+# Stage 1: Builder - Uses same setup as packages/eqlite/docker/builder.Dockerfile
 # ============================================================================
-FROM golang:${GO_VERSION}-bookworm AS builder
+FROM golang:1.23-alpine AS builder
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Install build dependencies (including ICU for sqlite_icu)
+RUN apk add --no-cache \
     git \
     make \
     gcc \
-    libc6-dev \
+    g++ \
+    musl-dev \
+    sqlite-dev \
+    linux-headers \
     ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+    icu-dev
 
-WORKDIR /build
+# Set Go environment
+ENV CGO_ENABLED=1
+ENV GOOS=linux
+ENV GO111MODULE=on
+
+# Use same working directory as original eqlite Makefile expects
+WORKDIR /go/src/eqlite
 
 # Copy go.mod and go.sum first for better caching
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy source
+# Copy all source code
 COPY . .
 
-# Build all binaries
-ENV CGO_ENABLED=1
-ENV GOOS=linux
+# Build using the Makefile (same as `make build-release`)
+RUN make clean 2>/dev/null || true && make -j$(nproc) build-release
 
-RUN make clean 2>/dev/null || true
-RUN go build -ldflags="-s -w" -o bin/eqlited ./cmd/eqlited
-RUN go build -ldflags="-s -w" -o bin/eqlite-minerd ./cmd/eqlite-minerd
-RUN go build -ldflags="-s -w" -o bin/eqlite ./cmd/eqlite
-RUN go build -ldflags="-s -w" -o bin/eqlite-adapter ./cmd/eqlite-proxy 2>/dev/null || echo "eqlite-adapter build optional"
-
-# Create entrypoint script
-RUN cat > bin/docker-entry.sh << 'EOF'
+# Create entrypoint script in builder stage
+RUN cat > bin/docker-entry.sh << 'ENTRYEOF'
 #!/bin/sh
 set -e
 
@@ -57,15 +58,23 @@ case "${EQLITE_ROLE}" in
     BINARY="eqlite-minerd"
     ;;
   adapter|proxy)
-    BINARY="eqlite-adapter"
-    if [ ! -f "/app/eqlite-adapter" ]; then
+    if [ -f "/app/eqlite-proxy" ]; then
+      BINARY="eqlite-proxy"
+    else
       BINARY="eqlite"
       EXTRA_ARGS="adapter"
     fi
     ;;
+  explorer)
+    BINARY="eqlite"
+    EXTRA_ARGS="explorer"
+    ;;
+  mysql-adapter)
+    BINARY="eqlite-mysql-adapter"
+    ;;
   *)
     echo "Unknown EQLITE_ROLE: ${EQLITE_ROLE}"
-    echo "Valid roles: blockproducer, miner, adapter"
+    echo "Valid roles: blockproducer, miner, adapter, explorer, mysql-adapter"
     exit 1
     ;;
 esac
@@ -75,56 +84,43 @@ CONFIG_FILE="${EQLITE_CONF:-/config/config.yaml}"
 
 echo "Starting EQLite ${EQLITE_ROLE} with config: ${CONFIG_FILE}"
 exec /app/${BINARY} -config "${CONFIG_FILE}" ${EXTRA_ARGS} "$@"
-EOF
+ENTRYEOF
 RUN chmod +x bin/docker-entry.sh
 
 # ============================================================================
-# Stage 2: Runtime
+# Stage 2: Runtime - Minimal Alpine image
 # ============================================================================
-FROM debian:bookworm-slim
+FROM alpine:3.22
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    wget \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create non-root user
-RUN groupadd -r eqlite && useradd -r -g eqlite eqlite
+# Include ICU libs for dynamic linking and other runtime dependencies
+RUN apk --no-cache add ca-certificates icu-libs musl libgcc libstdc++ sqlite-libs wget netcat-openbsd
 
 WORKDIR /app
 
-# Copy binaries from builder
-COPY --from=builder /build/bin/eqlited /app/
-COPY --from=builder /build/bin/eqlite-minerd /app/
-COPY --from=builder /build/bin/eqlite /app/
-COPY --from=builder /build/bin/docker-entry.sh /app/
-
-# Copy adapter if it was built
-COPY --from=builder /build/bin/eqlite-adapter* /app/ 2>/dev/null || true
+# Copy core binaries from builder (these are always built)
+COPY --from=builder /go/src/eqlite/bin/eqlited /app/
+COPY --from=builder /go/src/eqlite/bin/eqlite-minerd /app/
+COPY --from=builder /go/src/eqlite/bin/eqlite /app/
+COPY --from=builder /go/src/eqlite/bin/eqlite-proxy /app/
+COPY --from=builder /go/src/eqlite/bin/docker-entry.sh /app/
 
 # Create directories
-RUN mkdir -p /config /data /logs && \
-    chown -R eqlite:eqlite /app /config /data /logs
+RUN mkdir -p /config /data /logs && chmod 755 /app/docker-entry.sh
 
 # Default environment
 ENV EQLITE_ROLE=miner
 ENV EQLITE_CONF=/config/config.yaml
 
 # Ports:
-# 4661: Client connections
+# 4661: Client connections / Adapter HTTP
 # 4662: Node-to-node RPC
 # 4663: Kayak consensus
-# 8546: HTTP API
+# 8546: HTTP API / WebSocket
 EXPOSE 4661 4662 4663 8546
 
 VOLUME ["/config", "/data", "/logs"]
-
-USER eqlite
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD wget -q --spider http://localhost:8546/v1/status || exit 1
 
 ENTRYPOINT ["/app/docker-entry.sh"]
-
-
-

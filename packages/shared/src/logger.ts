@@ -2,7 +2,7 @@
  * Shared Structured Logger
  *
  * Universal logger that works in Node.js, Bun, and browsers.
- * Uses pino in Node.js/Bun (with optional pino-pretty in dev),
+ * Uses pino in Node.js/Bun with JSON output,
  * falls back to console-based logging in browsers.
  *
  * Usage:
@@ -83,31 +83,10 @@ async function getPinoLogger(): Promise<PinoLogger | null> {
   // Dynamic import to avoid bundling pino in browser builds
   const pinoMod = await import('pino')
   const pinoFn = pinoMod.default
-
-  const isProduction = getEnv('NODE_ENV') === 'production'
   const logLevel = getLogLevel()
-
-  // Try to use pino-pretty in development (may not be available)
-  let transport: pino.TransportSingleOptions | undefined
-  if (!isProduction) {
-    try {
-      // pino-pretty is optional - only use if available
-      transport = {
-        target: 'pino-pretty',
-        options: {
-          colorize: true,
-          translateTime: 'SYS:standard',
-          ignore: 'pid,hostname',
-        },
-      }
-    } catch {
-      // pino-pretty not available, use default output
-    }
-  }
 
   pinoBaseLogger = pinoFn({
     level: logLevel,
-    transport,
     formatters: {
       level: (label: string) => ({ level: label }),
     },
@@ -191,7 +170,7 @@ function initSyncPinoLogger(): void {
   const pinoFn = pinoMod.default
   const logLevel = getLogLevel()
 
-  // In sync mode, skip pino-pretty (requires async transport)
+  // Use JSON output for consistent structured logging
   syncPinoLogger = pinoFn({
     level: logLevel,
     // Skip transport in sync mode - use JSON output
@@ -206,7 +185,7 @@ function initSyncPinoLogger(): void {
  * Create a logger instance for a specific service/component
  *
  * Works synchronously in both browser and Node.js/Bun.
- * In Node.js/Bun: Uses pino with JSON output (no pino-pretty in sync mode)
+ * In Node.js/Bun: Uses pino with JSON output
  * In browser: Uses console with formatted output
  */
 export function createLogger(service: string, config?: LoggerConfig): Logger {
@@ -229,7 +208,7 @@ export function createLogger(service: string, config?: LoggerConfig): Logger {
 }
 
 /**
- * Create a logger instance asynchronously (enables pino-pretty in dev)
+ * Create a logger instance asynchronously
  *
  * Use this when you can await initialization (e.g., server startup).
  * Falls back to sync createLogger if already initialized.

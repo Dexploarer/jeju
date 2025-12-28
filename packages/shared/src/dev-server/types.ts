@@ -83,7 +83,6 @@ export const DEFAULT_BROWSER_EXTERNALS = [
   'node:module',
   'node:worker_threads',
   'pino',
-  'pino-pretty',
 ]
 
 export const DEFAULT_PROXY_PATHS = ['/api/', '/health', '/.well-known/']

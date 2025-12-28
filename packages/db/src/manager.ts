@@ -26,7 +26,7 @@
  * ```
  */
 
-import { getLogLevel, isProductionEnv } from '@jejunetwork/config'
+import { getLogLevel } from '@jejunetwork/config'
 import pino from 'pino'
 import { type EQLiteClient, getEQLite, resetEQLite } from './client.js'
 import type {
@@ -40,9 +40,6 @@ import type {
 const log = pino({
   name: 'db-manager',
   level: getLogLevel(),
-  transport: !isProductionEnv()
-    ? { target: 'pino-pretty', options: { colorize: true } }
-    : undefined,
 })
 
 // Types

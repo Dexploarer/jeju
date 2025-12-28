@@ -9,6 +9,9 @@
   "exports": {
     ".": "./shared/index.ts",
     "./ai": "./shared/ai/index.ts",
+    "./tauri": "./shared/tauri/index.ts",
+    "./tauri/fixtures": "./shared/tauri/fixtures.ts",
+    "./tauri/playwright-config": "./shared/tauri/playwright.config.tauri.ts",
     "./playwright-only": "./playwright-only.ts",
     "./zod-compat": "./shared/zod-compat.ts",
     "./bun-global-setup": "./shared/bun-global-setup.ts",
@@ -22,7 +25,11 @@
   "scripts": {
     "test": "bun test",
     "smoke": "bunx playwright test --config smoke/playwright.config.ts",
-    "load": "bun run load/runner.ts"
+    "load": "bun run load/runner.ts",
+    "tauri:wallet": "bun run scripts/run-tauri-tests.ts wallet",
+    "tauri:node": "bun run scripts/run-tauri-tests.ts node",
+    "tauri:vpn": "bun run scripts/run-tauri-tests.ts vpn",
+    "tauri:all": "bun run tauri:wallet && bun run tauri:node && bun run tauri:vpn"
   },
   "dependencies": {
     "@jejunetwork/config": "workspace:*",

@@ -10,6 +10,8 @@ import "../src/names/JNSReverseRegistrar.sol";
 import "../src/storage/StorageManager.sol";
 import "../src/compute/WorkerRegistry.sol";
 import "../src/cdn/CDNRegistry.sol";
+import "../src/git/RepoRegistry.sol";
+import "../src/pkg/PackageRegistry.sol";
 
 /**
  * @title DeployDWS
@@ -20,6 +22,8 @@ import "../src/cdn/CDNRegistry.sol";
  *      - StorageManager (IPFS/Arweave storage tracking)
  *      - WorkerRegistry (serverless worker deployments)
  *      - CDNRegistry (edge node and site management)
+ *      - RepoRegistry (decentralized git hosting)
+ *      - PackageRegistry (decentralized package registry)
  */
 contract DeployDWS is Script {
     function run() external {
@@ -122,6 +126,26 @@ contract DeployDWS is Script {
         console.log("");
 
         // ============================================================
+        // Git Repository Registry (JejuGit)
+        // ============================================================
+        console.log("--- Git Repository Registry ---");
+
+        RepoRegistry repoRegistry = new RepoRegistry(deployer, identityRegistry);
+        console.log("RepoRegistry:", address(repoRegistry));
+        console.log("  Decentralized git hosting");
+        console.log("");
+
+        // ============================================================
+        // Package Registry (JejuPkg)
+        // ============================================================
+        console.log("--- Package Registry ---");
+
+        PackageRegistry packageRegistry = new PackageRegistry(deployer, identityRegistry);
+        console.log("PackageRegistry:", address(packageRegistry));
+        console.log("  npm-compatible package registry");
+        console.log("");
+
+        // ============================================================
         // Register Canonical App Names (optional - may fail on testnet/mainnet)
         // ============================================================
         console.log("--- Registering Canonical Names ---");
@@ -179,6 +203,8 @@ contract DeployDWS is Script {
         console.log("  StorageManager:", address(storageManager));
         console.log("  WorkerRegistry:", address(workerRegistry));
         console.log("  CDNRegistry:", address(cdnRegistry));
+        console.log("  RepoRegistry:", address(repoRegistry));
+        console.log("  PackageRegistry:", address(packageRegistry));
         console.log("");
         console.log("Canonical Names Registered:");
         console.log("  gateway.jeju, bazaar.jeju, compute.jeju, storage.jeju");

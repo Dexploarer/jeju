@@ -25,6 +25,10 @@
       "import": "./driver/dist/index.js",
       "types": "./driver/dist/index.d.ts"
     },
+    "./drizzle": {
+      "import": "./driver/dist/drizzle.js",
+      "types": "./driver/dist/drizzle.d.ts"
+    },
     "./pool": {
       "import": "./driver/dist/ConnectionPool.js",
       "types": "./driver/dist/ConnectionPool.d.ts"
@@ -42,7 +46,7 @@
     "JEJU_INTEGRATION.md"
   ],
   "scripts": {
-    "build": "cd driver && bun build ./src/index.ts ./src/ConnectionPool.ts ./src/Discovery.ts ./src/Transaction.ts --outdir ./dist --format esm && tsc --emitDeclarationOnly --declaration --declarationDir dist",
+    "build": "cd driver && bun build ./src/index.ts ./src/ConnectionPool.ts ./src/Discovery.ts ./src/Transaction.ts ./src/drizzle.ts --outdir ./dist --format esm && tsc --emitDeclarationOnly --declaration --declarationDir dist",
     "build:go": "go build ./...",
     "dev": "cd driver && bun build ./src/index.ts --outdir ./dist --format esm --watch",
     "test": "cd driver && bun test",

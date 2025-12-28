@@ -21,14 +21,7 @@ import (
 	"eqlite/src/utils/log"
 )
 
-func skipIfNoIntegration(t *testing.T) {
-	if os.Getenv("EQLITE_INTEGRATION_TEST") != "1" {
-		t.Skip("Skipping integration test: set EQLITE_INTEGRATION_TEST=1 to run")
-	}
-}
-
 func TestInit(t *testing.T) {
-	skipIfNoIntegration(t)
 	log.SetLevel(log.DebugLevel)
 	// test init
 	Convey("test init", t, func() {
@@ -60,7 +53,6 @@ func TestInit(t *testing.T) {
 }
 
 func TestDefaultInit(t *testing.T) {
-	skipIfNoIntegration(t)
 	log.SetLevel(log.DebugLevel)
 	// test defaultInit
 	Convey("test defaultInit", t, func() {
@@ -110,7 +102,6 @@ func TestDefaultInit(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
-	skipIfNoIntegration(t)
 	Convey("test create", t, func() {
 		var stopTestService func()
 		var err error
@@ -165,7 +156,6 @@ func TestCreate(t *testing.T) {
 }
 
 func TestDrop(t *testing.T) {
-	skipIfNoIntegration(t)
 	Convey("test drop", t, func() {
 		var stopTestService func()
 		var err error
@@ -185,7 +175,6 @@ func TestDrop(t *testing.T) {
 }
 
 func TestOpen(t *testing.T) {
-	skipIfNoIntegration(t)
 	Convey("test Open", t, func() {
 		var eqliteDriver eqliteDriver
 		var err error
@@ -209,7 +198,6 @@ func TestOpen(t *testing.T) {
 // TestGetTokenBalance removed - token operations are now handled by EQLiteRegistry smart contract
 
 func TestWaitDBCreation(t *testing.T) {
-	skipIfNoIntegration(t)
 	Convey("test WaitDBCreation", t, func() {
 		var stopTestService func()
 		var err error
@@ -243,7 +231,6 @@ func TestWaitDBCreation(t *testing.T) {
 // TestTransferToken removed - token operations are now handled by EQLiteRegistry smart contract
 
 func TestUpdatePermission(t *testing.T) {
-	skipIfNoIntegration(t)
 	Convey("test UpdatePermission to a address", t, func() {
 		var stopTestService func()
 		var err error
@@ -272,7 +259,6 @@ func TestUpdatePermission(t *testing.T) {
 }
 
 func TestRunPeerListUpdater(t *testing.T) {
-	skipIfNoIntegration(t)
 	Convey("test peersUpdaterRunning", t, func() {
 		var stopTestService func()
 		var err error

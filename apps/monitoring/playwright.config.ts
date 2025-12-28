@@ -1,10 +1,10 @@
 /**
  * Monitoring Playwright Configuration
  */
-import { CORE_PORTS } from '@jejunetwork/config/ports'
 import { defineConfig, devices } from '@playwright/test'
 
-const PORT = CORE_PORTS.MONITORING.get()
+// Monitoring defaults to 5173 (standard Vite port) or PORT env var
+const PORT = Number(process.env.PORT) || 5173
 
 export default defineConfig({
   testDir: './tests/e2e',

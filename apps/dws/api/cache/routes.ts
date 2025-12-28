@@ -1422,7 +1422,7 @@ export function createCacheRoutes() {
         const args = body as string[]
         if (!Array.isArray(args) || args.length === 0) {
           throw new CacheError(
-            CacheErrorCode.INVALID_KEY,
+            CacheErrorCode.INVALID_OPERATION,
             'Invalid command format. Expected array.',
           )
         }
@@ -1458,7 +1458,7 @@ export function createCacheRoutes() {
         const commands = body as string[][]
         if (!Array.isArray(commands)) {
           throw new CacheError(
-            CacheErrorCode.INVALID_KEY,
+            CacheErrorCode.INVALID_OPERATION,
             'Invalid pipeline format. Expected array of commands.',
           )
         }
@@ -1495,7 +1495,7 @@ function executeRedisCommand(
   ns: string,
   cmd: string,
   args: string[],
-): string | number | null | string[] | Record<string, string> {
+): string | number | null | string[] | (string | null)[] | Record<string, string> {
   switch (cmd) {
     // Connection
     case 'PING':

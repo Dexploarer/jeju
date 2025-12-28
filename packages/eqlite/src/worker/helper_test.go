@@ -86,8 +86,7 @@ var (
 			types.NewCreateDatabase(&types.CreateDatabaseHeader{}),
 		},
 	}
-	testID           = proto.DatabaseID("111")
-	testNotExistID   = proto.DatabaseID("not exist")
+	testNotExistID = proto.DatabaseID("not exist")
 	testAddr         = proto.AccountAddress(hash.THashH([]byte{'a', 'd', 'd', 'r', '1'}))
 	testNotExistAddr = proto.AccountAddress(hash.THashH([]byte{'a', 'a'}))
 	testUser1        = &types.SQLChainUser{

@@ -16,6 +16,8 @@
   "dependencies": {
     "@elysiajs/cors": "^1.2.0",
     "@jejunetwork/auth": "workspace:*",
+    "@jejunetwork/config": "workspace:*",
+    "@jejunetwork/db": "workspace:*",
     "@kitajs/html": "^4.2.0",
     "@types/qrcode": "^1.5.6",
     "elysia": "^1.4.19",
@@ -23,6 +25,7 @@
     "viem": "2.43.3"
   },
   "devDependencies": {
+    "@jejunetwork/tests": "workspace:*",
     "@playwright/test": "^1.52.0",
     "@synthetixio/synpress": "4.1.1",
     "@types/bun": "^1.2.14",

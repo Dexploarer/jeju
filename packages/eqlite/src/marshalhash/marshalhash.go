@@ -307,17 +307,19 @@ func AppendArrayHeader(b []byte, n uint32) []byte {
 }
 
 // AppendTime appends a time value using msgpack ext format
+// Uses the same format as github.com/ugorji/go/codec msgpack implementation
 func AppendTime(b []byte, t time.Time) []byte {
 	// Use fixext8 format with extension type -1 (time)
 	b = append(b, mfixext8, TimeExtensionByte)
 
-	// Encode as seconds and nanoseconds (8 bytes total)
+	// Encode as: data64 = (nsec << 34) | seconds
+	// This matches the msgpack timestamp extension format
 	secs := t.Unix()
-	nsecs := t.Nanosecond()
+	nsecs := uint64(t.Nanosecond())
+	data64 := (nsecs << 34) | uint64(secs)
 
 	buf := make([]byte, 8)
-	binary.BigEndian.PutUint32(buf[0:4], uint32(nsecs))
-	binary.BigEndian.PutUint32(buf[4:8], uint32(secs))
+	binary.BigEndian.PutUint64(buf, data64)
 
 	return append(b, buf...)
 }

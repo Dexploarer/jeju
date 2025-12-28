@@ -1,10 +1,10 @@
 /**
  * Gateway Playwright Configuration
  */
-import { CORE_PORTS } from '@jejunetwork/config/ports'
 import { defineConfig, devices } from '@playwright/test'
 
-const PORT = CORE_PORTS.GATEWAY.get()
+// Dev server runs on 4014, not GATEWAY port (4013)
+const PORT = Number(process.env.GATEWAY_PORT) || 4014
 
 export default defineConfig({
   testDir: './tests/e2e',

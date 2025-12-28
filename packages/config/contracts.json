@@ -67,7 +67,13 @@
     },
     "dws": {
       "storageManager": "0xaAdA8236e22D0877159De81BDE5441Ad0C103d42",
-      "workerRegistry": "0x3dCe73fF914a4F844159A4B2dD9170d9499a783e"
+      "workerRegistry": "0x3dCe73fF914a4F844159A4B2dD9170d9499a783e",
+      "gitRegistry": "0x5fbdb2315678afecb367f032d93f642f64180aa3",
+      "packageRegistry": "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512",
+      "managedDatabaseRegistry": "0x5fc8d32690cc91d4c39d9d3abcbd16989f875707",
+      "cacheManager": "0x9fe46736679d2d9a65f0992f2272de9f3c7fa6e0",
+      "containerRegistry": "0xdc64a140aa3e981100a9beca4e685f962f0cf6c9",
+      "cronOrchestrator": "0xcf7ed3acca5a467e9e704c703e8d87f634fb0fc9"
     },
     "payments": {
       "paymasterFactory": "0x6D02ABC5fa967B0b085083F5Cf36c24502447244",
@@ -95,7 +101,8 @@
       "ledgerManager": "0xcb65A63B74F009A1C724AC221601d7DDD90f67C2",
       "inferenceServing": "0x08A90aF9A6eBBe11c322AD9930CC58E122231B5A",
       "staking": "0x7bdd3b028C4796eF0EAf07d11394d0d9d8c24139",
-      "workerRegistry": ""
+      "workerRegistry": "",
+      "cronTriggerRegistry": "0xcf7ed3acca5a467e9e704c703e8d87f634fb0fc9"
     },
     "governance": {
       "governor": "",
@@ -196,6 +203,14 @@
       "registrar": "",
       "reverseRegistrar": ""
     },
+    "dws": {
+      "storageManager": "",
+      "workerRegistry": "",
+      "managedDatabaseRegistry": "",
+      "cacheManager": "",
+      "containerRegistry": "",
+      "cronOrchestrator": ""
+    },
     "payments": {
       "paymasterFactory": "",
       "priceOracle": "",
@@ -216,7 +231,8 @@
       "ledgerManager": "",
       "inferenceServing": "",
       "staking": "",
-      "workerRegistry": ""
+      "workerRegistry": "",
+      "cronTriggerRegistry": ""
     },
     "governance": {
       "governor": "",
@@ -316,6 +332,14 @@
       "registrar": "",
       "reverseRegistrar": ""
     },
+    "dws": {
+      "storageManager": "",
+      "workerRegistry": "",
+      "managedDatabaseRegistry": "",
+      "cacheManager": "",
+      "containerRegistry": "",
+      "cronOrchestrator": ""
+    },
     "payments": {
       "paymasterFactory": "",
       "priceOracle": "",
@@ -336,7 +360,8 @@
       "ledgerManager": "",
       "inferenceServing": "",
       "staking": "",
-      "workerRegistry": ""
+      "workerRegistry": "",
+      "cronTriggerRegistry": ""
     },
     "governance": {
       "governor": "",

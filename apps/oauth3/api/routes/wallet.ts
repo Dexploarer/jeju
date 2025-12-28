@@ -284,6 +284,13 @@ No transaction will be sent. No gas fees.`
         const code = crypto.randomUUID()
         const userId = `wallet:${address.toLowerCase()}`
 
+        console.log('[OAuth3] Wallet verified, creating auth code:', {
+          code: code.substring(0, 8) + '...',
+          userId,
+          clientId: challenge.clientId,
+          redirectUri: challenge.redirectUri,
+        })
+
         await authCodeState.save(code, {
           clientId: challenge.clientId,
           redirectUri: challenge.redirectUri,
@@ -291,6 +298,8 @@ No transaction will be sent. No gas fees.`
           scope: ['openid', 'profile'],
           expiresAt: Date.now() + 5 * 60 * 1000,
         })
+
+        console.log('[OAuth3] Auth code saved successfully')
 
         // Create session
         const sessionId = crypto.randomUUID()

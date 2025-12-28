@@ -33,7 +33,7 @@ var FJ = filepath.Join
 
 func TestMain(m *testing.M) {
 	if os.Getenv("EQLITE_INTEGRATION_TEST") != "1" {
-		// Skip integration tests
+		// Skip integration tests that require external BP services
 		os.Exit(0)
 	}
 	os.Exit(func() int {

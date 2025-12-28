@@ -671,7 +671,7 @@ export const oauthStateStore = {
   },
 }
 
-// Initialize database and default client
+// Initialize database and default clients
 export async function initializeState(): Promise<void> {
   await ensureTablesExist()
 
@@ -682,8 +682,9 @@ export async function initializeState(): Promise<void> {
       clientId: 'jeju-default',
       name: 'Jeju Network Apps',
       redirectUris: [
-        'https://*.jejunetwork.org/callback',
-        'http://localhost:*/callback',
+        'https://*.jejunetwork.org/*',
+        'http://localhost:*/*',
+        'http://127.0.0.1:*/*',
       ],
       allowedProviders: [
         'wallet',
@@ -698,6 +699,36 @@ export async function initializeState(): Promise<void> {
       active: true,
     })
     console.log('[OAuth3] Default client created')
+  }
+
+  // Ensure eliza-cloud client exists (for Eliza Cloud app)
+  const elizaCloudClient = await clientState.get('eliza-cloud')
+  if (!elizaCloudClient) {
+    await clientState.save({
+      clientId: 'eliza-cloud',
+      name: 'Eliza Cloud',
+      redirectUris: [
+        'https://cloud.elizaos.com/*',
+        'https://eliza.cloud/*',
+        'https://*.elizaos.ai/*',
+        'http://localhost:3000/*',
+        'http://localhost:3001/*',
+        'http://127.0.0.1:3000/*',
+        'http://127.0.0.1:3001/*',
+      ],
+      allowedProviders: [
+        'wallet',
+        'farcaster',
+        'github',
+        'google',
+        'twitter',
+        'discord',
+      ] as AuthProvider[],
+      owner: '0x0000000000000000000000000000000000000000' as Address,
+      createdAt: Date.now(),
+      active: true,
+    })
+    console.log('[OAuth3] Eliza Cloud client created')
   }
 }
 
