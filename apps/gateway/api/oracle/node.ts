@@ -6,7 +6,12 @@
  * operations are delegated to the KMS service (MPC or TEE).
  */
 
-import { getChainId, getRpcUrl } from '@jejunetwork/config'
+import {
+  getChainId,
+  getContract,
+  getCurrentNetwork,
+  getRpcUrl,
+} from '@jejunetwork/config'
 import {
   COMMITTEE_MANAGER_ABI,
   FEED_REGISTRY_ABI,
@@ -419,9 +424,10 @@ export class OracleNode {
  * Private keys are managed by the KMS service (MPC or TEE).
  */
 export function createNodeConfig(): SecureOracleNodeConfig {
+  const network = getCurrentNetwork()
   return {
-    rpcUrl: getRpcUrl(),
-    chainId: getChainId(),
+    rpcUrl: getRpcUrl(network),
+    chainId: getChainId(network),
     // SECURITY: Service IDs for KMS, not private keys
     operatorServiceId:
       process.env.ORACLE_OPERATOR_SERVICE_ID ?? 'oracle-operator',
@@ -429,11 +435,11 @@ export function createNodeConfig(): SecureOracleNodeConfig {
 
     feedRegistry: parseEnvAddress(
       process.env.FEED_REGISTRY_ADDRESS,
-      ZERO_ADDRESS,
+      (getContract('oracle', 'feedRegistry', network) || ZERO_ADDRESS) as Address,
     ),
     reportVerifier: parseEnvAddress(
       process.env.REPORT_VERIFIER_ADDRESS,
-      ZERO_ADDRESS,
+      (getContract('oracle', 'reportVerifier', network) || ZERO_ADDRESS) as Address,
     ),
     committeeManager: parseEnvAddress(
       process.env.COMMITTEE_MANAGER_ADDRESS,
@@ -456,8 +462,3 @@ export function createNodeConfig(): SecureOracleNodeConfig {
   }
 }
 
-/**
- * Legacy config type for backwards compatibility.
- * @deprecated Use SecureOracleNodeConfig with KMS service IDs
- */
-export type OracleNodeConfig = SecureOracleNodeConfig

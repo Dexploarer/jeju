@@ -30,7 +30,11 @@
 import { execSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { getNetworkName } from '@jejunetwork/config'
+import {
+  getLocalhostHost,
+  getNetworkName,
+  getRpcUrl,
+} from '@jejunetwork/config'
 import { AddressRecordSchema, expectValid } from '../schemas'
 
 interface BootstrapResult {
@@ -155,7 +159,7 @@ class CompleteBootstrapper {
   ]
 
   constructor() {
-    this.rpcUrl = process.env.JEJU_RPC_URL || 'http://127.0.0.1:6546'
+    this.rpcUrl = getRpcUrl()
     this.deployerKey = process.env.PRIVATE_KEY || this.TEST_ACCOUNTS[0].key
     this.deployerAddress = this.getAddress(this.deployerKey)
   }
@@ -1471,7 +1475,8 @@ class CompleteBootstrapper {
         // Register each app with default config
         // Args: name, description, council, config tuple
         // Config tuple: (redirectUris, allowedProviders, requireTEEAttestation, sessionDuration, maxSessionsPerUser)
-        const configTuple = `(["http://localhost:3000/auth/callback","http://localhost:5173/auth/callback"],[0,1,2,3,4,5,6],false,86400,10)`
+        const host = getLocalhostHost()
+        const configTuple = `(["http://${host}:3000/auth/callback","http://${host}:5173/auth/callback"],[0,1,2,3,4,5,6],false,86400,10)`
         this.sendTx(
           appRegistry,
           'registerApp(string,string,address,(string[],uint8[],bool,uint256,uint256))',
@@ -2321,6 +2326,7 @@ PUBLIC_OAUTH3_STAKING_ADDRESS="${result.contracts.oauth3Staking || ''}"
 
     // Also create .env snippet
     const envPath = join(process.cwd(), '.env.localnet')
+    const host = getLocalhostHost()
     const envContent = `
 # Network Localnet - Complete Bootstrap
 # Generated: ${new Date().toISOString()}
@@ -2393,7 +2399,7 @@ STAKING_CONTRACT_ADDRESS="${result.contracts.oauth3Staking || ''}"
 
 # x402 Configuration
 X402_NETWORK=jeju-localnet
-X402_FACILITATOR_URL=http://localhost:3402
+X402_FACILITATOR_URL=http://${host}:3402
 
 # Test Accounts
 ${result.testWallets.map((w, i) => `TEST_ACCOUNT_${i + 1}_KEY="${w.privateKey}"`).join('\n')}
@@ -2464,8 +2470,9 @@ ${result.testWallets.map((w, i) => `TEST_ACCOUNT_${i + 1}_KEY="${w.privateKey}"`
     console.log('')
     console.log('1. Everything is ready! Use: bun run dev')
     console.log('')
+    const host = getLocalhostHost()
     console.log('2. Gateway (paymaster system):')
-    console.log('   http://localhost:4001')
+    console.log(`   http://${host}:4001`)
     console.log('')
     console.log('3. Test paymaster:')
     console.log('   All local tokens (USDC, JEJU, WETH) are registered')

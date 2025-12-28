@@ -4,6 +4,7 @@ import {
   getCurrentNetwork,
   getDWSComputeUrl,
   getEQLiteBlockProducerUrl,
+  getLocalhostHost,
 } from '@jejunetwork/config'
 import { expectHex } from '@jejunetwork/types'
 import type { Hex } from 'viem'
@@ -213,7 +214,8 @@ async function deployBackendToCompute(
 
   // For now, we'll use the local backend endpoint
   // In production, this would deploy to a compute provider
-  const backendEndpoint = process.env.BACKEND_URL || 'http://localhost:4500'
+  const host = getLocalhostHost()
+  const backendEndpoint = process.env.BACKEND_URL || `http://${host}:4500`
 
   // Register with compute network (if available)
   const result = await computeClient.registerService({
@@ -346,8 +348,9 @@ async function deploy(): Promise<DeployResult> {
   console.log('═══════════════════════════════════════\n')
 
   if (NETWORK === 'localnet') {
+    const host = getLocalhostHost()
     console.log('🔗 Access your dApp:')
-    console.log(`   Frontend: http://localhost:4180/ipfs/${result.frontendCid}`)
+    console.log(`   Frontend: http://${host}:4180/ipfs/${result.frontendCid}`)
     console.log(`   API:      ${result.backendEndpoint}`)
     console.log(
       `   A2A:      ${result.a2aEndpoint}/.well-known/agent-card.json`,

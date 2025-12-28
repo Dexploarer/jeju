@@ -4,6 +4,7 @@
  * REST API for the decentralized API marketplace
  */
 
+import { getLocalhostHost } from '@jejunetwork/config'
 import { expectValid } from '@jejunetwork/types'
 import { Elysia } from 'elysia'
 import { z } from 'zod'
@@ -744,10 +745,9 @@ export function createAPIMarketplaceRouter() {
         )
 
         // Forward to compute endpoint which handles provider selection
+        const host = getLocalhostHost()
         const computeResponse = await fetch(
-          'http://localhost:' +
-            (process.env.PORT ?? '4030') +
-            '/compute/chat/completions',
+          `http://${host}:${process.env.PORT ?? '4030'}/compute/chat/completions`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

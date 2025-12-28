@@ -285,14 +285,8 @@ const VPNExitConfigSchema = z.object({
   /**
    * KMS key ID for X25519 key derivation
    * The KMS will derive the WireGuard private key from this ID
-   * No raw private keys stored locally
    */
-  kmsKeyId: z.string().optional(),
-  /**
-   * @deprecated Use kmsKeyId instead
-   * Only for legacy/dev environments
-   */
-  privateKey: z.string().min(32).optional(),
+  kmsKeyId: z.string(),
   endpoint: z.string(),
   countryCode: z.string().length(2),
   regionCode: z.string().optional(),

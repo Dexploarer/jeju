@@ -1,5 +1,9 @@
 /** System status and diagnostics */
 
+import {
+  getL2RpcUrl,
+  getLocalhostHost,
+} from '@jejunetwork/config'
 import { Command } from 'commander'
 import { getAccountBalance, getChainStatus } from '../lib/chain'
 import { getDevKeys, hasKeys } from '../lib/keys'
@@ -63,10 +67,11 @@ async function quickStatus(network: NetworkType): Promise<void> {
 
   for (const svc of services) {
     const running = !(await isPortAvailable(svc.port))
+    const localhost = getLocalhostHost()
     logger.table([
       {
         label: svc.name,
-        value: running ? `http://127.0.0.1:${svc.port}` : 'stopped',
+        value: running ? `http://${localhost}:${svc.port}` : 'stopped',
         status: running ? 'ok' : 'warn',
       },
     ])
@@ -102,7 +107,7 @@ async function quickStatus(network: NetworkType): Promise<void> {
   if (chainStatus.running && network === 'localnet') {
     const deployer = WELL_KNOWN_KEYS.dev[0]
     const balance = await getAccountBalance(
-      `http://127.0.0.1:${DEFAULT_PORTS.l2Rpc}`,
+      getL2RpcUrl(),
       deployer.address as `0x${string}`,
     )
 
@@ -150,7 +155,7 @@ async function fullCheck(network: NetworkType): Promise<void> {
     logger.table([
       {
         label: 'RPC',
-        value: `http://127.0.0.1:${DEFAULT_PORTS.l2Rpc}`,
+        value: getL2RpcUrl(),
         status: 'ok',
       },
       { label: 'Block', value: String(chainStatus.blockNumber), status: 'ok' },

@@ -11,7 +11,11 @@
  * All data is read from on-chain contracts, no centralized database.
  */
 
-import { getCurrentNetwork } from '@jejunetwork/config'
+import {
+  getCurrentNetwork,
+  getRpcUrl,
+  tryGetContract,
+} from '@jejunetwork/config'
 import { Elysia } from 'elysia'
 import type { Address, Hex } from 'viem'
 import { createPublicClient, http, parseAbi } from 'viem'
@@ -303,18 +307,18 @@ function getConfig(): FundingConfig {
 
   // Load from deployment config or env
   const contracts = {
-    daoRegistry: (process.env.DAO_REGISTRY_ADDRESS ||
+    daoRegistry: (tryGetContract('governance', 'daoRegistry', network) ||
       '0x0000000000000000000000000000000000000000') as Address,
-    contributorRegistry: (process.env.CONTRIBUTOR_REGISTRY_ADDRESS ||
+    contributorRegistry: (tryGetContract('governance', 'contributorRegistry', network) ||
       '0x0000000000000000000000000000000000000000') as Address,
-    paymentRequestRegistry: (process.env.PAYMENT_REQUEST_REGISTRY_ADDRESS ||
+    paymentRequestRegistry: (tryGetContract('governance', 'paymentRequestRegistry', network) ||
       '0x0000000000000000000000000000000000000000') as Address,
-    deepFundingDistributor: (process.env.DEEP_FUNDING_DISTRIBUTOR_ADDRESS ||
+    deepFundingDistributor: (tryGetContract('governance', 'deepFundingDistributor', network) ||
       '0x0000000000000000000000000000000000000000') as Address,
   }
 
   return {
-    rpcUrl: process.env.RPC_URL || 'http://localhost:6545',
+    rpcUrl: getRpcUrl(network),
     chainId:
       network === 'localnet' ? 31337 : network === 'testnet' ? 84532 : 8453,
     contracts,

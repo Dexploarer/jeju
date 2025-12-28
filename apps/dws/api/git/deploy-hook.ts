@@ -14,7 +14,15 @@
  * Workerd compatible: Uses exec API for file operations.
  */
 
-import { getContract, getRpcUrl, type NetworkType } from '@jejunetwork/config'
+import {
+  getContract,
+  getCurrentNetwork,
+  getIpfsApiUrl,
+  getLocalhostHost,
+  getRpcUrl,
+  isProductionEnv,
+  type NetworkType,
+} from '@jejunetwork/config'
 import {
   type Address,
   createWalletClient,
@@ -35,8 +43,13 @@ interface DeployHookEnvConfig {
   execUrl: string
 }
 
+const getDefaultExecUrl = (): string => {
+  const host = getLocalhostHost()
+  return `http://${host}:4020/exec`
+}
+
 let envConfig: DeployHookEnvConfig = {
-  execUrl: 'http://localhost:4020/exec',
+  execUrl: getDefaultExecUrl(),
 }
 
 export function configureDeployHook(
@@ -296,7 +309,7 @@ async function buildProject(
  * Upload directory to IPFS
  */
 async function uploadToIPFS(dirPath: string): Promise<string | null> {
-  const ipfsApiUrl = 'http://localhost:5001'
+  const ipfsApiUrl = getIpfsApiUrl()
 
   try {
     // Use IPFS CLI for directory upload via exec API
@@ -362,7 +375,7 @@ async function updateJNS(
         kmsKeyId,
         ownerAddress,
       })
-    } else if (process.env.NODE_ENV === 'production') {
+    } else if (isProductionEnv()) {
       console.error('[DeployHook] KMS not available in production')
       return null
     } else if (privateKey) {
@@ -375,7 +388,7 @@ async function updateJNS(
     }
   } else if (privateKey) {
     // Fallback to direct key (development only)
-    if (process.env.NODE_ENV === 'production') {
+    if (isProductionEnv()) {
       console.warn(
         '[DeployHook] Using direct key in production - set DEPLOY_HOOK_KMS_KEY_ID',
       )
@@ -620,7 +633,7 @@ export async function handlePostReceive(
       branch,
       commitHash: ref.newRev,
       owner: '0x0000000000000000000000000000000000000000' as Address, // TODO: Get from auth
-      network: (process.env.NETWORK ?? 'localnet') as NetworkType,
+      network: getCurrentNetwork(),
     })
 
     results.push(result)

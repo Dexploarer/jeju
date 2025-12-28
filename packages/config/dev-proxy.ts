@@ -15,6 +15,7 @@
  *   DEV_MODE=true bun run dev
  */
 
+import { getLocalhostHost } from './index'
 import { CORE_PORTS } from './ports'
 
 /** Dev proxy target configuration */
@@ -32,83 +33,88 @@ export interface DevProxyTarget {
 }
 
 /**
+ * Localhost host for building dev proxy URLs
+ */
+const HOST = getLocalhostHost()
+
+/**
  * Static mapping of JNS names to local development servers
  * Keys are the JNS name (without .jeju suffix)
  */
 export const DEV_PROXY_TARGETS: Record<string, DevProxyTarget> = {
   gateway: {
-    url: `http://localhost:${CORE_PORTS.GATEWAY.DEFAULT}`,
+    url: `http://${HOST}:${CORE_PORTS.GATEWAY.DEFAULT}`,
     port: CORE_PORTS.GATEWAY.DEFAULT,
     hasBackend: false,
   },
   bazaar: {
-    url: `http://localhost:${CORE_PORTS.BAZAAR.DEFAULT}`,
+    url: `http://${HOST}:${CORE_PORTS.BAZAAR.DEFAULT}`,
     port: CORE_PORTS.BAZAAR.DEFAULT,
     hasBackend: true,
     backendPort: CORE_PORTS.BAZAAR_API.DEFAULT,
     apiPrefix: '/api',
   },
   docs: {
-    url: `http://localhost:${CORE_PORTS.DOCUMENTATION.DEFAULT}`,
+    url: `http://${HOST}:${CORE_PORTS.DOCUMENTATION.DEFAULT}`,
     port: CORE_PORTS.DOCUMENTATION.DEFAULT,
     hasBackend: false,
   },
   documentation: {
-    url: `http://localhost:${CORE_PORTS.DOCUMENTATION.DEFAULT}`,
+    url: `http://${HOST}:${CORE_PORTS.DOCUMENTATION.DEFAULT}`,
     port: CORE_PORTS.DOCUMENTATION.DEFAULT,
     hasBackend: false,
   },
   factory: {
-    url: `http://localhost:${CORE_PORTS.FACTORY.DEFAULT}`,
+    url: `http://${HOST}:${CORE_PORTS.FACTORY.DEFAULT}`,
     port: CORE_PORTS.FACTORY.DEFAULT,
     hasBackend: true,
     backendPort: CORE_PORTS.FACTORY.DEFAULT,
     apiPrefix: '/api',
   },
   autocrat: {
-    url: `http://localhost:${CORE_PORTS.AUTOCRAT_API.DEFAULT}`,
+    url: `http://${HOST}:${CORE_PORTS.AUTOCRAT_API.DEFAULT}`,
     port: CORE_PORTS.AUTOCRAT_API.DEFAULT,
     hasBackend: true,
     backendPort: CORE_PORTS.AUTOCRAT_API.DEFAULT,
     apiPrefix: '/api',
   },
   crucible: {
-    url: `http://localhost:${CORE_PORTS.CRUCIBLE_API.DEFAULT}`,
+    url: `http://${HOST}:${CORE_PORTS.CRUCIBLE_API.DEFAULT}`,
     port: CORE_PORTS.CRUCIBLE_API.DEFAULT,
     hasBackend: true,
     backendPort: CORE_PORTS.CRUCIBLE_API.DEFAULT,
     apiPrefix: '/api',
   },
   dws: {
-    url: `http://localhost:${CORE_PORTS.DWS_API.DEFAULT}`,
+    url: `http://${HOST}:${CORE_PORTS.DWS_API.DEFAULT}`,
     port: CORE_PORTS.DWS_API.DEFAULT,
     hasBackend: true,
     backendPort: CORE_PORTS.DWS_API.DEFAULT,
     apiPrefix: '/api',
   },
   monitoring: {
-    url: `http://localhost:${CORE_PORTS.MONITORING.DEFAULT}`,
+    url: `http://${HOST}:${CORE_PORTS.MONITORING.DEFAULT}`,
     port: CORE_PORTS.MONITORING.DEFAULT,
     hasBackend: true,
     backendPort: CORE_PORTS.NODE_EXPLORER_API.DEFAULT,
     apiPrefix: '/api',
   },
   node: {
-    url: `http://localhost:${CORE_PORTS.NODE_API.DEFAULT}`,
+    url: `http://${HOST}:${CORE_PORTS.NODE_API.DEFAULT}`,
     port: CORE_PORTS.NODE_API.DEFAULT,
     hasBackend: true,
     backendPort: CORE_PORTS.NODE_API.DEFAULT,
     apiPrefix: '/api',
   },
   vpn: {
-    url: `http://localhost:${CORE_PORTS.VPN_WEB.DEFAULT}`,
+    url: `http://${HOST}:${CORE_PORTS.VPN_WEB.DEFAULT}`,
     port: CORE_PORTS.VPN_WEB.DEFAULT,
     hasBackend: true,
     backendPort: CORE_PORTS.VPN_API.DEFAULT,
     apiPrefix: '/api',
   },
   wallet: {
-    url: `http://localhost:${CORE_PORTS.WALLET.DEFAULT}`,
+    url: `http://${HOST}:${CORE_PORTS.WALLET.DEFAULT}`,
     port: CORE_PORTS.WALLET.DEFAULT,
     hasBackend: false,
   },
@@ -149,7 +155,8 @@ export function getDevProxyUrl(jnsName: string): string | null {
     const portEnvKey = `DEV_PROXY_${name.toUpperCase()}_PORT`
     const portOverride = process.env[portEnvKey]
     if (portOverride) {
-      return `http://localhost:${portOverride}`
+      const host = getLocalhostHost()
+      return `http://${host}:${portOverride}`
     }
     return target.url
   }

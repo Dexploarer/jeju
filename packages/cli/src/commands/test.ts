@@ -16,6 +16,12 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { dirname, join } from 'node:path'
+import {
+  getBridgeRelayerUrl,
+  getL2RpcUrl,
+  getLocalhostHost,
+  getSolanaRpcUrl,
+} from '@jejunetwork/config'
 import { validateOrNull } from '@jejunetwork/types'
 import { Command } from 'commander'
 import { type ExecaError, execa } from 'execa'
@@ -593,7 +599,7 @@ testCommand
 
     if (options.setupOnly) {
       logger.success('Infrastructure ready. Run tests with --skip-infra')
-      logger.info('Chain: http://127.0.0.1:6546 (chainId: 31337)')
+      logger.info(`Chain: ${getL2RpcUrl()} (chainId: 31337)`)
       // Keep Anvil running by not calling cleanup
       return
     }
@@ -969,7 +975,7 @@ async function runComputeTests(
   }
 
   // Check if bridge is running
-  const bridgeUrl = env.COMPUTE_BRIDGE_URL || 'http://127.0.0.1:4010'
+  const bridgeUrl = env.COMPUTE_BRIDGE_URL || getBridgeRelayerUrl()
   let bridgeRunning = false
   try {
     const response = await fetch(`${bridgeUrl}/health`, {
@@ -1084,8 +1090,11 @@ async function runCrossChainTests(
 
   // Check if Solana is available
   try {
+    const host = getLocalhostHost()
+    const solanaUrl =
+      env.SOLANA_RPC_URL || getSolanaRpcUrl() || `http://${host}:8899`
     const response = await fetch(
-      env.SOLANA_RPC_URL || 'http://127.0.0.1:8899',
+      solanaUrl,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1572,7 +1581,7 @@ async function setupE2EInfra(
   // E2E test configuration - fixed values for consistency. Port 6546 avoids Anvil/Hardhat default (8545)
   const E2E_PORT = 6546
   const E2E_CHAIN_ID = 31337
-  const rpcUrl = `http://127.0.0.1:${E2E_PORT}`
+  const rpcUrl = getL2RpcUrl()
   let anvilPid: number | undefined
   let chainStartedByUs = false
 
@@ -1907,7 +1916,7 @@ async function runSynpressTests(
   const results: TestResult[] = []
 
   // E2E test defaults - consistent with setupE2EInfra
-  const E2E_RPC_URL = 'http://127.0.0.1:6546'
+  const E2E_RPC_URL = getL2RpcUrl()
   const E2E_CHAIN_ID = '31337'
   const TEST_WALLET = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'
   const DEPLOYER_KEY =

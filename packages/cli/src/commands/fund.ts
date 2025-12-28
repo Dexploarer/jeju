@@ -1,5 +1,6 @@
 /** Fund development accounts */
 
+import { getL2RpcUrl } from '@jejunetwork/config'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { toError } from '@jejunetwork/types'
@@ -23,7 +24,7 @@ const localnetChain = {
   id: 31337,
   name: 'Network Localnet',
   nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-  rpcUrls: { default: { http: [`http://127.0.0.1:${DEFAULT_PORTS.l2Rpc}`] } },
+  rpcUrls: { default: { http: [getL2RpcUrl()] } },
 } as const
 
 export const fundCommand = new Command('fund')
@@ -39,7 +40,7 @@ export const fundCommand = new Command('fund')
       await fundTestnetDeployer(options.bridge)
       return
     }
-    const rpcUrl = `http://127.0.0.1:${DEFAULT_PORTS.l2Rpc}`
+    const rpcUrl = getL2RpcUrl()
 
     const isHealthy = await checkRpcHealth(rpcUrl, 3000)
     if (!isHealthy) {

@@ -2,6 +2,7 @@ import {
   createAppConfig,
   getEnvNumber,
   getEnvVar,
+  getLocalhostHost,
   isProductionEnv,
 } from '@jejunetwork/config'
 
@@ -44,7 +45,7 @@ const { config, configure: setOAuth3Config } = createAppConfig<OAuth3Config>({
   isProduction: isProductionEnv(),
 
   // Chain
-  rpcUrl: getEnvVar('RPC_URL') ?? 'http://localhost:8545',
+  rpcUrl: getEnvVar('RPC_URL') ?? `http://${getLocalhostHost()}:8545`,
   mpcRegistryAddress: getEnvVar('MPC_REGISTRY_ADDRESS'),
   identityRegistryAddress: getEnvVar('IDENTITY_REGISTRY_ADDRESS'),
 

@@ -10,6 +10,7 @@ import {
   getCurrentNetwork,
   getRpcUrl,
   getServicesConfig,
+  isProductionEnv,
 } from '@jejunetwork/config'
 import {
   AddressSchema,
@@ -213,7 +214,7 @@ async function getWalletClient(): Promise<WalletClient | KMSWalletClient> {
       })
       console.log('[Faucet] Using KMS-backed signing')
       return cachedWalletClient
-    } else if (process.env.NODE_ENV === 'production') {
+    } else if (isProductionEnv()) {
       throw new Error('KMS not available in production for faucet')
     }
   }
@@ -227,7 +228,7 @@ async function getWalletClient(): Promise<WalletClient | KMSWalletClient> {
     throw new Error('FAUCET_PRIVATE_KEY must be a hex string starting with 0x')
   }
 
-  if (process.env.NODE_ENV === 'production') {
+  if (isProductionEnv()) {
     console.warn(
       '[Faucet] Using direct key in production - set FAUCET_KMS_KEY_ID',
     )
@@ -254,6 +255,7 @@ const IDENTITY_REGISTRY_ABI = [
 
 async function isRegisteredAgent(address: Address): Promise<boolean> {
   // Skip registry check in test mode
+  // Note: Test mode detection - keep as env var for test framework compatibility
   if (process.env.NODE_ENV === 'test') {
     return true
   }

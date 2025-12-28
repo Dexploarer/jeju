@@ -10,6 +10,7 @@
  * 5. Starts the frontend dev server
  */
 
+import { getLocalhostHost } from '@jejunetwork/config'
 import { join } from 'node:path'
 import type { Subprocess } from 'bun'
 
@@ -46,8 +47,9 @@ process.on('SIGINT', cleanup)
 process.on('SIGTERM', cleanup)
 
 async function isPortInUse(port: number): Promise<boolean> {
+  const host = getLocalhostHost()
   try {
-    const _response = await fetch(`http://localhost:${port}`, {
+    const _response = await fetch(`http://${host}:${port}`, {
       method: 'HEAD',
       signal: AbortSignal.timeout(500),
     })
@@ -70,8 +72,9 @@ async function waitForPort(port: number, timeout = 30000): Promise<boolean> {
 
 async function startAnvil(): Promise<boolean> {
   // Check if anvil is already running
+  const host = getLocalhostHost()
   try {
-    const response = await fetch('http://localhost:6546', {
+    const response = await fetch(`http://${host}:6546`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -122,7 +125,7 @@ async function deployContracts(): Promise<boolean> {
     stderr: 'inherit',
     env: {
       ...process.env,
-      RPC_URL: 'http://localhost:6546',
+      RPC_URL: `http://${host}:6546`,
     },
   })
 
@@ -154,7 +157,7 @@ async function startDWSServer(): Promise<boolean> {
       ...process.env,
       NETWORK: 'localnet',
       PORT: '4030',
-      RPC_URL: 'http://localhost:6546',
+      RPC_URL: `http://${host}:6546`,
       // Use in-memory EQLite mode
       EQLITE_MODE: 'memory',
       // Disable Docker for dev
@@ -191,7 +194,7 @@ async function startFrontend(): Promise<boolean> {
     env: {
       ...process.env,
       PORT: '4031',
-      API_URL: 'http://localhost:4030',
+      API_URL: `http://${host}:4030`,
     },
   })
 
@@ -244,12 +247,13 @@ async function main() {
   }
 
   console.log('')
+  const host = getLocalhostHost()
   console.log('╔════════════════════════════════════════════════════════════╗')
   console.log('║                    DWS is ready                             ║')
   console.log('╠════════════════════════════════════════════════════════════╣')
-  console.log('║  Frontend:  http://localhost:4031                          ║')
-  console.log('║  API:       http://localhost:4030                          ║')
-  console.log('║  Blockchain: http://localhost:6546                         ║')
+  console.log(`║  Frontend:  http://${host}:4031                          ║`)
+  console.log(`║  API:       http://${host}:4030                          ║`)
+  console.log(`║  Blockchain: http://${host}:6546                         ║`)
   console.log('╚════════════════════════════════════════════════════════════╝')
   console.log('')
   console.log('Press Ctrl+C to stop all services')

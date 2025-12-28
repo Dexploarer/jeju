@@ -3,6 +3,12 @@
  * This allows clients to initialize auth flows via API calls
  */
 
+import {
+  getCurrentNetwork,
+  getLocalhostHost,
+  getOAuth3Url,
+  isProductionEnv,
+} from '@jejunetwork/config'
 import { Elysia, t } from 'elysia'
 import type { AuthConfig } from '../../lib/types'
 import { clientState } from '../services/state'
@@ -34,7 +40,10 @@ function validateRedirectUri(
 }
 
 export function createAuthInitRouter(_config: AuthConfig) {
-  const baseUrl = process.env.BASE_URL ?? 'http://localhost:4200'
+  const network = getCurrentNetwork()
+  const host = getLocalhostHost()
+  const baseUrl = process.env.BASE_URL ?? 
+    (network === 'localnet' ? `http://${host}:4200` : getOAuth3Url(network))
 
   return new Elysia({ name: 'auth-init', prefix: '/auth' })
     .post(
@@ -52,7 +61,7 @@ export function createAuthInitRouter(_config: AuthConfig) {
         // For development, create a permissive client if none exists
         if (!client) {
           // Auto-register the client for dev (in production this should fail)
-          const isDev = process.env.NODE_ENV !== 'production'
+          const isDev = !isProductionEnv()
           if (isDev) {
             console.log(
               `[OAuth3] Auto-registering development client: ${appId}`,

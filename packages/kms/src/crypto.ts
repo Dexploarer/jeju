@@ -248,19 +248,6 @@ export function constantTimeCompare(a: Hex, b: Hex): boolean {
   return result === 0
 }
 
-/**
- * Derive a master key from a secret string.
- *
- * ⚠️ SECURITY NOTE: This uses a single keccak256 hash which is fast but
- * provides minimal protection against brute-force if the key is observed.
- * For side-channel resistant scenarios, use deriveKeyFromSecretAsync()
- * which uses PBKDF2 with 100,000 iterations.
- *
- * @deprecated Use deriveKeyFromSecretAsync for new code
- */
-export function deriveKeyFromSecret(secret: string): Uint8Array {
-  return toBytes(keccak256(toBytes(secret)))
-}
 
 /**
  * Derive a master key from a secret string using PBKDF2.

@@ -94,6 +94,11 @@ export default defineConfig({
 
         // Fee Config
         'FeeConfig.sol/FeeConfig.json',
+
+        // RPC & Bandwidth (Pocket/Grass integration)
+        'MultiChainRPCRegistry.sol/MultiChainRPCRegistry.json',
+        'BandwidthRewards.sol/BandwidthRewards.json',
+        'UsageRewardDistributor.sol/UsageRewardDistributor.json',
       ],
       exclude: [
         'Common.sol/**',

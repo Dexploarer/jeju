@@ -20,6 +20,10 @@
 
 import type { Hex } from 'viem'
 import { keccak256 } from 'viem'
+import {
+  getCurrentNetwork,
+  getHSMConfig,
+} from '@jejunetwork/config'
 import { kmsLogger as log } from '../logger.js'
 
 /**
@@ -423,8 +427,11 @@ let hsmProvider: HSMProvider | null = null
  */
 export function getHSMProvider(config?: HSMConfig): HSMProvider {
   if (!hsmProvider) {
-    const hsmType = (process.env.HSM_TYPE as HSMConfig['type']) ?? 'softhsm'
-    const network = (process.env.NETWORK as HSMConfig['network']) ?? 'localnet'
+    const network = getCurrentNetwork()
+    // HSM_TYPE env var can override, otherwise default to softhsm for localnet
+    const hsmType =
+      (process.env.HSM_TYPE as HSMConfig['type']) ??
+      (network === 'localnet' ? 'softhsm' : 'aws-cloudhsm')
 
     hsmProvider = createHSMProvider({
       type: hsmType,

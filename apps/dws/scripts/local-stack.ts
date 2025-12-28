@@ -16,7 +16,11 @@
 
 import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
-import { getContract, getRpcUrl } from '@jejunetwork/config'
+import {
+  getContract,
+  getLocalhostHost,
+  getRpcUrl,
+} from '@jejunetwork/config'
 import { type Subprocess, spawn } from 'bun'
 import { JEJU_APPS, type JejuAppName } from '../api/workers/app-sdk'
 import { getRegionConfig } from '../api/workers/tee/regions'
@@ -147,12 +151,13 @@ async function startService(
   console.log(`[Stack] Starting ${name} on port ${appConfig.port}`)
 
   // Build environment
+  const host = getLocalhostHost()
   const env: Record<string, string> = {
     ...process.env,
     PORT: String(appConfig.port),
     NETWORK: config.environment,
     RPC_URL: config.rpcUrl,
-    DWS_URL: `http://localhost:${JEJU_APPS.dws.port}`,
+    DWS_URL: `http://${host}:${JEJU_APPS.dws.port}`,
     IDENTITY_REGISTRY_ADDRESS: config.contracts.identityRegistry,
     SERVICE_REGISTRY_ADDRESS: config.contracts.serviceRegistry,
     AGENT_VAULT_ADDRESS: config.contracts.agentVault,
@@ -162,11 +167,11 @@ async function startService(
     TEE_MODE: 'simulated',
     DSTACK_ENDPOINT: '',
     // Service URLs
-    COMPUTE_MARKETPLACE_URL: `http://localhost:${JEJU_APPS.dws.port}`,
-    STORAGE_API_URL: `http://localhost:${JEJU_APPS.dws.port}`,
-    IPFS_GATEWAY: `http://localhost:${JEJU_APPS.dws.port}/ipfs`,
-    INDEXER_GRAPHQL_URL: `http://localhost:${JEJU_APPS.indexer.port}/graphql`,
-    GATEWAY_URL: `http://localhost:${JEJU_APPS.gateway.port}`,
+    COMPUTE_MARKETPLACE_URL: `http://${host}:${JEJU_APPS.dws.port}`,
+    STORAGE_API_URL: `http://${host}:${JEJU_APPS.dws.port}`,
+    IPFS_GATEWAY: `http://${host}:${JEJU_APPS.dws.port}/ipfs`,
+    INDEXER_GRAPHQL_URL: `http://${host}:${JEJU_APPS.indexer.port}/graphql`,
+    GATEWAY_URL: `http://${host}:${JEJU_APPS.gateway.port}`,
     // Local development flags
     NODE_ENV: 'development',
     LOG_LEVEL: config.verbose ? 'debug' : 'info',
@@ -226,8 +231,9 @@ async function waitForService(
     const healthy = await checkHealth(service.port)
     if (healthy) {
       service.ready = true
+      const host = getLocalhostHost()
       console.log(
-        `[Stack] ${service.name} ready at http://localhost:${service.port}`,
+        `[Stack] ${service.name} ready at http://${host}:${service.port}`,
       )
       return
     }
@@ -240,7 +246,8 @@ async function waitForService(
 }
 
 async function checkHealth(port: number): Promise<boolean> {
-  return fetch(`http://localhost:${port}/health`)
+  const host = getLocalhostHost()
+  return fetch(`http://${host}:${port}/health`)
     .then((r) => r.ok)
     .catch(() => false)
 }
@@ -301,9 +308,10 @@ async function startStack(config: StackConfig): Promise<void> {
   console.log('║              ALL SERVICES STARTED                       ║')
   console.log('╠════════════════════════════════════════════════════════╣')
 
+  const host = getLocalhostHost()
   for (const [name, service] of services) {
     const status = service.ready ? '[OK]' : '[--]'
-    const url = `http://localhost:${service.port}`
+    const url = `http://${host}:${service.port}`
     console.log(`║ ${status} ${name.padEnd(12)} ${url.padEnd(35)}║`)
   }
 

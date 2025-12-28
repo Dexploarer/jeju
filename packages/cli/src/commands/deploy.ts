@@ -7,6 +7,7 @@ import { execa } from 'execa'
 import prompts from 'prompts'
 import { privateKeyToAccount } from 'viem/accounts'
 import { z } from 'zod'
+import { getL2RpcUrl } from '@jejunetwork/config'
 import { checkRpcHealth, getAccountBalance } from '../lib/chain'
 import { hasKeys, resolvePrivateKey } from '../lib/keys'
 import { logger } from '../lib/logger'
@@ -1027,7 +1028,7 @@ deployCommand
     }
 
     const network = options.network as NetworkType
-    const rpcUrl = CHAIN_CONFIG[network].rpcUrl ?? 'http://127.0.0.1:6546'
+    const rpcUrl = CHAIN_CONFIG[network].rpcUrl ?? getL2RpcUrl()
 
     logger.step('Deploying liquidity contracts...')
     await execa(

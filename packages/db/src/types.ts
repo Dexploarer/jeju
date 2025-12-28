@@ -39,16 +39,8 @@ export interface EQLiteConfig {
   blockProducerEndpoint: string
   /** Miner node endpoint (for direct queries) */
   minerEndpoint?: string
-  /**
-   * KMS key ID for secure signing (recommended for production)
-   * Uses threshold signatures via KMS MPC - no private keys in memory
-   */
-  keyId?: string
-  /**
-   * @deprecated Use keyId instead for secure signing
-   * Private key for signing (hex) - stored in memory, security risk
-   */
-  privateKey?: Hex
+  /** KMS key ID for secure signing (uses threshold signatures via KMS MPC) */
+  keyId: string
   /** Database ID (hex hash) */
   databaseId?: string
   /** Connection timeout in ms */

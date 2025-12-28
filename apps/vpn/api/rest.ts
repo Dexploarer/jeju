@@ -123,6 +123,7 @@ export function createRESTRouter(ctx: VPNServiceContext) {
         },
       }
     })
+
     .post('/connect', async ({ request, body }) => {
       const auth = await verifyAuth(request)
       expect(auth.valid, auth.error ?? 'Authentication required')
@@ -355,7 +356,6 @@ export function createRESTRouter(ctx: VPNServiceContext) {
 
       const settings = ctx.contributionSettings.get(auth.address)
       if (!settings) {
-        // Return defaults for new users
         return {
           address: auth.address,
           enabled: true,
@@ -383,7 +383,6 @@ export function createRESTRouter(ctx: VPNServiceContext) {
         'contribution settings',
       )
 
-      // Store the settings for this user
       const existingSettings = ctx.contributionSettings.get(auth.address)
       const updatedSettings = {
         address: auth.address,
@@ -409,12 +408,7 @@ export function createRESTRouter(ctx: VPNServiceContext) {
       }
     })
 
-  return router
-}
-
-    // ============================================================================
     // Residential Proxy / Bandwidth Sharing Endpoints
-    // ============================================================================
 
     .get('/residential-proxy/status', async ({ request }) => {
       const auth = await verifyAuth(request)
@@ -423,7 +417,6 @@ export function createRESTRouter(ctx: VPNServiceContext) {
         throw new Error('Authentication address missing')
       }
 
-      // Get status from bandwidth rewards tracking
       const status = ctx.bandwidthStatus?.get(auth.address)
 
       if (!status) {
@@ -492,13 +485,23 @@ export function createRESTRouter(ctx: VPNServiceContext) {
       const updated = {
         enabled: settings.enabled ?? existing?.enabled ?? false,
         node_type: settings.node_type ?? existing?.node_type ?? 'residential',
-        max_bandwidth_mbps: settings.max_bandwidth_mbps ?? existing?.max_bandwidth_mbps ?? 100,
-        max_concurrent_connections: settings.max_concurrent_connections ?? existing?.max_concurrent_connections ?? 50,
-        allowed_ports: settings.allowed_ports ?? existing?.allowed_ports ?? [80, 443, 8080, 8443],
-        blocked_domains: settings.blocked_domains ?? existing?.blocked_domains ?? [],
-        schedule_enabled: settings.schedule_enabled ?? existing?.schedule_enabled ?? false,
-        schedule_start_hour: settings.schedule_start_hour ?? existing?.schedule_start_hour,
-        schedule_end_hour: settings.schedule_end_hour ?? existing?.schedule_end_hour,
+        max_bandwidth_mbps:
+          settings.max_bandwidth_mbps ?? existing?.max_bandwidth_mbps ?? 100,
+        max_concurrent_connections:
+          settings.max_concurrent_connections ??
+          existing?.max_concurrent_connections ??
+          50,
+        allowed_ports:
+          settings.allowed_ports ??
+          existing?.allowed_ports ?? [80, 443, 8080, 8443],
+        blocked_domains:
+          settings.blocked_domains ?? existing?.blocked_domains ?? [],
+        schedule_enabled:
+          settings.schedule_enabled ?? existing?.schedule_enabled ?? false,
+        schedule_start_hour:
+          settings.schedule_start_hour ?? existing?.schedule_start_hour,
+        schedule_end_hour:
+          settings.schedule_end_hour ?? existing?.schedule_end_hour,
       }
 
       if (!ctx.bandwidthSettings) {
@@ -548,7 +551,6 @@ export function createRESTRouter(ctx: VPNServiceContext) {
 
       const { stake_amount } = body as { stake_amount: string }
 
-      // Initialize status for this user
       if (!ctx.bandwidthStatus) {
         ctx.bandwidthStatus = new Map()
       }
@@ -583,16 +585,17 @@ export function createRESTRouter(ctx: VPNServiceContext) {
       }
 
       const status = ctx.bandwidthStatus?.get(auth.address)
-      expect(status?.is_registered, 'Node not registered')
+      expect(status?.is_registered === true, 'Node not registered')
 
       const pendingRewards = status?.pending_rewards ?? '0'
-      
-      // Reset pending rewards after claim
+
       if (ctx.bandwidthStatus && status) {
         ctx.bandwidthStatus.set(auth.address, {
           ...status,
           pending_rewards: '0',
-          total_earnings: (BigInt(status.total_earnings) + BigInt(pendingRewards)).toString(),
+          total_earnings: (
+            BigInt(status.total_earnings) + BigInt(pendingRewards)
+          ).toString(),
         })
       }
 
@@ -602,3 +605,5 @@ export function createRESTRouter(ctx: VPNServiceContext) {
       }
     })
 
+  return router
+}

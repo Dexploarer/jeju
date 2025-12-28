@@ -331,8 +331,11 @@ describe('OAuth3 JNS Integration', () => {
   })
 })
 
-// IPFS API port from centralized config (default 5001)
-const IPFS_PORT = process.env.IPFS_API_PORT ?? '5001'
+import { getIpfsApiUrl } from '@jejunetwork/config'
+
+// IPFS API port from centralized config
+const IPFS_API_URL = getIpfsApiUrl()
+const IPFS_PORT = IPFS_API_URL.match(/:(\d+)/)?.[1] ?? '5001'
 
 describe('OAuth3 Decentralized Storage', () => {
   let storage: OAuth3StorageService

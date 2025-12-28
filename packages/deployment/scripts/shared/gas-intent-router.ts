@@ -13,6 +13,7 @@
  * No bridging required - XLPs handle cross-chain liquidity.
  */
 
+import { getRpcUrl } from '@jejunetwork/config'
 import {
   type Address,
   createPublicClient,
@@ -716,8 +717,7 @@ export function createGasRouter(
   config: Partial<RouterConfig> = {},
 ): GasIntentRouter {
   const fullConfig: RouterConfig = {
-    rpcUrl:
-      config.rpcUrl || process.env.JEJU_RPC_URL || 'http://127.0.0.1:6546',
+    rpcUrl: config.rpcUrl || getRpcUrl(),
     chainId: config.chainId || 31337,
     paymasterFactoryAddress: (config.paymasterFactoryAddress ||
       process.env.PAYMASTER_FACTORY_ADDRESS ||

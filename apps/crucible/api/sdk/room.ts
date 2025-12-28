@@ -8,7 +8,6 @@ import {
   type PublicClient,
   parseAbi,
   parseAbiParameters,
-  type WalletClient,
 } from 'viem'
 import type {
   AgentRole,
@@ -74,14 +73,8 @@ export interface RoomSDKConfig {
   crucibleConfig: CrucibleConfig
   storage: CrucibleStorage
   publicClient: PublicClient
-  /**
-   * @deprecated Use kmsSigner for production. walletClient only for localnet.
-   */
-  walletClient?: WalletClient
-  /**
-   * KMS-backed signer for threshold signing (production).
-   */
-  kmsSigner?: KMSSigner
+  /** KMS-backed signer for threshold signing */
+  kmsSigner: KMSSigner
   logger?: Logger
 }
 
@@ -89,28 +82,27 @@ export class RoomSDK {
   private config: CrucibleConfig
   private storage: CrucibleStorage
   private publicClient: PublicClient
-  private walletClient?: WalletClient
-  private kmsSigner?: KMSSigner
+  private kmsSigner: KMSSigner
   private log: Logger
 
   constructor(sdkConfig: RoomSDKConfig) {
     this.config = sdkConfig.crucibleConfig
     this.storage = sdkConfig.storage
     this.publicClient = sdkConfig.publicClient
-    this.walletClient = sdkConfig.walletClient
+    this.kmsSigner = sdkConfig.kmsSigner
     this.kmsSigner = sdkConfig.kmsSigner
     this.log = sdkConfig.logger ?? createLogger('RoomSDK')
   }
 
   /**
-   * Check if write operations are available (KMS or wallet configured)
+   * Check if write operations are available (KMS configured)
    */
   canWrite(): boolean {
-    return !!(this.kmsSigner?.isInitialized() || this.walletClient)
+    return this.kmsSigner.isInitialized()
   }
 
   /**
-   * Execute a contract write using KMS or wallet
+   * Execute a contract write using KMS
    */
   private async executeWrite(params: {
     address: Address
@@ -119,42 +111,13 @@ export class RoomSDK {
     args?: readonly unknown[]
     value?: bigint
   }): Promise<`0x${string}`> {
-    // Prefer KMS signer if available
-    if (this.kmsSigner?.isInitialized()) {
-      this.log.debug('Executing write via KMS', {
-        functionName: params.functionName,
-      })
-      return this.kmsSigner.signContractWrite(params)
+    if (!this.kmsSigner.isInitialized()) {
+      throw new Error('KMS signer not initialized')
     }
-
-    // Fallback to wallet client (localnet only)
-    if (this.walletClient) {
-      this.log.debug('Executing write via wallet', {
-        functionName: params.functionName,
-      })
-      const account = expect(
-        this.walletClient.account,
-        'Wallet account required',
-      )
-      const simulateParams = {
-        address: params.address,
-        abi: params.abi,
-        functionName: params.functionName,
-        args: params.args,
-        account,
-        ...(params.value !== undefined ? { value: params.value } : {}),
-      }
-      const { request } = await this.publicClient.simulateContract(
-        simulateParams as Parameters<
-          typeof this.publicClient.simulateContract
-        >[0],
-      )
-      return this.walletClient.writeContract(
-        request as Parameters<typeof this.walletClient.writeContract>[0],
-      )
-    }
-
-    throw new Error('No signer available - configure KMS or wallet')
+    this.log.debug('Executing write via KMS', {
+      functionName: params.functionName,
+    })
+    return this.kmsSigner.signContractWrite(params)
   }
 
   async createRoom(

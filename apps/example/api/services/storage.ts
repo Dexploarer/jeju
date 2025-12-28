@@ -1,11 +1,16 @@
 import { treaty } from '@elysiajs/eden'
-import { getIpfsGatewayEnv, getStorageApiEndpoint } from '@jejunetwork/config'
+import {
+  getIpfsGatewayEnv,
+  getLocalhostHost,
+  getStorageApiEndpoint,
+} from '@jejunetwork/config'
 import { Elysia } from 'elysia'
 import type { Address } from 'viem'
 import { cidResponseSchema, parseJsonResponse } from '../../lib/schemas'
 
-const STORAGE_ENDPOINT = getStorageApiEndpoint() ?? 'http://localhost:4010'
-const IPFS_GATEWAY = getIpfsGatewayEnv() ?? 'http://localhost:4180'
+const host = getLocalhostHost()
+const STORAGE_ENDPOINT = getStorageApiEndpoint() ?? `http://${host}:4010`
+const IPFS_GATEWAY = getIpfsGatewayEnv() ?? `http://${host}:4180`
 const STORAGE_TIMEOUT = 30000
 
 interface StorageService {

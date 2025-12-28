@@ -5,6 +5,7 @@
  */
 
 import {
+  getApiKey,
   getChainId,
   getContractsConfig,
   getCurrentNetwork,
@@ -75,9 +76,8 @@ export const CONTRACTS = {
   priceFeedAggregator: addr(contracts.oracle?.priceFeedAggregator),
 } as const
 
-// WalletConnect Project ID from environment
-export const WALLETCONNECT_PROJECT_ID =
-  process.env.WALLETCONNECT_PROJECT_ID || ''
+// WalletConnect Project ID from config
+export const WALLETCONNECT_PROJECT_ID = getApiKey('walletconnect') || ''
 
 // Direct exports for prediction market contracts (with env var fallback for local dev)
 export const PREDICTION_MARKET_ADDRESS: Address =

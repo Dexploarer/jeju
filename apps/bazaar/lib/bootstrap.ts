@@ -8,6 +8,7 @@
 import { execSync } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { isLocalnet } from '@jejunetwork/config'
 
 // Anvil default key - ONLY for local development
 const ANVIL_DEFAULT_KEY =
@@ -45,9 +46,7 @@ function getDeployerKey(rpcUrl: string): string {
   const envKey = process.env.PRIVATE_KEY
   if (envKey) return envKey
 
-  const isLocalRpc =
-    rpcUrl.includes('127.0.0.1') || rpcUrl.includes('localhost')
-  if (!isLocalRpc) {
+  if (!isLocalnet(rpcUrl)) {
     throw new Error(
       'PRIVATE_KEY environment variable required for non-local deployments.',
     )

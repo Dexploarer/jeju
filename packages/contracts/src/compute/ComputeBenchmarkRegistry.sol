@@ -246,9 +246,9 @@ contract ComputeBenchmarkRegistry is Ownable, ReentrancyGuard {
         // Calculate overall score
         uint64 score = _calculateOverallScore(cpu, memory_, disk, network, gpu, tee);
 
-        // Get provider's hourly rate
-        ComputeRegistry.Provider memory provider = computeRegistry.getProvider(msg.sender);
-        uint64 costPerScore = score > 0 ? uint64(provider.pricePerHour / score) : 0;
+        // Cost per score is computed off-chain from rental pricing
+        // The ComputeRegistry.Provider doesn't store pricing directly
+        uint64 costPerScore = 0;
 
         // Create benchmark hash
         bytes32 benchmarkHash = keccak256(abi.encode(

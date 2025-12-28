@@ -1,4 +1,5 @@
 import { treaty } from '@elysiajs/eden'
+import { getLocalhostHost } from '@jejunetwork/config'
 import { Elysia, t } from 'elysia'
 import type { Address } from 'viem'
 import {
@@ -7,7 +8,8 @@ import {
   parseJsonResponse,
 } from '../../lib/schemas'
 
-const KMS_ENDPOINT = process.env.KMS_ENDPOINT || 'http://localhost:4400'
+const host = getLocalhostHost()
+const KMS_ENDPOINT = process.env.KMS_ENDPOINT || `http://${host}:4400`
 const KMS_TIMEOUT = 10000
 
 interface KMSService {

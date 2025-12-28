@@ -8,6 +8,7 @@
  */
 
 import { cors } from '@elysiajs/cors'
+import { getLocalhostHost } from '@jejunetwork/config'
 import Elysia from 'elysia'
 import { z } from 'zod'
 import { config } from './config'
@@ -63,6 +64,7 @@ const app = new Elysia()
 
   .listen(PORT)
 
-console.log(`Gateway API server running at http://localhost:${PORT}`)
+const host = getLocalhostHost()
+console.log(`Gateway API server running at http://${host}:${PORT}`)
 
 export type App = typeof app

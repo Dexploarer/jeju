@@ -671,7 +671,7 @@ export function checkPortConflicts(): {
 export function getL1RpcUrl(): string {
   if (process.env.L1_RPC_URL) return process.env.L1_RPC_URL
   const port = INFRA_PORTS.L1_RPC.get()
-  const host = process.env.RPC_HOST || '127.0.0.1'
+  const host = getLocalhostHost()
   return `http://${host}:${port}`
 }
 
@@ -684,7 +684,7 @@ export function getL2RpcUrl(): string {
   if (process.env.JEJU_RPC_URL) return process.env.JEJU_RPC_URL
   if (process.env.RPC_URL) return process.env.RPC_URL
   const port = INFRA_PORTS.L2_RPC.get()
-  const host = process.env.RPC_HOST || '127.0.0.1'
+  const host = getLocalhostHost()
   return `http://${host}:${port}`
 }
 
@@ -695,7 +695,7 @@ export function getL2RpcUrl(): string {
 export function getL2WsUrl(): string {
   if (process.env.L2_WS_URL) return process.env.L2_WS_URL
   const port = INFRA_PORTS.L2_WS.get()
-  const host = process.env.RPC_HOST || '127.0.0.1'
+  const host = getLocalhostHost()
   return `ws://${host}:${port}`
 }
 
@@ -711,7 +711,7 @@ export const getJejuRpcUrl = getL2RpcUrl
 export function getBridgeRelayerUrl(): string {
   if (process.env.BRIDGE_RELAYER_URL) return process.env.BRIDGE_RELAYER_URL
   const port = CORE_PORTS.BRIDGE_RELAYER.get()
-  const host = process.env.HOST || '127.0.0.1'
+  const host = getLocalhostHost()
   return `http://${host}:${port}`
 }
 
@@ -722,7 +722,7 @@ export function getBridgeRelayerUrl(): string {
 export function getBridgeProverUrl(): string {
   if (process.env.BRIDGE_PROVER_URL) return process.env.BRIDGE_PROVER_URL
   const port = CORE_PORTS.BRIDGE_PROVER.get()
-  const host = process.env.HOST || '127.0.0.1'
+  const host = getLocalhostHost()
   return `http://${host}:${port}`
 }
 
@@ -733,7 +733,7 @@ export function getBridgeProverUrl(): string {
 export function getBridgeHealthUrl(): string {
   if (process.env.BRIDGE_HEALTH_URL) return process.env.BRIDGE_HEALTH_URL
   const port = CORE_PORTS.BRIDGE_HEALTH.get()
-  const host = process.env.HOST || '127.0.0.1'
+  const host = getLocalhostHost()
   return `http://${host}:${port}`
 }
 
@@ -745,7 +745,7 @@ export function getBridgeHealthUrl(): string {
 export function getIpfsApiUrl(): string {
   if (process.env.IPFS_API_URL) return process.env.IPFS_API_URL
   const port = CORE_PORTS.IPFS_API.get()
-  const host = process.env.HOST || '127.0.0.1'
+  const host = getLocalhostHost()
   return `http://${host}:${port}`
 }
 
@@ -755,9 +755,11 @@ export function getIpfsApiUrl(): string {
 export function isLocalnet(rpcUrl: string): boolean {
   const l1Port = INFRA_PORTS.L1_RPC.get()
   const l2Port = INFRA_PORTS.L2_RPC.get()
+  const localhostHost = getLocalhostHost()
   return (
     rpcUrl.includes('localhost') ||
     rpcUrl.includes('127.0.0.1') ||
+    rpcUrl.includes(localhostHost) ||
     rpcUrl.includes(`:${l1Port}`) ||
     rpcUrl.includes(`:${l2Port}`)
   )
@@ -772,7 +774,7 @@ export function getEQLiteBlockProducerUrl(): string {
     return process.env.EQLITE_BLOCK_PRODUCER_ENDPOINT
   if (process.env.EQLITE_URL) return process.env.EQLITE_URL
   const port = INFRA_PORTS.EQLite.get()
-  const host = process.env.EQLITE_HOST || '127.0.0.1'
+  const host = process.env.EQLITE_HOST || getLocalhostHost()
   return `http://${host}:${port}`
 }
 
@@ -790,13 +792,13 @@ export function getIndexerGraphqlUrl(): string {
   if (process.env.INDEXER_DWS_URL) return process.env.INDEXER_DWS_URL
   if (process.env.USE_DWS_INDEXER === 'true') {
     const dwsPort = CORE_PORTS.DWS_API.get()
-    const host = process.env.HOST || '127.0.0.1'
+    const host = getLocalhostHost()
     return `http://${host}:${dwsPort}/indexer/graphql`
   }
 
   // Fallback to direct indexer endpoint
   const port = CORE_PORTS.INDEXER_GRAPHQL.get()
-  const host = process.env.HOST || '127.0.0.1'
+  const host = getLocalhostHost()
   return `http://${host}:${port}/graphql`
 }
 
@@ -807,7 +809,7 @@ export function getIndexerGraphqlUrl(): string {
 export function getIndexerDwsUrl(): string {
   if (process.env.INDEXER_DWS_URL) return process.env.INDEXER_DWS_URL
   const port = CORE_PORTS.DWS_API.get()
-  const host = process.env.HOST || '127.0.0.1'
+  const host = getLocalhostHost()
   return `http://${host}:${port}/indexer/graphql`
 }
 
@@ -817,7 +819,7 @@ export function getIndexerDwsUrl(): string {
 export function getIndexerRestUrl(): string {
   if (process.env.INDEXER_REST_URL) return process.env.INDEXER_REST_URL
   const port = CORE_PORTS.INDEXER_REST.get()
-  const host = process.env.HOST || '127.0.0.1'
+  const host = getLocalhostHost()
   return `http://${host}:${port}/api`
 }
 
@@ -827,7 +829,7 @@ export function getIndexerRestUrl(): string {
 export function getIndexerA2AUrl(): string {
   if (process.env.INDEXER_A2A_URL) return process.env.INDEXER_A2A_URL
   const port = CORE_PORTS.INDEXER_A2A.get()
-  const host = process.env.HOST || '127.0.0.1'
+  const host = getLocalhostHost()
   return `http://${host}:${port}/api/a2a`
 }
 
@@ -837,7 +839,7 @@ export function getIndexerA2AUrl(): string {
 export function getIndexerMcpUrl(): string {
   if (process.env.INDEXER_MCP_URL) return process.env.INDEXER_MCP_URL
   const port = CORE_PORTS.INDEXER_MCP.get()
-  const host = process.env.HOST || '127.0.0.1'
+  const host = getLocalhostHost()
   return `http://${host}:${port}`
 }
 
@@ -847,7 +849,7 @@ export function getIndexerMcpUrl(): string {
 export function getRpcGatewayUrl(): string {
   if (process.env.RPC_GATEWAY_URL) return process.env.RPC_GATEWAY_URL
   const port = CORE_PORTS.RPC_GATEWAY.get()
-  const host = process.env.HOST || '127.0.0.1'
+  const host = getLocalhostHost()
   return `http://${host}:${port}`
 }
 
@@ -857,7 +859,7 @@ export function getRpcGatewayUrl(): string {
 export function getIpfsUrl(): string {
   if (process.env.IPFS_URL) return process.env.IPFS_URL
   const port = CORE_PORTS.IPFS.get()
-  const host = process.env.HOST || '127.0.0.1'
+  const host = getLocalhostHost()
   return `http://${host}:${port}`
 }
 
@@ -867,7 +869,7 @@ export function getIpfsUrl(): string {
 export function getOifAggregatorUrl(): string {
   if (process.env.OIF_AGGREGATOR_URL) return process.env.OIF_AGGREGATOR_URL
   const port = CORE_PORTS.OIF_AGGREGATOR.get()
-  const host = process.env.HOST || '127.0.0.1'
+  const host = getLocalhostHost()
   return `http://${host}:${port}/api`
 }
 
@@ -877,7 +879,7 @@ export function getOifAggregatorUrl(): string {
 export function getLeaderboardUrl(): string {
   if (process.env.LEADERBOARD_URL) return process.env.LEADERBOARD_URL
   const port = CORE_PORTS.LEADERBOARD_API.get()
-  const host = process.env.HOST || '127.0.0.1'
+  const host = getLocalhostHost()
   return `http://${host}:${port}`
 }
 
@@ -887,7 +889,7 @@ export function getLeaderboardUrl(): string {
 export function getExplorerUrl(): string {
   if (process.env.EXPLORER_URL) return process.env.EXPLORER_URL
   const port = CORE_PORTS.EXPLORER.get()
-  const host = process.env.HOST || '127.0.0.1'
+  const host = getLocalhostHost()
   return `http://${host}:${port}`
 }
 
@@ -898,7 +900,7 @@ export function getDocumentationA2AUrl(): string {
   if (process.env.DOCUMENTATION_A2A_URL)
     return process.env.DOCUMENTATION_A2A_URL
   const port = CORE_PORTS.DOCUMENTATION_A2A.get()
-  const host = process.env.HOST || '127.0.0.1'
+  const host = getLocalhostHost()
   return `http://${host}:${port}/api/a2a`
 }
 
@@ -908,7 +910,7 @@ export function getDocumentationA2AUrl(): string {
 export function getOAuth3Url(): string {
   if (process.env.OAUTH3_URL) return process.env.OAUTH3_URL
   const port = CORE_PORTS.OAUTH3_API.get()
-  const host = process.env.HOST || '127.0.0.1'
+  const host = getLocalhostHost()
   return `http://${host}:${port}`
 }
 
@@ -918,7 +920,7 @@ export function getOAuth3Url(): string {
 export function getAutocratWebUrl(): string {
   if (process.env.AUTOCRAT_WEB_URL) return process.env.AUTOCRAT_WEB_URL
   const port = CORE_PORTS.AUTOCRAT_WEB.get()
-  const host = process.env.HOST || '127.0.0.1'
+  const host = getLocalhostHost()
   return `http://${host}:${port}`
 }
 
@@ -928,7 +930,7 @@ export function getAutocratWebUrl(): string {
 export function getAutocratApiUrl(): string {
   if (process.env.AUTOCRAT_API_URL) return process.env.AUTOCRAT_API_URL
   const port = CORE_PORTS.AUTOCRAT_API.get()
-  const host = process.env.HOST || '127.0.0.1'
+  const host = getLocalhostHost()
   return `http://${host}:${port}`
 }
 
@@ -940,7 +942,7 @@ export function getDWSEndpoint(): string {
   if (process.env.DWS_ENDPOINT) return process.env.DWS_ENDPOINT
   if (process.env.DWS_URL) return process.env.DWS_URL
   const port = CORE_PORTS.DWS_API.get()
-  const host = process.env.HOST || '127.0.0.1'
+  const host = getLocalhostHost()
   return `http://${host}:${port}`
 }
 
@@ -952,6 +954,6 @@ export function getKMSEndpoint(): string {
   if (process.env.KMS_ENDPOINT) return process.env.KMS_ENDPOINT
   if (process.env.KMS_URL) return process.env.KMS_URL
   const port = CORE_PORTS.KMS_API.get()
-  const host = process.env.HOST || '127.0.0.1'
+  const host = getLocalhostHost()
   return `http://${host}:${port}`
 }

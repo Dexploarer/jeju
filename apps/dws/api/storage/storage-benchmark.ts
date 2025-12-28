@@ -419,8 +419,46 @@ export class StorageBenchmarkService {
     return this.executeBlockBenchmarks(provider)
   }
 
+  /**
+   * Verify that required benchmark endpoints exist
+   */
+  private async verifyBenchmarkEndpoints(endpoint: string): Promise<{ valid: boolean; missing: string[] }> {
+    const requiredEndpoints = [
+      '/benchmark/write',
+      '/benchmark/read',
+      '/benchmark/write-large',
+      '/benchmark/read-large',
+      '/benchmark/durability-write',
+      '/benchmark/durability-read',
+      '/health',
+    ]
+
+    const missing: string[] = []
+
+    for (const path of requiredEndpoints) {
+      const response = await fetch(`${endpoint}${path}`, {
+        method: 'HEAD',
+        signal: AbortSignal.timeout(5000),
+      }).catch(() => null)
+
+      // Accept 200, 204, 405 (method not allowed means endpoint exists)
+      if (!response || (response.status !== 200 && response.status !== 204 && response.status !== 405)) {
+        missing.push(path)
+      }
+    }
+
+    return { valid: missing.length === 0, missing }
+  }
+
   private async executeBlockBenchmarks(provider: StorageProviderInfo): Promise<StorageBenchmarkResults> {
     const endpoint = provider.endpoint
+
+    // Verify endpoints exist before running benchmarks
+    const endpointCheck = await this.verifyBenchmarkEndpoints(endpoint)
+    if (!endpointCheck.valid) {
+      console.warn(`[StorageBenchmark] Provider ${provider.id} missing endpoints: ${endpointCheck.missing.join(', ')}`)
+      console.warn(`[StorageBenchmark] Running with degraded benchmark coverage`)
+    }
 
     // Generate test data
     const smallData = Buffer.alloc(this.config.smallFileSizeKb * 1024)
@@ -725,7 +763,6 @@ export class StorageBenchmarkService {
     // Run parallel test with multiple concurrent streams
     const parallelStreams = 4
     let parallelReadTotal = 0
-    let parallelWriteTotal = 0
 
     const parallelReadStart = Date.now()
     const readPromises = Array.from({ length: parallelStreams }, () =>

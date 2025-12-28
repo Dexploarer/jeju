@@ -2,7 +2,11 @@
  * Proof-of-Cloud Verifier Service
  */
 
-import { getCurrentNetwork, getPoCConfig } from '@jejunetwork/config'
+import {
+  getCurrentNetwork,
+  getPoCConfig,
+  isProductionEnv,
+} from '@jejunetwork/config'
 import { readContract } from '@jejunetwork/contracts'
 import {
   type Address,
@@ -170,7 +174,7 @@ export class PoCVerifier {
     const ownerAddress = process.env.POC_VERIFIER_OWNER_ADDRESS as
       | Address
       | undefined
-    const isProduction = process.env.NODE_ENV === 'production'
+    const isProduction = isProductionEnv()
 
     if (kmsKeyId && ownerAddress) {
       const kmsAvailable = await isKMSAvailable()

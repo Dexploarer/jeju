@@ -2,6 +2,10 @@
  * Otto Configuration
  */
 
+import {
+  getApiKey,
+  getLocalhostHost,
+} from '@jejunetwork/config'
 import { expectValid } from '@jejunetwork/types'
 import { type OttoConfig, OttoConfigSchema } from '../lib'
 
@@ -133,7 +137,8 @@ export function getConfig(): OttoConfig {
     throw new Error(`Invalid webhook port: ${process.env.OTTO_WEBHOOK_PORT}`)
   }
 
-  const baseUrl = process.env.OTTO_BASE_URL ?? 'http://localhost:4040'
+  const host = getLocalhostHost()
+  const baseUrl = process.env.OTTO_BASE_URL ?? `http://${host}:4040`
   if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
     throw new Error(`Invalid base URL: ${baseUrl}`)
   }
@@ -165,8 +170,8 @@ export function getConfig(): OttoConfig {
     },
 
     farcaster: {
-      enabled: !!process.env.NEYNAR_API_KEY && !!process.env.FARCASTER_BOT_FID,
-      apiKey: process.env.NEYNAR_API_KEY,
+      enabled: !!getApiKey('neynar') && !!process.env.FARCASTER_BOT_FID,
+      apiKey: getApiKey('neynar'),
       botFid: parseInt(process.env.FARCASTER_BOT_FID ?? '0', 10),
       signerUuid: process.env.FARCASTER_SIGNER_UUID,
     },

@@ -236,13 +236,6 @@ function createKMSAccount(
     return signedTx
   }
 
-  // Sign typed data via KMS
-  async function signTypedData(): Promise<Hex> {
-    throw new Error(
-      'signTypedData not yet implemented for KMS wallet - use signMessage with pre-hashed EIP-712 data',
-    )
-  }
-
   return {
     address,
     type: 'local',
@@ -252,8 +245,12 @@ function createKMSAccount(
     source: 'custom' as const,
     signMessage,
     signTransaction,
-    signTypedData,
-  }
+    signTypedData: async () => {
+      throw new Error(
+        'signTypedData not yet implemented for KMS wallet - use signMessage with pre-hashed EIP-712 data',
+      )
+    },
+  } as LocalAccount
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

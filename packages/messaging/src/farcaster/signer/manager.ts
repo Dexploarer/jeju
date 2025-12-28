@@ -111,10 +111,8 @@ export class FarcasterSignerManager {
   }
 
   /**
-   * Generate a new signer key
-   *
-   * @deprecated For production, use the MPC-backed DWS worker which never
-   * exposes full private keys. Local signers are vulnerable to side-channel attacks.
+   * Generate a new signer key.
+   * For production, consider using the MPC-backed DWS worker for secure signing.
    */
   async createSigner(params: {
     fid: number
@@ -214,47 +212,6 @@ export class FarcasterSignerManager {
   }
 
   /**
-   * Get private key for signing (should only be used internally)
-   *
-   * @deprecated This method exposes the raw private key and is DANGEROUS.
-   * Use the sign() method instead, or preferably use the MPC-backed DWS worker.
-   * @internal
-   */
-  async getSignerPrivateKey(keyId: string): Promise<Uint8Array | null> {
-    warnLocalKeyOperation('getSignerPrivateKey')
-
-    const stored = this.signers.get(keyId)
-    if (!stored || stored.info.status !== 'active') {
-      return null
-    }
-    return stored.privateKey
-  }
-
-  /**
-   * Sign a message with a signer
-   *
-   * @deprecated For production, use the MPC-backed DWS worker which performs
-   * signing inside a threshold cryptography scheme. This local signing method
-   * requires the full private key in memory, making it vulnerable to side-channel attacks.
-   */
-  async sign(keyId: string, message: Uint8Array): Promise<Uint8Array> {
-    warnLocalKeyOperation('sign')
-
-    const stored = this.signers.get(keyId)
-    if (!stored) {
-      throw new Error(`Signer not found: ${keyId}`)
-    }
-
-    if (stored.info.status !== 'active') {
-      throw new Error(
-        `Signer not active: ${keyId} (status: ${stored.info.status})`,
-      )
-    }
-
-    return ed25519.sign(message, stored.privateKey)
-  }
-
-  /**
    * Mark signer as approved (after on-chain registration)
    */
   async markApproved(keyId: string): Promise<void> {
@@ -323,21 +280,10 @@ export class FarcasterSignerManager {
   /**
    * Export signer for backup.
    *
-   * @deprecated This method is DANGEROUS and should not be used in production.
-   * It exposes the raw private key, making it vulnerable to:
-   * - Memory inspection attacks
-   * - Side-channel attacks on TEE enclaves
-   * - Key material leakage through logs/errors
-   *
-   * For production, use the MPC-backed DWS worker where private keys
-   * are never exposed - they exist only as threshold shares across
-   * multiple secure enclaves.
-   *
    * SECURITY WARNING: This method returns the raw private key.
    * - NEVER log or transmit the returned privateKey
    * - Store exported keys encrypted at rest
    * - Clear memory containing the key IMMEDIATELY after use
-   * - Consider using secure key storage (KMS, HSM) in production
    */
   async exportSigner(keyId: string): Promise<{
     publicKey: Hex

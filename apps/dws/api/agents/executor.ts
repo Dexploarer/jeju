@@ -3,7 +3,11 @@
  * Manages agent workers via workerd
  */
 
-import { getEQLiteBlockProducerUrl } from '@jejunetwork/config'
+import {
+  getEQLiteBlockProducerUrl,
+  getDWSUrl,
+  getKMSEndpoint,
+} from '@jejunetwork/config'
 import type { JsonRecord } from '@jejunetwork/types'
 import { z } from 'zod'
 import type {
@@ -83,13 +87,17 @@ export class AgentExecutor {
 
   constructor(workerd: IWorkerdExecutor, config: Partial<ExecutorConfig> = {}) {
     this.workerd = workerd
+    const dwsBaseUrl = getDWSUrl()
+    const kmsBaseUrl = getKMSEndpoint()
     this.config = {
       inferenceUrl:
         config.inferenceUrl ??
         process.env.DWS_INFERENCE_URL ??
-        'http://127.0.0.1:4030/compute',
+        `${dwsBaseUrl}/compute`,
       kmsUrl:
-        config.kmsUrl ?? process.env.DWS_KMS_URL ?? 'http://127.0.0.1:4030/kms',
+        config.kmsUrl ??
+        process.env.DWS_KMS_URL ??
+        `${kmsBaseUrl}/kms`,
       eqliteUrl:
         config.eqliteUrl ??
         process.env.DWS_EQLITE_URL ??

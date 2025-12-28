@@ -59,16 +59,6 @@ import { createWorkModule, type WorkModule } from './work'
 export interface JejuClientConfig {
   /** Network to connect to */
   network: NetworkType
-  /**
-   * Private key (hex string starting with 0x)
-   * @deprecated For production use. Use KMS configuration for secure signing.
-   */
-  privateKey?: Hex
-  /**
-   * Mnemonic phrase
-   * @deprecated For production use. Use KMS configuration for secure signing.
-   */
-  mnemonic?: string
   /** Pre-configured local account (from viem/accounts) */
   account?: LocalAccount
   /** Enable ERC-4337 smart account (default: true) */

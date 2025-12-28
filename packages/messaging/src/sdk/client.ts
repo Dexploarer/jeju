@@ -73,18 +73,6 @@ export class MessagingClient {
   private publicClient: PublicClient
   private walletClient?: WalletClient
 
-  /**
-   * @deprecated Use kmsSigner instead.
-   * Raw key pairs in memory are vulnerable to side-channel attacks.
-   */
-  private keyPair?: KeyPair
-
-  /**
-   * @deprecated Use kmsSigner instead.
-   * Raw signing keys in memory are vulnerable to side-channel attacks.
-   */
-  private signingKeyPair?: SigningKeyPair
-
   // KMS-backed providers (secure - keys never in memory)
   private kmsSigner?: KMSSigner
   private kmsEncryption?: KMSEncryptionProvider
@@ -119,9 +107,10 @@ export class MessagingClient {
       log.info('Using KMS-backed cryptography - private keys protected')
     } else {
       this.useKMSMode = false
-      if (config.keyPair) {
+      const regularConfig = config as MessagingClientConfig
+      if (regularConfig.keyPair) {
         warnLocalKeyUsage('keyPair initialization')
-        this.keyPair = config.keyPair
+        this.keyPair = regularConfig.keyPair
       }
     }
   }

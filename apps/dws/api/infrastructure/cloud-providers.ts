@@ -1136,6 +1136,386 @@ export class VultrProvider implements CloudProvider {
   }
 }
 
+// OVH Cloud Provider
+
+export class OVHProvider implements CloudProvider {
+  readonly type: CloudProviderType = 'ovh'
+  readonly name = 'OVH Cloud'
+
+  private baseUrl = 'https://api.ovh.com/1.0'
+  private applicationKey: string | null = null
+  private applicationSecret: string | null = null
+  private consumerKey: string | null = null
+  private projectId: string | null = null
+  private initialized = false
+  private instanceTypesCache: InstanceType[] | null = null
+
+  async initialize(credentials: CloudCredentials): Promise<void> {
+    if (credentials.provider !== 'ovh') {
+      throw new Error('Invalid credentials for OVH provider')
+    }
+
+    // OVH requires application key, secret, and consumer key
+    // API key format: "appKey:appSecret:consumerKey"
+    if (credentials.apiKey) {
+      const parts = credentials.apiKey.split(':')
+      if (parts.length === 3) {
+        this.applicationKey = parts[0]
+        this.applicationSecret = parts[1]
+        this.consumerKey = parts[2]
+      } else {
+        this.applicationKey = credentials.apiKey
+        this.applicationSecret = credentials.apiSecret ?? null
+        this.consumerKey = credentials.projectId ?? null
+      }
+    }
+
+    this.projectId = credentials.projectId ?? null
+
+    if (!this.applicationKey) {
+      throw new Error('OVH application key required')
+    }
+
+    // Verify credentials by listing projects
+    const response = await this.fetch('/cloud/project')
+    if (!response.ok) {
+      throw new Error(`OVH authentication failed: ${response.status}`)
+    }
+
+    const projects = await response.json() as string[]
+    if (projects.length > 0 && !this.projectId) {
+      this.projectId = projects[0]
+    }
+
+    this.initialized = true
+    console.log(`[OVH] Initialized for project ${this.projectId}`)
+  }
+
+  isInitialized(): boolean {
+    return this.initialized
+  }
+
+  async listInstanceTypes(region?: string): Promise<InstanceType[]> {
+    if (this.instanceTypesCache) {
+      if (region) {
+        return this.instanceTypesCache.filter((t) => t.regions.includes(region))
+      }
+      return this.instanceTypesCache
+    }
+
+    const response = await this.fetch(`/cloud/project/${this.projectId}/flavor`)
+    if (!response.ok) {
+      throw new Error(`Failed to list OVH flavors: ${response.status}`)
+    }
+
+    interface OVHFlavor {
+      id: string
+      name: string
+      vcpus: number
+      ram: number
+      disk: number
+      type: string
+      region: string
+      available: boolean
+      planCodes: { hourly: string; monthly: string }
+    }
+
+    const flavors = await response.json() as OVHFlavor[]
+    const regionMap = new Map<string, InstanceType>()
+
+    for (const flavor of flavors) {
+      const existing = regionMap.get(flavor.name)
+      if (existing) {
+        if (!existing.regions.includes(flavor.region)) {
+          existing.regions.push(flavor.region)
+        }
+        continue
+      }
+
+      // Estimate pricing based on specs (would need catalog API for accurate pricing)
+      const pricePerHour = this.estimatePrice(flavor)
+
+      const instanceType: InstanceType = {
+        id: flavor.name,
+        provider: 'ovh',
+        name: flavor.name,
+        cpuCores: flavor.vcpus,
+        memoryMb: flavor.ram,
+        storageMb: flavor.disk * 1024,
+        storageType: flavor.type.includes('nvme') ? 'nvme' : 'ssd',
+        networkMbps: 1000,
+        pricePerHourUsd: pricePerHour,
+        pricePerMonthUsd: pricePerHour * 720,
+        teeSupported: false,
+        regions: [flavor.region],
+        available: flavor.available,
+      }
+
+      regionMap.set(flavor.name, instanceType)
+    }
+
+    this.instanceTypesCache = Array.from(regionMap.values())
+    return region
+      ? this.instanceTypesCache.filter((t) => t.regions.includes(region))
+      : this.instanceTypesCache
+  }
+
+  async getInstanceType(id: string): Promise<InstanceType | null> {
+    const types = await this.listInstanceTypes()
+    return types.find((t) => t.id === id) ?? null
+  }
+
+  async listRegions(): Promise<Array<{ id: string; name: string; available: boolean }>> {
+    const response = await this.fetch(`/cloud/project/${this.projectId}/region`)
+    if (!response.ok) {
+      return []
+    }
+
+    const regions = await response.json() as Array<{
+      name: string
+      status: string
+      services: Array<{ name: string; status: string }>
+    }>
+
+    return regions.map((r) => ({
+      id: r.name,
+      name: r.name,
+      available: r.status === 'UP',
+    }))
+  }
+
+  async createInstance(request: ProvisionRequest): Promise<ProvisionedInstance> {
+    const body = {
+      name: request.name,
+      flavorId: request.instanceType,
+      region: request.region,
+      imageId: 'ubuntu-22.04', // Would need to resolve image ID
+      sshKeyId: request.sshKeyId,
+      userData: request.userData ? Buffer.from(request.userData).toString('base64') : undefined,
+    }
+
+    const response = await this.fetch(`/cloud/project/${this.projectId}/instance`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    })
+
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`Failed to create OVH instance: ${error}`)
+    }
+
+    const instance = await response.json() as {
+      id: string
+      name: string
+      status: string
+      region: string
+      ipAddresses: Array<{ ip: string; type: string }>
+      created: string
+    }
+
+    return {
+      id: instance.id,
+      provider: 'ovh',
+      instanceType: request.instanceType,
+      region: instance.region,
+      publicIp: instance.ipAddresses.find((ip) => ip.type === 'public')?.ip,
+      privateIp: instance.ipAddresses.find((ip) => ip.type === 'private')?.ip,
+      status: this.mapStatus(instance.status),
+      createdAt: new Date(instance.created).getTime(),
+      metadata: request.tags ?? {},
+    }
+  }
+
+  async getInstance(id: string): Promise<ProvisionedInstance | null> {
+    const response = await this.fetch(`/cloud/project/${this.projectId}/instance/${id}`)
+    if (!response.ok) return null
+
+    const instance = await response.json() as {
+      id: string
+      name: string
+      status: string
+      region: string
+      flavorId: string
+      ipAddresses: Array<{ ip: string; type: string }>
+      created: string
+    }
+
+    return {
+      id: instance.id,
+      provider: 'ovh',
+      instanceType: instance.flavorId,
+      region: instance.region,
+      publicIp: instance.ipAddresses.find((ip) => ip.type === 'public')?.ip,
+      privateIp: instance.ipAddresses.find((ip) => ip.type === 'private')?.ip,
+      status: this.mapStatus(instance.status),
+      createdAt: new Date(instance.created).getTime(),
+      metadata: {},
+    }
+  }
+
+  async listInstances(): Promise<ProvisionedInstance[]> {
+    const response = await this.fetch(`/cloud/project/${this.projectId}/instance`)
+    if (!response.ok) return []
+
+    const instances = await response.json() as Array<{
+      id: string
+      name: string
+      status: string
+      region: string
+      flavorId: string
+      ipAddresses: Array<{ ip: string; type: string }>
+      created: string
+    }>
+
+    return instances.map((instance) => ({
+      id: instance.id,
+      provider: 'ovh' as CloudProviderType,
+      instanceType: instance.flavorId,
+      region: instance.region,
+      publicIp: instance.ipAddresses.find((ip) => ip.type === 'public')?.ip,
+      privateIp: instance.ipAddresses.find((ip) => ip.type === 'private')?.ip,
+      status: this.mapStatus(instance.status),
+      createdAt: new Date(instance.created).getTime(),
+      metadata: {},
+    }))
+  }
+
+  async deleteInstance(id: string): Promise<boolean> {
+    const response = await this.fetch(`/cloud/project/${this.projectId}/instance/${id}`, {
+      method: 'DELETE',
+    })
+    return response.ok
+  }
+
+  async startInstance(id: string): Promise<boolean> {
+    const response = await this.fetch(`/cloud/project/${this.projectId}/instance/${id}/start`, {
+      method: 'POST',
+    })
+    return response.ok
+  }
+
+  async stopInstance(id: string): Promise<boolean> {
+    const response = await this.fetch(`/cloud/project/${this.projectId}/instance/${id}/stop`, {
+      method: 'POST',
+    })
+    return response.ok
+  }
+
+  async listSSHKeys(): Promise<Array<{ id: string; name: string; fingerprint: string }>> {
+    const response = await this.fetch(`/cloud/project/${this.projectId}/sshkey`)
+    if (!response.ok) return []
+
+    const keys = await response.json() as Array<{
+      id: string
+      name: string
+      fingerprint: string
+    }>
+
+    return keys.map((k) => ({
+      id: k.id,
+      name: k.name,
+      fingerprint: k.fingerprint,
+    }))
+  }
+
+  async createSSHKey(name: string, publicKey: string): Promise<string> {
+    const response = await this.fetch(`/cloud/project/${this.projectId}/sshkey`, {
+      method: 'POST',
+      body: JSON.stringify({ name, publicKey }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to create SSH key: ${response.status}`)
+    }
+
+    const key = await response.json() as { id: string }
+    return key.id
+  }
+
+  async deleteSSHKey(id: string): Promise<boolean> {
+    const response = await this.fetch(`/cloud/project/${this.projectId}/sshkey/${id}`, {
+      method: 'DELETE',
+    })
+    return response.ok
+  }
+
+  async getCurrentPricing(): Promise<Map<string, number>> {
+    const types = await this.listInstanceTypes()
+    const pricing = new Map<string, number>()
+    for (const type of types) {
+      pricing.set(type.id, type.pricePerHourUsd)
+    }
+    return pricing
+  }
+
+  estimateMonthlyCost(instanceType: string, count: number): number {
+    const type = this.instanceTypesCache?.find((t) => t.id === instanceType)
+    return type ? type.pricePerMonthUsd * count : 0
+  }
+
+  private estimatePrice(flavor: { vcpus: number; ram: number; disk: number }): number {
+    // Estimate based on OVH public cloud pricing
+    // CPU: ~$0.01/core/hour, RAM: ~$0.005/GB/hour, Storage: ~$0.0001/GB/hour
+    const cpuPrice = flavor.vcpus * 0.01
+    const ramPrice = (flavor.ram / 1024) * 0.005
+    const diskPrice = flavor.disk * 0.0001
+    return Math.round((cpuPrice + ramPrice + diskPrice) * 10000) / 10000
+  }
+
+  private async fetch(path: string, options?: RequestInit): Promise<Response> {
+    if (!this.applicationKey) {
+      throw new Error('OVH provider not initialized')
+    }
+
+    const timestamp = Math.floor(Date.now() / 1000)
+    const method = options?.method ?? 'GET'
+    const body = options?.body ?? ''
+    
+    // OVH requires signed requests
+    // Signature: SHA1($applicationSecret + "+" + $consumerKey + "+" + $method + "+" + $url + "+" + $body + "+" + $timestamp)
+    const url = `${this.baseUrl}${path}`
+    const toSign = `${this.applicationSecret}+${this.consumerKey}+${method}+${url}+${body}+${timestamp}`
+    
+    // Create SHA1 signature
+    const encoder = new TextEncoder()
+    const data = encoder.encode(toSign)
+    const hashBuffer = await crypto.subtle.digest('SHA-1', data)
+    const hashArray = new Uint8Array(hashBuffer)
+    const signature = '$1$' + Array.from(hashArray)
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('')
+
+    return fetch(url, {
+      ...options,
+      headers: {
+        'X-Ovh-Application': this.applicationKey,
+        'X-Ovh-Consumer': this.consumerKey ?? '',
+        'X-Ovh-Timestamp': timestamp.toString(),
+        'X-Ovh-Signature': signature,
+        'Content-Type': 'application/json',
+        ...options?.headers,
+      },
+    })
+  }
+
+  private mapStatus(status: string): ProvisionedInstance['status'] {
+    switch (status.toLowerCase()) {
+      case 'active':
+        return 'running'
+      case 'build':
+      case 'rebuild':
+        return 'pending'
+      case 'shutoff':
+      case 'suspended':
+        return 'stopped'
+      case 'deleted':
+        return 'terminated'
+      default:
+        return 'error'
+    }
+  }
+}
+
 // Provider Factory
 
 export function createCloudProvider(
@@ -1148,6 +1528,8 @@ export function createCloudProvider(
       return new DigitalOceanProvider()
     case 'vultr':
       return new VultrProvider()
+    case 'ovh':
+      return new OVHProvider()
     default:
       throw new Error(`Unsupported cloud provider: ${type}`)
   }

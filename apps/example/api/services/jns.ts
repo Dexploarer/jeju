@@ -1,5 +1,8 @@
 import { treaty } from '@elysiajs/eden'
-import { getGatewayApiEndpoint } from '@jejunetwork/config'
+import {
+  getGatewayApiEndpoint,
+  getLocalhostHost,
+} from '@jejunetwork/config'
 import { Elysia, t } from 'elysia'
 import type { Address, Hex } from 'viem'
 import type { JNSRecords } from '../../lib/schemas'
@@ -15,7 +18,8 @@ import {
 import { normalizeJNSName } from '../../lib/utils'
 import { expectValid } from '../utils/validation'
 
-const GATEWAY_API = getGatewayApiEndpoint() ?? 'http://localhost:4020'
+const host = getLocalhostHost()
+const GATEWAY_API = getGatewayApiEndpoint() ?? `http://${host}:4020`
 const JNS_NAME = process.env.JNS_NAME || 'todo.jeju'
 const JNS_TIMEOUT = 10000
 

@@ -15,13 +15,15 @@
 
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { getLocalhostHost } from '@jejunetwork/config'
 import { type Subprocess, spawn } from 'bun'
 import { z } from 'zod'
 
 // Configuration
 
-const JEJU_L2_RPC = 'http://127.0.0.1:6546'
-const JEJU_L1_RPC = 'http://127.0.0.1:6545'
+const host = getLocalhostHost()
+const JEJU_L2_RPC = `http://${host}:6546`
+const JEJU_L1_RPC = `http://${host}:6545`
 const DWS_PORT = 4030
 
 const TEST_ACCOUNTS = [

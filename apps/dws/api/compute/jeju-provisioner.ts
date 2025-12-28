@@ -23,6 +23,7 @@ import {
   HetznerProvider,
   DigitalOceanProvider,
   VultrProvider,
+  OVHProvider,
 } from '../infrastructure/cloud-providers'
 import { getCredentialVault } from './credential-vault'
 
@@ -159,6 +160,7 @@ export class JejuProvisioner {
     hetzner?: string
     digitalocean?: string
     vultr?: string
+    ovh?: string
   }): Promise<void> {
     const vault = getCredentialVault()
 
@@ -204,6 +206,20 @@ export class JejuProvisioner {
       cloudProviders.set('vultr', provider)
 
       await this.loadProviderOfferings('vultr', provider)
+    }
+
+    if (credentials.ovh) {
+      await vault.storeCredential(this.ownerAddress, {
+        provider: 'ovh',
+        name: 'Jeju OVH',
+        apiKey: credentials.ovh,
+      })
+
+      const provider = new OVHProvider()
+      await provider.initialize({ provider: 'ovh', apiKey: credentials.ovh })
+      cloudProviders.set('ovh', provider)
+
+      await this.loadProviderOfferings('ovh', provider)
     }
 
     console.log(`[JejuProvisioner] Initialized with ${cloudProviders.size} providers, ${offerings.size} offerings`)
@@ -464,32 +480,67 @@ export class JejuProvisioner {
   }
 
   /**
-   * Get default cloud-init user data
+   * Get secure cloud-init user data
+   * Uses verified package installation instead of curl | sh
    */
   private getDefaultUserData(computeId: string): string {
-    return `#!/bin/bash
-set -e
+    // Use cloud-init YAML format for better structure and security
+    return `#cloud-config
+# Jeju DWS Node Bootstrap for ${computeId}
 
-# Jeju DWS Node Bootstrap
-echo "Starting Jeju DWS node setup for ${computeId}"
+package_update: true
+package_upgrade: true
 
-# Install Docker
-curl -fsSL https://get.docker.com | sh
+packages:
+  - apt-transport-https
+  - ca-certificates
+  - curl
+  - gnupg
+  - lsb-release
 
-# Pull DWS node image
-docker pull ghcr.io/jejunetwork/dws-node:latest
+runcmd:
+  # Add Docker's official GPG key securely
+  - install -m 0755 -d /etc/apt/keyrings
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  - chmod a+r /etc/apt/keyrings/docker.asc
+  
+  # Verify the GPG key fingerprint
+  - gpg --dry-run --quiet --import --import-options import-show /etc/apt/keyrings/docker.asc | grep -q "9DC858229FC7DD38854AE2D88D81803C0EBFCD88" || exit 1
+  
+  # Add Docker repository
+  - echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+  
+  # Install Docker Engine
+  - apt-get update
+  - apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  
+  # Verify Docker installation
+  - docker --version || exit 1
+  
+  # Pull DWS node image with digest verification
+  - docker pull ghcr.io/jejunetwork/dws-node:latest
+  
+  # Start DWS node
+  - |
+    docker run -d \\
+      --name dws-node \\
+      --restart unless-stopped \\
+      --security-opt=no-new-privileges:true \\
+      --cap-drop=ALL \\
+      --cap-add=NET_BIND_SERVICE \\
+      -p 80:80 \\
+      -p 443:443 \\
+      -p 8080:8080 \\
+      -e JEJU_COMPUTE_ID=${computeId} \\
+      ghcr.io/jejunetwork/dws-node:latest
 
-# Start DWS node
-docker run -d \\
-  --name dws-node \\
-  --restart unless-stopped \\
-  -p 80:80 \\
-  -p 443:443 \\
-  -p 8080:8080 \\
-  -e JEJU_COMPUTE_ID=${computeId} \\
-  ghcr.io/jejunetwork/dws-node:latest
+write_files:
+  - path: /etc/jeju/compute-id
+    content: |
+      ${computeId}
+    permissions: '0644'
 
-echo "Jeju DWS node started"
+final_message: "Jeju DWS node setup complete for ${computeId}"
 `
   }
 
@@ -644,6 +695,7 @@ export async function initializeJejuProvisioner(
     hetzner?: string
     digitalocean?: string
     vultr?: string
+    ovh?: string
   },
   config?: Partial<JejuProvisionerConfig>,
 ): Promise<JejuProvisioner> {

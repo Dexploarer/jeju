@@ -2,7 +2,10 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { getFarcasterHubUrl } from '@jejunetwork/config'
+import {
+  getFarcasterHubUrl,
+  getLocalhostHost,
+} from '@jejunetwork/config'
 import { type Subprocess, spawn } from 'bun'
 import {
   type Address,
@@ -153,7 +156,7 @@ async function fetchRealPrices(): Promise<
 
 async function isPortInUse(port: number): Promise<boolean> {
   try {
-    const response = await fetch(`http://127.0.0.1:${port}/health`, {
+    const response = await fetch(`http://${getLocalhostHost()}:${port}/health`, {
       signal: AbortSignal.timeout(1000),
     })
     return response.ok
@@ -173,9 +176,9 @@ class ServicesOrchestrator {
   private rootDir: string
   private rpcUrl: string
 
-  constructor(rootDir: string, rpcUrl = 'http://localhost:6546') {
+  constructor(rootDir: string, rpcUrl?: string) {
     this.rootDir = rootDir
-    this.rpcUrl = rpcUrl
+    this.rpcUrl = rpcUrl ?? `http://${getLocalhostHost()}:6546`
   }
 
   async startAll(config: Partial<ServiceConfig> = {}): Promise<void> {
@@ -236,7 +239,7 @@ class ServicesOrchestrator {
         name: 'Inference',
         type: 'server',
         port,
-        url: `http://localhost:${port}`,
+        url: `http://${getLocalhostHost()}:${port}`,
         healthCheck: '/health',
       })
       return
@@ -270,7 +273,7 @@ class ServicesOrchestrator {
             name: 'EQLite (EQLite)',
             type: 'server',
             port,
-            url: `http://localhost:${port}`,
+            url: `http://${getLocalhostHost()}:${port}`,
             healthCheck: '/v1/status',
           })
           return
@@ -321,7 +324,7 @@ class ServicesOrchestrator {
             type: 'process',
             port,
             process: proc,
-            url: `http://localhost:${port}`,
+            url: `http://${getLocalhostHost()}:${port}`,
             healthCheck: '/v1/status',
           })
           logger.success(`EQLite cluster running on port ${port}`)
@@ -344,7 +347,7 @@ class ServicesOrchestrator {
         name: 'Oracle',
         type: 'server',
         port,
-        url: `http://localhost:${port}`,
+        url: `http://${getLocalhostHost()}:${port}`,
         healthCheck: '/health',
       })
       return
@@ -889,7 +892,7 @@ class ServicesOrchestrator {
         type: 'process',
         port,
         process: proc,
-        url: `http://localhost:${port}`,
+        url: `http://${getLocalhostHost()}:${port}`,
         healthCheck: '/health',
       })
 
@@ -942,7 +945,8 @@ class ServicesOrchestrator {
 
   private async isDWSAvailable(): Promise<boolean> {
     try {
-      const response = await fetch('http://localhost:4030/services/health', {
+      const host = getLocalhostHost()
+      const response = await fetch(`http://${host}:4030/services/health`, {
         signal: AbortSignal.timeout(2000),
       })
       return response.ok
@@ -1008,7 +1012,8 @@ class ServicesOrchestrator {
     logger.step(`Deploying ${manifest.name} via DWS...`)
 
     try {
-      const response = await fetch('http://localhost:4030/deploy', {
+      const host = getLocalhostHost()
+      const response = await fetch(`http://${host}:4030/deploy`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ manifest }),
@@ -1078,7 +1083,8 @@ class ServicesOrchestrator {
     mode: string
   }> {
     try {
-      const response = await fetch('http://localhost:4030/deploy/tee/status', {
+      const host = getLocalhostHost()
+      const response = await fetch(`http://${host}:4030/deploy/tee/status`, {
         signal: AbortSignal.timeout(5000),
       })
 
@@ -1148,7 +1154,8 @@ class ServicesOrchestrator {
   }
 
   private async provisionPostgresViaDWS(): Promise<boolean> {
-    const dwsUrl = 'http://localhost:4030'
+    const host = getLocalhostHost()
+    const dwsUrl = `http://${host}:4030`
 
     logger.step('Provisioning postgres via DWS services...')
 
@@ -1368,7 +1375,7 @@ class ServicesOrchestrator {
         name: 'JNS',
         type: 'server',
         port,
-        url: `http://localhost:${port}`,
+        url: `http://${getLocalhostHost()}:${port}`,
         healthCheck: '/health',
       })
       return
@@ -1623,7 +1630,7 @@ class ServicesOrchestrator {
         name: 'DWS',
         type: 'server',
         port,
-        url: `http://localhost:${port}`,
+        url: `http://${getLocalhostHost()}:${port}`,
         healthCheck: '/health',
       })
       return
@@ -1690,7 +1697,7 @@ class ServicesOrchestrator {
         name: 'Cron',
         type: 'server',
         port,
-        url: `http://localhost:${port}`,
+        url: `http://${getLocalhostHost()}:${port}`,
         healthCheck: '/health',
       })
       return
@@ -1773,7 +1780,7 @@ class ServicesOrchestrator {
         name: 'CVM',
         type: 'server',
         port,
-        url: `http://localhost:${port}`,
+        url: `http://${getLocalhostHost()}:${port}`,
         healthCheck: '/health',
       })
       return
@@ -1800,7 +1807,7 @@ class ServicesOrchestrator {
         type: 'process',
         port,
         process: proc,
-        url: `http://localhost:${port}`,
+        url: `http://${getLocalhostHost()}:${port}`,
         healthCheck: '/health',
       })
 
@@ -1832,7 +1839,7 @@ class ServicesOrchestrator {
         type: 'process',
         port,
         process: proc,
-        url: `http://localhost:${port}`,
+        url: `http://${getLocalhostHost()}:${port}`,
         healthCheck: '/health',
       })
 
@@ -1853,7 +1860,7 @@ class ServicesOrchestrator {
         name: 'DWS Compute',
         type: 'server',
         port,
-        url: `http://localhost:${port}`,
+        url: `http://${getLocalhostHost()}:${port}`,
         healthCheck: '/health',
       })
       return

@@ -3,6 +3,7 @@
  */
 
 import { cors } from '@elysiajs/cors'
+import { getLocalhostHost } from '@jejunetwork/config'
 import { validateOrThrow } from '@jejunetwork/types'
 import { Elysia } from 'elysia'
 import { config } from './config'
@@ -691,5 +692,6 @@ export async function startMCPServer(): Promise<void> {
 
   app.listen(MCP_PORT)
 
-  console.log(`📡 MCP Server running on http://localhost:${MCP_PORT}`)
+  const host = getLocalhostHost()
+  console.log(`📡 MCP Server running on http://${host}:${MCP_PORT}`)
 }

@@ -252,7 +252,7 @@ export function createVPNServer(serverConfig: VPNServerConfig) {
 export type { VPNServerConfig } from './schemas'
 export type { VPNServiceContext } from './types'
 
-import { CORE_PORTS } from '@jejunetwork/config'
+import { CORE_PORTS, getLocalhostHost } from '@jejunetwork/config'
 
 const PORT = vpnConfig.port || CORE_PORTS.VPN_API.get()
 
@@ -278,8 +278,9 @@ const devServerConfig: VPNServerConfig = {
 
 const app = createVPNServer(devServerConfig)
 
+const host = getLocalhostHost()
 app.listen(PORT, () => {
-  console.log(`VPN Server running on http://localhost:${PORT}`)
+  console.log(`VPN Server running on http://${host}:${PORT}`)
   console.log(`  - REST API: /api/v1`)
   console.log(`  - A2A Protocol: /a2a`)
   console.log(`  - MCP Protocol: /mcp`)

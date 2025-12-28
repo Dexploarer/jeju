@@ -14,6 +14,7 @@
  * - Optional Psyche for distributed training
  */
 
+import { getApiKey, isProductionEnv } from '@jejunetwork/config'
 import { writeContract } from '@jejunetwork/contracts'
 import { expectValid } from '@jejunetwork/types'
 import {
@@ -235,7 +236,7 @@ export class RLAIFCoordinator {
     if (this.initialized) return
 
     const { kmsKeyId, ownerAddress, rpcUrl } = this.config
-    const isProduction = process.env.NODE_ENV === 'production'
+    const isProduction = isProductionEnv()
 
     if (kmsKeyId && ownerAddress) {
       const kmsAvailable = await isKMSAvailable()
@@ -794,7 +795,7 @@ export function createRLAIFCoordinator(
     phalaTeeEnabled:
       config.phalaTeeEnabled ?? process.env.PHALA_ENDPOINT !== undefined,
     phalaEndpoint: config.phalaEndpoint ?? process.env.PHALA_ENDPOINT,
-    phalaApiKey: config.phalaApiKey ?? process.env.PHALA_API_KEY,
+    phalaApiKey: config.phalaApiKey ?? getApiKey('phala'),
   }
 
   return new RLAIFCoordinator(configWithDefaults)

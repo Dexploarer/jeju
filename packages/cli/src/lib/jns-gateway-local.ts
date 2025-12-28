@@ -6,6 +6,7 @@
 
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
+import { getLocalhostHost } from '@jejunetwork/config'
 import type { JNSGatewayConfigBase } from '@jejunetwork/types'
 import { Elysia } from 'elysia'
 import type { Address, Hex } from 'viem'
@@ -59,18 +60,21 @@ interface ContentResolution {
 
 // Local worker endpoint mappings for vendor apps during development
 // Maps app name to local backend URL (must match CORE_PORTS from @jejunetwork/config)
-const LOCAL_WORKER_ENDPOINTS: Record<string, string> = {
-  factory: 'http://localhost:4009',
-  bazaar: 'http://localhost:4007', // BAZAAR_API port
-  gateway: 'http://localhost:4060',
-  dws: 'http://localhost:4030',
-  oauth3: 'http://localhost:4200',
-  auth: 'http://localhost:4200', // alias for oauth3
-  monitoring: 'http://localhost:9091', // A2A server port from jeju-manifest.json
-  wallet: 'http://localhost:4015', // Wallet main port
-  vpn: 'http://localhost:4021', // VPN API port
-  node: 'http://localhost:1420', // Node main port (from manifest)
-  babylon: 'http://localhost:5009', // Babylon API server
+function getLocalWorkerEndpoints(): Record<string, string> {
+  const host = getLocalhostHost()
+  return {
+    factory: `http://${host}:4009`,
+    bazaar: `http://${host}:4007`, // BAZAAR_API port
+    gateway: `http://${host}:4060`,
+    dws: `http://${host}:4030`,
+    oauth3: `http://${host}:4200`,
+    auth: `http://${host}:4200`, // alias for oauth3
+    monitoring: `http://${host}:9091`, // A2A server port from jeju-manifest.json
+    wallet: `http://${host}:4015`, // Wallet main port
+    vpn: `http://${host}:4021`, // VPN API port
+    node: `http://${host}:1420`, // Node main port (from manifest)
+    babylon: `http://${host}:5009`, // Babylon API server
+  }
 }
 
 // App name aliases - maps subdomain to actual app folder name
@@ -98,7 +102,8 @@ export class LocalJNSGateway {
    * Get local worker endpoint for an app (for development)
    */
   private getLocalWorkerEndpoint(appName: string): string | null {
-    return LOCAL_WORKER_ENDPOINTS[appName] ?? null
+    const endpoints = getLocalWorkerEndpoints()
+    return endpoints[appName] ?? null
   }
 
   private createApp() {

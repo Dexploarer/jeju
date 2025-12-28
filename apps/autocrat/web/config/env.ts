@@ -7,6 +7,7 @@
  * Note: Import from here instead of accessing env vars directly.
  */
 import {
+  getApiKey,
   getChainId,
   getContract,
   getCurrentNetwork,
@@ -40,8 +41,4 @@ export const AUTOCRAT_ADDRESS = getAutocratAddress()
 
 // WalletConnect - disabled by default in development
 export const WALLETCONNECT_PROJECT_ID =
-  NETWORK === 'localnet'
-    ? ''
-    : (typeof process !== 'undefined' &&
-        process.env.PUBLIC_WALLETCONNECT_PROJECT_ID) ||
-      ''
+  NETWORK === 'localnet' ? '' : getApiKey('walletconnect') || ''

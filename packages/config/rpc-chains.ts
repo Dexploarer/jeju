@@ -5,6 +5,8 @@
  * Defines supported chains with RPC endpoints, fallbacks, and metadata.
  */
 
+import { getLocalhostHost } from './index'
+
 export interface RpcChainConfig {
   chainId: number
   name: string
@@ -161,9 +163,12 @@ export const RPC_CHAINS: Record<number, RpcChainConfig> = {
     chainId: 31337,
     name: 'Localnet',
     shortName: 'LOCAL',
-    rpcUrl: getEnv('LOCALNET_RPC_URL', 'http://localhost:6546'),
+    rpcUrl: getEnv(
+      'LOCALNET_RPC_URL',
+      `http://${getLocalhostHost()}:6546`,
+    ),
     fallbackRpcs: [],
-    explorerUrl: 'http://localhost:4000',
+    explorerUrl: `http://${getLocalhostHost()}:4000`,
     isTestnet: true,
     nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
   },

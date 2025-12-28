@@ -1,5 +1,5 @@
 import { AuthProvider } from '@jejunetwork/auth'
-import { getNetworkName } from '@jejunetwork/config'
+import { getLocalhostHost, getNetworkName } from '@jejunetwork/config'
 import { isValidAddress } from '@jejunetwork/types'
 import { type Context, Elysia } from 'elysia'
 import type { Address } from 'viem'
@@ -193,7 +193,7 @@ export function createAuthRoutes() {
           appId,
           redirectUri:
             process.env.OAUTH3_REDIRECT_URI ||
-            'http://localhost:4501/auth/callback',
+            `http://${getLocalhostHost()}:4501/auth/callback`,
         },
       }
     })

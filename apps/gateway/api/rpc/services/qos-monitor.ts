@@ -12,11 +12,75 @@
  * - Aggregate and report to MultiChainRPCRegistry
  */
 
-import type { Address } from 'viem'
+import {
+  type Address,
+  createWalletClient,
+  decodeFunctionResult,
+  encodeFunctionData,
+  http,
+  type Account,
+} from 'viem'
+import { privateKeyToAccount } from 'viem/accounts'
 import { RPC_URLS, JEJU_CHAIN_ID } from '../../../lib/config/networks'
+import { jejuTestnet, jejuMainnet } from '../../../lib/chains'
+
+// Contract ABI fragments for MultiChainRPCRegistry
+const MULTI_CHAIN_RPC_REGISTRY_ABI = [
+  {
+    type: 'function',
+    name: 'getSupportedChains',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint64[]' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getProvidersForChain',
+    inputs: [{ name: 'chainId', type: 'uint64' }],
+    outputs: [{ name: '', type: 'address[]' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getChainEndpoint',
+    inputs: [
+      { name: 'node', type: 'address' },
+      { name: 'chainId', type: 'uint64' },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'tuple',
+        components: [
+          { name: 'chainId', type: 'uint64' },
+          { name: 'endpoint', type: 'string' },
+          { name: 'isActive', type: 'bool' },
+          { name: 'isArchive', type: 'bool' },
+          { name: 'isWebSocket', type: 'bool' },
+          { name: 'blockHeight', type: 'uint64' },
+          { name: 'lastUpdated', type: 'uint64' },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'reportPerformance',
+    inputs: [
+      { name: 'node', type: 'address' },
+      { name: 'uptimeScore', type: 'uint256' },
+      { name: 'successRate', type: 'uint256' },
+      { name: 'avgLatencyMs', type: 'uint256' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+] as const
 
 // Get Jeju RPC URL
 const JEJU_RPC_URL = RPC_URLS[JEJU_CHAIN_ID as keyof typeof RPC_URLS]
+const CHAIN = JEJU_CHAIN_ID === 420691 ? jejuMainnet : jejuTestnet
 
 // Types for QoS monitoring
 interface QoSCheckResult {
@@ -41,7 +105,7 @@ interface AggregatedQoS {
   uptimePercentage: number
 }
 
-interface ContractEndpoint {
+interface ChainEndpoint {
   chainId: bigint
   endpoint: string
   isActive: boolean
@@ -69,24 +133,40 @@ interface MonitorConfig {
 
 export class QoSMonitorService {
   private registryAddress: Address
-  private rpcUrl: string
-  private walletKey: Address | null
+  private walletClient: ReturnType<typeof createWalletClient> | null
+  private walletAccount: Account | null
+  private walletAddress: Address | null
   private config: MonitorConfig
   private running = false
   private checkInterval: ReturnType<typeof setInterval> | null = null
   private reportInterval: ReturnType<typeof setInterval> | null = null
 
   // Stats per node per chain
-  private nodeStats = new Map<string, NodeCheckStats>() // `${node}-${chainId}` -> stats
+  private nodeStats = new Map<string, NodeCheckStats>()
 
   constructor(
     registryAddress: Address,
     config?: Partial<MonitorConfig>,
-    privateKey?: Address,
+    privateKey?: string,
   ) {
     this.registryAddress = registryAddress
-    this.rpcUrl = JEJU_RPC_URL
-    this.walletKey = privateKey ?? null
+
+    // Initialize wallet client for reporting if private key provided
+    if (privateKey) {
+      const account = privateKeyToAccount(privateKey as `0x${string}`)
+      this.walletAccount = account
+      this.walletAddress = account.address
+      this.walletClient = createWalletClient({
+        account,
+        chain: CHAIN,
+        transport: http(JEJU_RPC_URL),
+      })
+    } else {
+      this.walletClient = null
+      this.walletAccount = null
+      this.walletAddress = null
+    }
+
     this.config = {
       checkIntervalMs: config?.checkIntervalMs ?? 60_000, // Check every minute
       reportIntervalMs: config?.reportIntervalMs ?? 300_000, // Report every 5 minutes
@@ -106,6 +186,8 @@ export class QoSMonitorService {
 
     this.running = true
     console.log('[QoS] Starting monitoring service')
+    console.log(`[QoS] Registry: ${this.registryAddress}`)
+    console.log(`[QoS] Reporter: ${this.walletAddress ?? 'read-only mode'}`)
 
     // Initial check
     await this.runChecks()
@@ -159,35 +241,45 @@ export class QoSMonitorService {
   }
 
   /**
-   * Get supported chains from contract
+   * Get supported chains from contract with proper decoding
    */
   private async getSupportedChains(): Promise<bigint[]> {
-    const response = await fetch(this.rpcUrl, {
+    const callData = encodeFunctionData({
+      abi: MULTI_CHAIN_RPC_REGISTRY_ABI,
+      functionName: 'getSupportedChains',
+    })
+
+    const response = await fetch(JEJU_RPC_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         jsonrpc: '2.0',
         method: 'eth_call',
-        params: [
-          {
-            to: this.registryAddress,
-            // getSupportedChains() selector
-            data: '0x2b5c99db',
-          },
-          'latest',
-        ],
+        params: [{ to: this.registryAddress, data: callData }, 'latest'],
         id: 1,
       }),
     })
 
-    const result = (await response.json()) as { result?: string; error?: { message: string } }
+    const result = (await response.json()) as {
+      result?: string
+      error?: { message: string }
+    }
+
     if (result.error || !result.result || result.result === '0x') {
+      console.warn('[QoS] Failed to get supported chains, using defaults')
       // Return default chains if contract call fails
       return [BigInt(1), BigInt(10), BigInt(137), BigInt(42161), BigInt(8453)]
     }
 
-    // Decode uint64[] (simplified)
-    return [BigInt(1), BigInt(10), BigInt(137), BigInt(42161), BigInt(8453)]
+    const decoded = decodeFunctionResult({
+      abi: MULTI_CHAIN_RPC_REGISTRY_ABI,
+      functionName: 'getSupportedChains',
+      data: result.result as `0x${string}`,
+    }) as bigint[]
+
+    return decoded.length > 0
+      ? decoded
+      : [BigInt(1), BigInt(10), BigInt(137), BigInt(42161), BigInt(8453)]
   }
 
   /**
@@ -199,34 +291,42 @@ export class QoSMonitorService {
   }
 
   /**
-   * Get providers for a chain
+   * Get providers for a chain with proper decoding
    */
   private async getProvidersForChain(chainId: number): Promise<Address[]> {
-    const response = await fetch(this.rpcUrl, {
+    const callData = encodeFunctionData({
+      abi: MULTI_CHAIN_RPC_REGISTRY_ABI,
+      functionName: 'getProvidersForChain',
+      args: [BigInt(chainId)],
+    })
+
+    const response = await fetch(JEJU_RPC_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         jsonrpc: '2.0',
         method: 'eth_call',
-        params: [
-          {
-            to: this.registryAddress,
-            // getProvidersForChain(uint64) - simplified encoding
-            data: `0x${chainId.toString(16).padStart(64, '0')}`,
-          },
-          'latest',
-        ],
+        params: [{ to: this.registryAddress, data: callData }, 'latest'],
         id: 1,
       }),
     })
 
-    const result = (await response.json()) as { result?: string; error?: { message: string } }
+    const result = (await response.json()) as {
+      result?: string
+      error?: { message: string }
+    }
+
     if (result.error || !result.result || result.result === '0x') {
       return []
     }
 
-    // Decode address[] (simplified - would need proper ABI decoding)
-    return []
+    const decoded = decodeFunctionResult({
+      abi: MULTI_CHAIN_RPC_REGISTRY_ABI,
+      functionName: 'getProvidersForChain',
+      data: result.result as `0x${string}`,
+    }) as Address[]
+
+    return decoded
   }
 
   /**
@@ -304,15 +404,45 @@ export class QoSMonitorService {
   }
 
   /**
-   * Get chain endpoint for a node
+   * Get chain endpoint for a node with proper decoding
    */
   private async getChainEndpoint(
     node: Address,
     chainId: number,
-  ): Promise<ContractEndpoint | null> {
-    // Would call contract and decode response
-    // For now return null to indicate no endpoint found
-    return null
+  ): Promise<ChainEndpoint | null> {
+    const callData = encodeFunctionData({
+      abi: MULTI_CHAIN_RPC_REGISTRY_ABI,
+      functionName: 'getChainEndpoint',
+      args: [node, BigInt(chainId)],
+    })
+
+    const response = await fetch(JEJU_RPC_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'eth_call',
+        params: [{ to: this.registryAddress, data: callData }, 'latest'],
+        id: 1,
+      }),
+    })
+
+    const result = (await response.json()) as {
+      result?: string
+      error?: { message: string }
+    }
+
+    if (result.error || !result.result || result.result === '0x') {
+      return null
+    }
+
+    const decoded = decodeFunctionResult({
+      abi: MULTI_CHAIN_RPC_REGISTRY_ABI,
+      functionName: 'getChainEndpoint',
+      data: result.result as `0x${string}`,
+    }) as ChainEndpoint
+
+    return decoded
   }
 
   /**
@@ -397,7 +527,7 @@ export class QoSMonitorService {
    * Report all aggregated metrics to the contract
    */
   async reportAll(): Promise<void> {
-    if (!this.walletKey) {
+    if (!this.walletClient || !this.walletAddress) {
       console.warn('[QoS] No wallet configured, skipping report')
       return
     }
@@ -422,7 +552,7 @@ export class QoSMonitorService {
       const uptimeScore = Math.round(
         (stats.successfulChecks / stats.totalChecks) * 10000,
       )
-      const successRate = uptimeScore // Same for now, could differentiate
+      const successRate = uptimeScore
       const avgLatency = Math.round(
         stats.successfulChecks > 0
           ? stats.totalLatency / stats.successfulChecks
@@ -459,11 +589,30 @@ export class QoSMonitorService {
       }
     }
 
-    // Submit reports via JSON-RPC
+    // Submit reports via transactions
     for (const [node, metrics] of Array.from(nodeReports.entries())) {
       try {
-        // Would send transaction to reportPerformance
-        console.log(`[QoS] Would report ${node}: uptime=${metrics.uptime}, latency=${metrics.latency}`)
+        const callData = encodeFunctionData({
+          abi: MULTI_CHAIN_RPC_REGISTRY_ABI,
+          functionName: 'reportPerformance',
+          args: [
+            node,
+            BigInt(metrics.uptime),
+            BigInt(metrics.successRate),
+            BigInt(metrics.latency),
+          ],
+        })
+
+        const hash = await this.walletClient.sendTransaction({
+          account: this.walletAccount!,
+          chain: CHAIN,
+          to: this.registryAddress,
+          data: callData,
+        })
+
+        console.log(
+          `[QoS] Reported ${node}: uptime=${metrics.uptime}, latency=${metrics.latency}, tx=${hash}`,
+        )
       } catch (error) {
         console.error(`[QoS] Failed to report ${node}:`, error)
       }
@@ -511,7 +660,7 @@ export function getQoSMonitor(): QoSMonitorService | null {
 export function initQoSMonitor(
   registryAddress: Address,
   config?: Partial<MonitorConfig>,
-  privateKey?: Address,
+  privateKey?: string,
 ): QoSMonitorService {
   monitorInstance = new QoSMonitorService(registryAddress, config, privateKey)
   return monitorInstance

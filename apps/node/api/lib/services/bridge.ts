@@ -44,10 +44,8 @@ export interface BridgeServiceConfig {
 
   // Operator settings
   operatorAddress: Address
-  /** @deprecated Use evmKeyId instead */
-  privateKey?: Hex
   /** KMS key ID for EVM signing */
-  evmKeyId?: string
+  evmKeyId: string
 
   // Service options
   enableRelayer: boolean

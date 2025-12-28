@@ -110,12 +110,8 @@ const HYPERLIQUID_API = 'https://api.hyperliquid.xyz'
 export interface ExecutorConfig {
   /** KMS key ID for EVM signing (secure, no local private keys) */
   evmKeyId: string
-  /**
-   * @deprecated Solana private key - SECURITY RISK
-   * TODO: Replace with Solana KMS integration (Fireblocks/AWS KMS)
-   * Should be disabled in production TEE environments
-   */
-  solanaPrivateKey?: string
+  /** KMS key ID for Solana signing */
+  solanaKeyId?: string
   evmRpcUrls: Record<number, string>
   solanaRpcUrl?: string
   zkBridgeEndpoint?: string
@@ -163,11 +159,6 @@ export class ArbitrageExecutor {
   private config: ExecutorConfig
   private evmSigner: SecureSigner
   private evmAddress: Address | null = null // Derived from KMS on init
-  /**
-   * @deprecated Solana keypair in memory - SECURITY RISK
-   * TODO: Replace with Solana KMS integration
-   */
-  private solanaKeypair: Keypair | null = null
   private solanaConnection: Connection | null = null
   private evmClients = new Map<number, EVMClientPair>()
 

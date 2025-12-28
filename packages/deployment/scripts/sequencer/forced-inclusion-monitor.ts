@@ -20,7 +20,10 @@
 
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { getCurrentNetwork } from '@jejunetwork/config'
+import {
+  getCurrentNetwork,
+  getL1RpcUrl,
+} from '@jejunetwork/config'
 import {
   type Address,
   createPublicClient,
@@ -525,7 +528,7 @@ async function main(): Promise<void> {
   console.log('📡 Forced Inclusion Monitor\n')
 
   const network = getCurrentNetwork()
-  const l1RpcUrl = process.env.L1_RPC_URL || 'http://127.0.0.1:6545'
+  const l1RpcUrl = getL1RpcUrl()
   const alertThreshold = parseInt(process.env.ALERT_THRESHOLD || '10', 10)
   const checkInterval = parseInt(process.env.CHECK_INTERVAL || '12000', 10)
 

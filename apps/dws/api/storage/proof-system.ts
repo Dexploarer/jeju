@@ -13,6 +13,12 @@
  * reconstructed or held in memory.
  */
 
+import {
+  getCurrentNetwork,
+  getLocalhostHost,
+  getRpcUrl,
+  isProductionEnv,
+} from '@jejunetwork/config'
 import { createHash, randomBytes } from 'node:crypto'
 import type { Address } from 'viem'
 import {
@@ -153,7 +159,7 @@ const DEFAULT_PROOF_CONFIG: StorageProofConfig = {
   challengeRewardWei: 1000000000000000n, // 0.001 ETH
   slashAmountWei: 10000000000000000n, // 0.01 ETH
   proofContractAddress: '0x0000000000000000000000000000000000000000',
-  rpcUrl: process.env.RPC_URL ?? 'http://localhost:8545',
+  rpcUrl: process.env.RPC_URL ?? getRpcUrl(getCurrentNetwork()),
   kmsKeyId: process.env.STORAGE_PROOF_KMS_KEY_ID,
   ownerAddress: process.env.STORAGE_PROOF_OWNER_ADDRESS as Address | undefined,
   // Only use privateKey in development - not set by default
@@ -282,7 +288,7 @@ export class StorageProofManager {
     this.config = { ...DEFAULT_PROOF_CONFIG, ...config }
 
     // SECURITY: Warn if using deprecated privateKey in production
-    const isProduction = process.env.NODE_ENV === 'production'
+    const isProduction = isProductionEnv()
     if (isProduction && this.config.privateKey && !this.config.kmsKeyId) {
       console.error(
         '[StorageProofManager] CRITICAL: Using privateKey in production is insecure. ' +

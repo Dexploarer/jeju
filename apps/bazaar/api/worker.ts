@@ -16,6 +16,7 @@ import {
   getEQLiteBlockProducerUrl,
   getIndexerGraphqlUrl,
   getL2RpcUrl,
+  getLocalhostHost,
 } from '@jejunetwork/config'
 import { createTable, type EQLiteClient, getEQLite } from '@jejunetwork/db'
 import { expect as expectExists, expectValid } from '@jejunetwork/types'
@@ -520,8 +521,9 @@ if (isMainModule) {
     EQLITE_PRIVATE_KEY: config.eqlitePrivateKey || '',
   })
 
+  const host = getLocalhostHost()
   app.listen(PORT, () => {
-    console.log(`Bazaar API Worker running at http://localhost:${PORT}`)
+    console.log(`Bazaar API Worker running at http://${host}:${PORT}`)
   })
 }
 

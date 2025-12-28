@@ -2,6 +2,7 @@ import {
   createAppConfig,
   getEnvNumber,
   getEnvVar,
+  getLocalhostHost,
   isProductionEnv,
 } from '@jejunetwork/config'
 
@@ -81,8 +82,12 @@ const { config, configure: setGatewayConfig } = createAppConfig<GatewayConfig>({
   corsOrigins: (getEnvVar('CORS_ORIGINS') ?? '').split(',').filter(Boolean),
 
   // URLs
-  prometheusUrl: getEnvVar('PROMETHEUS_URL') ?? 'http://localhost:9090',
-  oifAggregatorUrl: getEnvVar('OIF_AGGREGATOR_URL') ?? 'http://localhost:4010',
+  prometheusUrl:
+    getEnvVar('PROMETHEUS_URL') ??
+    `http://${getLocalhostHost()}:9090`,
+  oifAggregatorUrl:
+    getEnvVar('OIF_AGGREGATOR_URL') ??
+    `http://${getLocalhostHost()}:4010`,
 
   // A2A / Monitoring
   a2aPort: getEnvNumber('A2A_PORT') ?? 9091,
@@ -112,7 +117,7 @@ const { config, configure: setGatewayConfig } = createAppConfig<GatewayConfig>({
   minPaymentAmount: BigInt(getEnvNumber('MIN_PAYMENT_AMOUNT') ?? 1),
   facilitatorUrl:
     getEnvVar('FACILITATOR_URL') ??
-    `http://localhost:${getEnvNumber('FACILITATOR_PORT') ?? getEnvNumber('PORT') ?? 3402}`,
+    `http://${getLocalhostHost()}:${getEnvNumber('FACILITATOR_PORT') ?? getEnvNumber('PORT') ?? 3402}`,
   kmsEnabled:
     getEnvVar('KMS_ENABLED') === 'true' ||
     getEnvVar('VAULT_ENCRYPTION_SECRET') !== undefined,
@@ -130,7 +135,8 @@ const { config, configure: setGatewayConfig } = createAppConfig<GatewayConfig>({
   githubToken: getEnvVar('GITHUB_TOKEN'),
   leaderboardRepositories:
     getEnvVar('LEADERBOARD_REPOSITORIES') ?? 'jejunetwork/jeju',
-  dwsApiUrl: getEnvVar('DWS_API_URL') ?? 'http://localhost:4030',
+  dwsApiUrl:
+    getEnvVar('DWS_API_URL') ?? `http://${getLocalhostHost()}:4030`,
   leaderboardDataDir: getEnvVar('LEADERBOARD_DATA_DIR') ?? './data/leaderboard',
   openrouterApiKey: getEnvVar('OPENROUTER_API_KEY'),
   leaderboardLlmModel:

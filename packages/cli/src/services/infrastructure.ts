@@ -7,6 +7,10 @@ import {
   CORE_PORTS,
   getEQLiteBlockProducerUrl,
   getFarcasterHubUrl,
+  getLocalhostHost,
+  getL2RpcUrl,
+  getDWSUrl,
+  getIpfsApiUrl,
   INFRA_PORTS,
 } from '@jejunetwork/config'
 import { execa, type ResultPromise } from 'execa'
@@ -65,7 +69,7 @@ export class InfrastructureService {
   async isEQLiteRunning(): Promise<boolean> {
     try {
       const response = await fetch(
-        `http://127.0.0.1:${EQLITE_PORT}/v1/status`,
+        `http://${getLocalhostHost()}:${EQLITE_PORT}/v1/status`,
         {
           signal: AbortSignal.timeout(2000),
         },
@@ -140,7 +144,7 @@ export class InfrastructureService {
       await this.sleep(250)
       if (await this.isEQLiteRunning()) {
         logger.success(`EQLite SQLite server running on port ${EQLITE_PORT}`)
-        logger.keyValue('  API Endpoint', `http://127.0.0.1:${EQLITE_PORT}`)
+        logger.keyValue('  API Endpoint', `http://${getLocalhostHost()}:${EQLITE_PORT}`)
         logger.info('  Mode: SQLite-compatible (local development)')
         return true
       }
@@ -176,7 +180,7 @@ export class InfrastructureService {
   async isCacheServiceRunning(): Promise<boolean> {
     try {
       const response = await fetch(
-        `http://127.0.0.1:${DWS_PORT}/cache/health`,
+        `http://${getLocalhostHost()}:${DWS_PORT}/cache/health`,
         { signal: AbortSignal.timeout(2000) },
       )
       return response.ok
@@ -187,7 +191,7 @@ export class InfrastructureService {
 
   async isDAServerRunning(): Promise<boolean> {
     try {
-      const response = await fetch(`http://127.0.0.1:${DWS_PORT}/da/health`, {
+      const response = await fetch(`http://${getLocalhostHost()}:${DWS_PORT}/da/health`, {
         signal: AbortSignal.timeout(2000),
       })
       return response.ok
@@ -317,7 +321,7 @@ export class InfrastructureService {
       name: 'EQLite (EQLite)',
       port: EQLITE_PORT,
       healthy,
-      url: `http://127.0.0.1:${EQLITE_PORT}`,
+      url: `http://${getLocalhostHost()}:${EQLITE_PORT}`,
     }
   }
 
@@ -417,7 +421,7 @@ export class InfrastructureService {
 
   async isLocalnetRunning(): Promise<boolean> {
     try {
-      const response = await fetch(`http://127.0.0.1:${LOCALNET_PORT}`, {
+      const response = await fetch(`http://${getLocalhostHost()}:${LOCALNET_PORT}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -628,7 +632,7 @@ export class InfrastructureService {
     logger.table([
       {
         label: 'EQLite (native)',
-        value: status.eqlite ? `http://127.0.0.1:${EQLITE_PORT}` : 'stopped',
+        value: status.eqlite ? `http://${getLocalhostHost()}:${EQLITE_PORT}` : 'stopped',
         status: status.eqlite ? 'ok' : 'error',
       },
     ])
@@ -657,7 +661,7 @@ export class InfrastructureService {
       {
         label: 'Localnet',
         value: status.localnet
-          ? `http://127.0.0.1:${LOCALNET_PORT}`
+          ? `http://${getLocalhostHost()}:${LOCALNET_PORT}`
           : 'stopped',
         status: status.localnet ? 'ok' : 'error',
       },
@@ -668,16 +672,18 @@ export class InfrastructureService {
    * Get environment variables for running services
    */
   getEnvVars(): Record<string, string> {
+    const host = getLocalhostHost()
+    const dwsUrl = getDWSUrl()
     return {
-      L2_RPC_URL: `http://127.0.0.1:${LOCALNET_PORT}`,
-      JEJU_RPC_URL: `http://127.0.0.1:${LOCALNET_PORT}`,
+      L2_RPC_URL: getL2RpcUrl(),
+      JEJU_RPC_URL: getL2RpcUrl(),
       EQLITE_URL: getEQLiteBlockProducerUrl(),
       EQLITE_BLOCK_PRODUCER_ENDPOINT: getEQLiteBlockProducerUrl(),
-      IPFS_API_URL: `http://127.0.0.1:${CORE_PORTS.IPFS_API.DEFAULT}`,
+      IPFS_API_URL: getIpfsApiUrl(),
       // Cache and DA are now provided by DWS
-      DA_URL: `http://127.0.0.1:${DWS_PORT}/da`,
-      CACHE_URL: `http://127.0.0.1:${DWS_PORT}/cache`,
-      DWS_URL: `http://127.0.0.1:${DWS_PORT}`,
+      DA_URL: `${dwsUrl}/da`,
+      CACHE_URL: `${dwsUrl}/cache`,
+      DWS_URL: dwsUrl,
       FARCASTER_HUB_URL: getFarcasterHubUrl(),
       CHAIN_ID: '31337',
     }

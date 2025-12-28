@@ -1,8 +1,13 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import {
+  getDwsUrl,
   getEQLiteBlockProducerUrl,
   getFarcasterHubUrl,
+  getIpfsGatewayUrl,
+  getL1RpcUrl,
+  getL2RpcUrl,
+  getLocalhostHost,
   getRpcUrl,
 } from '@jejunetwork/config'
 import { isValidAddress } from '@jejunetwork/types'
@@ -110,7 +115,7 @@ async function startDev(options: {
     process.exit(1)
   }
 
-  const l2RpcUrl = `http://127.0.0.1:${DEFAULT_PORTS.l2Rpc}`
+  const l2RpcUrl = getL2RpcUrl()
 
   // Bootstrap contracts (default: always, unless --no-bootstrap)
   let didBootstrap = false
@@ -290,7 +295,7 @@ async function deployAppsOnchain(
         ...process.env,
         PORT: String(apiPort),
         JEJU_RPC_URL: rpcUrl,
-        JEJU_DWS_ENDPOINT: 'http://localhost:4030',
+        JEJU_DWS_ENDPOINT: `http://${getLocalhostHost()}:4030`,
         JEJU_NETWORK: 'localnet',
         TEE_PROVIDER: 'local',
         EQLITE_BLOCK_PRODUCER_ENDPOINT: getEQLiteBlockProducerUrl(),
@@ -543,10 +548,10 @@ async function printReady(
       },
       {
         label: 'IPFS',
-        value: `http://127.0.0.1:${DEFAULT_PORTS.ipfs}`,
+        value: getIpfsGatewayUrl(),
         status: 'ok' as const,
       },
-      { label: 'DWS', value: 'http://127.0.0.1:4030', status: 'ok' as const },
+      { label: 'DWS', value: getDwsUrl(), status: 'ok' as const },
     ])
   }
 
@@ -558,7 +563,7 @@ async function printReady(
   const chainRows = [
     {
       label: 'L1 RPC',
-      value: `http://127.0.0.1:${DEFAULT_PORTS.l1Rpc}`,
+      value: getL1RpcUrl(),
       status: 'ok' as const,
     },
     { label: 'L2 RPC', value: rpcUrl, status: 'ok' as const },
@@ -633,8 +638,9 @@ async function printReady(
           },
         ])
       } else if (port) {
+        const localhost = getLocalhostHost()
         logger.table([
-          { label: svc.name, value: `http://127.0.0.1:${port}`, status: 'ok' },
+          { label: svc.name, value: `http://${localhost}:${port}`, status: 'ok' },
         ])
       } else {
         logger.table([{ label: svc.name, value: 'running', status: 'ok' }])

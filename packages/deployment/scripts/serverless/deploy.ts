@@ -30,6 +30,11 @@ import { extname, join, relative } from 'node:path'
 import { parseArgs } from 'node:util'
 import { bytesToHex, hash256 } from '@jejunetwork/shared'
 import {
+  getDWSUrl,
+  getIpfsApiUrl,
+  getRpcUrl,
+} from '@jejunetwork/config'
+import {
   type Address,
   createPublicClient,
   createWalletClient,
@@ -861,22 +866,22 @@ Examples:
     '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'
   const account = privateKeyToAccount(privateKey as Hex)
 
-  // Network-specific configuration
+  // Network-specific configuration - use config package
   const networkConfig = {
     localnet: {
-      rpcUrl: process.env.RPC_URL || 'http://127.0.0.1:6546',
-      dwsEndpoint: process.env.DWS_ENDPOINT || 'http://localhost:4030',
-      ipfsApiUrl: process.env.IPFS_API_URL || 'http://localhost:5001',
+      rpcUrl: getRpcUrl(),
+      dwsEndpoint: getDWSUrl('localnet'),
+      ipfsApiUrl: getIpfsApiUrl('localnet'),
     },
     testnet: {
-      rpcUrl: process.env.TESTNET_RPC_URL || 'https://sepolia.base.org',
-      dwsEndpoint: 'https://dws.testnet.jejunetwork.org',
-      ipfsApiUrl: 'https://ipfs.testnet.jejunetwork.org:5001',
+      rpcUrl: getRpcUrl('testnet'),
+      dwsEndpoint: getDWSUrl('testnet'),
+      ipfsApiUrl: getIpfsApiUrl('testnet'),
     },
     mainnet: {
-      rpcUrl: process.env.MAINNET_RPC_URL || 'https://mainnet.base.org',
-      dwsEndpoint: 'https://dws.jejunetwork.org',
-      ipfsApiUrl: 'https://ipfs.jejunetwork.org:5001',
+      rpcUrl: getRpcUrl('mainnet'),
+      dwsEndpoint: getDWSUrl('mainnet'),
+      ipfsApiUrl: getIpfsApiUrl('mainnet'),
     },
   }
 

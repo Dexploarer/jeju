@@ -1,5 +1,11 @@
 /** Chain management utilities */
 
+import {
+  getEQLiteBlockProducerUrl,
+  getL1RpcUrl,
+  getL2RpcUrl,
+  getLocalhostHost,
+} from '@jejunetwork/config'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { execa } from 'execa'
@@ -23,7 +29,7 @@ export const localnetChain: Chain = {
     symbol: 'ETH',
   },
   rpcUrls: {
-    default: { http: ['http://127.0.0.1:6546'] },
+    default: { http: [getL2RpcUrl()] },
   },
 }
 
@@ -225,13 +231,14 @@ export async function startLocalnet(
   const eqlitePort = eqlitePortStr ? parseInt(eqlitePortStr, 10) : 0
 
   // Save ports config
+  const localhost = getLocalhostHost()
   const portsConfig = {
     l1Port,
     l2Port,
     eqlitePort,
-    l1Rpc: `http://127.0.0.1:${l1Port}`,
-    l2Rpc: `http://127.0.0.1:${l2Port}`,
-    eqliteApi: eqlitePort ? `http://127.0.0.1:${eqlitePort}` : undefined,
+    l1Rpc: `http://${localhost}:${l1Port}`,
+    l2Rpc: `http://${localhost}:${l2Port}`,
+    eqliteApi: eqlitePort ? `http://${localhost}:${eqlitePort}` : undefined,
     chainId: 31337,
     timestamp: new Date().toISOString(),
   }
@@ -250,7 +257,7 @@ export async function startLocalnet(
 
   // Wait for chain to be ready
   logger.step('Waiting for chain...')
-  await waitForChain(`http://127.0.0.1:${DEFAULT_PORTS.l2Rpc}`)
+  await waitForChain(getL2RpcUrl())
 
   logger.success('Localnet running')
 

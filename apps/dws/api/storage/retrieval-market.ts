@@ -13,6 +13,12 @@
  * reconstructed or held in memory.
  */
 
+import {
+  getCurrentNetwork,
+  getLocalhostHost,
+  getRpcUrl,
+  isProductionEnv,
+} from '@jejunetwork/config'
 import { randomBytes } from 'node:crypto'
 import type { Address, Hex } from 'viem'
 import { keccak256, parseEther } from 'viem'
@@ -191,7 +197,7 @@ const DEFAULT_MARKET_CONFIG: RetrievalMarketConfig = {
   disputeWindowSeconds: 86400, // 24 hours for disputes
   paymentChannelContractAddress: '0x0000000000000000000000000000000000000000',
   marketContractAddress: '0x0000000000000000000000000000000000000000',
-  rpcUrl: process.env.RPC_URL ?? 'http://localhost:8545',
+  rpcUrl: process.env.RPC_URL ?? getRpcUrl(getCurrentNetwork()),
   kmsKeyId: process.env.RETRIEVAL_MARKET_KMS_KEY_ID,
   ownerAddress: process.env.RETRIEVAL_MARKET_OWNER_ADDRESS as
     | Address
@@ -216,7 +222,7 @@ export class RetrievalMarketManager {
     this.config = { ...DEFAULT_MARKET_CONFIG, ...config }
 
     // SECURITY: Warn if using deprecated privateKey in production
-    const isProduction = process.env.NODE_ENV === 'production'
+    const isProduction = isProductionEnv()
     if (isProduction && this.config.privateKey && !this.config.kmsKeyId) {
       console.error(
         '[RetrievalMarketManager] CRITICAL: Using privateKey in production is insecure. ' +

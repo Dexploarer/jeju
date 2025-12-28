@@ -6,6 +6,7 @@
  */
 
 import { cors } from '@elysiajs/cors'
+import { getLocalhostHost } from '@jejunetwork/config'
 import { Elysia } from 'elysia'
 import type { Address } from 'viem'
 import { isAddress } from 'viem'
@@ -54,13 +55,14 @@ const authConfig: AuthConfig = {
 
 async function createApp() {
   // Build explicit allowed origins for CORS (wildcards don't work with credentials)
+  const host = getLocalhostHost()
   const explicitOrigins = [
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'http://localhost:4200',
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1:3001',
-    'http://127.0.0.1:4200',
+    `http://${host}:3000`,
+    `http://${host}:3001`,
+    `http://${host}:4200`,
+    `http://127.0.0.1:3000`,
+    `http://127.0.0.1:3001`,
+    `http://127.0.0.1:4200`,
     'https://cloud.elizaos.com',
     'https://eliza.cloud',
     'https://elizaos.ai',
@@ -176,7 +178,8 @@ const port = oauth3Config.port
 
 createApp().then((app) => {
   app.listen(port, () => {
-    console.log(`Auth gateway running on http://localhost:${port}`)
+    const host = getLocalhostHost()
+    console.log(`Auth gateway running on http://${host}:${port}`)
   })
 })
 

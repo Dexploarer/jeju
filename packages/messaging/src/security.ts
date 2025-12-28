@@ -12,6 +12,7 @@
  * 4. Local key operations are only allowed in development
  */
 
+import { getCurrentNetwork } from '@jejunetwork/config'
 import { createLogger } from '@jejunetwork/shared'
 
 const log = createLogger('security')
@@ -33,10 +34,10 @@ export function detectEnvironment(): Environment {
   if (env === 'development') return 'development'
 
   // Check Jeju network
-  const network = process.env.JEJU_NETWORK?.toLowerCase()
+  const network = getCurrentNetwork()
   if (network === 'mainnet') return 'production'
   if (network === 'testnet') return 'staging'
-  if (network === 'local') return 'development'
+  if (network === 'localnet') return 'development'
 
   // Default to development
   return 'development'
