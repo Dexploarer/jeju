@@ -68,6 +68,8 @@ export interface BenchmarkResults {
   // Network
   networkBandwidthMbps: number
   networkLatencyMs: number
+  region: string // Geographic region (e.g., "us-east-1", "eu-west-1")
+  ipv6Supported: boolean
 
   // GPU (optional)
   gpuDetected: boolean
@@ -108,6 +110,8 @@ export const BenchmarkResultsSchema = z.object({
   randomWriteIops: z.number().min(0),
   networkBandwidthMbps: z.number().min(0),
   networkLatencyMs: z.number().min(0),
+  region: z.string(),
+  ipv6Supported: z.boolean(),
   gpuDetected: z.boolean(),
   gpuModel: z.string().nullable(),
   gpuMemoryMb: z.number().nullable(),
@@ -399,10 +403,18 @@ export class BenchmarkOrchestrator {
     history.push(results)
     benchmarkHistory.set(machine.id, history.slice(-10)) // Keep last 10
 
-    // Check deviation thresholds
+    // Check deviation thresholds and take action
     if (deviation > this.config.slashDeviationPercent) {
-      console.warn(`[BenchmarkOrchestrator] SLASH: Machine ${machine.id} deviation ${deviation.toFixed(1)}% exceeds threshold`)
-      // Would trigger on-chain slashing here
+      console.error(`[BenchmarkOrchestrator] SLASH: Machine ${machine.id} deviation ${deviation.toFixed(1)}% exceeds threshold`)
+      // Flag for slashing via dispute mechanism
+      if (this.registryClient) {
+        await this.registryClient.disputeBenchmark(
+          machine.operator,
+          `Benchmark deviation ${deviation.toFixed(1)}% exceeds ${this.config.slashDeviationPercent}% threshold`,
+        ).catch(err => {
+          console.error(`[BenchmarkOrchestrator] Failed to submit dispute:`, err)
+        })
+      }
     } else if (deviation > this.config.failDeviationPercent) {
       console.warn(`[BenchmarkOrchestrator] FAIL: Machine ${machine.id} deviation ${deviation.toFixed(1)}%`)
     } else if (deviation > this.config.warnDeviationPercent) {
@@ -541,6 +553,8 @@ export class BenchmarkOrchestrator {
       randomWriteIops: parsed.randomWriteIops,
       networkBandwidthMbps: parsed.networkBandwidthMbps,
       networkLatencyMs: parsed.networkLatencyMs,
+      region: parsed.region,
+      ipv6Supported: parsed.ipv6Supported,
       gpuDetected: parsed.gpuDetected,
       gpuModel: parsed.gpuModel,
       gpuMemoryMb: parsed.gpuMemoryMb,

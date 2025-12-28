@@ -36,7 +36,8 @@ import {
 } from '../utils/parsing'
 
 function getDwsBaseUrl(): string {
-  const url = process.env.DWS_SERVER_URL
+  const url =
+    typeof process !== 'undefined' ? process.env.DWS_SERVER_URL : undefined
   if (url) return url
   if (isDevelopmentEnv()) {
     return `http://${getLocalhostHost()}:4030`
@@ -717,7 +718,8 @@ async function callAI(
     { role: 'user', content: userMessage },
   ]
 
-  const dwsUrl = process.env.DWS_SERVER_URL
+  const dwsUrl =
+    typeof process !== 'undefined' ? process.env.DWS_SERVER_URL : undefined
   if (dwsUrl || isDevelopmentEnv()) {
     const response = await fetch(
       `${getDwsBaseUrl()}/compute/chat/completions`,

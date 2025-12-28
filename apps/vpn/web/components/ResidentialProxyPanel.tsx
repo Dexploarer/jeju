@@ -1,7 +1,9 @@
 import {
   Activity,
+  AlertCircle,
   Coins,
   Globe,
+  Loader2,
   Radio,
   Server,
   Settings,
@@ -21,6 +23,7 @@ export function ResidentialProxyPanel() {
     status,
     settings,
     isLoading,
+    error: hookError,
     updateSettings,
     toggleEnabled,
     register,
@@ -29,26 +32,66 @@ export function ResidentialProxyPanel() {
 
   const [showSettings, setShowSettings] = useState(false)
   const [stakeInput, setStakeInput] = useState('0.01')
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [actionLoading, setActionLoading] = useState(false)
 
   if (isLoading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[200px]">
-        <div className="text-[#606070] animate-pulse">Loading...</div>
+        <Loader2 className="w-6 h-6 text-[#606070] animate-spin" />
       </div>
     )
   }
 
   const handleRegister = async () => {
-    await register(stakeInput)
+    setActionError(null)
+    setActionLoading(true)
+    try {
+      await register(stakeInput)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to register node'
+      setActionError(message)
+      console.error('[ResidentialProxy] Register failed:', err)
+    } finally {
+      setActionLoading(false)
+    }
   }
 
   const handleClaimRewards = async () => {
-    await claimRewards()
+    setActionError(null)
+    setActionLoading(true)
+    try {
+      await claimRewards()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to claim rewards'
+      setActionError(message)
+      console.error('[ResidentialProxy] Claim failed:', err)
+    } finally {
+      setActionLoading(false)
+    }
   }
 
   const handleNodeTypeChange = async (nodeType: ResidentialProxyNodeType) => {
     if (!settings) return
-    await updateSettings({ ...settings, node_type: nodeType })
+    setActionError(null)
+    try {
+      await updateSettings({ ...settings, node_type: nodeType })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to update settings'
+      setActionError(message)
+      console.error('[ResidentialProxy] Settings update failed:', err)
+    }
+  }
+
+  const handleToggleEnabled = async () => {
+    setActionError(null)
+    try {
+      await toggleEnabled()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to toggle'
+      setActionError(message)
+      console.error('[ResidentialProxy] Toggle failed:', err)
+    }
   }
 
   const formatJeju = (weiStr: string) => {
@@ -58,6 +101,8 @@ export function ResidentialProxyPanel() {
 
   const uptimePercent = (status?.uptime_score ?? 0) / 100
   const successPercent = (status?.success_rate ?? 0) / 100
+
+  const displayError = actionError ?? hookError?.message
 
   return (
     <div className="p-6 space-y-6">
@@ -74,6 +119,21 @@ export function ResidentialProxyPanel() {
           <Settings className="w-5 h-5 text-[#606070]" />
         </button>
       </div>
+
+      {/* Error Display */}
+      {displayError && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-red-400">{displayError}</div>
+          <button
+            type="button"
+            onClick={() => setActionError(null)}
+            className="ml-auto text-red-500 hover:text-red-400"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* Registration Card */}
       {!status?.is_registered && (
@@ -105,9 +165,17 @@ export function ResidentialProxyPanel() {
             <button
               type="button"
               onClick={handleRegister}
-              className="w-full py-3 bg-[#00ff88] hover:bg-[#00cc6a] text-black font-medium rounded-xl transition-colors"
+              disabled={actionLoading}
+              className="w-full py-3 bg-[#00ff88] hover:bg-[#00cc6a] disabled:bg-[#00ff88]/50 text-black font-medium rounded-xl transition-colors flex items-center justify-center gap-2"
             >
-              Register as Node
+              {actionLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Registering...
+                </>
+              ) : (
+                'Register as Node'
+              )}
             </button>
           </div>
         </div>
@@ -123,8 +191,9 @@ export function ResidentialProxyPanel() {
             </div>
             <button
               type="button"
-              onClick={toggleEnabled}
+              onClick={handleToggleEnabled}
               className="flex items-center gap-2"
+              disabled={actionLoading}
             >
               {settings?.enabled ? (
                 <ToggleRight className="w-8 h-8 text-[#00ff88]" />
@@ -234,9 +303,17 @@ export function ResidentialProxyPanel() {
         <button
           type="button"
           onClick={handleClaimRewards}
-          className="w-full py-3 bg-[#00ff88] hover:bg-[#00cc6a] text-black font-medium rounded-xl transition-colors"
+          disabled={actionLoading}
+          className="w-full py-3 bg-[#00ff88] hover:bg-[#00cc6a] disabled:bg-[#00ff88]/50 text-black font-medium rounded-xl transition-colors flex items-center justify-center gap-2"
         >
-          Claim {formatJeju(status.pending_rewards)} JEJU
+          {actionLoading ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Claiming...
+            </>
+          ) : (
+            `Claim ${formatJeju(status.pending_rewards)} JEJU`
+          )}
         </button>
       )}
 

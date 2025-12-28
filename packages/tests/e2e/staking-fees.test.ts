@@ -27,10 +27,11 @@ import {
 import { privateKeyToAccount } from 'viem/accounts'
 import { readContract, waitForTransactionReceipt } from 'viem/actions'
 import { inferChainFromRpcUrl } from '../../../packages/deployment/scripts/shared/chain-utils'
-import { JEJU_RPC_URL, TEST_ACCOUNTS } from '../shared/utils'
+import { TEST_ACCOUNTS } from '../shared/utils'
+import { getRpcUrl } from '@jejunetwork/config'
 
 // Test configuration
-const RPC_URL = process.env.JEJU_RPC_URL || JEJU_RPC_URL
+const RPC_URL = getRpcUrl()
 const STAKING_TOKEN_ADDRESS =
   process.env.STAKING_TOKEN_ADDRESS ||
   '0x5FbDB2315678afecb367f032d93F642f64180aa3'

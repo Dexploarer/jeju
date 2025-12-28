@@ -554,7 +554,8 @@ export class WorkerdExecutor implements IWorkerdExecutor {
     const deadline = Date.now() + timeoutMs
 
     while (Date.now() < deadline) {
-      const response = await fetch(`http://localhost:${port}/health`)
+      const host = getLocalhostHost()
+      const response = await fetch(`http://${host}:${port}/health`)
       const healthy = response.ok || response.status === 404 // 404 is ok, means server is up
 
       if (healthy) return true
@@ -691,7 +692,7 @@ export class WorkerdExecutor implements IWorkerdExecutor {
     return {
       status: instance.status,
       port: instance.port,
-      endpoint: `http://localhost:${instance.port}`,
+      endpoint: `http://${getLocalhostHost()}:${instance.port}`,
     }
   }
 

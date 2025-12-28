@@ -17,9 +17,9 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Subprocess } from 'bun'
 import {
+  getDwsApiUrl,
   getL2RpcUrl,
   getLocalhostHost,
-  getDWSUrl,
 } from '@jejunetwork/config'
 
 // Configuration
@@ -27,12 +27,8 @@ const ANVIL_PORT = parseInt(process.env.ANVIL_PORT ?? '9545', 10)
 const DWS_PORT = parseInt(process.env.PORT ?? '4030', 10)
 const INFERENCE_PORT = parseInt(process.env.INFERENCE_PORT ?? '4031', 10)
 
-const RPC_URL =
-  process.env.RPC_URL ||
-  process.env.L2_RPC_URL ||
-  process.env.ANVIL_RPC_URL ||
-  `http://${getLocalhostHost()}:${ANVIL_PORT}`
-const DWS_URL = process.env.DWS_URL || getDWSUrl()
+const RPC_URL = getL2RpcUrl()
+const DWS_URL = getDwsApiUrl()
 const INFERENCE_URL =
   process.env.INFERENCE_URL ||
   `http://${getLocalhostHost()}:${INFERENCE_PORT}`
@@ -409,7 +405,7 @@ export function getTestEnv(): {
 } {
   return {
     dwsUrl: process.env.DWS_URL || DWS_URL,
-    rpcUrl: process.env.L2_RPC_URL || RPC_URL,
+    rpcUrl: RPC_URL,
     inferenceUrl: process.env.INFERENCE_URL || INFERENCE_URL,
   }
 }

@@ -28,41 +28,64 @@
  *   })
  */
 
+import {
+  getEQLiteBlockProducerUrl,
+  getIndexerGraphqlUrl,
+  getIpfsApiUrl,
+  getL1RpcUrl,
+  getLocalhostHost,
+  getOAuth3Url,
+  getOracleUrl,
+  getRpcUrl,
+  getServiceUrl,
+  getSolanaRpcUrl,
+} from '@jejunetwork/config'
 import { z } from 'zod'
 
 // Infrastructure configuration from environment
 const InfraConfigSchema = z.object({
-  eqliteEndpoint: z.string().default('http://127.0.0.1:4661'),
-  redisUrl: z.string().default('redis://127.0.0.1:6379'),
-  l1RpcUrl: z.string().default('http://127.0.0.1:6545'),
-  l2RpcUrl: z.string().default('http://127.0.0.1:6546'),
-  solanaRpcUrl: z.string().default('http://127.0.0.1:8899'),
-  ipfsApiUrl: z.string().default('http://127.0.0.1:5001'),
-  gatewayUrl: z.string().default('http://127.0.0.1:8787'),
-  indexerUrl: z.string().default('http://127.0.0.1:4350/graphql'),
-  oracleUrl: z.string().default('http://127.0.0.1:4301'),
-  computeUrl: z.string().default('http://127.0.0.1:4010'),
-  messagingUrl: z.string().default('http://127.0.0.1:4201'),
-  teeAgentUrl: z.string().default('http://127.0.0.1:4500'),
+  eqliteEndpoint: z.string().optional(),
+  redisUrl: z.string().optional(),
+  l1RpcUrl: z.string().optional(),
+  l2RpcUrl: z.string().optional(),
+  solanaRpcUrl: z.string().optional(),
+  ipfsApiUrl: z.string().optional(),
+  gatewayUrl: z.string().optional(),
+  indexerUrl: z.string().optional(),
+  oracleUrl: z.string().optional(),
+  computeUrl: z.string().optional(),
+  messagingUrl: z.string().optional(),
+  teeAgentUrl: z.string().optional(),
 })
 
 type InfraConfig = z.infer<typeof InfraConfigSchema>
 
 export function getInfraConfig(): InfraConfig {
+  const host = getLocalhostHost()
   return InfraConfigSchema.parse({
     eqliteEndpoint:
-      process.env.EQLITE_ENDPOINT ?? process.env.EQLITE_BLOCK_PRODUCER_ENDPOINT,
-    redisUrl: process.env.REDIS_URL,
-    l1RpcUrl: process.env.L1_RPC_URL,
-    l2RpcUrl: process.env.L2_RPC_URL ?? process.env.JEJU_RPC_URL,
-    solanaRpcUrl: process.env.SOLANA_RPC_URL,
-    ipfsApiUrl: process.env.IPFS_API_URL,
-    gatewayUrl: process.env.GATEWAY_URL,
-    indexerUrl: process.env.INDEXER_GRAPHQL_URL,
-    oracleUrl: process.env.ORACLE_URL,
-    computeUrl: process.env.COMPUTE_URL ?? process.env.COMPUTE_BRIDGE_URL,
-    messagingUrl: process.env.MESSAGING_URL,
-    teeAgentUrl: process.env.TEE_AGENT_URL ?? process.env.OAUTH3_TEE_URL,
+      process.env.EQLITE_ENDPOINT ??
+      process.env.EQLITE_BLOCK_PRODUCER_ENDPOINT ??
+      getEQLiteBlockProducerUrl(),
+    redisUrl: process.env.REDIS_URL ?? `redis://${host}:6379`,
+    l1RpcUrl: process.env.L1_RPC_URL ?? getL1RpcUrl(),
+    l2RpcUrl: process.env.L2_RPC_URL ?? process.env.JEJU_RPC_URL ?? getRpcUrl(),
+    solanaRpcUrl:
+      process.env.SOLANA_RPC_URL ?? getSolanaRpcUrl() ?? `http://${host}:8899`,
+    ipfsApiUrl: process.env.IPFS_API_URL ?? getIpfsApiUrl(),
+    gatewayUrl: process.env.GATEWAY_URL ?? `http://${host}:8787`,
+    indexerUrl:
+      process.env.INDEXER_GRAPHQL_URL ?? getIndexerGraphqlUrl(),
+    oracleUrl: process.env.ORACLE_URL ?? getOracleUrl(),
+    computeUrl:
+      process.env.COMPUTE_URL ??
+      process.env.COMPUTE_BRIDGE_URL ??
+      getServiceUrl('compute'),
+    messagingUrl: process.env.MESSAGING_URL ?? `http://${host}:4201`,
+    teeAgentUrl:
+      process.env.TEE_AGENT_URL ??
+      process.env.OAUTH3_TEE_URL ??
+      getOAuth3Url(),
   })
 }
 

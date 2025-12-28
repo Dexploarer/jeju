@@ -9,6 +9,11 @@
  * - IPFS/Filecoin bridge for content addressing
  */
 
+import {
+  getCurrentNetwork,
+  getIpfsApiUrl,
+  getLocalhostHost,
+} from '@jejunetwork/config'
 import { bytesToHex, hash256 } from '@jejunetwork/shared'
 import { z } from 'zod'
 import type { ContentCategory, ContentTier, StorageBackendType } from './types'
@@ -150,7 +155,7 @@ const DEFAULT_CONFIG: FilecoinBackendConfig = {
   web3StorageToken: process.env.WEB3_STORAGE_TOKEN,
   lighthouseToken: process.env.LIGHTHOUSE_TOKEN,
   storachaToken: process.env.STORACHA_TOKEN,
-  ipfsApiUrl: process.env.IPFS_API_URL ?? 'http://localhost:5001',
+  ipfsApiUrl: process.env.IPFS_API_URL ?? `http://${getLocalhostHost()}:5001`,
   defaultDealDuration: 518400, // ~180 days in epochs
   minDealDuration: 180 * 2880, // ~180 days minimum
   maxDealDuration: 540 * 2880, // ~540 days maximum

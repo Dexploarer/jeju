@@ -28,6 +28,12 @@
  *   resource: '/api/premium',
  * });
  * ```
+
+import {
+  CORE_PORTS,
+  getL2RpcUrl,
+  getLocalhostHost,
+} from '@jejunetwork/config'
  */
 
 import { readContract } from '@jejunetwork/shared'
@@ -268,7 +274,7 @@ export const CHAIN_CONFIGS: Record<
 > = {
   420691: {
     name: 'Network',
-    rpcUrl: process.env.JEJU_RPC_URL || 'http://127.0.0.1:6546',
+    rpcUrl: getRpcUrl(),
     usdc: '0x0165878A594ca255338adfa4d48449f69242Eb8F' as Address,
   },
   420690: {
@@ -311,7 +317,7 @@ export class X402Client {
     this.config = config
     const chainConfig = CHAIN_CONFIGS[config.chainId]
     const rpcUrl =
-      config.rpcUrl ?? chainConfig.rpcUrl ?? 'http://127.0.0.1:6546'
+      config.rpcUrl ?? chainConfig.rpcUrl ?? getL2RpcUrl()
 
     const chain: Chain = {
       id: config.chainId,
@@ -676,7 +682,8 @@ export class X402Client {
 
     // Submit to facilitator's gasless endpoint
     const facilitatorUrl =
-      process.env.JEJU_FACILITATOR_URL || 'http://localhost:3402'
+      process.env.JEJU_FACILITATOR_URL ||
+      `http://${getLocalhostHost()}:${CORE_PORTS.FACILITATOR.get()}`
 
     const response = await fetch(`${facilitatorUrl}/settle/gasless`, {
       method: 'POST',
@@ -828,7 +835,9 @@ export interface HttpFacilitatorConfig {
  */
 export const HTTP_FACILITATOR_REGISTRY: HttpFacilitatorConfig[] = [
   {
-    url: process.env.JEJU_FACILITATOR_URL || 'http://localhost:3402',
+    url:
+      process.env.JEJU_FACILITATOR_URL ||
+      `http://${getLocalhostHost()}:${CORE_PORTS.FACILITATOR.get()}`,
     priority: 1,
     networks: ['jeju', 'jeju-testnet'],
     name: 'Jeju Facilitator',

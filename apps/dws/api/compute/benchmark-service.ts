@@ -318,7 +318,22 @@ async function benchmarkMemory(testSizeMb: number): Promise<MemoryBenchmarkResul
 }
 
 function getMemoryInfo(): { total: number; available: number } {
-  // In Node/Bun environment
+  // Try Bun's os module first for system memory
+  try {
+    const os = require('os')
+    const totalMem = os.totalmem()
+    const freeMem = os.freemem()
+    if (totalMem > 0) {
+      return {
+        total: Math.round(totalMem / (1024 * 1024)),
+        available: Math.round(freeMem / (1024 * 1024)),
+      }
+    }
+  } catch {
+    // os module not available
+  }
+
+  // Fallback to process memory (heap only, not system memory)
   if (typeof process !== 'undefined' && process.memoryUsage) {
     const usage = process.memoryUsage()
     return {
@@ -328,7 +343,9 @@ function getMemoryInfo(): { total: number; available: number } {
       ),
     }
   }
-  return { total: 8192, available: 4096 } // Default
+
+  // Cannot detect memory - throw rather than return fake data
+  throw new Error('Unable to detect system memory - os module and process.memoryUsage unavailable')
 }
 
 // Network Benchmark Implementation
@@ -372,7 +389,7 @@ async function benchmarkNetwork(
         )
       : 0
 
-  // Download speed test (use a small file)
+  // Download speed test
   const downloadTestUrl = testServers[0]
   if (downloadTestUrl) {
     const downloadStart = performance.now()
@@ -388,15 +405,36 @@ async function benchmarkNetwork(
     }
   }
 
-  // Estimate upload speed (typically 10-30% of download for most connections)
-  uploadSpeed = downloadSpeed * 0.3
+  // Upload speed test - POST data to server
+  const uploadTestUrl = testServers[0]
+  if (uploadTestUrl) {
+    const uploadData = new Uint8Array(100 * 1024) // 100KB test payload
+    const uploadStart = performance.now()
+    try {
+      await fetch(uploadTestUrl, {
+        method: 'POST',
+        body: uploadData,
+        signal: AbortSignal.timeout(10000),
+      })
+      const uploadDuration = (performance.now() - uploadStart) / 1000
+      uploadSpeed = (uploadData.byteLength * 8) / uploadDuration / 1_000_000 // Mbps
+    } catch {
+      // If upload fails, estimate from download (common for read-only test servers)
+      uploadSpeed = downloadSpeed * 0.3
+    }
+  }
+
+  // Packet loss - count failed requests vs total
+  const totalRequests = testServers.slice(0, 3).length
+  const failedRequests = totalRequests - latencies.length
+  const packetLoss = totalRequests > 0 ? (failedRequests / totalRequests) * 100 : 0
 
   return {
     downloadMbps: Math.round(downloadSpeed),
     uploadMbps: Math.round(uploadSpeed),
     latencyMs: Math.round(avgLatency),
     jitterMs: Math.round(jitter),
-    packetLossPercent: 0, // Would require ICMP for accurate measurement
+    packetLossPercent: Math.round(packetLoss),
   }
 }
 
@@ -564,10 +602,26 @@ async function detectTEEPlatform(): Promise<
   return 'none'
 }
 
+/**
+ * Generate TEE attestation quote
+ * 
+ * LIMITATION: This is a stub. Real attestation requires:
+ * - Intel SGX: dcap_quoteprov library + Intel Attestation Service
+ * - AMD SEV: /dev/sev device access + VCEK certificate chain
+ * - AWS Nitro: /dev/nsm device (only works in Nitro enclaves)
+ * 
+ * For production use, deploy with @jejunetwork/tee-attestation package
+ * which provides platform-specific attestation generation.
+ * 
+ * @returns { valid: false } - Always returns invalid until real attestation is implemented
+ */
 async function generateAttestation(
-  _platform: string
+  platform: string
 ): Promise<{ valid: boolean; quote?: string; measurement?: string }> {
-  // In production, this would generate actual attestation quotes
+  console.warn(
+    `[Benchmark] TEE attestation not implemented for platform: ${platform}. ` +
+    'Install @jejunetwork/tee-attestation for production attestation support.'
+  )
   return { valid: false }
 }
 

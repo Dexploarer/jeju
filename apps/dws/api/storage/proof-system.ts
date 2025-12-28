@@ -732,7 +732,7 @@ export class StorageProofManager {
   async submitProofOnChain(proof: StorageProof): Promise<Hex> {
     // SECURITY: In production, on-chain transactions should use a separate
     // transaction relay service that holds keys in HSM, not this server
-    if (process.env.NODE_ENV === 'production' && !this.config.privateKey) {
+    if (isProductionEnv() && !this.config.privateKey) {
       throw new Error(
         'On-chain proof submission requires transaction relay service in production. ' +
           'Configure TX_RELAY_URL or provide privateKey for development only.',

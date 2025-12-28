@@ -10,6 +10,7 @@
 import { beforeAll, describe, expect, test } from 'bun:test'
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { getRpcUrl } from '@jejunetwork/config'
 import {
   type Address,
   createPublicClient,
@@ -76,7 +77,7 @@ let localnetAvailable = false
 
 beforeAll(async () => {
   ADDRESSES = loadDeployedAddresses()
-  const rpcUrl = process.env.L2_RPC_URL ?? JEJU_RPC_URL
+  const rpcUrl = getRpcUrl()
   const chain = inferChainFromRpcUrl(rpcUrl)
   deployer = privateKeyToAccount(TEST_ACCOUNTS.deployer.privateKey)
   publicClient = createPublicClient({ chain, transport: http(rpcUrl) })

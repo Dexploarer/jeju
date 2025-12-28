@@ -393,20 +393,8 @@ async function seedDWSInfrastructure(): Promise<void> {
     signerAddress ??
     '0x0000000000000000000000000000000000000001'
 
-  try {
-    // Dynamic import to avoid circular dependency
-    const dws = await import('@jejunetwork/dws')
-    const result = await dws.seedInfrastructure(
-      treasuryAddress as `0x${string}`,
-    )
-    log.info('DWS infrastructure seeded', {
-      nodesReady: result.nodesReady,
-      botsRunning: result.botsRunning,
-    })
-  } catch (err) {
-    // Log but don't fail - infrastructure seeding is optional
-    log.warn('DWS infrastructure seeding failed', { error: String(err) })
-  }
+  // DWS infrastructure seeding deferred - seedInfrastructure is not exported from @jejunetwork/dws
+  log.info('DWS infrastructure seeding skipped', { treasuryAddress })
 }
 
 // Initialize bot handler if KMS is configured
@@ -1198,7 +1186,7 @@ app.post('/api/v1/bots/:botId/stop', async ({ params, request, set }) => {
     agentId,
     request,
     agentSdk,
-    account ?? null,
+    kmsSigner.isInitialized() ? { address: kmsSigner.getAddress() } : null,
   )
   if (!authResult.authorized) {
     set.status = 403
@@ -1227,7 +1215,7 @@ app.post('/api/v1/bots/:botId/start', async ({ params, request, set }) => {
     agentId,
     request,
     agentSdk,
-    account ?? null,
+    kmsSigner.isInitialized() ? { address: kmsSigner.getAddress() } : null,
   )
   if (!authResult.authorized) {
     set.status = 403

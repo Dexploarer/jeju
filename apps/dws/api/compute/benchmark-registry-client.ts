@@ -635,8 +635,8 @@ export class BenchmarkRegistryClient {
       bandwidthMbps: BigInt(results.networkBandwidthMbps),
       latencyMs: Math.floor(results.networkLatencyMs),
       uploadMbps: BigInt(uploadBandwidth),
-      region: 'auto-detected', // Would be detected from IP geolocation
-      ipv6Supported: true, // Conservative default, would test in benchmark
+      region: results.region ?? 'unknown', // From BenchmarkResults if available
+      ipv6Supported: results.ipv6Supported ?? false,
     }
 
     // For GPU, use actual values where available
@@ -734,6 +734,26 @@ export class BenchmarkRegistryClient {
     })
 
     return hash
+  }
+
+  /**
+   * Submit a dispute for a provider's benchmark
+   * 
+   * NOTE: On-chain dispute mechanism not yet implemented in ComputeBenchmarkRegistry contract.
+   * This logs the dispute for manual review. Future versions will add:
+   * - Slashing mechanism via staking contract
+   * - Dispute resolution via governance
+   * 
+   * @returns Empty tx hash (0x0) since this is logged only
+   */
+  async disputeBenchmark(provider: Address, reason: string): Promise<Hex> {
+    // Log dispute for manual review (on-chain mechanism pending)
+    console.error(`[BenchmarkRegistry] DISPUTE: Provider ${provider}`)
+    console.error(`[BenchmarkRegistry] Reason: ${reason}`)
+    console.error(`[BenchmarkRegistry] Action: Manual review required - on-chain dispute not yet implemented`)
+    
+    // Return empty hash - no on-chain tx yet
+    return '0x0000000000000000000000000000000000000000000000000000000000000000' as Hex
   }
 
   // ============ Helpers ============
@@ -896,6 +916,8 @@ export class BenchmarkRegistryClient {
       randomWriteIops: onChain.disk.randWriteIops,
       networkBandwidthMbps: Number(onChain.network.bandwidthMbps),
       networkLatencyMs: onChain.network.latencyMs,
+      region: onChain.network.region,
+      ipv6Supported: onChain.network.ipv6Supported,
       gpuDetected: hasGpu,
       gpuModel: hasGpu ? onChain.gpu.model : null,
       gpuMemoryMb: hasGpu ? gpuMemory : null,

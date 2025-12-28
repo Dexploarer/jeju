@@ -77,7 +77,6 @@ const MULTI_CHAIN_RPC_REGISTRY_ABI = [
 
 const JEJU_RPC_URL = RPC_URLS[JEJU_CHAIN_ID as keyof typeof RPC_URLS]
 const CHAIN = JEJU_CHAIN_ID === 420691 ? jejuMainnet : jejuTestnet
-const DEFAULT_CHAINS = [BigInt(1), BigInt(10), BigInt(137), BigInt(42161), BigInt(8453)]
 
 interface QoSCheckResult {
   node: Address
@@ -223,7 +222,11 @@ export class QoSMonitorService {
 
   private async getSupportedChains(): Promise<bigint[]> {
     const result = await callRegistry<bigint[]>(this.registryAddress, 'getSupportedChains')
-    return result?.length ? result : DEFAULT_CHAINS
+    if (!result || result.length === 0) {
+      console.warn('[QoS] No supported chains found in registry - is the contract deployed?')
+      return []
+    }
+    return result
   }
 
   private async checkChainNodes(chainId: number): Promise<void> {

@@ -49,9 +49,9 @@ const DSTACK_ENDPOINT =
 const TEE_VERIFIER_KMS_KEY_ID =
   typeof process !== 'undefined' ? process.env.TEE_VERIFIER_KMS_KEY_ID : undefined
 const TEE_VERIFIER_OWNER_ADDRESS =
-  typeof process !== 'undefined'
+  (typeof process !== 'undefined'
     ? (process.env.TEE_VERIFIER_OWNER_ADDRESS as Address | undefined)
-    : undefined
+    : undefined)
 
 // DStack client adapter - uses DStack integration from vendor/babylon
 // In production, this connects to the dstack attestation service

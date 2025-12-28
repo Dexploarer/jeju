@@ -9,7 +9,7 @@
 import { getServiceName } from '@jejunetwork/shared'
 import { ZERO_ADDRESS } from '@jejunetwork/types'
 import type { Address } from 'viem'
-import { getKMSSigner } from '../../../lib/kms-signer'
+import { getKMSSigner } from '@jejunetwork/kms'
 import { config as gatewayConfig } from '../../config'
 import { getPrimaryChainConfig } from '../lib/chains'
 import { clearClientCache } from '../services/settler'

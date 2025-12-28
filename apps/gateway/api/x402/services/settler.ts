@@ -20,7 +20,7 @@ import {
   parseEventLogs,
   type TransactionReceipt,
 } from 'viem'
-import { getKMSSigner, type KMSSigner } from '../../../lib/kms-signer'
+import { getKMSSigner, type KMSSigner } from '@jejunetwork/kms'
 import { config } from '../config'
 import { getChainConfig, getTokenConfig } from '../lib/chains'
 import { ERC20_ABI, X402_FACILITATOR_ABI } from '../lib/contracts'

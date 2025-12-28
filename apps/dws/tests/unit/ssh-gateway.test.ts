@@ -102,12 +102,12 @@ describe('SSHGateway', () => {
       
       expect(stats).toHaveProperty('activeSessions')
       expect(stats).toHaveProperty('pendingTokens')
-      expect(stats).toHaveProperty('totalBytesIn')
-      expect(stats).toHaveProperty('totalBytesOut')
+      expect(stats).toHaveProperty('totalSessions')
+      expect(stats).toHaveProperty('totalCredentials')
       expect(typeof stats.activeSessions).toBe('number')
       expect(typeof stats.pendingTokens).toBe('number')
-      expect(typeof stats.totalBytesIn).toBe('number')
-      expect(typeof stats.totalBytesOut).toBe('number')
+      expect(typeof stats.totalSessions).toBe('number')
+      expect(typeof stats.totalCredentials).toBe('number')
     })
 
     test('activeSessions is non-negative', () => {
@@ -115,10 +115,10 @@ describe('SSHGateway', () => {
       expect(stats.activeSessions).toBeGreaterThanOrEqual(0)
     })
 
-    test('bytes counts are non-negative', () => {
+    test('counts are non-negative', () => {
       const stats = gateway.getStats()
-      expect(stats.totalBytesIn).toBeGreaterThanOrEqual(0)
-      expect(stats.totalBytesOut).toBeGreaterThanOrEqual(0)
+      expect(stats.totalSessions).toBeGreaterThanOrEqual(0)
+      expect(stats.totalCredentials).toBeGreaterThanOrEqual(0)
     })
   })
 

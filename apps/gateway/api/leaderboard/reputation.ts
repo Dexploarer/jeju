@@ -13,7 +13,7 @@ import {
   type Hex,
   keccak256,
 } from 'viem'
-import { getKMSSigner, type KMSSigner } from '../../lib/kms-signer'
+import { getKMSSigner, type KMSSigner } from '@jejunetwork/kms'
 import { LEADERBOARD_CONFIG } from './config'
 import { exec, query } from './db'
 

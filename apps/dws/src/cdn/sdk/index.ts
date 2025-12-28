@@ -123,11 +123,13 @@ function relative(from: string, to: string): string {
 }
 
 import {
+  getCurrentNetwork,
   getIpfsGatewayEnv,
   getRpcUrl,
   getStorageApiEndpoint,
+  isProductionEnv,
+  tryGetContract,
 } from '@jejunetwork/config'
-import { isProductionEnv } from '@jejunetwork/config'
 import { bytesToHex, hash256 } from '@jejunetwork/shared'
 import type {
   CacheConfig,
@@ -823,13 +825,16 @@ export function createCDNClientFromEnv(): CDNClient {
     )
   }
 
+  const network = getCurrentNetwork()
   return new CDNClient({
     kmsServiceId,
     privateKey,
-    rpcUrl: getRpcUrl(),
-    registryAddress: process.env.CDN_REGISTRY_ADDRESS as Address | undefined,
-    billingAddress: process.env.CDN_BILLING_ADDRESS as Address | undefined,
-    coordinatorUrl: process.env.CDN_COORDINATOR_URL,
+    rpcUrl: getRpcUrl(network),
+    registryAddress: (typeof process !== 'undefined' ? process.env.CDN_REGISTRY_ADDRESS : undefined) as Address | undefined ??
+      tryGetContract('cdn', 'registry', network) as Address | undefined,
+    billingAddress: (typeof process !== 'undefined' ? process.env.CDN_BILLING_ADDRESS : undefined) as Address | undefined ??
+      tryGetContract('cdn', 'billing', network) as Address | undefined,
+    coordinatorUrl: typeof process !== 'undefined' ? process.env.CDN_COORDINATOR_URL : undefined,
     ipfsGateway: getIpfsGatewayEnv(),
   })
 }

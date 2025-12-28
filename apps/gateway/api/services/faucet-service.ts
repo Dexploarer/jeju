@@ -27,7 +27,7 @@ import {
   getRpcUrl,
   JEJU_CHAIN_ID,
 } from '../../lib/config/networks'
-import { getKMSSigner, type KMSSigner } from '../../lib/kms-signer'
+import { getKMSSigner, type KMSSigner } from '@jejunetwork/kms'
 import { faucetState, initializeState } from './state'
 
 /**

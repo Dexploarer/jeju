@@ -30,6 +30,7 @@ import {
   getServiceUrl,
   isLocalnet,
   isProductionEnv,
+  tryGetContract,
 } from '@jejunetwork/config'
 import { Elysia } from 'elysia'
 import type { Address, Hex } from 'viem'
@@ -709,9 +710,9 @@ const daConfig = {
   // DA contract address - not yet in centralized config
   daContractAddress:
     (serverConfig.daContractAddress as Address | undefined) ??
-    (typeof process !== 'undefined'
-      ? ((process.env.DA_CONTRACT_ADDRESS || ZERO_ADDR) as Address)
-      : ZERO_ADDR),
+    ((typeof process !== 'undefined' ? process.env.DA_CONTRACT_ADDRESS : undefined) as Address | undefined) ??
+    (tryGetContract('dws', 'dataAvailability', NETWORK) as Address | undefined) ??
+    ZERO_ADDR,
   rpcUrl: getRpcUrl(NETWORK),
 }
 

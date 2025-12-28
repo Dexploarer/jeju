@@ -9,6 +9,7 @@
  * Workerd-compatible: Uses DWS exec API instead of Node.js fs
  */
 
+import { getDWSUrl, getLocalhostHost } from '@jejunetwork/config'
 import type { CacheRule } from '@jejunetwork/types'
 
 // DWS Exec API - runs commands on the DWS node

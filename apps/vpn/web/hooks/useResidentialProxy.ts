@@ -84,16 +84,11 @@ export function useResidentialProxy() {
           const errorInstance =
             err instanceof Error ? err : new Error(String(err))
 
-          // Only set error if we've already initialized once (API is available)
-          // On first load, the API might not exist yet
-          if (hasInitialized) {
-            setError(errorInstance)
-            console.error('[useResidentialProxy] Failed to fetch data:', errorInstance)
-          } else {
-            // First load - API endpoints might not exist yet, keep initial state
-            console.warn('[useResidentialProxy] Initial fetch failed, service may not be deployed:', errorInstance.message)
-          }
+          // Always set error and log - don't silently swallow
+          setError(errorInstance)
+          console.error('[useResidentialProxy] Failed to fetch data:', errorInstance)
           setIsLoading(false)
+          setHasInitialized(true)
         }
       }
     }

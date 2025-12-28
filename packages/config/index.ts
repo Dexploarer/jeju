@@ -1419,7 +1419,7 @@ function getDefaultBridgeConfig(mode: BridgeMode): unknown {
           },
         ],
         solana: {
-          rpcUrl: getSolanaRpcUrl() || 'http://127.0.0.1:8899',
+          rpcUrl: getSolanaRpcUrl() || `http://${getLocalhostHost()}:8899`,
           bridgeProgramId: 'TokenBridge11111111111111111111111111111111',
           evmLightClientProgramId: 'EVMLightClient1111111111111111111111111111',
         },

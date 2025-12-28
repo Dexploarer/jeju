@@ -308,5 +308,4 @@ export function generateNonce(): string {
   return bytes.toString('base64url')
 }
 
-// Re-export NONCE_TTL_MS for client-side guidance
 export { NONCE_TTL_MS }

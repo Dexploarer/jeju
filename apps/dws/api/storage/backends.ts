@@ -3,6 +3,11 @@
  * Supports local storage and IPFS with extensible backend system
  */
 
+import {
+  getCurrentNetwork,
+  getIpfsApiUrl,
+  getIpfsGatewayUrl,
+} from '@jejunetwork/config'
 import { expectJson } from '@jejunetwork/types'
 import { keccak256 } from 'viem'
 import { z } from 'zod'

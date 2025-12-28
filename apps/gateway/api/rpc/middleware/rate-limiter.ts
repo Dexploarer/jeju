@@ -1,7 +1,9 @@
 import {
   getChainId,
+  getCurrentNetwork,
   getRpcUrl,
   isProductionEnv,
+  tryGetContract,
 } from '@jejunetwork/config'
 import { readContract } from '@jejunetwork/shared'
 import { RATE_LIMITS, type RateTier } from '@jejunetwork/types'
@@ -135,11 +137,13 @@ const RPC_STAKING_ABI = [
   },
 ] as const
 
-const stakingAddrEnv = process.env.RPC_STAKING_ADDRESS
+const network = getCurrentNetwork()
+const stakingAddrEnv = typeof process !== 'undefined' ? process.env.RPC_STAKING_ADDRESS : undefined
 const STAKING_ADDR: Address | undefined =
-  stakingAddrEnv?.startsWith('0x') && stakingAddrEnv.length === 42
+  (stakingAddrEnv?.startsWith('0x') && stakingAddrEnv.length === 42
     ? (stakingAddrEnv as Address)
-    : undefined
+    : undefined) ??
+  tryGetContract('rpc', 'staking', network) as Address | undefined
 const RPC_URL = getRpcUrl()
 const CHAIN_ID = getChainId()
 
