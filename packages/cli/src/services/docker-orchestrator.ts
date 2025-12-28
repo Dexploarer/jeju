@@ -46,7 +46,8 @@ const SERVICE_PORTS: Record<string, { port: number; healthPath: string }> = {
 const PROFILE_SERVICES: Record<TestProfile, string[]> = {
   chain: ['geth-l1', 'op-geth'],
   services: ['geth-l1', 'op-geth', 'postgres', 'redis', 'ipfs'],
-  apps: ['geth-l1', 'op-geth', 'postgres', 'redis', 'ipfs'],
+  // apps uses Kurtosis for chain, only needs DBs and storage
+  apps: ['postgres', 'redis', 'ipfs'],
   full: [
     'geth-l1',
     'op-geth',
@@ -231,8 +232,13 @@ export class DockerOrchestrator {
         }
       }
 
+      // IPFS API requires POST
+      const method =
+        name.includes('geth') || name === 'solana' || name === 'ipfs'
+          ? 'POST'
+          : 'GET'
       const response = await fetch(url, {
-        method: name.includes('geth') || name === 'solana' ? 'POST' : 'GET',
+        method,
         headers: { 'Content-Type': 'application/json' },
         body:
           name.includes('geth') ||

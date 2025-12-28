@@ -116,6 +116,9 @@ export const LLMCallJSONLRecordSchema = z.object({
   metadata: z.record(z.string(), z.string().optional()),
 })
 
+// Type alias for inferred schema type
+export type LLMCallJSONLRecordSchemaType = z.infer<typeof LLMCallJSONLRecordSchema>
+
 const StepSchema = z.object({
   stepId: z.string().optional(),
   stepNumber: z.number().int().nonnegative(),
@@ -554,7 +557,7 @@ export async function downloadTrajectoryBatch(
     timestamp: string
   }
   trajectories: TrajectoryJSONLRecord[]
-  llmCalls: LLMCallJSONLRecord[]
+  llmCalls: LLMCallJSONLRecordSchemaType[]
 }> {
   const { gunzipSync } = await import('node:zlib')
   const endpoint = storageEndpoint ?? getServiceUrl('storage')
@@ -572,7 +575,7 @@ export async function downloadTrajectoryBatch(
 
   let header: z.infer<typeof TrajectoryBatchHeaderSchema> | null = null
   const trajectories: TrajectoryJSONLRecord[] = []
-  const llmCalls: LLMCallJSONLRecord[] = []
+  const llmCalls: LLMCallJSONLRecordSchemaType[] = []
 
   for (const line of lines) {
     const parsed: unknown = JSON.parse(line)

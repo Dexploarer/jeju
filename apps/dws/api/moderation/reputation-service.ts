@@ -22,7 +22,6 @@
 
 import { getEQLite, type EQLiteClient } from '@jejunetwork/db'
 import type { Address } from 'viem'
-import { z } from 'zod'
 
 // ============ Types ============
 

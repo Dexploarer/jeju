@@ -1,41 +1,60 @@
 /**
  * Wallet Playwright Configuration
+ *
+ * Native Tauri app testing is the default mode.
+ * Set TAURI_WEB=1 to test web preview instead of native app.
  */
 import { CORE_PORTS } from '@jejunetwork/config/ports'
 import { defineConfig, devices } from '@playwright/test'
 
 const PORT = CORE_PORTS.WALLET.get()
+// Native mode is default for Tauri apps
+const isNativeMode = process.env.TAURI_WEB !== '1'
 
 export default defineConfig({
   testDir: './tests/e2e',
-  fullyParallel: true,
+  fullyParallel: !isNativeMode, // Single worker for native testing
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: isNativeMode ? 1 : process.env.CI ? 1 : undefined,
   reporter: 'html',
   timeout: 120000,
 
   use: {
-    baseURL: `http://localhost:${PORT}`,
+    baseURL: isNativeMode ? undefined : `http://localhost:${PORT}`,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
 
-  projects: [
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-    },
-  ],
+  projects: isNativeMode
+    ? [
+        {
+          name: 'tauri-native',
+          use: {
+            // WebDriver connection for native Tauri testing
+            connectOptions: {
+              wsEndpoint: `ws://localhost:${process.env.TAURI_DRIVER_PORT || 4444}`,
+            },
+          },
+        },
+      ]
+    : [
+        {
+          name: 'chromium',
+          use: { ...devices['Desktop Chrome'] },
+        },
+      ],
 
-  // Use 'bun run start' for production-like testing against DWS infrastructure
+  // Web server for preview testing
   // Set SKIP_WEBSERVER=1 if app is already running
-  webServer: process.env.SKIP_WEBSERVER
-    ? undefined
-    : {
-        command: 'bun run start',
-        url: `http://localhost:${PORT}`,
-        reuseExistingServer: true,
-        timeout: 180000,
-      },
+  // Native mode doesn't need web server
+  webServer:
+    isNativeMode || process.env.SKIP_WEBSERVER
+      ? undefined
+      : {
+          command: 'bun run start',
+          url: `http://localhost:${PORT}`,
+          reuseExistingServer: true,
+          timeout: 180000,
+        },
 })

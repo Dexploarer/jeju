@@ -308,11 +308,12 @@ function resetDiscovery(): void {
 
 // Docker image mappings
 const SERVICE_IMAGES: Record<ServiceType, string> = {
-  postgres: 'postgres',
-  redis: 'redis',
-  rabbitmq: 'rabbitmq',
-  minio: 'minio/minio',
-  eqlite: 'ghcr.io/jejunetwork/eqlite', // Built from packages/eqlite
+  postgres: 'postgres:16-alpine',
+  redis: 'redis:7-alpine',
+  rabbitmq: 'rabbitmq:3-management-alpine',
+  minio: 'minio/minio:latest',
+  eqlite:
+    process.env.EQLITE_DOCKER_IMAGE || 'ghcr.io/jejunetwork/eqlite:latest',
 }
 
 // Container naming convention: dws-{type}-{name}

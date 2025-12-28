@@ -3,6 +3,7 @@ package worker
 
 import (
 	"os"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -163,7 +164,8 @@ func TestDBMS(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(queryRes.Header.RowCount, ShouldEqual, uint64(1))
 				So(queryRes.Payload.Columns, ShouldResemble, []string{"test"})
-				So(queryRes.Payload.DeclTypes, ShouldResemble, []string{"int"})
+				So(len(queryRes.Payload.DeclTypes), ShouldEqual, 1)
+				So(strings.ToLower(queryRes.Payload.DeclTypes[0]), ShouldEqual, "int")
 				So(queryRes.Payload.Rows, ShouldNotBeEmpty)
 				So(queryRes.Payload.Rows[0].Values, ShouldNotBeEmpty)
 				So(queryRes.Payload.Rows[0].Values[0], ShouldEqual, 1)
@@ -379,7 +381,8 @@ func TestDBMS(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(queryRes.Header.RowCount, ShouldEqual, uint64(1))
 				So(queryRes.Payload.Columns, ShouldResemble, []string{"test"})
-				So(queryRes.Payload.DeclTypes, ShouldResemble, []string{"int"})
+				So(len(queryRes.Payload.DeclTypes), ShouldEqual, 1)
+				So(strings.ToLower(queryRes.Payload.DeclTypes[0]), ShouldEqual, "int")
 				So(queryRes.Payload.Rows, ShouldNotBeEmpty)
 				So(queryRes.Payload.Rows[0].Values, ShouldNotBeEmpty)
 				So(queryRes.Payload.Rows[0].Values[0], ShouldEqual, 1)

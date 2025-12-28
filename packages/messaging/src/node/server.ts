@@ -326,13 +326,14 @@ export function createRelayServer(config: NodeConfig) {
   // Start periodic rate limit cleanup
   startRateLimitCleanup()
 
-  // Initialize EQLite storage asynchronously (non-blocking)
-  // On failure, eqliteStorage remains null and we use in-memory only
+  // Initialize EQLite storage - REQUIRED for production
+  // In development, if EQLite isn't available, initialization will throw
   initializeEQLiteStorage().catch((error) => {
-    eqliteStorage = null
-    log.warn('EQLite storage unavailable, using in-memory only', {
+    log.error('EQLite storage initialization failed', {
       error: error instanceof Error ? error.message : 'Unknown error',
     })
+    // Don't set to null - keep it undefined to let queries fail fast
+    // Memory-only mode is not supported for production reliability
   })
 
   // CORS - restrict to known origins in production

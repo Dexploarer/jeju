@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sync/atomic"
 
 	pi "eqlite/src/blockproducer/interfaces"
@@ -182,17 +181,17 @@ func initNode() (cleanupFunc func(), tempDir string, server *rpc.Server, err err
 	log.WithField("d", tempDir).Debug("created temp dir")
 
 	// init conf
-	_, testFile, _, _ := runtime.Caller(0)
+	baseDir := utils.GetProjectSrcDir()
 	pubKeyStoreFile := filepath.Join(tempDir, PubKeyStorePath+"_dht")
 	utils.RemoveAll(pubKeyStoreFile + "*")
 	clientPubKeyStoreFile := filepath.Join(tempDir, PubKeyStorePath+"_c")
 	utils.RemoveAll(clientPubKeyStoreFile + "*")
 	dupConfFile := filepath.Join(tempDir, "config.yaml")
-	confFile := filepath.Join(filepath.Dir(testFile), "../test/node_standalone/config.yaml")
+	confFile := filepath.Join(baseDir, "test/node_standalone/config.yaml")
 	if err = utils.DupConf(confFile, dupConfFile); err != nil {
 		return
 	}
-	privateKeyPath := filepath.Join(filepath.Dir(testFile), "../test/node_standalone/private.key")
+	privateKeyPath := filepath.Join(baseDir, "test/node_standalone/private.key")
 	conf.GConf, _ = conf.LoadConfig(dupConfFile)
 	log.Debugf("GConf: %#v", conf.GConf)
 	_, err = utils.CopyFile(privateKeyPath, conf.GConf.PrivateKeyFile)

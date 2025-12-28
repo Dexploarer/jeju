@@ -11,6 +11,7 @@ import type { Address } from 'viem'
 import { isAddress } from 'viem'
 import type { AuthConfig } from '../lib/types'
 import { config as oauth3Config } from './config'
+import { createAuthInitRouter } from './routes/auth-init'
 import { createClientRouter } from './routes/client'
 import { createFarcasterRouter } from './routes/farcaster'
 import { createOAuthRouter } from './routes/oauth'
@@ -52,10 +53,24 @@ const authConfig: AuthConfig = {
 }
 
 async function createApp() {
+  // Build explicit allowed origins for CORS (wildcards don't work with credentials)
+  const explicitOrigins = [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:4200',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:3001',
+    'http://127.0.0.1:4200',
+    'https://cloud.elizaos.com',
+    'https://eliza.cloud',
+    'https://elizaos.ai',
+    ...authConfig.allowedOrigins.filter((o) => o !== '*'),
+  ]
+
   const app = new Elysia()
     .use(
       cors({
-        origin: authConfig.allowedOrigins,
+        origin: explicitOrigins,
         credentials: true,
         allowedHeaders: [
           'Content-Type',
@@ -65,6 +80,7 @@ async function createApp() {
           'X-Jeju-Timestamp',
           'X-Jeju-Nonce',
         ],
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
       }),
     )
     .get('/health', () => ({
@@ -77,6 +93,7 @@ async function createApp() {
       version: '1.0.0',
       description: 'OAuth3 authentication gateway for Jeju Network',
       endpoints: {
+        auth: '/auth',
         oauth: '/oauth',
         wallet: '/wallet',
         farcaster: '/farcaster',
@@ -145,6 +162,7 @@ async function createApp() {
         headers: { 'Content-Type': 'text/html; charset=utf-8' },
       })
     })
+    .use(createAuthInitRouter(authConfig))
     .use(await createOAuthRouter(authConfig))
     .use(createWalletRouter(authConfig))
     .use(createFarcasterRouter(authConfig))

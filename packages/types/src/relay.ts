@@ -8,15 +8,15 @@
  */
 
 import { z } from 'zod'
-import type { Address, Hex } from 'viem'
-import { HexSchema, AddressSchema } from './validation'
+import type { Address } from 'viem'
+import { AddressSchema } from './validation'
 
 // ============ Multi-Chain RPC Types ============
 
 /**
- * Supported blockchain types
+ * Supported blockchain types for relay endpoints
  */
-export enum ChainType {
+export enum RelayChainType {
   EVM = 'evm',
   Solana = 'solana',
   Bitcoin = 'bitcoin',
@@ -28,7 +28,7 @@ export enum ChainType {
  */
 export const ChainEndpointSchema = z.object({
   chainId: z.number(),
-  chainType: z.nativeEnum(ChainType),
+  chainType: z.nativeEnum(RelayChainType),
   endpoint: z.string().url(),
   isActive: z.boolean(),
   isArchive: z.boolean(),

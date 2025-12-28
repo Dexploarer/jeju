@@ -24,7 +24,7 @@ func TestIsPermitted(t *testing.T) {
 	defer utils.RemoveAll(PubKeyStorePath + "*")
 
 	_, testFile, _, _ := runtime.Caller(0)
-	confFile := filepath.Join(filepath.Dir(testFile), "../test/node_0/config.yaml")
+	confFile := filepath.Join(filepath.Dir(testFile), "../../test/node_0/config.yaml")
 
 	conf.GConf, _ = conf.LoadConfig(confFile)
 	log.Debugf("GConf: %#v", conf.GConf)

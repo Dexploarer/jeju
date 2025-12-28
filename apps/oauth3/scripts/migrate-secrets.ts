@@ -100,7 +100,7 @@ async function migrateClientSecrets() {
 async function getAllClients(): Promise<RegisteredClient[]> {
   // Since clientState.list() might not exist, we need to query directly
   // This is a simplified version - in production, implement proper pagination
-  const { getCQLClient } = await import('../api/services/state')
+  const { getEQLiteClient } = await import('../api/services/state')
 
   interface ClientRow {
     client_id: string
@@ -117,14 +117,14 @@ async function getAllClients(): Promise<RegisteredClient[]> {
     moderation: string | null
   }
 
-  const CQL_DATABASE_ID = process.env.CQL_DATABASE_ID ?? 'oauth3'
+  const EQLITE_DATABASE_ID = process.env.EQLITE_DATABASE_ID ?? 'oauth3'
 
   try {
-    const db = await getCQLClient()
+    const db = await getEQLiteClient()
     const result = await db.query<ClientRow>(
       'SELECT * FROM clients WHERE active = 1',
       [],
-      CQL_DATABASE_ID,
+      EQLITE_DATABASE_ID,
     )
 
     return result.rows.map((row) => ({

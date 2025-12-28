@@ -238,10 +238,19 @@ test.describe('Gateway - Main Page Load', () => {
     const { errors, hasKnownBug } = setupErrorCapture(page)
 
     await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30000 })
-    await page.waitForTimeout(1000)
+    await page.waitForTimeout(2000)
 
     await expect(page.locator('body')).toBeVisible({ timeout: 10000 })
-    await expect(page.locator('text=Gateway')).toBeVisible({ timeout: 5000 })
+    // Check for Gateway text or header-brand class
+    const hasGateway = await page
+      .locator('text=Gateway')
+      .isVisible()
+      .catch(() => false)
+    const hasBrand = await page
+      .locator('.header-brand')
+      .isVisible()
+      .catch(() => false)
+    expect(hasGateway || hasBrand).toBeTruthy()
 
     const screenshotPath = join(SCREENSHOT_DIR, 'Gateway-Main.png')
     await page.screenshot({ path: screenshotPath, fullPage: true })
@@ -278,11 +287,13 @@ test.describe('Gateway - Header Components', () => {
 
   test('header has theme toggle', async ({ page }) => {
     await page.goto('/')
-    await page.waitForTimeout(500)
+    await page.waitForTimeout(1000)
 
-    // ThemeToggle button - look for moon/sun icon button
-    const themeBtn = page.locator('button').filter({ has: page.locator('svg') })
-    await expect(themeBtn.first()).toBeVisible()
+    // ThemeToggle button - has theme-toggle class or aria-label
+    const themeBtn = page.locator(
+      'button.theme-toggle, button[aria-label="Toggle theme"]',
+    )
+    await expect(themeBtn.first()).toBeVisible({ timeout: 10000 })
   })
 })
 

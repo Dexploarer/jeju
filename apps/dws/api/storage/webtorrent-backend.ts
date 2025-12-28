@@ -709,6 +709,23 @@ export class WebTorrentBackend extends WorkerdEventEmitter {
    * Get node storage stats
    */
   getNodeStats(): Partial<NodeStorageStats> {
+    // If client isn't initialized, return empty stats
+    if (!this.client) {
+      return {
+        systemContentCount: 0,
+        systemContentSize: 0,
+        popularContentCount: 0,
+        popularContentSize: 0,
+        privateContentCount: 0,
+        privateContentSize: 0,
+        activeTorrents: 0,
+        seedingTorrents: 0,
+        downloadingTorrents: 0,
+        peersConnected: 0,
+        bytesServed24h: 0,
+      }
+    }
+
     let systemSize = 0
     let popularSize = 0
     let privateSize = 0
@@ -716,7 +733,7 @@ export class WebTorrentBackend extends WorkerdEventEmitter {
     let seedingCount = 0
     let downloadingCount = 0
 
-    for (const torrent of this.clientOrThrow.torrents) {
+    for (const torrent of this.client.torrents) {
       const info = this.torrentMetadata.get(torrent.infoHash)
       if (!info) continue
 
@@ -748,7 +765,7 @@ export class WebTorrentBackend extends WorkerdEventEmitter {
       popularContentSize: popularSize,
       privateContentCount: this.getTorrentsByTier('private').length,
       privateContentSize: privateSize,
-      activeTorrents: this.clientOrThrow.torrents.length,
+      activeTorrents: this.client.torrents.length,
       seedingTorrents: seedingCount,
       downloadingTorrents: downloadingCount,
       peersConnected: this.getTotalPeers(),
@@ -760,7 +777,9 @@ export class WebTorrentBackend extends WorkerdEventEmitter {
    * Health check
    */
   async healthCheck(): Promise<boolean> {
-    return !this.clientOrThrow.destroyed
+    // Client is lazily initialized - if not initialized, it's not healthy yet
+    if (!this.client) return false
+    return !this.client.destroyed
   }
 
   /**
@@ -829,8 +848,9 @@ export class WebTorrentBackend extends WorkerdEventEmitter {
   }
 
   private getTotalPeers(): number {
+    if (!this.client) return 0
     let total = 0
-    for (const torrent of this.clientOrThrow.torrents) {
+    for (const torrent of this.client.torrents) {
       total += torrent.numPeers
     }
     return total

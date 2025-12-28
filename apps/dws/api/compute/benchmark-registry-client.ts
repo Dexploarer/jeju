@@ -9,7 +9,7 @@
  * - Cost-per-performance queries
  */
 
-import type { Address, Hex, PublicClient, WalletClient, Account, Chain } from 'viem'
+import type { Address, Hex, PublicClient, WalletClient, Account } from 'viem'
 import {
   createPublicClient,
   createWalletClient,

@@ -358,7 +358,7 @@ test.describe('Cache Service E2E', () => {
     expect(plan).toHaveProperty('id')
     expect(plan).toHaveProperty('name')
     expect(plan).toHaveProperty('tier')
-    expect(plan).toHaveProperty('memorySizeMb')
+    expect(plan).toHaveProperty('maxMemoryMb')
   })
 
   test('cache nodes endpoint returns node list', async ({ request }) => {

@@ -293,8 +293,9 @@ const PACKAGE_REGISTRY_ABI = [
     type: 'event',
     inputs: [
       { name: 'packageId', type: 'bytes32', indexed: true },
-      { name: 'versionId', type: 'bytes32', indexed: false },
+      { name: 'versionId', type: 'bytes32', indexed: true },
       { name: 'version', type: 'string', indexed: false },
+      { name: 'tarballCid', type: 'bytes32', indexed: false },
       { name: 'publisher', type: 'address', indexed: true },
     ],
   },

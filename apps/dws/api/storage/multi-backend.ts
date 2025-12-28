@@ -62,14 +62,14 @@ const DEFAULT_CONFIG: MultiBackendConfig = {
   defaultTier: 'popular',
   replicationFactor: 2,
 
-  // System content: WebTorrent + IPFS (fast, free)
-  systemContentBackends: ['webtorrent', 'ipfs'],
+  // System content: WebTorrent + IPFS + local (local only if others unavailable)
+  systemContentBackends: ['webtorrent', 'ipfs', 'local'],
 
-  // Popular content: WebTorrent + IPFS + Filecoin (incentivized)
-  popularContentBackends: ['webtorrent', 'ipfs', 'filecoin'],
+  // Popular content: WebTorrent + IPFS + Filecoin + local
+  popularContentBackends: ['webtorrent', 'ipfs', 'filecoin', 'local'],
 
-  // Private content: Local + IPFS with encryption
-  privateContentBackends: ['local', 'ipfs'],
+  // Private content: IPFS (encrypted) + local
+  privateContentBackends: ['ipfs', 'local'],
 }
 
 // Multi-Backend Manager
@@ -369,17 +369,24 @@ export class MultiBackendManager {
     this.contentRegistry.set(primaryCid, metadata)
     this.cidToBackends.set(primaryCid, new Set(addresses.backends))
 
-    // Create WebTorrent for popular/system content
+    // Create WebTorrent for popular/system content (optional - don't fail if unavailable)
     if ((tier === 'system' || tier === 'popular') && !addresses.magnetUri) {
-      const wt = await this.getWebTorrent()
-      if (wt) {
-        const torrent = await wt.createTorrent(uploadContent, {
-          name: options.filename ?? primaryCid,
-          cid: primaryCid,
-          tier,
-          category,
-        })
-        addresses.magnetUri = torrent.magnetUri
+      try {
+        const wt = await this.getWebTorrent()
+        if (wt) {
+          const torrent = await wt.createTorrent(uploadContent, {
+            name: options.filename ?? primaryCid,
+            cid: primaryCid,
+            tier,
+            category,
+          })
+          addresses.magnetUri = torrent.magnetUri
+        }
+      } catch (e) {
+        console.warn(
+          '[MultiBackend] WebTorrent creation failed:',
+          e instanceof Error ? e.message : String(e),
+        )
       }
     }
 
@@ -766,7 +773,11 @@ export class MultiBackendManager {
     const results: Record<string, boolean> = {}
 
     for (const [type, backend] of this.backends) {
-      results[type] = await backend.healthCheck()
+      try {
+        results[type] = await backend.healthCheck()
+      } catch {
+        results[type] = false
+      }
     }
 
     return results as Record<StorageBackendType, boolean>

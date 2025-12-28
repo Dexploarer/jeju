@@ -11,7 +11,6 @@
 
 import { getEQLite, type EQLiteClient } from '@jejunetwork/db'
 import type { Address } from 'viem'
-import { z } from 'zod'
 
 // ============ Types ============
 
@@ -310,7 +309,6 @@ export class FreeTierService {
     )
 
     const now = Date.now()
-    const monthStart = this.getMonthStart()
 
     if (tierResult.rows.length === 0) {
       // New user - create with free tier
@@ -851,11 +849,6 @@ export class FreeTierService {
     )
 
     console.log(`[FreeTier] Reset monthly usage for ${address}`)
-  }
-
-  private getMonthStart(): number {
-    const now = new Date()
-    return new Date(now.getFullYear(), now.getMonth(), 1).getTime()
   }
 
   private getNextMonthStart(): number {

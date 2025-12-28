@@ -187,6 +187,13 @@ export {
   createBackupCodesManager,
 } from './mfa/backup-codes.js'
 export {
+  createKeyBackupManager,
+  KeyBackupManager,
+  KeyBackupSchema,
+  type KeyBackup,
+  type BackupOptions,
+} from './mfa/key-backup.js'
+export {
   type MFAChallenge,
   type MFAChallengeMetadata,
   MFAMethod,
@@ -313,6 +320,15 @@ export {
 } from './sdk/client.js'
 // Core types
 export * from './types.js'
+// PKCE utilities
+export {
+  generateCodeChallenge,
+  generateCodeVerifier,
+  generatePKCE,
+  type PKCEParams,
+  PKCEParamsSchema,
+  validatePKCEState,
+} from './utils/pkce.js'
 // Validation (Zod schemas and utilities)
 export {
   AddressSchema,

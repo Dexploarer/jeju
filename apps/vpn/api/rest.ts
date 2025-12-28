@@ -411,3 +411,194 @@ export function createRESTRouter(ctx: VPNServiceContext) {
 
   return router
 }
+
+    // ============================================================================
+    // Residential Proxy / Bandwidth Sharing Endpoints
+    // ============================================================================
+
+    .get('/residential-proxy/status', async ({ request }) => {
+      const auth = await verifyAuth(request)
+      expect(auth.valid, auth.error ?? 'Authentication required')
+      if (!auth.address) {
+        throw new Error('Authentication address missing')
+      }
+
+      // Get status from bandwidth rewards tracking
+      const status = ctx.bandwidthStatus?.get(auth.address)
+
+      if (!status) {
+        return {
+          is_registered: false,
+          is_active: false,
+          stake_amount: '0',
+          total_bytes_shared: '0',
+          total_sessions: 0,
+          total_earnings: '0',
+          pending_rewards: '0',
+          current_connections: 0,
+          uptime_score: 0,
+          success_rate: 0,
+          coordinator_connected: false,
+        }
+      }
+
+      return status
+    })
+
+    .get('/residential-proxy/settings', async ({ request }) => {
+      const auth = await verifyAuth(request)
+      expect(auth.valid, auth.error ?? 'Authentication required')
+      if (!auth.address) {
+        throw new Error('Authentication address missing')
+      }
+
+      const settings = ctx.bandwidthSettings?.get(auth.address)
+
+      if (!settings) {
+        return {
+          enabled: false,
+          node_type: 'residential',
+          max_bandwidth_mbps: 100,
+          max_concurrent_connections: 50,
+          allowed_ports: [80, 443, 8080, 8443],
+          blocked_domains: [],
+          schedule_enabled: false,
+        }
+      }
+
+      return settings
+    })
+
+    .post('/residential-proxy/settings', async ({ request, body }) => {
+      const auth = await verifyAuth(request)
+      expect(auth.valid, auth.error ?? 'Authentication required')
+      if (!auth.address) {
+        throw new Error('Authentication address missing')
+      }
+
+      const settings = body as {
+        enabled?: boolean
+        node_type?: string
+        max_bandwidth_mbps?: number
+        max_concurrent_connections?: number
+        allowed_ports?: number[]
+        blocked_domains?: string[]
+        schedule_enabled?: boolean
+        schedule_start_hour?: number
+        schedule_end_hour?: number
+      }
+
+      const existing = ctx.bandwidthSettings?.get(auth.address)
+      const updated = {
+        enabled: settings.enabled ?? existing?.enabled ?? false,
+        node_type: settings.node_type ?? existing?.node_type ?? 'residential',
+        max_bandwidth_mbps: settings.max_bandwidth_mbps ?? existing?.max_bandwidth_mbps ?? 100,
+        max_concurrent_connections: settings.max_concurrent_connections ?? existing?.max_concurrent_connections ?? 50,
+        allowed_ports: settings.allowed_ports ?? existing?.allowed_ports ?? [80, 443, 8080, 8443],
+        blocked_domains: settings.blocked_domains ?? existing?.blocked_domains ?? [],
+        schedule_enabled: settings.schedule_enabled ?? existing?.schedule_enabled ?? false,
+        schedule_start_hour: settings.schedule_start_hour ?? existing?.schedule_start_hour,
+        schedule_end_hour: settings.schedule_end_hour ?? existing?.schedule_end_hour,
+      }
+
+      if (!ctx.bandwidthSettings) {
+        ctx.bandwidthSettings = new Map()
+      }
+      ctx.bandwidthSettings.set(auth.address, updated)
+
+      return {
+        success: true,
+        settings: updated,
+      }
+    })
+
+    .get('/residential-proxy/stats', async ({ request }) => {
+      const auth = await verifyAuth(request)
+      expect(auth.valid, auth.error ?? 'Authentication required')
+      if (!auth.address) {
+        throw new Error('Authentication address missing')
+      }
+
+      const stats = ctx.bandwidthStats?.get(auth.address)
+
+      if (!stats) {
+        return {
+          bytes_shared_today: '0',
+          bytes_shared_week: '0',
+          bytes_shared_month: '0',
+          sessions_today: 0,
+          sessions_week: 0,
+          avg_session_duration_ms: 0,
+          peak_bandwidth_mbps: 0,
+          earnings_today: '0',
+          earnings_week: '0',
+          earnings_month: '0',
+        }
+      }
+
+      return stats
+    })
+
+    .post('/residential-proxy/register', async ({ request, body }) => {
+      const auth = await verifyAuth(request)
+      expect(auth.valid, auth.error ?? 'Authentication required')
+      if (!auth.address) {
+        throw new Error('Authentication address missing')
+      }
+
+      const { stake_amount } = body as { stake_amount: string }
+
+      // Initialize status for this user
+      if (!ctx.bandwidthStatus) {
+        ctx.bandwidthStatus = new Map()
+      }
+
+      ctx.bandwidthStatus.set(auth.address, {
+        is_registered: true,
+        is_active: false,
+        node_address: auth.address,
+        stake_amount: stake_amount,
+        total_bytes_shared: '0',
+        total_sessions: 0,
+        total_earnings: '0',
+        pending_rewards: '0',
+        current_connections: 0,
+        uptime_score: 0,
+        success_rate: 0,
+        coordinator_connected: false,
+      })
+
+      return {
+        success: true,
+        node_address: auth.address,
+        stake_amount,
+      }
+    })
+
+    .post('/residential-proxy/claim', async ({ request }) => {
+      const auth = await verifyAuth(request)
+      expect(auth.valid, auth.error ?? 'Authentication required')
+      if (!auth.address) {
+        throw new Error('Authentication address missing')
+      }
+
+      const status = ctx.bandwidthStatus?.get(auth.address)
+      expect(status?.is_registered, 'Node not registered')
+
+      const pendingRewards = status?.pending_rewards ?? '0'
+      
+      // Reset pending rewards after claim
+      if (ctx.bandwidthStatus && status) {
+        ctx.bandwidthStatus.set(auth.address, {
+          ...status,
+          pending_rewards: '0',
+          total_earnings: (BigInt(status.total_earnings) + BigInt(pendingRewards)).toString(),
+        })
+      }
+
+      return {
+        success: true,
+        claimed_amount: pendingRewards,
+      }
+    })
+

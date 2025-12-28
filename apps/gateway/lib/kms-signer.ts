@@ -109,6 +109,16 @@ export interface LegacyKMSSignerConfig {
   timeoutMs: number
 }
 
+type SigningMode = 'mpc' | 'tee' | 'local-dev'
+
+/**
+ * Map canonical mode to legacy mode
+ */
+function mapMode(mode: string): SigningMode {
+  if (mode === 'development') return 'local-dev'
+  return mode as SigningMode
+}
+
 /**
  * @deprecated Use `KMSSigner` from '@jejunetwork/kms' instead
  *
@@ -139,7 +149,7 @@ export class LegacyKMSSigner {
     const result = await this.signer.sign(request.messageHash)
     return {
       signature: result.signature,
-      signingMode: result.mode,
+      signingMode: mapMode(result.mode),
       address: this.signer.getAddress(),
     }
   }
@@ -149,7 +159,7 @@ export class LegacyKMSSigner {
     const result = await this.signer.signMessage(message)
     return {
       signature: result.signature,
-      signingMode: result.mode,
+      signingMode: mapMode(result.mode),
       address: this.signer.getAddress(),
     }
   }
@@ -162,7 +172,7 @@ export class LegacyKMSSigner {
     return {
       signedTransaction: result.signedTransaction,
       hash: result.hash,
-      signingMode: result.mode,
+      signingMode: mapMode(result.mode),
     }
   }
 
@@ -203,7 +213,7 @@ export class LegacyKMSSigner {
   }
 
   getMode(): 'mpc' | 'tee' | 'local-dev' {
-    return this.signer?.getMode() ?? 'mpc'
+    return mapMode(this.signer?.getMode() ?? 'mpc')
   }
 
   getServiceId(): string {

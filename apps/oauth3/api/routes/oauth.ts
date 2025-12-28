@@ -265,13 +265,36 @@ export async function createOAuthRouter(config: AuthConfig) {
 
             const authCode = await authCodeState.get(body.code)
             if (!authCode) {
+              console.log(
+                '[OAuth3] Token exchange failed: auth code not found',
+                {
+                  code: `${body.code?.substring(0, 8)}...`,
+                },
+              )
               set.status = 400
-              return { error: 'invalid_grant' }
+              return {
+                error: 'invalid_grant',
+                error_description: 'Authorization code not found or expired',
+              }
             }
 
+            console.log('[OAuth3] Token exchange: found auth code', {
+              code: `${body.code?.substring(0, 8)}...`,
+              storedClientId: authCode.clientId,
+              storedRedirectUri: authCode.redirectUri,
+              requestClientId: body.client_id,
+              requestRedirectUri: body.redirect_uri,
+              userId: authCode.userId,
+              expiresAt: new Date(authCode.expiresAt).toISOString(),
+            })
+
             if (authCode.clientId !== body.client_id) {
+              console.log('[OAuth3] Token exchange failed: client_id mismatch')
               set.status = 400
-              return { error: 'invalid_grant' }
+              return {
+                error: 'invalid_grant',
+                error_description: 'Client ID mismatch',
+              }
             }
 
             // Verify PKCE if challenge was provided during authorization

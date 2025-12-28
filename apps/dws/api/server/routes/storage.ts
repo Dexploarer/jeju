@@ -68,8 +68,16 @@ export function createStorageRouter(backend?: BackendManager) {
       .get('/stats', () => storageManager.getNodeStats())
 
       // Upload with multipart form
-      .post('/upload', async ({ body, set }) => {
-        const formData = body as FormData
+      .post('/upload', async ({ request, set }) => {
+        // Parse multipart form data from request
+        let formData: FormData
+        try {
+          formData = await request.formData()
+        } catch (_err) {
+          set.status = 400
+          return { error: 'Invalid multipart form data' }
+        }
+
         const file = formData.get('file') as File | null
 
         if (!file) {

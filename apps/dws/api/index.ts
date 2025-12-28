@@ -1,106 +1,250 @@
 /**
- * DWS - Decentralized Web Services
+ * DWS API - Decentralized Web Services
+ *
+ * Complete replacement for centralized cloud services:
+ * - Vercel: Preview deployments, serverless workers, CI/CD
+ * - Cloudflare: CDN, WAF, DDoS protection, workers
+ * - AWS: Managed databases, container orchestration, autoscaling
  */
 
-// Bot Deployment
+// ============================================================================
+// Database Services (Managed EQLite + PostgreSQL)
+// ============================================================================
+
 export {
-  type BotInstance,
-  type BotType,
-  getBotDeploymentService,
-  initializeBotDeployment,
-} from './bots'
-// External Chain Nodes
+  type Backup,
+  CreateDatabaseSchema,
+  type DatabaseConfig,
+  type DatabaseEngine,
+  type DatabaseInstance,
+  type DatabasePlan,
+  type EQLiteConnection,
+  getManagedDatabaseService,
+  ManagedDatabaseService,
+  type PostgresConnection,
+  type Replica,
+  UpdateDatabaseSchema,
+  type UsageMetrics,
+} from './database/managed-service'
+
+export { createDatabaseRoutes } from './database/routes'
+
+// ============================================================================
+// Git & Deployments
+// ============================================================================
+
 export {
-  type ChainType,
-  type ExternalChainNode,
-  getExternalRPCNodeService,
-  initializeExternalRPCNodes,
-} from './external-chains'
-// Git
-export * from './git'
-// Infrastructure Seed
+  configureDeployHook,
+  type DeployHookConfig,
+  type DeploymentResult,
+  detectFramework,
+  handlePostReceive,
+  hasWorkerCode,
+  runDeployHook,
+} from './git/deploy-hook'
+
 export {
-  getSeedStatus,
-  isSeedComplete,
-  seedInfrastructure,
-} from './infrastructure/seed'
-// Oracle Node
-export * from './oracle'
-// Proof-of-Cloud
-export * from './poc'
-// RLAIF
+  CreatePreviewSchema,
+  getPreviewManager,
+  type PreviewConfig,
+  type PreviewDeployment,
+  PreviewDeploymentManager,
+  type PreviewStatus,
+  type PreviewType,
+} from './git/preview-deployments'
+
+// ============================================================================
+// CI/CD
+// ============================================================================
+
 export {
-  createRLAIFCoordinator,
-  RLAIFCoordinator,
-  type RLAIFCoordinatorConfig,
-} from './rlaif/coordinator'
+  BuildCacheManager,
+  type CacheEntry,
+  type CacheStats,
+  generateCacheKey,
+  generateDependencyCacheKey,
+  generateDockerLayerCacheKey,
+  getBuildCacheManager,
+  type RestoreResult,
+  restoreCargoCache,
+  restoreNodeModules,
+  type SaveResult,
+  saveCargoCache,
+  saveNodeModules,
+} from './ci/build-cache'
 export {
-  createRulerScorer,
-  RulerScorer,
-  type RulerScorerConfig,
-} from './rlaif/ruler-scorer'
+  WorkflowEngine,
+  type WorkflowEngineConfig,
+} from './ci/workflow-engine'
+
+// ============================================================================
+// Workers & Serverless
+// ============================================================================
+
 export {
-  createTrajectoryStore,
-  TrajectoryStore,
-  type TrajectoryStoreConfig,
-} from './rlaif/trajectory-store'
+  type CronEvent,
+  type CronExecution,
+  type CronSchedule,
+  CronScheduler,
+  CronScheduleSchema,
+  getCronScheduler,
+  getNextRunTime,
+  matchesCron,
+  parseCronExpression,
+  type WorkerResult,
+} from './workers/cron-scheduler'
 export {
-  type ComputeJobResult,
-  type EvaluationConfig,
-  type EvaluationJobConfig,
-  type IterationMetrics,
-  type JudgeRubric,
-  type JudgeScore,
-  type JudgingJobConfig,
-  type LLMCall,
-  type ModelConfig,
-  type RLAction,
-  type RLActionParams,
-  type RLAIFIteration,
-  type RLAIFRun,
-  type RLAIFRunConfig,
-  RLAlgorithm,
-  type RLConfig,
-  type RLEnvConfig,
-  type RLEnvInfo,
-  type RLEnvironment,
-  type RLEnvironmentFactory,
-  type RLObservation,
-  RLRunState,
-  type RLTrajectoryMetadata,
-  type RolloutJobConfig,
-  type ScoredTrajectoryGroup,
-  type TrainingJobConfig,
-  type Trajectory,
-  type TrajectoryManifest,
-  type TrajectoryStep,
-} from './rlaif/types'
-// RPC Gateway
-export * from './rpc'
-// SDK
+  type CompilationResult,
+  type CompiledRoute,
+  compileElysia,
+  compileNextJS,
+  compileProject,
+  ElysiaCompiler,
+  NextJSCompiler,
+  type RouteType,
+  type WorkerManifest,
+} from './workers/nextjs-compiler'
 export {
-  createDWSSDK,
-  DWSSDK,
-  type DWSSDKConfig,
-} from './sdk'
-// Shared chains (only unique exports not already in ./rpc)
-export { getRpcUrl, jeju, jejuLocalnet } from './shared/chains'
-// Solver
+  ChunkedWriter,
+  createChunkedResponse,
+  createLLMStreamResponse,
+  createNDJSONResponse,
+  createSSEResponse,
+  getStreamConnectionManager,
+  type LLMStreamEvent,
+  NDJSONWriter,
+  SSEWriter,
+  type StreamConfig,
+  type StreamConnection,
+  StreamConnectionManager,
+  type StreamStats,
+  streamWithProgress,
+} from './workers/streaming'
+
+// ============================================================================
+// Security
+// ============================================================================
+
 export {
-  EventMonitor,
-  LiquidityManager,
-  SolverAgent,
-  StrategyEngine,
-} from './solver'
-export * from './solver/contracts'
-export * from './solver/external'
-export * from './solver/metrics'
+  AccessControlManager,
+  type AccessDecision,
+  type APIKey,
+  CreateAPIKeySchema,
+  CreateRoleSchema,
+  getAccessControl,
+  type Organization,
+  type Permission,
+  type ResourceType,
+  type Role,
+  type Session,
+  type Team,
+  type User,
+} from './security/access-control'
 export {
-  type BackendManager,
-  createBackendManager,
-  type DownloadResponse,
-  type UploadOptions,
-  type UploadResponse,
-} from './storage/backends'
-// Storage
-export * from './types'
+  type AuditActor,
+  type AuditCategory,
+  type AuditEvent,
+  AuditLogger,
+  type AuditOutcome,
+  type AuditQuery,
+  type AuditSeverity,
+  type AuditTarget,
+  type ComplianceReport,
+  getAuditLogger,
+  LogAuditEventSchema,
+} from './security/audit-logger'
+export {
+  type AuditEntry as SecretAuditEntry,
+  CreateSecretSchema,
+  getSecretsManager,
+  type Secret,
+  type SecretScope,
+  type SecretStatus,
+  SecretsManager,
+  type SecretValue,
+  UpdateSecretSchema,
+} from './security/secrets-manager'
+export {
+  type ACMEAccount,
+  type Certificate,
+  CertificateRequestSchema,
+  type CertificateStatus,
+  type ChallengeType,
+  CustomCertificateSchema,
+  getSSLManager,
+  SSLCertificateManager,
+} from './security/ssl-manager'
+export {
+  type DDoSConfig,
+  getWAF,
+  type IPReputationEntry,
+  type RateLimitConfig as WAFRateLimitConfig,
+  type SecurityEvent,
+  type ThreatType,
+  type WAFAction,
+  type WAFDecision,
+  type WAFRule,
+  WebApplicationFirewall,
+} from './security/waf'
+
+// ============================================================================
+// Infrastructure
+// ============================================================================
+
+export {
+  ClusterAutoscaler,
+  getClusterAutoscaler,
+  type MetricType,
+  type NodePool,
+  type NodePoolScalingDecision,
+  type ScalingBehavior,
+  type ScalingDecision,
+  type ScalingDirection,
+  type ScalingMetric,
+  type ScalingPolicy,
+} from './infrastructure/cluster-autoscaler'
+export {
+  type CircuitBreakerConfig,
+  type CircuitState,
+  getServiceMesh,
+  type LoadBalanceStrategy,
+  type RateLimitConfig,
+  type RetryPolicy,
+  type ServiceDefinition,
+  type ServiceEndpoint,
+  ServiceMesh,
+  type ServiceStatus,
+  type TrafficPolicy,
+} from './infrastructure/service-mesh'
+
+// ============================================================================
+// Observability
+// ============================================================================
+
+export {
+  type Alert,
+  AlertManager,
+  type AlertRule,
+  type AlertSeverity,
+  type AlertState,
+  getAlertManager,
+  getHealthChecker,
+  getLogger,
+  getMetricsRegistry,
+  getTracer,
+  HealthChecker,
+  type HealthStatus,
+  type HistogramValue,
+  type LogEntry,
+  Logger,
+  type LogLevel,
+  type LogQuery,
+  MetricsRegistry,
+  type MetricValue,
+  type Span,
+  type SpanEvent,
+  type SpanKind,
+  type SpanStatus,
+  type TraceQuery,
+  Tracer,
+} from './observability'

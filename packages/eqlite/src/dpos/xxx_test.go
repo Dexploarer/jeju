@@ -38,7 +38,6 @@ const (
 
 var (
 	testingDataDir            string
-	testingTraceFile          *os.File
 	testingPrivateKeyFile     string
 	testingPublicKeyStoreFile string
 	testingNonceDifficulty    int

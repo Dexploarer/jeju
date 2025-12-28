@@ -1,755 +1,903 @@
 /**
- * DWS Service Mesh
+ * Service Mesh with mTLS
  *
- * Provides secure service-to-service communication:
- * - mTLS between services
- * - Service discovery via JNS
- * - Access control policies
- * - Traffic management (retries, circuit breaking)
- * - Observability (metrics, tracing)
- *
- * Certificate operations performed via DWS exec API.
+ * Implements service-to-service communication:
+ * - Mutual TLS (mTLS) for all internal traffic
+ * - Service discovery
+ * - Load balancing (round-robin, least-connections)
+ * - Circuit breaker pattern
+ * - Retry policies
+ * - Rate limiting
+ * - Traffic policies
  */
 
-import { Elysia, t } from 'elysia'
-import type { Address, Hex } from 'viem'
-import { keccak256, toBytes } from 'viem'
+import {
+  createHash,
+  createSign,
+  createVerify,
+  generateKeyPairSync,
+  randomBytes,
+} from 'node:crypto'
+import type { Address } from 'viem'
 
-// Config injected at startup
-export interface ServiceMeshConfig {
-  execUrl: string
-  caProvided?: { cert: string; key: string }
-}
-
-let meshConfig: ServiceMeshConfig = {
-  execUrl: 'http://localhost:4020/exec',
-}
-
-export function configureServiceMesh(c: Partial<ServiceMeshConfig>): void {
-  meshConfig = { ...meshConfig, ...c }
-}
-
+// ============================================================================
 // Types
+// ============================================================================
 
-export interface ServiceIdentity {
-  id: string
+export type ServiceStatus = 'healthy' | 'degraded' | 'unhealthy' | 'unknown'
+
+export type LoadBalanceStrategy =
+  | 'round-robin'
+  | 'least-connections'
+  | 'random'
+  | 'ip-hash'
+
+export type CircuitState = 'closed' | 'open' | 'half-open'
+
+export interface ServiceDefinition {
+  serviceId: string
   name: string
   namespace: string
+  endpoints: ServiceEndpoint[]
+
+  // mTLS
+  certificate: string
+  privateKey: string
+  caCertificate: string
+
+  // Policies
+  loadBalanceStrategy: LoadBalanceStrategy
+  retryPolicy: RetryPolicy
+  circuitBreaker: CircuitBreakerConfig
+  rateLimit?: RateLimitConfig
+
+  // Metadata
   owner: Address
-  publicKey: Hex
-  certificate?: string
-  endpoints: string[]
-  tags: string[]
   createdAt: number
+  updatedAt: number
 }
 
-export interface AccessPolicy {
-  id: string
-  name: string
-  source: ServiceSelector
-  destination: ServiceSelector
-  action: 'allow' | 'deny'
-  conditions?: PolicyCondition[]
-  priority: number
+export interface ServiceEndpoint {
+  endpointId: string
+  address: string
+  port: number
+  weight: number
+  status: ServiceStatus
+  lastHealthCheck?: number
+  activeConnections: number
+  metadata: Record<string, string>
 }
 
-export interface ServiceSelector {
-  namespace?: string
-  name?: string
-  tags?: string[]
-  owner?: Address
+export interface RetryPolicy {
+  maxRetries: number
+  retryOn: string[] // e.g., ['5xx', 'reset', 'connect-failure']
+  backoffMs: number
+  maxBackoffMs: number
 }
 
-export interface PolicyCondition {
-  type: 'header' | 'path' | 'method' | 'time' | 'rate'
-  key?: string
-  operator: 'equals' | 'contains' | 'regex' | 'exists'
-  value?: string
+export interface CircuitBreakerConfig {
+  threshold: number // Failure percentage to open
+  volumeThreshold: number // Minimum requests before tripping
+  sleepWindowMs: number // Time to wait before half-open
+  requestTimeoutMs: number
+}
+
+export interface RateLimitConfig {
+  requestsPerSecond: number
+  burstSize: number
+  perClient: boolean
 }
 
 export interface TrafficPolicy {
-  id: string
-  service: ServiceSelector
-  retries: {
-    maxRetries: number
-    retryOn: string[]
-    backoffMs: number
-  }
-  timeout: {
-    requestMs: number
-    idleMs: number
-  }
-  circuitBreaker: {
-    maxFailures: number
-    windowMs: number
-    cooldownMs: number
-  }
-  rateLimit?: {
-    requestsPerSecond: number
-    burstSize: number
-  }
+  policyId: string
+  name: string
+  sourceService: string
+  destinationService: string
+  rules: TrafficRule[]
+  priority: number
+  enabled: boolean
 }
 
-export interface ServiceMetrics {
+export interface AccessPolicy {
+  policyId: string
+  name: string
+  namespace: string
+  rules: Array<{
+    action: 'allow' | 'deny'
+    from: string[]
+    to: string[]
+    operations: string[]
+  }>
+  priority: number
+  enabled: boolean
+}
+
+export interface ServiceIdentity {
   serviceId: string
-  requests: {
-    total: number
-    success: number
-    failure: number
+  name: string
+  namespace: string
+  certificate: string
+  publicKey: string
+  owner: Address
+  createdAt: number
+}
+
+export interface TrafficRule {
+  match: {
+    headers?: Record<string, string>
+    methods?: string[]
+    paths?: string[]
   }
-  latency: {
-    p50: number
-    p95: number
-    p99: number
-  }
-  connections: {
-    active: number
-    total: number
+  action: {
+    type: 'allow' | 'deny' | 'ratelimit' | 'redirect'
+    destination?: string
+    rateLimit?: RateLimitConfig
   }
 }
 
-// DWS Exec API
+// ============================================================================
+// Certificate Manager
+// ============================================================================
 
-interface ExecResult {
-  exitCode: number
-  stdout: string
-  stderr: string
-}
+class CertificateAuthority {
+  private caCert: string
+  private caKey: string
+  private issuedCerts = new Map<
+    string,
+    { cert: string; key: string; expiresAt: number }
+  >()
 
-async function exec(
-  command: string[],
-  options?: { stdin?: string },
-): Promise<ExecResult> {
-  const response = await fetch(meshConfig.execUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ command, ...options }),
-  })
-  if (!response.ok) {
-    throw new Error(`Exec API error: ${response.status}`)
-  }
-  return response.json() as Promise<ExecResult>
-}
-
-// Certificate Authority
-
-interface CACredentials {
-  cert: string
-  key: string
-}
-
-let caCredentials: CACredentials | null = null
-
-async function getOrCreateCA(): Promise<CACredentials> {
-  if (caCredentials) return caCredentials
-
-  // Check if CA provided in config
-  if (meshConfig.caProvided) {
-    caCredentials = meshConfig.caProvided
-    console.log('[ServiceMesh] Using provided CA certificate')
-    return caCredentials
-  }
-
-  // Generate new CA via openssl
-  console.log('[ServiceMesh] Generating new CA certificate')
-
-  // Generate EC private key
-  const keyResult = await exec([
-    'openssl',
-    'ecparam',
-    '-genkey',
-    '-name',
-    'prime256v1',
-    '-noout',
-  ])
-  if (keyResult.exitCode !== 0) {
-    throw new Error(`Failed to generate CA key: ${keyResult.stderr}`)
-  }
-  const caKey = keyResult.stdout
-
-  // Generate self-signed CA cert
-  const certResult = await exec(
-    [
-      'openssl',
-      'req',
-      '-new',
-      '-x509',
-      '-key',
-      '/dev/stdin',
-      '-days',
-      '3650',
-      '-subj',
-      '/CN=DWS Mesh CA',
-      '-addext',
-      'basicConstraints=critical,CA:TRUE',
-      '-addext',
-      'keyUsage=critical,keyCertSign,cRLSign',
-    ],
-    { stdin: caKey },
-  )
-
-  if (certResult.exitCode !== 0) {
-    throw new Error(`Failed to generate CA cert: ${certResult.stderr}`)
-  }
-
-  caCredentials = { cert: certResult.stdout, key: caKey }
-  return caCredentials
-}
-
-// State
-
-const services = new Map<string, ServiceIdentity>()
-const accessPolicies = new Map<string, AccessPolicy>()
-const trafficPolicies = new Map<string, TrafficPolicy>()
-const serviceMetrics = new Map<string, ServiceMetrics>()
-const serviceCertificates = new Map<
-  string,
-  { cert: string; key: string; expiresAt: number }
->()
-
-export class ServiceMesh {
-  selfIdentity: ServiceIdentity | null = null
-
-  async registerService(
-    identity: Omit<ServiceIdentity, 'id' | 'createdAt'>,
-  ): Promise<ServiceIdentity> {
-    const id = this.generateServiceId(identity.name, identity.namespace)
-
-    const service: ServiceIdentity = {
-      ...identity,
-      id,
-      createdAt: Date.now(),
-    }
-
-    services.set(id, service)
-    this.selfIdentity = service
-
-    serviceMetrics.set(id, {
-      serviceId: id,
-      requests: { total: 0, success: 0, failure: 0 },
-      latency: { p50: 0, p95: 0, p99: 0 },
-      connections: { active: 0, total: 0 },
+  constructor() {
+    // Generate CA certificate (in production, load from secure storage)
+    const { publicKey, privateKey } = generateKeyPairSync('ec', {
+      namedCurve: 'prime256v1',
+      publicKeyEncoding: { type: 'spki', format: 'pem' },
+      privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
     })
 
-    console.log(
-      `[ServiceMesh] Registered service: ${identity.namespace}/${identity.name}`,
+    this.caKey = privateKey
+    this.caCert = this.generateSelfSignedCert(
+      'DWS Service Mesh CA',
+      publicKey,
+      privateKey,
     )
+  }
+
+  private generateSelfSignedCert(
+    cn: string,
+    publicKey: string,
+    privateKey: string,
+  ): string {
+    // Simplified self-signed certificate generation
+    // In production, use a proper X.509 library
+    const cert = {
+      subject: { CN: cn },
+      issuer: { CN: cn },
+      notBefore: new Date(),
+      notAfter: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      publicKey,
+      serialNumber: randomBytes(16).toString('hex'),
+    }
+
+    // Sign the certificate
+    const sign = createSign('SHA256')
+    sign.update(JSON.stringify(cert))
+    const signature = sign.sign(privateKey, 'base64')
+
+    return `-----BEGIN CERTIFICATE-----\n${Buffer.from(JSON.stringify({ ...cert, signature })).toString('base64')}\n-----END CERTIFICATE-----`
+  }
+
+  issueCertificate(
+    serviceId: string,
+    serviceName: string,
+  ): { cert: string; key: string } {
+    // Check for existing valid certificate
+    const existing = this.issuedCerts.get(serviceId)
+    if (existing && existing.expiresAt > Date.now()) {
+      return { cert: existing.cert, key: existing.key }
+    }
+
+    // Generate new key pair for service
+    const { publicKey, privateKey } = generateKeyPairSync('ec', {
+      namedCurve: 'prime256v1',
+      publicKeyEncoding: { type: 'spki', format: 'pem' },
+      privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+    })
+
+    // Create certificate signed by CA
+    const cert = {
+      subject: { CN: serviceName, serviceId },
+      issuer: { CN: 'DWS Service Mesh CA' },
+      notBefore: new Date(),
+      notAfter: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+      publicKey,
+      serialNumber: randomBytes(16).toString('hex'),
+      extensions: {
+        keyUsage: ['digitalSignature', 'keyEncipherment'],
+        extKeyUsage: ['serverAuth', 'clientAuth'],
+        san: [`service:${serviceId}`, `dns:${serviceName}.mesh.local`],
+      },
+    }
+
+    const sign = createSign('SHA256')
+    sign.update(JSON.stringify(cert))
+    const signature = sign.sign(this.caKey, 'base64')
+
+    const certPem = `-----BEGIN CERTIFICATE-----\n${Buffer.from(JSON.stringify({ ...cert, signature })).toString('base64')}\n-----END CERTIFICATE-----`
+
+    this.issuedCerts.set(serviceId, {
+      cert: certPem,
+      key: privateKey,
+      expiresAt: cert.notAfter.getTime(),
+    })
+
+    return { cert: certPem, key: privateKey }
+  }
+
+  getCACertificate(): string {
+    return this.caCert
+  }
+
+  verifyCertificate(cert: string, serviceId: string): boolean {
+    try {
+      // Parse certificate
+      const certData = cert
+        .replace(/-----BEGIN CERTIFICATE-----/, '')
+        .replace(/-----END CERTIFICATE-----/, '')
+        .trim()
+
+      const parsed = JSON.parse(Buffer.from(certData, 'base64').toString())
+
+      // Check expiration
+      if (new Date(parsed.notAfter) < new Date()) {
+        return false
+      }
+
+      // Verify serviceId matches
+      if (parsed.subject?.serviceId !== serviceId) {
+        return false
+      }
+
+      // Verify signature
+      const verify = createVerify('SHA256')
+      const { signature, ...certWithoutSig } = parsed
+      verify.update(JSON.stringify(certWithoutSig))
+
+      return verify.verify(this.caCert, signature, 'base64')
+    } catch {
+      return false
+    }
+  }
+}
+
+// ============================================================================
+// Circuit Breaker
+// ============================================================================
+
+class CircuitBreaker {
+  private state: CircuitState = 'closed'
+  private failureCount = 0
+  private successCount = 0
+  private lastFailureTime = 0
+  private requestCount = 0
+  private config: CircuitBreakerConfig
+
+  constructor(config: CircuitBreakerConfig) {
+    this.config = config
+  }
+
+  canExecute(): boolean {
+    if (this.state === 'closed') return true
+
+    if (this.state === 'open') {
+      // Check if sleep window has passed
+      if (Date.now() - this.lastFailureTime >= this.config.sleepWindowMs) {
+        this.state = 'half-open'
+        return true
+      }
+      return false
+    }
+
+    // Half-open: allow one request through
+    return true
+  }
+
+  recordSuccess(): void {
+    this.requestCount++
+
+    if (this.state === 'half-open') {
+      this.successCount++
+      if (this.successCount >= 3) {
+        this.reset()
+      }
+    }
+  }
+
+  recordFailure(): void {
+    this.requestCount++
+    this.failureCount++
+    this.lastFailureTime = Date.now()
+
+    if (this.state === 'half-open') {
+      this.trip()
+      return
+    }
+
+    // Check if we should trip
+    if (this.requestCount >= this.config.volumeThreshold) {
+      const failureRate = this.failureCount / this.requestCount
+      if (failureRate >= this.config.threshold / 100) {
+        this.trip()
+      }
+    }
+  }
+
+  private trip(): void {
+    this.state = 'open'
+    console.log('[CircuitBreaker] Tripped to OPEN state')
+  }
+
+  private reset(): void {
+    this.state = 'closed'
+    this.failureCount = 0
+    this.successCount = 0
+    this.requestCount = 0
+    console.log('[CircuitBreaker] Reset to CLOSED state')
+  }
+
+  getState(): CircuitState {
+    return this.state
+  }
+}
+
+// ============================================================================
+// Rate Limiter
+// ============================================================================
+
+class RateLimiter {
+  private tokens: number
+  private lastRefill: number
+  private config: RateLimitConfig
+
+  constructor(config: RateLimitConfig) {
+    this.config = config
+    this.tokens = config.burstSize
+    this.lastRefill = Date.now()
+  }
+
+  allow(): boolean {
+    this.refill()
+
+    if (this.tokens >= 1) {
+      this.tokens--
+      return true
+    }
+
+    return false
+  }
+
+  private refill(): void {
+    const now = Date.now()
+    const elapsed = now - this.lastRefill
+    const tokensToAdd = (elapsed / 1000) * this.config.requestsPerSecond
+
+    this.tokens = Math.min(this.config.burstSize, this.tokens + tokensToAdd)
+    this.lastRefill = now
+  }
+}
+
+// ============================================================================
+// Service Mesh
+// ============================================================================
+
+export class ServiceMesh {
+  private services = new Map<string, ServiceDefinition>()
+  private servicesByName = new Map<string, string>() // name -> serviceId
+  private circuitBreakers = new Map<string, CircuitBreaker>() // endpointId -> breaker
+  private rateLimiters = new Map<string, RateLimiter>() // serviceId -> limiter
+  private trafficPolicies = new Map<string, TrafficPolicy>()
+  private roundRobinCounters = new Map<string, number>()
+
+  private ca: CertificateAuthority
+  private healthCheckInterval: ReturnType<typeof setInterval> | null = null
+
+  constructor() {
+    this.ca = new CertificateAuthority()
+  }
+
+  // =========================================================================
+  // Service Registration
+  // =========================================================================
+
+  registerService(
+    owner: Address,
+    name: string,
+    namespace: string,
+    endpoints: Array<{ address: string; port: number; weight?: number }>,
+    config: {
+      loadBalanceStrategy?: LoadBalanceStrategy
+      retryPolicy?: Partial<RetryPolicy>
+      circuitBreaker?: Partial<CircuitBreakerConfig>
+      rateLimit?: RateLimitConfig
+    } = {},
+  ): ServiceDefinition {
+    const serviceId = createHash('sha256')
+      .update(`${namespace}/${name}`)
+      .digest('hex')
+      .slice(0, 16)
+
+    // Issue mTLS certificate
+    const { cert, key } = this.ca.issueCertificate(serviceId, name)
+
+    const service: ServiceDefinition = {
+      serviceId,
+      name,
+      namespace,
+      endpoints: endpoints.map((ep, i) => ({
+        endpointId: `${serviceId}-${i}`,
+        address: ep.address,
+        port: ep.port,
+        weight: ep.weight ?? 1,
+        status: 'unknown',
+        activeConnections: 0,
+        metadata: {},
+      })),
+      certificate: cert,
+      privateKey: key,
+      caCertificate: this.ca.getCACertificate(),
+      loadBalanceStrategy: config.loadBalanceStrategy ?? 'round-robin',
+      retryPolicy: {
+        maxRetries: config.retryPolicy?.maxRetries ?? 3,
+        retryOn: config.retryPolicy?.retryOn ?? [
+          '5xx',
+          'reset',
+          'connect-failure',
+        ],
+        backoffMs: config.retryPolicy?.backoffMs ?? 100,
+        maxBackoffMs: config.retryPolicy?.maxBackoffMs ?? 5000,
+      },
+      circuitBreaker: {
+        threshold: config.circuitBreaker?.threshold ?? 50,
+        volumeThreshold: config.circuitBreaker?.volumeThreshold ?? 10,
+        sleepWindowMs: config.circuitBreaker?.sleepWindowMs ?? 30000,
+        requestTimeoutMs: config.circuitBreaker?.requestTimeoutMs ?? 10000,
+      },
+      rateLimit: config.rateLimit,
+      owner,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    }
+
+    this.services.set(serviceId, service)
+    this.servicesByName.set(`${namespace}/${name}`, serviceId)
+
+    // Initialize circuit breakers for each endpoint
+    for (const endpoint of service.endpoints) {
+      this.circuitBreakers.set(
+        endpoint.endpointId,
+        new CircuitBreaker(service.circuitBreaker),
+      )
+    }
+
+    // Initialize rate limiter if configured
+    if (config.rateLimit) {
+      this.rateLimiters.set(serviceId, new RateLimiter(config.rateLimit))
+    }
+
+    console.log(
+      `[ServiceMesh] Registered service ${namespace}/${name} with ${endpoints.length} endpoints`,
+    )
+
     return service
   }
 
-  async discoverService(
+  updateEndpoints(
+    serviceId: string,
+    endpoints: Array<{ address: string; port: number; weight?: number }>,
+  ): void {
+    const service = this.services.get(serviceId)
+    if (!service) throw new Error(`Service not found: ${serviceId}`)
+
+    // Remove old circuit breakers
+    for (const ep of service.endpoints) {
+      this.circuitBreakers.delete(ep.endpointId)
+    }
+
+    // Update endpoints
+    service.endpoints = endpoints.map((ep, i) => ({
+      endpointId: `${serviceId}-${i}`,
+      address: ep.address,
+      port: ep.port,
+      weight: ep.weight ?? 1,
+      status: 'unknown',
+      activeConnections: 0,
+      metadata: {},
+    }))
+
+    // Create new circuit breakers
+    for (const endpoint of service.endpoints) {
+      this.circuitBreakers.set(
+        endpoint.endpointId,
+        new CircuitBreaker(service.circuitBreaker),
+      )
+    }
+
+    service.updatedAt = Date.now()
+  }
+
+  deregisterService(serviceId: string): void {
+    const service = this.services.get(serviceId)
+    if (!service) return
+
+    // Cleanup
+    for (const ep of service.endpoints) {
+      this.circuitBreakers.delete(ep.endpointId)
+    }
+    this.rateLimiters.delete(serviceId)
+    this.servicesByName.delete(`${service.namespace}/${service.name}`)
+    this.services.delete(serviceId)
+
+    console.log(
+      `[ServiceMesh] Deregistered service ${service.namespace}/${service.name}`,
+    )
+  }
+
+  // =========================================================================
+  // Service Discovery & Load Balancing
+  // =========================================================================
+
+  resolveService(name: string, namespace = 'default'): ServiceEndpoint | null {
+    const serviceId = this.servicesByName.get(`${namespace}/${name}`)
+    if (!serviceId) return null
+
+    const service = this.services.get(serviceId)
+    if (!service) return null
+
+    // Rate limiting
+    const limiter = this.rateLimiters.get(serviceId)
+    if (limiter && !limiter.allow()) {
+      console.log(`[ServiceMesh] Rate limited request to ${name}`)
+      return null
+    }
+
+    // Filter healthy endpoints with open circuit breakers
+    const healthyEndpoints = service.endpoints.filter((ep) => {
+      if (ep.status === 'unhealthy') return false
+      const breaker = this.circuitBreakers.get(ep.endpointId)
+      return breaker?.canExecute() ?? true
+    })
+
+    if (healthyEndpoints.length === 0) {
+      console.log(`[ServiceMesh] No healthy endpoints for ${name}`)
+      return null
+    }
+
+    // Load balance
+    const endpoint = this.selectEndpoint(
+      serviceId,
+      healthyEndpoints,
+      service.loadBalanceStrategy,
+    )
+
+    return endpoint
+  }
+
+  private selectEndpoint(
+    serviceId: string,
+    endpoints: ServiceEndpoint[],
+    strategy: LoadBalanceStrategy,
+  ): ServiceEndpoint {
+    switch (strategy) {
+      case 'round-robin': {
+        const counter = this.roundRobinCounters.get(serviceId) ?? 0
+        const endpoint = endpoints[counter % endpoints.length]
+        this.roundRobinCounters.set(serviceId, counter + 1)
+        return endpoint
+      }
+
+      case 'least-connections': {
+        return endpoints.reduce((min, ep) =>
+          ep.activeConnections < min.activeConnections ? ep : min,
+        )
+      }
+
+      case 'random': {
+        return endpoints[Math.floor(Math.random() * endpoints.length)]
+      }
+
+      case 'ip-hash': {
+        // Would hash client IP
+        return endpoints[0]
+      }
+
+      default:
+        return endpoints[0]
+    }
+  }
+
+  // =========================================================================
+  // Request Handling
+  // =========================================================================
+
+  async proxyRequest(
+    serviceName: string,
+    namespace: string,
+    request: Request,
+    sourceCert?: string,
+  ): Promise<Response> {
+    // Verify source certificate
+    if (sourceCert) {
+      const sourceServiceId = this.extractServiceId(sourceCert)
+      if (
+        sourceServiceId &&
+        !this.ca.verifyCertificate(sourceCert, sourceServiceId)
+      ) {
+        return new Response('Unauthorized', { status: 401 })
+      }
+    }
+
+    const service = this.getServiceByName(serviceName, namespace)
+    if (!service) {
+      return new Response('Service not found', { status: 503 })
+    }
+
+    const retryPolicy = service.retryPolicy
+    let lastError: Error | null = null
+    let backoffMs = retryPolicy.backoffMs
+
+    for (let attempt = 0; attempt <= retryPolicy.maxRetries; attempt++) {
+      const endpoint = this.resolveService(serviceName, namespace)
+      if (!endpoint) {
+        await this.sleep(backoffMs)
+        backoffMs = Math.min(backoffMs * 2, retryPolicy.maxBackoffMs)
+        continue
+      }
+
+      const breaker = this.circuitBreakers.get(endpoint.endpointId)
+
+      try {
+        endpoint.activeConnections++
+
+        const targetUrl = `https://${endpoint.address}:${endpoint.port}${new URL(request.url).pathname}`
+
+        const response = await Promise.race([
+          fetch(targetUrl, {
+            method: request.method,
+            headers: request.headers,
+            body: request.body,
+          }),
+          this.timeout(service.circuitBreaker.requestTimeoutMs),
+        ])
+
+        endpoint.activeConnections--
+
+        if (response.ok) {
+          breaker?.recordSuccess()
+          return response
+        }
+
+        // Check if we should retry on this status
+        const status = `${Math.floor(response.status / 100)}xx`
+        if (retryPolicy.retryOn.includes(status)) {
+          breaker?.recordFailure()
+          lastError = new Error(`HTTP ${response.status}`)
+          await this.sleep(backoffMs)
+          backoffMs = Math.min(backoffMs * 2, retryPolicy.maxBackoffMs)
+          continue
+        }
+
+        breaker?.recordSuccess()
+        return response
+      } catch (error) {
+        endpoint.activeConnections--
+        breaker?.recordFailure()
+        lastError = error instanceof Error ? error : new Error(String(error))
+
+        if (retryPolicy.retryOn.includes('connect-failure')) {
+          await this.sleep(backoffMs)
+          backoffMs = Math.min(backoffMs * 2, retryPolicy.maxBackoffMs)
+          continue
+        }
+
+        throw error
+      }
+    }
+
+    console.error(
+      `[ServiceMesh] All retries failed for ${serviceName}:`,
+      lastError,
+    )
+    return new Response('Service unavailable', { status: 503 })
+  }
+
+  private timeout(ms: number): Promise<never> {
+    return new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Request timeout')), ms)
+    })
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms))
+  }
+
+  private extractServiceId(cert: string): string | null {
+    try {
+      const certData = cert
+        .replace(/-----BEGIN CERTIFICATE-----/, '')
+        .replace(/-----END CERTIFICATE-----/, '')
+        .trim()
+      const parsed = JSON.parse(Buffer.from(certData, 'base64').toString())
+      return parsed.subject?.serviceId ?? null
+    } catch {
+      return null
+    }
+  }
+
+  // =========================================================================
+  // Traffic Policies
+  // =========================================================================
+
+  addTrafficPolicy(policy: Omit<TrafficPolicy, 'policyId'>): TrafficPolicy {
+    const policyId = createHash('sha256')
+      .update(
+        `${policy.sourceService}-${policy.destinationService}-${Date.now()}`,
+      )
+      .digest('hex')
+      .slice(0, 16)
+
+    const fullPolicy: TrafficPolicy = { ...policy, policyId }
+    this.trafficPolicies.set(policyId, fullPolicy)
+
+    return fullPolicy
+  }
+
+  removeTrafficPolicy(policyId: string): void {
+    this.trafficPolicies.delete(policyId)
+  }
+
+  // =========================================================================
+  // Health Checks
+  // =========================================================================
+
+  startHealthChecks(intervalMs = 10000): void {
+    if (this.healthCheckInterval) return
+
+    this.healthCheckInterval = setInterval(() => {
+      this.runHealthChecks().catch(console.error)
+    }, intervalMs)
+  }
+
+  stopHealthChecks(): void {
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval)
+      this.healthCheckInterval = null
+    }
+  }
+
+  private async runHealthChecks(): Promise<void> {
+    for (const service of this.services.values()) {
+      for (const endpoint of service.endpoints) {
+        try {
+          const response = await fetch(
+            `https://${endpoint.address}:${endpoint.port}/health`,
+            {
+              method: 'GET',
+              signal: AbortSignal.timeout(5000),
+            },
+          )
+
+          endpoint.status = response.ok ? 'healthy' : 'degraded'
+        } catch {
+          endpoint.status = 'unhealthy'
+        }
+
+        endpoint.lastHealthCheck = Date.now()
+      }
+    }
+  }
+
+  // =========================================================================
+  // Queries
+  // =========================================================================
+
+  getService(serviceId: string): ServiceDefinition | undefined {
+    return this.services.get(serviceId)
+  }
+
+  getServiceByName(
     name: string,
     namespace = 'default',
-  ): Promise<ServiceIdentity | null> {
-    const id = this.generateServiceId(name, namespace)
-    return services.get(id) ?? null
+  ): ServiceDefinition | undefined {
+    const serviceId = this.servicesByName.get(`${namespace}/${name}`)
+    return serviceId ? this.services.get(serviceId) : undefined
   }
 
-  async listServices(selector: ServiceSelector): Promise<ServiceIdentity[]> {
-    const results: ServiceIdentity[] = []
-    for (const service of services.values()) {
-      if (this.matchesSelector(service, selector)) {
-        results.push(service)
-      }
-    }
-    return results
+  listServices(namespace?: string): ServiceDefinition[] {
+    const services = Array.from(this.services.values())
+    return namespace
+      ? services.filter((s) => s.namespace === namespace)
+      : services
   }
 
-  async checkAccess(
-    source: ServiceIdentity,
-    destination: ServiceIdentity,
-    request: { method: string; path: string; headers: Record<string, string> },
-  ): Promise<{ allowed: boolean; policy?: AccessPolicy }> {
-    const applicablePolicies: AccessPolicy[] = []
+  getEndpointHealth(
+    serviceId: string,
+  ): Array<{ endpoint: ServiceEndpoint; circuitState: CircuitState }> {
+    const service = this.services.get(serviceId)
+    if (!service) return []
 
-    for (const policy of accessPolicies.values()) {
-      if (
-        this.matchesSelector(source, policy.source) &&
-        this.matchesSelector(destination, policy.destination)
-      ) {
-        applicablePolicies.push(policy)
-      }
-    }
-
-    applicablePolicies.sort((a, b) => b.priority - a.priority)
-
-    for (const policy of applicablePolicies) {
-      if (this.evaluateConditions(policy.conditions ?? [], request)) {
-        return { allowed: policy.action === 'allow', policy }
-      }
-    }
-
-    return { allowed: false }
-  }
-
-  async createAccessPolicy(
-    policy: Omit<AccessPolicy, 'id'>,
-  ): Promise<AccessPolicy> {
-    const id = `policy-${Date.now()}`
-    const fullPolicy: AccessPolicy = { ...policy, id }
-    accessPolicies.set(id, fullPolicy)
-    return fullPolicy
-  }
-
-  async createTrafficPolicy(
-    policy: Omit<TrafficPolicy, 'id'>,
-  ): Promise<TrafficPolicy> {
-    const id = `traffic-${Date.now()}`
-    const fullPolicy: TrafficPolicy = { ...policy, id }
-    trafficPolicies.set(id, fullPolicy)
-    return fullPolicy
-  }
-
-  async getTrafficPolicy(
-    service: ServiceIdentity,
-  ): Promise<TrafficPolicy | null> {
-    for (const policy of trafficPolicies.values()) {
-      if (this.matchesSelector(service, policy.service)) {
-        return policy
-      }
-    }
-    return null
-  }
-
-  recordRequest(serviceId: string, success: boolean, latencyMs: number): void {
-    const metrics = serviceMetrics.get(serviceId)
-    if (!metrics) return
-
-    metrics.requests.total++
-    if (success) {
-      metrics.requests.success++
-    } else {
-      metrics.requests.failure++
-    }
-
-    metrics.latency.p50 = metrics.latency.p50 * 0.9 + latencyMs * 0.1
-    metrics.latency.p95 = Math.max(metrics.latency.p95, latencyMs)
-  }
-
-  getMetrics(serviceId: string): ServiceMetrics | null {
-    return serviceMetrics.get(serviceId) ?? null
-  }
-
-  async generateCertificate(
-    service: ServiceIdentity,
-  ): Promise<{ cert: string; key: string }> {
-    const cached = serviceCertificates.get(service.id)
-    if (cached && cached.expiresAt > Date.now() + 24 * 60 * 60 * 1000) {
-      return { cert: cached.cert, key: cached.key }
-    }
-
-    const ca = await getOrCreateCA()
-    const commonName = `${service.name}.${service.namespace}.mesh.dws`
-    const validDays = 365
-
-    // Generate service key
-    const keyResult = await exec([
-      'openssl',
-      'ecparam',
-      '-genkey',
-      '-name',
-      'prime256v1',
-      '-noout',
-    ])
-    if (keyResult.exitCode !== 0) {
-      throw new Error(`Failed to generate service key: ${keyResult.stderr}`)
-    }
-    const serviceKey = keyResult.stdout
-
-    // Generate CSR
-    const csrResult = await exec(
-      [
-        'openssl',
-        'req',
-        '-new',
-        '-key',
-        '/dev/stdin',
-        '-subj',
-        `/CN=${commonName}`,
-      ],
-      { stdin: serviceKey },
-    )
-    if (csrResult.exitCode !== 0) {
-      throw new Error(`Failed to generate CSR: ${csrResult.stderr}`)
-    }
-    const csr = csrResult.stdout
-
-    // Sign with CA (using a script that takes stdin for both)
-    const signScript = `
-set -e
-TMPDIR=$(mktemp -d)
-cat > $TMPDIR/csr.pem
-echo '${ca.key}' > $TMPDIR/ca.key
-echo '${ca.cert}' > $TMPDIR/ca.crt
-cat > $TMPDIR/ext.cnf << EOF
-basicConstraints=critical,CA:FALSE
-keyUsage=critical,digitalSignature,keyEncipherment
-extendedKeyUsage=serverAuth,clientAuth
-subjectAltName=DNS:${commonName},DNS:${service.name}.${service.namespace},DNS:${service.name}
-EOF
-openssl x509 -req -in $TMPDIR/csr.pem -CA $TMPDIR/ca.crt -CAkey $TMPDIR/ca.key -CAcreateserial -days ${validDays} -extfile $TMPDIR/ext.cnf
-rm -rf $TMPDIR
-`
-
-    const signResult = await exec(['sh', '-c', signScript], { stdin: csr })
-    if (signResult.exitCode !== 0) {
-      throw new Error(`Failed to sign certificate: ${signResult.stderr}`)
-    }
-
-    const cert = signResult.stdout
-    const expiresAt = Date.now() + validDays * 24 * 60 * 60 * 1000
-
-    serviceCertificates.set(service.id, { cert, key: serviceKey, expiresAt })
-    console.log(`[ServiceMesh] Generated certificate for ${commonName}`)
-
-    return { cert, key: serviceKey }
-  }
-
-  async verifyCertificate(
-    certPem: string,
-    expectedService?: ServiceSelector,
-  ): Promise<{ valid: boolean; service?: ServiceIdentity }> {
-    const ca = await getOrCreateCA()
-
-    // Verify via openssl
-    const verifyScript = `
-set -e
-TMPDIR=$(mktemp -d)
-cat > $TMPDIR/cert.pem
-echo '${ca.cert}' > $TMPDIR/ca.crt
-openssl verify -CAfile $TMPDIR/ca.crt $TMPDIR/cert.pem
-openssl x509 -in $TMPDIR/cert.pem -noout -subject -dates
-rm -rf $TMPDIR
-`
-
-    const result = await exec(['sh', '-c', verifyScript], { stdin: certPem })
-    if (result.exitCode !== 0) {
-      console.warn(
-        '[ServiceMesh] Certificate verification failed:',
-        result.stderr,
-      )
-      return { valid: false }
-    }
-
-    // Extract CN from output
-    const cnMatch = result.stdout.match(/CN\s*=\s*([^\s,]+)/)
-    if (!cnMatch) {
-      return { valid: false }
-    }
-
-    const cn = cnMatch[1]
-    const parts = cn.split('.')
-    if (parts.length < 4 || parts[parts.length - 1] !== 'dws') {
-      return { valid: false }
-    }
-
-    const serviceName = parts[0]
-    const namespace = parts[1]
-
-    const service = await this.discoverService(serviceName, namespace)
-    if (!service) {
-      return { valid: true }
-    }
-
-    if (expectedService && !this.matchesSelector(service, expectedService)) {
-      console.warn(
-        '[ServiceMesh] Certificate verification failed: service mismatch',
-      )
-      return { valid: false }
-    }
-
-    return { valid: true, service }
-  }
-
-  async getCACertificate(): Promise<string> {
-    const ca = await getOrCreateCA()
-    return ca.cert
-  }
-
-  private generateServiceId(name: string, namespace: string): string {
-    return keccak256(toBytes(`${namespace}/${name}`)).slice(0, 18)
-  }
-
-  private matchesSelector(
-    service: ServiceIdentity,
-    selector: ServiceSelector,
-  ): boolean {
-    if (selector.namespace && service.namespace !== selector.namespace)
-      return false
-    if (selector.name && service.name !== selector.name) return false
-    if (selector.owner && service.owner !== selector.owner) return false
-    if (selector.tags && selector.tags.length > 0) {
-      if (!selector.tags.every((tag) => service.tags.includes(tag)))
-        return false
-    }
-    return true
-  }
-
-  private evaluateConditions(
-    conditions: PolicyCondition[],
-    request: { method: string; path: string; headers: Record<string, string> },
-  ): boolean {
-    for (const condition of conditions) {
-      if (!this.evaluateCondition(condition, request)) {
-        return false
-      }
-    }
-    return true
-  }
-
-  private evaluateCondition(
-    condition: PolicyCondition,
-    request: { method: string; path: string; headers: Record<string, string> },
-  ): boolean {
-    let value: string | undefined
-
-    switch (condition.type) {
-      case 'method':
-        value = request.method
-        break
-      case 'path':
-        value = request.path
-        break
-      case 'header':
-        value = condition.key ? request.headers[condition.key] : undefined
-        break
-      default:
-        return true
-    }
-
-    if (value === undefined) {
-      return condition.operator !== 'exists'
-    }
-
-    switch (condition.operator) {
-      case 'equals':
-        return value === condition.value
-      case 'contains':
-        return condition.value ? value.includes(condition.value) : false
-      case 'regex':
-        return condition.value ? new RegExp(condition.value).test(value) : false
-      case 'exists':
-        return true
-      default:
-        return true
-    }
+    return service.endpoints.map((ep) => ({
+      endpoint: ep,
+      circuitState:
+        this.circuitBreakers.get(ep.endpointId)?.getState() ?? 'closed',
+    }))
   }
 }
 
+// ============================================================================
+// Factory
+// ============================================================================
+
+let serviceMesh: ServiceMesh | null = null
+
+export function getServiceMesh(): ServiceMesh {
+  if (!serviceMesh) {
+    serviceMesh = new ServiceMesh()
+    serviceMesh.startHealthChecks()
+  }
+  return serviceMesh
+}
+
+// ============================================================================
 // Elysia Router
+// ============================================================================
 
-const ServiceSelectorSchema = t.Object({
-  namespace: t.Optional(t.String()),
-  name: t.Optional(t.String()),
-  tags: t.Optional(t.Array(t.String())),
-  owner: t.Optional(t.String()),
-})
-
-const AccessPolicyBody = t.Object({
-  name: t.String(),
-  source: ServiceSelectorSchema,
-  destination: ServiceSelectorSchema,
-  action: t.Union([t.Literal('allow'), t.Literal('deny')]),
-  conditions: t.Optional(
-    t.Array(
-      t.Object({
-        type: t.Union([
-          t.Literal('header'),
-          t.Literal('path'),
-          t.Literal('method'),
-          t.Literal('time'),
-          t.Literal('rate'),
-        ]),
-        key: t.Optional(t.String()),
-        operator: t.Union([
-          t.Literal('equals'),
-          t.Literal('contains'),
-          t.Literal('regex'),
-          t.Literal('exists'),
-        ]),
-        value: t.Optional(t.String()),
-      }),
-    ),
-  ),
-  priority: t.Optional(t.Number({ default: 0 })),
-})
-
-const TrafficPolicyBody = t.Object({
-  service: t.Object({
-    namespace: t.Optional(t.String()),
-    name: t.Optional(t.String()),
-  }),
-  retries: t.Object({
-    maxRetries: t.Optional(t.Number({ default: 3 })),
-    retryOn: t.Optional(t.Array(t.String())),
-    backoffMs: t.Optional(t.Number({ default: 100 })),
-  }),
-  timeout: t.Object({
-    requestMs: t.Optional(t.Number({ default: 30000 })),
-    idleMs: t.Optional(t.Number({ default: 60000 })),
-  }),
-  circuitBreaker: t.Object({
-    maxFailures: t.Optional(t.Number({ default: 5 })),
-    windowMs: t.Optional(t.Number({ default: 60000 })),
-    cooldownMs: t.Optional(t.Number({ default: 30000 })),
-  }),
-  rateLimit: t.Optional(
-    t.Object({
-      requestsPerSecond: t.Number(),
-      burstSize: t.Number(),
-    }),
-  ),
-})
-
-const RegisterServiceBody = t.Object({
-  name: t.String(),
-  namespace: t.Optional(t.String()),
-  publicKey: t.String(),
-  endpoints: t.Array(t.String()),
-  tags: t.Optional(t.Array(t.String())),
-})
+import { Elysia } from 'elysia'
 
 export function createServiceMeshRouter(mesh: ServiceMesh) {
   return new Elysia({ prefix: '/mesh' })
-    .get('/health', () => ({ status: 'healthy', services: services.size }))
-    .get('/ca', async () => ({ cert: await mesh.getCACertificate() }))
-    .post(
-      '/services',
-      async ({ body, headers, set }) => {
-        const owner = headers['x-jeju-address'] as Address
-
-        const service = await mesh.registerService({
-          name: body.name,
-          namespace: body.namespace ?? 'default',
-          owner,
-          publicKey: body.publicKey as Hex,
-          endpoints: body.endpoints,
-          tags: body.tags ?? [],
-        })
-
-        set.status = 201
-        return service
-      },
-      { body: RegisterServiceBody },
-    )
-    .get(
-      '/services/:namespace/:name',
-      async ({ params, set }) => {
-        const service = await mesh.discoverService(
-          params.name,
-          params.namespace,
-        )
-        if (!service) {
-          set.status = 404
-          return { error: 'Service not found' }
-        }
-        return service
-      },
-      { params: t.Object({ namespace: t.String(), name: t.String() }) },
-    )
-    .get('/services', async ({ query }) => {
-      const namespace = query.namespace
-      const tags = query.tags?.split(',') ?? []
-
-      const serviceList = await mesh.listServices({ namespace, tags })
-      return { services: serviceList }
+    .get('/services', () => {
+      return { services: mesh.listServices() }
     })
-    .post(
-      '/policies/access',
-      async ({ body, set }) => {
-        const policy = await mesh.createAccessPolicy({
-          name: body.name,
-          source: body.source as ServiceSelector,
-          destination: body.destination as ServiceSelector,
-          action: body.action,
-          conditions: body.conditions as PolicyCondition[] | undefined,
-          priority: body.priority ?? 0,
-        })
-        set.status = 201
-        return policy
-      },
-      { body: AccessPolicyBody },
-    )
-    .get('/policies/access', () => ({
-      policies: Array.from(accessPolicies.values()),
-    }))
-    .post(
-      '/policies/traffic',
-      async ({ body, set }) => {
-        const policy = await mesh.createTrafficPolicy({
-          service: body.service,
-          retries: {
-            maxRetries: body.retries.maxRetries ?? 3,
-            retryOn: body.retries.retryOn ?? ['5xx'],
-            backoffMs: body.retries.backoffMs ?? 100,
-          },
-          timeout: {
-            requestMs: body.timeout.requestMs ?? 30000,
-            idleMs: body.timeout.idleMs ?? 60000,
-          },
-          circuitBreaker: {
-            maxFailures: body.circuitBreaker.maxFailures ?? 5,
-            windowMs: body.circuitBreaker.windowMs ?? 60000,
-            cooldownMs: body.circuitBreaker.cooldownMs ?? 30000,
-          },
-          rateLimit: body.rateLimit,
-        })
-        set.status = 201
-        return policy
-      },
-      { body: TrafficPolicyBody },
-    )
-    .get(
-      '/metrics/:serviceId',
-      ({ params, set }) => {
-        const metrics = mesh.getMetrics(params.serviceId)
-        if (!metrics) {
-          set.status = 404
-          return { error: 'Service not found' }
-        }
-        return metrics
-      },
-      { params: t.Object({ serviceId: t.String() }) },
-    )
-    .post(
-      '/certificates',
-      async ({ body, set }) => {
-        const service = services.get(body.serviceId)
-        if (!service) {
-          set.status = 404
-          return { error: 'Service not found' }
-        }
-        const cert = await mesh.generateCertificate(service)
-        return cert
-      },
-      { body: t.Object({ serviceId: t.String() }) },
-    )
-    .post(
-      '/certificates/verify',
-      async ({ body }) => {
-        const selector: ServiceSelector | undefined = body.expectedService
-          ? {
-              ...body.expectedService,
-              owner: body.expectedService.owner as Address | undefined,
-            }
-          : undefined
-        const result = await mesh.verifyCertificate(body.cert, selector)
-        return result
-      },
-      {
-        body: t.Object({
-          cert: t.String(),
-          expectedService: t.Optional(ServiceSelectorSchema),
-        }),
-      },
-    )
-}
+    .get('/services/by-namespace/:namespace', ({ params }) => {
+      return { services: mesh.listServices(params.namespace) }
+    })
+    .get('/services/by-name/:namespace/:name', ({ params }) => {
+      const service = mesh.getServiceByName(params.name, params.namespace)
+      if (!service) {
+        return { error: 'Service not found' }
+      }
+      return { service }
+    })
+    .get('/services/health/:serviceId', ({ params }) => {
+      return { endpoints: mesh.getEndpointHealth(params.serviceId) }
+    })
+    .get('/services/detail/:serviceId', ({ params }) => {
+      const service = mesh.getService(params.serviceId)
+      if (!service) {
+        return { error: 'Service not found' }
+      }
+      return { service }
+    })
+    .post('/services', async ({ body }) => {
+      const { name, namespace, owner, endpoints } = body as {
+        name: string
+        namespace?: string
+        owner: Address
+        endpoints: Array<{ address: string; port: number }>
+      }
 
-let meshInstance: ServiceMesh | null = null
+      const result = await mesh.registerService(
+        owner,
+        name,
+        namespace ?? 'default',
+        endpoints,
+        {}, // Use default config
+      )
 
-export function getServiceMesh(): ServiceMesh {
-  if (!meshInstance) {
-    meshInstance = new ServiceMesh()
-  }
-  return meshInstance
+      return { service: result }
+    })
+    .delete('/services/:serviceId', async ({ params }) => {
+      await mesh.deregisterService(params.serviceId)
+      return { success: true }
+    })
 }

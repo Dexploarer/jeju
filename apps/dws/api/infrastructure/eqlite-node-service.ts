@@ -52,15 +52,14 @@ export interface EQLiteNodeServiceConfig {
 }
 
 export interface EQLiteNodeInfo {
-  nodeId: Hex
+  nodeId: string
   role: EQLiteNodeRole
   status: EQLiteNodeStatus
   endpoint: string
   dwsAgentId?: bigint
   registryNodeId?: Hex
   databaseCount: number
-  totalQueries: number
-  mrEnclave?: Hex
+  mrEnclave?: string
 }
 
 export interface CreateDatabaseParams {
@@ -154,6 +153,14 @@ const EQLITE_REGISTRY_ABI = [
   },
 ] as const
 
+// Map EQLiteNodeRole string values to numeric values for on-chain
+const ROLE_TO_NUMBER: Record<EQLiteNodeRole, number> = {
+  [EQLiteNodeRole.BLOCK_PRODUCER]: 0,
+  [EQLiteNodeRole.MINER]: 1,
+  [EQLiteNodeRole.ADAPTER]: 2,
+  [EQLiteNodeRole.FULLNODE]: 3,
+}
+
 // ============================================================================
 // EQLite Node Service
 // ============================================================================
@@ -214,7 +221,6 @@ export class EQLiteNodeService {
     role: EQLiteNodeRole
     listenAddr?: string
     rpcPort?: number
-    p2pPort?: number
     stakeAmount: bigint
     region?: string
   }): Promise<EQLiteNodeInfo> {
@@ -306,7 +312,7 @@ export class EQLiteNodeService {
     this.startHeartbeatLoop(nodeId)
 
     return {
-      nodeId,
+      nodeId: state.nodeId as Hex,
       role: params.role,
       status: EQLiteNodeStatus.RUNNING,
       endpoint,
@@ -330,7 +336,7 @@ export class EQLiteNodeService {
   /**
    * Get node status
    */
-  async getNodeStatus(): Promise<EQLiteNodeInfo | null> {
+  getNodeStatus(): EQLiteNodeInfo | null {
     if (!this.nodeManager) return null
 
     const state = this.nodeManager.getState()
@@ -402,9 +408,12 @@ export class EQLiteNodeService {
       args: [databaseId, selectedMiners],
     })
 
+    const account = privateKeyToAccount(this.config.privateKey)
     const txHash = await this.walletClient.sendTransaction({
+      account,
       to: this.config.eqliteRegistryAddress,
       data,
+      chain: null,
     })
 
     await this.publicClient.waitForTransactionReceipt({ hash: txHash })
@@ -430,12 +439,15 @@ export class EQLiteNodeService {
     const data = encodeFunctionData({
       abi: EQLITE_REGISTRY_ABI,
       functionName: 'registerNode',
-      args: [nodeId, role, endpoint, stakeAmount],
+      args: [nodeId, ROLE_TO_NUMBER[role], endpoint, stakeAmount],
     })
 
+    const account = privateKeyToAccount(this.config.privateKey)
     const txHash = await this.walletClient.sendTransaction({
+      account,
       to: this.config.eqliteRegistryAddress,
       data,
+      chain: null,
     })
 
     await this.publicClient.waitForTransactionReceipt({ hash: txHash })
@@ -454,9 +466,12 @@ export class EQLiteNodeService {
       args: [nodeId, attestation, mrEnclave],
     })
 
+    const account = privateKeyToAccount(this.config.privateKey)
     const txHash = await this.walletClient.sendTransaction({
+      account,
       to: this.config.eqliteRegistryAddress,
       data,
+      chain: null,
     })
 
     await this.publicClient.waitForTransactionReceipt({ hash: txHash })
@@ -485,9 +500,12 @@ export class EQLiteNodeService {
       })
 
       try {
+        const account = privateKeyToAccount(this.config.privateKey)
         await this.walletClient.sendTransaction({
+          account,
           to: this.config.eqliteRegistryAddress,
           data,
+          chain: null,
         })
       } catch (err) {
         console.error(`[EQLite Service] Heartbeat failed:`, err)

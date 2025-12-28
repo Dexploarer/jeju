@@ -41,12 +41,6 @@ interface TestOptions {
   verbose?: boolean
   keepServices?: boolean
   skipLock?: boolean
-  /** @deprecated Infrastructure setup is now mandatory */
-  skipPreflight?: boolean
-  /** @deprecated Warmup is now mandatory */
-  skipWarmup?: boolean
-  /** @deprecated Bootstrap is now mandatory */
-  skipBootstrap?: boolean
   infraOnly?: boolean
   teardownOnly?: boolean
   force?: boolean

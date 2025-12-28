@@ -165,6 +165,26 @@ export function getChainId(network?: NetworkType): number {
   return getChainConfig(network).chainId
 }
 
+/**
+ * Get the localhost host address for building local service URLs
+ * Respects environment variables: HOST, RPC_HOST, LOCALHOST_HOST
+ * Defaults to '127.0.0.1' for consistency with existing codebase
+ * 
+ * @example
+ * ```ts
+ * const host = getLocalhostHost() // '127.0.0.1' or env override
+ * const url = `http://${host}:${port}`
+ * ```
+ */
+export function getLocalhostHost(): string {
+  return (
+    process.env.HOST ||
+    process.env.RPC_HOST ||
+    process.env.LOCALHOST_HOST ||
+    '127.0.0.1'
+  )
+}
+
 // Contracts
 
 /**

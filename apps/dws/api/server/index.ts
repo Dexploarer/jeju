@@ -9,6 +9,8 @@
  * - Distributed rate limiting
  */
 
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
 import { cors } from '@elysiajs/cors'
 import {
   CORE_PORTS,
@@ -46,12 +48,16 @@ import {
   startKeepaliveService,
   stopKeepaliveService,
 } from '../database'
+import { createDatabaseRoutes } from '../database/routes'
 import {
   createDecentralizedServices,
   type DistributedRateLimiter,
   type P2PCoordinator,
 } from '../decentralized'
-import { createAppDeployerRouter } from '../deploy'
+import {
+  createAppDeployerRouter,
+  createGitHubIntegrationRouter,
+} from '../deploy'
 import { createDNSRouter } from '../dns/routes'
 import { GitRepoManager } from '../git/repo-manager'
 import {
@@ -63,9 +69,12 @@ import {
   getIngressController,
   getServiceMesh,
 } from '../infrastructure'
+import { createKubernetesBridgeRouter } from '../infrastructure/kubernetes-bridge'
 import { banCheckMiddleware } from '../middleware/ban-check'
 import { createHuggingFaceRouter } from '../ml/huggingface-compat'
+import { createObservabilityRoutes } from '../observability/routes'
 import { PkgRegistryManager } from '../pkg/registry-manager'
+import { createSecurityRoutes } from '../security/routes'
 import { createServicesRouter, discoverExistingServices } from '../services'
 import { createBackendManager } from '../storage/backends'
 import type { ServiceHealth } from '../types'
@@ -454,15 +463,27 @@ app
         git: { status: 'healthy' },
         pkg: { status: 'healthy' },
         ci: { status: 'healthy' },
-        oauth3: {
-          status:
-            (serverConfig.oauth3AgentUrl ??
-            (typeof process !== 'undefined'
-              ? process.env.OAUTH3_AGENT_URL
-              : undefined))
-              ? 'available'
-              : 'not-configured',
-        },
+        oauth3: await (async () => {
+          const oauth3Url =
+            serverConfig.oauth3AgentUrl ??
+            process.env.OAUTH3_AGENT_URL ??
+            'http://localhost:4200'
+          try {
+            const response = await fetch(`${oauth3Url}/health`, {
+              signal: AbortSignal.timeout(2000),
+            })
+            if (response.ok) {
+              return { status: 'healthy', endpoint: oauth3Url }
+            }
+            return { status: 'unhealthy', endpoint: oauth3Url }
+          } catch {
+            return {
+              status: 'not-running',
+              endpoint: oauth3Url,
+              hint: 'Start OAuth3: cd apps/oauth3 && bun run dev',
+            }
+          }
+        })(),
         s3: { status: 'healthy' },
         workers: { status: 'healthy' },
         workerd: { status: 'healthy', runtime: 'V8 isolates' },
@@ -488,6 +509,18 @@ app
         faucet: {
           status: NETWORK !== 'mainnet' ? 'healthy' : 'disabled',
           description: 'Testnet-only JEJU token faucet',
+        },
+        database: {
+          status: 'healthy',
+          description: 'Managed EQLite and PostgreSQL',
+        },
+        security: {
+          status: 'healthy',
+          description: 'WAF, access control, secrets, audit',
+        },
+        observability: {
+          status: 'healthy',
+          description: 'Logs, metrics, traces, alerts',
         },
       },
       backends: { available: backends, health: backendHealth },
@@ -528,6 +561,9 @@ app
       'lb',
       'faucet',
       'deploy',
+      'database',
+      'security',
+      'observability',
     ],
     endpoints: {
       storage: '/storage/*',
@@ -563,6 +599,9 @@ app
       indexer: '/indexer/*',
       faucet: '/faucet/*',
       deploy: '/deploy/*',
+      database: '/database/*',
+      security: '/security/*',
+      observability: '/observability/*',
     },
   }))
 
@@ -620,8 +659,20 @@ app.use(createServicesRouter())
 // App deployment - Heroku/EKS-like experience
 app.use(createAppDeployerRouter())
 
+// GitHub integration - Vercel-like CI/CD
+app.use(createGitHubIntegrationRouter())
+
 // Indexer proxy for decentralized indexer access
 app.use(createIndexerRouter())
+
+// Managed database services (EQLite + PostgreSQL)
+app.use(createDatabaseRoutes(backendManager))
+
+// Security services (WAF, access control, secrets, audit)
+app.use(createSecurityRoutes())
+
+// Observability services (logs, metrics, traces, alerts)
+app.use(createObservabilityRoutes('dws'))
 
 // Data Availability Layer
 const daConfig = {
@@ -665,6 +716,7 @@ app.use(createHelmProviderRouter())
 app.use(createTerraformProviderRouter())
 app.use(createIngressRouter(getIngressController()))
 app.use(createServiceMeshRouter(getServiceMesh()))
+app.use(createKubernetesBridgeRouter())
 
 // Serve frontend - from IPFS when configured, fallback to local
 app.get('/app', async ({ set }) => {
@@ -835,6 +887,21 @@ app.get('/.well-known/agent-card.json', () => {
         endpoint: `${baseUrl}/cache`,
         description: 'Decentralized serverless cache with TEE support',
       },
+      {
+        name: 'database',
+        endpoint: `${baseUrl}/database`,
+        description: 'Managed EQLite and PostgreSQL databases',
+      },
+      {
+        name: 'security',
+        endpoint: `${baseUrl}/security`,
+        description: 'WAF, RBAC, secrets management, audit logging',
+      },
+      {
+        name: 'observability',
+        endpoint: `${baseUrl}/observability`,
+        description: 'Logs, metrics, traces, and alerting',
+      },
     ],
     a2aEndpoint: `${baseUrl}/a2a`,
     mcpEndpoint: `${baseUrl}/mcp`,
@@ -886,32 +953,8 @@ initRegistry({ eqliteUrl: EQLITE_URL, databaseId: AGENTS_DB_ID }).catch(
   },
 )
 
-// Initialize agent executor with workerd
+// Agent executor - initialized after server starts (see below)
 const workerdExecutor = new WorkerdExecutor(backendManager)
-workerdExecutor
-  .initialize()
-  .then(() => {
-    initExecutor(workerdExecutor, {
-      // Local service URLs - deployment-specific configuration
-      inferenceUrl:
-        serverConfig.inferenceUrl ??
-        (typeof process !== 'undefined'
-          ? process.env.DWS_INFERENCE_URL
-          : undefined) ??
-        'http://127.0.0.1:4030/compute',
-      kmsUrl:
-        serverConfig.kmsUrl ??
-        (typeof process !== 'undefined'
-          ? process.env.DWS_KMS_URL
-          : undefined) ??
-        'http://127.0.0.1:4030/kms',
-      eqliteUrl: EQLITE_URL,
-    })
-    console.log('[DWS] Agent executor initialized')
-  })
-  .catch((err) => {
-    console.warn('[DWS] Agent executor init failed:', err.message)
-  })
 
 let server: ReturnType<typeof Bun.serve> | null = null
 
@@ -996,8 +1039,7 @@ if (import.meta.main) {
   })
 
   configureOAuth3RouterConfig({
-    agentUrl:
-      typeof process !== 'undefined' ? process.env.OAUTH3_AGENT_URL : undefined,
+    agentUrl: process.env.OAUTH3_AGENT_URL ?? 'http://localhost:4200',
   })
 
   configureProxyRouterConfig({
@@ -1087,17 +1129,16 @@ if (import.meta.main) {
   }
 
   // Initialize local CDN for devnet (serves all Jeju app frontends)
+  const appsDir =
+    serverConfig.appsDir ??
+    (typeof process !== 'undefined' ? process.env.JEJU_APPS_DIR : undefined) ??
+    join(import.meta.dir, '../../../../apps') // Default to monorepo apps directory
   if (
-    !isProduction ||
-    serverConfig.devnet ||
-    (typeof process !== 'undefined' && process.env.DEVNET === 'true')
+    (!isProduction ||
+      serverConfig.devnet ||
+      (typeof process !== 'undefined' && process.env.DEVNET === 'true')) &&
+    existsSync(appsDir)
   ) {
-    const appsDir =
-      serverConfig.appsDir ??
-      (typeof process !== 'undefined'
-        ? process.env.JEJU_APPS_DIR
-        : undefined) ??
-      '/apps'
     initializeLocalCDN({ appsDir, cacheEnabled: true })
       .then(() => {
         const localCDN = getLocalCDNServer()
@@ -1267,6 +1308,31 @@ if (import.meta.main) {
       })
       .catch(console.error)
   }
+
+  // Initialize agent executor now that server is ready
+  workerdExecutor
+    .initialize()
+    .then(() => {
+      initExecutor(workerdExecutor, {
+        inferenceUrl:
+          serverConfig.inferenceUrl ??
+          (typeof process !== 'undefined'
+            ? process.env.DWS_INFERENCE_URL
+            : undefined) ??
+          `http://127.0.0.1:${PORT}/compute`,
+        kmsUrl:
+          serverConfig.kmsUrl ??
+          (typeof process !== 'undefined'
+            ? process.env.DWS_KMS_URL
+            : undefined) ??
+          `http://127.0.0.1:${PORT}/kms`,
+        eqliteUrl: EQLITE_URL,
+      })
+      console.log('[DWS] Agent executor initialized')
+    })
+    .catch((err) => {
+      console.warn('[DWS] Agent executor init failed:', err.message)
+    })
 
   // Discover existing DWS-managed containers on startup
   discoverExistingServices()

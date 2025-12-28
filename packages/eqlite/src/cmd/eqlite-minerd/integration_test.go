@@ -42,10 +42,8 @@ import (
 var (
 	baseDir                   = utils.GetProjectSrcDir()
 	testWorkingDir            = FJ(baseDir, "./test/")
-	testnetConfDir            = FJ(baseDir, "./conf/testnet/")
-	logDir                    = FJ(testWorkingDir, "./log/")
-	testGasPrice       uint64 = 1
-	testAdvancePayment uint64 = 20000000
+	testnetConfDir = FJ(baseDir, "./conf/testnet/")
+	logDir         = FJ(testWorkingDir, "./log/")
 
 	nodeCmds []*utils.CMD
 
@@ -349,6 +347,9 @@ func stopNodes() {
 }
 
 func TestFullProcess(t *testing.T) {
+	if os.Getenv("EQLITE_INTEGRATION_TEST") != "1" {
+		t.Skip("Skipping: requires external block producer services. Set EQLITE_INTEGRATION_TEST=1 to run")
+	}
 	log.SetLevel(log.DebugLevel)
 
 	Convey("test full process", t, func(c C) {
@@ -598,36 +599,6 @@ func TestFullProcess(t *testing.T) {
 
 		// TODO(lambda): Drop database
 	})
-}
-
-func waitProfileChecking(ctx context.Context, period time.Duration, dbID proto.DatabaseID,
-	checkFunc func(profile *types.SQLChainProfile) bool) (err error) {
-	var (
-		ticker = time.NewTicker(period)
-		req    = &types.QuerySQLChainProfileReq{}
-		resp   = &types.QuerySQLChainProfileResp{}
-	)
-	defer ticker.Stop()
-	req.DBID = dbID
-
-	for {
-		select {
-		case <-ticker.C:
-			err = rpc.RequestBP(route.MCCQuerySQLChainProfile.String(), req, resp)
-			if err == nil {
-				if checkFunc(&resp.Profile) {
-					return
-				}
-				log.WithFields(log.Fields{
-					"dbID":        resp.Profile.Address,
-					"num_of_user": len(resp.Profile.Users),
-				}).Debugf("get profile but failed to check in waitProfileChecking")
-			}
-		case <-ctx.Done():
-			err = ctx.Err()
-			return
-		}
-	}
 }
 
 const ROWSTART = 1000000

@@ -335,8 +335,8 @@ func (s *metaState) updateProviderList(tx *types.ProvideService, height uint32) 
 
 	// Delete previous provider object if exists
 	if _, loaded := s.loadProviderObject(sender); loaded {
-		s.deleteProviderObject(sender)
-	}
+			s.deleteProviderObject(sender)
+		}
 
 	// Register provider metadata (staking verified on-chain)
 	pp := types.ProviderProfile{

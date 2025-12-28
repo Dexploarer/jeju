@@ -79,7 +79,7 @@ export class SecureShare {
    *
    * After calling this, the share cannot be used.
    */
-  zero(): void {
+  secureZero(): void {
     if (this.isZeroed) return
 
     // Fill with zeros
@@ -177,7 +177,7 @@ export class SecureShareMap {
     // Zero existing share if present
     const existing = this.shares.get(key)
     if (existing) {
-      existing.zero()
+      existing.secureZero()
     }
     this.shares.set(key, share)
   }
@@ -193,7 +193,7 @@ export class SecureShareMap {
   delete(key: string): boolean {
     const share = this.shares.get(key)
     if (share) {
-      share.zero()
+      share.secureZero()
       return this.shares.delete(key)
     }
     return false
@@ -204,7 +204,7 @@ export class SecureShareMap {
    */
   clear(): void {
     for (const share of this.shares.values()) {
-      share.zero()
+      share.secureZero()
     }
     this.shares.clear()
   }
@@ -250,7 +250,7 @@ export function generateSecurePolynomial(
     const coeff = SecureShare.random()
     // Reduce modulo curve order
     const reduced = SecureShare.fromBigInt(coeff.toBigInt() % modulus)
-    coeff.zero() // Zero the unreduced value
+    coeff.secureZero() // Zero the unreduced value
     coefficients.push(reduced)
   }
 
@@ -289,6 +289,6 @@ export function evaluateSecurePolynomial(
  */
 export function zeroPolynomial(coefficients: SecureShare[]): void {
   for (const coeff of coefficients) {
-    coeff.zero()
+    coeff.secureZero()
   }
 }

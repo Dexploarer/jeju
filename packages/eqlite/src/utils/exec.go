@@ -21,10 +21,10 @@ type CMD struct {
 	LogFD   *os.File
 }
 
-// GetProjectSrcDir gets the src code root.
+// GetProjectSrcDir gets the project root (parent of src).
 func GetProjectSrcDir() string {
 	_, testFile, _, _ := runtime.Caller(0)
-	return FJ(filepath.Dir(testFile), "../")
+	return FJ(filepath.Dir(testFile), "../../")
 }
 
 // RunCommand runs a command and capture its output to a log file,

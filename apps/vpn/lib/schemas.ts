@@ -91,11 +91,11 @@ export const ContributionStatusSchema = z
   })
   .strict()
   .refine((data) => data.period_end > data.period_start, {
-    error: 'Period end must be after period start',
+    message: 'Period end must be after period start',
     path: ['period_end'],
   })
   .refine((data) => data.bytes_contributed <= data.contribution_cap, {
-    error: 'Bytes contributed cannot exceed cap',
+    message: 'Bytes contributed cannot exceed cap',
     path: ['bytes_contributed'],
   })
 
@@ -150,8 +150,67 @@ export const DWSStateSchema = z
   })
   .strict()
 
+// Residential Proxy / Bandwidth Sharing Types (Grass-style network)
+
+export const ResidentialProxyNodeTypeSchema = z.enum([
+  'unknown',
+  'datacenter',
+  'residential',
+  'mobile',
+])
+
+export const ResidentialProxySettingsSchema = z
+  .object({
+    enabled: z.boolean(),
+    node_type: ResidentialProxyNodeTypeSchema,
+    max_bandwidth_mbps: z.number().min(1).max(10000),
+    max_concurrent_connections: z.number().int().min(1).max(1000),
+    allowed_ports: z.array(z.number().int().min(1).max(65535)),
+    blocked_domains: z.array(z.string()),
+    schedule_enabled: z.boolean(),
+    schedule_start_hour: z.number().int().min(0).max(23).optional(),
+    schedule_end_hour: z.number().int().min(0).max(23).optional(),
+  })
+  .strict()
+
+export const ResidentialProxyStatusSchema = z
+  .object({
+    is_registered: z.boolean(),
+    is_active: z.boolean(),
+    node_address: z.string().optional(),
+    stake_amount: z.string(),
+    total_bytes_shared: z.string(),
+    total_sessions: z.number().int().nonnegative(),
+    total_earnings: z.string(),
+    pending_rewards: z.string(),
+    current_connections: z.number().int().nonnegative(),
+    uptime_score: z.number().min(0).max(10000),
+    success_rate: z.number().min(0).max(10000),
+    coordinator_connected: z.boolean(),
+  })
+  .strict()
+
+export const ResidentialProxyStatsSchema = z
+  .object({
+    bytes_shared_today: z.string(),
+    bytes_shared_week: z.string(),
+    bytes_shared_month: z.string(),
+    sessions_today: z.number().int().nonnegative(),
+    sessions_week: z.number().int().nonnegative(),
+    avg_session_duration_ms: z.number().nonnegative(),
+    peak_bandwidth_mbps: z.number().nonnegative(),
+    earnings_today: z.string(),
+    earnings_week: z.string(),
+    earnings_month: z.string(),
+  })
+  .strict()
+
 export type ContributionStatus = z.infer<typeof ContributionStatusSchema>
 export type ContributionStats = z.infer<typeof ContributionStatsSchema>
 export type ContributionSettings = z.infer<typeof ContributionSettingsSchema>
 export type BandwidthState = z.infer<typeof BandwidthStateSchema>
 export type DWSState = z.infer<typeof DWSStateSchema>
+export type ResidentialProxyNodeType = z.infer<typeof ResidentialProxyNodeTypeSchema>
+export type ResidentialProxySettings = z.infer<typeof ResidentialProxySettingsSchema>
+export type ResidentialProxyStatus = z.infer<typeof ResidentialProxyStatusSchema>
+export type ResidentialProxyStats = z.infer<typeof ResidentialProxyStatsSchema>

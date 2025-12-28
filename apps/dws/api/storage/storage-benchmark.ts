@@ -19,9 +19,10 @@ import type { Address, Hex } from 'viem'
 import { keccak256, toBytes } from 'viem'
 import { z } from 'zod'
 
-// Helper to convert Buffer to Uint8Array for fetch compatibility
-function bufferToUint8Array(buffer: Buffer): Uint8Array {
-  return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength)
+// Helper to convert Buffer to Blob for fetch compatibility
+function bufferToBlob(buffer: Buffer): Blob {
+  const uint8 = new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength)
+  return new Blob([uint8 as BlobPart])
 }
 
 // ============ Types ============
@@ -620,40 +621,75 @@ export class StorageBenchmarkService {
 
     const endTime = Date.now() + testDuration
 
-    // Simulate IOPS testing
+    // Run IOPS test - measure actual operations per second
+    let consecutiveErrors = 0
+    const maxConsecutiveErrors = 5
+
     while (Date.now() < endTime) {
-      // Write
+      // Write operation
       const writeResponse = await fetch(`${endpoint}/benchmark/write`, {
         method: 'POST',
-        body: bufferToUint8Array(testData),
+        body: bufferToBlob(testData),
         signal: AbortSignal.timeout(5000),
-      }).catch(() => null)
+      }).catch((err) => {
+        console.debug(`[StorageBenchmark] IOPS write error: ${err instanceof Error ? err.message : String(err)}`)
+        return null
+      })
 
       if (writeResponse?.ok) {
         writes4k++
+        consecutiveErrors = 0
+      } else {
+        consecutiveErrors++
       }
 
-      // Read
+      // Read operation
       const readResponse = await fetch(`${endpoint}/benchmark/read`, {
         signal: AbortSignal.timeout(5000),
-      }).catch(() => null)
+      }).catch((err) => {
+        console.debug(`[StorageBenchmark] IOPS read error: ${err instanceof Error ? err.message : String(err)}`)
+        return null
+      })
 
       if (readResponse?.ok) {
         reads4k++
+        consecutiveErrors = 0
+      } else {
+        consecutiveErrors++
       }
 
-      // Small delay to not overwhelm
+      // Stop early if provider is consistently failing
+      if (consecutiveErrors >= maxConsecutiveErrors) {
+        console.warn(`[StorageBenchmark] Stopping IOPS test early - ${consecutiveErrors} consecutive errors`)
+        break
+      }
+
+      // Small delay to prevent overwhelming the endpoint
       await new Promise((r) => setTimeout(r, 10))
     }
 
     const durationSec = testDuration / 1000
 
+    // Calculate actual IOPS - larger blocks (64K) typically achieve lower IOPS than small (4K)
+    // because throughput is limited. Use measured values directly for 4K.
+    const read4kIops = Math.round(reads4k / durationSec)
+    const write4kIops = Math.round(writes4k / durationSec)
+
+    // For 64K operations, IOPS is typically lower due to larger block transfer time
+    // This is an approximation - in production, would run separate 64K tests
+    const blockSizeRatio64k = 4 / 64 // 4K vs 64K
+    const read64kIops = Math.round(read4kIops * Math.sqrt(blockSizeRatio64k))
+    const write64kIops = Math.round(write4kIops * Math.sqrt(blockSizeRatio64k))
+
+    // Mixed workload: weighted average of reads (70%) and writes (30%)
+    const mixedIops = Math.round((read4kIops * 0.7) + (write4kIops * 0.3))
+
     return {
-      randomRead4k: Math.round(reads4k / durationSec),
-      randomWrite4k: Math.round(writes4k / durationSec),
-      randomRead64k: Math.round((reads4k / durationSec) * 0.5), // Estimate
-      randomWrite64k: Math.round((writes4k / durationSec) * 0.5),
-      mixedReadWrite: Math.round((reads4k + writes4k) / durationSec * 0.7),
+      randomRead4k: read4kIops,
+      randomWrite4k: write4kIops,
+      randomRead64k: read64kIops,
+      randomWrite64k: write64kIops,
+      mixedReadWrite: mixedIops,
     }
   }
 
@@ -665,7 +701,7 @@ export class StorageBenchmarkService {
     const writeStart = Date.now()
     const writeResponse = await fetch(`${endpoint}/benchmark/write-large`, {
       method: 'POST',
-      body: bufferToUint8Array(testData),
+      body: bufferToBlob(testData),
       signal: AbortSignal.timeout(this.config.throughputTestDurationMs),
     }).catch(() => null)
 
@@ -686,11 +722,46 @@ export class StorageBenchmarkService {
     const readDuration = Date.now() - readStart
     const readSpeed = readData ? (readData.byteLength / 1024 / 1024) / (readDuration / 1000) : 0
 
+    // Run parallel test with multiple concurrent streams
+    const parallelStreams = 4
+    let parallelReadTotal = 0
+    let parallelWriteTotal = 0
+
+    const parallelReadStart = Date.now()
+    const readPromises = Array.from({ length: parallelStreams }, () =>
+      fetch(`${endpoint}/benchmark/read-large`, {
+        signal: AbortSignal.timeout(this.config.throughputTestDurationMs),
+      }).then(r => r?.ok ? r.arrayBuffer() : null).catch(() => null)
+    )
+    const readResults = await Promise.all(readPromises)
+    const parallelReadDuration = Date.now() - parallelReadStart
+    for (const result of readResults) {
+      if (result) parallelReadTotal += result.byteLength
+    }
+    const parallelReadSpeed = parallelReadDuration > 0 
+      ? (parallelReadTotal / 1024 / 1024) / (parallelReadDuration / 1000) 
+      : 0
+
+    const parallelWriteStart = Date.now()
+    const writePromises = Array.from({ length: parallelStreams }, () =>
+      fetch(`${endpoint}/benchmark/write-large`, {
+        method: 'POST',
+        body: bufferToBlob(testData),
+        signal: AbortSignal.timeout(this.config.throughputTestDurationMs),
+      }).then(r => r?.ok ? 1 : 0).catch(() => 0)
+    )
+    const writeResults = await Promise.all(writePromises)
+    const parallelWriteDuration = Date.now() - parallelWriteStart
+    const successfulWrites = writeResults.reduce((a, b) => a + b, 0)
+    const parallelWriteSpeed = parallelWriteDuration > 0 && successfulWrites > 0
+      ? (testData.length * successfulWrites / 1024 / 1024) / (parallelWriteDuration / 1000)
+      : 0
+
     return {
       sequentialRead: Math.round(readSpeed),
       sequentialWrite: Math.round(writeSpeed),
-      parallelRead: Math.round(readSpeed * 0.8), // Estimate
-      parallelWrite: Math.round(writeSpeed * 0.8),
+      parallelRead: Math.round(parallelReadSpeed),
+      parallelWrite: Math.round(parallelWriteSpeed),
     }
   }
 
@@ -702,22 +773,57 @@ export class StorageBenchmarkService {
     const readLatencies: number[] = []
     const writeLatencies: number[] = []
 
+    let errors = 0
     for (let i = 0; i < samples; i++) {
       // Write latency
       const writeStart = Date.now()
-      await fetch(`${endpoint}/benchmark/write`, {
+      const writeResponse = await fetch(`${endpoint}/benchmark/write`, {
         method: 'POST',
-        body: testData.slice(0, 1024), // 1KB
+        body: bufferToBlob(testData.slice(0, 1024)), // 1KB
         signal: AbortSignal.timeout(5000),
-      }).catch(() => null)
-      writeLatencies.push(Date.now() - writeStart)
+      }).catch((err) => {
+        console.debug(`[StorageBenchmark] Latency write error: ${err instanceof Error ? err.message : String(err)}`)
+        return null
+      })
+      const writeLatency = Date.now() - writeStart
+      
+      if (writeResponse?.ok) {
+        writeLatencies.push(writeLatency)
+      } else {
+        errors++
+      }
 
       // Read latency
       const readStart = Date.now()
-      await fetch(`${endpoint}/benchmark/read?size=1024`, {
+      const readResponse = await fetch(`${endpoint}/benchmark/read?size=1024`, {
         signal: AbortSignal.timeout(5000),
-      }).catch(() => null)
-      readLatencies.push(Date.now() - readStart)
+      }).catch((err) => {
+        console.debug(`[StorageBenchmark] Latency read error: ${err instanceof Error ? err.message : String(err)}`)
+        return null
+      })
+      const readLatency = Date.now() - readStart
+      
+      if (readResponse?.ok) {
+        readLatencies.push(readLatency)
+      } else {
+        errors++
+      }
+    }
+
+    if (errors > samples) {
+      console.warn(`[StorageBenchmark] High error rate in latency test: ${errors}/${samples * 2} operations failed`)
+    }
+
+    // Handle edge case of no successful operations
+    if (readLatencies.length === 0 || writeLatencies.length === 0) {
+      console.warn(`[StorageBenchmark] Insufficient latency samples: reads=${readLatencies.length}, writes=${writeLatencies.length}`)
+      return {
+        firstByte: 9999,
+        averageRead: 9999,
+        averageWrite: 9999,
+        p99Read: 9999,
+        p99Write: 9999,
+      }
     }
 
     readLatencies.sort((a, b) => a - b)
@@ -725,14 +831,17 @@ export class StorageBenchmarkService {
 
     const avgRead = readLatencies.reduce((a, b) => a + b, 0) / readLatencies.length
     const avgWrite = writeLatencies.reduce((a, b) => a + b, 0) / writeLatencies.length
-    const p99Index = Math.floor(samples * 0.99)
+    
+    // Calculate P99 index safely
+    const p99ReadIndex = Math.min(Math.floor(readLatencies.length * 0.99), readLatencies.length - 1)
+    const p99WriteIndex = Math.min(Math.floor(writeLatencies.length * 0.99), writeLatencies.length - 1)
 
     return {
-      firstByte: readLatencies[0] ?? 0,
+      firstByte: readLatencies[0],
       averageRead: Math.round(avgRead * 100) / 100,
       averageWrite: Math.round(avgWrite * 100) / 100,
-      p99Read: readLatencies[p99Index] ?? 0,
-      p99Write: writeLatencies[p99Index] ?? 0,
+      p99Read: readLatencies[p99ReadIndex],
+      p99Write: writeLatencies[p99WriteIndex],
     }
   }
 
@@ -741,10 +850,10 @@ export class StorageBenchmarkService {
     testData: Buffer,
     expectedHash: Hex,
   ): Promise<StorageBenchmarkResults['durability']> {
-    // Write data
+    // Write data with hash header
     const writeResponse = await fetch(`${endpoint}/benchmark/durability-write`, {
       method: 'POST',
-      body: testData,
+      body: bufferToBlob(testData),
       headers: { 'X-Expected-Hash': expectedHash },
       signal: AbortSignal.timeout(30000),
     }).catch(() => null)
@@ -757,6 +866,16 @@ export class StorageBenchmarkService {
       }
     }
 
+    // Try to get replication info from write response
+    let replicationFactor = 1
+    const replicationHeader = writeResponse.headers.get('X-Replication-Factor')
+    if (replicationHeader) {
+      const parsed = parseInt(replicationHeader, 10)
+      if (!isNaN(parsed) && parsed > 0) {
+        replicationFactor = parsed
+      }
+    }
+
     // Read back and verify
     const readResponse = await fetch(`${endpoint}/benchmark/durability-read`, {
       signal: AbortSignal.timeout(30000),
@@ -765,39 +884,94 @@ export class StorageBenchmarkService {
     if (!readResponse?.ok) {
       return {
         checksumVerified: false,
-        replicationFactor: 1,
+        replicationFactor,
         dataIntegrityScore: 50,
       }
     }
 
     const readData = await readResponse.arrayBuffer()
     const actualHash = keccak256(new Uint8Array(readData))
+    const checksumVerified = actualHash === expectedHash
+
+    // Calculate integrity score based on checksum and replication
+    let dataIntegrityScore = 0
+    if (checksumVerified) {
+      // Base 70 points for correct checksum
+      dataIntegrityScore = 70
+      // Additional points for replication (up to 30 more)
+      dataIntegrityScore += Math.min(replicationFactor * 10, 30)
+    }
 
     return {
-      checksumVerified: actualHash === expectedHash,
-      replicationFactor: 1, // Would query from provider
-      dataIntegrityScore: actualHash === expectedHash ? 100 : 0,
+      checksumVerified,
+      replicationFactor,
+      dataIntegrityScore,
     }
   }
 
   private async testNetwork(
     endpoint: string,
   ): Promise<StorageBenchmarkResults['network']> {
-    // Ping test
+    // Latency test - multiple pings
     const pings: number[] = []
-    for (let i = 0; i < 10; i++) {
+    let failedPings = 0
+    const totalPings = 20
+
+    for (let i = 0; i < totalPings; i++) {
       const start = Date.now()
-      await fetch(`${endpoint}/health`, { signal: AbortSignal.timeout(5000) }).catch(() => null)
-      pings.push(Date.now() - start)
+      const response = await fetch(`${endpoint}/health`, { signal: AbortSignal.timeout(5000) }).catch(() => null)
+      const latency = Date.now() - start
+
+      if (response?.ok) {
+        pings.push(latency)
+      } else {
+        failedPings++
+      }
     }
 
-    const avgLatency = pings.reduce((a, b) => a + b, 0) / pings.length
+    const avgLatency = pings.length > 0 ? pings.reduce((a, b) => a + b, 0) / pings.length : 9999
+    const packetLoss = (failedPings / totalPings) * 100
 
-    // Bandwidth estimate from throughput tests
+    // Bandwidth test - download a known-size payload
+    let bandwidthMbps = 0
+    const bandwidthTestSize = 1024 * 1024 // 1MB
+    const bandwidthTestData = Buffer.alloc(bandwidthTestSize)
+
+    // Upload test
+    const uploadStart = Date.now()
+    const uploadResponse = await fetch(`${endpoint}/benchmark/bandwidth-test`, {
+      method: 'POST',
+      body: bufferToBlob(bandwidthTestData),
+      signal: AbortSignal.timeout(30000),
+    }).catch(() => null)
+    const uploadDuration = Date.now() - uploadStart
+
+    if (uploadResponse?.ok && uploadDuration > 0) {
+      // Calculate upload bandwidth in Mbps (megabits per second)
+      const uploadMbps = (bandwidthTestSize * 8 / 1024 / 1024) / (uploadDuration / 1000)
+      
+      // Download test
+      const downloadStart = Date.now()
+      const downloadResponse = await fetch(`${endpoint}/benchmark/bandwidth-test?size=${bandwidthTestSize}`, {
+        signal: AbortSignal.timeout(30000),
+      }).catch(() => null)
+      
+      if (downloadResponse?.ok) {
+        const data = await downloadResponse.arrayBuffer()
+        const downloadDuration = Date.now() - downloadStart
+        const downloadMbps = (data.byteLength * 8 / 1024 / 1024) / (downloadDuration / 1000)
+        
+        // Use max of upload/download as bandwidth
+        bandwidthMbps = Math.round(Math.max(uploadMbps, downloadMbps))
+      } else {
+        bandwidthMbps = Math.round(uploadMbps)
+      }
+    }
+
     return {
-      bandwidthMbps: 1000, // Would measure properly
+      bandwidthMbps,
       latencyMs: Math.round(avgLatency),
-      packetLossPercent: 0,
+      packetLossPercent: Math.round(packetLoss * 100) / 100,
     }
   }
 
@@ -863,7 +1037,7 @@ export class StorageBenchmarkService {
 
   private updateReputation(
     providerId: string,
-    results: StorageBenchmarkResults,
+    _results: StorageBenchmarkResults,
     deviationPercent: number,
   ): void {
     let reputation = providerReputations.get(providerId)

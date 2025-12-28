@@ -52,10 +52,26 @@ var (
 	DefaultConfigFile = "~/.eqlite/config.yaml"
 )
 
+var driverRegistered bool
+
 func init() {
+	registerDriver()
+}
+
+func registerDriver() {
+	if driverRegistered {
+		return
+	}
 	d := new(eqliteDriver)
+	// Use recover to handle case where driver is already registered
+	defer func() {
+		if r := recover(); r != nil {
+			log.WithField("error", r).Debug("Driver already registered")
+		}
+	}()
 	sql.Register(DBScheme, d)
 	sql.Register(DBSchemeAlias, d)
+	driverRegistered = true
 	log.Debug("EQLite driver registered.")
 }
 

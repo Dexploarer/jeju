@@ -25,7 +25,6 @@
 
 import { Cron } from 'croner'
 import type { Hex } from 'viem'
-import { keccak256, toBytes } from 'viem'
 import { z } from 'zod'
 
 import type { MachineAllocation, MachinePromise, MachineSpecs } from '../infrastructure/machine-provisioner'
@@ -89,6 +88,9 @@ export interface BenchmarkResults {
   timestamp: number
 }
 
+// Hex string validation regex - 0x followed by hex chars
+const HEX_REGEX = /^0x[a-fA-F0-9]+$/
+
 export const BenchmarkResultsSchema = z.object({
   cpuSingleCore: z.number().min(0).max(10000),
   cpuMultiCore: z.number().min(0).max(10000),
@@ -113,10 +115,10 @@ export const BenchmarkResultsSchema = z.object({
   gpuInferenceScore: z.number().nullable(),
   teeDetected: z.boolean(),
   teePlatform: z.string().nullable(),
-  teeAttestationHash: z.string().nullable(),
+  teeAttestationHash: z.string().regex(HEX_REGEX, 'Must be a valid hex string').nullable(),
   teeAttestationValid: z.boolean(),
   overallScore: z.number().min(0).max(10000),
-  attestationHash: z.string(),
+  attestationHash: z.string().regex(HEX_REGEX, 'Must be a valid hex string'),
   timestamp: z.number(),
 })
 
@@ -376,7 +378,10 @@ export class BenchmarkOrchestrator {
     }
 
     const rawResults: unknown = await response.json()
-    const results = BenchmarkResultsSchema.parse(rawResults)
+    const parsedResults = BenchmarkResultsSchema.parse(rawResults)
+
+    // Transform parsed results - Zod validates hex format, safe to cast
+    const results = this.transformParsedResults(parsedResults)
 
     // Calculate deviation from claimed specs
     const deviation = this.calculateDeviation(machine.specs, results)
@@ -384,14 +389,14 @@ export class BenchmarkOrchestrator {
     // Update job
     job.status = 'completed'
     job.completedAt = Date.now()
-    job.results = results as BenchmarkResults
+    job.results = results
 
     // Update reputation
-    this.updateReputation(machine.id, results as BenchmarkResults, deviation)
+    this.updateReputation(machine.id, results, deviation)
 
     // Store results
     const history = benchmarkHistory.get(machine.id) ?? []
-    history.push(results as BenchmarkResults)
+    history.push(results)
     benchmarkHistory.set(machine.id, history.slice(-10)) // Keep last 10
 
     // Check deviation thresholds
@@ -489,7 +494,10 @@ export class BenchmarkOrchestrator {
     }
 
     const rawResults: unknown = await response.json()
-    const results = BenchmarkResultsSchema.parse(rawResults)
+    const parsedResults = BenchmarkResultsSchema.parse(rawResults)
+
+    // Transform parsed results - Zod validates hex format, safe to cast
+    const results = this.transformParsedResults(parsedResults)
 
     // Calculate deviation
     const deviation = this.calculateDeviation(claimedSpecs, results)
@@ -497,18 +505,55 @@ export class BenchmarkOrchestrator {
     // Update job
     job.status = 'completed'
     job.completedAt = Date.now()
-    job.results = results as BenchmarkResults
+    job.results = results
 
     // Update reputation
-    this.updateReputation(machineId, results as BenchmarkResults, deviation)
+    this.updateReputation(machineId, results, deviation)
 
     // Store results
     const history = benchmarkHistory.get(machineId) ?? []
-    history.push(results as BenchmarkResults)
+    history.push(results)
     benchmarkHistory.set(machineId, history.slice(-10))
 
     pendingBenchmarks.delete(machineId)
     return job
+  }
+
+  /**
+   * Transform Zod-parsed results to typed BenchmarkResults
+   * Zod validates hex format, so cast is safe
+   */
+  private transformParsedResults(parsed: z.infer<typeof BenchmarkResultsSchema>): BenchmarkResults {
+    return {
+      cpuSingleCore: parsed.cpuSingleCore,
+      cpuMultiCore: parsed.cpuMultiCore,
+      cpuCores: parsed.cpuCores,
+      cpuModel: parsed.cpuModel,
+      cpuFrequencyMhz: parsed.cpuFrequencyMhz,
+      memoryMb: parsed.memoryMb,
+      memoryBandwidthMbps: parsed.memoryBandwidthMbps,
+      memoryLatencyNs: parsed.memoryLatencyNs,
+      storageMb: parsed.storageMb,
+      storageType: parsed.storageType,
+      sequentialReadMbps: parsed.sequentialReadMbps,
+      sequentialWriteMbps: parsed.sequentialWriteMbps,
+      randomReadIops: parsed.randomReadIops,
+      randomWriteIops: parsed.randomWriteIops,
+      networkBandwidthMbps: parsed.networkBandwidthMbps,
+      networkLatencyMs: parsed.networkLatencyMs,
+      gpuDetected: parsed.gpuDetected,
+      gpuModel: parsed.gpuModel,
+      gpuMemoryMb: parsed.gpuMemoryMb,
+      gpuFp32Tflops: parsed.gpuFp32Tflops,
+      gpuInferenceScore: parsed.gpuInferenceScore,
+      teeDetected: parsed.teeDetected,
+      teePlatform: parsed.teePlatform,
+      teeAttestationHash: parsed.teeAttestationHash as Hex | null,
+      teeAttestationValid: parsed.teeAttestationValid,
+      overallScore: parsed.overallScore,
+      attestationHash: parsed.attestationHash as Hex,
+      timestamp: parsed.timestamp,
+    }
   }
 
   /**
@@ -551,10 +596,14 @@ export class BenchmarkOrchestrator {
       }
     }
 
-    // TEE (if claimed)
-    if (claimed.teePlatform && claimed.teePlatform !== 'intel-sgx') {
-      if (!actual.teeDetected || !actual.teeAttestationValid) {
-        deviations.push(1.0) // 100% deviation - TEE not working
+    // TEE (if claimed) - check if provider claimed TEE support
+    if (claimed.teePlatform) {
+      if (!actual.teeDetected) {
+        deviations.push(1.0) // 100% deviation - TEE claimed but not detected
+      } else if (!actual.teeAttestationValid) {
+        deviations.push(0.5) // 50% deviation - TEE detected but attestation invalid
+      } else if (actual.teePlatform !== claimed.teePlatform) {
+        deviations.push(0.3) // 30% deviation - TEE platform mismatch
       }
     }
 
@@ -568,7 +617,7 @@ export class BenchmarkOrchestrator {
    */
   private updateReputation(
     machineId: string,
-    results: BenchmarkResults,
+    _results: BenchmarkResults,
     deviationPercent: number,
   ): void {
     let reputation = machineReputations.get(machineId)

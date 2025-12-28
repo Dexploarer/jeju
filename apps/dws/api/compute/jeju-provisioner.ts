@@ -12,24 +12,19 @@
  * Community provisioners can offer competitive alternatives.
  */
 
-import type { Address, Hex } from 'viem'
-import { parseEther } from 'viem'
+import type { Address } from 'viem'
 
 import type {
-  CloudCredentials,
   CloudProvider,
   CloudProviderType,
   InstanceType,
-  ProvisionedInstance,
 } from '../infrastructure/cloud-providers'
 import {
-  createCloudProvider,
   HetznerProvider,
   DigitalOceanProvider,
   VultrProvider,
 } from '../infrastructure/cloud-providers'
 import { getCredentialVault } from './credential-vault'
-import { getBenchmarkOrchestrator } from './benchmark-orchestrator'
 
 // ============ Types ============
 
@@ -148,7 +143,6 @@ const cloudProviders = new Map<CloudProviderType, CloudProvider>()
 export class JejuProvisioner {
   private config: JejuProvisionerConfig
   private ownerAddress: Address
-  private credentialId: string | null = null
 
   constructor(
     ownerAddress: Address,
@@ -170,7 +164,7 @@ export class JejuProvisioner {
 
     // Initialize each provider
     if (credentials.hetzner) {
-      const credId = await vault.storeCredential(this.ownerAddress, {
+      await vault.storeCredential(this.ownerAddress, {
         provider: 'hetzner',
         name: 'Jeju Hetzner',
         apiKey: credentials.hetzner,
@@ -288,13 +282,16 @@ export class JejuProvisioner {
 
     if (filter) {
       if (filter.provider) {
-        result = result.filter((o) => o.provider === filter.provider)
+        const provider = filter.provider
+        result = result.filter((o) => o.provider === provider)
       }
       if (filter.minCpuCores) {
-        result = result.filter((o) => o.cpuCores >= filter.minCpuCores)
+        const minCpuCores = filter.minCpuCores
+        result = result.filter((o) => o.cpuCores >= minCpuCores)
       }
       if (filter.minMemoryMb) {
-        result = result.filter((o) => o.memoryMb >= filter.minMemoryMb)
+        const minMemoryMb = filter.minMemoryMb
+        result = result.filter((o) => o.memoryMb >= minMemoryMb)
       }
       if (filter.gpuRequired) {
         result = result.filter((o) => o.gpuCount > 0)
@@ -303,10 +300,12 @@ export class JejuProvisioner {
         result = result.filter((o) => o.teeSupported)
       }
       if (filter.region) {
-        result = result.filter((o) => o.regions.includes(filter.region))
+        const region = filter.region
+        result = result.filter((o) => o.regions.includes(region))
       }
       if (filter.maxPricePerHour !== undefined) {
-        result = result.filter((o) => o.pricePerHour <= filter.maxPricePerHour)
+        const maxPrice = filter.maxPricePerHour
+        result = result.filter((o) => o.pricePerHour <= maxPrice)
       }
       if (filter.benchmarkedOnly) {
         result = result.filter((o) => o.benchmarked)

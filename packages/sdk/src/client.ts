@@ -34,7 +34,7 @@ import {
 import { createFeedModule, type FeedModule } from './feed'
 import { createGovernanceModule, type GovernanceModule } from './governance'
 import { createIdentityModule, type IdentityModule } from './identity'
-import { createKMSWallet } from './kms-wallet'
+import { createKMSWallet, type KMSWallet } from './kms-wallet'
 import { createLaunchpadModule, type LaunchpadModule } from './launchpad'
 import { createMCPModule, type MCPModule } from './mcp'
 import { createMessagingModule, type MessagingModule } from './messaging'
@@ -53,7 +53,7 @@ import { createStorageModule, type StorageModule } from './storage'
 import { createTrainingModule, type TrainingModule } from './training'
 import { createValidationModule, type ValidationModule } from './validation'
 import { createVPNModule, type VPNModule } from './vpn-module'
-import { type BaseWallet, createWallet } from './wallet'
+import { type BaseWallet, createWallet, type JejuWallet } from './wallet'
 import { createWorkModule, type WorkModule } from './work'
 
 export interface JejuClientConfig {
@@ -223,7 +223,7 @@ export async function createJejuClient(
   const servicesConfig = getServicesConfig(network)
 
   // Create wallet (KMS-backed or local)
-  let wallet: BaseWallet
+  let wallet: JejuWallet | KMSWallet
 
   if (hasKMSConfig) {
     // Validate KMS config - all fields are required

@@ -19,7 +19,7 @@ func TestDupConf(t *testing.T) {
 		dupConfFile := filepath.Join(d, "config.yaml")
 
 		_, testFile, _, _ := runtime.Caller(0)
-		confFile := filepath.Join(filepath.Dir(testFile), "../test/node_standalone/config.yaml")
+		confFile := filepath.Join(filepath.Dir(testFile), "../../test/node_standalone/config.yaml")
 
 		err = DupConf(confFile, dupConfFile)
 		So(err, ShouldBeNil)

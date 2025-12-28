@@ -15,7 +15,7 @@
  * - Compared against claimed specs to verify honesty
  */
 
-import type { Address, Hex } from 'viem'
+import type { Address } from 'viem'
 import { keccak256, toBytes } from 'viem'
 import { z } from 'zod'
 

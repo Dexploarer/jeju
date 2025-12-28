@@ -17,7 +17,7 @@ import (
 func TestResolver(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 	_, testFile, _, _ := runtime.Caller(0)
-	confFile := filepath.Join(filepath.Dir(testFile), "../test/node_c/config.yaml")
+	confFile := filepath.Join(filepath.Dir(testFile), "../../test/node_c/config.yaml")
 
 	conf.GConf, _ = conf.LoadConfig(confFile)
 	log.Debugf("GConf: %v", conf.GConf)

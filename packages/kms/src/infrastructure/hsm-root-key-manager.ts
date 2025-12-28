@@ -393,11 +393,9 @@ export class HSMRootKeyManager {
   ): Promise<WrappedKey> {
     const { keyVaultUrl, clientId, clientSecret, tenantId } =
       this.config.credentials
-    if (!clientId) {
-      throw new Error('Azure client ID is required')
-    }
-    if (!clientSecret) {
-      throw new Error('Azure client secret is required')
+
+    if (!clientId || !clientSecret) {
+      throw new Error('Azure clientId and clientSecret are required')
     }
 
     // Get access token
@@ -459,11 +457,9 @@ export class HSMRootKeyManager {
   ): Promise<Uint8Array> {
     const { keyVaultUrl, clientId, clientSecret, tenantId } =
       this.config.credentials
-    if (!clientId) {
-      throw new Error('Azure client ID is required')
-    }
-    if (!clientSecret) {
-      throw new Error('Azure client secret is required')
+
+    if (!clientId || !clientSecret) {
+      throw new Error('Azure clientId and clientSecret are required')
     }
 
     // Get access token
@@ -661,11 +657,9 @@ export class HSMRootKeyManager {
   private async rotateAzureKeyVault(): Promise<KeyVersion> {
     const { keyVaultUrl, clientId, clientSecret, tenantId } =
       this.config.credentials
-    if (!clientId) {
-      throw new Error('Azure client ID is required')
-    }
-    if (!clientSecret) {
-      throw new Error('Azure client secret is required')
+
+    if (!clientId || !clientSecret) {
+      throw new Error('Azure clientId and clientSecret are required')
     }
 
     // Get access token
@@ -703,9 +697,10 @@ export class HSMRootKeyManager {
     }
 
     const { key } = (await rotateResponse.json()) as { key: { kid: string } }
+
     const versionPart = key.kid.split('/').pop()
     if (!versionPart) {
-      throw new Error('Key version should exist in kid')
+      throw new Error('Invalid key version from Azure Key Vault')
     }
 
     const newVersion: KeyVersion = {

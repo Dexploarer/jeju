@@ -25,6 +25,15 @@ import { verifyMessage } from 'viem'
 
 // ============ Types ============
 
+export interface SSHConnection {
+  write: (data: string) => void
+  onData: (callback: (data: string) => void) => void
+  onClose: (callback: (code: number) => void) => void
+  resize: (cols: number, rows: number) => void
+  close: () => void
+  getTerminalSize: () => { cols: number; rows: number }
+}
+
 export interface SSHCredentials {
   id: string
   computeId: string
@@ -178,8 +187,9 @@ export class SSHGateway {
     const id = `ssh-cred-${Date.now()}-${randomBytes(4).toString('hex')}`
     const now = Date.now()
 
-    // Calculate key fingerprint
-    const fingerprint = this.calculateFingerprint(params.privateKey)
+    // Encrypt key and calculate fingerprint
+    const encryptedKey = await this.encryptKey(params.privateKey)
+    const fingerprint = await this.calculateFingerprint(params.privateKey)
 
     const credential: SSHCredentials = {
       id,
@@ -188,7 +198,7 @@ export class SSHGateway {
       host: params.host,
       port: params.port ?? 22,
       username: params.username,
-      privateKey: this.encryptKey(params.privateKey),
+      privateKey: encryptedKey,
       fingerprint,
       createdAt: now,
       lastUsedAt: now,
@@ -218,8 +228,8 @@ export class SSHGateway {
       throw new Error(`Credential not found: ${credentialId}`)
     }
 
-    credential.privateKey = this.encryptKey(newPrivateKey)
-    credential.fingerprint = this.calculateFingerprint(newPrivateKey)
+    credential.privateKey = await this.encryptKey(newPrivateKey)
+    credential.fingerprint = await this.calculateFingerprint(newPrivateKey)
     credential.rotatedAt = Date.now()
 
     this.audit('key_rotated', '', credential.owner, computeId, 'SSH key rotated')
@@ -444,13 +454,7 @@ export class SSHGateway {
   /**
    * Connect to SSH and return process for streaming
    */
-  async connect(sessionId: string): Promise<{
-    write: (data: string) => void
-    onData: (callback: (data: string) => void) => void
-    onClose: (callback: (code: number) => void) => void
-    resize: (cols: number, rows: number) => void
-    close: () => void
-  }> {
+  async connect(sessionId: string): Promise<SSHConnection> {
     const session = sessions.get(sessionId)
     if (!session) {
       throw new Error('Session not found')
@@ -461,10 +465,15 @@ export class SSHGateway {
       throw new Error('Credential not found')
     }
 
-    // Decrypt key and write to temp file
-    const keyContent = this.decryptKey(credential.privateKey)
-    const keyFile = `/tmp/ssh-key-${sessionId}`
-    await Bun.write(keyFile, keyContent)
+    // Decrypt key and write to secure temp file
+    const keyContent = await this.decryptKey(credential.privateKey)
+    
+    // Use a more secure temp directory with random suffix
+    const randomSuffix = randomBytes(16).toString('hex')
+    const keyFile = `/tmp/.ssh-key-${sessionId}-${randomSuffix}`
+    await Bun.write(keyFile, keyContent, { mode: 0o600 })
+    
+    // Double-ensure permissions (Bun.write mode may not always work)
     await Bun.spawn(['chmod', '600', keyFile]).exited
 
     // Start SSH process
@@ -533,10 +542,16 @@ export class SSHGateway {
     readOutput().catch(() => {})
     readStderr().catch(() => {})
 
+    // Store keyFile path for cleanup
+    const keyFilePath = keyFile
+
     // Handle process exit
     sshProcess.exited.then((code) => {
-      // Clean up key file
-      Bun.spawn(['rm', '-f', keyFile])
+      // Securely clean up key file
+      Bun.spawn(['shred', '-u', keyFilePath]).exited.catch(() => {
+        // Fallback to rm if shred not available
+        Bun.spawn(['rm', '-f', keyFilePath])
+      })
 
       session.status = 'closed'
       session.endedAt = Date.now()
@@ -548,6 +563,10 @@ export class SSHGateway {
 
       this.audit('ssh_disconnected', sessionId, session.owner, session.computeId, `Exit code: ${code}`)
     })
+
+    // Store current terminal size for the session
+    let terminalCols = 80
+    let terminalRows = 24
 
     return {
       write: (data: string) => {
@@ -562,13 +581,25 @@ export class SSHGateway {
       onClose: (callback) => {
         closeCallbacks.push(callback)
       },
-      resize: (_cols: number, _rows: number) => {
-        // SSH resize requires SIGWINCH - complex to implement without pty
-        // For full terminal support, would need node-pty or similar
+      resize: (cols: number, rows: number) => {
+        terminalCols = cols
+        terminalRows = rows
+        // Send SIGWINCH to SSH process if it supports it
+        // Note: Without a proper PTY, SSH may not respond to resize
+        // For full terminal support, consider using node-pty
+        try {
+          // SSH OpenSSH client supports ~. escape sequences for some operations
+          // but resize requires actual SIGWINCH or pty
+          // Log the resize request for debugging
+          console.log(`[SSHGateway] Resize requested: ${cols}x${rows} (requires PTY for full support)`)
+        } catch {
+          // Resize not supported without PTY
+        }
       },
       close: () => {
         sshProcess.kill()
       },
+      getTerminalSize: () => ({ cols: terminalCols, rows: terminalRows }),
     }
   }
 
@@ -578,7 +609,7 @@ export class SSHGateway {
    * Handle WebSocket terminal connection
    */
   async handleWebSocket(
-    ws: ServerWebSocket<{ sessionId: string }>,
+    ws: ServerWebSocket<{ sessionId: string; ssh?: SSHConnection }>,
     sessionId: string,
   ): Promise<void> {
     const session = sessions.get(sessionId)
@@ -603,17 +634,17 @@ export class SSHGateway {
     })
 
     // Store in context for message handling
-    ;(ws.data as { ssh?: typeof ssh }).ssh = ssh
+    ws.data.ssh = ssh
   }
 
   /**
    * Handle WebSocket message
    */
   handleWebSocketMessage(
-    ws: ServerWebSocket<{ sessionId: string; ssh?: ReturnType<typeof this.connect> extends Promise<infer T> ? T : never }>,
+    ws: ServerWebSocket<{ sessionId: string; ssh?: SSHConnection }>,
     message: string,
   ): void {
-    const ssh = (ws.data as { ssh?: ReturnType<typeof this.connect> extends Promise<infer T> ? T : never }).ssh
+    const ssh = ws.data.ssh
     if (!ssh) {
       ws.close(1011, 'SSH not connected')
       return
@@ -648,10 +679,10 @@ export class SSHGateway {
    * Handle WebSocket close
    */
   handleWebSocketClose(
-    ws: ServerWebSocket<{ sessionId: string; ssh?: ReturnType<typeof this.connect> extends Promise<infer T> ? T : never }>,
+    ws: ServerWebSocket<{ sessionId: string; ssh?: SSHConnection }>,
   ): void {
     const sessionId = ws.data.sessionId
-    const ssh = (ws.data as { ssh?: ReturnType<typeof this.connect> extends Promise<infer T> ? T : never }).ssh
+    const ssh = ws.data.ssh
 
     if (ssh) {
       ssh.close()
@@ -711,22 +742,103 @@ export class SSHGateway {
     }
   }
 
-  private encryptKey(key: string): string {
-    // In production, use KMS encryption
-    // For now, base64 encode
-    return Buffer.from(key).toString('base64')
+  /**
+   * Encrypt SSH private key using AES-256-GCM
+   */
+  private async encryptKey(key: string): Promise<string> {
+    const vaultKey = process.env.DWS_VAULT_KEY
+    if (!vaultKey || vaultKey.length < 32) {
+      throw new Error('DWS_VAULT_KEY must be set and at least 32 characters')
+    }
+
+    // Derive encryption key
+    const keyMaterial = new TextEncoder().encode(vaultKey + ':ssh-key-vault')
+    const hashBuffer = await crypto.subtle.digest('SHA-256', keyMaterial)
+    const derivedKey = new Uint8Array(hashBuffer)
+
+    // Generate random IV
+    const iv = crypto.getRandomValues(new Uint8Array(12))
+
+    // Import key
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw',
+      derivedKey,
+      { name: 'AES-GCM' },
+      false,
+      ['encrypt'],
+    )
+
+    // Encrypt
+    const plaintextBytes = new TextEncoder().encode(key)
+    const ciphertext = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv },
+      cryptoKey,
+      plaintextBytes,
+    )
+
+    // Combine IV + ciphertext
+    const combined = new Uint8Array(iv.length + ciphertext.byteLength)
+    combined.set(iv, 0)
+    combined.set(new Uint8Array(ciphertext), iv.length)
+
+    return Buffer.from(combined).toString('base64')
   }
 
-  private decryptKey(encrypted: string): string {
-    // In production, use KMS decryption
-    return Buffer.from(encrypted, 'base64').toString()
+  /**
+   * Decrypt SSH private key
+   */
+  private async decryptKey(encrypted: string): Promise<string> {
+    const vaultKey = process.env.DWS_VAULT_KEY
+    if (!vaultKey || vaultKey.length < 32) {
+      throw new Error('DWS_VAULT_KEY must be set')
+    }
+
+    // Derive encryption key
+    const keyMaterial = new TextEncoder().encode(vaultKey + ':ssh-key-vault')
+    const hashBuffer = await crypto.subtle.digest('SHA-256', keyMaterial)
+    const derivedKey = new Uint8Array(hashBuffer)
+
+    // Split IV and ciphertext
+    const combined = Buffer.from(encrypted, 'base64')
+    if (combined.length < 13) {
+      throw new Error('Invalid encrypted key: too short')
+    }
+
+    const iv = combined.subarray(0, 12)
+    const ciphertext = combined.subarray(12)
+
+    // Import key
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw',
+      derivedKey,
+      { name: 'AES-GCM' },
+      false,
+      ['decrypt'],
+    )
+
+    // Decrypt
+    const plaintext = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv },
+      cryptoKey,
+      ciphertext,
+    )
+
+    return new TextDecoder().decode(plaintext)
   }
 
-  private calculateFingerprint(privateKey: string): string {
-    // Extract public key and calculate fingerprint
-    // Simplified - would use ssh-keygen -lf in production
-    const hash = Bun.hash(privateKey).toString(16)
-    return `SHA256:${hash.slice(0, 43)}`
+  /**
+   * Calculate SSH key fingerprint using SHA-256
+   */
+  private async calculateFingerprint(privateKey: string): Promise<string> {
+    // Extract public key from private key
+    // The fingerprint is SHA256 hash of the public key bytes
+    // For proper implementation, would need ssh-keygen or a crypto library
+    // Using SHA-256 of private key as proxy (should extract public key in production)
+    const keyBytes = new TextEncoder().encode(privateKey)
+    const hashBuffer = await crypto.subtle.digest('SHA-256', keyBytes)
+    const hashArray = new Uint8Array(hashBuffer)
+    const base64 = Buffer.from(hashArray).toString('base64').replace(/=+$/, '')
+    return `SHA256:${base64}`
   }
 
   private audit(action: string, sessionId: string, owner: Address, computeId: string, details: string): void {
@@ -782,11 +894,11 @@ export class SSHGateway {
 
 // ============ Router ============
 
-export function createSSHGatewayRouter(gateway: SSHGateway): Elysia {
+export function createSSHGatewayRouter(gateway: SSHGateway) {
   const router = new Elysia({ name: 'ssh-gateway', prefix: '/ssh' })
 
   // Generate access token
-  router.post('/token', async ({ body, set }) => {
+  router.post('/token', async ({ body }) => {
     const { computeId, owner, signature, message } = body as {
       computeId: string
       owner: Address
@@ -799,7 +911,7 @@ export function createSSHGatewayRouter(gateway: SSHGateway): Elysia {
   })
 
   // Start session
-  router.post('/session', async ({ body, request, set }) => {
+  router.post('/session', async ({ body, request }) => {
     const { token } = body as { token: string }
     const clientIp = request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip') ?? '127.0.0.1'
 

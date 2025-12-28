@@ -18,8 +18,8 @@ import (
 var (
 	genesisHash               = hash.Hash{}
 	testingDataDir            string
-	testingConfigFile         = "../test/node_standalone/config.yaml"
-	testingPrivateKeyFile     = "../test/node_standalone/private.key"
+	testingConfigFile         = "../../test/node_standalone/config.yaml"
+	testingPrivateKeyFile     = "../../test/node_standalone/private.key"
 	testingPublicKeyStoreFile string
 	testingNonceDifficulty    int
 	testingPrivateKey         *ca.PrivateKey

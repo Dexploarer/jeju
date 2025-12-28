@@ -511,6 +511,21 @@ interface PortConfig {
 }
 
 /**
+ * Get the localhost host address for building local service URLs
+ * Uses getLocalhostHost from config/index.ts for consistency
+ */
+function getLocalhostHost(): string {
+  // Import here to avoid circular dependency
+  // This matches the implementation in config/index.ts
+  return (
+    process.env.HOST ||
+    process.env.RPC_HOST ||
+    process.env.LOCALHOST_HOST ||
+    '127.0.0.1'
+  )
+}
+
+/**
  * Generic URL builder for any port config
  * Checks environment for full URL override, then port override, then uses default
  */
@@ -528,7 +543,7 @@ function buildUrl(
 
   // Build URL from port (with port override support)
   const port = portConfig.get()
-  const host = process.env.HOST ?? 'localhost'
+  const host = getLocalhostHost()
   return `${protocol}://${host}:${port}`
 }
 

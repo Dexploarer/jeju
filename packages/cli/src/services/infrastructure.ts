@@ -82,89 +82,93 @@ export class InfrastructureService {
       return true
     }
 
+    // First try Docker-based EQLite if available
     const dockerAvailable = await this.isDockerRunning()
-    if (!dockerAvailable) {
-      logger.error('Docker is required for EQLite. Please start Docker.')
-      return false
-    }
-
     const composeFile = join(
       this.rootDir,
       'packages/deployment/docker/eqlite-internal.compose.yaml',
     )
 
-    if (!existsSync(composeFile)) {
-      logger.error('EQLite compose file not found')
-      logger.info(
-        'Expected at: packages/deployment/docker/eqlite-internal.compose.yaml',
+    if (dockerAvailable && existsSync(composeFile)) {
+      logger.step('Starting EQLite Docker cluster...')
+
+      const dockerProcess = execa(
+        'docker',
+        ['compose', '-f', composeFile, 'up', '-d'],
+        {
+          cwd: this.rootDir,
+          stdio: 'pipe',
+        },
       )
-      logger.info('Build with: cd packages/eqlite && make docker')
+
+      try {
+        await dockerProcess
+        // Wait for Docker startup
+        for (let i = 0; i < 60; i++) {
+          await this.sleep(500)
+          if (await this.isEQLiteRunning()) {
+            logger.success(`EQLite cluster running on port ${EQLITE_PORT}`)
+            return true
+          }
+        }
+      } catch (err) {
+        logger.debug(`Docker EQLite failed: ${String(err)}`)
+      }
+    }
+
+    // Fall back to SQLite-based EQLite server
+    logger.step('Starting EQLite SQLite server...')
+
+    const serverPath = join(this.rootDir, 'packages/db/src/server.ts')
+    if (!existsSync(serverPath)) {
+      logger.error('EQLite server not found at packages/db/src/server.ts')
       return false
     }
 
-    logger.step('Starting EQLite cluster...')
-
-    eqliteProcess = execa(
-      'docker',
-      ['compose', '-f', composeFile, 'up', '-d'],
-      {
-        cwd: this.rootDir,
-        stdio: 'pipe',
+    eqliteProcess = execa('bun', ['run', serverPath], {
+      cwd: this.rootDir,
+      env: {
+        ...process.env,
+        PORT: String(EQLITE_PORT),
+        EQLITE_PORT: String(EQLITE_PORT),
       },
-    )
-
-    let startupError = ''
-    eqliteProcess.stderr?.on('data', (data: Buffer) => {
-      startupError += data.toString()
+      stdio: 'pipe',
     })
 
-    try {
-      await eqliteProcess
-    } catch (err) {
-      logger.error(
-        `EQLite cluster failed to start: ${startupError || String(err)}`,
-      )
-      return false
-    }
-
-    // Wait for cluster to become healthy
-    logger.info('Waiting for EQLite cluster to become healthy...')
-    for (let i = 0; i < 120; i++) {
-      await this.sleep(500)
+    // Wait for server to start
+    for (let i = 0; i < 20; i++) {
+      await this.sleep(250)
       if (await this.isEQLiteRunning()) {
-        logger.success(`EQLite cluster running on port ${EQLITE_PORT}`)
+        logger.success(`EQLite SQLite server running on port ${EQLITE_PORT}`)
         logger.keyValue('  API Endpoint', `http://127.0.0.1:${EQLITE_PORT}`)
+        logger.info('  Mode: SQLite-compatible (local development)')
         return true
       }
-      if (i > 0 && i % 20 === 0) {
-        logger.info(`  Still waiting for EQLite... (${i / 2}s)`)
-      }
     }
 
-    logger.error('EQLite cluster failed to become healthy within 60 seconds')
-    if (startupError) {
-      logger.error(`Docker output: ${startupError.slice(0, 500)}`)
-    }
+    logger.error('EQLite server failed to start within 5 seconds')
     return false
   }
 
   async stopEQLite(): Promise<void> {
+    // Stop SQLite server process if running
+    if (eqliteProcess) {
+      eqliteProcess.kill('SIGTERM')
+      eqliteProcess = null
+    }
+
+    // Stop Docker cluster if running
     const composeFile = join(
       this.rootDir,
       'packages/deployment/docker/eqlite-internal.compose.yaml',
     )
 
-    if (existsSync(composeFile)) {
+    if (existsSync(composeFile) && (await this.isDockerRunning())) {
       logger.step('Stopping EQLite cluster...')
       await execa('docker', ['compose', '-f', composeFile, 'down'], {
         cwd: this.rootDir,
         reject: false,
       })
-    }
-
-    if (eqliteProcess) {
-      eqliteProcess.kill('SIGTERM')
-      eqliteProcess = null
     }
   }
 

@@ -9,6 +9,7 @@
  * - Client registration
  */
 
+import { readContract } from '@jejunetwork/contracts/viem'
 import type { Keypair, PublicKey } from '@solana/web3.js'
 import { sign } from 'tweetnacl'
 import {
@@ -20,16 +21,24 @@ import {
   type Hex,
   http,
   keccak256,
-  type Log,
-  type PublicClient,
   type WalletClient,
 } from 'viem'
 import { type PrivateKeyAccount, privateKeyToAccount } from 'viem/accounts'
 import { foundry } from 'viem/chains'
 import type { CoordinatorState, PsycheClient } from './psyche-client'
 
-// Extended log type with topics - use viem's Log type
-type LogWithTopics = Log
+// Extended log type with topics for parsing events
+interface LogWithTopics {
+  address: `0x${string}`
+  blockHash: `0x${string}`
+  blockNumber: bigint
+  data: `0x${string}`
+  logIndex: number
+  transactionHash: `0x${string}`
+  transactionIndex: number
+  removed: boolean
+  topics: readonly `0x${string}`[]
+}
 
 // Constants
 
@@ -177,7 +186,7 @@ export interface CheckpointData {
 // Cross-Chain Bridge
 
 export class CrossChainTrainingBridge {
-  private evmPublicClient: PublicClient
+  private evmPublicClient: ReturnType<typeof createPublicClient>
   private evmWalletClient: WalletClient | null = null
   private evmAccount: PrivateKeyAccount | null = null
   private solanaKeypair: Keypair | null = null
@@ -246,7 +255,7 @@ export class CrossChainTrainingBridge {
     const runIdBytes =
       `0x${Buffer.from(runId).toString('hex').padEnd(64, '0')}` as Hex
 
-    const evmResult = (await this.evmPublicClient.readContract({
+    const evmResult = (await readContract(this.evmPublicClient, {
       address: this.config.bridgeContractAddress,
       abi: BRIDGE_CONTRACT_ABI,
       functionName: 'getRunState',
@@ -416,7 +425,7 @@ export class CrossChainTrainingBridge {
     }
 
     // Fallback: query the contract for the client count
-    const clientCount = (await this.evmPublicClient.readContract({
+    const clientCount = (await readContract(this.evmPublicClient, {
       address: this.config.bridgeContractAddress,
       abi: BRIDGE_CONTRACT_ABI,
       functionName: 'clientCount',
@@ -569,7 +578,7 @@ export class CrossChainTrainingBridge {
     stepsContributed: bigint
     rewardsClaimed: bigint
   }> {
-    const result = (await this.evmPublicClient.readContract({
+    const result = (await readContract(this.evmPublicClient, {
       address: this.config.bridgeContractAddress,
       abi: BRIDGE_CONTRACT_ABI,
       functionName: 'getClientInfo',

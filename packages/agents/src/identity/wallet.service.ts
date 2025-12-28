@@ -9,6 +9,7 @@
  */
 
 import { getCurrentNetwork, getL1RpcUrl } from '@jejunetwork/config'
+import { readContract } from '@jejunetwork/contracts/viem'
 import { getMPCCoordinator } from '@jejunetwork/kms'
 import { logger } from '@jejunetwork/shared'
 import {
@@ -147,12 +148,12 @@ export class AgentWalletService {
 
     for (const [symbol, tokenInfo] of Object.entries(KNOWN_TOKENS)) {
       try {
-        const balance = (await client.readContract({
+        const balance = await readContract(client, {
           address: tokenInfo.address,
           abi: ERC20_ABI,
           functionName: 'balanceOf',
           args: [address],
-        })) as bigint
+        })
         if (balance > 0n) {
           tokens[symbol] = balance
         }

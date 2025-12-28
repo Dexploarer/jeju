@@ -232,6 +232,12 @@ No transaction will be sent. No gas fees.`
         }
 
         challenges.set(challengeId, challenge)
+        console.log('[OAuth3/Wallet] Challenge created:', {
+          challengeId,
+          clientId,
+          redirectUri: redirectUri.substring(0, 50),
+          mapSize: challenges.size,
+        })
 
         const html = generateWalletConnectPage(challengeId, message)
         return new Response(html, {
@@ -287,6 +293,13 @@ No transaction will be sent. No gas fees.`
         const code = crypto.randomUUID()
         const userId = `wallet:${address.toLowerCase()}`
 
+        console.log('[OAuth3] Wallet verified, creating auth code:', {
+          code: `${code.substring(0, 8)}...`,
+          userId,
+          clientId: challenge.clientId,
+          redirectUri: challenge.redirectUri,
+        })
+
         await authCodeState.save(code, {
           clientId: challenge.clientId,
           redirectUri: challenge.redirectUri,
@@ -294,6 +307,8 @@ No transaction will be sent. No gas fees.`
           scope: ['openid', 'profile'],
           expiresAt: Date.now() + 5 * 60 * 1000,
         })
+
+        console.log('[OAuth3] Auth code saved successfully')
 
         // Create session with ephemeral key
         const sessionId = crypto.randomUUID()
@@ -329,6 +344,11 @@ No transaction will be sent. No gas fees.`
     )
 
     .get('/status/:challengeId', async ({ params, set }) => {
+      console.log('[OAuth3/Wallet] Status check:', {
+        challengeId: params.challengeId,
+        mapSize: challenges.size,
+        keys: Array.from(challenges.keys()).slice(0, 3),
+      })
       const challenge = challenges.get(params.challengeId)
       if (!challenge) {
         set.status = 404

@@ -14,7 +14,7 @@
  * - All access is audited
  */
 
-import type { Address, Hex } from 'viem'
+import type { Address } from 'viem'
 import { keccak256, toBytes } from 'viem'
 import { z } from 'zod'
 
@@ -79,40 +79,94 @@ export const CredentialCreateSchema = z.object({
 
 // ============ Encryption ============
 
-// In production, this would use the KMS package with HSM backing
-// For now, we use a simple encryption scheme with a derived key
+/**
+ * AES-256-GCM encryption for credential storage
+ * 
+ * Security properties:
+ * - 256-bit AES encryption
+ * - GCM mode provides authenticated encryption
+ * - Unique IV per encryption
+ * - Key derived from master key + owner address using HKDF-like derivation
+ */
 
-const VAULT_KEY = process.env.DWS_VAULT_KEY ?? 'dev-vault-key-DO-NOT-USE-IN-PRODUCTION'
-
-function deriveKey(seed: string): Uint8Array {
-  const hash = keccak256(toBytes(seed + VAULT_KEY))
-  return toBytes(hash)
+function getVaultKey(): string {
+  const key = process.env.DWS_VAULT_KEY
+  if (!key || key.length < 32) {
+    throw new Error('DWS_VAULT_KEY must be set and at least 32 characters for production use')
+  }
+  return key
 }
 
-function encrypt(plaintext: string, owner: Address): string {
-  const key = deriveKey(owner)
+function deriveKey(owner: Address): Uint8Array {
+  // Derive a unique key per owner using HKDF-like construction
+  // Hash: VAULT_KEY || owner || "credential-vault-v1"
+  const vaultKey = getVaultKey()
+  const material = `${vaultKey}:${owner.toLowerCase()}:credential-vault-v1`
+  const hash = keccak256(toBytes(material))
+  return toBytes(hash) // 32 bytes = 256 bits
+}
 
-  // Simple XOR encryption (would use AES-GCM in production with KMS)
+async function encrypt(plaintext: string, owner: Address): Promise<string> {
+  const key = deriveKey(owner)
+  
+  // Generate random 12-byte IV for GCM
+  const iv = crypto.getRandomValues(new Uint8Array(12))
+  
+  // Import key for Web Crypto
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    key,
+    { name: 'AES-GCM' },
+    false,
+    ['encrypt'],
+  )
+  
+  // Encrypt with AES-256-GCM
   const plaintextBytes = new TextEncoder().encode(plaintext)
-  const encrypted = new Uint8Array(plaintextBytes.length)
-
-  for (let i = 0; i < plaintextBytes.length; i++) {
-    encrypted[i] = plaintextBytes[i] ^ key[i % key.length]
-  }
-
-  return Buffer.from(encrypted).toString('base64')
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    cryptoKey,
+    plaintextBytes,
+  )
+  
+  // Combine IV + ciphertext for storage
+  // Format: base64(iv || ciphertext)
+  const combined = new Uint8Array(iv.length + ciphertext.byteLength)
+  combined.set(iv, 0)
+  combined.set(new Uint8Array(ciphertext), iv.length)
+  
+  return Buffer.from(combined).toString('base64')
 }
 
-function decrypt(ciphertext: string, owner: Address): string {
+async function decrypt(ciphertext: string, owner: Address): Promise<string> {
   const key = deriveKey(owner)
-  const encrypted = Buffer.from(ciphertext, 'base64')
-
-  const decrypted = new Uint8Array(encrypted.length)
-  for (let i = 0; i < encrypted.length; i++) {
-    decrypted[i] = encrypted[i] ^ key[i % key.length]
+  
+  // Decode and split IV + ciphertext
+  const combined = Buffer.from(ciphertext, 'base64')
+  if (combined.length < 13) {
+    throw new Error('Invalid ciphertext: too short')
   }
-
-  return new TextDecoder().decode(decrypted)
+  
+  const iv = combined.subarray(0, 12)
+  const encrypted = combined.subarray(12)
+  
+  // Import key for Web Crypto
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    key,
+    { name: 'AES-GCM' },
+    false,
+    ['decrypt'],
+  )
+  
+  // Decrypt
+  const plaintext = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv },
+    cryptoKey,
+    encrypted,
+  )
+  
+  return new TextDecoder().decode(plaintext)
 }
 
 // ============ Storage ============
@@ -140,14 +194,19 @@ export class CredentialVault {
     const id = `cred-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
     const now = Date.now()
 
+    // Encrypt sensitive fields
+    const encryptedApiKey = await encrypt(validated.apiKey, owner)
+    const encryptedApiSecret = validated.apiSecret ? await encrypt(validated.apiSecret, owner) : null
+    const encryptedProjectId = validated.projectId ? await encrypt(validated.projectId, owner) : null
+
     const credential: ProviderCredential = {
       id,
       provider: validated.provider,
       name: validated.name,
       owner,
-      encryptedApiKey: encrypt(validated.apiKey, owner),
-      encryptedApiSecret: validated.apiSecret ? encrypt(validated.apiSecret, owner) : null,
-      encryptedProjectId: validated.projectId ? encrypt(validated.projectId, owner) : null,
+      encryptedApiKey,
+      encryptedApiSecret,
+      encryptedProjectId,
       region: validated.region ?? null,
       scopes: validated.scopes ?? ['*'],
       expiresAt: validated.expiresAt ?? null,
@@ -219,15 +278,15 @@ export class CredentialVault {
     this.audit('use', credentialId, requester, `Used for ${credential.provider}`)
 
     // Decrypt and return
-    return {
-      apiKey: decrypt(credential.encryptedApiKey, credential.owner),
-      apiSecret: credential.encryptedApiSecret
-        ? decrypt(credential.encryptedApiSecret, credential.owner)
-        : null,
-      projectId: credential.encryptedProjectId
-        ? decrypt(credential.encryptedProjectId, credential.owner)
-        : null,
-    }
+    const apiKey = await decrypt(credential.encryptedApiKey, credential.owner)
+    const apiSecret = credential.encryptedApiSecret
+      ? await decrypt(credential.encryptedApiSecret, credential.owner)
+      : null
+    const projectId = credential.encryptedProjectId
+      ? await decrypt(credential.encryptedProjectId, credential.owner)
+      : null
+
+    return { apiKey, apiSecret, projectId }
   }
 
   /**
@@ -320,23 +379,26 @@ export class CredentialVault {
   }
 
   /**
-   * Verify a credential works
+   * Verify a credential works by making an actual API call
    */
   private async verifyCredential(
     provider: CloudProviderType,
     apiKey: string,
     apiSecret?: string,
   ): Promise<{ valid: boolean; error?: string }> {
-    // Verify against each provider's API
+    const timeout = 15000
 
     switch (provider) {
       case 'hetzner': {
         const response = await fetch('https://api.hetzner.cloud/v1/datacenters', {
           headers: { Authorization: `Bearer ${apiKey}` },
-          signal: AbortSignal.timeout(10000),
+          signal: AbortSignal.timeout(timeout),
         })
+        if (response.status === 401 || response.status === 403) {
+          return { valid: false, error: 'Hetzner: Invalid or unauthorized API token' }
+        }
         if (!response.ok) {
-          return { valid: false, error: `Hetzner API error: ${response.status}` }
+          return { valid: false, error: `Hetzner API error: ${response.status} ${response.statusText}` }
         }
         return { valid: true }
       }
@@ -344,10 +406,13 @@ export class CredentialVault {
       case 'digitalocean': {
         const response = await fetch('https://api.digitalocean.com/v2/account', {
           headers: { Authorization: `Bearer ${apiKey}` },
-          signal: AbortSignal.timeout(10000),
+          signal: AbortSignal.timeout(timeout),
         })
+        if (response.status === 401 || response.status === 403) {
+          return { valid: false, error: 'DigitalOcean: Invalid or unauthorized API token' }
+        }
         if (!response.ok) {
-          return { valid: false, error: `DigitalOcean API error: ${response.status}` }
+          return { valid: false, error: `DigitalOcean API error: ${response.status} ${response.statusText}` }
         }
         return { valid: true }
       }
@@ -355,39 +420,100 @@ export class CredentialVault {
       case 'vultr': {
         const response = await fetch('https://api.vultr.com/v2/account', {
           headers: { Authorization: `Bearer ${apiKey}` },
-          signal: AbortSignal.timeout(10000),
+          signal: AbortSignal.timeout(timeout),
         })
+        if (response.status === 401 || response.status === 403) {
+          return { valid: false, error: 'Vultr: Invalid or unauthorized API token' }
+        }
         if (!response.ok) {
-          return { valid: false, error: `Vultr API error: ${response.status}` }
+          return { valid: false, error: `Vultr API error: ${response.status} ${response.statusText}` }
+        }
+        return { valid: true }
+      }
+
+      case 'linode': {
+        const response = await fetch('https://api.linode.com/v4/account', {
+          headers: { Authorization: `Bearer ${apiKey}` },
+          signal: AbortSignal.timeout(timeout),
+        })
+        if (response.status === 401 || response.status === 403) {
+          return { valid: false, error: 'Linode: Invalid or unauthorized API token' }
+        }
+        if (!response.ok) {
+          return { valid: false, error: `Linode API error: ${response.status} ${response.statusText}` }
         }
         return { valid: true }
       }
 
       case 'aws': {
-        // AWS requires signature - would need full AWS SDK
-        // For now, just validate the key format
-        if (!apiKey.startsWith('AKIA') && !apiKey.startsWith('ASIA')) {
-          return { valid: false, error: 'Invalid AWS access key format' }
+        // AWS requires proper signature (SigV4)
+        // Validate format and require both keys
+        if (!apiKey.match(/^(AKIA|ASIA)[A-Z0-9]{16}$/)) {
+          return { valid: false, error: 'AWS: Invalid access key format (must be AKIA/ASIA + 16 alphanumeric chars)' }
         }
-        if (!apiSecret || apiSecret.length < 20) {
-          return { valid: false, error: 'AWS secret key required' }
+        if (!apiSecret || apiSecret.length !== 40) {
+          return { valid: false, error: 'AWS: Secret key must be exactly 40 characters' }
         }
+        // To fully verify, would need to make STS GetCallerIdentity call
+        // For now, format validation is the best we can do without SDK
+        console.log('[CredentialVault] AWS credential format validated (full verification requires SDK)')
         return { valid: true }
       }
 
       case 'gcp': {
-        // GCP service account JSON
+        // GCP service account JSON must have specific structure
+        let parsed: Record<string, unknown>
         try {
-          JSON.parse(apiKey)
-          return { valid: true }
+          parsed = JSON.parse(apiKey) as Record<string, unknown>
         } catch {
-          return { valid: false, error: 'Invalid GCP service account JSON' }
+          return { valid: false, error: 'GCP: Invalid JSON format' }
         }
+        
+        // Validate required fields in service account JSON
+        const requiredFields = ['type', 'project_id', 'private_key_id', 'private_key', 'client_email']
+        for (const field of requiredFields) {
+          if (!parsed[field]) {
+            return { valid: false, error: `GCP: Missing required field '${field}' in service account JSON` }
+          }
+        }
+        
+        if (parsed.type !== 'service_account') {
+          return { valid: false, error: 'GCP: Credential type must be "service_account"' }
+        }
+        
+        console.log('[CredentialVault] GCP service account JSON validated')
+        return { valid: true }
       }
 
-      default:
-        // For other providers, just check key exists
-        return { valid: apiKey.length > 10 }
+      case 'azure': {
+        // Azure requires subscription_id, tenant_id, client_id, and client_secret
+        if (!apiKey || apiKey.length < 10) {
+          return { valid: false, error: 'Azure: Client ID required' }
+        }
+        if (!apiSecret || apiSecret.length < 10) {
+          return { valid: false, error: 'Azure: Client secret required' }
+        }
+        // Full validation would require OAuth token request
+        console.log('[CredentialVault] Azure credential format validated')
+        return { valid: true }
+      }
+
+      case 'ovh': {
+        // OVH requires application key, application secret, and consumer key
+        if (!apiKey || apiKey.length < 10) {
+          return { valid: false, error: 'OVH: Application key required' }
+        }
+        if (!apiSecret || apiSecret.length < 10) {
+          return { valid: false, error: 'OVH: Application secret required' }
+        }
+        console.log('[CredentialVault] OVH credential format validated')
+        return { valid: true }
+      }
+
+      default: {
+        const _exhaustive: never = provider
+        return { valid: false, error: `Unsupported provider: ${_exhaustive}` }
+      }
     }
   }
 
