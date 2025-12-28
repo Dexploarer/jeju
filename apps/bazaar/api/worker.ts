@@ -11,13 +11,13 @@ import { cors } from '@elysiajs/cors'
 import {
   CORE_PORTS,
   getCoreAppUrl,
-  getEQLiteBlockProducerUrl,
   getCurrentNetwork,
   getEnvVar,
+  getEQLiteBlockProducerUrl,
   getIndexerGraphqlUrl,
   getL2RpcUrl,
 } from '@jejunetwork/config'
-import { type EQLiteClient, createTable, getEQLite } from '@jejunetwork/db'
+import { createTable, type EQLiteClient, getEQLite } from '@jejunetwork/db'
 import { expect as expectExists, expectValid } from '@jejunetwork/types'
 import { Elysia } from 'elysia'
 import {
@@ -25,8 +25,8 @@ import {
   TFMMGetQuerySchema,
   TFMMPostRequestSchema,
 } from '../schemas/api'
-import { config, configureBazaar } from './config'
 import { handleA2ARequest, handleAgentCard } from './a2a-server'
+import { config, configureBazaar } from './config'
 import { createIntelRouter } from './intel'
 import { handleMCPInfo, handleMCPRequest } from './mcp-server'
 import {
@@ -42,6 +42,15 @@ import {
 
 // Worker Environment Types
 
+/**
+ * Worker Environment Types
+ *
+ * SECURITY NOTE (TEE Side-Channel Resistance):
+ * - This worker does NOT handle private keys for signing
+ * - All signing is done by clients (via wallet) or KMS
+ * - Database credentials (COVENANTSQL_PRIVATE_KEY) are for DB auth, not blockchain
+ * - Never add blockchain private keys to this interface
+ */
 export interface BazaarEnv {
   // Standard workerd bindings
   TEE_MODE: 'real' | 'simulated'
@@ -55,16 +64,13 @@ export interface BazaarEnv {
   GATEWAY_URL: string
   INDEXER_URL: string
 
-  // Database config
+  // Database config (EQLITE_PRIVATE_KEY is DB auth, not blockchain key)
   EQLITE_NODES: string
   EQLITE_DATABASE_ID: string
   EQLITE_PRIVATE_KEY: string
 
   // KV bindings (optional)
   BAZAAR_CACHE?: KVNamespace
-
-  // Secrets
-  PRIVATE_KEY?: string
 }
 
 interface KVNamespace {
@@ -139,13 +145,62 @@ export function createBazaarApp(env?: Partial<BazaarEnv>) {
     }),
   )
 
-  // Health check
+  // Health check (includes TEE info for clients)
   app.get('/health', () => ({
     status: 'ok',
     service: 'bazaar-api',
     teeMode: env?.TEE_MODE ?? 'simulated',
+    teePlatform: env?.TEE_PLATFORM ?? 'local',
+    teeRegion: env?.TEE_REGION ?? 'local',
     network: env?.NETWORK ?? 'localnet',
   }))
+
+  // TEE Attestation endpoint - allows clients to verify TEE integrity
+  app.group('/api/tee', (app) =>
+    app
+      .get('/attestation', async () => {
+        const teeMode = env?.TEE_MODE ?? 'simulated'
+
+        if (teeMode === 'simulated') {
+          // In simulated mode, return a mock attestation for testing
+          const timestamp = Date.now()
+          const mockMeasurement =
+            '0x0000000000000000000000000000000000000000000000000000000000000000' as const
+
+          return {
+            attestation: {
+              quote: `0x${Buffer.from('simulated-quote').toString('hex')}`,
+              measurement: mockMeasurement,
+              timestamp,
+              platform: 'local',
+              verified: false,
+            },
+            mode: 'simulated',
+            warning: 'Running in simulated TEE mode - not production safe',
+          }
+        }
+
+        // In real TEE mode, we would fetch the actual attestation from the TEE provider
+        // This requires integration with SGX DCAP or AWS Nitro attestation endpoints
+        const platform = env?.TEE_PLATFORM ?? 'unknown'
+
+        // For now, indicate that real attestation needs to be fetched from TEE
+        return {
+          attestation: null,
+          mode: 'real',
+          platform,
+          message:
+            'Real attestation must be fetched from TEE attestation endpoint',
+          attestationEndpoint: '/api/tee/quote',
+        }
+      })
+      .get('/info', () => ({
+        mode: env?.TEE_MODE ?? 'simulated',
+        platform: env?.TEE_PLATFORM ?? 'local',
+        region: env?.TEE_REGION ?? 'local',
+        attestationAvailable: env?.TEE_MODE === 'real',
+      })),
+  )
 
   // A2A API
   app.group('/api/a2a', (app) =>
@@ -460,7 +515,7 @@ if (isMainModule) {
     DWS_URL: getCoreAppUrl('DWS_API'),
     GATEWAY_URL: getCoreAppUrl('NODE_EXPLORER_API'),
     INDEXER_URL: getIndexerGraphqlUrl(),
-EQLITE_NODES: getEQLiteBlockProducerUrl(),
+    EQLITE_NODES: getEQLiteBlockProducerUrl(),
     EQLITE_DATABASE_ID: config.eqliteDatabaseId,
     EQLITE_PRIVATE_KEY: config.eqlitePrivateKey || '',
   })

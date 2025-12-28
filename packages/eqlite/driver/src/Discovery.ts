@@ -35,8 +35,8 @@ export interface DiscoveryConfig {
 export interface EQLiteNode {
   nodeId: string
   operator: string
-  role: "block_producer" | "miner"
-  status: "pending" | "active" | "suspended" | "slashed" | "exiting"
+  role: 'block_producer' | 'miner'
+  status: 'pending' | 'active' | 'suspended' | 'slashed' | 'exiting'
   endpoint: string
   stakedAmount: bigint
   databaseCount: number
@@ -47,45 +47,45 @@ export interface EQLiteNode {
 // ABI for reading EQLite Registry (kept for documentation/future use)
 const _EQLITE_REGISTRY_ABI = [
   {
-    name: "getActiveBlockProducers",
-    type: "function",
+    name: 'getActiveBlockProducers',
+    type: 'function',
     inputs: [],
-    outputs: [{ name: "", type: "bytes32[]" }],
-    stateMutability: "view",
+    outputs: [{ name: '', type: 'bytes32[]' }],
+    stateMutability: 'view',
   },
   {
-    name: "getActiveMiners",
-    type: "function",
+    name: 'getActiveMiners',
+    type: 'function',
     inputs: [],
-    outputs: [{ name: "", type: "bytes32[]" }],
-    stateMutability: "view",
+    outputs: [{ name: '', type: 'bytes32[]' }],
+    stateMutability: 'view',
   },
   {
-    name: "getNode",
-    type: "function",
-    inputs: [{ name: "nodeId", type: "bytes32" }],
+    name: 'getNode',
+    type: 'function',
+    inputs: [{ name: 'nodeId', type: 'bytes32' }],
     outputs: [
       {
-        name: "",
-        type: "tuple",
+        name: '',
+        type: 'tuple',
         components: [
-          { name: "operator", type: "address" },
-          { name: "nodeId", type: "bytes32" },
-          { name: "role", type: "uint8" },
-          { name: "status", type: "uint8" },
-          { name: "stakedAmount", type: "uint256" },
-          { name: "registeredAt", type: "uint256" },
-          { name: "lastHeartbeat", type: "uint256" },
-          { name: "endpoint", type: "string" },
-          { name: "teeAttestation", type: "bytes" },
-          { name: "mrEnclave", type: "bytes32" },
-          { name: "databaseCount", type: "uint256" },
-          { name: "totalQueries", type: "uint256" },
-          { name: "slashedAmount", type: "uint256" },
+          { name: 'operator', type: 'address' },
+          { name: 'nodeId', type: 'bytes32' },
+          { name: 'role', type: 'uint8' },
+          { name: 'status', type: 'uint8' },
+          { name: 'stakedAmount', type: 'uint256' },
+          { name: 'registeredAt', type: 'uint256' },
+          { name: 'lastHeartbeat', type: 'uint256' },
+          { name: 'endpoint', type: 'string' },
+          { name: 'teeAttestation', type: 'bytes' },
+          { name: 'mrEnclave', type: 'bytes32' },
+          { name: 'databaseCount', type: 'uint256' },
+          { name: 'totalQueries', type: 'uint256' },
+          { name: 'slashedAmount', type: 'uint256' },
         ],
       },
     ],
-    stateMutability: "view",
+    stateMutability: 'view',
   },
 ] as const
 
@@ -95,9 +95,9 @@ export { _EQLITE_REGISTRY_ABI as EQLITE_REGISTRY_ABI }
 // Function selectors for EQLite Registry contract
 // These are pre-computed keccak256 hashes of function signatures
 const FUNCTION_SELECTORS: Record<string, string> = {
-  "getActiveBlockProducers()": "0x4e69d560",
-  "getActiveMiners()": "0x5b5e139f",
-  "getNode(bytes32)": "0x4f558e79",
+  'getActiveBlockProducers()': '0x4e69d560',
+  'getActiveMiners()': '0x5b5e139f',
+  'getNode(bytes32)': '0x4f558e79',
 }
 
 // ABI encoder for view functions
@@ -114,10 +114,12 @@ function encodeCall(functionSignature: string, args: unknown[] = []): string {
   // Encode bytes32 arguments
   const encodedArgs = args
     .map((arg) => {
-      const hex = String(arg).startsWith("0x") ? String(arg).slice(2) : String(arg)
-      return hex.padStart(64, "0")
+      const hex = String(arg).startsWith('0x')
+        ? String(arg).slice(2)
+        : String(arg)
+      return hex.padStart(64, '0')
     })
-    .join("")
+    .join('')
 
   return selector + encodedArgs
 }
@@ -145,12 +147,12 @@ export class EQLiteDiscovery {
     const interval = this.config.refreshInterval ?? 60000
     this.refreshTimer = setInterval(() => {
       this.refresh().catch((err) => {
-        console.error("[EQLite Discovery] Refresh failed:", err)
+        console.error('[EQLite Discovery] Refresh failed:', err)
       })
     }, interval)
 
     if (this.config.debug) {
-      console.log("[EQLite Discovery] Started")
+      console.log('[EQLite Discovery] Started')
     }
   }
 
@@ -164,7 +166,7 @@ export class EQLiteDiscovery {
     }
 
     if (this.config.debug) {
-      console.log("[EQLite Discovery] Stopped")
+      console.log('[EQLite Discovery] Stopped')
     }
   }
 
@@ -174,26 +176,26 @@ export class EQLiteDiscovery {
   async refresh(): Promise<void> {
     try {
       // Get active block producers
-      const bpNodeIds = await this.callContract("getActiveBlockProducers", [])
+      const bpNodeIds = await this.callContract('getActiveBlockProducers', [])
       this.blockProducers = await Promise.all(
-        bpNodeIds.map((id: string) => this.getNodeDetails(id))
+        bpNodeIds.map((id: string) => this.getNodeDetails(id)),
       )
 
       // Get active miners
-      const minerNodeIds = await this.callContract("getActiveMiners", [])
+      const minerNodeIds = await this.callContract('getActiveMiners', [])
       this.miners = await Promise.all(
-        minerNodeIds.map((id: string) => this.getNodeDetails(id))
+        minerNodeIds.map((id: string) => this.getNodeDetails(id)),
       )
 
       this.lastRefresh = Date.now()
 
       if (this.config.debug) {
         console.log(
-          `[EQLite Discovery] Refreshed: ${this.blockProducers.length} BPs, ${this.miners.length} miners`
+          `[EQLite Discovery] Refreshed: ${this.blockProducers.length} BPs, ${this.miners.length} miners`,
         )
       }
     } catch (err) {
-      console.error("[EQLite Discovery] Refresh error:", err)
+      console.error('[EQLite Discovery] Refresh error:', err)
       throw err
     }
   }
@@ -273,39 +275,45 @@ export class EQLiteDiscovery {
     return Date.now() - this.lastRefresh > refreshInterval * 2
   }
 
-  private async callContract(method: string, args: unknown[]): Promise<string[]> {
+  private async callContract(
+    method: string,
+    args: unknown[],
+  ): Promise<string[]> {
     const signature = args.length > 0 ? `${method}(bytes32)` : `${method}()`
     const data = encodeCall(signature, args)
 
     const response = await fetch(this.config.rpcUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        jsonrpc: "2.0",
+        jsonrpc: '2.0',
         id: 1,
-        method: "eth_call",
+        method: 'eth_call',
         params: [
           {
             to: this.config.registryAddress,
             data,
           },
-          "latest",
+          'latest',
         ],
       }),
     })
 
-    const result = (await response.json()) as { result?: string; error?: { message: string } }
+    const result = (await response.json()) as {
+      result?: string
+      error?: { message: string }
+    }
 
     if (result.error) {
       throw new Error(`Contract call failed: ${result.error.message}`)
     }
 
     // Decode bytes32[] result
-    return this.decodeBytes32Array(result.result ?? "0x")
+    return this.decodeBytes32Array(result.result ?? '0x')
   }
 
   private decodeBytes32Array(hex: string): string[] {
-    if (hex === "0x" || hex.length < 66) return []
+    if (hex === '0x' || hex.length < 66) return []
 
     // Skip function selector and offset
     const data = hex.slice(2)
@@ -315,72 +323,87 @@ export class EQLiteDiscovery {
     const items: string[] = []
     for (let i = 0; i < length; i++) {
       const start = offset + 64 + i * 64
-      items.push("0x" + data.slice(start, start + 64))
+      items.push(`0x${data.slice(start, start + 64)}`)
     }
 
     return items
   }
 
   private async getNodeDetails(nodeId: string): Promise<EQLiteNode> {
-    const data = encodeCall("getNode(bytes32)", [nodeId])
+    const data = encodeCall('getNode(bytes32)', [nodeId])
 
     const response = await fetch(this.config.rpcUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        jsonrpc: "2.0",
+        jsonrpc: '2.0',
         id: 1,
-        method: "eth_call",
+        method: 'eth_call',
         params: [
           {
             to: this.config.registryAddress,
             data,
           },
-          "latest",
+          'latest',
         ],
       }),
     })
 
-    const result = (await response.json()) as { result?: string; error?: { message: string } }
+    const result = (await response.json()) as {
+      result?: string
+      error?: { message: string }
+    }
 
     if (result.error) {
       throw new Error(`Get node failed: ${result.error.message}`)
     }
 
-    return this.decodeNodeTuple(nodeId, result.result ?? "0x")
+    return this.decodeNodeTuple(nodeId, result.result ?? '0x')
   }
 
   private decodeNodeTuple(nodeId: string, hex: string): EQLiteNode {
-    if (hex === "0x" || hex.length < 66) {
+    if (hex === '0x' || hex.length < 66) {
       throw new Error(`Invalid node data for ${nodeId}`)
     }
 
     const data = hex.slice(2)
 
     // Decode tuple fields (each field is 32 bytes = 64 hex chars)
-    const operator = "0x" + data.slice(24, 64) // address is 20 bytes, right-padded
+    const operator = `0x${data.slice(24, 64)}` // address is 20 bytes, right-padded
     const role = parseInt(data.slice(128, 192), 16)
     const status = parseInt(data.slice(192, 256), 16)
-    const stakedAmount = BigInt("0x" + data.slice(256, 320))
+    const stakedAmount = BigInt(`0x${data.slice(256, 320)}`)
     const lastHeartbeat = parseInt(data.slice(384, 448), 16)
 
     // Endpoint is a dynamic string - decode offset and read
     const endpointOffset = parseInt(data.slice(448, 512), 16) * 2
-    const endpointLength = parseInt(data.slice(endpointOffset, endpointOffset + 64), 16)
-    const endpointHex = data.slice(endpointOffset + 64, endpointOffset + 64 + endpointLength * 2)
-    const endpoint = Buffer.from(endpointHex, "hex").toString("utf8")
+    const endpointLength = parseInt(
+      data.slice(endpointOffset, endpointOffset + 64),
+      16,
+    )
+    const endpointHex = data.slice(
+      endpointOffset + 64,
+      endpointOffset + 64 + endpointLength * 2,
+    )
+    const endpoint = Buffer.from(endpointHex, 'hex').toString('utf8')
 
     const databaseCount = parseInt(data.slice(640, 704), 16)
     const totalQueries = parseInt(data.slice(704, 768), 16)
 
-    const statusMap = ["pending", "active", "suspended", "slashed", "exiting"] as const
-    const roleMap = ["block_producer", "miner"] as const
+    const statusMap = [
+      'pending',
+      'active',
+      'suspended',
+      'slashed',
+      'exiting',
+    ] as const
+    const roleMap = ['block_producer', 'miner'] as const
 
     return {
       nodeId,
       operator,
-      role: roleMap[role] ?? "miner",
-      status: statusMap[status] ?? "pending",
+      role: roleMap[role] ?? 'miner',
+      status: statusMap[status] ?? 'pending',
       endpoint,
       stakedAmount,
       databaseCount,
@@ -393,9 +416,10 @@ export class EQLiteDiscovery {
 /**
  * Create and start a EQLite discovery client
  */
-export async function createDiscovery(config: DiscoveryConfig): Promise<EQLiteDiscovery> {
+export async function createDiscovery(
+  config: DiscoveryConfig,
+): Promise<EQLiteDiscovery> {
   const discovery = new EQLiteDiscovery(config)
   await discovery.start()
   return discovery
 }
-

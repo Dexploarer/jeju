@@ -145,7 +145,10 @@ export const testCommand = new Command('test')
   .option('--force', 'Force override existing test lock')
   .option('--forge-opts <opts>', 'Pass options to forge test')
   .option('--skip-smoke-tests', 'Skip smoke tests before E2E (not recommended)')
-  .option('--grep <pattern>', 'Filter tests by pattern (passed to playwright --grep)')
+  .option(
+    '--grep <pattern>',
+    'Filter tests by pattern (passed to playwright --grep)',
+  )
   .option('--test-file <file>', 'Run specific test file')
   .action(async (options) => {
     const mode = options.mode as TestMode
@@ -1348,19 +1351,19 @@ async function runAppTests(
 
     try {
       const args = ['playwright', 'test']
-      
+
       // Add specific test file if provided
       if (options.testFile) {
         args.push(String(options.testFile))
       }
-      
+
       // Add grep filter if provided
       if (options.grep) {
         args.push('--grep', String(options.grep))
       }
-      
+
       if (options.verbose) args.push('--reporter=list')
-      
+
       await execa('bunx', args, {
         cwd: appPath,
         stdio: 'inherit',

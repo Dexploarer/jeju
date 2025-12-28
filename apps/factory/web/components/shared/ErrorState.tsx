@@ -25,10 +25,7 @@ export function ErrorState({
       aria-describedby="error-description"
     >
       <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-error-500/10 border border-error-500/20 flex items-center justify-center">
-        <AlertTriangle
-          className="w-8 h-8 text-error-400"
-          aria-hidden="true"
-        />
+        <AlertTriangle className="w-8 h-8 text-error-400" aria-hidden="true" />
       </div>
 
       <h3

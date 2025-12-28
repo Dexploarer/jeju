@@ -1,6 +1,6 @@
 /**
  * Database API Routes
- * 
+ *
  * REST API for managed database service (EQLite + PostgreSQL)
  */
 
@@ -16,200 +16,226 @@ import {
 export function createDatabaseRoutes(backend: BackendManager) {
   const dbService = getManagedDatabaseService(backend)
 
-  return new Elysia({ prefix: '/database' })
-    // List all databases for owner
-    .get('/', async ({ headers }) => {
-      const owner = headers['x-wallet-address'] as Address
-      if (!owner) {
-        return { error: 'Unauthorized' }
-      }
-      
-      const instances = dbService.getInstancesByOwner(owner)
-      return { instances }
-    })
+  return (
+    new Elysia({ prefix: '/database' })
+      // List all databases for owner
+      .get('/', async ({ headers }) => {
+        const owner = headers['x-wallet-address'] as Address
+        if (!owner) {
+          return { error: 'Unauthorized' }
+        }
 
-    // Create database
-    .post('/', async ({ body, headers }) => {
-      const owner = headers['x-wallet-address'] as Address
-      if (!owner) {
-        return { error: 'Unauthorized' }
-      }
+        const instances = dbService.getInstancesByOwner(owner)
+        return { instances }
+      })
 
-      const params = CreateDatabaseSchema.parse(body)
-      const instance = await dbService.createDatabase(owner, params)
-      
-      return { instance }
-    }, {
-      body: t.Object({
-        name: t.String(),
-        engine: t.Union([
-          t.Literal('eqlite'),
-          t.Literal('postgresql'),
-        ]),
-        planId: t.String(),
-        region: t.Optional(t.String()),
-        config: t.Optional(t.Object({
-          vcpus: t.Optional(t.Number()),
-          memoryMb: t.Optional(t.Number()),
-          storageMb: t.Optional(t.Number()),
-          readReplicas: t.Optional(t.Number()),
-          maxConnections: t.Optional(t.Number()),
-          connectionPoolSize: t.Optional(t.Number()),
-          backupRetentionDays: t.Optional(t.Number()),
-          pointInTimeRecovery: t.Optional(t.Boolean()),
-          publicAccess: t.Optional(t.Boolean()),
-          replicationFactor: t.Optional(t.Number()),
-          consistencyMode: t.Optional(t.Union([
-            t.Literal('strong'),
-            t.Literal('eventual'),
-          ])),
-        })),
-      }),
-    })
+      // Create database
+      .post(
+        '/',
+        async ({ body, headers }) => {
+          const owner = headers['x-wallet-address'] as Address
+          if (!owner) {
+            return { error: 'Unauthorized' }
+          }
 
-    // Get database by ID
-    .get('/:instanceId', async ({ params, headers }) => {
-      const owner = headers['x-wallet-address'] as Address
-      const instance = dbService.getInstance(params.instanceId)
-      
-      if (!instance) {
-        return { error: 'Database not found' }
-      }
-      
-      if (instance.owner !== owner) {
-        return { error: 'Unauthorized' }
-      }
-      
-      return { instance }
-    })
+          const params = CreateDatabaseSchema.parse(body)
+          const instance = await dbService.createDatabase(owner, params)
 
-    // Update database
-    .patch('/:instanceId', async ({ params, body, headers }) => {
-      const owner = headers['x-wallet-address'] as Address
-      if (!owner) {
-        return { error: 'Unauthorized' }
-      }
+          return { instance }
+        },
+        {
+          body: t.Object({
+            name: t.String(),
+            engine: t.Union([t.Literal('eqlite'), t.Literal('postgresql')]),
+            planId: t.String(),
+            region: t.Optional(t.String()),
+            config: t.Optional(
+              t.Object({
+                vcpus: t.Optional(t.Number()),
+                memoryMb: t.Optional(t.Number()),
+                storageMb: t.Optional(t.Number()),
+                readReplicas: t.Optional(t.Number()),
+                maxConnections: t.Optional(t.Number()),
+                connectionPoolSize: t.Optional(t.Number()),
+                backupRetentionDays: t.Optional(t.Number()),
+                pointInTimeRecovery: t.Optional(t.Boolean()),
+                publicAccess: t.Optional(t.Boolean()),
+                replicationFactor: t.Optional(t.Number()),
+                consistencyMode: t.Optional(
+                  t.Union([t.Literal('strong'), t.Literal('eventual')]),
+                ),
+              }),
+            ),
+          }),
+        },
+      )
 
-      const updates = UpdateDatabaseSchema.parse(body)
-      const instance = await dbService.updateDatabase(params.instanceId, owner, updates)
-      
-      return { instance }
-    }, {
-      body: t.Object({
-        vcpus: t.Optional(t.Number()),
-        memoryMb: t.Optional(t.Number()),
-        storageMb: t.Optional(t.Number()),
-        readReplicas: t.Optional(t.Number()),
-        maxConnections: t.Optional(t.Number()),
-        connectionPoolSize: t.Optional(t.Number()),
-      }),
-    })
+      // Get database by ID
+      .get('/:instanceId', async ({ params, headers }) => {
+        const owner = headers['x-wallet-address'] as Address
+        const instance = dbService.getInstance(params.instanceId)
 
-    // Stop database
-    .post('/:instanceId/stop', async ({ params, headers }) => {
-      const owner = headers['x-wallet-address'] as Address
-      if (!owner) {
-        return { error: 'Unauthorized' }
-      }
+        if (!instance) {
+          return { error: 'Database not found' }
+        }
 
-      await dbService.stopDatabase(params.instanceId, owner)
-      return { success: true }
-    })
+        if (instance.owner !== owner) {
+          return { error: 'Unauthorized' }
+        }
 
-    // Start database
-    .post('/:instanceId/start', async ({ params, headers }) => {
-      const owner = headers['x-wallet-address'] as Address
-      if (!owner) {
-        return { error: 'Unauthorized' }
-      }
+        return { instance }
+      })
 
-      await dbService.startDatabase(params.instanceId, owner)
-      return { success: true }
-    })
+      // Update database
+      .patch(
+        '/:instanceId',
+        async ({ params, body, headers }) => {
+          const owner = headers['x-wallet-address'] as Address
+          if (!owner) {
+            return { error: 'Unauthorized' }
+          }
 
-    // Delete database
-    .delete('/:instanceId', async ({ params, headers }) => {
-      const owner = headers['x-wallet-address'] as Address
-      if (!owner) {
-        return { error: 'Unauthorized' }
-      }
+          const updates = UpdateDatabaseSchema.parse(body)
+          const instance = await dbService.updateDatabase(
+            params.instanceId,
+            owner,
+            updates,
+          )
 
-      await dbService.deleteDatabase(params.instanceId, owner)
-      return { success: true }
-    })
+          return { instance }
+        },
+        {
+          body: t.Object({
+            vcpus: t.Optional(t.Number()),
+            memoryMb: t.Optional(t.Number()),
+            storageMb: t.Optional(t.Number()),
+            readReplicas: t.Optional(t.Number()),
+            maxConnections: t.Optional(t.Number()),
+            connectionPoolSize: t.Optional(t.Number()),
+          }),
+        },
+      )
 
-    // Get connection details
-    .get('/:instanceId/connection', async ({ params, headers }) => {
-      const owner = headers['x-wallet-address'] as Address
-      if (!owner) {
-        return { error: 'Unauthorized' }
-      }
+      // Stop database
+      .post('/:instanceId/stop', async ({ params, headers }) => {
+        const owner = headers['x-wallet-address'] as Address
+        if (!owner) {
+          return { error: 'Unauthorized' }
+        }
 
-      const credentials = dbService.getCredentials(params.instanceId, owner)
-      return { credentials }
-    })
+        await dbService.stopDatabase(params.instanceId, owner)
+        return { success: true }
+      })
 
-    // Get connection pool stats
-    .get('/:instanceId/pool', async ({ params, headers }) => {
-      const owner = headers['x-wallet-address'] as Address
-      if (!owner) {
-        return { error: 'Unauthorized' }
-      }
+      // Start database
+      .post('/:instanceId/start', async ({ params, headers }) => {
+        const owner = headers['x-wallet-address'] as Address
+        if (!owner) {
+          return { error: 'Unauthorized' }
+        }
 
-      const stats = dbService.getPoolStats(params.instanceId)
-      return { stats }
-    })
+        await dbService.startDatabase(params.instanceId, owner)
+        return { success: true }
+      })
 
-    // Create backup
-    .post('/:instanceId/backups', async ({ params, headers }) => {
-      const owner = headers['x-wallet-address'] as Address
-      if (!owner) {
-        return { error: 'Unauthorized' }
-      }
+      // Delete database
+      .delete('/:instanceId', async ({ params, headers }) => {
+        const owner = headers['x-wallet-address'] as Address
+        if (!owner) {
+          return { error: 'Unauthorized' }
+        }
 
-      const backup = await dbService.createBackup(params.instanceId, owner)
-      return { backup }
-    })
+        await dbService.deleteDatabase(params.instanceId, owner)
+        return { success: true }
+      })
 
-    // Restore from backup
-    .post('/:instanceId/restore', async ({ params, body, headers }) => {
-      const owner = headers['x-wallet-address'] as Address
-      if (!owner) {
-        return { error: 'Unauthorized' }
-      }
+      // Get connection details
+      .get('/:instanceId/connection', async ({ params, headers }) => {
+        const owner = headers['x-wallet-address'] as Address
+        if (!owner) {
+          return { error: 'Unauthorized' }
+        }
 
-      await dbService.restoreBackup(params.instanceId, body.backupId, owner)
-      return { success: true }
-    }, {
-      body: t.Object({
-        backupId: t.String(),
-      }),
-    })
+        const credentials = dbService.getCredentials(params.instanceId, owner)
+        return { credentials }
+      })
 
-    // Create read replica (PostgreSQL only)
-    .post('/:instanceId/replicas', async ({ params, body, headers }) => {
-      const owner = headers['x-wallet-address'] as Address
-      if (!owner) {
-        return { error: 'Unauthorized' }
-      }
+      // Get connection pool stats
+      .get('/:instanceId/pool', async ({ params, headers }) => {
+        const owner = headers['x-wallet-address'] as Address
+        if (!owner) {
+          return { error: 'Unauthorized' }
+        }
 
-      const replica = await dbService.createReplica(params.instanceId, owner, body.region)
-      return { replica }
-    }, {
-      body: t.Object({
-        region: t.String(),
-      }),
-    })
+        const stats = dbService.getPoolStats(params.instanceId)
+        return { stats }
+      })
 
-    // Promote replica to primary
-    .post('/:instanceId/replicas/:replicaId/promote', async ({ params, headers }) => {
-      const owner = headers['x-wallet-address'] as Address
-      if (!owner) {
-        return { error: 'Unauthorized' }
-      }
+      // Create backup
+      .post('/:instanceId/backups', async ({ params, headers }) => {
+        const owner = headers['x-wallet-address'] as Address
+        if (!owner) {
+          return { error: 'Unauthorized' }
+        }
 
-      await dbService.promoteReplica(params.replicaId, owner)
-      return { success: true }
-    })
+        const backup = await dbService.createBackup(params.instanceId, owner)
+        return { backup }
+      })
+
+      // Restore from backup
+      .post(
+        '/:instanceId/restore',
+        async ({ params, body, headers }) => {
+          const owner = headers['x-wallet-address'] as Address
+          if (!owner) {
+            return { error: 'Unauthorized' }
+          }
+
+          await dbService.restoreBackup(params.instanceId, body.backupId, owner)
+          return { success: true }
+        },
+        {
+          body: t.Object({
+            backupId: t.String(),
+          }),
+        },
+      )
+
+      // Create read replica (PostgreSQL only)
+      .post(
+        '/:instanceId/replicas',
+        async ({ params, body, headers }) => {
+          const owner = headers['x-wallet-address'] as Address
+          if (!owner) {
+            return { error: 'Unauthorized' }
+          }
+
+          const replica = await dbService.createReplica(
+            params.instanceId,
+            owner,
+            body.region,
+          )
+          return { replica }
+        },
+        {
+          body: t.Object({
+            region: t.String(),
+          }),
+        },
+      )
+
+      // Promote replica to primary
+      .post(
+        '/:instanceId/replicas/:replicaId/promote',
+        async ({ params, headers }) => {
+          const owner = headers['x-wallet-address'] as Address
+          if (!owner) {
+            return { error: 'Unauthorized' }
+          }
+
+          await dbService.promoteReplica(params.replicaId, owner)
+          return { success: true }
+        },
+      )
+  )
 }
-

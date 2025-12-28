@@ -110,7 +110,10 @@ describe.skipIf(!EQLITE_RUNNING)('DatabaseManager (Live Integration)', () => {
 
     // Use unique ID for each test run and INSERT OR REPLACE to handle reruns
     const testId = `test-${Date.now()}`
-    await manager.exec(`INSERT OR REPLACE INTO query_test (id, name) VALUES (?, 'Test')`, [testId])
+    await manager.exec(
+      `INSERT OR REPLACE INTO query_test (id, name) VALUES (?, 'Test')`,
+      [testId],
+    )
 
     const result = await manager.query<{ id: string; name: string }>(
       'SELECT * FROM query_test WHERE id = ?',
@@ -130,9 +133,10 @@ describe.skipIf(!EQLITE_RUNNING)('DatabaseManager (Live Integration)', () => {
 
     // Use unique ID for each test run
     const testId = `exec-${Date.now()}`
-    const result = await manager.exec('INSERT OR REPLACE INTO exec_test (id) VALUES (?)', [
-      testId,
-    ])
+    const result = await manager.exec(
+      'INSERT OR REPLACE INTO exec_test (id) VALUES (?)',
+      [testId],
+    )
 
     expect(result.rowsAffected).toBe(1)
   })

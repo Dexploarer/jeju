@@ -22,10 +22,7 @@ export function PageHeader({
   action,
 }: PageHeaderProps) {
   return (
-    <header
-      className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between page-header animate-in"
-      role="banner"
-    >
+    <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between page-header animate-in">
       <div className="flex items-center gap-4">
         <div
           className={`flex-shrink-0 w-12 h-12 rounded-xl bg-surface-800/80 border border-surface-700/50 flex items-center justify-center ${iconColor}`}

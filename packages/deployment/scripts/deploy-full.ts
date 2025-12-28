@@ -103,12 +103,9 @@ async function main(): Promise<void> {
   }
 
   if (STEPS.EQLITE_IMAGE) {
-    await step(
-      'Building and pushing EQLite multi-arch image',
-      async () => {
-        await $`NETWORK=${NETWORK} bun run ${join(ROOT, 'scripts/build-eqlite.ts')} --push`
-      },
-    )
+    await step('Building and pushing EQLite multi-arch image', async () => {
+      await $`NETWORK=${NETWORK} bun run ${join(ROOT, 'scripts/build-eqlite.ts')} --push`
+    })
   }
 
   if (STEPS.KUBERNETES) {

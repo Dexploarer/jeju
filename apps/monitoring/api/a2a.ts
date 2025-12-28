@@ -5,7 +5,6 @@ import { getNetworkName } from '@jejunetwork/config'
 import { isRecord } from '@jejunetwork/types'
 import { Elysia } from 'elysia'
 import { z } from 'zod'
-import { config } from './config'
 import {
   A2ARequestSchema,
   formatVolume,
@@ -18,6 +17,7 @@ import {
   type SafeFetchResponse,
   type SkillResult,
 } from '../lib/types'
+import { config } from './config'
 
 const networkName = getNetworkName()
 

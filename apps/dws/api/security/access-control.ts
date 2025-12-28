@@ -1,6 +1,6 @@
 /**
  * Fine-Grained Access Control
- * 
+ *
  * Implements comprehensive access control beyond wallet auth:
  * - Role-Based Access Control (RBAC)
  * - Attribute-Based Access Control (ABAC)
@@ -11,7 +11,7 @@
  * - OAuth2/OIDC integration
  */
 
-import { createHash, randomBytes } from 'crypto'
+import { createHash, randomBytes } from 'node:crypto'
 import type { Address } from 'viem'
 import { z } from 'zod'
 
@@ -19,15 +19,28 @@ import { z } from 'zod'
 // Types
 // ============================================================================
 
-export type Permission = 
-  | 'create' | 'read' | 'update' | 'delete'
-  | 'deploy' | 'manage' | 'admin'
+export type Permission =
+  | 'create'
+  | 'read'
+  | 'update'
+  | 'delete'
+  | 'deploy'
+  | 'manage'
+  | 'admin'
   | '*' // Wildcard
 
-export type ResourceType = 
-  | 'project' | 'deployment' | 'worker' | 'database'
-  | 'secret' | 'domain' | 'certificate' | 'team'
-  | 'organization' | 'billing' | 'audit'
+export type ResourceType =
+  | 'project'
+  | 'deployment'
+  | 'worker'
+  | 'database'
+  | 'secret'
+  | 'domain'
+  | 'certificate'
+  | 'team'
+  | 'organization'
+  | 'billing'
+  | 'audit'
 
 export interface Role {
   roleId: string
@@ -48,7 +61,13 @@ export interface ResourcePermission {
 
 export interface PermissionCondition {
   attribute: string
-  operator: 'equals' | 'not_equals' | 'in' | 'not_in' | 'contains' | 'starts_with'
+  operator:
+    | 'equals'
+    | 'not_equals'
+    | 'in'
+    | 'not_in'
+    | 'contains'
+    | 'starts_with'
   value: string | string[]
 }
 
@@ -57,23 +76,23 @@ export interface User {
   address: Address
   email?: string
   name?: string
-  
+
   // Access
   roles: string[] // Role IDs
   directPermissions: ResourcePermission[]
-  
+
   // Organization
   organizations: OrganizationMembership[]
-  
+
   // Auth
   apiKeys: APIKey[]
   sessions: Session[]
-  
+
   // Status
   active: boolean
   verified: boolean
   mfaEnabled: boolean
-  
+
   createdAt: number
   updatedAt: number
   lastLoginAt?: number
@@ -91,13 +110,13 @@ export interface Organization {
   name: string
   slug: string
   owner: Address
-  
+
   // Members
   members: Array<{ userId: string; role: string; joinedAt: number }>
-  
+
   // Teams
   teams: Team[]
-  
+
   // Settings
   settings: {
     defaultRole: string
@@ -106,7 +125,7 @@ export interface Organization {
     ssoEnabled: boolean
     ssoProvider?: string
   }
-  
+
   createdAt: number
   updatedAt: number
 }
@@ -125,22 +144,22 @@ export interface APIKey {
   name: string
   keyHash: string // Hashed key
   prefix: string // First 8 chars for identification
-  
+
   // Permissions
   scopes: Permission[]
   resourceFilter?: {
     type: ResourceType
     ids: string[]
   }
-  
+
   // Limits
   rateLimit?: number // Requests per hour
   expiresAt?: number
-  
+
   // Usage
   lastUsedAt?: number
   usageCount: number
-  
+
   createdAt: number
   revokedAt?: number
 }
@@ -148,17 +167,17 @@ export interface APIKey {
 export interface Session {
   sessionId: string
   userId: string
-  
+
   // Auth info
   ipAddress: string
   userAgent: string
   method: 'wallet' | 'oauth' | 'api_key'
-  
+
   // Timing
   createdAt: number
   expiresAt: number
   lastActivityAt: number
-  
+
   // Status
   active: boolean
   revokedAt?: number
@@ -178,25 +197,40 @@ export interface AccessDecision {
 export const CreateRoleSchema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().max(500).optional(),
-  permissions: z.array(z.object({
-    resource: z.string(),
-    actions: z.array(z.string()),
-    conditions: z.array(z.object({
-      attribute: z.string(),
-      operator: z.enum(['equals', 'not_equals', 'in', 'not_in', 'contains', 'starts_with']),
-      value: z.union([z.string(), z.array(z.string())]),
-    })).optional(),
-  })),
+  permissions: z.array(
+    z.object({
+      resource: z.string(),
+      actions: z.array(z.string()),
+      conditions: z
+        .array(
+          z.object({
+            attribute: z.string(),
+            operator: z.enum([
+              'equals',
+              'not_equals',
+              'in',
+              'not_in',
+              'contains',
+              'starts_with',
+            ]),
+            value: z.union([z.string(), z.array(z.string())]),
+          }),
+        )
+        .optional(),
+    }),
+  ),
   inherits: z.array(z.string()).optional(),
 })
 
 export const CreateAPIKeySchema = z.object({
   name: z.string().min(1).max(100),
   scopes: z.array(z.string()),
-  resourceFilter: z.object({
-    type: z.string(),
-    ids: z.array(z.string()),
-  }).optional(),
+  resourceFilter: z
+    .object({
+      type: z.string(),
+      ids: z.array(z.string()),
+    })
+    .optional(),
   rateLimit: z.number().min(1).max(100000).optional(),
   expiresInDays: z.number().min(1).max(365).optional(),
 })
@@ -235,12 +269,27 @@ export class AccessControlManager {
       name: 'Organization Admin',
       description: 'Full access to organization resources',
       permissions: [
-        { resource: 'project', actions: ['create', 'read', 'update', 'delete', 'manage'] },
-        { resource: 'deployment', actions: ['create', 'read', 'update', 'delete', 'deploy'] },
-        { resource: 'worker', actions: ['create', 'read', 'update', 'delete', 'deploy'] },
-        { resource: 'database', actions: ['create', 'read', 'update', 'delete', 'manage'] },
+        {
+          resource: 'project',
+          actions: ['create', 'read', 'update', 'delete', 'manage'],
+        },
+        {
+          resource: 'deployment',
+          actions: ['create', 'read', 'update', 'delete', 'deploy'],
+        },
+        {
+          resource: 'worker',
+          actions: ['create', 'read', 'update', 'delete', 'deploy'],
+        },
+        {
+          resource: 'database',
+          actions: ['create', 'read', 'update', 'delete', 'manage'],
+        },
         { resource: 'secret', actions: ['create', 'read', 'update', 'delete'] },
-        { resource: 'team', actions: ['create', 'read', 'update', 'delete', 'manage'] },
+        {
+          resource: 'team',
+          actions: ['create', 'read', 'update', 'delete', 'manage'],
+        },
         { resource: 'billing', actions: ['read', 'update'] },
         { resource: 'audit', actions: ['read'] },
       ],
@@ -256,7 +305,10 @@ export class AccessControlManager {
       description: 'Can deploy and manage applications',
       permissions: [
         { resource: 'project', actions: ['read', 'update'] },
-        { resource: 'deployment', actions: ['create', 'read', 'update', 'deploy'] },
+        {
+          resource: 'deployment',
+          actions: ['create', 'read', 'update', 'deploy'],
+        },
         { resource: 'worker', actions: ['create', 'read', 'update', 'deploy'] },
         { resource: 'database', actions: ['read'] },
         { resource: 'secret', actions: ['read'] },
@@ -287,7 +339,10 @@ export class AccessControlManager {
   // User Management
   // =========================================================================
 
-  createUser(address: Address, options?: { email?: string; name?: string }): User {
+  createUser(
+    address: Address,
+    options?: { email?: string; name?: string },
+  ): User {
     const userId = createHash('sha256')
       .update(`${address}-${Date.now()}`)
       .digest('hex')
@@ -327,7 +382,10 @@ export class AccessControlManager {
     return this.createUser(address)
   }
 
-  updateUser(userId: string, updates: Partial<Pick<User, 'email' | 'name' | 'mfaEnabled'>>): User | null {
+  updateUser(
+    userId: string,
+    updates: Partial<Pick<User, 'email' | 'name' | 'mfaEnabled'>>,
+  ): User | null {
     const user = this.users.get(userId)
     if (!user) return null
 
@@ -354,7 +412,7 @@ export class AccessControlManager {
     const user = this.users.get(userId)
     if (!user) throw new Error(`User not found: ${userId}`)
 
-    user.roles = user.roles.filter(r => r !== roleId)
+    user.roles = user.roles.filter((r) => r !== roleId)
     user.updatedAt = Date.now()
   }
 
@@ -384,7 +442,10 @@ export class AccessControlManager {
     return role
   }
 
-  updateRole(roleId: string, updates: Partial<Omit<Role, 'roleId' | 'isBuiltIn' | 'createdAt'>>): Role | null {
+  updateRole(
+    roleId: string,
+    updates: Partial<Omit<Role, 'roleId' | 'isBuiltIn' | 'createdAt'>>,
+  ): Role | null {
     const role = this.roles.get(roleId)
     if (!role || role.isBuiltIn) return null
 
@@ -402,7 +463,7 @@ export class AccessControlManager {
 
     // Remove from all users
     for (const user of this.users.values()) {
-      user.roles = user.roles.filter(r => r !== roleId)
+      user.roles = user.roles.filter((r) => r !== roleId)
     }
 
     return true
@@ -434,7 +495,9 @@ export class AccessControlManager {
       name,
       slug,
       owner,
-      members: [{ userId: ownerUser.userId, role: 'owner', joinedAt: Date.now() }],
+      members: [
+        { userId: ownerUser.userId, role: 'owner', joinedAt: Date.now() },
+      ],
       teams: [],
       settings: {
         defaultRole: 'viewer',
@@ -459,7 +522,11 @@ export class AccessControlManager {
     return org
   }
 
-  addOrgMember(orgId: string, userId: string, role: 'admin' | 'member' | 'viewer'): void {
+  addOrgMember(
+    orgId: string,
+    userId: string,
+    role: 'admin' | 'member' | 'viewer',
+  ): void {
     const org = this.organizations.get(orgId)
     if (!org) throw new Error(`Organization not found: ${orgId}`)
 
@@ -467,7 +534,7 @@ export class AccessControlManager {
     if (!user) throw new Error(`User not found: ${userId}`)
 
     // Check if already member
-    if (org.members.some(m => m.userId === userId)) {
+    if (org.members.some((m) => m.userId === userId)) {
       throw new Error('User is already a member')
     }
 
@@ -482,8 +549,8 @@ export class AccessControlManager {
     const user = this.users.get(userId)
     if (!user) return
 
-    org.members = org.members.filter(m => m.userId !== userId)
-    user.organizations = user.organizations.filter(o => o.orgId !== orgId)
+    org.members = org.members.filter((m) => m.userId !== userId)
+    user.organizations = user.organizations.filter((o) => o.orgId !== orgId)
   }
 
   createTeam(orgId: string, name: string, description: string): Team {
@@ -491,7 +558,10 @@ export class AccessControlManager {
     if (!org) throw new Error(`Organization not found: ${orgId}`)
 
     const team: Team = {
-      teamId: createHash('sha256').update(`${orgId}-${name}-${Date.now()}`).digest('hex').slice(0, 16),
+      teamId: createHash('sha256')
+        .update(`${orgId}-${name}-${Date.now()}`)
+        .digest('hex')
+        .slice(0, 16),
       name,
       description,
       members: [],
@@ -508,7 +578,10 @@ export class AccessControlManager {
   // API Keys
   // =========================================================================
 
-  createAPIKey(userId: string, params: z.infer<typeof CreateAPIKeySchema>): { key: string; apiKey: APIKey } {
+  createAPIKey(
+    userId: string,
+    params: z.infer<typeof CreateAPIKeySchema>,
+  ): { key: string; apiKey: APIKey } {
     const user = this.users.get(userId)
     if (!user) throw new Error(`User not found: ${userId}`)
 
@@ -518,7 +591,10 @@ export class AccessControlManager {
     const prefix = rawKey.slice(0, 12)
 
     const apiKey: APIKey = {
-      keyId: createHash('sha256').update(`${userId}-${Date.now()}`).digest('hex').slice(0, 16),
+      keyId: createHash('sha256')
+        .update(`${userId}-${Date.now()}`)
+        .digest('hex')
+        .slice(0, 16),
       name: params.name,
       keyHash,
       prefix,
@@ -526,7 +602,7 @@ export class AccessControlManager {
       resourceFilter: params.resourceFilter as APIKey['resourceFilter'],
       rateLimit: params.rateLimit,
       expiresAt: params.expiresInDays
-        ? Date.now() + (params.expiresInDays * 24 * 60 * 60 * 1000)
+        ? Date.now() + params.expiresInDays * 24 * 60 * 60 * 1000
         : undefined,
       usageCount: 0,
       createdAt: Date.now(),
@@ -538,7 +614,11 @@ export class AccessControlManager {
     return { key: rawKey, apiKey }
   }
 
-  validateAPIKey(rawKey: string): { valid: boolean; userId?: string; apiKey?: APIKey } {
+  validateAPIKey(rawKey: string): {
+    valid: boolean
+    userId?: string
+    apiKey?: APIKey
+  } {
     const keyHash = createHash('sha256').update(rawKey).digest('hex')
     const entry = this.apiKeysByHash.get(keyHash)
 
@@ -569,7 +649,7 @@ export class AccessControlManager {
     const user = this.users.get(userId)
     if (!user) return
 
-    const key = user.apiKeys.find(k => k.keyId === keyId)
+    const key = user.apiKeys.find((k) => k.keyId === keyId)
     if (key) {
       key.revokedAt = Date.now()
       this.apiKeysByHash.delete(key.keyHash)
@@ -580,7 +660,12 @@ export class AccessControlManager {
   // Sessions
   // =========================================================================
 
-  createSession(userId: string, ipAddress: string, userAgent: string, method: Session['method']): Session {
+  createSession(
+    userId: string,
+    ipAddress: string,
+    userAgent: string,
+    method: Session['method'],
+  ): Session {
     const sessionId = randomBytes(32).toString('hex')
 
     const session: Session = {
@@ -590,7 +675,7 @@ export class AccessControlManager {
       userAgent,
       method,
       createdAt: Date.now(),
-      expiresAt: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
+      expiresAt: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
       lastActivityAt: Date.now(),
       active: true,
     }
@@ -606,7 +691,11 @@ export class AccessControlManager {
     return session
   }
 
-  validateSession(sessionId: string): { valid: boolean; userId?: string; session?: Session } {
+  validateSession(sessionId: string): {
+    valid: boolean
+    userId?: string
+    session?: Session
+  } {
     const session = this.sessions.get(sessionId)
 
     if (!session) {
@@ -668,7 +757,11 @@ export class AccessControlManager {
     // Check direct permissions first
     for (const perm of user.directPermissions) {
       if (this.matchesPermission(perm, resource, action, context)) {
-        return { allowed: true, reason: 'Direct permission', matchedPermission: perm }
+        return {
+          allowed: true,
+          reason: 'Direct permission',
+          matchedPermission: perm,
+        }
       }
     }
 
@@ -680,7 +773,12 @@ export class AccessControlManager {
 
       for (const perm of role.permissions) {
         if (this.matchesPermission(perm, resource, action, context)) {
-          return { allowed: true, reason: 'Role permission', matchedRole: roleId, matchedPermission: perm }
+          return {
+            allowed: true,
+            reason: 'Role permission',
+            matchedRole: roleId,
+            matchedPermission: perm,
+          }
         }
       }
     }
@@ -699,7 +797,11 @@ export class AccessControlManager {
       const orgRolePerms = this.getOrgRolePermissions(membership.role)
       for (const perm of orgRolePerms) {
         if (this.matchesPermission(perm, resource, action, context)) {
-          return { allowed: true, reason: `Organization ${membership.role}`, matchedPermission: perm }
+          return {
+            allowed: true,
+            reason: `Organization ${membership.role}`,
+            matchedPermission: perm,
+          }
         }
       }
     }
@@ -780,7 +882,9 @@ export class AccessControlManager {
     return Array.from(expanded)
   }
 
-  private getOrgRolePermissions(role: 'owner' | 'admin' | 'member' | 'viewer'): ResourcePermission[] {
+  private getOrgRolePermissions(
+    role: 'owner' | 'admin' | 'member' | 'viewer',
+  ): ResourcePermission[] {
     switch (role) {
       case 'owner':
         return [{ resource: '*', actions: ['*'] }]
@@ -818,7 +922,7 @@ export class AccessControlManager {
     if (!user) return []
 
     return user.organizations
-      .map(m => this.organizations.get(m.orgId))
+      .map((m) => this.organizations.get(m.orgId))
       .filter((o): o is Organization => o !== undefined)
   }
 }
@@ -835,4 +939,3 @@ export function getAccessControl(): AccessControlManager {
   }
   return accessControl
 }
-

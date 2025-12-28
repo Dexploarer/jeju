@@ -142,7 +142,6 @@ export interface AuthSig {
 // Lazy configuration getters to avoid initialization errors in tests
 let _councilAddress: string | null = null
 let _chainId: string | null = null
-let _encryptionKey: string | null = null
 
 function getCouncilAddress(): string {
   if (!_councilAddress) {
@@ -164,25 +163,25 @@ function getDAUrl(): string {
 
 import { config } from './config'
 
-function getEncryptionKey(): string {
-  if (!_encryptionKey) {
-    const key = config.teeEncryptionSecret
-    if (!key) {
-      throw new Error('TEE_ENCRYPTION_SECRET environment variable is required')
-    }
-    _encryptionKey = key
+/**
+ * SECURITY: Get encryption key WITHOUT caching in memory.
+ * In production, this should NOT be called - use KMS encryption directly.
+ */
+function getEncryptionKeyOnce(): string {
+  const key = config.teeEncryptionSecret
+  if (!key) {
+    throw new Error('TEE_ENCRYPTION_SECRET environment variable is required')
   }
-  return _encryptionKey
+  return key
 }
 
 function isInitialized(): boolean {
-  return _encryptionKey !== null
+  return process.env.TEE_ENCRYPTION_SECRET !== undefined
 }
 
 function reset(): void {
   _councilAddress = null
   _chainId = null
-  _encryptionKey = null
 }
 
 /**
@@ -227,12 +226,13 @@ function createAccessConditions(
 }
 
 /**
- * Derive encryption key from the base key and policy
+ * SECURITY: Derive encryption key from the base key and policy.
+ * Key is NOT cached - derived fresh each time and cleared after use.
+ * In production, use KMS encryption endpoints instead.
  */
 async function deriveKey(policyHash: string): Promise<CryptoKey> {
-  const keyMaterial = new TextEncoder().encode(
-    `${getEncryptionKey()}:${policyHash}`,
-  )
+  const baseKey = getEncryptionKeyOnce()
+  const keyMaterial = new TextEncoder().encode(`${baseKey}:${policyHash}`)
   const hashBuffer = await crypto.subtle.digest('SHA-256', keyMaterial)
 
   return crypto.subtle.importKey(

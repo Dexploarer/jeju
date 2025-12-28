@@ -132,22 +132,56 @@ export default function ProposalDetailPage() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'APPROVED':
-        return <CheckCircle className="text-[var(--color-success)]" size={20} aria-hidden="true" />
+        return (
+          <CheckCircle
+            className="text-[var(--color-success)]"
+            size={20}
+            aria-hidden="true"
+          />
+        )
       case 'REJECTED':
-        return <XCircle className="text-[var(--color-error)]" size={20} aria-hidden="true" />
+        return (
+          <XCircle
+            className="text-[var(--color-error)]"
+            size={20}
+            aria-hidden="true"
+          />
+        )
       case 'AUTOCRAT_REVIEW':
-        return <Users className="text-[var(--color-primary)]" size={20} aria-hidden="true" />
+        return (
+          <Users
+            className="text-[var(--color-primary)]"
+            size={20}
+            aria-hidden="true"
+          />
+        )
       case 'CEO_QUEUE':
-        return <Clock className="text-[var(--color-warning)]" size={20} aria-hidden="true" />
+        return (
+          <Clock
+            className="text-[var(--color-warning)]"
+            size={20}
+            aria-hidden="true"
+          />
+        )
       default:
-        return <Clock className="text-[var(--text-tertiary)]" size={20} aria-hidden="true" />
+        return (
+          <Clock
+            className="text-[var(--text-tertiary)]"
+            size={20}
+            aria-hidden="true"
+          />
+        )
     }
   }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="animate-spin text-[var(--color-primary)]" size={32} aria-label="Loading" />
+        <Loader2
+          className="animate-spin text-[var(--color-primary)]"
+          size={32}
+          aria-label="Loading"
+        />
       </div>
     )
   }
@@ -155,8 +189,14 @@ export default function ProposalDetailPage() {
   if (error || !proposal) {
     return (
       <div className="card-static p-8 text-center">
-        <XCircle className="mx-auto mb-4 text-[var(--color-error)]" size={48} aria-hidden="true" />
-        <h2 className="text-xl font-semibold mb-2 text-[var(--text-primary)]">Proposal Not Found</h2>
+        <XCircle
+          className="mx-auto mb-4 text-[var(--color-error)]"
+          size={48}
+          aria-hidden="true"
+        />
+        <h2 className="text-xl font-semibold mb-2 text-[var(--text-primary)]">
+          Proposal Not Found
+        </h2>
         <p className="text-[var(--text-secondary)] mb-4">
           {error ?? 'Unable to load proposal'}
         </p>
@@ -176,7 +216,11 @@ export default function ProposalDetailPage() {
           className="p-2 hover:bg-[var(--bg-secondary)] rounded-lg transition-colors"
           aria-label="Back to proposals"
         >
-          <ArrowLeft size={20} className="text-[var(--text-secondary)]" aria-hidden="true" />
+          <ArrowLeft
+            size={20}
+            className="text-[var(--text-secondary)]"
+            aria-hidden="true"
+          />
         </Link>
         <div className="flex-1">
           <h1 className="text-xl font-semibold flex items-center gap-2 text-[var(--text-primary)]">
@@ -195,7 +239,9 @@ export default function ProposalDetailPage() {
         {/* Proposal Details */}
         <div className="lg:col-span-2 space-y-4">
           <div className="card-static p-4 sm:p-6">
-            <h2 className="font-semibold mb-4 text-[var(--text-primary)]">Proposal Details</h2>
+            <h2 className="font-semibold mb-4 text-[var(--text-primary)]">
+              Proposal Details
+            </h2>
             <dl className="space-y-3">
               <div className="flex justify-between py-2 border-b border-[var(--border)]">
                 <dt className="text-[var(--text-secondary)]">Proposer</dt>
@@ -213,18 +259,24 @@ export default function ProposalDetailPage() {
               </div>
               <div className="flex justify-between py-2 border-b border-[var(--border)]">
                 <dt className="text-[var(--text-secondary)]">Quality Score</dt>
-                <dd className="font-semibold text-[var(--text-primary)]">{proposal.qualityScore}/100</dd>
+                <dd className="font-semibold text-[var(--text-primary)]">
+                  {proposal.qualityScore}/100
+                </dd>
               </div>
               {proposal.totalStaked && (
                 <div className="flex justify-between py-2 border-b border-[var(--border)]">
                   <dt className="text-[var(--text-secondary)]">Total Staked</dt>
-                  <dd className="text-[var(--text-primary)]">{proposal.totalStaked}</dd>
+                  <dd className="text-[var(--text-primary)]">
+                    {proposal.totalStaked}
+                  </dd>
                 </div>
               )}
               {proposal.backerCount && (
                 <div className="flex justify-between py-2">
                   <dt className="text-[var(--text-secondary)]">Backers</dt>
-                  <dd className="text-[var(--text-primary)]">{proposal.backerCount}</dd>
+                  <dd className="text-[var(--text-primary)]">
+                    {proposal.backerCount}
+                  </dd>
                 </div>
               )}
             </dl>
@@ -245,7 +297,11 @@ export default function ProposalDetailPage() {
                   className="btn-secondary text-sm"
                 >
                   {researchLoading ? (
-                    <Loader2 className="animate-spin" size={14} aria-hidden="true" />
+                    <Loader2
+                      className="animate-spin"
+                      size={14}
+                      aria-hidden="true"
+                    />
                   ) : (
                     'Quick Screen'
                   )}
@@ -257,7 +313,11 @@ export default function ProposalDetailPage() {
                   className="btn-primary text-sm"
                 >
                   {researchLoading ? (
-                    <Loader2 className="animate-spin" size={14} aria-hidden="true" />
+                    <Loader2
+                      className="animate-spin"
+                      size={14}
+                      aria-hidden="true"
+                    />
                   ) : (
                     'Deep Research'
                   )}
@@ -326,13 +386,21 @@ export default function ProposalDetailPage() {
                       {research.recommendation.toUpperCase()}
                     </span>
                     <span className="text-sm text-[var(--text-secondary)]">
-                      Risk: <strong className="text-[var(--text-primary)]">{research.riskLevel}</strong>
+                      Risk:{' '}
+                      <strong className="text-[var(--text-primary)]">
+                        {research.riskLevel}
+                      </strong>
                     </span>
                     <span className="text-sm text-[var(--text-secondary)]">
-                      Confidence: <strong className="text-[var(--text-primary)]">{research.confidenceLevel}%</strong>
+                      Confidence:{' '}
+                      <strong className="text-[var(--text-primary)]">
+                        {research.confidenceLevel}%
+                      </strong>
                     </span>
                   </div>
-                  <p className="text-sm mb-4 text-[var(--text-secondary)]">{research.summary}</p>
+                  <p className="text-sm mb-4 text-[var(--text-secondary)]">
+                    {research.summary}
+                  </p>
                   {research.keyFindings.length > 0 && (
                     <div className="mb-3">
                       <h4 className="text-xs font-medium uppercase text-[var(--text-tertiary)] mb-1">
@@ -400,7 +468,9 @@ export default function ProposalDetailPage() {
                   <span className="text-[var(--text-secondary)]">Flags</span>
                   <span
                     className={
-                      moderationScore.flagCount > 0 ? 'text-[var(--color-error)]' : 'text-[var(--text-primary)]'
+                      moderationScore.flagCount > 0
+                        ? 'text-[var(--color-error)]'
+                        : 'text-[var(--text-primary)]'
                     }
                   >
                     {moderationScore.flagCount}
@@ -408,7 +478,9 @@ export default function ProposalDetailPage() {
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-[var(--text-secondary)]">No moderation data</p>
+              <p className="text-sm text-[var(--text-secondary)]">
+                No moderation data
+              </p>
             )}
           </div>
 
@@ -430,7 +502,9 @@ export default function ProposalDetailPage() {
 
             {showFlagForm && (
               <div className="mb-4 p-3 border rounded-lg border-[var(--border)] bg-[var(--bg-secondary)]">
-                <label htmlFor="flag-type" className="sr-only">Flag Type</label>
+                <label htmlFor="flag-type" className="sr-only">
+                  Flag Type
+                </label>
                 <select
                   id="flag-type"
                   value={flagType}
@@ -443,7 +517,9 @@ export default function ProposalDetailPage() {
                   <option value="misleading">Misleading</option>
                   <option value="other">Other</option>
                 </select>
-                <label htmlFor="flag-reason" className="sr-only">Reason for flagging</label>
+                <label htmlFor="flag-reason" className="sr-only">
+                  Reason for flagging
+                </label>
                 <textarea
                   id="flag-reason"
                   value={flagReason}
@@ -459,7 +535,11 @@ export default function ProposalDetailPage() {
                   className="btn-primary w-full mt-2 text-sm"
                 >
                   {flagSubmitting ? (
-                    <Loader2 className="animate-spin mx-auto" size={16} aria-hidden="true" />
+                    <Loader2
+                      className="animate-spin mx-auto"
+                      size={16}
+                      aria-hidden="true"
+                    />
                   ) : (
                     'Submit Flag'
                   )}
@@ -475,8 +555,14 @@ export default function ProposalDetailPage() {
                     className="p-2 rounded bg-[var(--bg-secondary)] text-sm"
                   >
                     <div className="flex items-center gap-2 mb-1">
-                      <AlertTriangle size={14} className="text-[var(--color-warning)]" aria-hidden="true" />
-                      <span className="font-medium text-[var(--text-primary)]">{flag.flagType}</span>
+                      <AlertTriangle
+                        size={14}
+                        className="text-[var(--color-warning)]"
+                        aria-hidden="true"
+                      />
+                      <span className="font-medium text-[var(--text-primary)]">
+                        {flag.flagType}
+                      </span>
                     </div>
                     <p className="text-[var(--text-secondary)]">
                       {flag.reason}
@@ -489,7 +575,9 @@ export default function ProposalDetailPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-[var(--text-secondary)]">No flags reported</p>
+              <p className="text-sm text-[var(--text-secondary)]">
+                No flags reported
+              </p>
             )}
           </div>
         </div>

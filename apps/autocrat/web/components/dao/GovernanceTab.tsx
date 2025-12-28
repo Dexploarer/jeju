@@ -75,20 +75,76 @@ const STATUS_CONFIG: Record<
   ProposalStatus,
   { label: string; color: string; bg: string }
 > = {
-  draft: { label: 'Draft', color: 'var(--text-tertiary)', bg: 'rgba(148, 163, 184, 0.12)' },
-  pending_quality: { label: 'Quality Review', color: 'var(--color-warning)', bg: 'rgba(245, 158, 11, 0.12)' },
-  submitted: { label: 'Submitted', color: 'var(--color-info)', bg: 'rgba(59, 130, 246, 0.12)' },
-  board_review: { label: 'Board Review', color: 'var(--color-secondary)', bg: 'rgba(139, 92, 246, 0.12)' },
-  research: { label: 'Research', color: '#06B6D4', bg: 'rgba(6, 182, 212, 0.12)' },
-  board_final: { label: 'Board Final', color: 'var(--color-secondary)', bg: 'rgba(139, 92, 246, 0.12)' },
-  ceo_queue: { label: 'CEO Queue', color: 'var(--color-accent)', bg: 'rgba(255, 107, 107, 0.12)' },
-  approved: { label: 'Approved', color: 'var(--color-success)', bg: 'rgba(16, 185, 129, 0.12)' },
-  executing: { label: 'Executing', color: 'var(--color-info)', bg: 'rgba(59, 130, 246, 0.12)' },
-  completed: { label: 'Completed', color: 'var(--color-success)', bg: 'rgba(16, 185, 129, 0.12)' },
-  rejected: { label: 'Rejected', color: 'var(--color-error)', bg: 'rgba(239, 68, 68, 0.12)' },
-  vetoed: { label: 'Vetoed', color: 'var(--color-error)', bg: 'rgba(239, 68, 68, 0.12)' },
-  executed: { label: 'Executed', color: 'var(--color-success)', bg: 'rgba(16, 185, 129, 0.12)' },
-  cancelled: { label: 'Cancelled', color: 'var(--text-tertiary)', bg: 'rgba(148, 163, 184, 0.12)' },
+  draft: {
+    label: 'Draft',
+    color: 'var(--text-tertiary)',
+    bg: 'rgba(148, 163, 184, 0.12)',
+  },
+  pending_quality: {
+    label: 'Quality Review',
+    color: 'var(--color-warning)',
+    bg: 'rgba(245, 158, 11, 0.12)',
+  },
+  submitted: {
+    label: 'Submitted',
+    color: 'var(--color-info)',
+    bg: 'rgba(59, 130, 246, 0.12)',
+  },
+  board_review: {
+    label: 'Board Review',
+    color: 'var(--color-secondary)',
+    bg: 'rgba(139, 92, 246, 0.12)',
+  },
+  research: {
+    label: 'Research',
+    color: '#06B6D4',
+    bg: 'rgba(6, 182, 212, 0.12)',
+  },
+  board_final: {
+    label: 'Board Final',
+    color: 'var(--color-secondary)',
+    bg: 'rgba(139, 92, 246, 0.12)',
+  },
+  ceo_queue: {
+    label: 'CEO Queue',
+    color: 'var(--color-accent)',
+    bg: 'rgba(255, 107, 107, 0.12)',
+  },
+  approved: {
+    label: 'Approved',
+    color: 'var(--color-success)',
+    bg: 'rgba(16, 185, 129, 0.12)',
+  },
+  executing: {
+    label: 'Executing',
+    color: 'var(--color-info)',
+    bg: 'rgba(59, 130, 246, 0.12)',
+  },
+  completed: {
+    label: 'Completed',
+    color: 'var(--color-success)',
+    bg: 'rgba(16, 185, 129, 0.12)',
+  },
+  rejected: {
+    label: 'Rejected',
+    color: 'var(--color-error)',
+    bg: 'rgba(239, 68, 68, 0.12)',
+  },
+  vetoed: {
+    label: 'Vetoed',
+    color: 'var(--color-error)',
+    bg: 'rgba(239, 68, 68, 0.12)',
+  },
+  executed: {
+    label: 'Executed',
+    color: 'var(--color-success)',
+    bg: 'rgba(16, 185, 129, 0.12)',
+  },
+  cancelled: {
+    label: 'Cancelled',
+    color: 'var(--text-tertiary)',
+    bg: 'rgba(148, 163, 184, 0.12)',
+  },
 }
 
 interface ProposalCardProps {
@@ -97,7 +153,8 @@ interface ProposalCardProps {
 }
 
 function ProposalCard({ proposal, daoId }: ProposalCardProps) {
-  const typeConfig = PROPOSAL_TYPE_CONFIG[proposal.proposalType] ?? PROPOSAL_TYPE_CONFIG.general
+  const typeConfig =
+    PROPOSAL_TYPE_CONFIG[proposal.proposalType] ?? PROPOSAL_TYPE_CONFIG.general
   const statusConfig = STATUS_CONFIG[proposal.status] ?? STATUS_CONFIG.draft
   const Icon = typeConfig.icon
 
@@ -115,7 +172,11 @@ function ProposalCard({ proposal, daoId }: ProposalCardProps) {
           className="shrink-0 w-10 h-10 rounded-lg flex items-center justify-center"
           style={{ backgroundColor: typeConfig.bg }}
         >
-          <Icon className="w-5 h-5" style={{ color: typeConfig.color }} aria-hidden="true" />
+          <Icon
+            className="w-5 h-5"
+            style={{ color: typeConfig.color }}
+            aria-hidden="true"
+          />
         </div>
 
         <div className="flex-1 min-w-0">
@@ -127,13 +188,20 @@ function ProposalCard({ proposal, daoId }: ProposalCardProps) {
               >
                 {proposal.title}
               </h4>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
-                {typeConfig.label} · {new Date(proposal.createdAt).toLocaleDateString()}
+              <p
+                className="text-xs mt-0.5"
+                style={{ color: 'var(--text-tertiary)' }}
+              >
+                {typeConfig.label} ·{' '}
+                {new Date(proposal.createdAt).toLocaleDateString()}
               </p>
             </div>
             <span
               className="shrink-0 px-2 py-0.5 text-xs font-semibold rounded-full"
-              style={{ backgroundColor: statusConfig.bg, color: statusConfig.color }}
+              style={{
+                backgroundColor: statusConfig.bg,
+                color: statusConfig.color,
+              }}
             >
               {statusConfig.label}
             </span>
@@ -176,7 +244,13 @@ function ProposalCard({ proposal, daoId }: ProposalCardProps) {
             {proposal.ceoApproved !== undefined && (
               <div className="flex items-center gap-1.5">
                 <Crown className="w-3.5 h-3.5" aria-hidden="true" />
-                <span style={{ color: proposal.ceoApproved ? 'var(--color-success)' : 'var(--color-error)' }}>
+                <span
+                  style={{
+                    color: proposal.ceoApproved
+                      ? 'var(--color-success)'
+                      : 'var(--color-error)',
+                  }}
+                >
                   CEO {proposal.ceoApproved ? 'Approved' : 'Rejected'}
                 </span>
               </div>
@@ -213,10 +287,18 @@ function ProposalCard({ proposal, daoId }: ProposalCardProps) {
 
 export function GovernanceTab({ dao }: GovernanceTabProps) {
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<ProposalStatus | 'all'>('all')
+  const [statusFilter, setStatusFilter] = useState<ProposalStatus | 'all'>(
+    'all',
+  )
   const [typeFilter, setTypeFilter] = useState<ProposalType | 'all'>('all')
 
-  const { data: proposals = [], isLoading, isError, error, refetch } = useProposals({
+  const {
+    data: proposals = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useProposals({
     daoId: dao.daoId,
     status: statusFilter,
     type: typeFilter,
@@ -229,13 +311,16 @@ export function GovernanceTab({ dao }: GovernanceTabProps) {
     return proposals.filter(
       (p) =>
         p.title.toLowerCase().includes(searchLower) ||
-        p.summary.toLowerCase().includes(searchLower)
+        p.summary.toLowerCase().includes(searchLower),
     )
   }, [proposals, search])
 
   const activeCount = useMemo(() => {
     return proposals.filter(
-      (p) => !['completed', 'rejected', 'vetoed', 'draft', 'cancelled'].includes(p.status)
+      (p) =>
+        !['completed', 'rejected', 'vetoed', 'draft', 'cancelled'].includes(
+          p.status,
+        ),
     ).length
   }, [proposals])
 
@@ -248,10 +333,30 @@ export function GovernanceTab({ dao }: GovernanceTabProps) {
       {/* Quick Actions */}
       <div className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { type: 'general', label: 'Proposal', sub: 'General governance', icon: FileText },
-          { type: 'bug_report', label: 'Bug Report', sub: 'Security bounty', icon: Bug },
-          { type: 'funding', label: 'Funding', sub: 'Treasury request', icon: Coins },
-          { type: 'code', label: 'Code Change', sub: 'Contract update', icon: Code },
+          {
+            type: 'general',
+            label: 'Proposal',
+            sub: 'General governance',
+            icon: FileText,
+          },
+          {
+            type: 'bug_report',
+            label: 'Bug Report',
+            sub: 'Security bounty',
+            icon: Bug,
+          },
+          {
+            type: 'funding',
+            label: 'Funding',
+            sub: 'Treasury request',
+            icon: Coins,
+          },
+          {
+            type: 'code',
+            label: 'Code Change',
+            sub: 'Contract update',
+            icon: Code,
+          },
         ].map((action) => {
           const config = PROPOSAL_TYPE_CONFIG[action.type as ProposalType]
           return (
@@ -268,13 +373,23 @@ export function GovernanceTab({ dao }: GovernanceTabProps) {
                 className="w-10 h-10 rounded-lg flex items-center justify-center"
                 style={{ backgroundColor: config.bg }}
               >
-                <action.icon className="w-5 h-5" style={{ color: config.color }} aria-hidden="true" />
+                <action.icon
+                  className="w-5 h-5"
+                  style={{ color: config.color }}
+                  aria-hidden="true"
+                />
               </div>
               <div>
-                <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                <p
+                  className="font-medium"
+                  style={{ color: 'var(--text-primary)' }}
+                >
                   {action.label}
                 </p>
-                <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                <p
+                  className="text-xs"
+                  style={{ color: 'var(--text-tertiary)' }}
+                >
                   {action.sub}
                 </p>
               </div>
@@ -297,10 +412,17 @@ export function GovernanceTab({ dao }: GovernanceTabProps) {
               className="w-10 h-10 rounded-lg flex items-center justify-center"
               style={{ backgroundColor: 'rgba(16, 185, 129, 0.12)' }}
             >
-              <Clock className="w-5 h-5" style={{ color: 'var(--color-success)' }} aria-hidden="true" />
+              <Clock
+                className="w-5 h-5"
+                style={{ color: 'var(--color-success)' }}
+                aria-hidden="true"
+              />
             </div>
             <div>
-              <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+              <p
+                className="text-2xl font-bold"
+                style={{ color: 'var(--text-primary)' }}
+              >
                 {activeCount}
               </p>
               <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
@@ -321,10 +443,17 @@ export function GovernanceTab({ dao }: GovernanceTabProps) {
               className="w-10 h-10 rounded-lg flex items-center justify-center"
               style={{ backgroundColor: 'rgba(139, 92, 246, 0.12)' }}
             >
-              <Check className="w-5 h-5" style={{ color: 'var(--color-secondary)' }} aria-hidden="true" />
+              <Check
+                className="w-5 h-5"
+                style={{ color: 'var(--color-secondary)' }}
+                aria-hidden="true"
+              />
             </div>
             <div>
-              <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+              <p
+                className="text-2xl font-bold"
+                style={{ color: 'var(--text-primary)' }}
+              >
                 {dao.stats.approvedProposals}
               </p>
               <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
@@ -345,10 +474,17 @@ export function GovernanceTab({ dao }: GovernanceTabProps) {
               className="w-10 h-10 rounded-lg flex items-center justify-center"
               style={{ backgroundColor: 'rgba(148, 163, 184, 0.12)' }}
             >
-              <Calendar className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} aria-hidden="true" />
+              <Calendar
+                className="w-5 h-5"
+                style={{ color: 'var(--text-secondary)' }}
+                aria-hidden="true"
+              />
             </div>
             <div>
-              <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+              <p
+                className="text-2xl font-bold"
+                style={{ color: 'var(--text-primary)' }}
+              >
                 {dao.stats.averageApprovalTime.toFixed(1)}d
               </p>
               <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
@@ -379,7 +515,9 @@ export function GovernanceTab({ dao }: GovernanceTabProps) {
         <div className="flex gap-2">
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as ProposalStatus | 'all')}
+            onChange={(e) =>
+              setStatusFilter(e.target.value as ProposalStatus | 'all')
+            }
             className="select"
             aria-label="Filter by status"
           >
@@ -392,7 +530,9 @@ export function GovernanceTab({ dao }: GovernanceTabProps) {
           </select>
           <select
             value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value as ProposalType | 'all')}
+            onChange={(e) =>
+              setTypeFilter(e.target.value as ProposalType | 'all')
+            }
             className="select"
             aria-label="Filter by type"
           >
@@ -434,7 +574,10 @@ export function GovernanceTab({ dao }: GovernanceTabProps) {
             className="w-12 h-12 mx-auto mb-4"
             style={{ color: 'var(--color-error)' }}
           />
-          <h3 className="text-lg font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+          <h3
+            className="text-lg font-medium mb-2"
+            style={{ color: 'var(--text-primary)' }}
+          >
             Failed to load proposals
           </h3>
           <p className="mb-4" style={{ color: 'var(--text-secondary)' }}>
@@ -465,7 +608,10 @@ export function GovernanceTab({ dao }: GovernanceTabProps) {
             className="w-12 h-12 mx-auto mb-4"
             style={{ color: 'var(--text-tertiary)' }}
           />
-          <h3 className="text-lg font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+          <h3
+            className="text-lg font-medium mb-2"
+            style={{ color: 'var(--text-primary)' }}
+          >
             No proposals
           </h3>
           <p className="mb-4" style={{ color: 'var(--text-secondary)' }}>
@@ -485,7 +631,11 @@ export function GovernanceTab({ dao }: GovernanceTabProps) {
       ) : (
         <div className="space-y-3">
           {filteredProposals.map((proposal) => (
-            <ProposalCard key={proposal.proposalId} proposal={proposal} daoId={dao.daoId} />
+            <ProposalCard
+              key={proposal.proposalId}
+              proposal={proposal}
+              daoId={dao.daoId}
+            />
           ))}
         </div>
       )}

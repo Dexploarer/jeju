@@ -1,5 +1,7 @@
 /**
  * Farcaster authentication routes
+ *
+ * SECURITY: Sessions use ephemeral keys and encrypted PII storage.
  */
 
 import { Elysia, t } from 'elysia'
@@ -7,8 +9,9 @@ import QRCode from 'qrcode'
 import type { Address, Hex } from 'viem'
 import { isAddress, isHex, verifyMessage } from 'viem'
 import type { AuthConfig } from '../../lib/types'
-import { createHtmlPage, escapeJsString } from '../shared/html-templates'
+import { getEphemeralKey } from '../services/kms'
 import { authCodeState, clientState, sessionState } from '../services/state'
+import { createHtmlPage, escapeJsString } from '../shared/html-templates'
 
 /**
  * Validate redirect URI against client's registered patterns.
@@ -247,7 +250,12 @@ export function createFarcasterRouter(_config: AuthConfig) {
         const warpcastUri = `https://warpcast.com/~/sign-in-with-farcaster?nonce=${nonce}&domain=${domain}`
         const qrDataUrl = await generateQRDataUrl(warpcastUri)
 
-        const html = generateFarcasterPage(nonce, domain, qrDataUrl, warpcastUri)
+        const html = generateFarcasterPage(
+          nonce,
+          domain,
+          qrDataUrl,
+          warpcastUri,
+        )
         return new Response(html, {
           headers: { 'Content-Type': 'text/html; charset=utf-8' },
         })
@@ -322,17 +330,20 @@ export function createFarcasterRouter(_config: AuthConfig) {
           expiresAt: Date.now() + 5 * 60 * 1000,
         })
 
-        // Create session
+        // Create session with ephemeral key
         const sessionId = crypto.randomUUID()
+        const ephemeralKey = await getEphemeralKey(sessionId)
+
         await sessionState.save({
           sessionId,
           userId,
           provider: 'farcaster',
-          fid: body.fid,
-          address: custody,
+          fid: body.fid, // Will be encrypted by sessionState.save()
+          address: custody, // Will be encrypted by sessionState.save()
           createdAt: Date.now(),
           expiresAt: Date.now() + 24 * 60 * 60 * 1000,
           metadata: {},
+          ephemeralKeyId: ephemeralKey.keyId,
         })
 
         // Clean up challenge

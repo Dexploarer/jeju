@@ -283,17 +283,22 @@ class ServicesOrchestrator {
     }
 
     // Start EQLite via Docker Compose
-    const composeFile = join(this.rootDir, 'packages/deployment/docker/eqlite-internal.compose.yaml')
-    
+    const composeFile = join(
+      this.rootDir,
+      'packages/deployment/docker/eqlite-internal.compose.yaml',
+    )
+
     if (!existsSync(composeFile)) {
       logger.error('EQLite compose file not found')
-      logger.info('Expected at: packages/deployment/docker/eqlite-internal.compose.yaml')
+      logger.info(
+        'Expected at: packages/deployment/docker/eqlite-internal.compose.yaml',
+      )
       logger.info('Build with: cd packages/eqlite && make docker')
       return
     }
 
     logger.step('Starting EQLite cluster via Docker...')
-    
+
     const proc = spawn(['docker', 'compose', '-f', composeFile, 'up', '-d'], {
       cwd: this.rootDir,
       stdout: 'inherit',
@@ -303,9 +308,9 @@ class ServicesOrchestrator {
     // Wait for cluster to be ready
     const startTime = Date.now()
     const timeout = 30000
-    
+
     while (Date.now() - startTime < timeout) {
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await new Promise((resolve) => setTimeout(resolve, 1000))
       try {
         const response = await fetch(`http://localhost:${port}/v1/status`, {
           signal: AbortSignal.timeout(2000),

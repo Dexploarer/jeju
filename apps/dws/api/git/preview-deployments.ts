@@ -1,11 +1,11 @@
 /**
  * Preview Deployments for Branches and Pull Requests
- * 
+ *
  * Creates ephemeral preview environments for:
  * - Feature branches (branch-name.app.jns.domain)
  * - Pull requests (pr-123.app.jns.domain)
  * - Commit previews (abc123.app.jns.domain)
- * 
+ *
  * Features:
  * - Automatic cleanup after merge/close
  * - Environment variable isolation
@@ -27,8 +27,8 @@ import {
 import { privateKeyToAccount } from 'viem/accounts'
 import { foundry } from 'viem/chains'
 import { z } from 'zod'
-import type { BackendManager } from '../storage/backends'
 import type { ManagedDatabaseService } from '../database/managed-service'
+import type { BackendManager } from '../storage/backends'
 
 // ============================================================================
 // Types
@@ -36,7 +36,7 @@ import type { ManagedDatabaseService } from '../database/managed-service'
 
 export type PreviewType = 'branch' | 'pr' | 'commit'
 
-export type PreviewStatus = 
+export type PreviewStatus =
   | 'pending'
   | 'building'
   | 'deploying'
@@ -56,27 +56,27 @@ export interface PreviewDeployment {
   prNumber?: number
   commitSha: string
   status: PreviewStatus
-  
+
   // URLs
   previewUrl: string
   apiUrl?: string
-  
+
   // Resources
   frontendCid?: string
   workerDeploymentId?: string
   databaseBranchId?: string
-  
+
   // Metadata
   createdAt: number
   updatedAt: number
   expiresAt: number
   lastAccessedAt?: number
-  
+
   // Config
   accessLevel: AccessLevel
   owner: Address
   environment: Record<string, string>
-  
+
   // Build info
   buildLogs?: string
   buildDuration?: number
@@ -89,12 +89,12 @@ export interface PreviewConfig {
   branchName: string
   prNumber?: number
   commitSha: string
-  
+
   // Optional overrides
   environment?: Record<string, string>
   accessLevel?: AccessLevel
   ttlHours?: number
-  
+
   // Database branching
   branchDatabase?: boolean
   parentDatabaseId?: string
@@ -131,16 +131,16 @@ function generatePreviewUrl(config: PreviewConfig, baseDomain: string): string {
     .replace(/[^a-z0-9-]/g, '-')
     .replace(/-+/g, '-')
     .slice(0, 20)
-  
+
   if (config.type === 'pr' && config.prNumber) {
     return `https://pr-${config.prNumber}.${config.appName}.${baseDomain}`
   }
-  
+
   if (config.type === 'commit') {
     const shortSha = config.commitSha.slice(0, 7)
     return `https://${shortSha}.${config.appName}.${baseDomain}`
   }
-  
+
   return `https://${sanitizedBranch}.${config.appName}.${baseDomain}`
 }
 
@@ -155,7 +155,7 @@ export class PreviewDeploymentManager {
   private backend: BackendManager
   private dbService?: ManagedDatabaseService
   private baseDomain: string
-  
+
   // Contract interaction
   private publicClient: ReturnType<typeof createPublicClient>
   private walletClient: ReturnType<typeof createWalletClient> | null = null
@@ -170,13 +170,23 @@ export class PreviewDeploymentManager {
     this.backend = config.backend
     this.dbService = config.dbService
     this.baseDomain = config.baseDomain
-    
-    const chain = { ...foundry, rpcUrls: { default: { http: [config.rpcUrl] } } }
-    this.publicClient = createPublicClient({ chain, transport: http(config.rpcUrl) })
-    
+
+    const chain = {
+      ...foundry,
+      rpcUrls: { default: { http: [config.rpcUrl] } },
+    }
+    this.publicClient = createPublicClient({
+      chain,
+      transport: http(config.rpcUrl),
+    })
+
     if (config.privateKey) {
       const account = privateKeyToAccount(config.privateKey)
-      this.walletClient = createWalletClient({ account, chain, transport: http(config.rpcUrl) })
+      this.walletClient = createWalletClient({
+        account,
+        chain,
+        transport: http(config.rpcUrl),
+      })
     }
 
     // Start cleanup job
@@ -198,12 +208,14 @@ export class PreviewDeploymentManager {
 
   async createPreview(config: PreviewConfig): Promise<PreviewDeployment> {
     const previewId = keccak256(
-      stringToBytes(`${config.appName}-${config.branchName}-${config.commitSha}-${Date.now()}`)
+      stringToBytes(
+        `${config.appName}-${config.branchName}-${config.commitSha}-${Date.now()}`,
+      ),
     ).slice(0, 18) as string
-    
+
     const ttlHours = 72 // Default 3 days
     const previewUrl = generatePreviewUrl(config, this.baseDomain)
-    
+
     const preview: PreviewDeployment = {
       previewId,
       appName: config.appName,
@@ -215,14 +227,14 @@ export class PreviewDeploymentManager {
       previewUrl,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      expiresAt: Date.now() + (ttlHours * 60 * 60 * 1000),
+      expiresAt: Date.now() + ttlHours * 60 * 60 * 1000,
       accessLevel: config.accessLevel ?? 'team',
       owner: config.owner,
       environment: config.environment ?? {},
     }
 
     this.previews.set(previewId, preview)
-    
+
     // Track by app
     const appPreviews = this.previewsByApp.get(config.appName) ?? new Set()
     appPreviews.add(previewId)
@@ -232,21 +244,29 @@ export class PreviewDeploymentManager {
     if (config.branchDatabase && config.parentDatabaseId && this.dbService) {
       preview.status = 'building'
       preview.updatedAt = Date.now()
-      
+
       // Database branching would create a copy-on-write snapshot
       // For now, just track the intent
       preview.databaseBranchId = `branch-${previewId}`
-      console.log(`[Preview] Database branch created: ${preview.databaseBranchId}`)
+      console.log(
+        `[Preview] Database branch created: ${preview.databaseBranchId}`,
+      )
     }
 
-    console.log(`[Preview] Created preview ${previewId} for ${config.appName}/${config.branchName}`)
+    console.log(
+      `[Preview] Created preview ${previewId} for ${config.appName}/${config.branchName}`,
+    )
 
     return preview
   }
 
   async buildPreview(
     previewId: string,
-    buildFn: () => Promise<{ frontendCid?: string; workerDeploymentId?: string; logs: string }>
+    buildFn: () => Promise<{
+      frontendCid?: string
+      workerDeploymentId?: string
+      logs: string
+    }>,
   ): Promise<PreviewDeployment> {
     const preview = this.previews.get(previewId)
     if (!preview) throw new Error(`Preview not found: ${previewId}`)
@@ -255,10 +275,10 @@ export class PreviewDeploymentManager {
     preview.updatedAt = Date.now()
 
     const startTime = Date.now()
-    
+
     try {
       const result = await buildFn()
-      
+
       preview.frontendCid = result.frontendCid
       preview.workerDeploymentId = result.workerDeploymentId
       preview.buildLogs = result.logs
@@ -279,14 +299,14 @@ export class PreviewDeploymentManager {
 
   async activatePreview(
     previewId: string,
-    deployFn: () => Promise<{ apiUrl?: string }>
+    deployFn: () => Promise<{ apiUrl?: string }>,
   ): Promise<PreviewDeployment> {
     const preview = this.previews.get(previewId)
     if (!preview) throw new Error(`Preview not found: ${previewId}`)
 
     try {
       const result = await deployFn()
-      
+
       preview.apiUrl = result.apiUrl
       preview.status = 'active'
       preview.lastAccessedAt = Date.now()
@@ -346,7 +366,9 @@ export class PreviewDeploymentManager {
 
     if (preview.databaseBranchId) {
       // Would delete database branch
-      console.log(`[Preview] Deleting database branch ${preview.databaseBranchId}`)
+      console.log(
+        `[Preview] Deleting database branch ${preview.databaseBranchId}`,
+      )
     }
 
     preview.status = 'deleted'
@@ -376,22 +398,32 @@ export class PreviewDeploymentManager {
   getPreviewsByApp(appName: string): PreviewDeployment[] {
     const previewIds = this.previewsByApp.get(appName)
     if (!previewIds) return []
-    
+
     return Array.from(previewIds)
-      .map(id => this.previews.get(id))
+      .map((id) => this.previews.get(id))
       .filter((p): p is PreviewDeployment => p !== undefined)
   }
 
-  getPreviewsByBranch(appName: string, branchName: string): PreviewDeployment[] {
-    return this.getPreviewsByApp(appName).filter(p => p.branchName === branchName)
+  getPreviewsByBranch(
+    appName: string,
+    branchName: string,
+  ): PreviewDeployment[] {
+    return this.getPreviewsByApp(appName).filter(
+      (p) => p.branchName === branchName,
+    )
   }
 
-  getPreviewByPR(appName: string, prNumber: number): PreviewDeployment | undefined {
-    return this.getPreviewsByApp(appName).find(p => p.prNumber === prNumber)
+  getPreviewByPR(
+    appName: string,
+    prNumber: number,
+  ): PreviewDeployment | undefined {
+    return this.getPreviewsByApp(appName).find((p) => p.prNumber === prNumber)
   }
 
   getActivePreviewCount(): number {
-    return Array.from(this.previews.values()).filter(p => p.status === 'active').length
+    return Array.from(this.previews.values()).filter(
+      (p) => p.status === 'active',
+    ).length
   }
 
   // =========================================================================
@@ -412,9 +444,11 @@ export class PreviewDeploymentManager {
     if (preview.accessLevel === 'team') {
       // Check if requester is in same org as owner via identity registry
       // The org membership is stored on-chain in the identity contract
-      const ownerOrgs = this.orgMemberships.get(preview.owner) ?? new Set<string>()
-      const requesterOrgs = this.orgMemberships.get(requester) ?? new Set<string>()
-      
+      const ownerOrgs =
+        this.orgMemberships.get(preview.owner) ?? new Set<string>()
+      const requesterOrgs =
+        this.orgMemberships.get(requester) ?? new Set<string>()
+
       // Check if they share any org membership
       for (const org of ownerOrgs) {
         if (requesterOrgs.has(org)) return true
@@ -433,9 +467,12 @@ export class PreviewDeploymentManager {
 
   private startCleanupJob(): void {
     // Run cleanup every hour
-    this.cleanupIntervalId = setInterval(() => {
-      this.cleanupExpiredPreviews().catch(console.error)
-    }, 60 * 60 * 1000)
+    this.cleanupIntervalId = setInterval(
+      () => {
+        this.cleanupExpiredPreviews().catch(console.error)
+      },
+      60 * 60 * 1000,
+    )
   }
 
   async cleanupExpiredPreviews(): Promise<PreviewCleanupResult> {
@@ -470,27 +507,37 @@ export class PreviewDeploymentManager {
           try {
             await this.sleepPreview(preview.previewId)
           } catch (error) {
-            console.error(`Failed to sleep preview ${preview.previewId}:`, error)
+            console.error(
+              `Failed to sleep preview ${preview.previewId}:`,
+              error,
+            )
           }
         }
       }
     }
 
     if (result.deleted.length > 0) {
-      console.log(`[Preview] Cleaned up ${result.deleted.length} expired previews`)
+      console.log(
+        `[Preview] Cleaned up ${result.deleted.length} expired previews`,
+      )
     }
 
     return result
   }
 
-  async cleanupBranchPreviews(appName: string, branchName: string): Promise<void> {
+  async cleanupBranchPreviews(
+    appName: string,
+    branchName: string,
+  ): Promise<void> {
     const previews = this.getPreviewsByBranch(appName, branchName)
-    
+
     for (const preview of previews) {
       await this.deletePreview(preview.previewId)
     }
 
-    console.log(`[Preview] Cleaned up ${previews.length} previews for ${appName}/${branchName}`)
+    console.log(
+      `[Preview] Cleaned up ${previews.length} previews for ${appName}/${branchName}`,
+    )
   }
 
   async cleanupPRPreview(appName: string, prNumber: number): Promise<void> {
@@ -536,7 +583,9 @@ export class PreviewDeploymentManager {
 
 ${preview.apiUrl ? `**API:** [${preview.apiUrl}](${preview.apiUrl})` : ''}
 
-${preview.status === 'error' && preview.buildLogs ? `
+${
+  preview.status === 'error' && preview.buildLogs
+    ? `
 <details>
 <summary>Build Logs</summary>
 
@@ -545,7 +594,9 @@ ${preview.buildLogs}
 \`\`\`
 
 </details>
-` : ''}
+`
+    : ''
+}
 
 ---
 *Preview deployments are automatically deleted after ${Math.round((preview.expiresAt - preview.createdAt) / (1000 * 60 * 60))} hours.*`
@@ -564,7 +615,8 @@ export function getPreviewManager(
 ): PreviewDeploymentManager {
   if (!previewManager) {
     const rpcUrl = getRpcUrl()
-    const baseDomain = process.env.DWS_PREVIEW_DOMAIN ?? 'preview.dws.jejunetwork.org'
+    const baseDomain =
+      process.env.DWS_PREVIEW_DOMAIN ?? 'preview.dws.jejunetwork.org'
     const privateKey = process.env.DWS_OPERATOR_KEY as Hex | undefined
 
     previewManager = new PreviewDeploymentManager({
@@ -577,4 +629,3 @@ export function getPreviewManager(
   }
   return previewManager
 }
-

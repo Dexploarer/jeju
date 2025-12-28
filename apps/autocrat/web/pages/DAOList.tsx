@@ -23,7 +23,10 @@ import { Link } from 'react-router-dom'
 import { useDAOs } from '../hooks/useDAO'
 import type { DAOListItem, DAOStatus } from '../types/dao'
 
-const STATUS_STYLES: Record<DAOStatus, { bg: string; text: string; label: string }> = {
+const STATUS_STYLES: Record<
+  DAOStatus,
+  { bg: string; text: string; label: string }
+> = {
   active: {
     bg: 'rgba(16, 185, 129, 0.12)',
     text: 'var(--color-success)',
@@ -57,12 +60,14 @@ function DAOCard({ dao }: DAOCardProps) {
     <Link
       to={`/dao/${dao.daoId}`}
       className="group block rounded-2xl p-5 transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-      style={{
-        backgroundColor: 'var(--surface)',
-        border: '1px solid var(--border)',
-        boxShadow: 'var(--shadow-card)',
-        '--tw-ring-color': 'var(--color-primary)',
-      } as React.CSSProperties}
+      style={
+        {
+          backgroundColor: 'var(--surface)',
+          border: '1px solid var(--border)',
+          boxShadow: 'var(--shadow-card)',
+          '--tw-ring-color': 'var(--color-primary)',
+        } as React.CSSProperties
+      }
     >
       <div className="flex items-start gap-4">
         {/* DAO Avatar */}
@@ -100,7 +105,10 @@ function DAOCard({ dao }: DAOCardProps) {
             </div>
             <span
               className="shrink-0 px-2.5 py-1 text-xs font-semibold rounded-full"
-              style={{ backgroundColor: statusStyle.bg, color: statusStyle.text }}
+              style={{
+                backgroundColor: statusStyle.bg,
+                color: statusStyle.text,
+              }}
             >
               {statusStyle.label}
             </span>
@@ -175,7 +183,10 @@ function DAOCard({ dao }: DAOCardProps) {
                 </span>
               ))}
               {dao.tags.length > 4 && (
-                <span className="px-2 py-0.5 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                <span
+                  className="px-2 py-0.5 text-xs"
+                  style={{ color: 'var(--text-tertiary)' }}
+                >
                   +{dao.tags.length - 4}
                 </span>
               )}
@@ -197,7 +208,10 @@ function EmptyState() {
           border: '1px solid var(--border)',
         }}
       >
-        <Rocket className="w-10 h-10" style={{ color: 'var(--text-tertiary)' }} />
+        <Rocket
+          className="w-10 h-10"
+          style={{ color: 'var(--text-tertiary)' }}
+        />
       </div>
       <h3
         className="text-lg font-semibold mb-2"
@@ -209,7 +223,8 @@ function EmptyState() {
         className="mb-6 max-w-md mx-auto"
         style={{ color: 'var(--text-secondary)' }}
       >
-        No DAOs match your current filters. Adjust your search or start a new organization.
+        No DAOs match your current filters. Adjust your search or start a new
+        organization.
       </p>
       <Link
         to="/create"
@@ -250,7 +265,10 @@ function ErrorState({ error, onRetry }: ErrorStateProps) {
           border: '1px solid rgba(239, 68, 68, 0.3)',
         }}
       >
-        <AlertCircle className="w-10 h-10" style={{ color: 'var(--color-error)' }} />
+        <AlertCircle
+          className="w-10 h-10"
+          style={{ color: 'var(--color-error)' }}
+        />
       </div>
       <h3
         className="text-lg font-semibold mb-2"
@@ -258,7 +276,10 @@ function ErrorState({ error, onRetry }: ErrorStateProps) {
       >
         Something went wrong
       </h3>
-      <p className="mb-6 max-w-md mx-auto" style={{ color: 'var(--text-secondary)' }}>
+      <p
+        className="mb-6 max-w-md mx-auto"
+        style={{ color: 'var(--text-secondary)' }}
+      >
         {error.message}
       </p>
       <button
@@ -330,8 +351,8 @@ export default function DAOListPage() {
               DAOs with AI Leadership
             </h1>
             <p className="text-lg text-white/80 mb-8 leading-relaxed max-w-2xl">
-              Organizations where AI agents serve as CEO and board members, making
-              governance decisions on-chain with full transparency.
+              Organizations where AI agents serve as CEO and board members,
+              making governance decisions on-chain with full transparency.
             </p>
             <div className="flex flex-wrap gap-3">
               <Link
@@ -393,7 +414,9 @@ export default function DAOListPage() {
               />
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as DAOStatus | 'all')}
+                onChange={(e) =>
+                  setStatusFilter(e.target.value as DAOStatus | 'all')
+                }
                 className="select min-w-[140px]"
                 aria-label="Filter by status"
               >
@@ -415,9 +438,13 @@ export default function DAOListPage() {
                   border: showNetworkOnly
                     ? '1px solid rgba(245, 158, 11, 0.3)'
                     : '1px solid var(--border)',
-                  color: showNetworkOnly ? 'var(--color-warning)' : 'var(--text-tertiary)',
+                  color: showNetworkOnly
+                    ? 'var(--color-warning)'
+                    : 'var(--text-tertiary)',
                 }}
-                aria-label={showNetworkOnly ? 'Show all DAOs' : 'Show network DAOs only'}
+                aria-label={
+                  showNetworkOnly ? 'Show all DAOs' : 'Show network DAOs only'
+                }
                 aria-pressed={showNetworkOnly}
               >
                 <Shield className="w-4 h-4" aria-hidden="true" />

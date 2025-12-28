@@ -233,7 +233,10 @@ export class DockerOrchestrator {
       }
 
       // IPFS API requires POST
-      const method = name.includes('geth') || name === 'solana' || name === 'ipfs' ? 'POST' : 'GET'
+      const method =
+        name.includes('geth') || name === 'solana' || name === 'ipfs'
+          ? 'POST'
+          : 'GET'
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },

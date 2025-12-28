@@ -1,6 +1,6 @@
 /**
  * Streaming Response Handler for Workers
- * 
+ *
  * Implements streaming responses for serverless workers:
  * - Server-Sent Events (SSE)
  * - Chunked transfer encoding
@@ -9,7 +9,7 @@
  * - Connection management
  */
 
-import { createHash } from 'crypto'
+import { createHash } from 'node:crypto'
 
 // ============================================================================
 // Types
@@ -200,8 +200,6 @@ export class NDJSONWriter {
   private encoder = new TextEncoder()
   private controller: ReadableStreamDefaultController<Uint8Array> | null = null
   private closed = false
-  private bytesWritten = 0
-  private messagesWritten = 0
 
   createStream(): ReadableStream<Uint8Array> {
     const self = this
@@ -221,7 +219,7 @@ export class NDJSONWriter {
     if (this.closed || !this.controller) return false
 
     try {
-      const line = JSON.stringify(data) + '\n'
+      const line = `${JSON.stringify(data)}\n`
       const bytes = this.encoder.encode(line)
       this.controller.enqueue(bytes)
       this.bytesWritten += bytes.length
@@ -260,7 +258,6 @@ export class ChunkedWriter {
   private encoder = new TextEncoder()
   private controller: ReadableStreamDefaultController<Uint8Array> | null = null
   private closed = false
-  private bytesWritten = 0
   private buffer: Uint8Array[] = []
   private bufferSize = 0
   private maxBufferSize: number
@@ -287,7 +284,7 @@ export class ChunkedWriter {
     if (this.closed || !this.controller) return false
 
     const bytes = typeof data === 'string' ? this.encoder.encode(data) : data
-    
+
     // Buffer small writes
     if (this.bufferSize + bytes.length < this.maxBufferSize) {
       this.buffer.push(bytes)
@@ -309,7 +306,8 @@ export class ChunkedWriter {
   }
 
   flush(): boolean {
-    if (this.closed || !this.controller || this.buffer.length === 0) return false
+    if (this.closed || !this.controller || this.buffer.length === 0)
+      return false
 
     try {
       // Combine buffered chunks
@@ -382,7 +380,8 @@ export class StreamConnectionManager {
     this.connections.set(connectionId, connection)
 
     // Track by worker
-    const workerConnections = this.connectionsByWorker.get(workerId) ?? new Set()
+    const workerConnections =
+      this.connectionsByWorker.get(workerId) ?? new Set()
     workerConnections.add(connectionId)
     this.connectionsByWorker.set(workerId, workerConnections)
 
@@ -428,15 +427,19 @@ export class StreamConnectionManager {
     if (!connectionIds) return []
 
     return Array.from(connectionIds)
-      .map(id => this.connections.get(id))
+      .map((id) => this.connections.get(id))
       .filter((c): c is StreamConnection => c !== undefined && !c.closed)
   }
 
   getStats(): StreamStats {
-    const activeConnections = Array.from(this.connections.values()).filter(c => !c.closed)
-    const avgDuration = this.closedConnectionDurations.length > 0
-      ? this.closedConnectionDurations.reduce((a, b) => a + b, 0) / this.closedConnectionDurations.length
-      : 0
+    const activeConnections = Array.from(this.connections.values()).filter(
+      (c) => !c.closed,
+    )
+    const avgDuration =
+      this.closedConnectionDurations.length > 0
+        ? this.closedConnectionDurations.reduce((a, b) => a + b, 0) /
+          this.closedConnectionDurations.length
+        : 0
 
     return {
       activeConnections: activeConnections.length,
@@ -486,7 +489,7 @@ export function createSSEResponse(
   const stream = writer.createStream()
 
   // Run handler asynchronously
-  handler(writer).catch(error => {
+  handler(writer).catch((error) => {
     console.error('[SSE] Handler error:', error)
     writer.writeEvent('error', { message: String(error) })
     writer.close()
@@ -496,7 +499,7 @@ export function createSSEResponse(
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
+      Connection: 'keep-alive',
       'X-Accel-Buffering': 'no', // Disable nginx buffering
     },
   })
@@ -511,7 +514,7 @@ export function createNDJSONResponse(
   const writer = new NDJSONWriter()
   const stream = writer.createStream()
 
-  handler(writer).catch(error => {
+  handler(writer).catch((error) => {
     console.error('[NDJSON] Handler error:', error)
     writer.write({ error: String(error) })
     writer.close()
@@ -536,7 +539,7 @@ export function createChunkedResponse(
   const writer = new ChunkedWriter()
   const stream = writer.createStream()
 
-  handler(writer).catch(error => {
+  handler(writer).catch((error) => {
     console.error('[Chunked] Handler error:', error)
     writer.close()
   })
@@ -595,26 +598,32 @@ export interface LLMStreamEvent {
 export function createLLMStreamResponse(
   handler: (emit: (event: LLMStreamEvent) => boolean) => Promise<void>,
 ): Response {
-  return createSSEResponse(async (writer) => {
-    const emit = (event: LLMStreamEvent): boolean => {
-      return writer.writeEvent(event.type, event)
-    }
+  return createSSEResponse(
+    async (writer) => {
+      const emit = (event: LLMStreamEvent): boolean => {
+        return writer.writeEvent(event.type, event)
+      }
 
-    emit({ type: 'start' })
-    
-    try {
-      await handler(emit)
-      emit({ type: 'done' })
-    } catch (error) {
-      emit({ type: 'error', error: error instanceof Error ? error.message : String(error) })
-    }
-    
-    writer.close()
-  }, {
-    type: 'sse',
-    keepAliveIntervalMs: 15000,
-    maxDurationMs: 300000, // 5 minutes max
-  })
+      emit({ type: 'start' })
+
+      try {
+        await handler(emit)
+        emit({ type: 'done' })
+      } catch (error) {
+        emit({
+          type: 'error',
+          error: error instanceof Error ? error.message : String(error),
+        })
+      }
+
+      writer.close()
+    },
+    {
+      type: 'sse',
+      keepAliveIntervalMs: 15000,
+      maxDurationMs: 300000, // 5 minutes max
+    },
+  )
 }
 
 // ============================================================================
@@ -637,4 +646,3 @@ export function getStreamConnectionManager(): StreamConnectionManager {
   }
   return streamConnectionManager
 }
-

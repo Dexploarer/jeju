@@ -4,9 +4,9 @@
 
 import { cors } from '@elysiajs/cors'
 import { validateOrThrow } from '@jejunetwork/types'
-import { config } from './config'
 import { Elysia } from 'elysia'
 import { z } from 'zod'
+import { config } from './config'
 import {
   buildAccountQuery,
   buildAgentQuery,

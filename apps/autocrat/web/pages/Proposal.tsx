@@ -98,27 +98,32 @@ const SEVERITY_CONFIG: Record<
 > = {
   critical: {
     label: 'Critical',
-    color: 'text-[var(--color-error)] bg-[var(--color-error)]/20 border-[var(--color-error)]/50',
+    color:
+      'text-[var(--color-error)] bg-[var(--color-error)]/20 border-[var(--color-error)]/50',
     reward: '$5,000 - $50,000',
   },
   high: {
     label: 'High',
-    color: 'text-[var(--color-warning)] bg-[var(--color-warning)]/20 border-[var(--color-warning)]/50',
+    color:
+      'text-[var(--color-warning)] bg-[var(--color-warning)]/20 border-[var(--color-warning)]/50',
     reward: '$1,000 - $5,000',
   },
   medium: {
     label: 'Medium',
-    color: 'text-[var(--color-warning)] bg-[var(--color-warning)]/20 border-[var(--color-warning)]/50',
+    color:
+      'text-[var(--color-warning)] bg-[var(--color-warning)]/20 border-[var(--color-warning)]/50',
     reward: '$250 - $1,000',
   },
   low: {
     label: 'Low',
-    color: 'text-[var(--color-primary)] bg-[var(--color-primary)]/20 border-[var(--color-primary)]/50',
+    color:
+      'text-[var(--color-primary)] bg-[var(--color-primary)]/20 border-[var(--color-primary)]/50',
     reward: '$50 - $250',
   },
   informational: {
     label: 'Informational',
-    color: 'text-[var(--text-secondary)] bg-[var(--bg-secondary)] border-[var(--border)]',
+    color:
+      'text-[var(--text-secondary)] bg-[var(--bg-secondary)] border-[var(--border)]',
     reward: 'Recognition',
   },
 }
@@ -164,13 +169,18 @@ function VoteCard({
           {isCEO ? (
             <Crown className="w-5 h-5 text-white" aria-hidden="true" />
           ) : (
-            <Bot className="w-5 h-5 text-[var(--text-secondary)]" aria-hidden="true" />
+            <Bot
+              className="w-5 h-5 text-[var(--text-secondary)]"
+              aria-hidden="true"
+            />
           )}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-[var(--text-primary)]">{agentName}</p>
+              <p className="font-medium text-[var(--text-primary)]">
+                {agentName}
+              </p>
               <p className="text-xs text-[var(--text-tertiary)]">{agentRole}</p>
             </div>
             <span
@@ -191,7 +201,9 @@ function VoteCard({
             </span>
           </div>
           {reasoning && (
-            <p className="text-sm text-[var(--text-secondary)] mt-2">{reasoning}</p>
+            <p className="text-sm text-[var(--text-secondary)] mt-2">
+              {reasoning}
+            </p>
           )}
           <div className="flex items-center gap-3 mt-2 text-xs text-[var(--text-tertiary)]">
             <span>Confidence: {Math.round(confidence * 100)}%</span>
@@ -240,7 +252,10 @@ function ProposalView({
                 <span
                   className={`px-2.5 py-1 rounded-lg text-xs font-medium ${typeConfig.color}`}
                 >
-                  <TypeIcon className="w-3.5 h-3.5 inline-block mr-1" aria-hidden="true" />
+                  <TypeIcon
+                    className="w-3.5 h-3.5 inline-block mr-1"
+                    aria-hidden="true"
+                  />
                   {typeConfig.label}
                 </span>
                 <span className={`badge ${statusConfig.color}`}>
@@ -276,7 +291,10 @@ function ProposalView({
                   }
                   if (line.startsWith('1. ') || line.startsWith('- ')) {
                     return (
-                      <p key={lineKey} className="text-[var(--text-secondary)] ml-4">
+                      <p
+                        key={lineKey}
+                        className="text-[var(--text-secondary)] ml-4"
+                      >
                         {line}
                       </p>
                     )
@@ -292,7 +310,9 @@ function ProposalView({
 
             {/* Board Votes */}
             <div className="card-static p-6">
-              <h3 className="font-semibold text-[var(--text-primary)] mb-4">Board Votes</h3>
+              <h3 className="font-semibold text-[var(--text-primary)] mb-4">
+                Board Votes
+              </h3>
               <div className="space-y-3">
                 {proposal.boardVotes.map((vote) => (
                   <VoteCard
@@ -316,7 +336,9 @@ function ProposalView({
             {/* Tags */}
             {proposal.tags.length > 0 && (
               <div className="card-static p-6">
-                <h3 className="font-semibold text-[var(--text-primary)] mb-4">Tags</h3>
+                <h3 className="font-semibold text-[var(--text-primary)] mb-4">
+                  Tags
+                </h3>
                 <div className="flex flex-wrap gap-2">
                   {proposal.tags.map((tag) => (
                     <span
@@ -340,7 +362,9 @@ function ProposalView({
               </h4>
               <div className="mb-4">
                 <div className="flex justify-between text-sm mb-1">
-                  <span className="text-[var(--text-secondary)]">Board Approval</span>
+                  <span className="text-[var(--text-secondary)]">
+                    Board Approval
+                  </span>
                   <span className="text-[var(--text-primary)]">
                     {approveCount}/{totalVotes} ({approvalPercent}%)
                   </span>
@@ -354,7 +378,9 @@ function ProposalView({
               </div>
               <div className="mb-4">
                 <div className="flex justify-between text-sm mb-1">
-                  <span className="text-[var(--text-secondary)]">CEO Decision</span>
+                  <span className="text-[var(--text-secondary)]">
+                    CEO Decision
+                  </span>
                   <span className="text-[var(--text-primary)]">
                     {proposal.ceoDecision
                       ? proposal.ceoDecision.approved
@@ -404,18 +430,19 @@ function ProposalView({
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[var(--text-tertiary)]">Proposal ID</span>
-                  <span className="text-[var(--text-primary)]">{proposal.proposalId}</span>
+                  <span className="text-[var(--text-tertiary)]">
+                    Proposal ID
+                  </span>
+                  <span className="text-[var(--text-primary)]">
+                    {proposal.proposalId}
+                  </span>
                 </div>
               </div>
             </div>
 
             {/* Actions */}
             {proposal.status === 'submitted' && (
-              <button
-                type="button"
-                className="btn-primary w-full"
-              >
+              <button type="button" className="btn-primary w-full">
                 <RefreshCw className="w-4 h-4" aria-hidden="true" />
                 Request Review
               </button>
@@ -592,7 +619,10 @@ function CreateProposalForm({
             </div>
             <div className="flex items-center gap-4">
               {submitError && (
-                <div className="flex items-center gap-2 text-[var(--color-error)] text-sm" role="alert">
+                <div
+                  className="flex items-center gap-2 text-[var(--color-error)] text-sm"
+                  role="alert"
+                >
                   <AlertCircle className="w-4 h-4" aria-hidden="true" />
                   {submitError}
                 </div>
@@ -609,7 +639,10 @@ function CreateProposalForm({
               >
                 {createProposalMutation.isPending ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                    <Loader2
+                      className="w-4 h-4 animate-spin"
+                      aria-hidden="true"
+                    />
                     Submitting...
                   </>
                 ) : (
@@ -655,15 +688,17 @@ function CreateProposalForm({
               id="proposal-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-                placeholder={
-                  type === 'bug_report'
-                    ? 'Describe the vulnerability and its impact...'
-                    : 'Context, motivation, and implementation details...'
-                }
+              placeholder={
+                type === 'bug_report'
+                  ? 'Describe the vulnerability and its impact...'
+                  : 'Context, motivation, and implementation details...'
+              }
               rows={8}
               className="textarea"
             />
-            <p className="text-xs text-[var(--text-tertiary)] mt-1">Markdown supported</p>
+            <p className="text-xs text-[var(--text-tertiary)] mt-1">
+              Markdown supported
+            </p>
           </div>
         </div>
 
@@ -844,7 +879,9 @@ function CreateProposalForm({
         {/* Funding Specific */}
         {type === 'funding' && (
           <div className="card-static p-6 space-y-4">
-            <h3 className="font-semibold text-[var(--text-primary)]">Funding Details</h3>
+            <h3 className="font-semibold text-[var(--text-primary)]">
+              Funding Details
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label
@@ -896,7 +933,9 @@ function CreateProposalForm({
         {/* Code Specific */}
         {type === 'code' && (
           <div className="card-static p-6 space-y-4">
-            <h3 className="font-semibold text-[var(--text-primary)]">Linked PRs</h3>
+            <h3 className="font-semibold text-[var(--text-primary)]">
+              Linked PRs
+            </h3>
             <div className="flex flex-wrap gap-2 mb-2">
               {linkedPRs.map((pr) => (
                 <span
@@ -935,7 +974,6 @@ function CreateProposalForm({
             </div>
           </div>
         )}
-
       </div>
     </div>
   )
@@ -976,7 +1014,10 @@ export default function ProposalPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[var(--color-primary)] animate-spin" aria-label="Loading" />
+        <Loader2
+          className="w-8 h-8 text-[var(--color-primary)] animate-spin"
+          aria-label="Loading"
+        />
       </div>
     )
   }
@@ -986,15 +1027,16 @@ export default function ProposalPage() {
       <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center">
         <div className="text-center">
           <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-[var(--color-error)]/20 border border-[var(--color-error)]/30 flex items-center justify-center">
-            <AlertCircle className="w-10 h-10 text-[var(--color-error)]" aria-hidden="true" />
+            <AlertCircle
+              className="w-10 h-10 text-[var(--color-error)]"
+              aria-hidden="true"
+            />
           </div>
           <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-2">
             Failed to load proposal
           </h2>
           <p className="text-[var(--text-secondary)] mb-4">
-            {error instanceof Error
-              ? error.message
-              : 'Connection error'}
+            {error instanceof Error ? error.message : 'Connection error'}
           </p>
           <div className="flex gap-3 justify-center">
             <button
@@ -1005,10 +1047,7 @@ export default function ProposalPage() {
               <RefreshCw className="w-4 h-4" aria-hidden="true" />
               Try Again
             </button>
-            <Link
-              to={`/dao/${daoId}?tab=governance`}
-              className="btn-primary"
-            >
+            <Link to={`/dao/${daoId}?tab=governance`} className="btn-primary">
               <ArrowLeft className="w-4 h-4" aria-hidden="true" />
               Back to Governance
             </Link>

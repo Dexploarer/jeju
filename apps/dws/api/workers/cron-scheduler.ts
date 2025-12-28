@@ -1,6 +1,6 @@
 /**
  * Cron Scheduler for Workers
- * 
+ *
  * Implements scheduled triggers for serverless workers:
  * - Cron expression parsing
  * - Distributed scheduling across DWS nodes
@@ -9,9 +9,9 @@
  * - Timezone support
  */
 
-import { createHash } from 'crypto'
-import { z } from 'zod'
+import { createHash } from 'node:crypto'
 import type { Address } from 'viem'
+import { z } from 'zod'
 
 // ============================================================================
 // Types
@@ -19,7 +19,13 @@ import type { Address } from 'viem'
 
 export type ScheduleStatus = 'active' | 'paused' | 'disabled' | 'error'
 
-export type ExecutionStatus = 'pending' | 'running' | 'success' | 'failed' | 'timeout' | 'cancelled'
+export type ExecutionStatus =
+  | 'pending'
+  | 'running'
+  | 'success'
+  | 'failed'
+  | 'timeout'
+  | 'cancelled'
 
 export interface CronSchedule {
   scheduleId: string
@@ -28,19 +34,19 @@ export interface CronSchedule {
   cronExpression: string
   timezone: string
   status: ScheduleStatus
-  
+
   // Configuration
   timeout: number // ms
   retries: number
   retryDelay: number // ms
-  
+
   // Metadata
   owner: Address
   createdAt: number
   updatedAt: number
   lastRunAt?: number
   nextRunAt?: number
-  
+
   // Stats
   totalRuns: number
   successfulRuns: number
@@ -52,17 +58,17 @@ export interface CronExecution {
   scheduleId: string
   workerId: string
   status: ExecutionStatus
-  
+
   // Timing
   scheduledAt: number
   startedAt?: number
   completedAt?: number
-  
+
   // Result
   output?: string
   error?: string
   exitCode?: number
-  
+
   // Retries
   attempt: number
   maxAttempts: number
@@ -83,7 +89,11 @@ export interface ParsedCronExpression {
 export const CronScheduleSchema = z.object({
   workerId: z.string(),
   name: z.string().min(1).max(100),
-  cronExpression: z.string().regex(/^(\*|[0-9,-\/]+)\s+(\*|[0-9,-\/]+)\s+(\*|[0-9,-\/]+)\s+(\*|[0-9,-\/]+)\s+(\*|[0-9,-\/]+)$/),
+  cronExpression: z
+    .string()
+    .regex(
+      /^(\*|[0-9,-/]+)\s+(\*|[0-9,-/]+)\s+(\*|[0-9,-/]+)\s+(\*|[0-9,-/]+)\s+(\*|[0-9,-/]+)$/,
+    ),
   timezone: z.string().default('UTC'),
   timeout: z.number().min(1000).max(900000).default(30000), // 1s - 15min
   retries: z.number().min(0).max(5).default(2),
@@ -127,11 +137,11 @@ function parseField(field: string, min: number, max: number): number[] {
 
   // Handle comma-separated values
   const parts = field.split(',')
-  
+
   for (const part of parts) {
     // Handle ranges 'a-b'
     if (part.includes('-')) {
-      const [start, end] = part.split('-').map(n => parseInt(n, 10))
+      const [start, end] = part.split('-').map((n) => parseInt(n, 10))
       for (let i = start; i <= end; i++) values.push(i)
     }
     // Handle step in range 'a-b/n'
@@ -139,7 +149,7 @@ function parseField(field: string, min: number, max: number): number[] {
       const [range, stepStr] = part.split('/')
       const step = parseInt(stepStr, 10)
       const [start, end] = range.includes('-')
-        ? range.split('-').map(n => parseInt(n, 10))
+        ? range.split('-').map((n) => parseInt(n, 10))
         : [parseInt(range, 10), max]
       for (let i = start; i <= end; i += step) values.push(i)
     }
@@ -149,15 +159,19 @@ function parseField(field: string, min: number, max: number): number[] {
     }
   }
 
-  return values.filter(v => v >= min && v <= max)
+  return values.filter((v) => v >= min && v <= max)
 }
 
 /**
  * Calculate the next run time for a cron expression
  */
-export function getNextRunTime(expression: string, after = new Date(), timezone = 'UTC'): Date {
+export function getNextRunTime(
+  expression: string,
+  after = new Date(),
+  timezone = 'UTC',
+): Date {
   const parsed = parseCronExpression(expression)
-  
+
   // Create date in target timezone
   const date = new Date(after.toLocaleString('en-US', { timeZone: timezone }))
   date.setSeconds(0)
@@ -185,9 +199,13 @@ export function getNextRunTime(expression: string, after = new Date(), timezone 
 /**
  * Check if a cron expression matches a specific time
  */
-export function matchesCron(expression: string, date = new Date(), timezone = 'UTC'): boolean {
+export function matchesCron(
+  expression: string,
+  date = new Date(),
+  timezone = 'UTC',
+): boolean {
   const parsed = parseCronExpression(expression)
-  
+
   // Convert to target timezone
   const tzDate = new Date(date.toLocaleString('en-US', { timeZone: timezone }))
 
@@ -209,11 +227,17 @@ export class CronScheduler {
   private executions = new Map<string, CronExecution>()
   private executionsBySchedule = new Map<string, string[]>()
   private schedulerInterval: ReturnType<typeof setInterval> | null = null
-  
-  private workerInvoker: (workerId: string, event: CronEvent) => Promise<WorkerResult>
+
+  private workerInvoker: (
+    workerId: string,
+    event: CronEvent,
+  ) => Promise<WorkerResult>
 
   constructor(
-    workerInvoker: (workerId: string, event: CronEvent) => Promise<WorkerResult>,
+    workerInvoker: (
+      workerId: string,
+      event: CronEvent,
+    ) => Promise<WorkerResult>,
   ) {
     this.workerInvoker = workerInvoker
   }
@@ -234,7 +258,11 @@ export class CronScheduler {
       .digest('hex')
       .slice(0, 16)
 
-    const nextRunAt = getNextRunTime(params.cronExpression, new Date(), params.timezone).getTime()
+    const nextRunAt = getNextRunTime(
+      params.cronExpression,
+      new Date(),
+      params.timezone,
+    ).getTime()
 
     const schedule: CronSchedule = {
       scheduleId,
@@ -258,7 +286,9 @@ export class CronScheduler {
     this.schedules.set(scheduleId, schedule)
     this.executionsBySchedule.set(scheduleId, [])
 
-    console.log(`[Cron] Created schedule ${scheduleId}: ${params.cronExpression} (next: ${new Date(nextRunAt).toISOString()})`)
+    console.log(
+      `[Cron] Created schedule ${scheduleId}: ${params.cronExpression} (next: ${new Date(nextRunAt).toISOString()})`,
+    )
 
     return schedule
   }
@@ -331,7 +361,10 @@ export class CronScheduler {
   // Execution
   // =========================================================================
 
-  async triggerManually(scheduleId: string, owner: Address): Promise<CronExecution> {
+  async triggerManually(
+    scheduleId: string,
+    owner: Address,
+  ): Promise<CronExecution> {
     const schedule = this.schedules.get(scheduleId)
     if (!schedule) throw new Error(`Schedule not found: ${scheduleId}`)
     if (schedule.owner !== owner) throw new Error('Not authorized')
@@ -339,7 +372,9 @@ export class CronScheduler {
     return this.executeSchedule(schedule)
   }
 
-  private async executeSchedule(schedule: CronSchedule): Promise<CronExecution> {
+  private async executeSchedule(
+    schedule: CronSchedule,
+  ): Promise<CronExecution> {
     const executionId = createHash('sha256')
       .update(`${schedule.scheduleId}-${Date.now()}-${Math.random()}`)
       .digest('hex')
@@ -356,8 +391,9 @@ export class CronScheduler {
     }
 
     this.executions.set(executionId, execution)
-    
-    const scheduleExecutions = this.executionsBySchedule.get(schedule.scheduleId) ?? []
+
+    const scheduleExecutions =
+      this.executionsBySchedule.get(schedule.scheduleId) ?? []
     scheduleExecutions.push(executionId)
     // Keep only last 100 executions
     if (scheduleExecutions.length > 100) {
@@ -371,11 +407,16 @@ export class CronScheduler {
     return execution
   }
 
-  private async runExecution(execution: CronExecution, schedule: CronSchedule): Promise<void> {
+  private async runExecution(
+    execution: CronExecution,
+    schedule: CronSchedule,
+  ): Promise<void> {
     execution.status = 'running'
     execution.startedAt = Date.now()
 
-    console.log(`[Cron] Running ${schedule.name} (attempt ${execution.attempt}/${execution.maxAttempts})`)
+    console.log(
+      `[Cron] Running ${schedule.name} (attempt ${execution.attempt}/${execution.maxAttempts})`,
+    )
 
     const event: CronEvent = {
       type: 'cron',
@@ -390,7 +431,10 @@ export class CronScheduler {
     try {
       // Set timeout
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Execution timeout')), schedule.timeout)
+        setTimeout(
+          () => reject(new Error('Execution timeout')),
+          schedule.timeout,
+        )
       })
 
       // Invoke worker
@@ -408,7 +452,9 @@ export class CronScheduler {
       schedule.successfulRuns++
       schedule.lastRunAt = execution.completedAt
 
-      console.log(`[Cron] Completed ${schedule.name} in ${execution.completedAt - (execution.startedAt ?? execution.completedAt)}ms`)
+      console.log(
+        `[Cron] Completed ${schedule.name} in ${execution.completedAt - (execution.startedAt ?? execution.completedAt)}ms`,
+      )
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
 
@@ -423,7 +469,10 @@ export class CronScheduler {
 
       execution.completedAt = Date.now()
 
-      console.error(`[Cron] Failed ${schedule.name} (attempt ${execution.attempt}):`, message)
+      console.error(
+        `[Cron] Failed ${schedule.name} (attempt ${execution.attempt}):`,
+        message,
+      )
 
       // Retry if attempts remaining
       if (execution.attempt < execution.maxAttempts) {
@@ -441,11 +490,13 @@ export class CronScheduler {
       // Mark schedule as error if too many failures
       const recentExecutions = this.getScheduleExecutions(schedule.scheduleId)
         .slice(-5)
-        .filter(e => e.status === 'failed' || e.status === 'timeout')
-      
+        .filter((e) => e.status === 'failed' || e.status === 'timeout')
+
       if (recentExecutions.length >= 5) {
         schedule.status = 'error'
-        console.error(`[Cron] Schedule ${schedule.name} disabled after 5 consecutive failures`)
+        console.error(
+          `[Cron] Schedule ${schedule.name} disabled after 5 consecutive failures`,
+        )
       }
     }
 
@@ -493,7 +544,7 @@ export class CronScheduler {
       if (!schedule.nextRunAt || schedule.nextRunAt > now) continue
 
       // Run schedule
-      this.executeSchedule(schedule).catch(error => {
+      this.executeSchedule(schedule).catch((error) => {
         console.error(`[Cron] Error executing ${schedule.name}:`, error)
       })
     }
@@ -508,11 +559,13 @@ export class CronScheduler {
   }
 
   getSchedulesByWorker(workerId: string): CronSchedule[] {
-    return Array.from(this.schedules.values()).filter(s => s.workerId === workerId)
+    return Array.from(this.schedules.values()).filter(
+      (s) => s.workerId === workerId,
+    )
   }
 
   getSchedulesByOwner(owner: Address): CronSchedule[] {
-    return Array.from(this.schedules.values()).filter(s => s.owner === owner)
+    return Array.from(this.schedules.values()).filter((s) => s.owner === owner)
   }
 
   getExecution(executionId: string): CronExecution | undefined {
@@ -522,7 +575,7 @@ export class CronScheduler {
   getScheduleExecutions(scheduleId: string): CronExecution[] {
     const ids = this.executionsBySchedule.get(scheduleId) ?? []
     return ids
-      .map(id => this.executions.get(id))
+      .map((id) => this.executions.get(id))
       .filter((e): e is CronExecution => e !== undefined)
   }
 
@@ -530,10 +583,16 @@ export class CronScheduler {
     return Array.from(this.schedules.values())
   }
 
-  getStats(): { totalSchedules: number; activeSchedules: number; totalExecutions: number } {
+  getStats(): {
+    totalSchedules: number
+    activeSchedules: number
+    totalExecutions: number
+  } {
     return {
       totalSchedules: this.schedules.size,
-      activeSchedules: Array.from(this.schedules.values()).filter(s => s.status === 'active').length,
+      activeSchedules: Array.from(this.schedules.values()).filter(
+        (s) => s.status === 'active',
+      ).length,
       totalExecutions: this.executions.size,
     }
   }
@@ -573,4 +632,3 @@ export function getCronScheduler(
   }
   return cronScheduler
 }
-

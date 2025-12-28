@@ -4,9 +4,14 @@
  * Workerd-compatible config injection for Factory app.
  */
 
-import { createAppConfig, getEnvVar, getEnvNumber } from '@jejunetwork/config'
-import { CORE_PORTS, getCoreAppUrl, getDWSUrl, getL2RpcUrl } from '@jejunetwork/config'
 import { join } from 'node:path'
+import {
+  CORE_PORTS,
+  createAppConfig,
+  getDWSUrl,
+  getEnvVar,
+  getL2RpcUrl,
+} from '@jejunetwork/config'
 import type { Address } from 'viem'
 
 export interface FactoryConfig {
@@ -27,7 +32,11 @@ const { config, configure } = createAppConfig<FactoryConfig>({
   dwsUrl: getEnvVar('DWS_URL') || getDWSUrl(),
   rpcUrl: getEnvVar('RPC_URL') || getL2RpcUrl(),
   identityRegistryAddress: undefined,
-  factoryDataDir: getEnvVar('FACTORY_DATA_DIR') || (typeof process !== 'undefined' ? join(process.cwd(), 'data') : '/tmp/factory-data'),
+  factoryDataDir:
+    getEnvVar('FACTORY_DATA_DIR') ||
+    (typeof process !== 'undefined'
+      ? join(process.cwd(), 'data')
+      : '/tmp/factory-data'),
   signerEncryptionKey: getEnvVar('SIGNER_ENCRYPTION_KEY'),
   factoryChannelId: getEnvVar('FACTORY_CHANNEL_ID') || 'factory',
   dcRelayUrl: getEnvVar('DC_RELAY_URL') || 'http://localhost:3300',

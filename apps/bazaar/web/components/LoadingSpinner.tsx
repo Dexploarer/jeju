@@ -15,13 +15,12 @@ const SIZE_CLASSES = {
   lg: 'w-12 h-12 border-4',
 }
 
-export function LoadingSpinner({ size = 'md', label = 'Loading' }: LoadingSpinnerProps) {
+export function LoadingSpinner({
+  size = 'md',
+  label = 'Loading',
+}: LoadingSpinnerProps) {
   return (
-    <div
-      className="flex items-center justify-center"
-      role="status"
-      aria-label={label}
-    >
+    <output className="flex items-center justify-center" aria-label={label}>
       <div
         className={`${SIZE_CLASSES[size]} rounded-full animate-spin border-border border-t-primary-color`}
         style={{
@@ -30,6 +29,6 @@ export function LoadingSpinner({ size = 'md', label = 'Loading' }: LoadingSpinne
         }}
       />
       <span className="sr-only">{label}</span>
-    </div>
+    </output>
   )
 }

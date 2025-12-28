@@ -74,6 +74,14 @@ export {
   createDirectCastClient,
   DirectCastClient,
 } from './farcaster/dc/client'
+// KMS-backed Direct Cast Client (secure - keys never in memory)
+export {
+  createKMSDirectCastClient,
+  type DCKMSEncryptionProvider,
+  type DCKMSSigner,
+  type KMSDCClientConfig,
+  KMSDirectCastClient,
+} from './farcaster/dc/kms-client'
 export type {
   DCAuthFailedResponse,
   DCAuthMessage,
@@ -143,6 +151,14 @@ export {
   HubError,
   type HubEvent,
 } from './farcaster/hub/client'
+// KMS-backed Farcaster Poster (secure - keys never in memory)
+export {
+  createKMSPoster,
+  KMSFarcasterPoster,
+  type KMSPosterConfig,
+  type KMSPosterSigner,
+  RemoteKMSPosterSigner,
+} from './farcaster/hub/kms-poster'
 export {
   buildMessage,
   type CastAddBody,
@@ -239,6 +255,22 @@ export {
   verifyAddressCanLink,
   verifyLinkProof,
 } from './farcaster/identity/link'
+// Unified KMS Service for Farcaster (secure - keys never in memory)
+export {
+  createFarcasterKMSService,
+  FarcasterKMSService,
+  type FarcasterKMSServiceConfig,
+} from './farcaster/kms-service'
+// KMS-backed Farcaster Signer (secure - keys never in memory)
+export {
+  createKMSSignerManager,
+  type KMSFarcasterSigner,
+  KMSFarcasterSignerManager,
+  type KMSProvider,
+  type KMSSignerManagerConfig,
+  MPCKMSProvider,
+  type SignerEvent,
+} from './farcaster/signer/kms-manager'
 // Farcaster Signer Management
 export {
   FarcasterSignerManager,
@@ -323,12 +355,29 @@ export {
 } from './mls'
 // SDK (browser-compatible)
 export * from './sdk'
+// Security utilities
+export {
+  auditSecurityOperation,
+  detectEnvironment,
+  type Environment,
+  enforceNoKeyExportInProduction,
+  enforceNoLocalKeysInProduction,
+  enforceNoMockModeInProduction,
+  getRecommendedSecurityConfig,
+  isLocalKeyOperationAllowed,
+  type SecurityAuditEntry,
+  type SecurityConfig,
+  SecurityViolationError,
+  type SecurityViolationType,
+  securityAudit,
+  validateSecurityConfig,
+} from './security'
 // Storage adapters
 export {
   type ConsistencyLevel,
+  createEQLiteStorage,
   type EQLiteConfig,
   EQLiteMessageStorage,
-  createEQLiteStorage,
   getEQLiteStorage,
   resetEQLiteStorage,
   type StoredConversation,

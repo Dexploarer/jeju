@@ -42,7 +42,9 @@ const statusFilters = [
 
 export function ProjectsPage() {
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<Project['status'] | 'all'>('all')
+  const [statusFilter, setStatusFilter] = useState<Project['status'] | 'all'>(
+    'all',
+  )
 
   const { projects, isLoading, error } = useProjects(
     statusFilter !== 'all' ? { status: statusFilter } : undefined,
@@ -55,19 +57,45 @@ export function ProjectsPage() {
     })
   }, [projects, search])
 
-  const stats = useMemo(() => ({
-    total: projects.length,
-    active: projects.filter((p) => p.status === 'active').length,
-    completed: projects.filter((p) => p.status === 'completed').length,
-    totalMembers: projects.reduce((sum, p) => sum + p.members, 0),
-  }), [projects])
+  const stats = useMemo(
+    () => ({
+      total: projects.length,
+      active: projects.filter((p) => p.status === 'active').length,
+      completed: projects.filter((p) => p.status === 'completed').length,
+      totalMembers: projects.reduce((sum, p) => sum + p.members, 0),
+    }),
+    [projects],
+  )
 
-  const statsData = useMemo(() => [
-    { label: 'Total Projects', value: stats.total.toString(), color: 'text-accent-400', loading: isLoading },
-    { label: 'Active', value: stats.active.toString(), color: 'text-success-400', loading: isLoading },
-    { label: 'Completed', value: stats.completed.toString(), color: 'text-info-400', loading: isLoading },
-    { label: 'Total Members', value: stats.totalMembers.toString(), color: 'text-warning-400', loading: isLoading },
-  ], [stats, isLoading])
+  const statsData = useMemo(
+    () => [
+      {
+        label: 'Total Projects',
+        value: stats.total.toString(),
+        color: 'text-accent-400',
+        loading: isLoading,
+      },
+      {
+        label: 'Active',
+        value: stats.active.toString(),
+        color: 'text-success-400',
+        loading: isLoading,
+      },
+      {
+        label: 'Completed',
+        value: stats.completed.toString(),
+        color: 'text-info-400',
+        loading: isLoading,
+      },
+      {
+        label: 'Total Members',
+        value: stats.totalMembers.toString(),
+        color: 'text-warning-400',
+        loading: isLoading,
+      },
+    ],
+    [stats, isLoading],
+  )
 
   const getProgress = (project: Project) => {
     if (project.tasks.total === 0) return 0
@@ -97,12 +125,17 @@ export function ProjectsPage() {
             className="flex-1 mb-0 p-0 border-0 bg-transparent shadow-none"
           />
 
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Status filters">
+          <fieldset
+            className="flex flex-wrap gap-2 border-0"
+            aria-label="Status filters"
+          >
             {statusFilters.map((status) => (
               <button
                 key={status.value}
                 type="button"
-                onClick={() => setStatusFilter(status.value as Project['status'] | 'all')}
+                onClick={() =>
+                  setStatusFilter(status.value as Project['status'] | 'all')
+                }
                 className={clsx(
                   'px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-all',
                   statusFilter === status.value
@@ -114,7 +147,7 @@ export function ProjectsPage() {
                 {status.label}
               </button>
             ))}
-          </div>
+          </fieldset>
         </div>
       </div>
 
@@ -128,7 +161,11 @@ export function ProjectsPage() {
         <EmptyState
           icon={LayoutDashboard}
           title="No projects found"
-          description={search ? 'Try a different search term' : 'Create a project to track your work'}
+          description={
+            search
+              ? 'Try a different search term'
+              : 'Create a project to track your work'
+          }
           actionLabel="New Project"
           actionHref="/projects/new"
         />
@@ -143,8 +180,12 @@ export function ProjectsPage() {
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-surface-100 truncate">{project.name}</h3>
-                  <p className="text-surface-500 text-sm capitalize">{project.visibility}</p>
+                  <h3 className="font-semibold text-surface-100 truncate">
+                    {project.name}
+                  </h3>
+                  <p className="text-surface-500 text-sm capitalize">
+                    {project.visibility}
+                  </p>
                 </div>
                 <span className={clsx('badge', statusColors[project.status])}>
                   {statusLabels[project.status]}
@@ -158,7 +199,9 @@ export function ProjectsPage() {
               <div className="mb-4">
                 <div className="flex items-center justify-between text-sm mb-1.5">
                   <span className="text-surface-500">Progress</span>
-                  <span className="text-surface-300 font-medium">{getProgress(project)}%</span>
+                  <span className="text-surface-300 font-medium">
+                    {getProgress(project)}%
+                  </span>
                 </div>
                 <div className="w-full h-2 bg-surface-800 rounded-full overflow-hidden">
                   <div

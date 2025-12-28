@@ -27,6 +27,16 @@
  * ```
  */
 
+// Backup Service (DWS storage integration)
+export {
+  type BackupMetadata,
+  type BackupOptions,
+  BackupService,
+  type BackupServiceConfig,
+  createBackupService,
+  type RestoreOptions,
+  type StorageBackend,
+} from './backup.js'
 export {
   EQLiteClient,
   getEQLite,
@@ -35,6 +45,25 @@ export {
   resetEQLite,
   resetEQLite as resetEQLiteClient,
 } from './client.js'
+// Encrypted EQLite Client (KMS integration)
+export {
+  createEncryptedEQLiteClient,
+  EncryptedEQLiteClient,
+  type EncryptedEQLiteConfig,
+  type EncryptedExecResult,
+  type EncryptedQueryResult,
+} from './encrypted-client.js'
+// EQLite Node Management (for TEE deployment)
+export {
+  createEQLiteNode,
+  type EQLiteNodeConfig,
+  EQLiteNodeManager,
+  EQLiteNodeRole,
+  type EQLiteNodeState,
+  EQLiteNodeStatus,
+  isEQLiteAvailable,
+  type TEEAttestation,
+} from './eqlite-node.js'
 // Database manager for robust connection handling
 export {
   createDatabaseManager,
@@ -79,6 +108,10 @@ export type {
   BlockProducerInfo,
   ColumnMeta,
   ConsistencyLevel,
+  CreateRentalRequest,
+  DatabaseConfig,
+  DatabaseInfo,
+  DatabaseStatus,
   EQLiteConfig,
   EQLiteConnection,
   EQLiteConnectionPool,
@@ -87,10 +120,6 @@ export type {
   EQLiteEventDetails,
   EQLiteQueryable,
   EQLiteTransaction,
-  CreateRentalRequest,
-  DatabaseConfig,
-  DatabaseInfo,
-  DatabaseStatus,
   ExecEventDetails,
   ExecResult,
   GrantRequest,
@@ -148,32 +177,3 @@ export {
   validateVectorDimensions,
   validateVectorValues,
 } from './vector.js'
-// EQLite Node Management (for TEE deployment)
-export {
-  EQLiteNodeManager,
-  EQLiteNodeRole,
-  EQLiteNodeStatus,
-  createEQLiteNode,
-  isEQLiteAvailable,
-  type EQLiteNodeConfig,
-  type EQLiteNodeState,
-  type TEEAttestation,
-} from './eqlite-node.js'
-// Encrypted EQLite Client (KMS integration)
-export {
-  createEncryptedEQLiteClient,
-  EncryptedEQLiteClient,
-  type EncryptedEQLiteConfig,
-  type EncryptedExecResult,
-  type EncryptedQueryResult,
-} from './encrypted-client.js'
-// Backup Service (DWS storage integration)
-export {
-  BackupService,
-  createBackupService,
-  type BackupMetadata,
-  type BackupOptions,
-  type BackupServiceConfig,
-  type RestoreOptions,
-  type StorageBackend,
-} from './backup.js'

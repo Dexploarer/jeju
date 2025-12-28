@@ -21,9 +21,9 @@ import {
   type MessagingClientConfig,
 } from './sdk'
 import {
+  createEQLiteStorage,
   type EQLiteConfig,
   type EQLiteMessageStorage,
-  createEQLiteStorage,
   type StoredMessage,
 } from './storage/eqlite-storage'
 

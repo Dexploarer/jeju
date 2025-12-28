@@ -4,9 +4,10 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { cors } from '@elysiajs/cors'
 import { openapi } from '@elysiajs/openapi'
-import { getEnvVar, getEnvNumber } from '@jejunetwork/config'
+import { CORE_PORTS, getEnvNumber, getEnvVar } from '@jejunetwork/config'
 import { Elysia } from 'elysia'
 import { configureFactory, getFactoryConfig } from './config'
+import { closeDB, initDB } from './db/client'
 import { a2aRoutes } from './routes/a2a'
 import { agentsRoutes } from './routes/agents'
 import { bountiesRoutes } from './routes/bounties'
@@ -29,10 +30,20 @@ import { packagesRoutes } from './routes/packages'
 import { projectsRoutes } from './routes/projects'
 import { pullsRoutes } from './routes/pulls'
 import { repoSettingsRoutes } from './routes/repo-settings'
+import { shutdownNonceStore } from './validation/nonce-store'
+import {
+  checkRateLimit,
+  getClientIdentifier,
+  getRateLimitHeaders,
+  getRateLimitTier,
+  shutdownRateLimiter,
+} from './validation/rate-limiter'
 
 const config = getFactoryConfig()
 // When running with frontend dev server, API uses port + 1 (frontend proxies to us)
-const API_PORT_OFFSET = process.env.API_PORT_OFFSET ? Number(process.env.API_PORT_OFFSET) : 0
+const API_PORT_OFFSET = process.env.API_PORT_OFFSET
+  ? Number(process.env.API_PORT_OFFSET)
+  : 0
 const PORT = config.port + API_PORT_OFFSET
 const isDev = config.isDev
 
@@ -65,6 +76,45 @@ function getMimeType(path: string): string {
 
 function createApp() {
   const baseApp = new Elysia()
+    .onRequest(({ request, set }): Response | undefined => {
+      const url = new URL(request.url)
+      // Skip rate limiting for health and docs
+      if (
+        url.pathname === '/api/health' ||
+        url.pathname.startsWith('/swagger')
+      ) {
+        return undefined
+      }
+      const headers: Record<string, string | undefined> = {}
+      request.headers.forEach((v, k) => {
+        headers[k] = v
+      })
+      const clientId = getClientIdentifier(headers)
+      const tier = getRateLimitTier(request.method, url.pathname)
+      const result = checkRateLimit(clientId, tier)
+      const rateLimitHeaders = getRateLimitHeaders(result)
+      for (const [k, v] of Object.entries(rateLimitHeaders)) {
+        set.headers[k] = v
+      }
+      if (!result.allowed) {
+        set.status = 429
+        return new Response(
+          JSON.stringify({
+            error: 'RATE_LIMITED',
+            message: `Rate limit exceeded. Retry after ${result.retryAfter}s`,
+            retryAfter: result.retryAfter,
+          }),
+          {
+            status: 429,
+            headers: {
+              'Content-Type': 'application/json',
+              ...rateLimitHeaders,
+            },
+          },
+        )
+      }
+      return undefined
+    })
     .use(
       cors({
         origin: isDev
@@ -136,6 +186,14 @@ function createApp() {
 
 export const app = createApp()
 
+async function gracefulShutdown(signal: string) {
+  console.log(`[factory] ${signal} received, shutting down...`)
+  shutdownRateLimiter()
+  shutdownNonceStore()
+  await closeDB()
+  process.exit(0)
+}
+
 if (import.meta.main) {
   // Initialize config from environment variables
   configureFactory({
@@ -148,6 +206,16 @@ if (import.meta.main) {
     factoryChannelId: getEnvVar('FACTORY_CHANNEL_ID'),
     dcRelayUrl: getEnvVar('DC_RELAY_URL'),
   })
+
+  // Initialize database with encryption support
+  initDB().catch((err) => {
+    console.error('[factory] Failed to initialize database:', err)
+    process.exit(1)
+  })
+
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'))
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'))
+
   // Serve static files if dist/client exists
   // Note: This is registered after API routes so API routes take precedence
   if (hasStaticFiles) {

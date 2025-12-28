@@ -91,7 +91,9 @@ export class AgentExecutor {
       kmsUrl:
         config.kmsUrl ?? process.env.DWS_KMS_URL ?? 'http://127.0.0.1:4030/kms',
       eqliteUrl:
-        config.eqliteUrl ?? process.env.DWS_EQLITE_URL ?? getEQLiteBlockProducerUrl(),
+        config.eqliteUrl ??
+        process.env.DWS_EQLITE_URL ??
+        getEQLiteBlockProducerUrl(),
       warmPool: config.warmPool ?? DEFAULT_WARM_POOL_CONFIG,
       elizaWorkerCid: config.elizaWorkerCid ?? DEFAULT_ELIZA_WORKER_CID,
     }

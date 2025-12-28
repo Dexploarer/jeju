@@ -18,9 +18,9 @@
  * ```
  */
 
-import type { Page, Browser } from '@playwright/test'
-import { spawn, type ChildProcess } from 'child_process'
-import { join } from 'path'
+import { type ChildProcess, spawn } from 'node:child_process'
+import { join } from 'node:path'
+import type { Browser, Page } from '@playwright/test'
 
 export type TauriAppName = 'wallet' | 'node' | 'vpn'
 
@@ -148,7 +148,9 @@ export async function buildTauriApp(
           appDir,
           'target',
           'debug',
-          platform === 'darwin' ? `bundle/macos/${config.name}.app` : binaryName,
+          platform === 'darwin'
+            ? `bundle/macos/${config.name}.app`
+            : binaryName,
         )
         resolve(binaryPath)
       } else {
@@ -244,7 +246,7 @@ export function mockTauriIPC(page: Page): void {
       event: {
         listen: async (
           event: string,
-          callback: (payload: unknown) => void,
+          _callback: (payload: unknown) => void,
         ): Promise<() => void> => {
           console.log(`[Tauri Mock] listen: ${event}`)
           return () => {
@@ -258,7 +260,9 @@ export function mockTauriIPC(page: Page): void {
     }
 
     ;(window as { __TAURI__: TauriMock }).__TAURI__ = tauriMock
-    ;(window as { __TAURI_INTERNALS__: { invoke: TauriMock['invoke'] } }).__TAURI_INTERNALS__ = {
+    ;(
+      window as { __TAURI_INTERNALS__: { invoke: TauriMock['invoke'] } }
+    ).__TAURI_INTERNALS__ = {
       invoke: tauriMock.invoke,
     }
   })
@@ -290,13 +294,15 @@ export async function ensureTauriDriver(): Promise<void> {
   if (!installed) {
     console.log('Installing tauri-driver...')
     return new Promise((resolve, reject) => {
-      const proc = spawn('cargo', ['install', 'tauri-driver'], { stdio: 'inherit' })
+      const proc = spawn('cargo', ['install', 'tauri-driver'], {
+        stdio: 'inherit',
+      })
       proc.on('close', (code: number | null) => {
         if (code === 0) resolve()
-        else reject(new Error(`Failed to install tauri-driver: exit code ${code}`))
+        else
+          reject(new Error(`Failed to install tauri-driver: exit code ${code}`))
       })
       proc.on('error', reject)
     })
   }
 }
-

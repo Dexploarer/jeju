@@ -1,5 +1,5 @@
-import SqlString from "sql92-string"
-import type { ConnectionConfig } from "./ConnectionConfig"
+import SqlString from 'sql92-string'
+import type { ConnectionConfig } from './ConnectionConfig'
 
 interface QueryResult {
   data?: {
@@ -14,7 +14,7 @@ interface ParsedResult {
   status: string
 }
 
-type ConnectionState = "disconnected" | "connected" | "error"
+type ConnectionState = 'disconnected' | 'connected' | 'error'
 
 /**
  * Connection class for EQLite
@@ -24,7 +24,7 @@ type ConnectionState = "disconnected" | "connected" | "error"
 export class Connection {
   readonly config: ConnectionConfig
   private _connectCalled: boolean = false
-  private _state: ConnectionState = "disconnected"
+  private _state: ConnectionState = 'disconnected'
   private readonly _timeout: number
   private _lastError: Error | null = null
 
@@ -38,7 +38,7 @@ export class Connection {
   }
 
   get isConnected(): boolean {
-    return this._state === "connected"
+    return this._state === 'connected'
   }
 
   get lastError(): Error | null {
@@ -49,7 +49,7 @@ export class Connection {
    * Establish connection to EQLite
    */
   async connect(): Promise<this> {
-    if (this._connectCalled && this._state === "connected") {
+    if (this._connectCalled && this._state === 'connected') {
       return this
     }
 
@@ -58,9 +58,9 @@ export class Connection {
     }
 
     // Verify connection
-    const datarows = await this.query("SELECT 1")
+    const datarows = await this.query('SELECT 1')
     if (datarows !== null) {
-      this._state = "connected"
+      this._state = 'connected'
       this._connectCalled = true
       this._lastError = null
     }
@@ -73,10 +73,10 @@ export class Connection {
    */
   async query(
     sql: string,
-    values?: unknown[]
+    values?: unknown[],
   ): Promise<Record<string, unknown>[] | null> {
     const formattedSql = SqlString.format(sql, values ?? [])
-    return this._fetch("query", formattedSql)
+    return this._fetch('query', formattedSql)
   }
 
   /**
@@ -84,10 +84,10 @@ export class Connection {
    */
   async exec(
     sql: string,
-    values?: unknown[]
+    values?: unknown[],
   ): Promise<Record<string, unknown>[] | null> {
     const formattedSql = SqlString.format(sql, values ?? [])
-    return this._fetch("exec", formattedSql)
+    return this._fetch('exec', formattedSql)
   }
 
   /**
@@ -108,7 +108,7 @@ export class Connection {
    * Close the connection
    */
   async close(): Promise<void> {
-    this._state = "disconnected"
+    this._state = 'disconnected'
     this._connectCalled = false
   }
 
@@ -116,34 +116,36 @@ export class Connection {
    * Internal fetch method for query and exec operations
    */
   private async _fetch(
-    method: "query" | "exec",
-    sql: string
+    method: 'query' | 'exec',
+    sql: string,
   ): Promise<Record<string, unknown>[] | null> {
     const database = this.config.dbid
     const uri = `${this.config.endpoint}/v1/${method}`
 
     const response = await fetch(uri, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ assoc: true, database, query: sql }),
       signal: AbortSignal.timeout(this._timeout),
     })
 
     if (!response.ok) {
-      const error = new Error(`EQLite request failed: ${response.status} ${response.statusText}`)
+      const error = new Error(
+        `EQLite request failed: ${response.status} ${response.statusText}`,
+      )
       this._lastError = error
-      this._state = "error"
+      this._state = 'error'
       throw error
     }
 
     const result: QueryResult = await response.json()
-    
+
     if (result.error) {
       const error = new Error(`EQLite query error: ${result.error}`)
       this._lastError = error
       throw error
     }
-    
+
     const parsed = this._parseResult(result)
     return parsed.datarows
   }
@@ -160,7 +162,7 @@ export class Connection {
    * Reconnect after an error
    */
   async reconnect(): Promise<this> {
-    this._state = "disconnected"
+    this._state = 'disconnected'
     this._connectCalled = false
     this._lastError = null
     return this.connect()

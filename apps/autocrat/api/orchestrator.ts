@@ -16,7 +16,6 @@ import {
   type Transport,
   type WalletClient,
 } from 'viem'
-import { type PrivateKeyAccount, privateKeyToAccount } from 'viem/accounts'
 import {
   readContract,
   waitForTransactionReceipt,
@@ -25,9 +24,13 @@ import {
 import { base, baseSepolia, localhost } from 'viem/chains'
 import { type CEOPersona, toHex } from '../lib'
 import type { DAOFull, FundingProject } from '../lib/types'
-import { config } from './config'
 import type { AutocratBlockchain } from './blockchain'
 import { createDAOService, type DAOService } from './dao-service'
+import {
+  createKMSAccount,
+  getOperatorConfig,
+  type KMSAccount,
+} from './kms-signer'
 
 // Config type for orchestrator - accepts CouncilConfig or minimal config
 export interface AutocratConfig {
@@ -216,7 +219,7 @@ export class AutocratOrchestrator {
   private readonly client: PublicClient<Transport, Chain>
   private readonly walletClient: WalletClient<Transport, Chain>
   private daoService: DAOService | null = null
-  private account: PrivateKeyAccount | null = null
+  private account: KMSAccount | null = null
   private daoStates: Map<string, DAOState> = new Map()
   private running = false
   private cycleCount = 0
@@ -253,9 +256,13 @@ export class AutocratOrchestrator {
     await initLocalServices()
     await autocratAgentRuntime.initialize()
 
-    const operatorKey = config.operatorKey ?? config.privateKey
-    if (operatorKey) {
-      this.account = privateKeyToAccount(toHex(operatorKey))
+    // Initialize KMS-based signing (uses MPC in production)
+    const operatorConfig = getOperatorConfig()
+    if (operatorConfig) {
+      this.account = await createKMSAccount(operatorConfig)
+      console.log(
+        `[Orchestrator] Signing initialized via ${this.account.type.toUpperCase()} for ${this.account.address}`,
+      )
     }
 
     // Initialize DAO service - handle both config styles
@@ -269,12 +276,14 @@ export class AutocratOrchestrator {
       ZERO_ADDRESS
     const chainId = this.config.chainId ?? this.inferChainId(this.config.rpcUrl)
 
+    // Pass the operator address for KMS-based signing in DAOService
+    const operatorKey = process.env.OPERATOR_KEY ?? process.env.PRIVATE_KEY
     this.daoService = createDAOService({
       rpcUrl: this.config.rpcUrl,
       chainId,
       daoRegistryAddress: daoRegistryAddr,
       daoFundingAddress: daoFundingAddr,
-      privateKey: operatorKey,
+      privateKey: operatorKey, // DAOService will migrate to KMS internally
     })
 
     // Load all active DAOs

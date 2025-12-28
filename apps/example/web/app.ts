@@ -329,7 +329,10 @@ async function encryptTodo(id: string): Promise<void> {
 async function connectWallet(): Promise<void> {
   const ethereum = getEthereumProvider()
   if (!ethereum) {
-    setState({ error: 'Wallet not detected. Install MetaMask or another Web3 wallet to continue.' })
+    setState({
+      error:
+        'Wallet not detected. Install MetaMask or another Web3 wallet to continue.',
+    })
     return
   }
 
@@ -340,7 +343,10 @@ async function connectWallet(): Promise<void> {
   })
 
   if (accounts.length === 0) {
-    setState({ isConnecting: false, error: 'No accounts found. Unlock your wallet and try again.' })
+    setState({
+      isConnecting: false,
+      error: 'No accounts found. Unlock your wallet and try again.',
+    })
     return
   }
 
@@ -419,7 +425,7 @@ function renderHeader(): string {
 function renderUserBadge(): string {
   const address = state.address
   if (!address) return ''
-  
+
   return `
     <div class="mt-4 flex items-center justify-center gap-3">
       <div class="glass-card px-4 py-2 rounded-full flex items-center gap-2">
@@ -532,7 +538,11 @@ function renderForm(): string {
 }
 
 function renderFilters(): string {
-  const filters: Array<{ value: AppState['filter']; label: string; icon: string }> = [
+  const filters: Array<{
+    value: AppState['filter']
+    label: string
+    icon: string
+  }> = [
     { value: 'all', label: 'All', icon: '📋' },
     { value: 'pending', label: 'To Do', icon: '⏳' },
     { value: 'completed', label: 'Done', icon: '✅' },
@@ -759,29 +769,31 @@ function attachEventListeners(): void {
   })
 
   // Create todo form
-  document.getElementById('todo-form')?.addEventListener('submit', async (e) => {
-    e.preventDefault()
-    const input = document.getElementById('todo-input')
-    const select = document.getElementById('priority-select')
+  document
+    .getElementById('todo-form')
+    ?.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const input = document.getElementById('todo-input')
+      const select = document.getElementById('priority-select')
 
-    if (!isHTMLInputElement(input) || !isHTMLSelectElement(select)) {
-      setState({ error: 'Form error. Refresh and try again.' })
-      return
-    }
+      if (!isHTMLInputElement(input) || !isHTMLSelectElement(select)) {
+        setState({ error: 'Form error. Refresh and try again.' })
+        return
+      }
 
-    const title = input.value.trim()
-    const priority = select.value
+      const title = input.value.trim()
+      const priority = select.value
 
-    if (!title) {
-      setState({ error: 'Please enter a task title' })
-      return
-    }
+      if (!title) {
+        setState({ error: 'Please enter a task title' })
+        return
+      }
 
-    await createTodo(title, validatePriority(priority))
-    input.value = ''
-    input.focus()
-    clearError()
-  })
+      await createTodo(title, validatePriority(priority))
+      input.value = ''
+      input.focus()
+      clearError()
+    })
 
   // Filter buttons
   document.querySelectorAll('[data-filter]').forEach((btn) => {

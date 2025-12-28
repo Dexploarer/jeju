@@ -88,9 +88,7 @@ export function Settings() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold">Settings</h1>
-        <p className="text-volcanic-400 mt-1">
-          Customize how your node runs
-        </p>
+        <p className="text-volcanic-400 mt-1">Customize how your node runs</p>
       </div>
 
       {/* Network Selection */}

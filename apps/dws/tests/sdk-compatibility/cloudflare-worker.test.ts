@@ -27,8 +27,8 @@ setDefaultTimeout(60000)
 const TEST_DIR = '/tmp/dws-cf-worker-test'
 const TEST_ADDRESS = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'
 
-// Worker types
-interface WorkerDeployRequest {
+// Worker types (exported for documentation)
+export interface WorkerDeployRequest {
   name: string
   code: string // base64 encoded
   bindings?: Array<{ name: string; type: string; value: string }>
@@ -65,7 +65,7 @@ interface WorkerListResponse {
   }>
 }
 
-interface WorkerLogsResponse {
+export interface WorkerLogsResponse {
   logs: Array<{
     timestamp: string
     level: string
@@ -132,7 +132,7 @@ export default {
 };
 `
 
-const SCHEDULED_WORKER = `
+const _SCHEDULED_WORKER = `
 export default {
   async fetch(request) {
     return new Response('Not a scheduled request');
@@ -212,7 +212,7 @@ describe('Cloudflare Worker Compatibility', () => {
       const res = await dwsRequest('/workerd/health')
       expect(res.status).toBe(200)
 
-      const data = await res.json() as { status: string; runtime: string }
+      const data = (await res.json()) as { status: string; runtime: string }
       expect(data.status).toBe('healthy')
       expect(data.runtime).toBe('workerd')
     })
@@ -234,13 +234,16 @@ describe('Cloudflare Worker Compatibility', () => {
 
       // Workerd may not be available in all environments
       if (res.status === 500 || res.status === 503) {
-        const error = await res.json() as { error: string }
-        console.log('[CF Worker Test] Skipping - workerd not available:', error.error)
+        const error = (await res.json()) as { error: string }
+        console.log(
+          '[CF Worker Test] Skipping - workerd not available:',
+          error.error,
+        )
         return
       }
 
       expect(res.status).toBe(201)
-      const data = await res.json() as WorkerDeployResponse
+      const data = (await res.json()) as WorkerDeployResponse
       expect(data.workerId).toBeDefined()
       expect(data.name).toBe('hello-world')
       expect(['deploying', 'active']).toContain(data.status)
@@ -273,7 +276,7 @@ describe('Cloudflare Worker Compatibility', () => {
       }
 
       expect(res.status).toBe(201)
-      const data = await res.json() as WorkerDeployResponse
+      const data = (await res.json()) as WorkerDeployResponse
       expect(data.workerId).toBeDefined()
       deployedWorkers.push(data.workerId)
     })
@@ -287,7 +290,9 @@ describe('Cloudflare Worker Compatibility', () => {
         },
         body: JSON.stringify({
           name: 'invalid-worker',
-          code: Buffer.from('this is not valid javascript export default').toString('base64'),
+          code: Buffer.from(
+            'this is not valid javascript export default',
+          ).toString('base64'),
         }),
       })
 
@@ -316,7 +321,7 @@ describe('Cloudflare Worker Compatibility', () => {
       })
 
       expect(res.status).toBe(200)
-      const data = await res.json() as WorkerListResponse
+      const data = (await res.json()) as WorkerListResponse
       expect(data.workers).toBeInstanceOf(Array)
     })
 
@@ -328,7 +333,7 @@ describe('Cloudflare Worker Compatibility', () => {
       })
 
       expect(res.status).toBe(200)
-      const data = await res.json() as WorkerStatusResponse
+      const data = (await res.json()) as WorkerStatusResponse
       expect(data.workerId).toBe(deployedWorkers[0])
       expect(data.name).toBeDefined()
     })
@@ -338,7 +343,7 @@ describe('Cloudflare Worker Compatibility', () => {
 
       const updatedCode = HELLO_WORLD_WORKER.replace(
         'Hello from DWS Worker!',
-        'Updated Hello from DWS!'
+        'Updated Hello from DWS!',
       )
 
       const res = await dwsRequest(`/workerd/${deployedWorkers[0]}`, {
@@ -371,7 +376,7 @@ describe('Cloudflare Worker Compatibility', () => {
 
       if (deployRes.status !== 201) return
 
-      const { workerId } = await deployRes.json() as WorkerDeployResponse
+      const { workerId } = (await deployRes.json()) as WorkerDeployResponse
 
       // Delete it
       const deleteRes = await dwsRequest(`/workerd/${workerId}`, {
@@ -408,7 +413,7 @@ describe('Cloudflare Worker Compatibility', () => {
       })
 
       if (res.status === 201) {
-        const data = await res.json() as WorkerDeployResponse
+        const data = (await res.json()) as WorkerDeployResponse
         activeWorkerId = data.workerId
         deployedWorkers.push(activeWorkerId)
 
@@ -428,7 +433,7 @@ describe('Cloudflare Worker Compatibility', () => {
       expect([200, 503]).toContain(res.status)
 
       if (res.status === 200) {
-        const data = await res.json() as { counter: number }
+        const data = (await res.json()) as { counter: number }
         expect(typeof data.counter).toBe('number')
       }
     })
@@ -436,9 +441,12 @@ describe('Cloudflare Worker Compatibility', () => {
     test('invokes worker with custom path', async () => {
       if (!activeWorkerId) return
 
-      const res = await dwsRequest(`/workerd/${activeWorkerId}/http/increment`, {
-        method: 'GET',
-      })
+      const res = await dwsRequest(
+        `/workerd/${activeWorkerId}/http/increment`,
+        {
+          method: 'GET',
+        },
+      )
 
       expect([200, 503]).toContain(res.status)
     })
@@ -471,7 +479,7 @@ describe('Cloudflare Worker Compatibility', () => {
 
       if (deployRes.status !== 201) return
 
-      const { workerId } = await deployRes.json() as WorkerDeployResponse
+      const { workerId } = (await deployRes.json()) as WorkerDeployResponse
       deployedWorkers.push(workerId)
 
       await new Promise((r) => setTimeout(r, 2000))
@@ -495,7 +503,7 @@ describe('Cloudflare Worker Compatibility', () => {
       expect([200, 404]).toContain(res.status)
 
       if (res.status === 200) {
-        const data = await res.json() as WorkerStatusResponse['metrics']
+        const data = (await res.json()) as WorkerStatusResponse['metrics']
         expect(data).toBeDefined()
       }
     })
@@ -515,9 +523,12 @@ describe('Cloudflare Worker Compatibility', () => {
     test('GET /workerd/:id/logs?stream=true streams logs', async () => {
       if (deployedWorkers.length === 0) return
 
-      const res = await dwsRequest(`/workerd/${deployedWorkers[0]}/logs?stream=true`, {
-        headers: { 'x-jeju-address': TEST_ADDRESS },
-      })
+      const res = await dwsRequest(
+        `/workerd/${deployedWorkers[0]}/logs?stream=true`,
+        {
+          headers: { 'x-jeju-address': TEST_ADDRESS },
+        },
+      )
 
       expect([200, 404]).toContain(res.status)
     })
@@ -629,7 +640,7 @@ database_id = "db-123"
       expect([201, 400, 500, 503]).toContain(res.status)
 
       if (res.status === 201) {
-        const data = await res.json() as WorkerDeployResponse
+        const data = (await res.json()) as WorkerDeployResponse
         deployedWorkers.push(data.workerId)
       }
     })
@@ -670,10 +681,9 @@ database_id = "db-123"
       const res = await dwsRequest('/workerd/stats')
       expect(res.status).toBe(200)
 
-      const data = await res.json() as { pool: { totalWorkers: number } }
+      const data = (await res.json()) as { pool: { totalWorkers: number } }
       expect(data.pool).toBeDefined()
       expect(typeof data.pool.totalWorkers).toBe('number')
     })
   })
 })
-

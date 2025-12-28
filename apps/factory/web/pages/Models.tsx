@@ -46,12 +46,35 @@ export function ModelsPage() {
   })
   const { stats, isLoading: statsLoading } = useModelStats()
 
-  const statsData = useMemo(() => [
-    { label: 'Total Models', value: stats.totalModels.toString(), color: 'text-warning-400', loading: statsLoading },
-    { label: 'Total Downloads', value: formatCompactNumber(stats.totalDownloads), color: 'text-info-400', loading: statsLoading },
-    { label: 'Verified', value: stats.verifiedModels.toString(), color: 'text-success-400', loading: statsLoading },
-    { label: 'Active Inference', value: stats.activeInference.toString(), color: 'text-accent-400', loading: statsLoading },
-  ], [stats, statsLoading])
+  const statsData = useMemo(
+    () => [
+      {
+        label: 'Total Models',
+        value: stats.totalModels.toString(),
+        color: 'text-warning-400',
+        loading: statsLoading,
+      },
+      {
+        label: 'Total Downloads',
+        value: formatCompactNumber(stats.totalDownloads),
+        color: 'text-info-400',
+        loading: statsLoading,
+      },
+      {
+        label: 'Verified',
+        value: stats.verifiedModels.toString(),
+        color: 'text-success-400',
+        loading: statsLoading,
+      },
+      {
+        label: 'Active Inference',
+        value: stats.activeInference.toString(),
+        color: 'text-accent-400',
+        loading: statsLoading,
+      },
+    ],
+    [stats, statsLoading],
+  )
 
   return (
     <div className="page-container">
@@ -76,7 +99,10 @@ export function ModelsPage() {
             className="flex-1 mb-0 p-0 border-0 bg-transparent shadow-none"
           />
 
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Model type filters">
+          <fieldset
+            className="flex flex-wrap gap-2 border-0"
+            aria-label="Model type filters"
+          >
             {typeFilters.map((type) => (
               <button
                 key={type.value}
@@ -93,7 +119,7 @@ export function ModelsPage() {
                 {type.label}
               </button>
             ))}
-          </div>
+          </fieldset>
         </div>
       </div>
 
@@ -107,7 +133,11 @@ export function ModelsPage() {
         <EmptyState
           icon={Brain}
           title="No models found"
-          description={search ? 'Try a different search term' : 'Upload a model to share with others'}
+          description={
+            search
+              ? 'Try a different search term'
+              : 'Upload a model to share with others'
+          }
           actionLabel="Upload Model"
           actionHref="/models/upload"
         />
@@ -123,14 +153,23 @@ export function ModelsPage() {
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold text-surface-100 truncate">{model.name}</h3>
+                    <h3 className="font-semibold text-surface-100 truncate">
+                      {model.name}
+                    </h3>
                     {model.isVerified && (
-                      <Shield className="w-4 h-4 text-success-400 flex-shrink-0" aria-hidden="true" />
+                      <Shield
+                        className="w-4 h-4 text-success-400 flex-shrink-0"
+                        aria-hidden="true"
+                      />
                     )}
                   </div>
-                  <p className="text-surface-500 text-sm">{model.organization}</p>
+                  <p className="text-surface-500 text-sm">
+                    {model.organization}
+                  </p>
                 </div>
-                <span className="badge badge-info">{typeLabels[model.type]}</span>
+                <span className="badge badge-info">
+                  {typeLabels[model.type]}
+                </span>
               </div>
 
               <p className="text-surface-400 text-sm line-clamp-2 mb-4">
@@ -156,7 +195,10 @@ export function ModelsPage() {
               {model.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-3">
                   {model.tags.slice(0, 3).map((tag) => (
-                    <span key={tag} className="text-xs text-surface-500 bg-surface-800 px-2 py-0.5 rounded">
+                    <span
+                      key={tag}
+                      className="text-xs text-surface-500 bg-surface-800 px-2 py-0.5 rounded"
+                    >
                       {tag}
                     </span>
                   ))}

@@ -27,7 +27,6 @@
 
 import type { TCPSocketListener } from 'bun'
 import type { CacheEngine } from './engine'
-import type { SortedSetMember } from './types'
 
 // RESP Protocol Constants
 const CRLF = '\r\n'
@@ -405,28 +404,34 @@ const COMMANDS: Record<string, CommandHandler> = {
       parseInt(args[2], 10),
       withScores,
     )
-    if (withScores && Array.isArray(result) && result.length > 0 && typeof result[0] === 'object') {
-      const flat: string[] = []
-      for (const item of result as SortedSetMember[]) {
-        flat.push(item.member, item.score.toString())
+    if (withScores && Array.isArray(result) && result.length > 0) {
+      const firstItem = result[0]
+      if (typeof firstItem === 'object' && 'member' in firstItem) {
+        const flat: string[] = []
+        for (const item of result as Array<{ member: string; score: number }>) {
+          flat.push(item.member, item.score.toString())
+        }
+        return flat
       }
-      return flat
     }
     return result as string[]
   },
   ZREVRANGE: (engine, ns, args) => {
     const withScores = args.some((a) => a.toUpperCase() === 'WITHSCORES')
     // Get full sorted set and reverse for proper high-to-low ordering
-    const allResult = engine.zrange(ns, args[0], 0, -1, true) as Array<{ member: string; score: number }>
+    const allResult = engine.zrange(ns, args[0], 0, -1, true) as Array<{
+      member: string
+      score: number
+    }>
     const reversed = [...allResult].reverse()
-    
+
     const start = parseInt(args[1], 10)
     const stop = parseInt(args[2], 10)
     const len = reversed.length
     const normalizedStart = start < 0 ? Math.max(len + start, 0) : start
     const normalizedStop = stop < 0 ? len + stop + 1 : stop + 1
     const slice = reversed.slice(normalizedStart, normalizedStop)
-    
+
     if (withScores) {
       const flat: string[] = []
       for (const item of slice) {
@@ -441,12 +446,15 @@ const COMMANDS: Record<string, CommandHandler> = {
     const max = args[2] === '+inf' ? Infinity : parseFloat(args[2])
     const withScores = args.some((a) => a.toUpperCase() === 'WITHSCORES')
     const result = engine.zrangebyscore(ns, args[0], min, max, withScores)
-    if (withScores && Array.isArray(result) && result.length > 0 && typeof result[0] === 'object') {
-      const flat: string[] = []
-      for (const item of result as SortedSetMember[]) {
-        flat.push(item.member, item.score.toString())
+    if (withScores && Array.isArray(result) && result.length > 0) {
+      const firstItem = result[0]
+      if (typeof firstItem === 'object' && 'member' in firstItem) {
+        const flat: string[] = []
+        for (const item of result as Array<{ member: string; score: number }>) {
+          flat.push(item.member, item.score.toString())
+        }
+        return flat
       }
-      return flat
     }
     return result as string[]
   },
@@ -554,9 +562,8 @@ export class RedisProtocolServer {
     this.server = Bun.listen<ClientState>({
       hostname: this.config.host,
       port: this.config.port,
-
       socket: {
-        open(socket) {
+        open(socket: Socket<ClientState>) {
           self.clientCount++
           socket.data = {
             parser: new RESPParser(),
@@ -564,8 +571,12 @@ export class RedisProtocolServer {
           }
         },
 
-        async data(socket, data) {
+        async data(socket: Socket<ClientState>, data: Buffer) {
           const state = socket.data
+          if (!state) {
+            console.error('[Redis Protocol] Socket data is undefined')
+            return
+          }
           state.parser.feed(data.toString())
 
           while (true) {
@@ -577,11 +588,11 @@ export class RedisProtocolServer {
           }
         },
 
-        close() {
+        close(_socket: Socket<ClientState>) {
           self.clientCount--
         },
 
-        error(_socket, error) {
+        error(_socket: Socket<ClientState>, error: Error) {
           console.error('[Redis Protocol] Socket error:', error)
         },
       },
@@ -605,7 +616,10 @@ export class RedisProtocolServer {
   /**
    * Handle a Redis command
    */
-  private async handleCommand(args: string[], state: ClientState): Promise<string> {
+  private async handleCommand(
+    args: string[],
+    state: ClientState,
+  ): Promise<string> {
     if (args.length === 0) {
       return encodeRESP('ERR empty command')
     }

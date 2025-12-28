@@ -23,12 +23,20 @@ interface PageHeaderProps {
   }
 }
 
-export function PageHeader({ icon, title, description, action }: PageHeaderProps) {
+export function PageHeader({
+  icon,
+  title,
+  description,
+  action,
+}: PageHeaderProps) {
   return (
     <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
       <div className="space-y-1">
         <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gradient-warm flex items-center gap-3">
-          <span className="text-3xl md:text-4xl animate-bounce-subtle" aria-hidden="true">
+          <span
+            className="text-3xl md:text-4xl animate-bounce-subtle"
+            aria-hidden="true"
+          >
             {icon}
           </span>
           <span>{title}</span>
@@ -37,8 +45,8 @@ export function PageHeader({ icon, title, description, action }: PageHeaderProps
           {description}
         </p>
       </div>
-      {action && (
-        action.href ? (
+      {action &&
+        (action.href ? (
           <Link
             to={action.href}
             className="btn-primary w-full sm:w-auto text-center whitespace-nowrap"
@@ -53,8 +61,7 @@ export function PageHeader({ icon, title, description, action }: PageHeaderProps
           >
             {action.label}
           </button>
-        )
-      )}
+        ))}
     </header>
   )
 }
@@ -103,9 +110,10 @@ export function FilterTabs<T extends string>({
               px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap 
               transition-all duration-200 focus-ring
               disabled:opacity-50 disabled:cursor-not-allowed
-              ${isActive
-                ? 'bg-gradient-warm text-white shadow-glow-sm'
-                : 'bg-surface-secondary text-secondary hover:text-primary hover:bg-surface-elevated'
+              ${
+                isActive
+                  ? 'bg-gradient-warm text-white shadow-glow-sm'
+                  : 'bg-surface-secondary text-secondary hover:text-primary hover:bg-surface-elevated'
               }
             `}
           >
@@ -133,20 +141,26 @@ interface EmptyStateProps {
   }
 }
 
-export function EmptyState({ icon, title, description, action }: EmptyStateProps) {
+export function EmptyState({
+  icon,
+  title,
+  description,
+  action,
+}: EmptyStateProps) {
   return (
     <div className="text-center py-16 px-4 animate-fade-in">
-      <div className="text-6xl md:text-7xl mb-6 animate-float" aria-hidden="true">
+      <div
+        className="text-6xl md:text-7xl mb-6 animate-float"
+        aria-hidden="true"
+      >
         {icon}
       </div>
       <h3 className="text-xl md:text-2xl font-bold mb-3 text-primary">
         {title}
       </h3>
-      <p className="text-secondary mb-6 max-w-md mx-auto">
-        {description}
-      </p>
-      {action && (
-        action.href ? (
+      <p className="text-secondary mb-6 max-w-md mx-auto">{description}</p>
+      {action &&
+        (action.href ? (
           <Link to={action.href} className="btn-primary">
             {action.label}
           </Link>
@@ -158,8 +172,7 @@ export function EmptyState({ icon, title, description, action }: EmptyStateProps
           >
             {action.label}
           </button>
-        )
-      )}
+        ))}
     </div>
   )
 }
@@ -179,15 +192,24 @@ interface StatCardProps {
   className?: string
 }
 
-export function StatCard({ label, value, icon: Icon, trend, className = '' }: StatCardProps) {
-  const iconElement = typeof Icon === 'string' ? (
-    <span className="text-2xl">{Icon}</span>
-  ) : Icon ? (
-    <Icon className="w-5 h-5 text-primary-color" />
-  ) : null
+export function StatCard({
+  label,
+  value,
+  icon: Icon,
+  trend,
+  className = '',
+}: StatCardProps) {
+  const iconElement =
+    typeof Icon === 'string' ? (
+      <span className="text-2xl">{Icon}</span>
+    ) : Icon ? (
+      <Icon className="w-5 h-5 text-primary-color" />
+    ) : null
 
   return (
-    <div className={`card p-4 md:p-5 hover:scale-[1.02] transition-transform ${className}`}>
+    <div
+      className={`card p-4 md:p-5 hover:scale-[1.02] transition-transform ${className}`}
+    >
       <div className="flex items-start gap-3">
         {iconElement && (
           <div className="w-10 h-10 rounded-xl bg-primary-soft flex items-center justify-center shrink-0">
@@ -244,17 +266,26 @@ const defaultIcons = {
   success: '✓',
 }
 
-export function InfoCard({ variant, icon, title, children, className = '' }: InfoCardProps) {
+export function InfoCard({
+  variant,
+  icon,
+  title,
+  children,
+  className = '',
+}: InfoCardProps) {
   const displayIcon = icon ?? defaultIcons[variant]
 
   return (
-    <div className={`card p-4 ${infoCardStyles[variant]} ${className}`} role="alert">
+    <div
+      className={`card p-4 ${infoCardStyles[variant]} ${className}`}
+      role="alert"
+    >
       <div className="flex items-start gap-3">
-        <span className="text-xl shrink-0" aria-hidden="true">{displayIcon}</span>
+        <span className="text-xl shrink-0" aria-hidden="true">
+          {displayIcon}
+        </span>
         <div className="flex-1 min-w-0">
-          {title && (
-            <p className="font-semibold mb-1">{title}</p>
-          )}
+          {title && <p className="font-semibold mb-1">{title}</p>}
           <div className="text-sm">{children}</div>
         </div>
       </div>
@@ -281,7 +312,13 @@ const maxWidthClasses = {
   xl: 'max-w-xl',
 }
 
-export function Modal({ open, onClose, title, children, maxWidth = 'md' }: ModalProps) {
+export function Modal({
+  open,
+  onClose,
+  title,
+  children,
+  maxWidth = 'md',
+}: ModalProps) {
   if (!open) return null
 
   return (
@@ -313,9 +350,7 @@ export function Modal({ open, onClose, title, children, maxWidth = 'md' }: Modal
             <span aria-hidden="true">✕</span>
           </button>
         </header>
-        <div className="p-5">
-          {children}
-        </div>
+        <div className="p-5">{children}</div>
       </div>
     </div>
   )
@@ -363,7 +398,9 @@ export function BackLink({ to, label = 'Back' }: BackLinkProps) {
       to={to}
       className="inline-flex items-center gap-1.5 text-sm text-secondary hover:text-primary transition-colors mb-4 group"
     >
-      <span className="group-hover:-translate-x-0.5 transition-transform">←</span>
+      <span className="group-hover:-translate-x-0.5 transition-transform">
+        ←
+      </span>
       {label}
     </Link>
   )
@@ -379,11 +416,17 @@ interface ErrorStateProps {
   onRetry?: () => void
 }
 
-export function ErrorState({ title = 'Something went wrong', message, onRetry }: ErrorStateProps) {
+export function ErrorState({
+  title = 'Something went wrong',
+  message,
+  onRetry,
+}: ErrorStateProps) {
   return (
     <div className="card p-6 border-red-500/30 bg-red-500/5 animate-fade-in">
       <div className="flex items-start gap-4">
-        <span className="text-3xl" aria-hidden="true">⚠️</span>
+        <span className="text-3xl" aria-hidden="true">
+          ⚠️
+        </span>
         <div className="flex-1">
           <p className="font-semibold text-red-400 mb-1">{title}</p>
           <p className="text-sm text-secondary mb-4">{message}</p>

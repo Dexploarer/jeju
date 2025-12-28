@@ -16,8 +16,8 @@ import {
   CORE_PORTS,
   type ContractCategoryName,
   getContract,
-  getEQLiteBlockProducerUrl,
   getCurrentNetwork,
+  getEQLiteBlockProducerUrl,
   getRpcUrl,
 } from '@jejunetwork/config'
 import { Elysia } from 'elysia'
@@ -48,12 +48,16 @@ import {
   startKeepaliveService,
   stopKeepaliveService,
 } from '../database'
+import { createDatabaseRoutes } from '../database/routes'
 import {
   createDecentralizedServices,
   type DistributedRateLimiter,
   type P2PCoordinator,
 } from '../decentralized'
-import { createAppDeployerRouter, createGitHubIntegrationRouter } from '../deploy'
+import {
+  createAppDeployerRouter,
+  createGitHubIntegrationRouter,
+} from '../deploy'
 import { createDNSRouter } from '../dns/routes'
 import { GitRepoManager } from '../git/repo-manager'
 import {
@@ -68,7 +72,9 @@ import {
 import { createKubernetesBridgeRouter } from '../infrastructure/kubernetes-bridge'
 import { banCheckMiddleware } from '../middleware/ban-check'
 import { createHuggingFaceRouter } from '../ml/huggingface-compat'
+import { createObservabilityRoutes } from '../observability/routes'
 import { PkgRegistryManager } from '../pkg/registry-manager'
+import { createSecurityRoutes } from '../security/routes'
 import { createServicesRouter, discoverExistingServices } from '../services'
 import { createBackendManager } from '../storage/backends'
 import type { ServiceHealth } from '../types'
@@ -109,9 +115,6 @@ import { createStorageRouter } from './routes/storage'
 import { createVPNRouter } from './routes/vpn'
 import { createDefaultWorkerdRouter } from './routes/workerd'
 import { createWorkersRouter } from './routes/workers'
-import { createDatabaseRoutes } from '../database/routes'
-import { createSecurityRoutes } from '../security/routes'
-import { createObservabilityRoutes } from '../observability/routes'
 
 // Config injection for workerd compatibility
 export interface DWSServerConfig {
@@ -297,15 +300,39 @@ function getContractOrZero(
   }
 }
 
+/**
+ * SECURITY WARNING: Private Key Configuration
+ *
+ * The DWS_PRIVATE_KEY is used for on-chain transactions (git registry, pkg registry, CI).
+ * In production with TEE, this key is vulnerable to side-channel attacks.
+ *
+ * Recommended production configuration:
+ * 1. Use KMS-backed signing via DWS_KMS_KEY_ID environment variable
+ * 2. Or use TX_RELAY_URL for HSM-backed transaction relay
+ * 3. Never store raw private keys in TEE memory
+ *
+ * The current implementation uses direct keys for development compatibility.
+ */
+const dwsPrivateKey =
+  (serverConfig.privateKey as Hex | undefined) ??
+  (typeof process !== 'undefined'
+    ? (process.env.DWS_PRIVATE_KEY as Hex | undefined)
+    : undefined)
+
+// Warn about direct key usage in production
+if (isProduction && dwsPrivateKey) {
+  console.warn(
+    '[DWS] WARNING: Using DWS_PRIVATE_KEY directly in production. ' +
+      'Set DWS_KMS_KEY_ID for KMS-backed signing to protect against side-channel attacks.',
+  )
+}
+
 // Git configuration - uses centralized config
 const gitConfig = {
   rpcUrl: getRpcUrl(NETWORK),
-  repoRegistryAddress: getContractOrZero('dws', 'gitRegistry'),
-  privateKey:
-    (serverConfig.privateKey as Hex | undefined) ??
-    (typeof process !== 'undefined'
-      ? (process.env.DWS_PRIVATE_KEY as Hex | undefined)
-      : undefined),
+  repoRegistryAddress: getContractOrZero('registry', 'repo'),
+  privateKey: dwsPrivateKey,
+  kmsKeyId: process.env.DWS_KMS_KEY_ID,
 }
 
 const repoManager = new GitRepoManager(gitConfig, backendManager)
@@ -313,12 +340,9 @@ const repoManager = new GitRepoManager(gitConfig, backendManager)
 // Package registry configuration (JejuPkg)
 const pkgConfig = {
   rpcUrl: getRpcUrl(NETWORK),
-  packageRegistryAddress: getContractOrZero('dws', 'packageRegistry'),
-  privateKey:
-    (serverConfig.privateKey as Hex | undefined) ??
-    (typeof process !== 'undefined'
-      ? (process.env.DWS_PRIVATE_KEY as Hex | undefined)
-      : undefined),
+  packageRegistryAddress: getContractOrZero('registry', 'package'),
+  privateKey: dwsPrivateKey,
+  kmsKeyId: process.env.DWS_KMS_KEY_ID,
 }
 
 const registryManager = new PkgRegistryManager(pkgConfig, backendManager)
@@ -326,12 +350,9 @@ const registryManager = new PkgRegistryManager(pkgConfig, backendManager)
 // CI configuration
 const ciConfig = {
   rpcUrl: getRpcUrl(NETWORK),
-  triggerRegistryAddress: getContractOrZero('compute', 'cronTriggerRegistry'),
-  privateKey:
-    (serverConfig.privateKey as Hex | undefined) ??
-    (typeof process !== 'undefined'
-      ? (process.env.DWS_PRIVATE_KEY as Hex | undefined)
-      : undefined),
+  triggerRegistryAddress: getContractOrZero('registry', 'trigger'),
+  privateKey: dwsPrivateKey,
+  kmsKeyId: process.env.DWS_KMS_KEY_ID,
 }
 
 const workflowEngine = new WorkflowEngine(ciConfig, backendManager, repoManager)
@@ -443,19 +464,24 @@ app
         pkg: { status: 'healthy' },
         ci: { status: 'healthy' },
         oauth3: await (async () => {
-          const oauth3Url = serverConfig.oauth3AgentUrl ?? 
-            process.env.OAUTH3_AGENT_URL ?? 
+          const oauth3Url =
+            serverConfig.oauth3AgentUrl ??
+            process.env.OAUTH3_AGENT_URL ??
             'http://localhost:4200'
           try {
-            const response = await fetch(`${oauth3Url}/health`, { 
-              signal: AbortSignal.timeout(2000) 
+            const response = await fetch(`${oauth3Url}/health`, {
+              signal: AbortSignal.timeout(2000),
             })
             if (response.ok) {
               return { status: 'healthy', endpoint: oauth3Url }
             }
             return { status: 'unhealthy', endpoint: oauth3Url }
           } catch {
-            return { status: 'not-running', endpoint: oauth3Url, hint: 'Start OAuth3: cd apps/oauth3 && bun run dev' }
+            return {
+              status: 'not-running',
+              endpoint: oauth3Url,
+              hint: 'Start OAuth3: cd apps/oauth3 && bun run dev',
+            }
           }
         })(),
         s3: { status: 'healthy' },
@@ -918,12 +944,14 @@ const AGENTS_DB_ID =
     ? process.env.AGENTS_DATABASE_ID
     : undefined) ??
   'dws-agents'
-initRegistry({ eqliteUrl: EQLITE_URL, databaseId: AGENTS_DB_ID }).catch((err) => {
-  console.warn(
-    '[DWS] Agent registry init failed (EQLite may not be running):',
-    err.message,
-  )
-})
+initRegistry({ eqliteUrl: EQLITE_URL, databaseId: AGENTS_DB_ID }).catch(
+  (err) => {
+    console.warn(
+      '[DWS] Agent registry init failed (EQLite may not be running):',
+      err.message,
+    )
+  },
+)
 
 // Agent executor - initialized after server starts (see below)
 const workerdExecutor = new WorkerdExecutor(backendManager)
@@ -953,35 +981,40 @@ function shutdown(signal: string) {
 }
 
 if (import.meta.main) {
+  // SECURITY: Validate security configuration at startup
+  // Checks KMS availability, HSM availability, secret configuration
+  // In production, will exit if critical security requirements are not met
+  const { enforceSecurityAtStartup } = await import(
+    '../shared/security-validator'
+  )
+  await enforceSecurityAtStartup('DWS Server')
+
   // Configure route modules with injected config
-  const {
-    configureCDNRouterConfig,
-  } = await import('./routes/cdn')
-  const {
-    configureOAuth3RouterConfig,
-  } = await import('./routes/oauth3')
-  const {
-    configureProxyRouterConfig,
-  } = await import('./routes/proxy')
-  const {
-    configureDNSRouterConfig,
-  } = await import('../dns/routes')
-  const {
-    configureX402PaymentsConfig,
-  } = await import('../rpc/services/x402-payments')
+  const { configureCDNRouterConfig } = await import('./routes/cdn')
+  const { configureOAuth3RouterConfig } = await import('./routes/oauth3')
+  const { configureProxyRouterConfig } = await import('./routes/proxy')
+  const { configureDNSRouterConfig } = await import('../dns/routes')
+  const { configureX402PaymentsConfig } = await import(
+    '../rpc/services/x402-payments'
+  )
 
   // Inject configs from serverConfig and process.env (for backward compatibility)
   configureCDNRouterConfig({
     jnsRegistryAddress:
-      typeof process !== 'undefined' ? process.env.JNS_REGISTRY_ADDRESS : undefined,
+      typeof process !== 'undefined'
+        ? process.env.JNS_REGISTRY_ADDRESS
+        : undefined,
     jnsResolverAddress:
-      typeof process !== 'undefined' ? process.env.JNS_RESOLVER_ADDRESS : undefined,
-    rpcUrl:
-      typeof process !== 'undefined' ? process.env.RPC_URL : undefined,
+      typeof process !== 'undefined'
+        ? process.env.JNS_RESOLVER_ADDRESS
+        : undefined,
+    rpcUrl: typeof process !== 'undefined' ? process.env.RPC_URL : undefined,
     ipfsGatewayUrl:
       typeof process !== 'undefined' ? process.env.IPFS_GATEWAY_URL : undefined,
     arweaveGatewayUrl:
-      typeof process !== 'undefined' ? process.env.ARWEAVE_GATEWAY_URL : undefined,
+      typeof process !== 'undefined'
+        ? process.env.ARWEAVE_GATEWAY_URL
+        : undefined,
     jnsDomain:
       typeof process !== 'undefined' ? process.env.JNS_DOMAIN : undefined,
     cacheMb:
@@ -1002,8 +1035,7 @@ if (import.meta.main) {
         : undefined,
     jejuAppsDir:
       typeof process !== 'undefined' ? process.env.JEJU_APPS_DIR : undefined,
-    nodeEnv:
-      typeof process !== 'undefined' ? process.env.NODE_ENV : undefined,
+    nodeEnv: typeof process !== 'undefined' ? process.env.NODE_ENV : undefined,
   })
 
   configureOAuth3RouterConfig({
@@ -1014,7 +1046,9 @@ if (import.meta.main) {
     indexerUrl:
       typeof process !== 'undefined' ? process.env.INDEXER_URL : undefined,
     indexerGraphqlUrl:
-      typeof process !== 'undefined' ? process.env.INDEXER_GRAPHQL_URL : undefined,
+      typeof process !== 'undefined'
+        ? process.env.INDEXER_GRAPHQL_URL
+        : undefined,
     monitoringUrl:
       typeof process !== 'undefined' ? process.env.MONITORING_URL : undefined,
     prometheusUrl:
@@ -1033,15 +1067,23 @@ if (import.meta.main) {
     cfDomain:
       typeof process !== 'undefined' ? process.env.CF_DOMAIN : undefined,
     awsAccessKeyId:
-      typeof process !== 'undefined' ? process.env.AWS_ACCESS_KEY_ID : undefined,
+      typeof process !== 'undefined'
+        ? process.env.AWS_ACCESS_KEY_ID
+        : undefined,
     awsSecretAccessKey:
-      typeof process !== 'undefined' ? process.env.AWS_SECRET_ACCESS_KEY : undefined,
+      typeof process !== 'undefined'
+        ? process.env.AWS_SECRET_ACCESS_KEY
+        : undefined,
     awsHostedZoneId:
-      typeof process !== 'undefined' ? process.env.AWS_HOSTED_ZONE_ID : undefined,
+      typeof process !== 'undefined'
+        ? process.env.AWS_HOSTED_ZONE_ID
+        : undefined,
     awsDomain:
       typeof process !== 'undefined' ? process.env.AWS_DOMAIN : undefined,
     dnsMirrorDomain:
-      typeof process !== 'undefined' ? process.env.DNS_MIRROR_DOMAIN : undefined,
+      typeof process !== 'undefined'
+        ? process.env.DNS_MIRROR_DOMAIN
+        : undefined,
     dnsSyncInterval:
       typeof process !== 'undefined'
         ? parseInt(process.env.DNS_SYNC_INTERVAL || '300', 10)
@@ -1062,6 +1104,7 @@ if (import.meta.main) {
         ? process.env.X402_ENABLED !== 'false'
         : undefined,
   })
+
   const baseUrl =
     serverConfig.baseUrl ??
     (typeof process !== 'undefined' ? process.env.DWS_BASE_URL : undefined) ??

@@ -5,8 +5,8 @@
  * Supports health checking, automatic reconnection, and load balancing.
  */
 
-import { Connection } from "./Connection"
-import type { ConnectionConfig } from "./ConnectionConfig"
+import { Connection } from './Connection'
+import type { ConnectionConfig } from './ConnectionConfig'
 
 export interface PoolConfig extends ConnectionConfig {
   /**
@@ -81,7 +81,9 @@ export class ConnectionPool {
     this.startHealthCheck()
 
     if (this.config.debug) {
-      console.log(`[EQLite Pool] Initialized with ${this.connections.length} connections`)
+      console.log(
+        `[EQLite Pool] Initialized with ${this.connections.length} connections`,
+      )
     }
   }
 
@@ -90,11 +92,13 @@ export class ConnectionPool {
    */
   async acquire(): Promise<Connection> {
     if (this.closed) {
-      throw new Error("Pool is closed")
+      throw new Error('Pool is closed')
     }
 
     // Find an available connection
-    const available = this.connections.find((c) => !c.inUse && c.connection.isConnected)
+    const available = this.connections.find(
+      (c) => !c.inUse && c.connection.isConnected,
+    )
     if (available) {
       available.inUse = true
       available.lastUsed = Date.now()
@@ -120,7 +124,7 @@ export class ConnectionPool {
         if (idx !== -1) {
           this.waitQueue.splice(idx, 1)
         }
-        reject(new Error("Connection acquire timeout"))
+        reject(new Error('Connection acquire timeout'))
       }, this.config.acquireTimeout)
 
       this.waitQueue.push({ resolve, reject, timeout })
@@ -133,7 +137,7 @@ export class ConnectionPool {
   release(connection: Connection): void {
     const pooled = this.connections.find((c) => c.connection === connection)
     if (!pooled) {
-      console.warn("[EQLite Pool] Releasing unknown connection")
+      console.warn('[EQLite Pool] Releasing unknown connection')
       return
     }
 
@@ -155,7 +159,10 @@ export class ConnectionPool {
   /**
    * Execute a query using a pooled connection
    */
-  async query(sql: string, values?: unknown[]): Promise<Record<string, unknown>[] | null> {
+  async query(
+    sql: string,
+    values?: unknown[],
+  ): Promise<Record<string, unknown>[] | null> {
     const conn = await this.acquire()
     try {
       return await conn.query(sql, values)
@@ -167,7 +174,10 @@ export class ConnectionPool {
   /**
    * Execute a write operation using a pooled connection
    */
-  async exec(sql: string, values?: unknown[]): Promise<Record<string, unknown>[] | null> {
+  async exec(
+    sql: string,
+    values?: unknown[],
+  ): Promise<Record<string, unknown>[] | null> {
     const conn = await this.acquire()
     try {
       return await conn.exec(sql, values)
@@ -207,18 +217,16 @@ export class ConnectionPool {
     // Reject all waiters
     for (const waiter of this.waitQueue) {
       clearTimeout(waiter.timeout)
-      waiter.reject(new Error("Pool is closing"))
+      waiter.reject(new Error('Pool is closing'))
     }
     this.waitQueue = []
 
     // Close all connections
-    await Promise.all(
-      this.connections.map((c) => c.connection.close())
-    )
+    await Promise.all(this.connections.map((c) => c.connection.close()))
     this.connections = []
 
     if (this.config.debug) {
-      console.log("[EQLite Pool] Closed")
+      console.log('[EQLite Pool] Closed')
     }
   }
 
@@ -256,7 +264,7 @@ export class ConnectionPool {
         const healthy = await pooled.connection.isHealthy()
         if (!healthy) {
           if (this.config.debug) {
-            console.log("[EQLite Pool] Removing unhealthy connection")
+            console.log('[EQLite Pool] Removing unhealthy connection')
           }
           await pooled.connection.close()
           this.connections.splice(i, 1)
@@ -269,7 +277,7 @@ export class ConnectionPool {
           now - pooled.lastUsed > idleTimeout
         ) {
           if (this.config.debug) {
-            console.log("[EQLite Pool] Removing idle connection")
+            console.log('[EQLite Pool] Removing idle connection')
           }
           await pooled.connection.close()
           this.connections.splice(i, 1)
@@ -281,7 +289,7 @@ export class ConnectionPool {
         try {
           await this.createConnection()
         } catch (err) {
-          console.error("[EQLite Pool] Failed to create connection:", err)
+          console.error('[EQLite Pool] Failed to create connection:', err)
           break
         }
       }
@@ -297,4 +305,3 @@ export async function createPool(config: PoolConfig): Promise<ConnectionPool> {
   await pool.initialize()
   return pool
 }
-

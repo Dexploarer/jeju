@@ -22,13 +22,13 @@ import { z } from 'zod'
 import type {
   ACLRule,
   BlockProducerInfo,
+  CreateRentalRequest,
+  DatabaseConfig,
+  DatabaseInfo,
   EQLiteConfig,
   EQLiteConnection,
   EQLiteConnectionPool,
   EQLiteTransaction,
-  CreateRentalRequest,
-  DatabaseConfig,
-  DatabaseInfo,
   ExecResult,
   GrantRequest,
   QueryParam,
@@ -385,7 +385,9 @@ class EQLiteConnectionImpl implements EQLiteConnection {
     if (!response.ok) {
       const errorText = await response.text()
       if (this.debug)
-        console.error(`[EQLite] ${type} error: ${response.status} - ${errorText}`)
+        console.error(
+          `[EQLite] ${type} error: ${response.status} - ${errorText}`,
+        )
       throw new Error(`EQLite ${type} failed: ${response.status}`)
     }
 
@@ -395,6 +397,18 @@ class EQLiteConnectionImpl implements EQLiteConnection {
       console.log(
         `[EQLite] ${type}: executed (${executionTime}ms, params: ${params?.length ?? 0})`,
       )
+
+    // EQLite returns HTTP 200 with success: false for errors
+    if (
+      typeof rawResult === 'object' &&
+      rawResult !== null &&
+      'success' in rawResult &&
+      rawResult.success === false
+    ) {
+      const errorMsg =
+        'error' in rawResult ? String(rawResult.error) : 'Unknown error'
+      throw new Error(`EQLite ${type} failed: ${errorMsg}`)
+    }
 
     if (type === 'query') {
       const result = QueryResponseSchema.parse(rawResult)
@@ -970,7 +984,8 @@ const DEFAULT_TIMEOUT = 30000
  */
 export function getEQLite(config?: Partial<EQLiteConfig>): EQLiteClient {
   if (!eqliteClient) {
-    const blockProducerEndpoint = config?.blockProducerEndpoint ?? getEQLiteUrl()
+    const blockProducerEndpoint =
+      config?.blockProducerEndpoint ?? getEQLiteUrl()
     const minerEndpoint = config?.minerEndpoint ?? getEQLiteMinerUrl()
 
     if (!blockProducerEndpoint) {
@@ -982,7 +997,8 @@ export function getEQLite(config?: Partial<EQLiteConfig>): EQLiteClient {
     const resolvedConfig = {
       blockProducerEndpoint,
       minerEndpoint,
-      privateKey: config?.privateKey ?? (getEqlitePrivateKey() as Hex | undefined),
+      privateKey:
+        config?.privateKey ?? (getEqlitePrivateKey() as Hex | undefined),
       databaseId: config?.databaseId ?? getEqliteDatabaseId(),
       timeout:
         config?.timeout ?? parseTimeout(getEqliteTimeout(), DEFAULT_TIMEOUT),
@@ -1002,4 +1018,3 @@ export async function resetEQLite(): Promise<void> {
     eqliteClient = null
   }
 }
-

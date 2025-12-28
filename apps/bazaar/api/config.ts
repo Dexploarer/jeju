@@ -3,11 +3,7 @@
  * Centralized config injection for workerd compatibility
  */
 
-import {
-  createAppConfig,
-  getEnvVar,
-  getCoreAppUrl,
-} from '@jejunetwork/config'
+import { createAppConfig, getCoreAppUrl, getEnvVar } from '@jejunetwork/config'
 
 export interface BazaarConfig {
   // API
@@ -22,10 +18,8 @@ export interface BazaarConfig {
 }
 
 const { config, configure: setBazaarConfig } = createAppConfig<BazaarConfig>({
-  bazaarApiUrl:
-    getEnvVar('BAZAAR_API_URL') ?? getCoreAppUrl('BAZAAR_API'),
-  farcasterHubUrl:
-    getEnvVar('FARCASTER_HUB_URL') ?? 'https://hub.pinata.cloud',
+  bazaarApiUrl: getEnvVar('BAZAAR_API_URL') ?? getCoreAppUrl('BAZAAR_API'),
+  farcasterHubUrl: getEnvVar('FARCASTER_HUB_URL') ?? 'https://hub.pinata.cloud',
   eqliteDatabaseId: getEnvVar('EQLITE_DATABASE_ID') ?? '',
   eqlitePrivateKey: getEnvVar('EQLITE_PRIVATE_KEY'),
 })

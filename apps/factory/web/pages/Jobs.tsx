@@ -61,10 +61,33 @@ export function JobsPage() {
   }, [])
 
   const statsData = [
-    { label: 'Total Jobs', value: stats.totalJobs.toString(), color: 'text-info-400', loading: statsLoading },
-    { label: 'Open Positions', value: stats.openJobs.toString(), color: 'text-success-400', loading: statsLoading },
-    { label: 'Remote Jobs', value: stats.remoteJobs.toString(), color: 'text-accent-400', loading: statsLoading },
-    { label: 'Avg. Salary', value: stats.averageSalary > 0 ? `$${stats.averageSalary.toLocaleString()}` : '-', color: 'text-warning-400', loading: statsLoading },
+    {
+      label: 'Total Jobs',
+      value: stats.totalJobs.toString(),
+      color: 'text-info-400',
+      loading: statsLoading,
+    },
+    {
+      label: 'Open Positions',
+      value: stats.openJobs.toString(),
+      color: 'text-success-400',
+      loading: statsLoading,
+    },
+    {
+      label: 'Remote Jobs',
+      value: stats.remoteJobs.toString(),
+      color: 'text-accent-400',
+      loading: statsLoading,
+    },
+    {
+      label: 'Avg. Salary',
+      value:
+        stats.averageSalary > 0
+          ? `$${stats.averageSalary.toLocaleString()}`
+          : '-',
+      color: 'text-warning-400',
+      loading: statsLoading,
+    },
   ]
 
   return (
@@ -90,7 +113,10 @@ export function JobsPage() {
             className="flex-1 mb-0 p-0 border-0 bg-transparent shadow-none"
           />
 
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Job type filters">
+          <fieldset
+            className="flex flex-wrap gap-2 border-0"
+            aria-label="Job type filters"
+          >
             {typeFilters.map((type) => (
               <button
                 key={type.value}
@@ -107,7 +133,7 @@ export function JobsPage() {
                 {type.label}
               </button>
             ))}
-          </div>
+          </fieldset>
 
           <label className="flex items-center gap-2 cursor-pointer select-none">
             <input
@@ -131,7 +157,11 @@ export function JobsPage() {
         <EmptyState
           icon={Briefcase}
           title="No jobs found"
-          description={search ? 'Try a different search term' : 'Post a job listing to find talent'}
+          description={
+            search
+              ? 'Try a different search term'
+              : 'Post a job listing to find talent'
+          }
           actionLabel="Post Job"
           actionHref="/jobs/create"
         />
@@ -150,8 +180,12 @@ export function JobsPage() {
                     <h3 className="font-semibold text-surface-100 truncate">
                       {job.title}
                     </h3>
-                    <span className="badge badge-info">{typeLabels[job.type]}</span>
-                    {job.remote && <span className="badge badge-success">Remote</span>}
+                    <span className="badge badge-info">
+                      {typeLabels[job.type]}
+                    </span>
+                    {job.remote && (
+                      <span className="badge badge-success">Remote</span>
+                    )}
                   </div>
                   <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-sm text-surface-400 mb-3">
                     <span className="flex items-center gap-1.5">

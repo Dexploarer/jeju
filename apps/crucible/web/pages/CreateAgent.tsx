@@ -11,7 +11,9 @@ import { useCharacter, useCharacters, useRegisterAgent } from '../hooks'
 
 export default function CreateAgentPage() {
   const navigate = useNavigate()
-  const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null)
+  const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(
+    null,
+  )
   const [initialFunding, setInitialFunding] = useState('')
 
   const { data: characters, isLoading: loadingCharacters } = useCharacters()
@@ -46,12 +48,12 @@ export default function CreateAgentPage() {
 
   if (loadingCharacters) {
     return (
-      <div className="flex flex-col items-center justify-center py-20" role="status">
+      <output className="flex flex-col items-center justify-center py-20">
         <LoadingSpinner size="lg" />
         <p className="mt-4 text-sm" style={{ color: 'var(--text-tertiary)' }}>
           Loading templates
         </p>
-      </div>
+      </output>
     )
   }
 
@@ -82,12 +84,13 @@ export default function CreateAgentPage() {
       </header>
 
       {/* Progress Indicator */}
-      <div className="flex items-center gap-4 mb-8" aria-label="Creation progress">
+      <div className="flex items-center gap-4 mb-8">
         <StepIndicator step={1} currentStep={currentStep} label="Character" />
         <div
           className="flex-1 h-0.5 rounded-full"
           style={{
-            backgroundColor: currentStep >= 2 ? 'var(--color-primary)' : 'var(--border)',
+            backgroundColor:
+              currentStep >= 2 ? 'var(--color-primary)' : 'var(--border)',
           }}
           aria-hidden="true"
         />
@@ -101,7 +104,9 @@ export default function CreateAgentPage() {
           className="text-lg font-bold mb-4 font-display flex items-center gap-3"
           style={{ color: 'var(--text-primary)' }}
         >
-          <span className="step-circle" aria-hidden="true">1</span>
+          <span className="step-circle" aria-hidden="true">
+            1
+          </span>
           Character
         </h2>
 
@@ -109,7 +114,9 @@ export default function CreateAgentPage() {
           <div className="card-static p-5 animate-bounce-in">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-4 min-w-0">
-                <div className="text-3xl flex-shrink-0" aria-hidden="true">🤖</div>
+                <div className="text-3xl flex-shrink-0" aria-hidden="true">
+                  🤖
+                </div>
                 <div className="min-w-0">
                   <p
                     className="font-bold truncate"
@@ -144,7 +151,9 @@ export default function CreateAgentPage() {
                 className="card p-5 text-left transition-all hover:ring-2 hover:ring-[var(--color-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
               >
                 <div className="flex items-start gap-3">
-                  <div className="text-3xl flex-shrink-0" aria-hidden="true">🤖</div>
+                  <div className="text-3xl flex-shrink-0" aria-hidden="true">
+                    🤖
+                  </div>
                   <div className="flex-1 min-w-0">
                     <p
                       className="font-bold truncate mb-1"
@@ -174,7 +183,9 @@ export default function CreateAgentPage() {
             className="text-lg font-bold mb-4 font-display flex items-center gap-3"
             style={{ color: 'var(--text-primary)' }}
           >
-            <span className="step-circle" aria-hidden="true">2</span>
+            <span className="step-circle" aria-hidden="true">
+              2
+            </span>
             Deploy
           </h2>
 
@@ -206,7 +217,10 @@ export default function CreateAgentPage() {
                   className="input flex-1"
                   aria-describedby="funding-hint"
                 />
-                <span className="text-sm font-mono" style={{ color: 'var(--text-tertiary)' }}>
+                <span
+                  className="text-sm font-mono"
+                  style={{ color: 'var(--text-tertiary)' }}
+                >
                   ETH
                 </span>
               </div>
@@ -225,10 +239,16 @@ export default function CreateAgentPage() {
               style={{ borderColor: 'var(--border)' }}
             >
               <div>
-                <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                <p
+                  className="font-medium"
+                  style={{ color: 'var(--text-primary)' }}
+                >
                   {selectedCharacter?.name}
                 </p>
-                <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                <p
+                  className="text-sm"
+                  style={{ color: 'var(--text-tertiary)' }}
+                >
                   Registers on-chain and creates vault
                 </p>
               </div>
@@ -256,7 +276,10 @@ export default function CreateAgentPage() {
                 style={{ backgroundColor: 'rgba(244, 63, 94, 0.1)' }}
                 role="alert"
               >
-                <p className="text-sm font-medium" style={{ color: 'var(--color-error)' }}>
+                <p
+                  className="text-sm font-medium"
+                  style={{ color: 'var(--color-error)' }}
+                >
                   {registerAgent.error.message}
                 </p>
               </div>
@@ -292,7 +315,9 @@ function StepIndicator({ step, currentStep, label }: StepIndicatorProps) {
       </div>
       <span
         className={`text-sm font-medium hidden sm:block ${
-          isCurrent ? 'text-[var(--text-primary)]' : 'text-[var(--text-tertiary)]'
+          isCurrent
+            ? 'text-[var(--text-primary)]'
+            : 'text-[var(--text-tertiary)]'
         }`}
       >
         {label}

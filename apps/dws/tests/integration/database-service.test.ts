@@ -1,6 +1,6 @@
 /**
  * E2E Tests for Managed Database Service
- * 
+ *
  * Tests the full lifecycle of database operations:
  * - EQLite instance creation, scaling, and management
  * - PostgreSQL instance creation, replicas, and failover
@@ -9,7 +9,7 @@
  * - API routes
  */
 
-import { expect, test, describe, beforeAll, afterAll } from 'bun:test'
+import { describe, expect, test } from 'bun:test'
 
 const BASE_URL = process.env.DWS_API_URL ?? 'http://localhost:4030'
 const TEST_WALLET = '0x1234567890123456789012345678901234567890'
@@ -60,7 +60,7 @@ describe('Managed Database Service E2E', () => {
       })
 
       expect(response.status).toBe(200)
-      const data = await response.json() as { instance: DatabaseInstance }
+      const data = (await response.json()) as { instance: DatabaseInstance }
       expect(data.instance).toBeDefined()
       expect(data.instance.name).toBe('test-eqlite-e2e')
       expect(data.instance.engine).toBe('eqlite')
@@ -75,20 +75,25 @@ describe('Managed Database Service E2E', () => {
       })
 
       expect(response.status).toBe(200)
-      const data = await response.json() as { instance: DatabaseInstance }
+      const data = (await response.json()) as { instance: DatabaseInstance }
       expect(data.instance.instanceId).toBe(eqliteInstanceId)
       expect(data.instance.engine).toBe('eqlite')
     })
 
     test('should get connection credentials', async () => {
-      const response = await fetch(`${BASE_URL}/database/${eqliteInstanceId}/connection`, {
-        headers: {
-          'x-wallet-address': TEST_WALLET,
+      const response = await fetch(
+        `${BASE_URL}/database/${eqliteInstanceId}/connection`,
+        {
+          headers: {
+            'x-wallet-address': TEST_WALLET,
+          },
         },
-      })
+      )
 
       expect(response.status).toBe(200)
-      const data = await response.json() as { credentials: Record<string, string> }
+      const data = (await response.json()) as {
+        credentials: Record<string, string>
+      }
       expect(data.credentials).toBeDefined()
       expect(data.credentials.authToken).toBeDefined()
       expect(data.credentials.endpoint).toBeDefined()
@@ -102,7 +107,7 @@ describe('Managed Database Service E2E', () => {
       })
 
       expect(response.status).toBe(200)
-      const data = await response.json() as { instances: DatabaseInstance[] }
+      const data = (await response.json()) as { instances: DatabaseInstance[] }
       expect(Array.isArray(data.instances)).toBe(true)
       expect(data.instances.length).toBeGreaterThan(0)
     })
@@ -120,48 +125,57 @@ describe('Managed Database Service E2E', () => {
       })
 
       expect(response.status).toBe(200)
-      const data = await response.json() as { instance: DatabaseInstance }
+      const data = (await response.json()) as { instance: DatabaseInstance }
       expect(data.instance).toBeDefined()
     })
 
     test('should create backup', async () => {
-      const response = await fetch(`${BASE_URL}/database/${eqliteInstanceId}/backups`, {
-        method: 'POST',
-        headers: {
-          'x-wallet-address': TEST_WALLET,
+      const response = await fetch(
+        `${BASE_URL}/database/${eqliteInstanceId}/backups`,
+        {
+          method: 'POST',
+          headers: {
+            'x-wallet-address': TEST_WALLET,
+          },
         },
-      })
+      )
 
       expect(response.status).toBe(200)
-      const data = await response.json() as { backup: Backup }
+      const data = (await response.json()) as { backup: Backup }
       expect(data.backup).toBeDefined()
       expect(data.backup.backupId).toBeDefined()
       backupId = data.backup.backupId
     })
 
     test('should stop database', async () => {
-      const response = await fetch(`${BASE_URL}/database/${eqliteInstanceId}/stop`, {
-        method: 'POST',
-        headers: {
-          'x-wallet-address': TEST_WALLET,
+      const response = await fetch(
+        `${BASE_URL}/database/${eqliteInstanceId}/stop`,
+        {
+          method: 'POST',
+          headers: {
+            'x-wallet-address': TEST_WALLET,
+          },
         },
-      })
+      )
 
       expect(response.status).toBe(200)
-      const data = await response.json() as { success: boolean }
+      const data = (await response.json()) as { success: boolean }
       expect(data.success).toBe(true)
     })
 
     test('should start database', async () => {
-      const response = await fetch(`${BASE_URL}/database/${eqliteInstanceId}/start`, {
-        method: 'POST',
-        headers: {
-          'x-wallet-address': TEST_WALLET,
+      const response = await fetch(
+        `${BASE_URL}/database/${eqliteInstanceId}/start`,
+        {
+          method: 'POST',
+          headers: {
+            'x-wallet-address': TEST_WALLET,
+          },
         },
-      })
+      )
 
       expect(response.status).toBe(200)
-      const data = await response.json() as { success: boolean }
+      const data = (await response.json()) as { success: boolean }
       expect(data.success).toBe(true)
     })
   })
@@ -197,7 +211,7 @@ describe('Managed Database Service E2E', () => {
       })
 
       expect(response.status).toBe(200)
-      const data = await response.json() as { instance: DatabaseInstance }
+      const data = (await response.json()) as { instance: DatabaseInstance }
       expect(data.instance).toBeDefined()
       expect(data.instance.name).toBe('test-postgres-e2e')
       expect(data.instance.engine).toBe('postgresql')
@@ -205,14 +219,19 @@ describe('Managed Database Service E2E', () => {
     })
 
     test('should get PostgreSQL connection credentials', async () => {
-      const response = await fetch(`${BASE_URL}/database/${postgresInstanceId}/connection`, {
-        headers: {
-          'x-wallet-address': TEST_WALLET,
+      const response = await fetch(
+        `${BASE_URL}/database/${postgresInstanceId}/connection`,
+        {
+          headers: {
+            'x-wallet-address': TEST_WALLET,
+          },
         },
-      })
+      )
 
       expect(response.status).toBe(200)
-      const data = await response.json() as { credentials: Record<string, string> }
+      const data = (await response.json()) as {
+        credentials: Record<string, string>
+      }
       expect(data.credentials).toBeDefined()
       // PostgreSQL returns directUrl and pooledUrl
       expect(data.credentials.directUrl).toBeDefined()
@@ -220,31 +239,39 @@ describe('Managed Database Service E2E', () => {
     })
 
     test('should get connection pool stats', async () => {
-      const response = await fetch(`${BASE_URL}/database/${postgresInstanceId}/pool`, {
-        headers: {
-          'x-wallet-address': TEST_WALLET,
+      const response = await fetch(
+        `${BASE_URL}/database/${postgresInstanceId}/pool`,
+        {
+          headers: {
+            'x-wallet-address': TEST_WALLET,
+          },
         },
-      })
+      )
 
       expect(response.status).toBe(200)
-      const data = await response.json() as { stats: Record<string, number> }
+      const data = (await response.json()) as { stats: Record<string, number> }
       expect(data.stats).toBeDefined()
     })
 
     test('should create read replica', async () => {
-      const response = await fetch(`${BASE_URL}/database/${postgresInstanceId}/replicas`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-wallet-address': TEST_WALLET,
+      const response = await fetch(
+        `${BASE_URL}/database/${postgresInstanceId}/replicas`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-wallet-address': TEST_WALLET,
+          },
+          body: JSON.stringify({
+            region: 'eu-west-1',
+          }),
         },
-        body: JSON.stringify({
-          region: 'eu-west-1',
-        }),
-      })
+      )
 
       expect(response.status).toBe(200)
-      const data = await response.json() as { replica: { replicaId: string; region: string } }
+      const data = (await response.json()) as {
+        replica: { replicaId: string; region: string }
+      }
       expect(data.replica).toBeDefined()
       expect(data.replica.region).toBe('eu-west-1')
     })
@@ -278,15 +305,18 @@ describe('Managed Database Service E2E', () => {
 
   describe('Backup and Restore', () => {
     test('should create PostgreSQL backup', async () => {
-      const response = await fetch(`${BASE_URL}/database/${postgresInstanceId}/backups`, {
-        method: 'POST',
-        headers: {
-          'x-wallet-address': TEST_WALLET,
+      const response = await fetch(
+        `${BASE_URL}/database/${postgresInstanceId}/backups`,
+        {
+          method: 'POST',
+          headers: {
+            'x-wallet-address': TEST_WALLET,
+          },
         },
-      })
+      )
 
       expect(response.status).toBe(200)
-      const data = await response.json() as { backup: Backup }
+      const data = (await response.json()) as { backup: Backup }
       expect(data.backup).toBeDefined()
       expect(data.backup.backupId).toBeDefined()
     })
@@ -299,30 +329,39 @@ describe('Managed Database Service E2E', () => {
       }
 
       // Check if instance still exists first
-      const checkResponse = await fetch(`${BASE_URL}/database/${eqliteInstanceId}`, {
-        headers: {
-          'x-wallet-address': TEST_WALLET,
+      const checkResponse = await fetch(
+        `${BASE_URL}/database/${eqliteInstanceId}`,
+        {
+          headers: {
+            'x-wallet-address': TEST_WALLET,
+          },
         },
-      })
-      const checkData = await checkResponse.json() as { error?: string }
+      )
+      const checkData = (await checkResponse.json()) as { error?: string }
       if (checkData.error) {
         console.log('Instance no longer exists, skipping restore test')
         return
       }
 
-      const response = await fetch(`${BASE_URL}/database/${eqliteInstanceId}/restore`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-wallet-address': TEST_WALLET,
+      const response = await fetch(
+        `${BASE_URL}/database/${eqliteInstanceId}/restore`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-wallet-address': TEST_WALLET,
+          },
+          body: JSON.stringify({
+            backupId,
+          }),
         },
-        body: JSON.stringify({
-          backupId,
-        }),
-      })
+      )
 
       // Restore may return 200 or 404 depending on timing
-      const data = await response.json() as { success?: boolean; error?: string }
+      const data = (await response.json()) as {
+        success?: boolean
+        error?: string
+      }
       if (response.status === 200) {
         expect(data.success).toBe(true)
       } else {
@@ -344,7 +383,7 @@ describe('Managed Database Service E2E', () => {
         },
       })
 
-      const data = await response.json() as { error?: string }
+      const data = (await response.json()) as { error?: string }
       expect(data.error).toBeDefined()
     })
 
@@ -355,7 +394,7 @@ describe('Managed Database Service E2E', () => {
         },
       })
 
-      const data = await response.json() as { error?: string }
+      const data = (await response.json()) as { error?: string }
       expect(data.error).toBeDefined()
     })
 
@@ -385,18 +424,21 @@ describe('Managed Database Service E2E', () => {
         method: 'GET',
       })
 
-      const data = await response.json() as { error?: string }
+      const data = (await response.json()) as { error?: string }
       expect(data.error).toBeDefined()
     })
 
     test('should not expose credentials to other users', async () => {
-      const response = await fetch(`${BASE_URL}/database/${postgresInstanceId}/connection`, {
-        headers: {
-          'x-wallet-address': '0x9999999999999999999999999999999999999999',
+      const response = await fetch(
+        `${BASE_URL}/database/${postgresInstanceId}/connection`,
+        {
+          headers: {
+            'x-wallet-address': '0x9999999999999999999999999999999999999999',
+          },
         },
-      })
+      )
 
-      const data = await response.json() as { error?: string }
+      const data = (await response.json()) as { error?: string }
       expect(data.error).toBeDefined()
     })
   })
@@ -417,22 +459,25 @@ describe('Managed Database Service E2E', () => {
       })
 
       expect(response.status).toBe(200)
-      const data = await response.json() as { success: boolean }
+      const data = (await response.json()) as { success: boolean }
       expect(data.success).toBe(true)
     })
 
     test('should delete PostgreSQL instance', async () => {
       if (!postgresInstanceId) return
 
-      const response = await fetch(`${BASE_URL}/database/${postgresInstanceId}`, {
-        method: 'DELETE',
-        headers: {
-          'x-wallet-address': TEST_WALLET,
+      const response = await fetch(
+        `${BASE_URL}/database/${postgresInstanceId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'x-wallet-address': TEST_WALLET,
+          },
         },
-      })
+      )
 
       expect(response.status).toBe(200)
-      const data = await response.json() as { success: boolean }
+      const data = (await response.json()) as { success: boolean }
       expect(data.success).toBe(true)
     })
   })
@@ -494,4 +539,3 @@ describe('Database API Validation', () => {
     expect(response.status).toBeDefined()
   })
 })
-

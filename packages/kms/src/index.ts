@@ -37,9 +37,12 @@ export {
   TEEAttestationVerificationResultSchema,
   TEEKeyInfoSchema,
   TEENodeInfoSchema,
-  TEEPlatform as TEEPlatformEnum,
   TEEPlatformSchema,
 } from '@jejunetwork/types'
+
+// Re-export TEEPlatform const (value export requires import + re-export pattern)
+import { TEEPlatform as TEEPlatformConst } from '@jejunetwork/types'
+export { TEEPlatformConst as TEEPlatformEnum }
 // Attestation verification
 export {
   type AttestationVerificationResult,
@@ -53,16 +56,19 @@ export {
   type AESGCMPayload,
   aesGcmDecrypt,
   aesGcmEncrypt,
+  bigintSecurityWarning,
   constantTimeCompare,
   decryptFromPayload,
   deriveEncryptionKey,
   deriveKeyForEncryption,
   deriveKeyFromSecret,
+  deriveKeyFromSecretAsync,
   encryptToPayload,
   extractRecoveryId,
   generateKeyId,
   parseCiphertextPayload,
   sealWithMasterKey,
+  secureZero,
   unsealWithMasterKey,
 } from './crypto.js'
 export {
@@ -90,6 +96,69 @@ export {
   MPCSigningClient,
   type SignatureResult,
 } from './dws-worker/mpc-discovery.js'
+// HSM abstraction layer
+export {
+  createHSMProvider,
+  getHSMProvider,
+  type HSMConfig,
+  type HSMCredentials,
+  type HSMEncryptResult,
+  type HSMKeyRef,
+  type HSMProvider,
+  type HSMSignResult,
+  resetHSMProvider,
+  SoftHSMProvider,
+} from './hsm/index.js'
+// Distributed KMS Infrastructure
+export {
+  createDistributedKMSService,
+  type DistributedCluster,
+  type DistributedKMSConfig,
+  DistributedKMSService,
+  type DistributedParty,
+  type SignRequest as DistributedSignRequest,
+  type SignResult as DistributedSignResult,
+} from './infrastructure/distributed-kms-service.js'
+// FROST Key Rotation
+export {
+  createDefaultRotationConfig,
+  createFROSTKeyRotationManager,
+  FROSTKeyRotationManager,
+  type RefreshedShare,
+  type RotationConfig,
+  type RotationContribution,
+  type RotationSession,
+} from './infrastructure/frost-key-rotation.js'
+export {
+  createHSMRootKeyManager,
+  HSMRootKeyManager,
+} from './infrastructure/hsm-root-key-manager.js'
+export {
+  type ClusterRotationState,
+  createKeyRotationScheduler,
+  KeyRotationScheduler,
+  type RotationEvent,
+  type SchedulerConfig,
+} from './infrastructure/key-rotation-scheduler.js'
+// KMS Monitoring
+export {
+  type Alert,
+  type AlertCondition,
+  type AlertRule,
+  type AlertSeverity,
+  type AlertType,
+  createKMSMonitor,
+  DEFAULT_ALERT_RULES,
+  type KMSEvent,
+  KMSMonitor,
+  type MonitoringConfig,
+  type MonitoringMetrics,
+} from './infrastructure/kms-monitoring.js'
+export {
+  type AttestationVerifierConfig as InfraTEEAttestationVerifierConfig,
+  createTEEAttestationVerifier,
+  TEEAttestationVerifier,
+} from './infrastructure/tee-attestation-verifier.js'
 // Core service
 export { getKMS, KMSService, resetKMS } from './kms.js'
 // Logger
@@ -178,6 +247,16 @@ export {
 } from './schemas.js'
 // SDK utilities
 export * from './sdk/index.js'
+// Secure Signing Service (RECOMMENDED - uses FROST, never reconstructs keys)
+export {
+  getSecureSigningService,
+  type KeyGenResult as SecureKeyGenResult,
+  resetSecureSigningService,
+  SecureSigningService,
+  type SignatureResult as SecureSignatureResult,
+  type SignRequest as SecureSignRequest,
+  type SignTypedDataRequest,
+} from './signing-service.js'
 // Types
 export {
   // Access control

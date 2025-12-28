@@ -6,10 +6,9 @@
 import {
   createAppConfig,
   getEnvVar,
-  getEnvNumber,
+  getRpcUrl,
   isProductionEnv,
 } from '@jejunetwork/config'
-import { getRpcUrl } from '@jejunetwork/config'
 
 export interface NodeConfig {
   // Network

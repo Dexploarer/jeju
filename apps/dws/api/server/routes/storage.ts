@@ -73,11 +73,11 @@ export function createStorageRouter(backend?: BackendManager) {
         let formData: FormData
         try {
           formData = await request.formData()
-        } catch (err) {
+        } catch (_err) {
           set.status = 400
           return { error: 'Invalid multipart form data' }
         }
-        
+
         const file = formData.get('file') as File | null
 
         if (!file) {

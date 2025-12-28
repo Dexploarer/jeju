@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * DWS Development Server with Full Infrastructure
- * 
+ *
  * Starts:
  * 1. Local blockchain (anvil) if not running
  * 2. Deploys all DWS contracts
@@ -10,11 +10,10 @@
  * 5. Starts the frontend dev server
  */
 
-import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Subprocess } from 'bun'
 
-const ROOT_DIR = join(import.meta.dir, '../../..')
+const _ROOT_DIR = join(import.meta.dir, '../../..')
 const DWS_DIR = join(import.meta.dir, '..')
 
 interface ProcessInfo {
@@ -28,9 +27,9 @@ let shuttingDown = false
 function cleanup() {
   if (shuttingDown) return
   shuttingDown = true
-  
+
   console.log('\n[Dev] Shutting down...')
-  
+
   for (const { name, process } of processes) {
     console.log(`[Dev] Stopping ${name}...`)
     try {
@@ -39,7 +38,7 @@ function cleanup() {
       // Process may have already exited
     }
   }
-  
+
   process.exit(0)
 }
 
@@ -48,7 +47,7 @@ process.on('SIGTERM', cleanup)
 
 async function isPortInUse(port: number): Promise<boolean> {
   try {
-    const response = await fetch(`http://localhost:${port}`, { 
+    const _response = await fetch(`http://localhost:${port}`, {
       method: 'HEAD',
       signal: AbortSignal.timeout(500),
     })
@@ -82,7 +81,7 @@ async function startAnvil(): Promise<boolean> {
         id: 1,
       }),
     })
-    const data = await response.json() as { result?: string }
+    const data = (await response.json()) as { result?: string }
     if (data.result === '0x7a69') {
       console.log('[Dev] Anvil already running on port 6546')
       return true
@@ -90,30 +89,33 @@ async function startAnvil(): Promise<boolean> {
   } catch {
     // Not running, start it
   }
-  
+
   console.log('[Dev] Starting anvil...')
-  
-  const proc = Bun.spawn(['anvil', '--port', '6546', '--chain-id', '31337', '--block-time', '1'], {
-    stdout: 'pipe',
-    stderr: 'pipe',
-  })
-  
+
+  const proc = Bun.spawn(
+    ['anvil', '--port', '6546', '--chain-id', '31337', '--block-time', '1'],
+    {
+      stdout: 'pipe',
+      stderr: 'pipe',
+    },
+  )
+
   processes.push({ name: 'anvil', process: proc })
-  
+
   // Wait for anvil to be ready
   const ready = await waitForPort(6546, 10000)
   if (!ready) {
     console.error('[Dev] Failed to start anvil')
     return false
   }
-  
+
   console.log('[Dev] Anvil started')
   return true
 }
 
 async function deployContracts(): Promise<boolean> {
   console.log('[Dev] Deploying contracts...')
-  
+
   const proc = Bun.spawn(['bun', 'run', 'scripts/deploy-contracts.ts'], {
     cwd: DWS_DIR,
     stdout: 'inherit',
@@ -123,27 +125,27 @@ async function deployContracts(): Promise<boolean> {
       RPC_URL: 'http://localhost:6546',
     },
   })
-  
+
   const exitCode = await proc.exited
-  
+
   if (exitCode !== 0) {
     console.error('[Dev] Contract deployment failed')
     return false
   }
-  
+
   console.log('[Dev] Contracts deployed')
   return true
 }
 
 async function startDWSServer(): Promise<boolean> {
   console.log('[Dev] Starting DWS API server...')
-  
+
   // Check if already running
   if (await isPortInUse(4030)) {
     console.log('[Dev] DWS already running on port 4030')
     return true
   }
-  
+
   const proc = Bun.spawn(['bun', 'run', 'api/server/index.ts'], {
     cwd: DWS_DIR,
     stdout: 'inherit',
@@ -159,29 +161,29 @@ async function startDWSServer(): Promise<boolean> {
       SKIP_DOCKER: 'true',
     },
   })
-  
+
   processes.push({ name: 'dws-server', process: proc })
-  
+
   // Wait for server to be ready
   const ready = await waitForPort(4030, 30000)
   if (!ready) {
     console.error('[Dev] Failed to start DWS server')
     return false
   }
-  
+
   console.log('[Dev] DWS server started on port 4030')
   return true
 }
 
 async function startFrontend(): Promise<boolean> {
   console.log('[Dev] Starting frontend dev server...')
-  
+
   // Check if already running
   if (await isPortInUse(4031)) {
     console.log('[Dev] Frontend already running on port 4031')
     return true
   }
-  
+
   const proc = Bun.spawn(['bun', 'run', 'scripts/dev-frontend.ts'], {
     cwd: DWS_DIR,
     stdout: 'inherit',
@@ -192,16 +194,16 @@ async function startFrontend(): Promise<boolean> {
       API_URL: 'http://localhost:4030',
     },
   })
-  
+
   processes.push({ name: 'frontend', process: proc })
-  
+
   // Wait for server to be ready
   const ready = await waitForPort(4031, 15000)
   if (!ready) {
     console.error('[Dev] Failed to start frontend')
     return false
   }
-  
+
   console.log('[Dev] Frontend started on port 4031')
   return true
 }
@@ -211,34 +213,36 @@ async function main() {
   console.log('║           DWS Development Server with Infrastructure       ║')
   console.log('╚════════════════════════════════════════════════════════════╝')
   console.log('')
-  
+
   // Step 1: Start anvil
   if (!(await startAnvil())) {
     console.error('[Dev] Failed to start blockchain. Is foundry installed?')
-    console.log('[Dev] Install with: curl -L https://foundry.paradigm.xyz | bash && foundryup')
+    console.log(
+      '[Dev] Install with: curl -L https://foundry.paradigm.xyz | bash && foundryup',
+    )
     process.exit(1)
   }
-  
+
   // Step 2: Deploy contracts
   if (!(await deployContracts())) {
     console.error('[Dev] Failed to deploy contracts')
     process.exit(1)
   }
-  
+
   // Step 3: Start DWS server
   if (!(await startDWSServer())) {
     console.error('[Dev] Failed to start DWS server')
     cleanup()
     process.exit(1)
   }
-  
+
   // Step 4: Start frontend
   if (!(await startFrontend())) {
     console.error('[Dev] Failed to start frontend')
     cleanup()
     process.exit(1)
   }
-  
+
   console.log('')
   console.log('╔════════════════════════════════════════════════════════════╗')
   console.log('║                    DWS is ready                             ║')
@@ -249,7 +253,7 @@ async function main() {
   console.log('╚════════════════════════════════════════════════════════════╝')
   console.log('')
   console.log('Press Ctrl+C to stop all services')
-  
+
   // Keep the process running
   await new Promise(() => {})
 }
@@ -259,4 +263,3 @@ main().catch((err) => {
   cleanup()
   process.exit(1)
 })
-

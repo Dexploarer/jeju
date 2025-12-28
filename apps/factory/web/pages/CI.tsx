@@ -5,7 +5,15 @@
  */
 
 import { clsx } from 'clsx'
-import { CheckCircle, Clock, GitBranch, Loader2, Play, Plus, XCircle } from 'lucide-react'
+import {
+  CheckCircle,
+  Clock,
+  GitBranch,
+  Loader2,
+  Play,
+  Plus,
+  XCircle,
+} from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
@@ -46,11 +54,18 @@ const statusFilters = [
 function StatusIcon({ status }: { status: CIRunStatus }) {
   switch (status) {
     case 'success':
-      return <CheckCircle className="w-5 h-5 text-success-400" aria-hidden="true" />
+      return (
+        <CheckCircle className="w-5 h-5 text-success-400" aria-hidden="true" />
+      )
     case 'failure':
       return <XCircle className="w-5 h-5 text-error-400" aria-hidden="true" />
     case 'running':
-      return <Loader2 className="w-5 h-5 text-warning-400 animate-spin" aria-hidden="true" />
+      return (
+        <Loader2
+          className="w-5 h-5 text-warning-400 animate-spin"
+          aria-hidden="true"
+        />
+      )
     default:
       return <Clock className="w-5 h-5 text-surface-400" aria-hidden="true" />
   }
@@ -77,12 +92,35 @@ export function CIPage() {
     })
   }, [runs, search])
 
-  const statsData = useMemo(() => [
-    { label: 'Total Runs', value: stats.total.toString(), color: 'text-info-400', loading: statsLoading },
-    { label: 'Running', value: stats.running.toString(), color: 'text-warning-400', loading: statsLoading },
-    { label: 'Successful', value: stats.success.toString(), color: 'text-success-400', loading: statsLoading },
-    { label: 'Failed', value: stats.failed.toString(), color: 'text-error-400', loading: statsLoading },
-  ], [stats, statsLoading])
+  const statsData = useMemo(
+    () => [
+      {
+        label: 'Total Runs',
+        value: stats.total.toString(),
+        color: 'text-info-400',
+        loading: statsLoading,
+      },
+      {
+        label: 'Running',
+        value: stats.running.toString(),
+        color: 'text-warning-400',
+        loading: statsLoading,
+      },
+      {
+        label: 'Successful',
+        value: stats.success.toString(),
+        color: 'text-success-400',
+        loading: statsLoading,
+      },
+      {
+        label: 'Failed',
+        value: stats.failed.toString(),
+        color: 'text-error-400',
+        loading: statsLoading,
+      },
+    ],
+    [stats, statsLoading],
+  )
 
   return (
     <div className="page-container">
@@ -107,12 +145,17 @@ export function CIPage() {
             className="flex-1 mb-0 p-0 border-0 bg-transparent shadow-none"
           />
 
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Status filters">
+          <fieldset
+            className="flex flex-wrap gap-2 border-0"
+            aria-label="Status filters"
+          >
             {statusFilters.map((status) => (
               <button
                 key={status.value}
                 type="button"
-                onClick={() => setStatusFilter(status.value as CIRunStatus | 'all')}
+                onClick={() =>
+                  setStatusFilter(status.value as CIRunStatus | 'all')
+                }
                 className={clsx(
                   'px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-all',
                   statusFilter === status.value
@@ -124,7 +167,7 @@ export function CIPage() {
                 {status.label}
               </button>
             ))}
-          </div>
+          </fieldset>
         </div>
       </div>
 
@@ -138,7 +181,11 @@ export function CIPage() {
         <EmptyState
           icon={Play}
           title="No workflow runs found"
-          description={search ? 'Try a different search term' : 'Create a workflow to automate your builds'}
+          description={
+            search
+              ? 'Try a different search term'
+              : 'Create a workflow to automate your builds'
+          }
           actionLabel="New Workflow"
           actionHref="/ci/new"
         />
@@ -156,7 +203,9 @@ export function CIPage() {
                   <StatusIcon status={run.status} />
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
-                      <h3 className="font-semibold text-surface-100">{run.workflow}</h3>
+                      <h3 className="font-semibold text-surface-100">
+                        {run.workflow}
+                      </h3>
                       <span className={clsx('badge', statusColors[run.status])}>
                         {statusLabels[run.status]}
                       </span>
@@ -169,7 +218,9 @@ export function CIPage() {
                         <GitBranch className="w-4 h-4" aria-hidden="true" />
                         {run.branch}
                       </span>
-                      <span className="font-mono text-xs">{run.commit.slice(0, 7)}</span>
+                      <span className="font-mono text-xs">
+                        {run.commit.slice(0, 7)}
+                      </span>
                       <span>{run.author}</span>
                     </div>
                   </div>
@@ -191,10 +242,15 @@ export function CIPage() {
                       key={job.name}
                       className={clsx(
                         'px-2 py-1 rounded text-xs',
-                        job.status === 'success' && 'bg-success-500/20 text-success-400',
-                        job.status === 'failure' && 'bg-error-500/20 text-error-400',
-                        job.status === 'running' && 'bg-warning-500/20 text-warning-400',
-                        !['success', 'failure', 'running'].includes(job.status) && 'bg-surface-800 text-surface-400',
+                        job.status === 'success' &&
+                          'bg-success-500/20 text-success-400',
+                        job.status === 'failure' &&
+                          'bg-error-500/20 text-error-400',
+                        job.status === 'running' &&
+                          'bg-warning-500/20 text-warning-400',
+                        !['success', 'failure', 'running'].includes(
+                          job.status,
+                        ) && 'bg-surface-800 text-surface-400',
                       )}
                     >
                       {job.name}

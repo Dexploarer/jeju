@@ -28,11 +28,7 @@
  * ```
  */
 
-import type {
-  CacheClientConfig,
-  CacheSetOptions,
-  CacheStats,
-} from './types'
+import type { CacheClientConfig, CacheSetOptions, CacheStats } from './types'
 import { CacheError, CacheErrorCode } from './types'
 
 interface RetryConfig {
@@ -112,10 +108,14 @@ export class CacheClient {
    * Delete keys from the cache
    */
   async del(...keys: string[]): Promise<number> {
-    const result = await this.request<{ deleted: number }>('/cache/del', 'POST', {
-      keys,
-      namespace: this.namespace,
-    })
+    const result = await this.request<{ deleted: number }>(
+      '/cache/del',
+      'POST',
+      {
+        keys,
+        namespace: this.namespace,
+      },
+    )
     return result.deleted
   }
 
@@ -139,7 +139,10 @@ export class CacheClient {
       key,
       namespace: this.namespace,
     })
-    const result = await this.request<{ ttl: number }>(`/cache/ttl?${params}`, 'GET')
+    const result = await this.request<{ ttl: number }>(
+      `/cache/ttl?${params}`,
+      'GET',
+    )
     return result.ttl
   }
 
@@ -147,11 +150,15 @@ export class CacheClient {
    * Set TTL for a key
    */
   async expire(key: string, seconds: number): Promise<boolean> {
-    const result = await this.request<{ success: boolean }>('/cache/expire', 'POST', {
-      key,
-      ttl: seconds,
-      namespace: this.namespace,
-    })
+    const result = await this.request<{ success: boolean }>(
+      '/cache/expire',
+      'POST',
+      {
+        key,
+        ttl: seconds,
+        namespace: this.namespace,
+      },
+    )
     return result.success
   }
 
@@ -159,11 +166,9 @@ export class CacheClient {
    * Get multiple keys at once
    */
   async mget(...keys: string[]): Promise<Map<string, string | null>> {
-    const result = await this.request<{ entries: Record<string, string | null> }>(
-      '/cache/mget',
-      'POST',
-      { keys, namespace: this.namespace },
-    )
+    const result = await this.request<{
+      entries: Record<string, string | null>
+    }>('/cache/mget', 'POST', { keys, namespace: this.namespace })
     return new Map(Object.entries(result.entries))
   }
 
@@ -173,10 +178,14 @@ export class CacheClient {
   async mset(
     entries: Array<{ key: string; value: string; ttl?: number }>,
   ): Promise<boolean> {
-    const result = await this.request<{ success: boolean }>('/cache/mset', 'POST', {
-      entries,
-      namespace: this.namespace,
-    })
+    const result = await this.request<{ success: boolean }>(
+      '/cache/mset',
+      'POST',
+      {
+        entries,
+        namespace: this.namespace,
+      },
+    )
     return result.success
   }
 
@@ -184,11 +193,15 @@ export class CacheClient {
    * Increment a numeric value
    */
   async incr(key: string, by = 1): Promise<number> {
-    const result = await this.request<{ value: number }>('/cache/incr', 'POST', {
-      key,
-      by,
-      namespace: this.namespace,
-    })
+    const result = await this.request<{ value: number }>(
+      '/cache/incr',
+      'POST',
+      {
+        key,
+        by,
+        namespace: this.namespace,
+      },
+    )
     return result.value
   }
 
@@ -196,11 +209,15 @@ export class CacheClient {
    * Decrement a numeric value
    */
   async decr(key: string, by = 1): Promise<number> {
-    const result = await this.request<{ value: number }>('/cache/decr', 'POST', {
-      key,
-      by,
-      namespace: this.namespace,
-    })
+    const result = await this.request<{ value: number }>(
+      '/cache/decr',
+      'POST',
+      {
+        key,
+        by,
+        namespace: this.namespace,
+      },
+    )
     return result.value
   }
 
@@ -210,12 +227,16 @@ export class CacheClient {
    * Set a hash field
    */
   async hset(key: string, field: string, value: string): Promise<number> {
-    const result = await this.request<{ added: number }>('/cache/hset', 'POST', {
-      key,
-      field,
-      value,
-      namespace: this.namespace,
-    })
+    const result = await this.request<{ added: number }>(
+      '/cache/hset',
+      'POST',
+      {
+        key,
+        field,
+        value,
+        namespace: this.namespace,
+      },
+    )
     return result.added
   }
 
@@ -223,11 +244,15 @@ export class CacheClient {
    * Set multiple hash fields
    */
   async hmset(key: string, fields: Record<string, string>): Promise<boolean> {
-    const result = await this.request<{ success: boolean }>('/cache/hmset', 'POST', {
-      key,
-      fields,
-      namespace: this.namespace,
-    })
+    const result = await this.request<{ success: boolean }>(
+      '/cache/hmset',
+      'POST',
+      {
+        key,
+        fields,
+        namespace: this.namespace,
+      },
+    )
     return result.success
   }
 
@@ -268,11 +293,15 @@ export class CacheClient {
    * Push to the left of a list
    */
   async lpush(key: string, ...values: string[]): Promise<number> {
-    const result = await this.request<{ length: number }>('/cache/lpush', 'POST', {
-      key,
-      values,
-      namespace: this.namespace,
-    })
+    const result = await this.request<{ length: number }>(
+      '/cache/lpush',
+      'POST',
+      {
+        key,
+        values,
+        namespace: this.namespace,
+      },
+    )
     return result.length
   }
 
@@ -280,11 +309,15 @@ export class CacheClient {
    * Push to the right of a list
    */
   async rpush(key: string, ...values: string[]): Promise<number> {
-    const result = await this.request<{ length: number }>('/cache/rpush', 'POST', {
-      key,
-      values,
-      namespace: this.namespace,
-    })
+    const result = await this.request<{ length: number }>(
+      '/cache/rpush',
+      'POST',
+      {
+        key,
+        values,
+        namespace: this.namespace,
+      },
+    )
     return result.length
   }
 
@@ -322,12 +355,16 @@ export class CacheClient {
    * Get a range from a list
    */
   async lrange(key: string, start: number, stop: number): Promise<string[]> {
-    const result = await this.request<{ values: string[] }>('/cache/lrange', 'POST', {
-      key,
-      start,
-      stop,
-      namespace: this.namespace,
-    })
+    const result = await this.request<{ values: string[] }>(
+      '/cache/lrange',
+      'POST',
+      {
+        key,
+        start,
+        stop,
+        namespace: this.namespace,
+      },
+    )
     return result.values
   }
 
@@ -352,11 +389,15 @@ export class CacheClient {
    * Add members to a set
    */
   async sadd(key: string, ...members: string[]): Promise<number> {
-    const result = await this.request<{ added: number }>('/cache/sadd', 'POST', {
-      key,
-      members,
-      namespace: this.namespace,
-    })
+    const result = await this.request<{ added: number }>(
+      '/cache/sadd',
+      'POST',
+      {
+        key,
+        members,
+        namespace: this.namespace,
+      },
+    )
     return result.added
   }
 
@@ -364,11 +405,15 @@ export class CacheClient {
    * Remove members from a set
    */
   async srem(key: string, ...members: string[]): Promise<number> {
-    const result = await this.request<{ removed: number }>('/cache/srem', 'POST', {
-      key,
-      members,
-      namespace: this.namespace,
-    })
+    const result = await this.request<{ removed: number }>(
+      '/cache/srem',
+      'POST',
+      {
+        key,
+        members,
+        namespace: this.namespace,
+      },
+    )
     return result.removed
   }
 
@@ -427,11 +472,15 @@ export class CacheClient {
     key: string,
     ...members: Array<{ member: string; score: number }>
   ): Promise<number> {
-    const result = await this.request<{ added: number }>('/cache/zadd', 'POST', {
-      key,
-      members,
-      namespace: this.namespace,
-    })
+    const result = await this.request<{ added: number }>(
+      '/cache/zadd',
+      'POST',
+      {
+        key,
+        members,
+        namespace: this.namespace,
+      },
+    )
     return result.added
   }
 
@@ -502,7 +551,10 @@ export class CacheClient {
    * Get cache statistics
    */
   async stats(): Promise<CacheStats> {
-    const result = await this.request<{ shared: CacheStats }>('/cache/stats', 'GET')
+    const result = await this.request<{ shared: CacheStats }>(
+      '/cache/stats',
+      'GET',
+    )
     return result.shared
   }
 
@@ -510,7 +562,10 @@ export class CacheClient {
    * Check if cache is healthy
    */
   async health(): Promise<{ status: string; uptime: number }> {
-    return this.request<{ status: string; uptime: number }>('/cache/health', 'GET')
+    return this.request<{ status: string; uptime: number }>(
+      '/cache/health',
+      'GET',
+    )
   }
 
   /**
@@ -534,7 +589,7 @@ export class CacheClient {
     for (let attempt = 0; attempt <= this.retryConfig.maxRetries; attempt++) {
       if (attempt > 0) {
         const delay = Math.min(
-          this.retryConfig.baseDelayMs * Math.pow(2, attempt - 1),
+          this.retryConfig.baseDelayMs * 2 ** (attempt - 1),
           this.retryConfig.maxDelayMs,
         )
         await this.sleep(delay)
@@ -553,14 +608,19 @@ export class CacheClient {
       }
     }
 
-    throw lastError ?? new CacheError(CacheErrorCode.SERVER_ERROR, 'Request failed')
+    throw (
+      lastError ?? new CacheError(CacheErrorCode.SERVER_ERROR, 'Request failed')
+    )
   }
 
   private async doRequest<T>(
     path: string,
     method: 'GET' | 'POST' | 'DELETE',
     body?: Record<string, unknown>,
-  ): Promise<{ success: true; data: T } | { success: false; error: Error; statusCode: number }> {
+  ): Promise<
+    | { success: true; data: T }
+    | { success: false; error: Error; statusCode: number }
+  > {
     const url = `${this.serverUrl}${path}`
 
     const headers: Record<string, string> = {
@@ -612,7 +672,7 @@ export class CacheClient {
       }
     }
 
-    const data = await response.json() as T
+    const data = (await response.json()) as T
     return { success: true, data }
   }
 

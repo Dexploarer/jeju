@@ -135,9 +135,7 @@ export const ServerlessAppConfigSchema = z.object({
   /** Database configuration */
   database: z
     .object({
-      type: z
-        .enum(['eqlite', 'sqlite', 'postgres'])
-        .default('eqlite'),
+      type: z.enum(['eqlite', 'sqlite', 'postgres']).default('eqlite'),
       name: z.string(),
       consistency: z.enum(['eventual', 'strong']).default('strong'),
       tables: z.array(z.string()).optional(),

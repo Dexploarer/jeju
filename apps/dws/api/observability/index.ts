@@ -1,6 +1,6 @@
 /**
  * Observability Stack
- * 
+ *
  * Comprehensive observability for DWS infrastructure:
  * - Structured logging (JSON, queryable)
  * - Metrics collection (Prometheus-compatible)
@@ -9,7 +9,7 @@
  * - Alerting
  */
 
-import { createHash } from 'crypto'
+import { createHash } from 'node:crypto'
 import type { Address } from 'viem'
 
 // ============================================================================
@@ -22,16 +22,16 @@ export interface LogEntry {
   timestamp: number
   level: LogLevel
   message: string
-  
+
   // Context
   service: string
   instance?: string
   traceId?: string
   spanId?: string
-  
+
   // Structured data
   attributes: Record<string, string | number | boolean>
-  
+
   // Error info
   error?: {
     name: string
@@ -83,7 +83,12 @@ export interface HistogramValue {
 // Types - Tracing
 // ============================================================================
 
-export type SpanKind = 'internal' | 'server' | 'client' | 'producer' | 'consumer'
+export type SpanKind =
+  | 'internal'
+  | 'server'
+  | 'client'
+  | 'producer'
+  | 'consumer'
 
 export type SpanStatus = 'unset' | 'ok' | 'error'
 
@@ -91,24 +96,24 @@ export interface Span {
   traceId: string
   spanId: string
   parentSpanId?: string
-  
+
   name: string
   kind: SpanKind
   status: SpanStatus
-  
+
   startTime: number
   endTime?: number
   durationMs?: number
-  
+
   // Context
   service: string
-  
+
   // Attributes
   attributes: Record<string, string | number | boolean>
-  
+
   // Events
   events: SpanEvent[]
-  
+
   // Links to other spans
   links: Array<{ traceId: string; spanId: string }>
 }
@@ -158,14 +163,14 @@ export interface Alert {
   ruleId: string
   state: AlertState
   severity: AlertSeverity
-  
+
   labels: Record<string, string>
   annotations: Record<string, string>
-  
+
   startedAt: number
   resolvedAt?: number
   lastEvaluatedAt: number
-  
+
   // Notification tracking
   notifiedAt?: number
   acknowledgedAt?: number
@@ -183,13 +188,21 @@ export class Logger {
   private instance: string
   private onLog?: (entry: LogEntry) => void
 
-  constructor(service: string, instance?: string, onLog?: (entry: LogEntry) => void) {
+  constructor(
+    service: string,
+    instance?: string,
+    onLog?: (entry: LogEntry) => void,
+  ) {
     this.service = service
     this.instance = instance ?? crypto.randomUUID().slice(0, 8)
     this.onLog = onLog
   }
 
-  private log(level: LogLevel, message: string, attributes: Record<string, unknown> = {}): LogEntry {
+  private log(
+    level: LogLevel,
+    message: string,
+    attributes: Record<string, unknown> = {},
+  ): LogEntry {
     const entry: LogEntry = {
       timestamp: Date.now(),
       level,
@@ -200,31 +213,32 @@ export class Logger {
     }
 
     // Extract trace context
-    if (attributes['traceId']) {
-      entry.traceId = String(attributes['traceId'])
+    if (attributes.traceId) {
+      entry.traceId = String(attributes.traceId)
     }
-    if (attributes['spanId']) {
-      entry.spanId = String(attributes['spanId'])
+    if (attributes.spanId) {
+      entry.spanId = String(attributes.spanId)
     }
 
     // Extract error
-    if (attributes['error'] instanceof Error) {
+    if (attributes.error instanceof Error) {
       entry.error = {
-        name: attributes['error'].name,
-        message: attributes['error'].message,
-        stack: attributes['error'].stack,
+        name: attributes.error.name,
+        message: attributes.error.message,
+        stack: attributes.error.stack,
       }
     }
 
     this.entries.push(entry)
-    
+
     // Evict old entries
     while (this.entries.length > this.maxEntries) {
       this.entries.shift()
     }
 
     // Console output
-    const logFn = level === 'error' || level === 'fatal' ? console.error : console.log
+    const logFn =
+      level === 'error' || level === 'fatal' ? console.error : console.log
     logFn(`[${this.service}] ${level.toUpperCase()}: ${message}`, attributes)
 
     // Callback
@@ -233,19 +247,25 @@ export class Logger {
     return entry
   }
 
-  private normalizeAttributes(attrs: Record<string, unknown>): Record<string, string | number | boolean> {
+  private normalizeAttributes(
+    attrs: Record<string, unknown>,
+  ): Record<string, string | number | boolean> {
     const normalized: Record<string, string | number | boolean> = {}
-    
+
     for (const [key, value] of Object.entries(attrs)) {
       if (key === 'error' || key === 'traceId' || key === 'spanId') continue
-      
-      if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+
+      if (
+        typeof value === 'string' ||
+        typeof value === 'number' ||
+        typeof value === 'boolean'
+      ) {
         normalized[key] = value
       } else if (value !== null && value !== undefined) {
         normalized[key] = JSON.stringify(value)
       }
     }
-    
+
     return normalized
   }
 
@@ -273,29 +293,31 @@ export class Logger {
     let results = this.entries
 
     if (query.service) {
-      results = results.filter(e => e.service === query.service)
+      results = results.filter((e) => e.service === query.service)
     }
 
     if (query.level && query.level.length > 0) {
-      results = results.filter(e => query.level?.includes(e.level))
+      results = results.filter((e) => query.level?.includes(e.level))
     }
 
     if (query.startTime) {
-      results = results.filter(e => e.timestamp >= (query.startTime ?? 0))
+      results = results.filter((e) => e.timestamp >= (query.startTime ?? 0))
     }
 
     if (query.endTime) {
-      results = results.filter(e => e.timestamp <= (query.endTime ?? Infinity))
+      results = results.filter(
+        (e) => e.timestamp <= (query.endTime ?? Infinity),
+      )
     }
 
     if (query.search) {
       const search = query.search.toLowerCase()
-      results = results.filter(e => e.message.toLowerCase().includes(search))
+      results = results.filter((e) => e.message.toLowerCase().includes(search))
     }
 
     if (query.attributes) {
       for (const [key, value] of Object.entries(query.attributes)) {
-        results = results.filter(e => String(e.attributes[key]) === value)
+        results = results.filter((e) => String(e.attributes[key]) === value)
       }
     }
 
@@ -317,10 +339,15 @@ export class MetricsRegistry {
   private definitions = new Map<string, MetricDefinition>()
   private counters = new Map<string, number>()
   private gauges = new Map<string, number>()
-  private histograms = new Map<string, { buckets: number[]; values: number[] }>()
+  private histograms = new Map<
+    string,
+    { buckets: number[]; values: number[] }
+  >()
 
   // Default histogram buckets
-  private defaultBuckets = [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10]
+  private defaultBuckets = [
+    0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10,
+  ]
 
   private labelKey(name: string, labels: Record<string, string>): string {
     const sorted = Object.entries(labels).sort(([a], [b]) => a.localeCompare(b))
@@ -335,12 +362,21 @@ export class MetricsRegistry {
     this.definitions.set(name, { name, type: 'gauge', help, labels })
   }
 
-  registerHistogram(name: string, help: string, labels: string[] = [], _buckets?: number[]): void {
+  registerHistogram(
+    name: string,
+    help: string,
+    labels: string[] = [],
+    _buckets?: number[],
+  ): void {
     this.definitions.set(name, { name, type: 'histogram', help, labels })
     // Store buckets in histogram config
   }
 
-  incCounter(name: string, labels: Record<string, string> = {}, value = 1): void {
+  incCounter(
+    name: string,
+    labels: Record<string, string> = {},
+    value = 1,
+  ): void {
     const key = this.labelKey(name, labels)
     this.counters.set(key, (this.counters.get(key) ?? 0) + value)
   }
@@ -360,16 +396,23 @@ export class MetricsRegistry {
     this.gauges.set(key, (this.gauges.get(key) ?? 0) - value)
   }
 
-  observeHistogram(name: string, labels: Record<string, string>, value: number): void {
+  observeHistogram(
+    name: string,
+    labels: Record<string, string>,
+    value: number,
+  ): void {
     const key = this.labelKey(name, labels)
-    const histogram = this.histograms.get(key) ?? { buckets: [...this.defaultBuckets], values: [] }
+    const histogram = this.histograms.get(key) ?? {
+      buckets: [...this.defaultBuckets],
+      values: [],
+    }
     histogram.values.push(value)
-    
+
     // Keep only last 1000 values for summary statistics
     if (histogram.values.length > 1000) {
       histogram.values.shift()
     }
-    
+
     this.histograms.set(key, histogram)
   }
 
@@ -381,14 +424,17 @@ export class MetricsRegistry {
     return this.gauges.get(this.labelKey(name, labels)) ?? 0
   }
 
-  getHistogram(name: string, labels: Record<string, string>): HistogramValue | null {
+  getHistogram(
+    name: string,
+    labels: Record<string, string>,
+  ): HistogramValue | null {
     const key = this.labelKey(name, labels)
     const histogram = this.histograms.get(key)
-    
+
     if (!histogram || histogram.values.length === 0) return null
 
-    const buckets = histogram.buckets.map(le => {
-      const count = histogram.values.filter(v => v <= le).length
+    const buckets = histogram.buckets.map((le) => {
+      const count = histogram.values.filter((v) => v <= le).length
       return { le, count }
     })
 
@@ -422,14 +468,18 @@ export class MetricsRegistry {
     for (const [key, histogram] of this.histograms) {
       const baseName = key.split('{')[0]
       const labels = key.match(/\{([^}]*)\}/)?.[1] ?? ''
-      
+
       for (const bucket of this.defaultBuckets) {
-        const count = histogram.values.filter(v => v <= bucket).length
-        const bucketLabels = labels ? `${labels},le="${bucket}"` : `le="${bucket}"`
+        const count = histogram.values.filter((v) => v <= bucket).length
+        const bucketLabels = labels
+          ? `${labels},le="${bucket}"`
+          : `le="${bucket}"`
         lines.push(`${baseName}_bucket{${bucketLabels}} ${count}`)
       }
-      
-      lines.push(`${baseName}_sum{${labels}} ${histogram.values.reduce((a, b) => a + b, 0)}`)
+
+      lines.push(
+        `${baseName}_sum{${labels}} ${histogram.values.reduce((a, b) => a + b, 0)}`,
+      )
       lines.push(`${baseName}_count{${labels}} ${histogram.values.length}`)
     }
 
@@ -478,7 +528,7 @@ export class Tracer {
     }
 
     this.spans.set(spanId, span)
-    
+
     const traceSpans = this.spansByTrace.get(traceId) ?? []
     traceSpans.push(spanId)
     this.spansByTrace.set(traceId, traceSpans)
@@ -491,7 +541,8 @@ export class Tracer {
       if (traceSpanIds) {
         const idx = traceSpanIds.indexOf(oldestSpan.spanId)
         if (idx >= 0) traceSpanIds.splice(idx, 1)
-        if (traceSpanIds.length === 0) this.spansByTrace.delete(oldestSpan.traceId)
+        if (traceSpanIds.length === 0)
+          this.spansByTrace.delete(oldestSpan.traceId)
       }
     }
 
@@ -507,7 +558,11 @@ export class Tracer {
     span.status = status
   }
 
-  addEvent(spanId: string, name: string, attributes: Record<string, string | number | boolean> = {}): void {
+  addEvent(
+    spanId: string,
+    name: string,
+    attributes: Record<string, string | number | boolean> = {},
+  ): void {
     const span = this.spans.get(spanId)
     if (!span) return
 
@@ -518,7 +573,11 @@ export class Tracer {
     })
   }
 
-  setAttribute(spanId: string, key: string, value: string | number | boolean): void {
+  setAttribute(
+    spanId: string,
+    key: string,
+    value: string | number | boolean,
+  ): void {
     const span = this.spans.get(spanId)
     if (!span) return
 
@@ -532,7 +591,7 @@ export class Tracer {
   getTrace(traceId: string): Span[] {
     const spanIds = this.spansByTrace.get(traceId) ?? []
     return spanIds
-      .map(id => this.spans.get(id))
+      .map((id) => this.spans.get(id))
       .filter((s): s is Span => s !== undefined)
       .sort((a, b) => a.startTime - b.startTime)
   }
@@ -545,27 +604,31 @@ export class Tracer {
     }
 
     if (query.service) {
-      results = results.filter(s => s.service === query.service)
+      results = results.filter((s) => s.service === query.service)
     }
 
     if (query.name) {
-      results = results.filter(s => s.name.includes(query.name ?? ''))
+      results = results.filter((s) => s.name.includes(query.name ?? ''))
     }
 
     if (query.startTime) {
-      results = results.filter(s => s.startTime >= (query.startTime ?? 0))
+      results = results.filter((s) => s.startTime >= (query.startTime ?? 0))
     }
 
     if (query.endTime) {
-      results = results.filter(s => s.startTime <= (query.endTime ?? Infinity))
+      results = results.filter(
+        (s) => s.startTime <= (query.endTime ?? Infinity),
+      )
     }
 
     if (query.minDurationMs !== undefined) {
-      results = results.filter(s => (s.durationMs ?? 0) >= (query.minDurationMs ?? 0))
+      results = results.filter(
+        (s) => (s.durationMs ?? 0) >= (query.minDurationMs ?? 0),
+      )
     }
 
     if (query.status) {
-      results = results.filter(s => s.status === query.status)
+      results = results.filter((s) => s.status === query.status)
     }
 
     return results.slice(-(query.limit ?? 100))
@@ -618,7 +681,11 @@ export class AlertManager {
     if (rule) rule.enabled = false
   }
 
-  async evaluateRule(rule: AlertRule, currentValue: number, threshold: number): Promise<void> {
+  async evaluateRule(
+    rule: AlertRule,
+    currentValue: number,
+    threshold: number,
+  ): Promise<void> {
     const alertId = `${rule.ruleId}-${JSON.stringify(rule.labels)}`
     const existingAlert = this.alerts.get(alertId)
     const shouldFire = currentValue > threshold // Simplified; would parse expression
@@ -643,7 +710,7 @@ export class AlertManager {
         if (Date.now() - existingAlert.startedAt >= rule.duration * 1000) {
           existingAlert.state = 'firing'
           existingAlert.lastEvaluatedAt = Date.now()
-          
+
           // Notify
           if (this.notifyCallback && !existingAlert.notifiedAt) {
             await this.notifyCallback(existingAlert)
@@ -673,7 +740,7 @@ export class AlertManager {
   }
 
   getActiveAlerts(): Alert[] {
-    return Array.from(this.alerts.values()).filter(a => a.state === 'firing')
+    return Array.from(this.alerts.values()).filter((a) => a.state === 'firing')
   }
 
   getAllAlerts(): Alert[] {
@@ -696,14 +763,22 @@ export interface HealthCheck {
 
 export interface HealthStatus {
   healthy: boolean
-  checks: Array<{ name: string; healthy: boolean; message?: string; durationMs: number }>
+  checks: Array<{
+    name: string
+    healthy: boolean
+    message?: string
+    durationMs: number
+  }>
   timestamp: number
 }
 
 export class HealthChecker {
   private checks: HealthCheck[] = []
 
-  register(name: string, check: () => Promise<{ healthy: boolean; message?: string }>): void {
+  register(
+    name: string,
+    check: () => Promise<{ healthy: boolean; message?: string }>,
+  ): void {
     this.checks.push({ name, check })
   }
 
@@ -772,17 +847,32 @@ export function getTracer(service: string): Tracer {
 export function getMetricsRegistry(): MetricsRegistry {
   if (!metricsRegistry) {
     metricsRegistry = new MetricsRegistry()
-    
+
     // Register default metrics
-    metricsRegistry.registerCounter('http_requests_total', 'Total HTTP requests', ['method', 'path', 'status'])
-    metricsRegistry.registerHistogram('http_request_duration_seconds', 'HTTP request duration', ['method', 'path'])
-    metricsRegistry.registerGauge('active_connections', 'Active connections', ['service'])
-    metricsRegistry.registerCounter('errors_total', 'Total errors', ['service', 'type'])
+    metricsRegistry.registerCounter(
+      'http_requests_total',
+      'Total HTTP requests',
+      ['method', 'path', 'status'],
+    )
+    metricsRegistry.registerHistogram(
+      'http_request_duration_seconds',
+      'HTTP request duration',
+      ['method', 'path'],
+    )
+    metricsRegistry.registerGauge('active_connections', 'Active connections', [
+      'service',
+    ])
+    metricsRegistry.registerCounter('errors_total', 'Total errors', [
+      'service',
+      'type',
+    ])
   }
   return metricsRegistry
 }
 
-export function getAlertManager(notifyCallback?: (alert: Alert) => Promise<void>): AlertManager {
+export function getAlertManager(
+  notifyCallback?: (alert: Alert) => Promise<void>,
+): AlertManager {
   if (!alertManager) {
     alertManager = new AlertManager(notifyCallback)
   }
@@ -795,4 +885,3 @@ export function getHealthChecker(): HealthChecker {
   }
   return healthChecker
 }
-

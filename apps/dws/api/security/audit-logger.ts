@@ -1,6 +1,6 @@
 /**
  * Compliance and Audit Logging
- * 
+ *
  * Implements comprehensive audit logging for compliance:
  * - Immutable audit trail
  * - User activity tracking
@@ -11,7 +11,7 @@
  * - Search and export
  */
 
-import { createHash, createHmac } from 'crypto'
+import { createHash, createHmac } from 'node:crypto'
 import type { Address } from 'viem'
 import { z } from 'zod'
 
@@ -19,13 +19,13 @@ import { z } from 'zod'
 // Types
 // ============================================================================
 
-export type AuditCategory = 
-  | 'auth' 
-  | 'access' 
-  | 'resource' 
-  | 'security' 
-  | 'admin' 
-  | 'billing' 
+export type AuditCategory =
+  | 'auth'
+  | 'access'
+  | 'resource'
+  | 'security'
+  | 'admin'
+  | 'billing'
   | 'data'
 
 export type AuditSeverity = 'low' | 'medium' | 'high' | 'critical'
@@ -35,19 +35,19 @@ export type AuditOutcome = 'success' | 'failure' | 'denied' | 'error'
 export interface AuditEvent {
   eventId: string
   timestamp: number
-  
+
   // Actor
   actor: AuditActor
-  
+
   // Action
   category: AuditCategory
   action: string
   outcome: AuditOutcome
   severity: AuditSeverity
-  
+
   // Target
   target?: AuditTarget
-  
+
   // Context
   context: {
     ipAddress?: string
@@ -56,11 +56,11 @@ export interface AuditEvent {
     requestId?: string
     geoLocation?: string
   }
-  
+
   // Details
   details: Record<string, unknown>
   metadata?: Record<string, string>
-  
+
   // Integrity
   previousHash?: string
   hash: string
@@ -104,13 +104,13 @@ export interface ComplianceReport {
     end: number
   }
   generated: number
-  
+
   // Stats
   totalEvents: number
   eventsByCategory: Record<AuditCategory, number>
   eventsByOutcome: Record<AuditOutcome, number>
   eventsBySeverity: Record<AuditSeverity, number>
-  
+
   // Issues
   issues: Array<{
     severity: AuditSeverity
@@ -118,7 +118,7 @@ export interface ComplianceReport {
     description: string
     eventIds: string[]
   }>
-  
+
   // Summary
   complianceScore: number
   recommendations: string[]
@@ -135,15 +135,25 @@ export interface RetentionPolicy {
 // ============================================================================
 
 export const LogAuditEventSchema = z.object({
-  category: z.enum(['auth', 'access', 'resource', 'security', 'admin', 'billing', 'data']),
+  category: z.enum([
+    'auth',
+    'access',
+    'resource',
+    'security',
+    'admin',
+    'billing',
+    'data',
+  ]),
   action: z.string().min(1).max(100),
   outcome: z.enum(['success', 'failure', 'denied', 'error']),
   severity: z.enum(['low', 'medium', 'high', 'critical']).default('low'),
-  target: z.object({
-    type: z.string(),
-    id: z.string(),
-    name: z.string().optional(),
-  }).optional(),
+  target: z
+    .object({
+      type: z.string(),
+      id: z.string(),
+      name: z.string().optional(),
+    })
+    .optional(),
   details: z.record(z.string(), z.unknown()),
   metadata: z.record(z.string(), z.string()).optional(),
 })
@@ -159,7 +169,7 @@ export class AuditLogger {
   private targetIndex = new Map<string, string[]>() // targetId -> eventIds
   private lastHash: string | null = null
   private signingKey: string
-  
+
   private retentionPolicies: RetentionPolicy[] = [
     { category: 'security', retentionDays: 365, archiveAfterDays: 90 },
     { category: 'auth', retentionDays: 365 },
@@ -206,7 +216,8 @@ export class AuditLogger {
       category,
       action,
       outcome,
-      severity: options?.severity ?? this.determineSeverity(category, action, outcome),
+      severity:
+        options?.severity ?? this.determineSeverity(category, action, outcome),
       target: options?.target,
       context: options?.context ?? {},
       details: options?.details ?? {},
@@ -230,7 +241,10 @@ export class AuditLogger {
     }
 
     // Log to console for debugging
-    const logLevel = event.severity === 'critical' || event.severity === 'high' ? 'warn' : 'log'
+    const logLevel =
+      event.severity === 'critical' || event.severity === 'high'
+        ? 'warn'
+        : 'log'
     console[logLevel](
       `[Audit] ${event.category}.${event.action} (${event.outcome}) - Actor: ${actor.id}`,
       event.target ? `Target: ${event.target.type}/${event.target.id}` : '',
@@ -242,7 +256,17 @@ export class AuditLogger {
   // Convenience methods
   logAuth(
     actor: AuditActor,
-    action: 'login' | 'logout' | 'login_failed' | 'mfa_enabled' | 'mfa_disabled' | 'password_changed' | 'api_key_created' | 'api_key_revoked' | 'session_created' | 'session_revoked',
+    action:
+      | 'login'
+      | 'logout'
+      | 'login_failed'
+      | 'mfa_enabled'
+      | 'mfa_disabled'
+      | 'password_changed'
+      | 'api_key_created'
+      | 'api_key_revoked'
+      | 'session_created'
+      | 'session_revoked',
     outcome: AuditOutcome,
     context?: AuditEvent['context'],
     details?: Record<string, unknown>,
@@ -252,57 +276,107 @@ export class AuditLogger {
 
   logAccess(
     actor: AuditActor,
-    action: 'granted' | 'denied' | 'elevated' | 'role_assigned' | 'role_removed',
+    action:
+      | 'granted'
+      | 'denied'
+      | 'elevated'
+      | 'role_assigned'
+      | 'role_removed',
     target: AuditTarget,
     outcome: AuditOutcome,
     context?: AuditEvent['context'],
     details?: Record<string, unknown>,
   ): AuditEvent {
-    return this.log(actor, 'access', action, outcome, { target, context, details })
+    return this.log(actor, 'access', action, outcome, {
+      target,
+      context,
+      details,
+    })
   }
 
   logResource(
     actor: AuditActor,
-    action: 'created' | 'updated' | 'deleted' | 'deployed' | 'scaled' | 'stopped' | 'started',
+    action:
+      | 'created'
+      | 'updated'
+      | 'deleted'
+      | 'deployed'
+      | 'scaled'
+      | 'stopped'
+      | 'started',
     target: AuditTarget,
     outcome: AuditOutcome,
     context?: AuditEvent['context'],
     details?: Record<string, unknown>,
   ): AuditEvent {
-    return this.log(actor, 'resource', action, outcome, { target, context, details })
+    return this.log(actor, 'resource', action, outcome, {
+      target,
+      context,
+      details,
+    })
   }
 
   logSecurity(
     actor: AuditActor,
-    action: 'threat_detected' | 'attack_blocked' | 'policy_violation' | 'suspicious_activity' | 'data_exfiltration',
+    action:
+      | 'threat_detected'
+      | 'attack_blocked'
+      | 'policy_violation'
+      | 'suspicious_activity'
+      | 'data_exfiltration',
     outcome: AuditOutcome,
     severity: AuditSeverity,
     context?: AuditEvent['context'],
     details?: Record<string, unknown>,
   ): AuditEvent {
-    return this.log(actor, 'security', action, outcome, { severity, context, details })
+    return this.log(actor, 'security', action, outcome, {
+      severity,
+      context,
+      details,
+    })
   }
 
   logAdmin(
     actor: AuditActor,
-    action: 'config_changed' | 'user_created' | 'user_deleted' | 'org_created' | 'policy_updated' | 'backup_created' | 'restore_initiated',
+    action:
+      | 'config_changed'
+      | 'user_created'
+      | 'user_deleted'
+      | 'org_created'
+      | 'policy_updated'
+      | 'backup_created'
+      | 'restore_initiated',
     target: AuditTarget,
     outcome: AuditOutcome,
     context?: AuditEvent['context'],
     details?: Record<string, unknown>,
   ): AuditEvent {
-    return this.log(actor, 'admin', action, outcome, { target, context, details })
+    return this.log(actor, 'admin', action, outcome, {
+      target,
+      context,
+      details,
+    })
   }
 
   logData(
     actor: AuditActor,
-    action: 'exported' | 'imported' | 'accessed' | 'modified' | 'deleted' | 'anonymized',
+    action:
+      | 'exported'
+      | 'imported'
+      | 'accessed'
+      | 'modified'
+      | 'deleted'
+      | 'anonymized',
     target: AuditTarget,
     outcome: AuditOutcome,
     context?: AuditEvent['context'],
     details?: Record<string, unknown>,
   ): AuditEvent {
-    return this.log(actor, 'data', action, outcome, { target, context, details })
+    return this.log(actor, 'data', action, outcome, {
+      target,
+      context,
+      details,
+    })
   }
 
   // =========================================================================
@@ -315,55 +389,56 @@ export class AuditLogger {
     if (q.actorId) {
       const eventIds = this.actorIndex.get(q.actorId) ?? []
       results = eventIds
-        .map(id => this.events[this.eventIndex.get(id) ?? -1])
+        .map((id) => this.events[this.eventIndex.get(id) ?? -1])
         .filter((e): e is AuditEvent => e !== undefined)
     }
 
     if (q.actorAddress) {
-      results = results.filter(e => e.actor.address === q.actorAddress)
+      results = results.filter((e) => e.actor.address === q.actorAddress)
     }
 
     if (q.category && q.category.length > 0) {
-      results = results.filter(e => q.category?.includes(e.category))
+      results = results.filter((e) => q.category?.includes(e.category))
     }
 
     if (q.action && q.action.length > 0) {
-      results = results.filter(e => q.action?.includes(e.action))
+      results = results.filter((e) => q.action?.includes(e.action))
     }
 
     if (q.outcome && q.outcome.length > 0) {
-      results = results.filter(e => q.outcome?.includes(e.outcome))
+      results = results.filter((e) => q.outcome?.includes(e.outcome))
     }
 
     if (q.severity && q.severity.length > 0) {
-      results = results.filter(e => q.severity?.includes(e.severity))
+      results = results.filter((e) => q.severity?.includes(e.severity))
     }
 
     if (q.targetType) {
-      results = results.filter(e => e.target?.type === q.targetType)
+      results = results.filter((e) => e.target?.type === q.targetType)
     }
 
     if (q.targetId) {
       const eventIds = this.targetIndex.get(q.targetId) ?? []
       const targetEventIds = new Set(eventIds)
-      results = results.filter(e => targetEventIds.has(e.eventId))
+      results = results.filter((e) => targetEventIds.has(e.eventId))
     }
 
     if (q.startTime) {
-      results = results.filter(e => e.timestamp >= (q.startTime ?? 0))
+      results = results.filter((e) => e.timestamp >= (q.startTime ?? 0))
     }
 
     if (q.endTime) {
-      results = results.filter(e => e.timestamp <= (q.endTime ?? Infinity))
+      results = results.filter((e) => e.timestamp <= (q.endTime ?? Infinity))
     }
 
     if (q.search) {
       const search = q.search.toLowerCase()
-      results = results.filter(e =>
-        e.action.toLowerCase().includes(search) ||
-        e.actor.id.toLowerCase().includes(search) ||
-        e.target?.id.toLowerCase().includes(search) ||
-        JSON.stringify(e.details).toLowerCase().includes(search)
+      results = results.filter(
+        (e) =>
+          e.action.toLowerCase().includes(search) ||
+          e.actor.id.toLowerCase().includes(search) ||
+          e.target?.id.toLowerCase().includes(search) ||
+          JSON.stringify(e.details).toLowerCase().includes(search),
       )
     }
 
@@ -386,7 +461,7 @@ export class AuditLogger {
     const eventIds = this.actorIndex.get(actorId) ?? []
     return eventIds
       .slice(-limit)
-      .map(id => this.events[this.eventIndex.get(id) ?? -1])
+      .map((id) => this.events[this.eventIndex.get(id) ?? -1])
       .filter((e): e is AuditEvent => e !== undefined)
   }
 
@@ -394,7 +469,7 @@ export class AuditLogger {
     const eventIds = this.targetIndex.get(targetId) ?? []
     return eventIds
       .slice(-limit)
-      .map(id => this.events[this.eventIndex.get(id) ?? -1])
+      .map((id) => this.events[this.eventIndex.get(id) ?? -1])
       .filter((e): e is AuditEvent => e !== undefined)
   }
 
@@ -402,7 +477,10 @@ export class AuditLogger {
   // Integrity Verification
   // =========================================================================
 
-  verifyIntegrity(startEventId?: string, endEventId?: string): { valid: boolean; brokenAt?: string } {
+  verifyIntegrity(
+    startEventId?: string,
+    endEventId?: string,
+  ): { valid: boolean; brokenAt?: string } {
     let startIndex = 0
     let endIndex = this.events.length
 
@@ -414,11 +492,12 @@ export class AuditLogger {
       endIndex = (this.eventIndex.get(endEventId) ?? this.events.length) + 1
     }
 
-    let previousHash: string | null = startIndex > 0 ? this.events[startIndex - 1].hash : null
+    let previousHash: string | null =
+      startIndex > 0 ? this.events[startIndex - 1].hash : null
 
     for (let i = startIndex; i < endIndex; i++) {
       const event = this.events[i]
-      
+
       // Verify previous hash chain
       if (event.previousHash !== previousHash) {
         return { valid: false, brokenAt: event.eventId }
@@ -511,63 +590,65 @@ export class AuditLogger {
     }
   }
 
-  private identifyIssues(events: AuditEvent[], type: ComplianceReport['type']): ComplianceReport['issues'] {
+  private identifyIssues(
+    events: AuditEvent[],
+    type: ComplianceReport['type'],
+  ): ComplianceReport['issues'] {
     const issues: ComplianceReport['issues'] = []
 
     // Multiple failed login attempts
-    const failedLogins = events.filter(e => 
-      e.category === 'auth' && 
-      e.action === 'login_failed'
+    const failedLogins = events.filter(
+      (e) => e.category === 'auth' && e.action === 'login_failed',
     )
-    
+
     if (failedLogins.length > 10) {
       issues.push({
         severity: 'high',
         category: 'Authentication',
         description: `${failedLogins.length} failed login attempts detected`,
-        eventIds: failedLogins.slice(-10).map(e => e.eventId),
+        eventIds: failedLogins.slice(-10).map((e) => e.eventId),
       })
     }
 
     // Access denials
-    const accessDenials = events.filter(e => e.outcome === 'denied')
+    const accessDenials = events.filter((e) => e.outcome === 'denied')
     if (accessDenials.length > 50) {
       issues.push({
         severity: 'medium',
         category: 'Access Control',
         description: `${accessDenials.length} access denials detected`,
-        eventIds: accessDenials.slice(-10).map(e => e.eventId),
+        eventIds: accessDenials.slice(-10).map((e) => e.eventId),
       })
     }
 
     // Security events
-    const securityEvents = events.filter(e => 
-      e.category === 'security' && 
-      (e.severity === 'high' || e.severity === 'critical')
+    const securityEvents = events.filter(
+      (e) =>
+        e.category === 'security' &&
+        (e.severity === 'high' || e.severity === 'critical'),
     )
-    
+
     if (securityEvents.length > 0) {
       issues.push({
         severity: 'critical',
         category: 'Security',
         description: `${securityEvents.length} high-severity security events detected`,
-        eventIds: securityEvents.map(e => e.eventId),
+        eventIds: securityEvents.map((e) => e.eventId),
       })
     }
 
     // GDPR-specific checks
     if (type === 'gdpr') {
-      const dataExports = events.filter(e => 
-        e.category === 'data' && 
-        e.action === 'exported'
+      const dataExports = events.filter(
+        (e) => e.category === 'data' && e.action === 'exported',
       )
-      
+
       if (dataExports.length > 0) {
         issues.push({
           severity: 'low',
           category: 'Data Privacy',
           description: `${dataExports.length} data exports performed`,
-          eventIds: dataExports.map(e => e.eventId),
+          eventIds: dataExports.map((e) => e.eventId),
         })
       }
     }
@@ -601,7 +682,8 @@ export class AuditLogger {
     }
 
     // Deduct for high failure rate
-    const failureRate = events.filter(e => e.outcome !== 'success').length / events.length
+    const failureRate =
+      events.filter((e) => e.outcome !== 'success').length / events.length
     if (failureRate > 0.1) score -= 10
     if (failureRate > 0.2) score -= 10
 
@@ -616,18 +698,16 @@ export class AuditLogger {
     const recommendations: string[] = []
 
     // Check for MFA
-    const mfaEvents = events.filter(e => 
-      e.category === 'auth' && 
-      e.action === 'mfa_enabled'
+    const mfaEvents = events.filter(
+      (e) => e.category === 'auth' && e.action === 'mfa_enabled',
     )
     if (mfaEvents.length === 0) {
       recommendations.push('Consider enabling MFA for all users')
     }
 
     // Check for regular backups
-    const backupEvents = events.filter(e => 
-      e.category === 'admin' && 
-      e.action === 'backup_created'
+    const backupEvents = events.filter(
+      (e) => e.category === 'admin' && e.action === 'backup_created',
     )
     if (backupEvents.length < 7) {
       recommendations.push('Increase backup frequency to daily')
@@ -637,18 +717,24 @@ export class AuditLogger {
     for (const issue of issues) {
       if (issue.category === 'Authentication' && issue.severity === 'high') {
         recommendations.push('Implement rate limiting on login attempts')
-        recommendations.push('Consider implementing account lockout after failed attempts')
+        recommendations.push(
+          'Consider implementing account lockout after failed attempts',
+        )
       }
-      
+
       if (issue.category === 'Security') {
-        recommendations.push('Review security policies and update firewall rules')
+        recommendations.push(
+          'Review security policies and update firewall rules',
+        )
         recommendations.push('Conduct a security audit')
       }
     }
 
     // Type-specific recommendations
     if (type === 'gdpr') {
-      recommendations.push('Ensure data processing agreements are in place with all vendors')
+      recommendations.push(
+        'Ensure data processing agreements are in place with all vendors',
+      )
       recommendations.push('Review data retention policies')
     }
 
@@ -687,7 +773,7 @@ export class AuditLogger {
       'ipAddress',
     ]
 
-    const rows = events.map(e => [
+    const rows = events.map((e) => [
       e.eventId,
       new Date(e.timestamp).toISOString(),
       e.category,
@@ -704,7 +790,9 @@ export class AuditLogger {
 
     return [
       headers.join(','),
-      ...rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')),
+      ...rows.map((r) =>
+        r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','),
+      ),
     ].join('\n')
   }
 
@@ -714,15 +802,18 @@ export class AuditLogger {
 
   private startCleanupJob(): void {
     // Run daily
-    this.cleanupInterval = setInterval(() => {
-      this.cleanupExpiredEvents()
-    }, 24 * 60 * 60 * 1000)
+    this.cleanupInterval = setInterval(
+      () => {
+        this.cleanupExpiredEvents()
+      },
+      24 * 60 * 60 * 1000,
+    )
   }
 
   private cleanupExpiredEvents(): void {
     const now = Date.now()
     const retentionByCategory = new Map(
-      this.retentionPolicies.map(p => [p.category, p.retentionDays])
+      this.retentionPolicies.map((p) => [p.category, p.retentionDays]),
     )
 
     let removed = 0
@@ -732,7 +823,7 @@ export class AuditLogger {
     for (let i = 0; i < this.events.length; i++) {
       const event = this.events[i]
       const retentionDays = retentionByCategory.get(event.category) ?? 90
-      const expiresAt = event.timestamp + (retentionDays * 24 * 60 * 60 * 1000)
+      const expiresAt = event.timestamp + retentionDays * 24 * 60 * 60 * 1000
 
       if (expiresAt < now) {
         toRemove.push(i)
@@ -743,7 +834,7 @@ export class AuditLogger {
     for (let i = toRemove.length - 1; i >= 0; i--) {
       const index = toRemove[i]
       const event = this.events[index]
-      
+
       this.eventIndex.delete(event.eventId)
       this.events.splice(index, 1)
       removed++
@@ -797,9 +888,7 @@ export class AuditLogger {
       previousHash: event.previousHash,
     })
 
-    return createHmac('sha256', this.signingKey)
-      .update(data)
-      .digest('hex')
+    return createHmac('sha256', this.signingKey).update(data).digest('hex')
   }
 
   private determineSeverity(
@@ -809,16 +898,16 @@ export class AuditLogger {
   ): AuditSeverity {
     // Security events are high severity by default
     if (category === 'security') return 'high'
-    
+
     // Failed admin actions are high
     if (category === 'admin' && outcome === 'failure') return 'high'
-    
+
     // Auth failures can be medium
     if (category === 'auth' && outcome === 'failure') return 'medium'
-    
+
     // Resource deletions are medium
     if (action === 'deleted') return 'medium'
-    
+
     return 'low'
   }
 
@@ -846,7 +935,7 @@ export class AuditLogger {
   } {
     const now = Date.now()
     const day = 24 * 60 * 60 * 1000
-    
+
     const eventsByCategory: Record<AuditCategory, number> = {
       auth: 0,
       access: 0,
@@ -862,7 +951,7 @@ export class AuditLogger {
 
     for (const event of this.events) {
       eventsByCategory[event.category]++
-      
+
       if (event.timestamp > now - day) eventsLast24h++
       if (event.timestamp > now - 7 * day) eventsLast7d++
     }
@@ -889,4 +978,3 @@ export function getAuditLogger(): AuditLogger {
   }
   return auditLogger
 }
-

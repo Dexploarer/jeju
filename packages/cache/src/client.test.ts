@@ -1,10 +1,18 @@
-import { describe, expect, it, mock, beforeEach, afterEach } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
 import { CacheClient, createCacheClient } from './client'
-import { CacheError, CacheErrorCode } from './types'
+import { CacheError } from './types'
+
+/** Creates a mock fetch that satisfies Bun's typeof fetch (includes preconnect) */
+function createMockFetch(
+  handler: (url: string, init?: RequestInit) => Promise<Response>,
+): typeof fetch {
+  const mockFn = mock(handler)
+  return Object.assign(mockFn, { preconnect: () => {} }) as typeof fetch
+}
 
 describe('CacheClient', () => {
   let client: CacheClient
-  let mockFetch: ReturnType<typeof mock>
+  let mockFetch: typeof fetch
   const originalFetch = global.fetch
 
   beforeEach(() => {
@@ -13,7 +21,7 @@ describe('CacheClient', () => {
       namespace: 'test',
     })
 
-    mockFetch = mock((url: string, init?: RequestInit) => {
+    mockFetch = createMockFetch((url: string, init?: RequestInit) => {
       const path = new URL(url).pathname
       const method = init?.method ?? 'GET'
 
@@ -213,7 +221,7 @@ describe('CacheClient', () => {
 
   it('should retry on server error', async () => {
     let attempts = 0
-    global.fetch = mock(() => {
+    global.fetch = createMockFetch(() => {
       attempts++
       if (attempts < 3) {
         return Promise.resolve(new Response('Error', { status: 500 }))
@@ -230,7 +238,7 @@ describe('CacheClient', () => {
 
   it('should not retry on client error', async () => {
     let attempts = 0
-    global.fetch = mock(() => {
+    global.fetch = createMockFetch(() => {
       attempts++
       return Promise.resolve(new Response('Bad Request', { status: 400 }))
     })
@@ -239,4 +247,3 @@ describe('CacheClient', () => {
     expect(attempts).toBe(1) // No retries on 4xx
   })
 })
-

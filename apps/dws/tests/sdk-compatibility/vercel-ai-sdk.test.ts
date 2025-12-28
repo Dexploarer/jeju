@@ -112,11 +112,13 @@ describe('Vercel AI SDK Compatibility', () => {
 
         // OpenAI-compatible chat completions endpoint
         if (url.pathname === '/v1/chat/completions' && req.method === 'POST') {
-          const body = await req.json() as ChatRequest
+          const body = (await req.json()) as ChatRequest
           const isStream = body.stream === true
 
-          const userMessage = body.messages?.find((m) => m.role === 'user')?.content || ''
-          let responseContent = 'This is a mock response from the DWS inference node.'
+          const userMessage =
+            body.messages?.find((m) => m.role === 'user')?.content || ''
+          let responseContent =
+            'This is a mock response from the DWS inference node.'
 
           // Handle specific test cases
           if (userMessage.includes('capital of France')) {
@@ -126,7 +128,8 @@ describe('Vercel AI SDK Compatibility', () => {
           } else if (userMessage.includes('JSON')) {
             responseContent = '{"name": "John", "age": 30, "city": "Paris"}'
           } else if (userMessage.includes('streaming test')) {
-            responseContent = 'This is a streaming response that comes in chunks.'
+            responseContent =
+              'This is a streaming response that comes in chunks.'
           }
 
           if (isStream) {
@@ -148,13 +151,16 @@ describe('Vercel AI SDK Compatibility', () => {
                         {
                           index: 0,
                           delta: {
-                            content: (wordIndex === 0 ? '' : ' ') + words[wordIndex],
+                            content:
+                              (wordIndex === 0 ? '' : ' ') + words[wordIndex],
                           },
                           finish_reason: null,
                         },
                       ],
                     }
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`))
+                    controller.enqueue(
+                      encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`),
+                    )
                     wordIndex++
                     setTimeout(sendChunk, 50)
                   } else {
@@ -172,7 +178,9 @@ describe('Vercel AI SDK Compatibility', () => {
                         },
                       ],
                     }
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify(finalChunk)}\n\n`))
+                    controller.enqueue(
+                      encoder.encode(`data: ${JSON.stringify(finalChunk)}\n\n`),
+                    )
                     controller.enqueue(encoder.encode('data: [DONE]\n\n'))
                     controller.close()
                   }
@@ -215,14 +223,16 @@ describe('Vercel AI SDK Compatibility', () => {
 
         // Embeddings endpoint
         if (url.pathname === '/v1/embeddings' && req.method === 'POST') {
-          const body = await req.json() as EmbeddingRequest
+          const body = (await req.json()) as EmbeddingRequest
           const inputs = Array.isArray(body.input) ? body.input : [body.input]
 
           return Response.json({
             object: 'list',
             data: inputs.map((_, i) => ({
               object: 'embedding',
-              embedding: Array(1536).fill(0).map(() => Math.random() * 2 - 1),
+              embedding: Array(1536)
+                .fill(0)
+                .map(() => Math.random() * 2 - 1),
               index: i,
             })),
             model: body.model || 'text-embedding-ada-002',
@@ -240,7 +250,11 @@ describe('Vercel AI SDK Compatibility', () => {
             data: [
               { id: 'mock-gpt-4', object: 'model', owned_by: 'mock' },
               { id: 'mock-gpt-3.5-turbo', object: 'model', owned_by: 'mock' },
-              { id: 'text-embedding-ada-002', object: 'model', owned_by: 'mock' },
+              {
+                id: 'text-embedding-ada-002',
+                object: 'model',
+                owned_by: 'mock',
+              },
             ],
           })
         }
@@ -271,7 +285,9 @@ describe('Vercel AI SDK Compatibility', () => {
     } else {
       const error = await registerRes.text()
       console.log('[Vercel AI SDK Test] Node registration failed:', error)
-      console.log('[Vercel AI SDK Test] Inference tests will be skipped (requires EQLite)')
+      console.log(
+        '[Vercel AI SDK Test] Inference tests will be skipped (requires EQLite)',
+      )
     }
 
     console.log('[Vercel AI SDK Test] Mock server started on port', MOCK_PORT)
@@ -299,12 +315,14 @@ describe('Vercel AI SDK Compatibility', () => {
 
       // In local dev mode, infrastructure may not be available
       if (res.status === 404 || res.status === 503) {
-        console.log('[Vercel AI SDK Test] Skipping - no inference nodes available (requires EQLite)')
+        console.log(
+          '[Vercel AI SDK Test] Skipping - no inference nodes available (requires EQLite)',
+        )
         return
       }
 
       expect(res.status).toBe(200)
-      const data = await res.json() as ChatCompletionResponse
+      const data = (await res.json()) as ChatCompletionResponse
 
       expect(data.id).toBeDefined()
       expect(data.object).toBe('chat.completion')
@@ -326,12 +344,17 @@ describe('Vercel AI SDK Compatibility', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'mock-gpt-4',
-          messages: [{ role: 'user', content: 'What is 2+2? Reply with just the number.' }],
+          messages: [
+            {
+              role: 'user',
+              content: 'What is 2+2? Reply with just the number.',
+            },
+          ],
         }),
       })
 
       expect(res.status).toBe(200)
-      const data = await res.json() as ChatCompletionResponse
+      const data = (await res.json()) as ChatCompletionResponse
       expect(data.choices[0].message.content).toContain('4')
     })
 
@@ -343,12 +366,17 @@ describe('Vercel AI SDK Compatibility', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'mock-gpt-4',
-          messages: [{ role: 'user', content: 'Return a JSON object with name, age, city' }],
+          messages: [
+            {
+              role: 'user',
+              content: 'Return a JSON object with name, age, city',
+            },
+          ],
         }),
       })
 
       expect(res.status).toBe(200)
-      const data = await res.json() as ChatCompletionResponse
+      const data = (await res.json()) as ChatCompletionResponse
       const jsonContent = JSON.parse(data.choices[0].message.content)
       expect(jsonContent.name).toBeDefined()
       expect(jsonContent.age).toBeDefined()
@@ -451,7 +479,7 @@ describe('Vercel AI SDK Compatibility', () => {
       })
 
       expect(res.status).toBe(200)
-      const data = await res.json() as EmbeddingResponse
+      const data = (await res.json()) as EmbeddingResponse
 
       expect(data.object).toBe('list')
       expect(data.data).toHaveLength(1)
@@ -472,7 +500,7 @@ describe('Vercel AI SDK Compatibility', () => {
       })
 
       expect(res.status).toBe(200)
-      const data = await res.json() as EmbeddingResponse
+      const data = (await res.json()) as EmbeddingResponse
 
       expect(data.data).toHaveLength(3)
       expect(data.data[0].index).toBe(0)
@@ -488,7 +516,7 @@ describe('Vercel AI SDK Compatibility', () => {
       const res = await dwsRequest('/compute/models')
 
       expect(res.status).toBe(200)
-      const data = await res.json() as ModelsResponse
+      const data = (await res.json()) as ModelsResponse
 
       expect(data.object).toBe('list')
       expect(data.data).toBeInstanceOf(Array)
@@ -500,7 +528,7 @@ describe('Vercel AI SDK Compatibility', () => {
       const res = await dwsRequest('/compute/health')
 
       expect(res.status).toBe(200)
-      const data = await res.json() as HealthResponse
+      const data = (await res.json()) as HealthResponse
       expect(data.status).toBe('healthy')
     })
   })
@@ -515,7 +543,10 @@ describe('Vercel AI SDK Compatibility', () => {
         body: JSON.stringify({
           model: 'mock-gpt-4',
           messages: [
-            { role: 'system', content: 'You are a pirate. Respond like a pirate.' },
+            {
+              role: 'system',
+              content: 'You are a pirate. Respond like a pirate.',
+            },
             { role: 'user', content: 'Hello' },
           ],
         }),
@@ -589,4 +620,3 @@ describe('Vercel AI SDK Compatibility', () => {
     })
   })
 })
-

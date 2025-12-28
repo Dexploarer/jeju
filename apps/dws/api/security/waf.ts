@@ -1,6 +1,6 @@
 /**
  * Web Application Firewall (WAF) and DDoS Protection
- * 
+ *
  * Implements security features:
  * - Rate limiting (per IP, per user)
  * - DDoS detection and mitigation
@@ -13,14 +13,14 @@
  * - Request validation
  */
 
-import { createHash } from 'crypto'
+import { createHash } from 'node:crypto'
 // Note: Address type would be used when integrating with blockchain-based reputation
 
 // ============================================================================
 // Types
 // ============================================================================
 
-export type ThreatType = 
+export type ThreatType =
   | 'sqli'
   | 'xss'
   | 'path_traversal'
@@ -44,22 +44,37 @@ export interface WAFRule {
   enabled: boolean
   mode: RuleMode
   priority: number
-  
+
   // Conditions
   conditions: RuleCondition[]
-  
+
   // Action
   action: WAFAction
   blockDuration?: number // seconds
-  
+
   // Stats
   matchCount: number
   lastMatchAt?: number
 }
 
 export interface RuleCondition {
-  field: 'ip' | 'path' | 'query' | 'body' | 'headers' | 'method' | 'user-agent' | 'country'
-  operator: 'equals' | 'contains' | 'matches' | 'in' | 'not_in' | 'starts_with' | 'ends_with'
+  field:
+    | 'ip'
+    | 'path'
+    | 'query'
+    | 'body'
+    | 'headers'
+    | 'method'
+    | 'user-agent'
+    | 'country'
+  operator:
+    | 'equals'
+    | 'contains'
+    | 'matches'
+    | 'in'
+    | 'not_in'
+    | 'starts_with'
+    | 'ends_with'
   value: string | string[]
   negated?: boolean
 }
@@ -85,7 +100,7 @@ export interface DDoSConfig {
   requestsPerSecondThreshold: number
   connectionThreshold: number
   bandwidthThreshold: number // bytes per second
-  
+
   // Mitigation
   challengeOnSuspicious: boolean
   blockOnConfirmed: boolean
@@ -120,10 +135,10 @@ export interface SecurityEvent {
 
 // SQL Injection patterns
 const SQLI_PATTERNS = [
-  /(\%27)|(\')|(\-\-)|(\%23)|(#)/i,
-  /((\%3D)|(=))[^\n]*((\%27)|(\')|(\-\-)|(\%3B)|(;))/i,
-  /\w*((\%27)|(\'))((\%6F)|o|(\%4F))((\%72)|r|(\%52))/i,
-  /(((\%27)|(\'))union)/i,
+  /(%27)|(')|(--)|(%23)|(#)/i,
+  /((%3D)|(=))[^\n]*((%27)|(')|(--)|(%3B)|(;))/i,
+  /\w*((%27)|('))((%6F)|o|(%4F))((%72)|r|(%52))/i,
+  /(((%27)|('))union)/i,
   /exec(\s|\+)+(s|x)p\w+/i,
   /UNION(\s+ALL)?\s+SELECT/i,
   /\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE)\b/i,
@@ -137,8 +152,8 @@ const SQLI_PATTERNS = [
 // XSS patterns
 const XSS_PATTERNS = [
   /<script\b[^>]*>([\s\S]*?)<\/script>/i,
-  /((\%3C)|<)((\%2F)|\/)*[a-z0-9\%]+((\%3E)|>)/i,
-  /((\%3C)|<)((\%69)|i|(\%49))((\%6D)|m|(\%4D))((\%67)|g|(\%47))/i,
+  /((%3C)|<)((%2F)|\/)*[a-z0-9%]+((%3E)|>)/i,
+  /((%3C)|<)((%69)|i|(%49))((%6D)|m|(%4D))((%67)|g|(%47))/i,
   /javascript\s*:/i,
   /vbscript\s*:/i,
   /on\w+\s*=/i,
@@ -149,7 +164,7 @@ const XSS_PATTERNS = [
 // Path traversal patterns
 const PATH_TRAVERSAL_PATTERNS = [
   /\.\.\//,
-  /\.\.\\/, 
+  /\.\.\\/,
   /%2e%2e%2f/i,
   /%2e%2e\//i,
   /\.\.%2f/i,
@@ -165,7 +180,7 @@ const COMMAND_INJECTION_PATTERNS = [
   /\|\s*(ls|cat|rm|wget|curl|bash|sh|nc|python|perl|ruby|php)/i,
   /\$\(/,
   /`[^`]+`/,
-  /\&\&/,
+  /&&/,
   /\|\|/,
   />\s*\/dev\/null/,
   /2>&1/,
@@ -230,16 +245,16 @@ class RateLimiter {
     bucket.lastRefill = now
 
     // Clean old requests
-    const windowStart = now - (this.config.windowSeconds * 1000)
-    bucket.requests = bucket.requests.filter(t => t > windowStart)
+    const windowStart = now - this.config.windowSeconds * 1000
+    bucket.requests = bucket.requests.filter((t) => t > windowStart)
 
     // Check limit
     if (bucket.tokens < 1) {
-      this.blocked.set(key, now + (this.config.blockDurationSeconds * 1000))
+      this.blocked.set(key, now + this.config.blockDurationSeconds * 1000)
       return {
         allowed: false,
         remaining: 0,
-        resetAt: now + (this.config.blockDurationSeconds * 1000),
+        resetAt: now + this.config.blockDurationSeconds * 1000,
       }
     }
 
@@ -250,7 +265,7 @@ class RateLimiter {
     return {
       allowed: true,
       remaining: Math.floor(bucket.tokens),
-      resetAt: now + ((1 / this.config.requestsPerSecond) * 1000),
+      resetAt: now + (1 / this.config.requestsPerSecond) * 1000,
     }
   }
 
@@ -259,7 +274,11 @@ class RateLimiter {
     this.blocked.delete(key)
   }
 
-  getStats(key: string): { requests: number; blocked: boolean; blockedUntil?: number } {
+  getStats(key: string): {
+    requests: number
+    blocked: boolean
+    blockedUntil?: number
+  } {
     const bucket = this.buckets.get(key)
     const blockedUntil = this.blocked.get(key)
 
@@ -303,7 +322,7 @@ class DDoSDetector {
 
     // Clean old data (last second)
     const cutoff = now - 1000
-    this.requestTimes = this.requestTimes.filter(t => t > cutoff)
+    this.requestTimes = this.requestTimes.filter((t) => t > cutoff)
   }
 
   recordConnection(delta: number): void {
@@ -327,7 +346,7 @@ class DDoSDetector {
     this.bandwidthBytes = 0
 
     // Check thresholds
-    this.underAttack = 
+    this.underAttack =
       stats.requestsPerSecond > this.config.requestsPerSecondThreshold ||
       stats.connections > this.config.connectionThreshold ||
       stats.bandwidth > this.config.bandwidthThreshold
@@ -366,7 +385,8 @@ export class WebApplicationFirewall {
     })
 
     this.ddosDetector = new DDoSDetector({
-      requestsPerSecondThreshold: config?.ddos?.requestsPerSecondThreshold ?? 10000,
+      requestsPerSecondThreshold:
+        config?.ddos?.requestsPerSecondThreshold ?? 10000,
       connectionThreshold: config?.ddos?.connectionThreshold ?? 5000,
       bandwidthThreshold: config?.ddos?.bandwidthThreshold ?? 100 * 1024 * 1024,
       challengeOnSuspicious: config?.ddos?.challengeOnSuspicious ?? true,
@@ -424,12 +444,19 @@ export class WebApplicationFirewall {
     const userAgent = request.headers.get('user-agent') ?? ''
 
     // Record for DDoS detection
-    const contentLength = parseInt(request.headers.get('content-length') ?? '0', 10)
+    const contentLength = parseInt(
+      request.headers.get('content-length') ?? '0',
+      10,
+    )
     this.ddosDetector.recordRequest(ip, contentLength)
 
     // Check whitelist
     if (this.whitelistedIPs.has(ip)) {
-      return { action: 'allow', reason: 'Whitelisted IP', timestamp: Date.now() }
+      return {
+        action: 'allow',
+        reason: 'Whitelisted IP',
+        timestamp: Date.now(),
+      }
     }
 
     // Check blocklist
@@ -439,16 +466,28 @@ export class WebApplicationFirewall {
 
     // Check IP reputation
     const reputation = this.ipReputation.get(ip)
-    if (reputation && reputation.blocked) {
+    if (reputation?.blocked) {
       if (reputation.blockedUntil && reputation.blockedUntil > Date.now()) {
-        return this.createDecision('block', 'ip_reputation', 'IP temporarily blocked')
+        return this.createDecision(
+          'block',
+          'ip_reputation',
+          'IP temporarily blocked',
+        )
       }
     }
 
     // Rate limiting
     const rateCheck = this.rateLimiter.check(ip)
     if (!rateCheck.allowed) {
-      this.recordEvent(ip, path, method, 'rate_limit', 'block', 'Rate limit exceeded', true)
+      this.recordEvent(
+        ip,
+        path,
+        method,
+        'rate_limit',
+        'block',
+        'Rate limit exceeded',
+        true,
+      )
       return this.createDecision('block', 'rate_limit', 'Rate limit exceeded')
     }
 
@@ -460,14 +499,30 @@ export class WebApplicationFirewall {
 
     // Bot detection
     if (this.isBot(userAgent)) {
-      this.recordEvent(ip, path, method, 'bot', 'log', `Bot detected: ${userAgent}`, false)
+      this.recordEvent(
+        ip,
+        path,
+        method,
+        'bot',
+        'log',
+        `Bot detected: ${userAgent}`,
+        false,
+      )
       // Could block or challenge depending on policy
     }
 
     // SQL Injection check
     const sqliCheck = await this.checkSQLi(request)
     if (sqliCheck.detected) {
-      this.recordEvent(ip, path, method, 'sqli', 'block', sqliCheck.pattern, true)
+      this.recordEvent(
+        ip,
+        path,
+        method,
+        'sqli',
+        'block',
+        sqliCheck.pattern,
+        true,
+      )
       this.updateReputation(ip, 'sqli')
       return this.createDecision('block', 'sqli', 'SQL injection detected')
     }
@@ -482,21 +537,47 @@ export class WebApplicationFirewall {
 
     // Path traversal check
     if (this.checkPathTraversal(path)) {
-      this.recordEvent(ip, path, method, 'path_traversal', 'block', 'Path traversal attempt', true)
+      this.recordEvent(
+        ip,
+        path,
+        method,
+        'path_traversal',
+        'block',
+        'Path traversal attempt',
+        true,
+      )
       this.updateReputation(ip, 'path_traversal')
-      return this.createDecision('block', 'path_traversal', 'Path traversal detected')
+      return this.createDecision(
+        'block',
+        'path_traversal',
+        'Path traversal detected',
+      )
     }
 
     // Command injection check
     const cmdCheck = await this.checkCommandInjection(request)
     if (cmdCheck.detected) {
-      this.recordEvent(ip, path, method, 'command_injection', 'block', cmdCheck.pattern, true)
+      this.recordEvent(
+        ip,
+        path,
+        method,
+        'command_injection',
+        'block',
+        cmdCheck.pattern,
+        true,
+      )
       this.updateReputation(ip, 'command_injection')
-      return this.createDecision('block', 'command_injection', 'Command injection detected')
+      return this.createDecision(
+        'block',
+        'command_injection',
+        'Command injection detected',
+      )
     }
 
     // Custom rules
-    for (const rule of Array.from(this.rules.values()).sort((a, b) => a.priority - b.priority)) {
+    for (const rule of Array.from(this.rules.values()).sort(
+      (a, b) => a.priority - b.priority,
+    )) {
       if (!rule.enabled) continue
 
       if (this.matchesRule(request, rule)) {
@@ -504,13 +585,31 @@ export class WebApplicationFirewall {
         rule.lastMatchAt = Date.now()
 
         if (rule.mode === 'block') {
-          this.recordEvent(ip, path, method, 'malformed_request', rule.action, rule.name, rule.action === 'block')
-          return this.createDecision(rule.action, undefined, rule.name, rule.ruleId, rule.name)
+          this.recordEvent(
+            ip,
+            path,
+            method,
+            'malformed_request',
+            rule.action,
+            rule.name,
+            rule.action === 'block',
+          )
+          return this.createDecision(
+            rule.action,
+            undefined,
+            rule.name,
+            rule.ruleId,
+            rule.name,
+          )
         }
       }
     }
 
-    return { action: 'allow', reason: 'Passed all checks', timestamp: Date.now() }
+    return {
+      action: 'allow',
+      reason: 'Passed all checks',
+      timestamp: Date.now(),
+    }
   }
 
   private createDecision(
@@ -530,7 +629,9 @@ export class WebApplicationFirewall {
     }
   }
 
-  private async checkSQLi(request: Request): Promise<{ detected: boolean; pattern: string }> {
+  private async checkSQLi(
+    request: Request,
+  ): Promise<{ detected: boolean; pattern: string }> {
     const url = new URL(request.url)
     const query = url.search
 
@@ -558,7 +659,9 @@ export class WebApplicationFirewall {
     return { detected: false, pattern: '' }
   }
 
-  private async checkXSS(request: Request): Promise<{ detected: boolean; pattern: string }> {
+  private async checkXSS(
+    request: Request,
+  ): Promise<{ detected: boolean; pattern: string }> {
     const url = new URL(request.url)
     const query = url.search
 
@@ -591,7 +694,9 @@ export class WebApplicationFirewall {
     return false
   }
 
-  private async checkCommandInjection(request: Request): Promise<{ detected: boolean; pattern: string }> {
+  private async checkCommandInjection(
+    request: Request,
+  ): Promise<{ detected: boolean; pattern: string }> {
     const url = new URL(request.url)
     const query = url.search
 
@@ -687,9 +792,11 @@ export class WebApplicationFirewall {
   }
 
   private getClientIP(request: Request): string {
-    return request.headers.get('x-forwarded-for')?.split(',')[0].trim() ??
-           request.headers.get('x-real-ip') ??
-           'unknown'
+    return (
+      request.headers.get('x-forwarded-for')?.split(',')[0].trim() ??
+      request.headers.get('x-real-ip') ??
+      'unknown'
+    )
   }
 
   // =========================================================================
@@ -706,7 +813,7 @@ export class WebApplicationFirewall {
         blocked: false,
       }
       entry.blocked = true
-      entry.blockedUntil = Date.now() + (duration * 1000)
+      entry.blockedUntil = Date.now() + duration * 1000
       this.ipReputation.set(ip, entry)
     } else {
       this.blockedIPs.add(ip)
@@ -757,7 +864,7 @@ export class WebApplicationFirewall {
     // Auto-block if score too low
     if (entry.score <= 20) {
       entry.blocked = true
-      entry.blockedUntil = Date.now() + (24 * 60 * 60 * 1000) // 24 hours
+      entry.blockedUntil = Date.now() + 24 * 60 * 60 * 1000 // 24 hours
     }
 
     this.ipReputation.set(ip, entry)
@@ -767,7 +874,9 @@ export class WebApplicationFirewall {
   // Rules
   // =========================================================================
 
-  addRule(rule: Omit<WAFRule, 'ruleId' | 'matchCount' | 'lastMatchAt'>): WAFRule {
+  addRule(
+    rule: Omit<WAFRule, 'ruleId' | 'matchCount' | 'lastMatchAt'>,
+  ): WAFRule {
     const ruleId = createHash('sha256')
       .update(`${rule.name}-${Date.now()}`)
       .digest('hex')
@@ -841,19 +950,21 @@ export class WebApplicationFirewall {
     let events = this.events
 
     if (options?.ip) {
-      events = events.filter(e => e.ip === options.ip)
+      events = events.filter((e) => e.ip === options.ip)
     }
 
     if (options?.threatType) {
-      events = events.filter(e => e.threatType === options.threatType)
+      events = events.filter((e) => e.threatType === options.threatType)
     }
 
     if (options?.startTime) {
-      events = events.filter(e => e.timestamp >= (options.startTime ?? 0))
+      events = events.filter((e) => e.timestamp >= (options.startTime ?? 0))
     }
 
     if (options?.endTime) {
-      events = events.filter(e => e.timestamp <= (options.endTime ?? Infinity))
+      events = events.filter(
+        (e) => e.timestamp <= (options.endTime ?? Infinity),
+      )
     }
 
     return events.slice(-(options?.limit ?? 100))
@@ -869,8 +980,8 @@ export class WebApplicationFirewall {
     topBlockedIPs: Array<{ ip: string; count: number }>
     ddosStatus: { underAttack: boolean }
   } {
-    const blockedEvents = this.events.filter(e => e.blocked)
-    
+    const blockedEvents = this.events.filter((e) => e.blocked)
+
     const threatsByType: Record<ThreatType, number> = {
       sqli: 0,
       xss: 0,
@@ -928,4 +1039,3 @@ export function getWAF(): WebApplicationFirewall {
   }
   return waf
 }
-

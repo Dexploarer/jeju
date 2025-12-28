@@ -725,7 +725,7 @@ export class WebTorrentBackend extends WorkerdEventEmitter {
         bytesServed24h: 0,
       }
     }
-    
+
     let systemSize = 0
     let popularSize = 0
     let privateSize = 0

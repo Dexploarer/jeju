@@ -33,7 +33,7 @@ function validateRedirectUri(
   return false
 }
 
-export function createAuthInitRouter(config: AuthConfig) {
+export function createAuthInitRouter(_config: AuthConfig) {
   const baseUrl = process.env.BASE_URL ?? 'http://localhost:4200'
 
   return new Elysia({ name: 'auth-init', prefix: '/auth' })
@@ -54,11 +54,17 @@ export function createAuthInitRouter(config: AuthConfig) {
           // Auto-register the client for dev (in production this should fail)
           const isDev = process.env.NODE_ENV !== 'production'
           if (isDev) {
-            console.log(`[OAuth3] Auto-registering development client: ${appId}`)
+            console.log(
+              `[OAuth3] Auto-registering development client: ${appId}`,
+            )
             await clientState.save({
               id: appId,
               name: appId,
-              redirectUris: ['http://localhost:*', 'http://127.0.0.1:*', 'https://*.jejunetwork.org/*'],
+              redirectUris: [
+                'http://localhost:*',
+                'http://127.0.0.1:*',
+                'https://*.jejunetwork.org/*',
+              ],
               allowedScopes: ['openid', 'profile', 'email'],
               active: true,
               requireSecret: false,
@@ -70,14 +76,20 @@ export function createAuthInitRouter(config: AuthConfig) {
 
         if (!client || !client.active) {
           set.status = 400
-          return { error: 'invalid_client', message: 'Unknown or inactive client' }
+          return {
+            error: 'invalid_client',
+            message: 'Unknown or inactive client',
+          }
         }
 
         // Validate redirect URI (relaxed for development)
         const isDev = process.env.NODE_ENV !== 'production'
         if (!isDev && !validateRedirectUri(redirectUri, client.redirectUris)) {
           set.status = 400
-          return { error: 'invalid_redirect_uri', message: 'Redirect URI not allowed' }
+          return {
+            error: 'invalid_redirect_uri',
+            message: 'Redirect URI not allowed',
+          }
         }
 
         const authState = state ?? crypto.randomUUID()
@@ -158,4 +170,3 @@ export function createAuthInitRouter(config: AuthConfig) {
       }
     })
 }
-

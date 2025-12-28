@@ -1441,9 +1441,9 @@ export class CacheEngine {
   pubsubChannels(pattern?: string): string[] {
     const channels = Array.from(this.channelSubscribers.keys())
     if (!pattern) return channels
-    
+
     const regex = this.patternToRegex(pattern)
-    return channels.filter(ch => regex.test(ch))
+    return channels.filter((ch) => regex.test(ch))
   }
 
   /**

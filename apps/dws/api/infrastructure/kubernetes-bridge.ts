@@ -219,26 +219,40 @@ const NetworkPolicyPortSchema = z.object({
 })
 
 const NetworkPolicyPeerSchema = z.object({
-  podSelector: z.object({
-    matchLabels: z.record(z.string(), z.string()).optional(),
-    matchExpressions: z.array(z.object({
-      key: z.string(),
-      operator: z.enum(['In', 'NotIn', 'Exists', 'DoesNotExist']),
-      values: z.array(z.string()).optional(),
-    })).optional(),
-  }).optional(),
-  namespaceSelector: z.object({
-    matchLabels: z.record(z.string(), z.string()).optional(),
-    matchExpressions: z.array(z.object({
-      key: z.string(),
-      operator: z.enum(['In', 'NotIn', 'Exists', 'DoesNotExist']),
-      values: z.array(z.string()).optional(),
-    })).optional(),
-  }).optional(),
-  ipBlock: z.object({
-    cidr: z.string(),
-    except: z.array(z.string()).optional(),
-  }).optional(),
+  podSelector: z
+    .object({
+      matchLabels: z.record(z.string(), z.string()).optional(),
+      matchExpressions: z
+        .array(
+          z.object({
+            key: z.string(),
+            operator: z.enum(['In', 'NotIn', 'Exists', 'DoesNotExist']),
+            values: z.array(z.string()).optional(),
+          }),
+        )
+        .optional(),
+    })
+    .optional(),
+  namespaceSelector: z
+    .object({
+      matchLabels: z.record(z.string(), z.string()).optional(),
+      matchExpressions: z
+        .array(
+          z.object({
+            key: z.string(),
+            operator: z.enum(['In', 'NotIn', 'Exists', 'DoesNotExist']),
+            values: z.array(z.string()).optional(),
+          }),
+        )
+        .optional(),
+    })
+    .optional(),
+  ipBlock: z
+    .object({
+      cidr: z.string(),
+      except: z.array(z.string()).optional(),
+    })
+    .optional(),
 })
 
 const NetworkPolicyIngressRuleSchema = z.object({
@@ -254,11 +268,15 @@ const NetworkPolicyEgressRuleSchema = z.object({
 const NetworkPolicySpecSchema = z.object({
   podSelector: z.object({
     matchLabels: z.record(z.string(), z.string()).optional(),
-    matchExpressions: z.array(z.object({
-      key: z.string(),
-      operator: z.enum(['In', 'NotIn', 'Exists', 'DoesNotExist']),
-      values: z.array(z.string()).optional(),
-    })).optional(),
+    matchExpressions: z
+      .array(
+        z.object({
+          key: z.string(),
+          operator: z.enum(['In', 'NotIn', 'Exists', 'DoesNotExist']),
+          values: z.array(z.string()).optional(),
+        }),
+      )
+      .optional(),
   }),
   policyTypes: z.array(z.enum(['Ingress', 'Egress'])).optional(),
   ingress: z.array(NetworkPolicyIngressRuleSchema).optional(),
@@ -559,7 +577,10 @@ export class KubernetesBridge {
 
     // Create network policies
     for (const networkPolicyManifest of networkPolicyManifests) {
-      const networkPolicy = this.translateNetworkPolicy(networkPolicyManifest, namespace)
+      const networkPolicy = this.translateNetworkPolicy(
+        networkPolicyManifest,
+        namespace,
+      )
       deploymentState.networkPolicies.set(networkPolicy.id, networkPolicy)
       this.networkPolicies.set(networkPolicy.id, networkPolicy)
       console.log(`[K8s Bridge] Applied NetworkPolicy: ${networkPolicy.name}`)
@@ -931,28 +952,38 @@ export class KubernetesBridge {
   /**
    * Translate Kubernetes NetworkPolicy to DWS NetworkPolicy
    */
-  private translateNetworkPolicy(manifest: KubeNetworkPolicy, namespace: string): DWSNetworkPolicy {
+  private translateNetworkPolicy(
+    manifest: KubeNetworkPolicy,
+    namespace: string,
+  ): DWSNetworkPolicy {
     const policyId = `netpol-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`
 
     // Determine policy types (default to Ingress if not specified)
-    const policyTypes: ('Ingress' | 'Egress')[] = manifest.spec.policyTypes ?? ['Ingress']
+    const policyTypes: ('Ingress' | 'Egress')[] = manifest.spec.policyTypes ?? [
+      'Ingress',
+    ]
 
     // Translate ingress rules
-    const ingressRules: DWSNetworkRule[] = (manifest.spec.ingress ?? []).map(rule => ({
-      peers: this.translateNetworkPeers(rule.from ?? []),
-      ports: this.translateNetworkPorts(rule.ports ?? []),
-    }))
+    const ingressRules: DWSNetworkRule[] = (manifest.spec.ingress ?? []).map(
+      (rule) => ({
+        peers: this.translateNetworkPeers(rule.from ?? []),
+        ports: this.translateNetworkPorts(rule.ports ?? []),
+      }),
+    )
 
     // Translate egress rules
-    const egressRules: DWSNetworkRule[] = (manifest.spec.egress ?? []).map(rule => ({
-      peers: this.translateNetworkPeers(rule.to ?? []),
-      ports: this.translateNetworkPorts(rule.ports ?? []),
-    }))
+    const egressRules: DWSNetworkRule[] = (manifest.spec.egress ?? []).map(
+      (rule) => ({
+        peers: this.translateNetworkPeers(rule.to ?? []),
+        ports: this.translateNetworkPorts(rule.ports ?? []),
+      }),
+    )
 
     // Determine if this is a default deny policy
     // A policy with no ingress/egress rules but with the policy type implies default deny
     const defaultDeny =
-      (policyTypes.includes('Ingress') && manifest.spec.ingress === undefined) ||
+      (policyTypes.includes('Ingress') &&
+        manifest.spec.ingress === undefined) ||
       (policyTypes.includes('Egress') && manifest.spec.egress === undefined)
 
     return {
@@ -974,8 +1005,10 @@ export class KubernetesBridge {
   /**
    * Translate Kubernetes network policy peers
    */
-  private translateNetworkPeers(peers: NetworkPolicyPeer[]): DWSNetworkRule['peers'] {
-    return peers.map(peer => {
+  private translateNetworkPeers(
+    peers: NetworkPolicyPeer[],
+  ): DWSNetworkRule['peers'] {
+    return peers.map((peer) => {
       if (peer.ipBlock) {
         return {
           type: 'ipBlock' as const,
@@ -1005,9 +1038,14 @@ export class KubernetesBridge {
   /**
    * Translate Kubernetes network policy ports
    */
-  private translateNetworkPorts(ports: NetworkPolicyPort[]): DWSNetworkRule['ports'] {
-    return ports.map(port => ({
-      protocol: (port.protocol?.toLowerCase() ?? 'tcp') as 'tcp' | 'udp' | 'sctp',
+  private translateNetworkPorts(
+    ports: NetworkPolicyPort[],
+  ): DWSNetworkRule['ports'] {
+    return ports.map((port) => ({
+      protocol: (port.protocol?.toLowerCase() ?? 'tcp') as
+        | 'tcp'
+        | 'udp'
+        | 'sctp',
       port: port.port,
       endPort: port.endPort,
     }))
@@ -1023,7 +1061,7 @@ export class KubernetesBridge {
   getNetworkPolicies(namespace?: string): DWSNetworkPolicy[] {
     const policies = [...this.networkPolicies.values()]
     if (namespace) {
-      return policies.filter(p => p.namespace === namespace)
+      return policies.filter((p) => p.namespace === namespace)
     }
     return policies
   }
@@ -1035,7 +1073,7 @@ export class KubernetesBridge {
     namespace: string,
     podLabels: Record<string, string>,
   ): DWSNetworkPolicy[] {
-    return this.getNetworkPolicies(namespace).filter(policy => {
+    return this.getNetworkPolicies(namespace).filter((policy) => {
       // Check if pod matches the policy's pod selector
       return this.matchesSelector(podLabels, policy.podSelector)
     })
@@ -1053,7 +1091,10 @@ export class KubernetesBridge {
     protocol: 'tcp' | 'udp' = 'tcp',
   ): { allowed: boolean; matchedPolicy?: string } {
     // Get policies that apply to the target pod
-    const targetPolicies = this.getApplicablePolicies(targetNamespace, targetLabels)
+    const targetPolicies = this.getApplicablePolicies(
+      targetNamespace,
+      targetLabels,
+    )
 
     // If no policies apply, traffic is allowed by default
     if (targetPolicies.length === 0) {
@@ -1073,35 +1114,42 @@ export class KubernetesBridge {
       // Check ingress rules
       for (const rule of policy.ingressRules) {
         // Check if source matches any peer
-        const peerMatch = rule.peers.length === 0 || rule.peers.some(peer => {
-          if (peer.type === 'pod' && peer.podLabels) {
-            return this.matchesLabels(sourceLabels, peer.podLabels) &&
-                   sourceNamespace === targetNamespace
-          }
-          if (peer.type === 'namespace' && peer.namespaceLabels) {
-            // Would need namespace labels, using namespace name as fallback
-            return true // Simplified - would check namespace labels
-          }
-          if (peer.type === 'ipBlock') {
-            // Would check IP against CIDR
-            return false // IP block rules need actual IP
-          }
-          // Empty peer matches all
-          return true
-        })
+        const peerMatch =
+          rule.peers.length === 0 ||
+          rule.peers.some((peer) => {
+            if (peer.type === 'pod' && peer.podLabels) {
+              return (
+                this.matchesLabels(sourceLabels, peer.podLabels) &&
+                sourceNamespace === targetNamespace
+              )
+            }
+            if (peer.type === 'namespace' && peer.namespaceLabels) {
+              // Would need namespace labels, using namespace name as fallback
+              return true // Simplified - would check namespace labels
+            }
+            if (peer.type === 'ipBlock') {
+              // Would check IP against CIDR
+              return false // IP block rules need actual IP
+            }
+            // Empty peer matches all
+            return true
+          })
 
         if (!peerMatch) continue
 
         // Check if port matches
-        const portMatch = rule.ports.length === 0 || rule.ports.some(p => {
-          if (p.protocol !== protocol) return false
-          if (p.port === undefined) return true
-          const portNum = typeof p.port === 'string' ? parseInt(p.port, 10) : p.port
-          if (p.endPort) {
-            return port >= portNum && port <= p.endPort
-          }
-          return port === portNum
-        })
+        const portMatch =
+          rule.ports.length === 0 ||
+          rule.ports.some((p) => {
+            if (p.protocol !== protocol) return false
+            if (p.port === undefined) return true
+            const portNum =
+              typeof p.port === 'string' ? parseInt(p.port, 10) : p.port
+            if (p.endPort) {
+              return port >= portNum && port <= p.endPort
+            }
+            return port === portNum
+          })
 
         if (peerMatch && portMatch) {
           return { allowed: true, matchedPolicy: policy.name }
@@ -1186,173 +1234,179 @@ export function getKubernetesBridge(): KubernetesBridge {
 export function createKubernetesBridgeRouter() {
   const bridge = getKubernetesBridge()
 
-  return new Elysia({ prefix: '/k8s' })
-    .get('/health', () => ({ status: 'healthy', provider: 'dws-k8s-bridge' }))
-    .post(
-      '/apply',
-      async ({ body, headers }) => {
-        const owner = headers['x-jeju-address'] as Address
-        if (!owner) {
-          return { error: 'Missing x-jeju-address header' }
-        }
+  return (
+    new Elysia({ prefix: '/k8s' })
+      .get('/health', () => ({ status: 'healthy', provider: 'dws-k8s-bridge' }))
+      .post(
+        '/apply',
+        async ({ body, headers }) => {
+          const owner = headers['x-jeju-address'] as Address
+          if (!owner) {
+            return { error: 'Missing x-jeju-address header' }
+          }
 
-        const deployment = await bridge.apply(
-          body.manifests as KubeManifest[],
-          owner,
-          body.namespace,
-        )
+          const deployment = await bridge.apply(
+            body.manifests as KubeManifest[],
+            owner,
+            body.namespace,
+          )
 
+          return {
+            id: deployment.id,
+            name: deployment.name,
+            namespace: deployment.namespace,
+            containers: deployment.containers.size,
+            services: deployment.services.size,
+            ingresses: deployment.ingresses.size,
+            status: deployment.status,
+          }
+        },
+        {
+          body: t.Object({
+            manifests: t.Array(t.Any()),
+            namespace: t.Optional(t.String()),
+          }),
+        },
+      )
+      .get('/deployments', ({ query }) => {
+        const deployments = bridge.listDeployments(query.namespace)
         return {
-          id: deployment.id,
-          name: deployment.name,
-          namespace: deployment.namespace,
-          containers: deployment.containers.size,
-          services: deployment.services.size,
-          ingresses: deployment.ingresses.size,
-          status: deployment.status,
+          deployments: deployments.map((d) => ({
+            id: d.id,
+            name: d.name,
+            namespace: d.namespace,
+            status: d.status,
+            containers: d.containers.size,
+            createdAt: d.createdAt,
+            updatedAt: d.updatedAt,
+          })),
         }
-      },
-      {
-        body: t.Object({
-          manifests: t.Array(t.Any()),
-          namespace: t.Optional(t.String()),
-        }),
-      },
-    )
-    .get('/deployments', ({ query }) => {
-      const deployments = bridge.listDeployments(query.namespace)
-      return {
-        deployments: deployments.map((d) => ({
-          id: d.id,
-          name: d.name,
-          namespace: d.namespace,
-          status: d.status,
-          containers: d.containers.size,
-          createdAt: d.createdAt,
-          updatedAt: d.updatedAt,
-        })),
-      }
-    })
-    .get(
-      '/deployments/:id',
-      ({ params, set }) => {
-        const deployment = bridge.getDeployment(params.id)
-        if (!deployment) {
-          set.status = 404
-          return { error: 'Deployment not found' }
-        }
+      })
+      .get(
+        '/deployments/:id',
+        ({ params, set }) => {
+          const deployment = bridge.getDeployment(params.id)
+          if (!deployment) {
+            set.status = 404
+            return { error: 'Deployment not found' }
+          }
 
+          return {
+            id: deployment.id,
+            name: deployment.name,
+            namespace: deployment.namespace,
+            status: deployment.status,
+            containers: [...deployment.containers.values()].map((c) => ({
+              id: c.id,
+              status: c.status,
+              replicas: c.currentReplicas,
+              endpoints: c.endpoints,
+            })),
+            services: [...deployment.services.values()].map((s) => ({
+              id: s.id,
+              name: s.name,
+              type: s.type,
+              clusterIP: s.clusterIP,
+              externalIP: s.externalIP,
+              ports: s.ports,
+            })),
+            ingresses: [...deployment.ingresses.values()].map((i) => ({
+              id: i.id,
+              name: i.name,
+              hosts: i.hosts,
+              paths: i.paths,
+              tls: i.tls,
+            })),
+            createdAt: deployment.createdAt,
+            updatedAt: deployment.updatedAt,
+          }
+        },
+        { params: t.Object({ id: t.String() }) },
+      )
+      .delete(
+        '/deployments/:id',
+        async ({ params, headers, set }) => {
+          const owner = headers['x-jeju-address'] as Address
+          if (!owner) {
+            set.status = 401
+            return { error: 'Missing x-jeju-address header' }
+          }
+
+          await bridge.delete(params.id, owner)
+          return { success: true, id: params.id }
+        },
+        { params: t.Object({ id: t.String() }) },
+      )
+      .post(
+        '/deployments/:id/scale',
+        async ({ params, body, headers, set }) => {
+          const owner = headers['x-jeju-address'] as Address
+          if (!owner) {
+            set.status = 401
+            return { error: 'Missing x-jeju-address header' }
+          }
+
+          await bridge.scale(params.id, owner, body.replicas)
+          return { success: true, id: params.id, replicas: body.replicas }
+        },
+        {
+          params: t.Object({ id: t.String() }),
+          body: t.Object({ replicas: t.Number({ minimum: 0, maximum: 1000 }) }),
+        },
+      )
+
+      // Network Policy endpoints
+      .get('/networkpolicies', ({ query }) => {
+        const policies = bridge.getNetworkPolicies(query.namespace)
         return {
-          id: deployment.id,
-          name: deployment.name,
-          namespace: deployment.namespace,
-          status: deployment.status,
-          containers: [...deployment.containers.values()].map((c) => ({
-            id: c.id,
-            status: c.status,
-            replicas: c.currentReplicas,
-            endpoints: c.endpoints,
+          policies: policies.map((p) => ({
+            id: p.id,
+            name: p.name,
+            namespace: p.namespace,
+            policyTypes: p.policyTypes,
+            ingressRules: p.ingressRules.length,
+            egressRules: p.egressRules.length,
+            defaultDeny: p.defaultDeny,
+            createdAt: p.createdAt,
           })),
-          services: [...deployment.services.values()].map((s) => ({
-            id: s.id,
-            name: s.name,
-            type: s.type,
-            clusterIP: s.clusterIP,
-            externalIP: s.externalIP,
-            ports: s.ports,
-          })),
-          ingresses: [...deployment.ingresses.values()].map((i) => ({
-            id: i.id,
-            name: i.name,
-            hosts: i.hosts,
-            paths: i.paths,
-            tls: i.tls,
-          })),
-          createdAt: deployment.createdAt,
-          updatedAt: deployment.updatedAt,
         }
-      },
-      { params: t.Object({ id: t.String() }) },
-    )
-    .delete(
-      '/deployments/:id',
-      async ({ params, headers, set }) => {
-        const owner = headers['x-jeju-address'] as Address
-        if (!owner) {
-          set.status = 401
-          return { error: 'Missing x-jeju-address header' }
-        }
-
-        await bridge.delete(params.id, owner)
-        return { success: true, id: params.id }
-      },
-      { params: t.Object({ id: t.String() }) },
-    )
-    .post(
-      '/deployments/:id/scale',
-      async ({ params, body, headers, set }) => {
-        const owner = headers['x-jeju-address'] as Address
-        if (!owner) {
-          set.status = 401
-          return { error: 'Missing x-jeju-address header' }
-        }
-
-        await bridge.scale(params.id, owner, body.replicas)
-        return { success: true, id: params.id, replicas: body.replicas }
-      },
-      {
-        params: t.Object({ id: t.String() }),
-        body: t.Object({ replicas: t.Number({ minimum: 0, maximum: 1000 }) }),
-      },
-    )
-
-    // Network Policy endpoints
-    .get('/networkpolicies', ({ query }) => {
-      const policies = bridge.getNetworkPolicies(query.namespace)
-      return {
-        policies: policies.map(p => ({
-          id: p.id,
-          name: p.name,
-          namespace: p.namespace,
-          policyTypes: p.policyTypes,
-          ingressRules: p.ingressRules.length,
-          egressRules: p.egressRules.length,
-          defaultDeny: p.defaultDeny,
-          createdAt: p.createdAt,
-        })),
-      }
-    })
-    .get('/networkpolicies/:id', ({ params, set }) => {
-      const policies = bridge.getNetworkPolicies()
-      const policy = policies.find(p => p.id === params.id)
-      if (!policy) {
-        set.status = 404
-        return { error: 'NetworkPolicy not found' }
-      }
-      return { policy }
-    }, { params: t.Object({ id: t.String() }) })
-    .post(
-      '/networkpolicies/check',
-      ({ body }) => {
-        const result = bridge.isTrafficAllowed(
-          body.sourceNamespace,
-          body.sourceLabels,
-          body.targetNamespace,
-          body.targetLabels,
-          body.port,
-          body.protocol,
-        )
-        return result
-      },
-      {
-        body: t.Object({
-          sourceNamespace: t.String(),
-          sourceLabels: t.Record(t.String(), t.String()),
-          targetNamespace: t.String(),
-          targetLabels: t.Record(t.String(), t.String()),
-          port: t.Number(),
-          protocol: t.Optional(t.Union([t.Literal('tcp'), t.Literal('udp')])),
-        }),
-      },
-    )
+      })
+      .get(
+        '/networkpolicies/:id',
+        ({ params, set }) => {
+          const policies = bridge.getNetworkPolicies()
+          const policy = policies.find((p) => p.id === params.id)
+          if (!policy) {
+            set.status = 404
+            return { error: 'NetworkPolicy not found' }
+          }
+          return { policy }
+        },
+        { params: t.Object({ id: t.String() }) },
+      )
+      .post(
+        '/networkpolicies/check',
+        ({ body }) => {
+          const result = bridge.isTrafficAllowed(
+            body.sourceNamespace,
+            body.sourceLabels,
+            body.targetNamespace,
+            body.targetLabels,
+            body.port,
+            body.protocol,
+          )
+          return result
+        },
+        {
+          body: t.Object({
+            sourceNamespace: t.String(),
+            sourceLabels: t.Record(t.String(), t.String()),
+            targetNamespace: t.String(),
+            targetLabels: t.Record(t.String(), t.String()),
+            port: t.Number(),
+            protocol: t.Optional(t.Union([t.Literal('tcp'), t.Literal('udp')])),
+          }),
+        },
+      )
+  )
 }

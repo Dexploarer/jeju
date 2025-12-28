@@ -383,7 +383,10 @@ export class MultiBackendManager {
           addresses.magnetUri = torrent.magnetUri
         }
       } catch (e) {
-        console.warn('[MultiBackend] WebTorrent creation failed:', e instanceof Error ? e.message : String(e))
+        console.warn(
+          '[MultiBackend] WebTorrent creation failed:',
+          e instanceof Error ? e.message : String(e),
+        )
       }
     }
 

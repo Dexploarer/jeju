@@ -1,7 +1,14 @@
-import { getEQLiteUrl, getDWSUrl } from '@jejunetwork/config'
-import { config } from '../config'
+/**
+ * Leaderboard Configuration
+ *
+ * SECURITY: This module no longer stores private keys.
+ * Oracle signing is delegated to the KMS service (MPC or TEE).
+ */
+
+import { getDWSUrl, getEQLiteUrl } from '@jejunetwork/config'
 import { CHAIN_ID, CONTRACTS, NETWORK } from '../../lib/config'
 import { CHAIN_IDS } from '../../lib/config/networks'
+import { config } from '../config'
 
 export const LEADERBOARD_DB = {
   databaseId: config.leaderboardEqliteDatabaseId,
@@ -22,16 +29,23 @@ export const LEADERBOARD_CONTRACTS = {
   identityRegistry: CONTRACTS.identityRegistry,
 } as const
 
+/**
+ * Oracle configuration for attestation signing.
+ *
+ * SECURITY: No private key stored. Uses KMS service ID instead.
+ * Set LEADERBOARD_ORACLE_ENABLED=true to enable oracle attestations.
+ */
 export const LEADERBOARD_ORACLE = {
-  get privateKey(): `0x${string}` | undefined {
-    return config.attestationOraclePrivateKey as `0x${string}` | undefined
-  },
+  /** KMS service ID for signing attestations */
+  serviceId: process.env.LEADERBOARD_ORACLE_SERVICE_ID ?? 'leaderboard-oracle',
+  /** Whether oracle attestations are enabled */
   get isEnabled(): boolean {
-    return Boolean(
-      this.privateKey &&
-        LEADERBOARD_CONTRACTS.githubReputationProvider !==
-          '0x0000000000000000000000000000000000000000',
-    )
+    // Enabled if explicitly set, or if reputation provider is configured
+    const explicitlyEnabled = process.env.LEADERBOARD_ORACLE_ENABLED === 'true'
+    const providerConfigured =
+      LEADERBOARD_CONTRACTS.githubReputationProvider !==
+      '0x0000000000000000000000000000000000000000'
+    return explicitlyEnabled || providerConfigured
   },
 } as const
 

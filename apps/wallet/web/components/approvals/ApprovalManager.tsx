@@ -186,7 +186,11 @@ export const ApprovalManager: React.FC<ApprovalManagerProps> = ({
               : 'bg-card border border-border hover:border-emerald-500/30'
           }`}
         >
-          <p className={`text-2xl font-bold ${filter === 'all' ? 'text-emerald-400' : ''}`}>{approvals.length}</p>
+          <p
+            className={`text-2xl font-bold ${filter === 'all' ? 'text-emerald-400' : ''}`}
+          >
+            {approvals.length}
+          </p>
           <p className="text-xs text-muted-foreground mt-1">Total</p>
         </button>
         <button
@@ -199,7 +203,11 @@ export const ApprovalManager: React.FC<ApprovalManagerProps> = ({
               : 'bg-card border border-border hover:border-yellow-500/30'
           }`}
         >
-          <p className={`text-2xl font-bold ${filter === 'unlimited' ? 'text-yellow-400' : ''}`}>{unlimitedCount}</p>
+          <p
+            className={`text-2xl font-bold ${filter === 'unlimited' ? 'text-yellow-400' : ''}`}
+          >
+            {unlimitedCount}
+          </p>
           <p className="text-xs text-muted-foreground mt-1">Unlimited</p>
         </button>
         <button
@@ -212,7 +220,11 @@ export const ApprovalManager: React.FC<ApprovalManagerProps> = ({
               : 'bg-card border border-border hover:border-red-500/30'
           }`}
         >
-          <p className={`text-2xl font-bold ${filter === 'risky' ? 'text-red-400' : ''}`}>{riskyCount}</p>
+          <p
+            className={`text-2xl font-bold ${filter === 'risky' ? 'text-red-400' : ''}`}
+          >
+            {riskyCount}
+          </p>
           <p className="text-xs text-muted-foreground mt-1">Risky</p>
         </button>
       </div>
@@ -268,7 +280,9 @@ export const ApprovalManager: React.FC<ApprovalManagerProps> = ({
             <span className="text-2xl">✨</span>
           </div>
           <h3 className="font-bold text-lg">No Approvals Found</h3>
-          <p className="text-muted-foreground mt-2">Your wallet is squeaky clean</p>
+          <p className="text-muted-foreground mt-2">
+            Your wallet is squeaky clean
+          </p>
           {filter !== 'all' && (
             <button
               type="button"
@@ -308,15 +322,15 @@ export const ApprovalManager: React.FC<ApprovalManagerProps> = ({
                         : 'border-border hover:border-amber-500/50'
                     }`}
                   >
-                    {isSelected && <span className="text-xs text-white font-bold">✓</span>}
+                    {isSelected && (
+                      <span className="text-xs text-white font-bold">✓</span>
+                    )}
                   </button>
 
                   {/* Token Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <span className="font-bold">
-                        {approval.token.symbol}
-                      </span>
+                      <span className="font-bold">{approval.token.symbol}</span>
                       {approval.isUnlimited && (
                         <span className="px-2 py-0.5 text-xs font-semibold bg-yellow-500/20 text-yellow-400 rounded-lg border border-yellow-500/30">
                           Unlimited

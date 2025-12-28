@@ -222,13 +222,13 @@ export {
 // ============================================================================
 
 export {
-  EqliteTestClient,
   checkChainAvailable,
   // Individual service checks
   checkEqliteAvailable,
   checkIpfsAvailable,
   checkSolanaAvailable,
   describeWithInfra,
+  EqliteTestClient,
   getChainConfig,
   getInfraConfig,
   // Infrastructure status

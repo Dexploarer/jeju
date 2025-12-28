@@ -13,10 +13,10 @@
 import { INFRA_PORTS } from '@jejunetwork/config'
 import type { Address } from 'viem'
 import {
-  type ServiceConfig,
-  type ServiceInstance,
   getServiceByName,
   provisionService,
+  type ServiceConfig,
+  type ServiceInstance,
 } from '../services'
 
 // EQLite service configuration
@@ -128,7 +128,9 @@ export function getEQLiteClientPort(): number {
     return 4661
   }
 
-  const clientPort = eqliteServiceInstance.ports.find((p) => p.container === 4661)
+  const clientPort = eqliteServiceInstance.ports.find(
+    (p) => p.container === 4661,
+  )
   return clientPort?.host ?? 4661
 }
 
@@ -210,6 +212,3 @@ export function getDatabaseConnectionInfo(databaseId: string): {
     httpUrl: `${getEQLiteEndpoint()}/v1`,
   }
 }
-
-
-

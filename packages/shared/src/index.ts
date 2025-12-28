@@ -498,6 +498,14 @@ export {
 } from './retry'
 // Schema Types
 export { type IPFSUploadResponse, IPFSUploadResponseSchema } from './schemas'
+// Key Security Validation (TEE/KMS enforcement)
+export {
+  enforceKeySecurityAtStartup,
+  getKMSConfig,
+  type KeySecurityValidationResult,
+  shouldUseKMS,
+  validateKeySecurityConfig,
+} from './security/key-validation'
 // Security Middleware
 export {
   type RateLimitConfig,
@@ -717,6 +725,7 @@ export {
   RPC_URLS as X402_RPC_URLS,
   type SettlementResponse,
   signPaymentPayload,
+  signPaymentPayloadWithKMS,
   type UntrustedPaymentPayload,
   USDC_ADDRESSES,
   verifyPayment,

@@ -96,7 +96,10 @@ export const eqliteDatabasePlugin: Plugin = {
     const databaseId = getEqliteDatabaseId() ?? 'eliza'
     const migrated = await checkMigrationStatus(eqlite, databaseId)
     if (!migrated) {
-      logger.info({ src: 'plugin:eqlite' }, 'Running EQLite schema migrations...')
+      logger.info(
+        { src: 'plugin:eqlite' },
+        'Running EQLite schema migrations...',
+      )
       await runEQLiteMigrations(eqlite, databaseId)
     }
 

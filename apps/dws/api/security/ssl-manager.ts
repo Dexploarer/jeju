@@ -1,6 +1,6 @@
 /**
  * SSL/ACME Certificate Manager
- * 
+ *
  * Automatic SSL certificate provisioning and renewal:
  * - ACME (Let's Encrypt) integration
  * - Custom certificate upload
@@ -9,7 +9,12 @@
  * - Certificate storage with encryption
  */
 
-import { createHash, randomBytes, createCipheriv, createDecipheriv } from 'crypto'
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHash,
+  randomBytes,
+} from 'node:crypto'
 import { z } from 'zod'
 import type { BackendManager } from '../storage/backends'
 
@@ -17,7 +22,7 @@ import type { BackendManager } from '../storage/backends'
 // Types
 // ============================================================================
 
-export type CertificateStatus = 
+export type CertificateStatus =
   | 'pending'
   | 'validating'
   | 'issued'
@@ -33,22 +38,22 @@ export interface Certificate {
   domain: string
   altNames: string[]
   status: CertificateStatus
-  
+
   // Certificate data (encrypted)
   certificatePem?: string
   privateKeyPem?: string
   chainPem?: string
-  
+
   // ACME info
   acmeAccountId?: string
   acmeOrderUrl?: string
-  
+
   // Timing
   issuedAt?: number
   expiresAt?: number
   renewAfter?: number
   lastRenewalAttempt?: number
-  
+
   // Metadata
   issuer: string
   createdAt: number
@@ -89,11 +94,19 @@ export interface CertificateRequest {
 // ============================================================================
 
 export const CertificateRequestSchema = z.object({
-  domain: z.string().min(1).max(253).regex(/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$/i),
+  domain: z
+    .string()
+    .min(1)
+    .max(253)
+    .regex(
+      /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$/i,
+    ),
   altNames: z.array(z.string()).max(100).optional(),
   email: z.string().email(),
   autoRenew: z.boolean().default(true),
-  preferredChallenge: z.enum(['http-01', 'dns-01', 'tls-alpn-01']).default('http-01'),
+  preferredChallenge: z
+    .enum(['http-01', 'dns-01', 'tls-alpn-01'])
+    .default('http-01'),
 })
 
 export const CustomCertificateSchema = z.object({
@@ -126,7 +139,13 @@ interface ACMEOrder {
 
 interface ACMEAuthorization {
   identifier: { type: 'dns'; value: string }
-  status: 'pending' | 'valid' | 'invalid' | 'deactivated' | 'expired' | 'revoked'
+  status:
+    | 'pending'
+    | 'valid'
+    | 'invalid'
+    | 'deactivated'
+    | 'expired'
+    | 'revoked'
   challenges: Array<{
     type: ChallengeType
     status: 'pending' | 'processing' | 'valid' | 'invalid'
@@ -148,7 +167,7 @@ class ACMEClient {
 
   async initialize(): Promise<void> {
     const response = await fetch(this.directoryUrl)
-    this.directory = await response.json() as ACMEDirectory
+    this.directory = (await response.json()) as ACMEDirectory
   }
 
   async getNonce(): Promise<string> {
@@ -159,12 +178,15 @@ class ACMEClient {
     }
 
     if (!this.directory) throw new Error('ACME client not initialized')
-    
+
     const response = await fetch(this.directory.newNonce, { method: 'HEAD' })
     return response.headers.get('Replay-Nonce') ?? ''
   }
 
-  async createAccount(email: string, privateKey: CryptoKey): Promise<{ accountUrl: string }> {
+  async createAccount(
+    email: string,
+    privateKey: CryptoKey,
+  ): Promise<{ accountUrl: string }> {
     if (!this.directory) throw new Error('ACME client not initialized')
 
     const payload = {
@@ -180,7 +202,7 @@ class ACMEClient {
 
     this.currentNonce = response.headers.get('Replay-Nonce')
     const accountUrl = response.headers.get('Location') ?? ''
-    
+
     return { accountUrl }
   }
 
@@ -192,7 +214,7 @@ class ACMEClient {
     if (!this.directory) throw new Error('ACME client not initialized')
 
     const payload = {
-      identifiers: domains.map(d => ({ type: 'dns' as const, value: d })),
+      identifiers: domains.map((d) => ({ type: 'dns' as const, value: d })),
     }
 
     const response = await this.signedRequest(
@@ -211,7 +233,12 @@ class ACMEClient {
     accountUrl: string,
     privateKey: CryptoKey,
   ): Promise<ACMEAuthorization> {
-    const response = await this.signedRequest(authUrl, '', privateKey, accountUrl)
+    const response = await this.signedRequest(
+      authUrl,
+      '',
+      privateKey,
+      accountUrl,
+    )
     this.currentNonce = response.headers.get('Replay-Nonce')
     return response.json() as Promise<ACMEAuthorization>
   }
@@ -221,7 +248,12 @@ class ACMEClient {
     accountUrl: string,
     privateKey: CryptoKey,
   ): Promise<void> {
-    const response = await this.signedRequest(challengeUrl, {}, privateKey, accountUrl)
+    const response = await this.signedRequest(
+      challengeUrl,
+      {},
+      privateKey,
+      accountUrl,
+    )
     this.currentNonce = response.headers.get('Replay-Nonce')
   }
 
@@ -246,7 +278,12 @@ class ACMEClient {
     accountUrl: string,
     privateKey: CryptoKey,
   ): Promise<string> {
-    const response = await this.signedRequest(certUrl, '', privateKey, accountUrl)
+    const response = await this.signedRequest(
+      certUrl,
+      '',
+      privateKey,
+      accountUrl,
+    )
     this.currentNonce = response.headers.get('Replay-Nonce')
     return response.text()
   }
@@ -261,14 +298,14 @@ class ACMEClient {
 
     // Export public key as JWK for header
     const publicKey = await crypto.subtle.exportKey('jwk', privateKey)
-    
+
     // Build protected header
     const protectedHeader: Record<string, unknown> = {
       alg: 'ES256',
       nonce,
       url,
     }
-    
+
     // Include jwk for new account, kid for existing
     if (accountUrl) {
       protectedHeader.kid = accountUrl
@@ -281,17 +318,24 @@ class ACMEClient {
       }
     }
 
-    const protectedB64 = Buffer.from(JSON.stringify(protectedHeader)).toString('base64url')
-    const payloadB64 = payload === '' ? '' : Buffer.from(JSON.stringify(payload)).toString('base64url')
-    
+    const protectedB64 = Buffer.from(JSON.stringify(protectedHeader)).toString(
+      'base64url',
+    )
+    const payloadB64 =
+      payload === ''
+        ? ''
+        : Buffer.from(JSON.stringify(payload)).toString('base64url')
+
     // Sign the message
-    const signatureInput = new TextEncoder().encode(`${protectedB64}.${payloadB64}`)
+    const signatureInput = new TextEncoder().encode(
+      `${protectedB64}.${payloadB64}`,
+    )
     const signature = await crypto.subtle.sign(
       { name: 'ECDSA', hash: 'SHA-256' },
       privateKey,
       signatureInput,
     )
-    
+
     // Convert signature from DER to raw R||S format for JWS
     const signatureB64 = Buffer.from(signature).toString('base64url')
 
@@ -308,10 +352,13 @@ class ACMEClient {
     })
   }
 
-  async computeKeyAuthorization(token: string, accountKey: CryptoKey): Promise<string> {
+  async computeKeyAuthorization(
+    token: string,
+    accountKey: CryptoKey,
+  ): Promise<string> {
     // Export public key as JWK
     const jwk = await crypto.subtle.exportKey('jwk', accountKey)
-    
+
     // Compute JWK thumbprint (SHA-256 of canonical JWK)
     const canonicalJwk = JSON.stringify({
       crv: jwk.crv,
@@ -319,13 +366,13 @@ class ACMEClient {
       x: jwk.x,
       y: jwk.y,
     })
-    
+
     const thumbprintBytes = await crypto.subtle.digest(
       'SHA-256',
       new TextEncoder().encode(canonicalJwk),
     )
     const thumbprint = Buffer.from(thumbprintBytes).toString('base64url')
-    
+
     return `${token}.${thumbprint}`
   }
 }
@@ -339,10 +386,10 @@ export class SSLCertificateManager {
   private accounts = new Map<string, ACMEAccount>()
   private challenges = new Map<string, ChallengeRecord>()
   private challengesByDomain = new Map<string, string>() // domain -> challengeId
-  
+
   private acmeClient: ACMEClient
   private encryptionKey: Buffer
-  
+
   private renewalCheckInterval: ReturnType<typeof setInterval> | null = null
 
   constructor(config: {
@@ -353,7 +400,7 @@ export class SSLCertificateManager {
     // Backend will be used for certificate persistence in production
     void config.backend
     this.acmeClient = new ACMEClient(config.staging ?? false)
-    
+
     // Generate or use provided encryption key
     this.encryptionKey = config.encryptionKey
       ? Buffer.from(config.encryptionKey, 'hex')
@@ -392,12 +439,19 @@ export class SSLCertificateManager {
     this.certificates.set(certId, cert)
 
     // Start async issuance
-    this.issueCertificate(cert, request.email, request.preferredChallenge ?? 'http-01', allDomains)
-      .catch(error => {
-        console.error(`[SSL] Certificate issuance failed for ${request.domain}:`, error)
-        cert.status = 'failed'
-        cert.updatedAt = Date.now()
-      })
+    this.issueCertificate(
+      cert,
+      request.email,
+      request.preferredChallenge ?? 'http-01',
+      allDomains,
+    ).catch((error) => {
+      console.error(
+        `[SSL] Certificate issuance failed for ${request.domain}:`,
+        error,
+      )
+      cert.status = 'failed'
+      cert.updatedAt = Date.now()
+    })
 
     return cert
   }
@@ -414,7 +468,9 @@ export class SSLCertificateManager {
     console.log(`[SSL] Issuing certificate for ${cert.domain}`)
 
     // Get or create ACME account
-    let account = Array.from(this.accounts.values()).find(a => a.email === email)
+    let account = Array.from(this.accounts.values()).find(
+      (a) => a.email === email,
+    )
     if (!account) {
       account = await this.createACMEAccount(email)
     }
@@ -428,21 +484,34 @@ export class SSLCertificateManager {
 
     // Create order
     const accountKey = await this.importAccountKey(account.privateKeyPem)
-    const order = await this.acmeClient.createOrder(account.accountUrl, domains, accountKey)
+    const order = await this.acmeClient.createOrder(
+      account.accountUrl,
+      domains,
+      accountKey,
+    )
     cert.acmeOrderUrl = order.finalize
 
     // Process authorizations
     for (const authUrl of order.authorizations) {
-      const auth = await this.acmeClient.getAuthorization(authUrl, account.accountUrl, accountKey)
-      
+      const auth = await this.acmeClient.getAuthorization(
+        authUrl,
+        account.accountUrl,
+        accountKey,
+      )
+
       // Find the requested challenge type
-      const challenge = auth.challenges.find(c => c.type === challengeType)
+      const challenge = auth.challenges.find((c) => c.type === challengeType)
       if (!challenge) {
-        throw new Error(`Challenge type ${challengeType} not available for ${auth.identifier.value}`)
+        throw new Error(
+          `Challenge type ${challengeType} not available for ${auth.identifier.value}`,
+        )
       }
 
       // Create challenge record
-      const keyAuth = await this.acmeClient.computeKeyAuthorization(challenge.token, accountKey)
+      const keyAuth = await this.acmeClient.computeKeyAuthorization(
+        challenge.token,
+        accountKey,
+      )
       const challengeRecord: ChallengeRecord = {
         challengeId: challenge.token,
         certId: cert.certId,
@@ -458,10 +527,16 @@ export class SSLCertificateManager {
       this.challengesByDomain.set(auth.identifier.value, challenge.token)
 
       // Wait for challenge setup (external DNS/HTTP setup needed)
-      console.log(`[SSL] Challenge ready for ${auth.identifier.value}: ${challengeType}`)
+      console.log(
+        `[SSL] Challenge ready for ${auth.identifier.value}: ${challengeType}`,
+      )
 
       // In production, wait for challenge to be provisioned, then respond
-      await this.acmeClient.respondToChallenge(challenge.url, account.accountUrl, accountKey)
+      await this.acmeClient.respondToChallenge(
+        challenge.url,
+        account.accountUrl,
+        accountKey,
+      )
     }
 
     // Poll for order completion
@@ -499,10 +574,12 @@ export class SSLCertificateManager {
       cert.status = 'issued'
       cert.issuedAt = Date.now()
       cert.expiresAt = this.parseCertificateExpiry(certificate)
-      cert.renewAfter = cert.expiresAt - (30 * 24 * 60 * 60 * 1000) // Renew 30 days before expiry
+      cert.renewAfter = cert.expiresAt - 30 * 24 * 60 * 60 * 1000 // Renew 30 days before expiry
       cert.updatedAt = Date.now()
 
-      console.log(`[SSL] Certificate issued for ${cert.domain}, expires ${new Date(cert.expiresAt).toISOString()}`)
+      console.log(
+        `[SSL] Certificate issued for ${cert.domain}, expires ${new Date(cert.expiresAt).toISOString()}`,
+      )
     }
   }
 
@@ -574,7 +651,9 @@ export class SSLCertificateManager {
     return undefined
   }
 
-  getCertificateFiles(certId: string): { certificate: string; privateKey: string; chain?: string } | undefined {
+  getCertificateFiles(
+    certId: string,
+  ): { certificate: string; privateKey: string; chain?: string } | undefined {
     const cert = this.certificates.get(certId)
     if (!cert || cert.status !== 'issued') return undefined
     if (!cert.certificatePem || !cert.privateKeyPem) return undefined
@@ -617,9 +696,12 @@ export class SSLCertificateManager {
 
   private startRenewalChecker(): void {
     // Check every hour
-    this.renewalCheckInterval = setInterval(() => {
-      this.checkRenewals().catch(console.error)
-    }, 60 * 60 * 1000)
+    this.renewalCheckInterval = setInterval(
+      () => {
+        this.checkRenewals().catch(console.error)
+      },
+      60 * 60 * 1000,
+    )
   }
 
   private async checkRenewals(): Promise<void> {
@@ -639,12 +721,10 @@ export class SSLCertificateManager {
       const account = Array.from(this.accounts.values())[0]
       if (account) {
         try {
-          await this.issueCertificate(
-            cert,
-            account.email,
-            'http-01',
-            [cert.domain, ...cert.altNames],
-          )
+          await this.issueCertificate(cert, account.email, 'http-01', [
+            cert.domain,
+            ...cert.altNames,
+          ])
         } catch (error) {
           console.error(`[SSL] Renewal failed for ${cert.domain}:`, error)
           cert.status = 'issued' // Keep old cert valid
@@ -671,7 +751,10 @@ export class SSLCertificateManager {
       ['sign', 'verify'],
     )
 
-    const result = await this.acmeClient.createAccount(email, keyPair.privateKey)
+    const result = await this.acmeClient.createAccount(
+      email,
+      keyPair.privateKey,
+    )
     const privateKeyPem = await this.exportPrivateKey(keyPair.privateKey)
 
     const account: ACMEAccount = {
@@ -709,18 +792,21 @@ export class SSLCertificateManager {
     return `-----BEGIN PRIVATE KEY-----\n${lines.join('\n')}\n-----END PRIVATE KEY-----`
   }
 
-  private async generateCSR(domains: string[], privateKey: CryptoKey): Promise<string> {
+  private async generateCSR(
+    domains: string[],
+    privateKey: CryptoKey,
+  ): Promise<string> {
     // Generate CSR using openssl subprocess for proper ASN.1 encoding
     // This is the most reliable way to generate valid CSRs
     const primaryDomain = domains[0]
     const sanConfig = domains.map((d, i) => `DNS.${i + 1} = ${d}`).join('\n')
-    
+
     // Export private key to PEM
     const keyPem = await this.exportPrivateKey(privateKey)
     const keyFile = `/tmp/dws-csr-key-${Date.now()}.pem`
     const csrFile = `/tmp/dws-csr-${Date.now()}.pem`
     const configFile = `/tmp/dws-csr-config-${Date.now()}.cnf`
-    
+
     // Write OpenSSL config
     const config = `
 [req]
@@ -739,42 +825,56 @@ subjectAltName = @alt_names
 [alt_names]
 ${sanConfig}
 `
-    
+
     try {
       await Bun.write(keyFile, keyPem)
       await Bun.write(configFile, config)
-      
+
       // Generate CSR using openssl
-      const proc = Bun.spawn([
-        'openssl', 'req', '-new',
-        '-key', keyFile,
-        '-out', csrFile,
-        '-config', configFile,
-      ], {
-        stdout: 'pipe',
-        stderr: 'pipe',
-      })
-      
+      const proc = Bun.spawn(
+        [
+          'openssl',
+          'req',
+          '-new',
+          '-key',
+          keyFile,
+          '-out',
+          csrFile,
+          '-config',
+          configFile,
+        ],
+        {
+          stdout: 'pipe',
+          stderr: 'pipe',
+        },
+      )
+
       const exitCode = await proc.exited
       if (exitCode !== 0) {
         const stderr = await new Response(proc.stderr).text()
         throw new Error(`CSR generation failed: ${stderr}`)
       }
-      
+
       // Read generated CSR
       const csr = await Bun.file(csrFile).text()
       return csr.trim()
     } finally {
       // Cleanup temp files
-      const fs = await import('fs/promises')
+      const fs = await import('node:fs/promises')
       await fs.unlink(keyFile).catch(() => {})
       await fs.unlink(csrFile).catch(() => {})
       await fs.unlink(configFile).catch(() => {})
     }
   }
 
-  private parseCertificateChain(pem: string): { certificate: string; chain: string } {
-    const certs = pem.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g) ?? []
+  private parseCertificateChain(pem: string): {
+    certificate: string
+    chain: string
+  } {
+    const certs =
+      pem.match(
+        /-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g,
+      ) ?? []
     return {
       certificate: certs[0] ?? '',
       chain: certs.slice(1).join('\n'),
@@ -784,7 +884,7 @@ ${sanConfig}
   private parseCertificateExpiry(_pem: string): number {
     // In production, parse X.509 certificate to get notAfter
     // For now, return 90 days from now (typical Let's Encrypt validity)
-    return Date.now() + (90 * 24 * 60 * 60 * 1000)
+    return Date.now() + 90 * 24 * 60 * 60 * 1000
   }
 
   private parseCertificateSANs(_pem: string): string[] {
@@ -795,12 +895,12 @@ ${sanConfig}
   private encrypt(data: string): string {
     const iv = randomBytes(16)
     const cipher = createCipheriv('aes-256-gcm', this.encryptionKey, iv)
-    
+
     let encrypted = cipher.update(data, 'utf8', 'base64')
     encrypted += cipher.final('base64')
-    
+
     const authTag = cipher.getAuthTag()
-    
+
     return `${iv.toString('base64')}:${authTag.toString('base64')}:${encrypted}`
   }
 
@@ -808,13 +908,13 @@ ${sanConfig}
     const [ivB64, authTagB64, encrypted] = data.split(':')
     const iv = Buffer.from(ivB64, 'base64')
     const authTag = Buffer.from(authTagB64, 'base64')
-    
+
     const decipher = createDecipheriv('aes-256-gcm', this.encryptionKey, iv)
     decipher.setAuthTag(authTag)
-    
+
     let decrypted = decipher.update(encrypted, 'base64', 'utf8')
     decrypted += decipher.final('utf8')
-    
+
     return decrypted
   }
 }
@@ -838,4 +938,3 @@ export function getSSLManager(backend: BackendManager): SSLCertificateManager {
   }
   return sslManager
 }
-

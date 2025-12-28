@@ -62,12 +62,21 @@ export function Sidebar() {
       </div>
 
       {/* Status Bar */}
-      <div className={clsx('px-4 py-3 border-b border-volcanic-800/60', isCollapsed && 'flex justify-center')}>
+      <div
+        className={clsx(
+          'px-4 py-3 border-b border-volcanic-800/60',
+          isCollapsed && 'flex justify-center',
+        )}
+      >
         {isCollapsed ? (
-          <div className={clsx(
-            'w-3 h-3 rounded-full',
-            runningServices > 0 ? 'bg-jeju-500 shadow-lg shadow-jeju-500/50 animate-pulse' : 'bg-volcanic-600'
-          )} />
+          <div
+            className={clsx(
+              'w-3 h-3 rounded-full',
+              runningServices > 0
+                ? 'bg-jeju-500 shadow-lg shadow-jeju-500/50 animate-pulse'
+                : 'bg-volcanic-600',
+            )}
+          />
         ) : (
           <>
             <div className="flex items-center justify-between text-sm">
@@ -76,7 +85,9 @@ export function Sidebar() {
                 {runningServices > 0 ? (
                   <>
                     <span className="status-healthy" />
-                    <span className="text-jeju-400 font-medium">{runningServices} running</span>
+                    <span className="text-jeju-400 font-medium">
+                      {runningServices} running
+                    </span>
                   </>
                 ) : (
                   <>
@@ -114,12 +125,15 @@ export function Sidebar() {
                 : 'text-volcanic-400 hover:text-volcanic-100 hover:bg-volcanic-800/50',
             )}
           >
-            <span className={clsx(currentView === item.id && 'drop-shadow-[0_0_8px_rgba(34,197,94,0.4)]')}>
+            <span
+              className={clsx(
+                currentView === item.id &&
+                  'drop-shadow-[0_0_8px_rgba(34,197,94,0.4)]',
+              )}
+            >
               {item.icon}
             </span>
-            {!isCollapsed && (
-              <span className="font-medium">{item.label}</span>
-            )}
+            {!isCollapsed && <span className="font-medium">{item.label}</span>}
           </button>
         ))}
       </nav>
@@ -131,12 +145,17 @@ export function Sidebar() {
             type="button"
             className={clsx(
               'card-hover p-3 w-full',
-              isCollapsed ? 'flex justify-center' : 'text-left'
+              isCollapsed ? 'flex justify-center' : 'text-left',
             )}
             onClick={() => handleNavClick('wallet')}
             aria-label="Open wallet"
           >
-            <div className={clsx('flex items-center gap-3', isCollapsed && 'justify-center')}>
+            <div
+              className={clsx(
+                'flex items-center gap-3',
+                isCollapsed && 'justify-center',
+              )}
+            >
               <div className="w-9 h-9 rounded-full bg-gradient-to-br from-jeju-500/20 to-emerald-500/20 flex items-center justify-center ring-2 ring-jeju-500/20">
                 <Wallet size={16} className="text-jeju-400" />
               </div>
@@ -156,7 +175,12 @@ export function Sidebar() {
           <button
             type="button"
             onClick={() => handleNavClick('wallet')}
-            className={clsx('btn-primary', isCollapsed ? 'w-11 h-11 p-0 flex items-center justify-center' : 'w-full')}
+            className={clsx(
+              'btn-primary',
+              isCollapsed
+                ? 'w-11 h-11 p-0 flex items-center justify-center'
+                : 'w-full',
+            )}
             aria-label="Connect wallet"
           >
             {isCollapsed ? <Wallet size={18} /> : 'Connect Wallet'}
@@ -199,10 +223,12 @@ export function Sidebar() {
       )}
 
       {/* Mobile sidebar */}
-      <aside className={clsx(
-        'lg:hidden fixed inset-y-0 left-0 z-50 w-72 bg-volcanic-900/95 backdrop-blur-md border-r border-volcanic-800 flex flex-col transition-transform duration-300',
-        isMobileOpen ? 'translate-x-0' : '-translate-x-full'
-      )}>
+      <aside
+        className={clsx(
+          'lg:hidden fixed inset-y-0 left-0 z-50 w-72 bg-volcanic-900/95 backdrop-blur-md border-r border-volcanic-800 flex flex-col transition-transform duration-300',
+          isMobileOpen ? 'translate-x-0' : '-translate-x-full',
+        )}
+      >
         <button
           type="button"
           onClick={() => setIsMobileOpen(false)}
@@ -215,10 +241,12 @@ export function Sidebar() {
       </aside>
 
       {/* Desktop sidebar */}
-      <aside className={clsx(
-        'hidden lg:flex relative bg-volcanic-900/50 border-r border-volcanic-800 flex-col transition-all duration-300',
-        isCollapsed ? 'w-20' : 'w-64'
-      )}>
+      <aside
+        className={clsx(
+          'hidden lg:flex relative bg-volcanic-900/50 border-r border-volcanic-800 flex-col transition-all duration-300',
+          isCollapsed ? 'w-20' : 'w-64',
+        )}
+      >
         {sidebarContent}
       </aside>
     </>

@@ -14,7 +14,9 @@ export function Header() {
   const [isDark, setIsDark] = useState(() => {
     if (typeof window === 'undefined') return true
     const savedTheme = localStorage.getItem('crucible-theme')
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    const prefersDark = window.matchMedia(
+      '(prefers-color-scheme: dark)',
+    ).matches
     return savedTheme ? savedTheme === 'dark' : prefersDark
   })
 
@@ -24,7 +26,7 @@ export function Header() {
 
   useEffect(() => {
     setShowMobileMenu(false)
-  }, [pathname])
+  }, [])
 
   useEffect(() => {
     document.body.style.overflow = showMobileMenu ? 'hidden' : ''
@@ -81,7 +83,10 @@ export function Header() {
               </span>
             </Link>
 
-            <nav className="hidden lg:flex items-center gap-1" aria-label="Main">
+            <nav
+              className="hidden lg:flex items-center gap-1"
+              aria-label="Main"
+            >
               {NAV_ITEMS.map((item) => (
                 <Link
                   key={item.href}
@@ -99,10 +104,9 @@ export function Header() {
             </nav>
 
             <div className="flex items-center gap-2 md:gap-3">
-              <div
+              <output
                 className="hidden md:flex items-center gap-2 px-3 py-2 rounded-xl"
                 style={{ backgroundColor: 'var(--bg-secondary)' }}
-                role="status"
               >
                 <span
                   className={`w-2 h-2 rounded-full ${isHealthy ? 'status-dot-active' : 'status-dot-error'}`}
@@ -114,7 +118,7 @@ export function Header() {
                 >
                   {health?.network ?? 'Connecting'}
                 </span>
-              </div>
+              </output>
 
               <button
                 type="button"
@@ -231,20 +235,25 @@ export function Header() {
             ))}
           </div>
 
-          <div className="p-4 border-t" style={{ borderColor: 'var(--border)' }}>
-            <div
+          <div
+            className="p-4 border-t"
+            style={{ borderColor: 'var(--border)' }}
+          >
+            <output
               className="flex items-center gap-3 p-3 rounded-xl"
               style={{ backgroundColor: 'var(--bg-secondary)' }}
-              role="status"
             >
               <span
                 className={`w-3 h-3 rounded-full flex-shrink-0 ${isHealthy ? 'status-dot-active' : 'status-dot-error'}`}
                 aria-hidden="true"
               />
-              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+              <p
+                className="text-sm font-medium"
+                style={{ color: 'var(--text-primary)' }}
+              >
                 {health?.network ?? 'Connecting'}
               </p>
-            </div>
+            </output>
           </div>
         </div>
       </nav>

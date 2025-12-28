@@ -96,11 +96,6 @@ export {
   resetRateLimiter,
 } from './rate-limiting/core.js'
 export {
-  EQLiteRateLimitStore,
-  type EQLiteRateLimitStoreConfig,
-  createEQLiteRateLimitStore,
-} from './rate-limiting/eqlite-store.js'
-export {
   type RateLimitContext,
   type RateLimitPluginConfig,
   rateLimitPlugin,
@@ -108,6 +103,11 @@ export {
   tieredRateLimit,
   withRateLimit,
 } from './rate-limiting/elysia.js'
+export {
+  createEQLiteRateLimitStore,
+  EQLiteRateLimitStore,
+  type EQLiteRateLimitStoreConfig,
+} from './rate-limiting/eqlite-store.js'
 export {
   type RateLimitEntry,
   type RateLimiterConfig,

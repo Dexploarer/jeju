@@ -60,9 +60,15 @@ function MarketCard({ market }: { market: PredictionMarket }) {
         </div>
 
         {/* Probability Bar */}
-        <div className="mb-4" role="img" aria-label={`Yes ${yesPercent}%, No ${noPercent}%`}>
+        <div
+          className="mb-4"
+          role="img"
+          aria-label={`Yes ${yesPercent}%, No ${noPercent}%`}
+        >
           <div className="flex items-center justify-between text-sm mb-2">
-            <span className="text-success font-semibold">Yes {yesPercent}%</span>
+            <span className="text-success font-semibold">
+              Yes {yesPercent}%
+            </span>
             <span className="text-error font-semibold">No {noPercent}%</span>
           </div>
           <div className="h-3 rounded-full overflow-hidden flex bg-surface-secondary">
@@ -176,7 +182,9 @@ export default function MarketsPage() {
       {/* Error State */}
       {error && (
         <ErrorState
-          message={error instanceof Error ? error.message : 'Failed to load markets'}
+          message={
+            error instanceof Error ? error.message : 'Failed to load markets'
+          }
           onRetry={() => refetch()}
         />
       )}

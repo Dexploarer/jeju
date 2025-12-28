@@ -1,6 +1,6 @@
 /**
  * Autocrat Comprehensive E2E Tests
- * 
+ *
  * Tests ALL pages, components, buttons, and features with:
  * - Page load verification
  * - AI visual verification with caching
@@ -153,7 +153,7 @@ test.beforeAll(async () => {
     verifyImage = ai.verifyImage
     isLLMConfigured = ai.isLLMConfigured
     console.log(isLLMConfigured?.() ? '✅ AI enabled' : '⚠️ No LLM key')
-} catch {
+  } catch {
     console.log('⚠️ AI not available')
   }
 })
@@ -165,7 +165,7 @@ function setupErrorCapture(page: import('@playwright/test').Page): {
 } {
   const errors: string[] = []
   let hasKnownBug = false
-  
+
   page.on('console', (msg) => {
     if (msg.type() === 'error') {
       const text = msg.text()
@@ -179,7 +179,7 @@ function setupErrorCapture(page: import('@playwright/test').Page): {
       errors.push(text)
     }
   })
-  
+
   page.on('pageerror', (error) => {
     if (error.message.includes('Cannot read properties')) {
       hasKnownBug = true
@@ -187,8 +187,13 @@ function setupErrorCapture(page: import('@playwright/test').Page): {
     }
     errors.push(`PageError: ${error.message}`)
   })
-  
-  return { errors, get hasKnownBug() { return hasKnownBug } }
+
+  return {
+    errors,
+    get hasKnownBug() {
+      return hasKnownBug
+    },
+  }
 }
 
 // Helper for AI verification with caching
@@ -198,13 +203,13 @@ async function runAIVerification(
   routePath: string,
 ): Promise<void> {
   if (!isLLMConfigured?.() || !verifyImage) return
-  
+
   const hash = hashImage(screenshotPath)
   const cached = verificationCache[hash]
   const verification = cached
     ? cached.result
     : await verifyImage(screenshotPath, description)
-  
+
   if (!cached) {
     verificationCache[hash] = {
       result: verification,
@@ -213,7 +218,7 @@ async function runAIVerification(
     }
     saveCache()
   }
-  
+
   console.log(
     `${cached ? '📦' : '🔍'} ${routePath}: ${verification.quality} (${Math.round(verification.confidence * 100)}%)`,
   )
@@ -244,7 +249,7 @@ test.describe('Autocrat - Page Load Tests', () => {
         throw new Error(`Errors: ${errors.join(', ')}`)
       }
 
-        await expect(page.locator('body')).toBeVisible({ timeout: 10000 })
+      await expect(page.locator('body')).toBeVisible({ timeout: 10000 })
 
       const screenshotPath = join(
         SCREENSHOT_DIR,
@@ -261,48 +266,50 @@ test.describe('Autocrat - DAO List Page Components', () => {
   test('has all required UI elements', async ({ page }) => {
     await page.goto('/')
     await page.waitForTimeout(1000)
-    
+
     // Hero section - title is "DAOs with AI Leadership"
-    await expect(page.locator('h1:has-text("DAOs with AI Leadership")')).toBeVisible({
+    await expect(
+      page.locator('h1:has-text("DAOs with AI Leadership")'),
+    ).toBeVisible({
       timeout: 5000,
     })
-    
+
     // Create DAO button
     await expect(page.locator('text=Create DAO').first()).toBeVisible()
-    
+
     // My DAOs button
     await expect(page.locator('text=My DAOs')).toBeVisible()
-    
+
     // Search input
     await expect(page.locator('input[placeholder*="Search"]')).toBeVisible()
-    
+
     // Status filter dropdown
     await expect(page.locator('select')).toBeVisible()
-    
+
     await page.screenshot({
       path: join(SCREENSHOT_DIR, 'DAO-List-Components.png'),
       fullPage: true,
     })
   })
-  
+
   test('search input works', async ({ page }) => {
     await page.goto('/')
     await page.waitForTimeout(1000)
-    
+
     const searchInput = page.locator('input[placeholder*="Search"]')
     await searchInput.fill('test')
     await page.waitForTimeout(500)
-    
+
     // Verify search value is set
     await expect(searchInput).toHaveValue('test')
   })
-  
+
   test('status filter dropdown works', async ({ page }) => {
     await page.goto('/')
     await page.waitForTimeout(1000)
-    
+
     const statusSelect = page.locator('select')
-    
+
     // Test all status options
     for (const status of ['all', 'active', 'pending', 'paused', 'archived']) {
       await statusSelect.selectOption(status)
@@ -310,20 +317,20 @@ test.describe('Autocrat - DAO List Page Components', () => {
       await expect(statusSelect).toHaveValue(status)
     }
   })
-  
+
   test('Create DAO button navigates', async ({ page }) => {
     await page.goto('/')
     await page.waitForTimeout(1000)
-    
+
     await page.click('text=Create DAO')
     await page.waitForURL('**/create')
     await expect(page).toHaveURL(/\/create/)
   })
-  
+
   test('My DAOs button navigates', async ({ page }) => {
     await page.goto('/')
     await page.waitForTimeout(1000)
-    
+
     await page.click('text=My DAOs')
     await page.waitForURL('**/my-daos')
     await expect(page).toHaveURL(/\/my-daos/)
@@ -334,67 +341,69 @@ test.describe('Autocrat - Create DAO Wizard', () => {
   test('wizard has all 5 steps', async ({ page }) => {
     await page.goto('/create')
     await page.waitForTimeout(1000)
-    
+
     // Check step indicators
     for (const step of WIZARD_STEPS) {
       await expect(page.locator(`text=${step.name}`).first()).toBeVisible({
         timeout: 5000,
       })
     }
-    
+
     await page.screenshot({
       path: join(SCREENSHOT_DIR, 'Create-DAO-Steps.png'),
       fullPage: true,
     })
   })
-  
+
   test('Step 1: Basics form elements', async ({ page }) => {
     await page.goto('/create')
     await page.waitForTimeout(1000)
-    
+
     // Check form elements - "Organization basics" heading
-    await expect(page.locator('h2:has-text("Organization basics")')).toBeVisible()
+    await expect(
+      page.locator('h2:has-text("Organization basics")'),
+    ).toBeVisible()
     await expect(page.locator('input#dao-slug')).toBeVisible()
     await expect(page.locator('input#dao-display-name')).toBeVisible()
     await expect(page.locator('textarea#dao-description')).toBeVisible()
-    
+
     // Continue button
     const continueBtn = page.locator('button:has-text("Continue")')
     await expect(continueBtn).toBeVisible()
-    
+
     await page.screenshot({
       path: join(SCREENSHOT_DIR, 'Create-DAO-Step1.png'),
       fullPage: true,
     })
   })
-  
+
   test('Step 1: form validation', async ({ page }) => {
     await page.goto('/create')
     await page.waitForTimeout(1000)
-    
+
     // Fill in valid data - requires at least slug (3+ chars) and display name (2+ chars)
     await page.fill('input#dao-slug', 'test-dao')
     await page.fill('input#dao-display-name', 'Test DAO')
-    
+
     // Continue should be enabled now
     const continueBtn = page.locator('button:has-text("Continue")')
     await continueBtn.click()
-    
+
     // Should navigate to CEO step - "CEO configuration"
     await page.waitForTimeout(500)
     await expect(page.locator('h2:has-text("CEO configuration")')).toBeVisible()
   })
-  
+
   test('Step 2: CEO configuration', async ({ page }) => {
     await page.goto('/create')
     await page.waitForTimeout(500)
-    
+
     // Fill step 1
     await page.fill('input#dao-slug', 'test-dao')
     await page.fill('input#dao-display-name', 'Test DAO')
     await page.click('button:has-text("Continue")')
     await page.waitForTimeout(500)
-    
+
     // Step 2: CEO configuration
     await expect(page.locator('h2:has-text("CEO configuration")')).toBeVisible()
 
@@ -403,55 +412,55 @@ test.describe('Autocrat - Create DAO Wizard', () => {
 
     // AI Model section
     await expect(page.locator('text=AI Model')).toBeVisible()
-    
+
     // Decision style section
     await expect(page.locator('text=Decision Style')).toBeVisible()
-    
+
     await page.screenshot({
       path: join(SCREENSHOT_DIR, 'Create-DAO-Step2.png'),
       fullPage: true,
     })
   })
-  
+
   test('Step 3: Board configuration', async ({ page }) => {
     await page.goto('/create')
     await page.waitForTimeout(500)
-    
+
     // Navigate to step 3
     await page.fill('input#dao-slug', 'test-dao')
     await page.fill('input#dao-display-name', 'Test DAO')
     await page.click('button:has-text("Continue")')
     await page.waitForTimeout(300)
-    
+
     // Fill CEO name (required for step 2 validation)
     await page.fill('input#agent-name-ceo', 'Test CEO')
     await page.click('button:has-text("Continue")')
     await page.waitForTimeout(500)
-    
+
     // Step 3: Board members
     await expect(page.locator('h2:has-text("Board members")')).toBeVisible()
     await expect(page.locator('text=Add Board Member')).toBeVisible()
-    
+
     await page.screenshot({
       path: join(SCREENSHOT_DIR, 'Create-DAO-Step3.png'),
       fullPage: true,
     })
   })
-  
+
   test('Step 4: Governance configuration', async ({ page }) => {
     await page.goto('/create')
     await page.waitForTimeout(500)
-    
+
     // Navigate to step 4
     await page.fill('input#dao-slug', 'test-dao')
     await page.fill('input#dao-display-name', 'Test DAO')
     await page.click('button:has-text("Continue")')
     await page.waitForTimeout(300)
-    
+
     await page.fill('input#agent-name-ceo', 'Test CEO')
     await page.click('button:has-text("Continue")')
     await page.waitForTimeout(300)
-    
+
     // Fill board member names - board members have "Agent Name" inputs
     // The 3 default board members are Treasury, Code, Community
     const boardNameInputs = page.locator('input[id^="agent-name-board"]')
@@ -461,42 +470,44 @@ test.describe('Autocrat - Create DAO Wizard', () => {
     }
     await page.click('button:has-text("Continue")')
     await page.waitForTimeout(500)
-    
+
     // Step 4: Governance rules
     await expect(page.locator('h2:has-text("Governance rules")')).toBeVisible()
     await expect(page.locator('text=Min Quality Score')).toBeVisible()
     await expect(page.locator('text=Min Board Approvals')).toBeVisible()
-    
+
     await page.screenshot({
       path: join(SCREENSHOT_DIR, 'Create-DAO-Step4.png'),
       fullPage: true,
     })
   })
-  
+
   test('navigation back button works', async ({ page }) => {
     await page.goto('/create')
     await page.waitForTimeout(500)
-    
+
     // Fill step 1 and go to step 2
     await page.fill('input#dao-slug', 'test-dao')
     await page.fill('input#dao-display-name', 'Test DAO')
     await page.click('button:has-text("Continue")')
     await page.waitForTimeout(300)
-    
+
     await expect(page.locator('h2:has-text("CEO configuration")')).toBeVisible()
-    
+
     // Click Back
     await page.click('button:has-text("Back")')
     await page.waitForTimeout(300)
-    
+
     // Should be back on step 1 - "Organization basics"
-    await expect(page.locator('h2:has-text("Organization basics")')).toBeVisible()
+    await expect(
+      page.locator('h2:has-text("Organization basics")'),
+    ).toBeVisible()
   })
-  
+
   test('Cancel button returns to list', async ({ page }) => {
     await page.goto('/create')
     await page.waitForTimeout(500)
-    
+
     await page.click('text=Cancel')
     await page.waitForURL('**/')
     // URL should end with / (root path)
@@ -509,15 +520,15 @@ test.describe('Autocrat - Mobile Responsiveness', () => {
     await page.setViewportSize({ width: 375, height: 667 })
     await page.goto('/')
     await page.waitForTimeout(1000)
-    
+
     await expect(page.locator('body')).toBeVisible()
     await expect(page.locator('h1')).toBeVisible()
-    
+
     await page.screenshot({
       path: join(SCREENSHOT_DIR, 'Mobile-DAO-List.png'),
       fullPage: true,
     })
-    
+
     if (isLLMConfigured?.() && verifyImage) {
       const screenshotPath = join(SCREENSHOT_DIR, 'Mobile-DAO-List.png')
       await runAIVerification(
@@ -527,15 +538,15 @@ test.describe('Autocrat - Mobile Responsiveness', () => {
       )
     }
   })
-  
+
   test('Create DAO wizard renders on mobile', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 })
     await page.goto('/create')
     await page.waitForTimeout(1000)
-    
+
     await expect(page.locator('body')).toBeVisible()
     await expect(page.locator('text=Create DAO')).toBeVisible()
-    
+
     await page.screenshot({
       path: join(SCREENSHOT_DIR, 'Mobile-Create-DAO.png'),
       fullPage: true,
@@ -548,7 +559,7 @@ test.describe('Autocrat - API Health', () => {
     const response = await request.get(`${baseURL}/api/health`)
     expect([200, 404]).toContain(response.status())
   })
-  
+
   test('API /api/daos endpoint', async ({ request, baseURL }) => {
     const response = await request.get(`${baseURL}/api/daos`)
     expect([200, 401, 404]).toContain(response.status())

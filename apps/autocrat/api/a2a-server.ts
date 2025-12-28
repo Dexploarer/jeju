@@ -3,7 +3,11 @@
  */
 
 import cors from '@elysiajs/cors'
-import { getNetworkName, getWebsiteUrl } from '@jejunetwork/config'
+import {
+  getNetworkName,
+  getWebsiteUrl,
+  isProductionEnv,
+} from '@jejunetwork/config'
 import type { JsonRecord, JsonValue } from '@jejunetwork/types'
 import {
   expect,
@@ -12,7 +16,6 @@ import {
   ZERO_ADDRESS,
 } from '@jejunetwork/types'
 import { Elysia, t } from 'elysia'
-import { config } from './config'
 import { formatEther, parseEther } from 'viem'
 import { z } from 'zod'
 import type { AutocratConfig, AutocratVote } from '../lib'
@@ -37,6 +40,7 @@ import {
   type DeliberationRequest,
 } from './agents/runtime'
 import type { AutocratBlockchain } from './blockchain'
+import { config } from './config'
 import {
   checkOllama,
   generateResearch,
@@ -116,7 +120,23 @@ export class AutocratA2AServer {
   }
 
   private setupRoutes(): void {
-    this.app.use(cors())
+    // SECURITY: Restrict CORS origins in production
+    const A2A_CORS_ORIGINS =
+      process.env.A2A_CORS_ORIGINS?.split(',').filter(Boolean)
+    const isProduction = isProductionEnv()
+
+    this.app.use(
+      cors(
+        isProduction && A2A_CORS_ORIGINS?.length
+          ? {
+              origin: A2A_CORS_ORIGINS,
+              methods: ['GET', 'POST', 'OPTIONS'],
+              allowedHeaders: ['Content-Type'],
+              maxAge: 86400,
+            }
+          : {}, // Allow all origins in development
+      ),
+    )
 
     this.app.get('/.well-known/agent-card.json', () => this.getAgentCard())
 

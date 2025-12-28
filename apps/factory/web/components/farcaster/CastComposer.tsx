@@ -7,7 +7,11 @@
 import { clsx } from 'clsx'
 import { AtSign, Image, Link2, Loader2, Send, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { type Cast, useFarcasterStatus, usePublishCast } from '../../hooks/useFarcaster'
+import {
+  type Cast,
+  useFarcasterStatus,
+  usePublishCast,
+} from '../../hooks/useFarcaster'
 
 interface CastComposerProps {
   channelId?: string
@@ -25,7 +29,7 @@ export function CastComposer({
   replyTo,
   onClearReply,
   onSuccess,
-  placeholder = "Share an update...",
+  placeholder = 'Share an update...',
   autoFocus = false,
 }: CastComposerProps) {
   const { data: status } = useFarcasterStatus()
@@ -47,7 +51,7 @@ export function CastComposer({
       textareaRef.current.style.height = 'auto'
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`
     }
-  }, [text])
+  }, [])
 
   // Auto-focus
   useEffect(() => {
@@ -73,7 +77,16 @@ export function CastComposer({
     setShowEmbedInput(false)
     onClearReply?.()
     onSuccess?.()
-  }, [canSubmit, embedUrl, text, channelId, replyTo, publishMutation, onClearReply, onSuccess])
+  }, [
+    canSubmit,
+    embedUrl,
+    text,
+    channelId,
+    replyTo,
+    publishMutation,
+    onClearReply,
+    onSuccess,
+  ])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -169,7 +182,9 @@ export function CastComposer({
           {/* Channel indicator */}
           {channelId && (
             <div className="mt-2">
-              <span className="badge badge-info text-xs">Posting to /{channelId}</span>
+              <span className="badge badge-info text-xs">
+                Posting to /{channelId}
+              </span>
             </div>
           )}
 
@@ -180,7 +195,9 @@ export function CastComposer({
                 type="button"
                 className={clsx(
                   'p-2 rounded-lg hover:bg-surface-800 transition-colors',
-                  showEmbedInput ? 'text-factory-400' : 'text-surface-500 hover:text-factory-400',
+                  showEmbedInput
+                    ? 'text-factory-400'
+                    : 'text-surface-500 hover:text-factory-400',
                 )}
                 onClick={() => setShowEmbedInput(!showEmbedInput)}
                 title="Add link"
@@ -213,9 +230,13 @@ export function CastComposer({
               <span
                 className={clsx(
                   'text-sm',
-                  isOverLimit ? 'text-error-400' : remainingChars < 50 ? 'text-warning-400' : 'text-surface-500',
+                  isOverLimit
+                    ? 'text-error-400'
+                    : remainingChars < 50
+                      ? 'text-warning-400'
+                      : 'text-surface-500',
                 )}
-                aria-label={`${remainingChars} characters remaining`}
+                title={`${remainingChars} characters remaining`}
               >
                 {remainingChars}
               </span>
@@ -228,11 +249,16 @@ export function CastComposer({
                 disabled={!canSubmit || publishMutation.isPending}
               >
                 {publishMutation.isPending ? (
-                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                  <Loader2
+                    className="w-4 h-4 animate-spin"
+                    aria-hidden="true"
+                  />
                 ) : (
                   <Send className="w-4 h-4" aria-hidden="true" />
                 )}
-                <span className="hidden sm:inline">{replyTo ? 'Reply' : 'Cast'}</span>
+                <span className="hidden sm:inline">
+                  {replyTo ? 'Reply' : 'Cast'}
+                </span>
               </button>
             </div>
           </div>

@@ -5,8 +5,8 @@
  * Automatically handles mock injection and native app setup.
  */
 
-import { test as base, type Page, type BrowserContext } from '@playwright/test'
-import { mockTauriIPC, type TauriAppName, getAppConfig } from './index'
+import { test as base, type Page } from '@playwright/test'
+import { getAppConfig, mockTauriIPC, type TauriAppName } from './index'
 
 export interface TauriTestFixtures {
   /** The app being tested */
@@ -77,9 +77,13 @@ export const tauriAssertions = {
    */
   async appLoaded(page: Page): Promise<void> {
     // Check for common error indicators
-    const errorMessages = await page.locator('[role="alert"], .error, .error-message').all()
+    const errorMessages = await page
+      .locator('[role="alert"], .error, .error-message')
+      .all()
     if (errorMessages.length > 0) {
-      const texts = await Promise.all(errorMessages.map((el) => el.textContent()))
+      const texts = await Promise.all(
+        errorMessages.map((el) => el.textContent()),
+      )
       const errorText = texts.filter((t) => t).join(', ')
       throw new Error(`App loaded with errors: ${errorText}`)
     }
@@ -93,8 +97,10 @@ export const tauriAssertions = {
    */
   async tauriAvailable(page: Page): Promise<boolean> {
     return page.evaluate(() => {
-      return typeof window.__TAURI__ !== 'undefined' ||
-             typeof window.__TAURI_INTERNALS__ !== 'undefined'
+      return (
+        typeof window.__TAURI__ !== 'undefined' ||
+        typeof window.__TAURI_INTERNALS__ !== 'undefined'
+      )
     })
   },
 
@@ -128,4 +134,3 @@ declare global {
     }
   }
 }
-

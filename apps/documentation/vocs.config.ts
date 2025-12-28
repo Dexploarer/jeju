@@ -2,7 +2,8 @@ import { defineConfig } from 'vocs'
 
 export default defineConfig({
   title: 'Jeju Network',
-  description: 'Documentation for Jeju, an OP-Stack Ethereum L2 designed for AI agents.',
+  description:
+    'Documentation for Jeju, an OP-Stack Ethereum L2 designed for AI agents.',
   logoUrl: '/logo.svg',
   iconUrl: '/favicon.ico',
   rootDir: 'docs',

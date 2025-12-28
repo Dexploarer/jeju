@@ -269,7 +269,9 @@ export default function CoinsPage() {
       {/* Error State */}
       {error && (
         <ErrorState
-          message={error instanceof Error ? error.message : 'Failed to load tokens'}
+          message={
+            error instanceof Error ? error.message : 'Failed to load tokens'
+          }
           onRetry={() => refetch()}
         />
       )}

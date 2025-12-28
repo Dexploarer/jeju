@@ -64,9 +64,12 @@ export class InfrastructureService {
 
   async isEQLiteRunning(): Promise<boolean> {
     try {
-      const response = await fetch(`http://127.0.0.1:${EQLITE_PORT}/v1/status`, {
-        signal: AbortSignal.timeout(2000),
-      })
+      const response = await fetch(
+        `http://127.0.0.1:${EQLITE_PORT}/v1/status`,
+        {
+          signal: AbortSignal.timeout(2000),
+        },
+      )
       return response.ok
     } catch {
       return false
@@ -89,15 +92,19 @@ export class InfrastructureService {
     if (dockerAvailable && existsSync(composeFile)) {
       logger.step('Starting EQLite Docker cluster...')
 
-      const dockerProcess = execa('docker', ['compose', '-f', composeFile, 'up', '-d'], {
-        cwd: this.rootDir,
-        stdio: 'pipe',
-      })
+      const dockerProcess = execa(
+        'docker',
+        ['compose', '-f', composeFile, 'up', '-d'],
+        {
+          cwd: this.rootDir,
+          stdio: 'pipe',
+        },
+      )
 
       try {
         await dockerProcess
-        // Wait briefly for Docker startup
-        for (let i = 0; i < 30; i++) {
+        // Wait for Docker startup
+        for (let i = 0; i < 60; i++) {
           await this.sleep(500)
           if (await this.isEQLiteRunning()) {
             logger.success(`EQLite cluster running on port ${EQLITE_PORT}`)
@@ -156,7 +163,7 @@ export class InfrastructureService {
       'packages/deployment/docker/eqlite-internal.compose.yaml',
     )
 
-    if (existsSync(composeFile) && await this.isDockerRunning()) {
+    if (existsSync(composeFile) && (await this.isDockerRunning())) {
       logger.step('Stopping EQLite cluster...')
       await execa('docker', ['compose', '-f', composeFile, 'down'], {
         cwd: this.rootDir,
@@ -686,4 +693,3 @@ export function createInfrastructureService(
 ): InfrastructureService {
   return new InfrastructureService(rootDir)
 }
-

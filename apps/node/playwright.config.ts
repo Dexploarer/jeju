@@ -38,19 +38,19 @@ export default defineConfig({
         },
       ]
     : [
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-    },
-  ],
+        {
+          name: 'chromium',
+          use: { ...devices['Desktop Chrome'] },
+        },
+      ],
 
   webServer:
     isNativeMode || process.env.SKIP_WEBSERVER
-    ? undefined
-    : {
+      ? undefined
+      : {
           command: 'bun run scripts/dev.ts',
-        url: `http://localhost:${PORT}`,
-        reuseExistingServer: true,
-        timeout: 180000,
-      },
+          url: `http://localhost:${PORT}`,
+          reuseExistingServer: true,
+          timeout: 180000,
+        },
 })

@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+
 /**
  * Build EQLite from local source
  *
@@ -9,9 +10,9 @@
  * - TEE enclaves
  */
 
-import { spawn, spawnSync } from 'bun'
-import { existsSync, mkdirSync, cpSync, chmodSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync } from 'node:fs'
 import path from 'node:path'
+import { spawn, spawnSync } from 'bun'
 
 // ============================================================================
 // Config
@@ -45,7 +46,9 @@ async function checkGoInstalled(): Promise<void> {
   if (result.exitCode !== 0) {
     throw new Error('Go is not installed or not in PATH')
   }
-  console.log(`[EQLite Build] ${new TextDecoder().decode(result.stdout).trim()}`)
+  console.log(
+    `[EQLite Build] ${new TextDecoder().decode(result.stdout).trim()}`,
+  )
 }
 
 async function ensureModulesDownloaded(): Promise<void> {
@@ -94,7 +97,7 @@ async function buildBinary(
   ]
 
   const env: Record<string, string> = {
-    ...process.env as Record<string, string>,
+    ...(process.env as Record<string, string>),
     CGO_ENABLED: options.cgo ? '1' : '0',
   }
 
@@ -224,4 +227,3 @@ main().catch((err) => {
 })
 
 export { buildAll, buildBinary, type BuildOptions }
-

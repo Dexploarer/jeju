@@ -9,12 +9,24 @@
  * - Upstash REST API (HTTP-based)
  */
 
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'bun:test'
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from 'bun:test'
+import { assertNotNull } from '@jejunetwork/shared'
+import { Elysia } from 'elysia'
 import Redis from 'ioredis'
 import { createClient } from 'redis'
-import { Elysia } from 'elysia'
 import { CacheEngine } from '../api/cache/engine'
-import { createRedisProtocolServer, type RedisProtocolServer } from '../api/cache/redis-protocol'
+import {
+  createRedisProtocolServer,
+  type RedisProtocolServer,
+} from '../api/cache/redis-protocol'
 
 const TEST_PORT = 16379 // Use non-standard port for testing
 
@@ -357,8 +369,8 @@ describe('Redis Client Compatibility', () => {
         const results = await pipeline.exec()
 
         expect(results).not.toBeNull()
-        expect(results![2][1]).toBe('v1')
-        expect(results![3][1]).toBe('v2')
+        expect(results?.[2][1]).toBe('v1')
+        expect(results?.[3][1]).toBe('v2')
       })
     })
   })
@@ -488,7 +500,10 @@ describe('Real-world Usage Patterns', () => {
 
   beforeAll(async () => {
     engine = new CacheEngine({ maxMemoryMb: 64 })
-    server = createRedisProtocolServer(engine, { port: TEST_PORT + 1, namespace: 'realworld' })
+    server = createRedisProtocolServer(engine, {
+      port: TEST_PORT + 1,
+      namespace: 'realworld',
+    })
     await server.start()
 
     redis = new Redis({
@@ -518,7 +533,8 @@ describe('Real-world Usage Patterns', () => {
 
     // Retrieve session
     const retrieved = await redis.get(sessionId)
-    expect(JSON.parse(retrieved!)).toEqual({
+    assertNotNull(retrieved, 'Session data should exist')
+    expect(JSON.parse(retrieved)).toEqual({
       userId: 123,
       email: 'user@example.com',
       roles: ['user', 'admin'],
@@ -581,10 +597,12 @@ describe('Real-world Usage Patterns', () => {
 
     // Process jobs (FIFO)
     const job1 = await redis.lpop(queue)
-    expect(JSON.parse(job1!).type).toBe('welcome')
+    assertNotNull(job1, 'Job should exist')
+    expect(JSON.parse(job1).type).toBe('welcome')
 
     const job2 = await redis.lpop(queue)
-    expect(JSON.parse(job2!).type).toBe('verify')
+    assertNotNull(job2, 'Job should exist')
+    expect(JSON.parse(job2).type).toBe('verify')
 
     // Check remaining
     expect(await redis.llen(queue)).toBe(1)
@@ -641,7 +659,8 @@ describe('Real-world Usage Patterns', () => {
 
     // Check cache
     const cached = await redis.get(cacheKey)
-    expect(JSON.parse(cached!)).toEqual(products)
+    assertNotNull(cached, 'Cached data should exist')
+    expect(JSON.parse(cached)).toEqual(products)
 
     // TTL should be set
     const ttl = await redis.ttl(cacheKey)
@@ -670,7 +689,7 @@ describe('Upstash REST API Compatibility', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(args),
       })
-      const data = await response.json() as { result: T }
+      const data = (await response.json()) as { result: T }
       return data.result
     }
 
@@ -690,7 +709,11 @@ describe('Upstash REST API Compatibility', () => {
       return this.command(['GET', key])
     }
 
-    async set(key: string, value: string, opts?: { ex?: number }): Promise<string | null> {
+    async set(
+      key: string,
+      value: string,
+      opts?: { ex?: number },
+    ): Promise<string | null> {
       const args = ['SET', key, value]
       if (opts?.ex) args.push('EX', opts.ex.toString())
       return this.command(args)
@@ -732,7 +755,10 @@ describe('Upstash REST API Compatibility', () => {
       return this.command(['SMEMBERS', key])
     }
 
-    async zadd(key: string, ...scoreMemberPairs: (string | number)[]): Promise<number> {
+    async zadd(
+      key: string,
+      ...scoreMemberPairs: (string | number)[]
+    ): Promise<number> {
       return this.command(['ZADD', key, ...scoreMemberPairs.map(String)])
     }
 
@@ -922,7 +948,12 @@ function executeCommand(
     case 'LPUSH':
       return engine.lpush(ns, args[0], ...args.slice(1))
     case 'LRANGE':
-      return engine.lrange(ns, args[0], parseInt(args[1], 10), parseInt(args[2], 10))
+      return engine.lrange(
+        ns,
+        args[0],
+        parseInt(args[1], 10),
+        parseInt(args[2], 10),
+      )
     case 'SADD':
       return engine.sadd(ns, args[0], ...args.slice(1))
     case 'SMEMBERS':
@@ -935,9 +966,13 @@ function executeCommand(
       return engine.zadd(ns, args[0], ...members)
     }
     case 'ZRANGE':
-      return engine.zrange(ns, args[0], parseInt(args[1], 10), parseInt(args[2], 10)) as string[]
+      return engine.zrange(
+        ns,
+        args[0],
+        parseInt(args[1], 10),
+        parseInt(args[2], 10),
+      ) as string[]
     default:
       throw new Error(`Unknown command: ${cmd}`)
   }
 }
-

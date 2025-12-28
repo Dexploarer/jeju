@@ -83,7 +83,9 @@ export interface InfraStatus {
 }
 
 // Check individual service availability
-export async function checkEqliteAvailable(config: InfraConfig): Promise<boolean> {
+export async function checkEqliteAvailable(
+  config: InfraConfig,
+): Promise<boolean> {
   try {
     const response = await fetch(`${config.eqliteEndpoint}/health`, {
       signal: AbortSignal.timeout(3000),

@@ -9,20 +9,27 @@
  * - Edge Runtime support
  */
 
-import { createHash } from 'crypto'
+import { createHash } from 'node:crypto'
 
 // ============================================================================
 // Types
 // ============================================================================
 
-export type RouteType = 
-  | 'api-route'     // pages/api/...
+export type RouteType =
+  | 'api-route' // pages/api/...
   | 'route-handler' // app/.../route.ts
   | 'server-action' // Server Actions
-  | 'middleware'    // Middleware
+  | 'middleware' // Middleware
   | 'edge-function' // Edge functions
 
-export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS'
+export type HttpMethod =
+  | 'GET'
+  | 'POST'
+  | 'PUT'
+  | 'PATCH'
+  | 'DELETE'
+  | 'HEAD'
+  | 'OPTIONS'
 
 export interface CompiledRoute {
   routeId: string
@@ -30,15 +37,15 @@ export interface CompiledRoute {
   path: string
   methods: HttpMethod[]
   runtime: 'edge' | 'nodejs'
-  
+
   // Compiled output
   code: string
   sourceMap?: string
-  
+
   // Dependencies
   imports: string[]
   externals: string[]
-  
+
   // Metadata
   sourcePath: string
   hash: string
@@ -108,14 +115,14 @@ interface ParsedRoute {
 
 function parseRoutePath(filePath: string, baseDir: string): ParsedRoute | null {
   const relativePath = filePath.replace(baseDir, '').replace(/^\//, '')
-  
+
   // Pages Router API Route: pages/api/*.ts
   if (relativePath.startsWith('pages/api/')) {
-    const routePath = '/' + relativePath
+    const routePath = `/${relativePath
       .replace('pages/', '')
       .replace(/\.(ts|js|tsx|jsx)$/, '')
-      .replace(/\/index$/, '')
-    
+      .replace(/\/index$/, '')}`
+
     return {
       sourcePath: filePath,
       routePath: convertDynamicSegments(routePath),
@@ -126,14 +133,14 @@ function parseRoutePath(filePath: string, baseDir: string): ParsedRoute | null {
       params: extractParams(routePath),
     }
   }
-  
+
   // App Router Route Handler: app/*/route.ts
   if (relativePath.startsWith('app/') && relativePath.endsWith('route.ts')) {
-    const routePath = '/' + relativePath
+    const routePath = `/${relativePath
       .replace('app/', '')
       .replace('/route.ts', '')
-      .replace(/^\//, '')
-    
+      .replace(/^\//, '')}`
+
     return {
       sourcePath: filePath,
       routePath: convertDynamicSegments(routePath || '/'),
@@ -144,9 +151,12 @@ function parseRoutePath(filePath: string, baseDir: string): ParsedRoute | null {
       params: extractParams(routePath),
     }
   }
-  
+
   // Middleware: middleware.ts at root
-  if (relativePath === 'middleware.ts' || relativePath === 'src/middleware.ts') {
+  if (
+    relativePath === 'middleware.ts' ||
+    relativePath === 'src/middleware.ts'
+  ) {
     return {
       sourcePath: filePath,
       routePath: '/_middleware',
@@ -157,7 +167,7 @@ function parseRoutePath(filePath: string, baseDir: string): ParsedRoute | null {
       params: [],
     }
   }
-  
+
   return null
 }
 
@@ -171,7 +181,7 @@ function convertDynamicSegments(path: string): string {
 
 function extractParams(path: string): string[] {
   const matches = path.matchAll(/\[\.?\.?\.?(\w+)\]/g)
-  return Array.from(matches, m => m[1])
+  return Array.from(matches, (m) => m[1])
 }
 
 // ============================================================================
@@ -191,13 +201,13 @@ async function transformToWorkerd(
 ): Promise<TransformResult> {
   // Detect runtime from code
   const runtime = detectRuntime(sourceCode)
-  
+
   // Detect exported HTTP methods
   const methods = detectMethods(sourceCode, route.type)
-  
+
   // Transform based on route type
   let transformedCode: string
-  
+
   if (route.type === 'api-route') {
     transformedCode = transformPagesApiRoute(sourceCode, route)
   } else if (route.type === 'route-handler') {
@@ -207,10 +217,10 @@ async function transformToWorkerd(
   } else {
     transformedCode = sourceCode
   }
-  
+
   // Wrap in workerd-compatible module
   const workerdCode = wrapForWorkerd(transformedCode, route, methods)
-  
+
   return {
     code: workerdCode,
     methods,
@@ -234,18 +244,20 @@ function detectMethods(code: string, type: RouteType): HttpMethod[] {
     // Pages API routes use default export
     return ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']
   }
-  
+
   // App Router exports named functions
   const methods: HttpMethod[] = []
-  
+
   if (/export\s+(async\s+)?function\s+GET/m.test(code)) methods.push('GET')
   if (/export\s+(async\s+)?function\s+POST/m.test(code)) methods.push('POST')
   if (/export\s+(async\s+)?function\s+PUT/m.test(code)) methods.push('PUT')
   if (/export\s+(async\s+)?function\s+PATCH/m.test(code)) methods.push('PATCH')
-  if (/export\s+(async\s+)?function\s+DELETE/m.test(code)) methods.push('DELETE')
+  if (/export\s+(async\s+)?function\s+DELETE/m.test(code))
+    methods.push('DELETE')
   if (/export\s+(async\s+)?function\s+HEAD/m.test(code)) methods.push('HEAD')
-  if (/export\s+(async\s+)?function\s+OPTIONS/m.test(code)) methods.push('OPTIONS')
-  
+  if (/export\s+(async\s+)?function\s+OPTIONS/m.test(code))
+    methods.push('OPTIONS')
+
   return methods.length > 0 ? methods : ['GET']
 }
 
@@ -260,7 +272,7 @@ ${code}
 // Workerd adapter for Pages API route
 async function handleRequest(request, env, ctx) {
   const url = new URL(request.url);
-  const params = ${JSON.stringify(route.params.reduce((acc, p) => ({ ...acc, [p]: '' }), {}))};
+  const params = ${JSON.stringify(Object.fromEntries(route.params.map((p) => [p, ''])))};
   
   // Extract dynamic params from URL
   ${route.params.map((p, i) => `params['${p}'] = url.pathname.split('/')[${i + 2}] || '';`).join('\n  ')}
@@ -320,11 +332,15 @@ async function handleRequest(request, env, ctx) {
   const method = request.method;
   
   // Route to appropriate handler
-  ${['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'].map(m => `
+  ${['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']
+    .map(
+      (m) => `
   if (method === '${m}' && typeof ${m} === 'function') {
     const params = extractParams(request);
     return ${m}(request, { params });
-  }`).join('')}
+  }`,
+    )
+    .join('')}
   
   return new Response('Method Not Allowed', { status: 405 });
 }
@@ -332,7 +348,7 @@ async function handleRequest(request, env, ctx) {
 function extractParams(request) {
   const url = new URL(request.url);
   const segments = url.pathname.split('/').filter(Boolean);
-  return ${JSON.stringify(route.params.reduce((acc, p, i) => ({ ...acc, [p]: `segments[${i}]` }), {}))};
+  return ${JSON.stringify(Object.fromEntries(route.params.map((p, i) => [p, `segments[${i}]`])))};
 }
 
 export default { fetch: handleRequest };
@@ -354,7 +370,11 @@ export default { fetch: handleRequest };
 `
 }
 
-function wrapForWorkerd(code: string, route: ParsedRoute, methods: HttpMethod[]): string {
+function wrapForWorkerd(
+  code: string,
+  route: ParsedRoute,
+  methods: HttpMethod[],
+): string {
   return `
 /**
  * Auto-generated workerd module
@@ -386,7 +406,7 @@ export class NextJSCompiler {
 
     // Find all route files
     const routeFiles = await this.findRouteFiles()
-    
+
     for (const filePath of routeFiles) {
       const parsed = parseRoutePath(filePath, this.project.rootDir)
       if (!parsed) continue
@@ -394,10 +414,10 @@ export class NextJSCompiler {
       try {
         // Read source file
         const sourceCode = await this.readFile(filePath)
-        
+
         // Transform to workerd format
         const result = await transformToWorkerd(sourceCode, parsed)
-        
+
         const routeId = createHash('sha256')
           .update(filePath)
           .digest('hex')
@@ -414,12 +434,15 @@ export class NextJSCompiler {
           imports: this.extractImports(sourceCode),
           externals: this.detectExternals(sourceCode),
           sourcePath: filePath,
-          hash: createHash('sha256').update(result.code).digest('hex').slice(0, 16),
+          hash: createHash('sha256')
+            .update(result.code)
+            .digest('hex')
+            .slice(0, 16),
           sizeBytes: Buffer.byteLength(result.code),
         }
 
         routes.push(compiled)
-        
+
         console.log(`[NextJS] Compiled ${parsed.type}: ${parsed.routePath}`)
       } catch (error) {
         errors.push({
@@ -444,18 +467,20 @@ export class NextJSCompiler {
 
   private async findRouteFiles(): Promise<string[]> {
     const files: string[] = []
-    
+
     // Scan pages/api directory
     if (this.project.pagesDir) {
       const apiDir = `${this.project.pagesDir}/api`
-      files.push(...await this.globFiles(`${apiDir}/**/*.{ts,js,tsx,jsx}`))
+      files.push(...(await this.globFiles(`${apiDir}/**/*.{ts,js,tsx,jsx}`)))
     }
-    
+
     // Scan app directory for route handlers
     if (this.project.appDir) {
-      files.push(...await this.globFiles(`${this.project.appDir}/**/route.{ts,js}`))
+      files.push(
+        ...(await this.globFiles(`${this.project.appDir}/**/route.{ts,js}`)),
+      )
     }
-    
+
     // Find middleware
     const middlewareFiles = [
       `${this.project.rootDir}/middleware.ts`,
@@ -463,14 +488,14 @@ export class NextJSCompiler {
       `${this.project.rootDir}/src/middleware.ts`,
       `${this.project.rootDir}/src/middleware.js`,
     ]
-    
+
     for (const mw of middlewareFiles) {
       if (await this.fileExists(mw)) {
         files.push(mw)
         break
       }
     }
-    
+
     return files
   }
 
@@ -499,36 +524,40 @@ export class NextJSCompiler {
 
   private extractImports(code: string): string[] {
     const imports: string[] = []
-    const regex = /import\s+(?:(?:{[^}]+}|\*\s+as\s+\w+|\w+)\s+from\s+)?['"]([^'"]+)['"]/g
-    let match
-    while ((match = regex.exec(code)) !== null) {
+    const regex =
+      /import\s+(?:(?:{[^}]+}|\*\s+as\s+\w+|\w+)\s+from\s+)?['"]([^'"]+)['"]/g
+    let match: RegExpExecArray | null = regex.exec(code)
+    while (match !== null) {
       imports.push(match[1])
+      match = regex.exec(code)
     }
     return imports
   }
 
   private detectExternals(code: string): string[] {
     const imports = this.extractImports(code)
-    return imports.filter(i => !i.startsWith('.') && !i.startsWith('/'))
+    return imports.filter((i) => !i.startsWith('.') && !i.startsWith('/'))
   }
 
   private generateManifest(routes: CompiledRoute[]): WorkerManifest {
-    const middleware = routes.find(r => r.type === 'middleware')
-    
+    const middleware = routes.find((r) => r.type === 'middleware')
+
     return {
       version: '1.0.0',
       routes: routes
-        .filter(r => r.type !== 'middleware')
-        .map(r => ({
+        .filter((r) => r.type !== 'middleware')
+        .map((r) => ({
           path: r.path,
           routeId: r.routeId,
           methods: r.methods,
           runtime: r.runtime,
         })),
-      middleware: middleware ? {
-        matcher: ['/*'], // Would parse from config
-        routeId: middleware.routeId,
-      } : undefined,
+      middleware: middleware
+        ? {
+            matcher: ['/*'], // Would parse from config
+            routeId: middleware.routeId,
+          }
+        : undefined,
       staticAssets: [],
     }
   }
@@ -573,7 +602,13 @@ export class ElysiaCompiler {
         message: 'No entry file found',
         code: 'NO_ENTRY',
       })
-      return { routes, manifest: this.generateEmptyManifest(), errors, warnings, duration: Date.now() - startTime }
+      return {
+        routes,
+        manifest: this.generateEmptyManifest(),
+        errors,
+        warnings,
+        duration: Date.now() - startTime,
+      }
     }
 
     // Bundle with Bun
@@ -592,7 +627,13 @@ export class ElysiaCompiler {
           code: 'BUILD_ERROR',
         })
       }
-      return { routes, manifest: this.generateEmptyManifest(), errors, warnings, duration: Date.now() - startTime }
+      return {
+        routes,
+        manifest: this.generateEmptyManifest(),
+        errors,
+        warnings,
+        duration: Date.now() - startTime,
+      }
     }
 
     const output = buildResult.outputs[0]
@@ -651,7 +692,7 @@ export default {
   private generateManifest(routes: CompiledRoute[]): WorkerManifest {
     return {
       version: '1.0.0',
-      routes: routes.map(r => ({
+      routes: routes.map((r) => ({
         path: r.path,
         routeId: r.routeId,
         methods: r.methods,
@@ -674,11 +715,17 @@ export default {
 // Factory Functions
 // ============================================================================
 
-export async function compileNextJS(rootDir: string): Promise<CompilationResult> {
+export async function compileNextJS(
+  rootDir: string,
+): Promise<CompilationResult> {
   // Detect project structure
-  const pagesDir = await Bun.file(`${rootDir}/pages`).exists() ? `${rootDir}/pages` : undefined
-  const appDir = await Bun.file(`${rootDir}/app`).exists() ? `${rootDir}/app` : undefined
-  
+  const pagesDir = (await Bun.file(`${rootDir}/pages`).exists())
+    ? `${rootDir}/pages`
+    : undefined
+  const appDir = (await Bun.file(`${rootDir}/app`).exists())
+    ? `${rootDir}/app`
+    : undefined
+
   // Load next.config
   let nextConfig: NextConfig = {}
   const configPath = `${rootDir}/next.config.js`
@@ -697,7 +744,9 @@ export async function compileNextJS(rootDir: string): Promise<CompilationResult>
   return compiler.compile()
 }
 
-export async function compileElysia(rootDir: string): Promise<CompilationResult> {
+export async function compileElysia(
+  rootDir: string,
+): Promise<CompilationResult> {
   const compiler = new ElysiaCompiler(rootDir)
   return compiler.compile()
 }
@@ -708,8 +757,10 @@ export async function compileProject(
 ): Promise<CompilationResult> {
   // Auto-detect framework
   if (framework === 'auto') {
-    if (await Bun.file(`${rootDir}/next.config.js`).exists() ||
-        await Bun.file(`${rootDir}/next.config.mjs`).exists()) {
+    if (
+      (await Bun.file(`${rootDir}/next.config.js`).exists()) ||
+      (await Bun.file(`${rootDir}/next.config.mjs`).exists())
+    ) {
       framework = 'nextjs'
     } else if (await Bun.file(`${rootDir}/vite.config.ts`).exists()) {
       framework = 'vite'
@@ -728,4 +779,3 @@ export async function compileProject(
       throw new Error(`Unknown framework: ${framework}`)
   }
 }
-

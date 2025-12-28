@@ -23,9 +23,16 @@ export interface TauriPlaywrightConfigOptions {
  * Create a Playwright config for testing Tauri apps
  * Native mode is the default - use TAURI_WEB=1 for web preview testing
  */
-export function createTauriPlaywrightConfig(options: TauriPlaywrightConfigOptions) {
+export function createTauriPlaywrightConfig(
+  options: TauriPlaywrightConfigOptions,
+) {
   // Native mode is default, override with TAURI_WEB=1
-  const { app, nativeMode = process.env.TAURI_WEB !== '1', webDriverPort = 4444, skipDevServer = false } = options
+  const {
+    app,
+    nativeMode = process.env.TAURI_WEB !== '1',
+    webDriverPort = 4444,
+    skipDevServer = false,
+  } = options
   const config = getAppConfig(app)
 
   const baseConfig = defineConfig({
@@ -94,4 +101,3 @@ export const nodeConfig = createTauriPlaywrightConfig({ app: 'node' })
  * Default Tauri test config for VPN
  */
 export const vpnConfig = createTauriPlaywrightConfig({ app: 'vpn' })
-

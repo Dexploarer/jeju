@@ -3,6 +3,7 @@
  * Handles all DAO operations including creation, configuration, and state management
  */
 
+import { isProductionEnv } from '@jejunetwork/config'
 import {
   expectTrue as expect,
   expectDefined,
@@ -31,13 +32,13 @@ import {
   type GovernanceParams,
   toHex,
 } from '../lib'
-
 import type {
   DAO,
   DAOFull,
   FundingAllocation,
   FundingProject,
 } from '../lib/types'
+import { createKMSWalletClient } from './kms-signer'
 
 // Types FundingEpoch is local to this service (not in lib/types.ts)
 export interface FundingEpoch {
@@ -1006,6 +1007,12 @@ export class DAOService {
   private config: DAOServiceConfig
   private daoCache: Map<string, DAOFull> = new Map()
 
+  /**
+   * Create a DAOService instance.
+   *
+   * SECURITY: In production (mainnet/testnet), raw private keys are blocked.
+   * Use DAOService.create() which initializes KMS automatically.
+   */
   constructor(config: DAOServiceConfig) {
     this.config = config
     this.chain = this.getChain(config.chainId)
@@ -1016,13 +1023,62 @@ export class DAOService {
     })
 
     if (config.privateKey) {
-      const account = privateKeyToAccount(toHex(config.privateKey))
-      this.walletClient = createWalletClient({
-        account,
-        chain: this.chain,
-        transport: http(config.rpcUrl),
-      })
+      const keyHex = toHex(config.privateKey)
+
+      // SECURITY: Block raw private keys in production
+      if (keyHex.length === 66 && isProductionEnv()) {
+        throw new Error(
+          'SECURITY: Raw private keys are not allowed in production. ' +
+            'Use DAOService.create() with KMS or provide an address for KMS lookup.',
+        )
+      }
+
+      // Development only: Allow local signing with warning
+      if (keyHex.length === 66) {
+        console.warn(
+          '[DAOService] ⚠️  Using local private key. NOT secure for production.',
+        )
+        const account = privateKeyToAccount(keyHex)
+        this.walletClient = createWalletClient({
+          account,
+          chain: this.chain,
+          transport: http(config.rpcUrl),
+        })
+      }
+      // If address only, wallet client stays null until KMS init
     }
+  }
+
+  /**
+   * Create a DAOService with KMS initialized.
+   * This is the recommended way to create a DAOService in production.
+   */
+  static async create(
+    config: DAOServiceConfig,
+    operatorAddress: Address,
+  ): Promise<DAOService> {
+    const service = new DAOService({
+      ...config,
+      privateKey: undefined, // Don't use private key path
+    })
+    await service.initializeKMS(operatorAddress)
+    return service
+  }
+
+  /**
+   * Initialize KMS for secure threshold signing
+   * Call this in production before any write operations
+   */
+  async initializeKMS(operatorAddress: Address): Promise<void> {
+    const result = await createKMSWalletClient(
+      { address: operatorAddress },
+      this.chain,
+      this.config.rpcUrl,
+    )
+    this.walletClient = result.client
+    console.log(
+      `[DAOService] KMS initialized for ${operatorAddress} (${result.account.type})`,
+    )
   }
 
   private getChain(chainId: number) {

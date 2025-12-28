@@ -24,11 +24,31 @@ export function PackagesPage() {
     search: search || undefined,
   })
 
-  const statsData = useMemo(() => [
-    { label: 'Total Packages', value: packages.length.toString(), color: 'text-info-400', loading: isLoading },
-    { label: 'Total Downloads', value: formatCompactNumber(packages.reduce((sum, p) => sum + p.downloads, 0)), color: 'text-success-400', loading: isLoading },
-    { label: 'Verified', value: packages.filter((p) => p.verified).length.toString(), color: 'text-accent-400', loading: isLoading },
-  ], [packages, isLoading])
+  const statsData = useMemo(
+    () => [
+      {
+        label: 'Total Packages',
+        value: packages.length.toString(),
+        color: 'text-info-400',
+        loading: isLoading,
+      },
+      {
+        label: 'Total Downloads',
+        value: formatCompactNumber(
+          packages.reduce((sum, p) => sum + p.downloads, 0),
+        ),
+        color: 'text-success-400',
+        loading: isLoading,
+      },
+      {
+        label: 'Verified',
+        value: packages.filter((p) => p.verified).length.toString(),
+        color: 'text-accent-400',
+        loading: isLoading,
+      },
+    ],
+    [packages, isLoading],
+  )
 
   return (
     <div className="page-container">
@@ -60,7 +80,11 @@ export function PackagesPage() {
         <EmptyState
           icon={Package}
           title="No packages found"
-          description={search ? 'Try a different search term' : 'Publish a package to share your code'}
+          description={
+            search
+              ? 'Try a different search term'
+              : 'Publish a package to share your code'
+          }
           actionLabel="Publish Package"
           actionHref="/packages/publish"
         />
@@ -77,9 +101,12 @@ export function PackagesPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
                     <h3 className="font-semibold text-surface-100">
-                      {pkg.scope ? `@${pkg.scope}/` : ''}{pkg.name}
+                      {pkg.scope ? `@${pkg.scope}/` : ''}
+                      {pkg.name}
                     </h3>
-                    <span className="text-surface-500 text-sm">v{pkg.version}</span>
+                    <span className="text-surface-500 text-sm">
+                      v{pkg.version}
+                    </span>
                     {pkg.verified && (
                       <span className="flex items-center gap-1.5 text-success-400 text-sm">
                         <Shield className="w-4 h-4" aria-hidden="true" />
@@ -94,7 +121,9 @@ export function PackagesPage() {
                 <div className="text-left sm:text-right flex-shrink-0">
                   <div className="flex items-center gap-1.5 text-surface-300">
                     <Download className="w-4 h-4" aria-hidden="true" />
-                    <span className="font-medium">{formatCompactNumber(pkg.downloads)}</span>
+                    <span className="font-medium">
+                      {formatCompactNumber(pkg.downloads)}
+                    </span>
                   </div>
                   <p className="text-surface-500 text-sm mt-1">
                     Updated {formatRelativeTime(pkg.updatedAt)}

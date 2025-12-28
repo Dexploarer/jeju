@@ -305,7 +305,9 @@ export class EncryptedEQLiteClient {
     })
 
     if (!response.ok) {
-      throw new Error(`Failed to generate encryption key: ${response.statusText}`)
+      throw new Error(
+        `Failed to generate encryption key: ${response.statusText}`,
+      )
     }
 
     const result = GenerateKeyResponseSchema.parse(await response.json())
@@ -321,7 +323,7 @@ export class EncryptedEQLiteClient {
       if (this.kmsAuth.type === 'apiKey') {
         headers['X-API-Key'] = this.kmsAuth.value
       } else {
-        headers['Authorization'] = `Signature ${this.kmsAuth.value}`
+        headers.Authorization = `Signature ${this.kmsAuth.value}`
       }
     }
 
@@ -376,9 +378,7 @@ export class EncryptedEQLiteClient {
     params: (string | number | boolean | null)[],
   ): Promise<(string | number | boolean | null)[]> {
     // Simple heuristic: extract column names from INSERT/UPDATE statements
-    const columnMatches = sql.match(
-      /INSERT INTO\s+(\w+)\s*\(([^)]+)\)/i,
-    )
+    const columnMatches = sql.match(/INSERT INTO\s+(\w+)\s*\(([^)]+)\)/i)
 
     if (!columnMatches) return params
 
@@ -448,6 +448,3 @@ export async function createEncryptedEQLiteClient(
   await client.initialize()
   return client
 }
-
-
-

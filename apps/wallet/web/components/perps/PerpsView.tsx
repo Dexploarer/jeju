@@ -91,7 +91,9 @@ export function PerpsView({ address }: PerpsViewProps) {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div className="bg-card border border-border rounded-xl p-4 hover:border-orange-500/30 transition-colors">
             <div className="text-sm text-muted-foreground">Open Positions</div>
-            <div className="text-2xl font-bold mt-1 text-orange-400">{positions.length}</div>
+            <div className="text-2xl font-bold mt-1 text-orange-400">
+              {positions.length}
+            </div>
           </div>
           <div className="bg-card border border-border rounded-xl p-4 hover:border-orange-500/30 transition-colors">
             <div className="text-sm text-muted-foreground">Unrealized PnL</div>
@@ -214,7 +216,8 @@ export function PerpsView({ address }: PerpsViewProps) {
                   htmlFor="leverage-slider"
                   className="text-sm text-muted-foreground mb-2 block font-medium"
                 >
-                  Leverage: <span className="text-amber-400 font-bold">{leverage}x</span>
+                  Leverage:{' '}
+                  <span className="text-amber-400 font-bold">{leverage}x</span>
                 </label>
                 <input
                   id="leverage-slider"
@@ -267,9 +270,7 @@ export function PerpsView({ address }: PerpsViewProps) {
 
             {/* Market Info */}
             <div className="bg-card border border-border rounded-2xl p-6 hover:border-orange-500/20 transition-colors">
-              <h3 className="text-lg font-bold mb-4">
-                {selectedMarket} Info
-              </h3>
+              <h3 className="text-lg font-bold mb-4">{selectedMarket} Info</h3>
 
               {selectedMarketData ? (
                 <div className="space-y-1">
@@ -471,7 +472,10 @@ export function PerpsView({ address }: PerpsViewProps) {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {markets.map((market) => (
-                    <tr key={market.marketId} className="hover:bg-secondary/30 transition-colors">
+                    <tr
+                      key={market.marketId}
+                      className="hover:bg-secondary/30 transition-colors"
+                    >
                       <td className="p-4 font-bold">{market.symbol}</td>
                       <td className="p-4 text-right font-semibold">
                         ${perpsService.formatPrice(market.markPrice ?? 0n)}
@@ -480,11 +484,15 @@ export function PerpsView({ address }: PerpsViewProps) {
                         className={`p-4 text-right font-medium hidden sm:table-cell ${Number(market.fundingRate ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
                       >
                         {market.fundingRate
-                          ? ((Number(market.fundingRate) / 1e18) * 100).toFixed(4)
+                          ? ((Number(market.fundingRate) / 1e18) * 100).toFixed(
+                              4,
+                            )
                           : '0'}
                         %
                       </td>
-                      <td className="p-4 text-right font-semibold text-amber-400">{market.maxLeverage}x</td>
+                      <td className="p-4 text-right font-semibold text-amber-400">
+                        {market.maxLeverage}x
+                      </td>
                       <td className="p-4 text-right hidden md:table-cell">
                         {formatUnits(market.currentOpenInterest, 8)}
                       </td>

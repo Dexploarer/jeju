@@ -312,7 +312,8 @@ const SERVICE_IMAGES: Record<ServiceType, string> = {
   redis: 'redis:7-alpine',
   rabbitmq: 'rabbitmq:3-management-alpine',
   minio: 'minio/minio:latest',
-  eqlite: process.env.EQLITE_DOCKER_IMAGE || 'ghcr.io/jejunetwork/eqlite:latest',
+  eqlite:
+    process.env.EQLITE_DOCKER_IMAGE || 'ghcr.io/jejunetwork/eqlite:latest',
 }
 
 // Container naming convention: dws-{type}-{name}
@@ -591,7 +592,12 @@ export async function provisionService(
 
     // Add command for eqlite (EQLite block producer)
     if (config.type === 'eqlite') {
-      dockerArgs.push('-config', '/config/config.yaml', '-role', 'blockproducer')
+      dockerArgs.push(
+        '-config',
+        '/config/config.yaml',
+        '-role',
+        'blockproducer',
+      )
     }
 
     const createResult = await dockerCommand(dockerArgs)

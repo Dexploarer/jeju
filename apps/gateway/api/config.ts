@@ -1,4 +1,9 @@
-import { createAppConfig, getEnvNumber, getEnvVar, isProductionEnv } from '@jejunetwork/config'
+import {
+  createAppConfig,
+  getEnvNumber,
+  getEnvVar,
+  isProductionEnv,
+} from '@jejunetwork/config'
 
 export interface GatewayConfig {
   // Server
@@ -95,7 +100,8 @@ const { config, configure: setGatewayConfig } = createAppConfig<GatewayConfig>({
   metricsPort: getEnvNumber('METRICS_PORT') ?? 9090,
 
   // x402 Facilitator
-  facilitatorPort: getEnvNumber('FACILITATOR_PORT') ?? getEnvNumber('PORT') ?? 3402,
+  facilitatorPort:
+    getEnvNumber('FACILITATOR_PORT') ?? getEnvNumber('PORT') ?? 3402,
   host: getEnvVar('HOST') ?? '0.0.0.0',
   facilitatorPrivateKey: getEnvVar('FACILITATOR_PRIVATE_KEY'),
   facilitatorAddress: getEnvVar('X402_FACILITATOR_ADDRESS'),
@@ -104,23 +110,31 @@ const { config, configure: setGatewayConfig } = createAppConfig<GatewayConfig>({
   feeRecipientAddress: getEnvVar('FEE_RECIPIENT_ADDRESS'),
   maxPaymentAge: getEnvNumber('MAX_PAYMENT_AGE') ?? 300,
   minPaymentAmount: BigInt(getEnvNumber('MIN_PAYMENT_AMOUNT') ?? 1),
-  facilitatorUrl: getEnvVar('FACILITATOR_URL') ?? `http://localhost:${getEnvNumber('FACILITATOR_PORT') ?? getEnvNumber('PORT') ?? 3402}`,
-  kmsEnabled: getEnvVar('KMS_ENABLED') === 'true' || getEnvVar('VAULT_ENCRYPTION_SECRET') !== undefined,
+  facilitatorUrl:
+    getEnvVar('FACILITATOR_URL') ??
+    `http://localhost:${getEnvNumber('FACILITATOR_PORT') ?? getEnvNumber('PORT') ?? 3402}`,
+  kmsEnabled:
+    getEnvVar('KMS_ENABLED') === 'true' ||
+    getEnvVar('VAULT_ENCRYPTION_SECRET') !== undefined,
   kmsSecretId: getEnvVar('FACILITATOR_KMS_SECRET_ID'),
   facilitatorServiceAddress: getEnvVar('FACILITATOR_SERVICE_ADDRESS'),
   vaultEncryptionSecret: getEnvVar('VAULT_ENCRYPTION_SECRET'),
 
   // Leaderboard
-  leaderboardEqliteDatabaseId: getEnvVar('LEADERBOARD_EQLITE_DATABASE_ID') ?? 'leaderboard',
+  leaderboardEqliteDatabaseId:
+    getEnvVar('LEADERBOARD_EQLITE_DATABASE_ID') ?? 'leaderboard',
   leaderboardDebug: !isProductionEnv(),
   attestationOraclePrivateKey: getEnvVar('ATTESTATION_ORACLE_PRIVATE_KEY'),
-  leaderboardDomain: getEnvVar('LEADERBOARD_DOMAIN') ?? 'leaderboard.jejunetwork.org',
+  leaderboardDomain:
+    getEnvVar('LEADERBOARD_DOMAIN') ?? 'leaderboard.jejunetwork.org',
   githubToken: getEnvVar('GITHUB_TOKEN'),
-  leaderboardRepositories: getEnvVar('LEADERBOARD_REPOSITORIES') ?? 'jejunetwork/jeju',
+  leaderboardRepositories:
+    getEnvVar('LEADERBOARD_REPOSITORIES') ?? 'jejunetwork/jeju',
   dwsApiUrl: getEnvVar('DWS_API_URL') ?? 'http://localhost:4030',
   leaderboardDataDir: getEnvVar('LEADERBOARD_DATA_DIR') ?? './data/leaderboard',
   openrouterApiKey: getEnvVar('OPENROUTER_API_KEY'),
-  leaderboardLlmModel: getEnvVar('LEADERBOARD_LLM_MODEL') ?? 'anthropic/claude-sonnet-4-5',
+  leaderboardLlmModel:
+    getEnvVar('LEADERBOARD_LLM_MODEL') ?? 'anthropic/claude-sonnet-4-5',
 
   // Faucet
   faucetPrivateKey: getEnvVar('FAUCET_PRIVATE_KEY'),
@@ -128,7 +142,11 @@ const { config, configure: setGatewayConfig } = createAppConfig<GatewayConfig>({
   // JNS Gateway
   gatewayUrl: getEnvVar('GATEWAY_URL'),
   wsPort: getEnvNumber('WS_PORT') ?? 4004,
-  devMode: getEnvVar('DEV_MODE') === 'true' || !isProductionEnv() || getEnvVar('JEJU_DEV') === 'true' || getEnvVar('JNS_DEV_PROXY') === 'true',
+  devMode:
+    getEnvVar('DEV_MODE') === 'true' ||
+    !isProductionEnv() ||
+    getEnvVar('JEJU_DEV') === 'true' ||
+    getEnvVar('JNS_DEV_PROXY') === 'true',
   devHost: getEnvVar('DEV_HOST') ?? 'localhost',
   ipfsGatewayUrl: getEnvVar('IPFS_GATEWAY_URL'),
   jnsRegistryAddress: getEnvVar('JNS_REGISTRY_ADDRESS'),

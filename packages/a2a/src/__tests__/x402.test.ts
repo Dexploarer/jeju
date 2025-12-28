@@ -89,9 +89,7 @@ describeIfRedis('X402Manager with live Redis', () => {
         'test-service',
       )
 
-      const stored = await redisClient.get(
-        `x402:payment:${request.requestId}`,
-      )
+      const stored = await redisClient.get(`x402:payment:${request.requestId}`)
       expect(stored).not.toBeNull()
 
       const parsed = JSON.parse(stored as string)

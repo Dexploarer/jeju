@@ -2,6 +2,7 @@ import { cors } from '@elysiajs/cors'
 import { type Context, Elysia } from 'elysia'
 import { z } from 'zod'
 import { RegisteredAgent } from '../src/model'
+import { config } from './config'
 import { getAccountByAddress } from './utils/account-utils'
 import { getAgentsByTag } from './utils/agent-utils'
 import { getBlockByIdentifier } from './utils/block-detail-utils'
@@ -95,7 +96,6 @@ import {
   validateParams,
   validateQuery,
 } from './utils/validation'
-import { config } from './config'
 
 const REST_PORT = config.restPort
 

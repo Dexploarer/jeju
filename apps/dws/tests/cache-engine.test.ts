@@ -1004,10 +1004,10 @@ describe('CacheEngine', () => {
     test('Multiple patterns can match same message', () => {
       const matches: string[] = []
 
-      engine.psubscribe('*', (msg) => {
+      engine.psubscribe('*', (_msg) => {
         matches.push('wildcard')
       })
-      engine.psubscribe('user:*', (msg) => {
+      engine.psubscribe('user:*', (_msg) => {
         matches.push('user pattern')
       })
 
@@ -1021,10 +1021,10 @@ describe('CacheEngine', () => {
       const messages: string[] = []
 
       engine.subscribe('user:123', (msg) => {
-        messages.push('direct: ' + msg.message)
+        messages.push(`direct: ${msg.message}`)
       })
       engine.psubscribe('user:*', (msg) => {
-        messages.push('pattern: ' + msg.message)
+        messages.push(`pattern: ${msg.message}`)
       })
 
       engine.publish('user:123', 'hello')

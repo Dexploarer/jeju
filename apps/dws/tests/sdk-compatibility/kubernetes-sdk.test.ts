@@ -37,7 +37,13 @@ interface KubeDeployment {
     selector: { matchLabels: Record<string, string> }
     template: {
       metadata: { labels: Record<string, string> }
-      spec: { containers: Array<{ name: string; image: string; ports?: Array<{ containerPort: number }> }> }
+      spec: {
+        containers: Array<{
+          name: string
+          image: string
+          ports?: Array<{ containerPort: number }>
+        }>
+      }
     }
   }
 }
@@ -62,7 +68,14 @@ interface KubeCronJob {
     jobTemplate: {
       spec: {
         template: {
-          spec: { containers: Array<{ name: string; image: string; command?: string[] }>; restartPolicy: string }
+          spec: {
+            containers: Array<{
+              name: string
+              image: string
+              command?: string[]
+            }>
+            restartPolicy: string
+          }
         }
       }
     }
@@ -129,7 +142,7 @@ describe('Kubernetes/Helm SDK Compatibility', () => {
       const res = await dwsRequest('/helm/health')
       expect(res.status).toBe(200)
 
-      const data = await res.json() as { status: string; provider: string }
+      const data = (await res.json()) as { status: string; provider: string }
       expect(data.status).toBe('healthy')
       expect(data.provider).toBe('dws-helm')
     })
@@ -138,7 +151,7 @@ describe('Kubernetes/Helm SDK Compatibility', () => {
       const res = await dwsRequest('/k3s/health')
       expect(res.status).toBe(200)
 
-      const data = await res.json() as { status: string }
+      const data = (await res.json()) as { status: string }
       expect(data.status).toBe('healthy')
     })
   })
@@ -183,7 +196,7 @@ describe('Kubernetes/Helm SDK Compatibility', () => {
       })
 
       expect(res.status).toBe(200)
-      const data = await res.json() as HelmDeploymentResponse
+      const data = (await res.json()) as HelmDeploymentResponse
       expect(data.id).toBeDefined()
       expect(data.name).toBe('nginx-sdk-test')
       expect(data.namespace).toBe(TEST_NAMESPACE)
@@ -199,7 +212,7 @@ describe('Kubernetes/Helm SDK Compatibility', () => {
       })
 
       expect(res.status).toBe(200)
-      const data = await res.json() as HelmDeploymentResponse
+      const data = (await res.json()) as HelmDeploymentResponse
       expect(data.id).toBe(deploymentId)
       expect(['deploying', 'running']).toContain(data.status)
     })
@@ -210,7 +223,7 @@ describe('Kubernetes/Helm SDK Compatibility', () => {
       })
 
       expect(res.status).toBe(200)
-      const data = await res.json() as HelmDeploymentsListResponse
+      const data = (await res.json()) as HelmDeploymentsListResponse
       expect(data.deployments).toBeInstanceOf(Array)
       expect(data.deployments.length).toBeGreaterThan(0)
     })
@@ -231,7 +244,7 @@ describe('Kubernetes/Helm SDK Compatibility', () => {
       })
 
       expect(res.status).toBe(200)
-      const data = await res.json() as { success: boolean; replicas: number }
+      const data = (await res.json()) as { success: boolean; replicas: number }
       expect(data.success).toBe(true)
       expect(data.replicas).toBe(5)
     })
@@ -262,7 +275,11 @@ describe('Kubernetes/Helm SDK Compatibility', () => {
               metadata: { labels: { app: 'api-server' } },
               spec: {
                 containers: [
-                  { name: 'api', image: 'node:20-alpine', ports: [{ containerPort: 3000 }] },
+                  {
+                    name: 'api',
+                    image: 'node:20-alpine',
+                    ports: [{ containerPort: 3000 }],
+                  },
                 ],
               },
             },
@@ -294,7 +311,7 @@ describe('Kubernetes/Helm SDK Compatibility', () => {
       })
 
       expect(res.status).toBe(200)
-      const data = await res.json() as HelmDeploymentResponse
+      const data = (await res.json()) as HelmDeploymentResponse
       expect(data.workers).toBe(1)
       expect(data.services).toBe(1)
     })
@@ -323,9 +340,7 @@ describe('Kubernetes/Helm SDK Compatibility', () => {
             template: {
               metadata: { labels: { app: 'stateful-app' } },
               spec: {
-                containers: [
-                  { name: 'app', image: 'postgres:15-alpine' },
-                ],
+                containers: [{ name: 'app', image: 'postgres:15-alpine' }],
               },
             },
           },
@@ -346,7 +361,7 @@ describe('Kubernetes/Helm SDK Compatibility', () => {
       })
 
       expect(res.status).toBe(200)
-      const data = await res.json() as HelmDeploymentResponse
+      const data = (await res.json()) as HelmDeploymentResponse
       expect(data.id).toBeDefined()
     })
   })
@@ -445,7 +460,10 @@ describe('Kubernetes/Helm SDK Compatibility', () => {
           apiVersion: 'v1',
           kind: 'ConfigMap',
           metadata: { name: 'fullstack-config' },
-          data: { NODE_ENV: 'production', API_URL: 'https://api.dws.jejunetwork.org' },
+          data: {
+            NODE_ENV: 'production',
+            API_URL: 'https://api.dws.jejunetwork.org',
+          },
         },
         // Secret
         {
@@ -453,7 +471,9 @@ describe('Kubernetes/Helm SDK Compatibility', () => {
           kind: 'Secret',
           metadata: { name: 'fullstack-secrets' },
           type: 'Opaque',
-          data: { JWT_SECRET: Buffer.from('jwt-secret-123').toString('base64') },
+          data: {
+            JWT_SECRET: Buffer.from('jwt-secret-123').toString('base64'),
+          },
         },
         // Database PVC
         {
@@ -579,7 +599,7 @@ describe('Kubernetes/Helm SDK Compatibility', () => {
       })
 
       expect(res.status).toBe(200)
-      const data = await res.json() as HelmDeploymentResponse
+      const data = (await res.json()) as HelmDeploymentResponse
       expect(data.id).toBeDefined()
       expect(data.namespace).toBe('production')
       expect(data.workers).toBeGreaterThan(0)
@@ -599,12 +619,17 @@ describe('Kubernetes/Helm SDK Compatibility', () => {
       // /k3s/providers requires the exec API which may not be available in local dev
       // Accept 200 or error responses since exec endpoint may not exist
       if (res.status !== 200) {
-        const data = await res.json() as { error: string }
-        console.log('[K8s SDK Test] /k3s/providers skipped - exec API unavailable:', data.error)
+        const data = (await res.json()) as { error: string }
+        console.log(
+          '[K8s SDK Test] /k3s/providers skipped - exec API unavailable:',
+          data.error,
+        )
         return
       }
 
-      const data = await res.json() as { providers: Array<{ name: string; available: boolean }> }
+      const data = (await res.json()) as {
+        providers: Array<{ name: string; available: boolean }>
+      }
       expect(data.providers).toBeInstanceOf(Array)
       expect(data.providers.some((p) => p.name === 'k3d')).toBe(true)
       expect(data.providers.some((p) => p.name === 'k3s')).toBe(true)
@@ -615,9 +640,8 @@ describe('Kubernetes/Helm SDK Compatibility', () => {
       const res = await dwsRequest('/k3s/clusters')
       expect(res.status).toBe(200)
 
-      const data = await res.json() as { clusters: K3sClusterResponse[] }
+      const data = (await res.json()) as { clusters: K3sClusterResponse[] }
       expect(data.clusters).toBeInstanceOf(Array)
     })
   })
 })
-

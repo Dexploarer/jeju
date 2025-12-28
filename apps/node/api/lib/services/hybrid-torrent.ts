@@ -33,13 +33,13 @@ import {
   parseAbi,
   http as viemHttp,
 } from 'viem'
-import { privateKeyToAccount } from 'viem/accounts'
 import { z } from 'zod'
-import { config as nodeConfig } from '../config'
 import {
   type OracleAttestation,
   OracleAttestationSchema,
 } from '../../../lib/validation'
+import { config as nodeConfig } from '../../config'
+import { createSecureSigner, type SecureSigner } from '../secure-signer'
 
 // Configuration Schema
 
@@ -53,7 +53,8 @@ const TorrentConfigSchema = z.object({
   maxCacheEntries: z.number().default(10000),
   rpcUrl: z.string().url().optional(),
   chainId: z.number().optional(),
-  privateKey: z.string().optional(),
+  /** KMS key ID for secure signing (no raw private keys) */
+  keyId: z.string().optional(),
   contentRegistryAddress: z.string().optional(),
   seedingOracleUrl: z.string().url().optional(), // Optional in dev, required in prod
   reportIntervalMs: z.number().default(3600000),
@@ -223,6 +224,7 @@ export class HybridTorrentService {
   // On-chain integration
   private publicClient: ReturnType<typeof createPublicClient> | null = null
   private walletClient: ReturnType<typeof createWalletClient> | null = null
+  private signer: SecureSigner | null = null
   private contentRegistryAddress: string | null = null
   private reportInterval: ReturnType<typeof setInterval> | null = null
   private blocklistSyncInterval: ReturnType<typeof setInterval> | null = null
@@ -238,8 +240,7 @@ export class HybridTorrentService {
         'udp://tracker.openbittorrent.com:80',
         'udp://tracker.opentrackr.org:31337',
       ],
-      seedingOracleUrl:
-        config.seedingOracleUrl ?? nodeConfig.seedingOracleUrl,
+      seedingOracleUrl: config.seedingOracleUrl ?? nodeConfig.seedingOracleUrl,
       ...config,
     })
 
@@ -250,12 +251,11 @@ export class HybridTorrentService {
       this.publicClient = createPublicClient({
         transport: viemHttp(this.config.rpcUrl),
       })
-      if (this.config.privateKey) {
-        const account = privateKeyToAccount(
-          expectHex(this.config.privateKey, 'hybrid torrent private key'),
-        )
+      if (this.config.keyId) {
+        // Use KMS-backed signer - no local private keys
+        this.signer = createSecureSigner(this.config.keyId)
+        // Create wallet client without account (signing via KMS)
         this.walletClient = createWalletClient({
-          account,
           transport: viemHttp(this.config.rpcUrl),
         })
         this.contentRegistryAddress = this.config.contentRegistryAddress
@@ -755,10 +755,13 @@ export class HybridTorrentService {
         const infohashHex = expectHex(`0x${infohash}`, 'infohash')
         const sigHex = expectHex(attestation.signature, 'attestation signature')
 
-        const hash = await this.walletClient.writeContract({
-          account: null,
-          chain: null,
-          address: registryAddr,
+        if (!this.signer || !this.publicClient) {
+          throw new Error('Signer not initialized')
+        }
+
+        // Encode and sign via KMS
+        const { encodeFunctionData } = await import('viem')
+        const txData = encodeFunctionData({
           abi: REPORT_SEEDING_ABI,
           functionName: 'reportSeeding',
           args: [
@@ -768,6 +771,15 @@ export class HybridTorrentService {
             attestation.nonce,
             sigHex,
           ],
+        })
+
+        const { signedTransaction, hash } = await this.signer.signTransaction({
+          to: registryAddr,
+          data: txData,
+          chainId: this.config.chainId ?? 1,
+        })
+        await this.publicClient.sendRawTransaction({
+          serializedTransaction: signedTransaction,
         })
         await this.publicClient.waitForTransactionReceipt({ hash })
 
@@ -788,11 +800,7 @@ export class HybridTorrentService {
   // On-Chain Operations
 
   private async registerSeeding(infohash: string): Promise<void> {
-    if (
-      !this.contentRegistryAddress ||
-      !this.walletClient ||
-      !this.publicClient
-    )
+    if (!this.contentRegistryAddress || !this.signer || !this.publicClient)
       return
     const START_SEEDING_ABI = parseAbi([
       'function startSeeding(bytes32 infohash) external',
@@ -803,24 +811,27 @@ export class HybridTorrentService {
     )
     const infohashHex = expectHex(`0x${infohash}`, 'infohash')
 
-    const hash = await this.walletClient.writeContract({
-      account: null,
-      chain: null,
-      address: registryAddr,
+    // Sign via KMS
+    const { encodeFunctionData } = await import('viem')
+    const data = encodeFunctionData({
       abi: START_SEEDING_ABI,
       functionName: 'startSeeding',
       args: [infohashHex],
+    })
+    const { signedTransaction, hash } = await this.signer.signTransaction({
+      to: registryAddr,
+      data,
+      chainId: this.config.chainId ?? 1,
+    })
+    await this.publicClient.sendRawTransaction({
+      serializedTransaction: signedTransaction,
     })
     await this.publicClient.waitForTransactionReceipt({ hash })
     console.log(`[HybridTorrent] Registered seeding: ${infohash}`)
   }
 
   private async unregisterSeeding(infohash: string): Promise<void> {
-    if (
-      !this.contentRegistryAddress ||
-      !this.walletClient ||
-      !this.publicClient
-    )
+    if (!this.contentRegistryAddress || !this.signer || !this.publicClient)
       return
 
     const STOP_SEEDING_ABI = parseAbi([
@@ -832,13 +843,20 @@ export class HybridTorrentService {
     )
     const infohashHex = expectHex(`0x${infohash}`, 'infohash')
 
-    const hash = await this.walletClient.writeContract({
-      account: null,
-      chain: null,
-      address: registryAddr,
+    // Sign via KMS
+    const { encodeFunctionData } = await import('viem')
+    const data = encodeFunctionData({
       abi: STOP_SEEDING_ABI,
       functionName: 'stopSeeding',
       args: [infohashHex],
+    })
+    const { signedTransaction, hash } = await this.signer.signTransaction({
+      to: registryAddr,
+      data,
+      chainId: this.config.chainId ?? 1,
+    })
+    await this.publicClient.sendRawTransaction({
+      serializedTransaction: signedTransaction,
     })
     await this.publicClient.waitForTransactionReceipt({ hash })
     console.log(`[HybridTorrent] Unregistered seeding: ${infohash}`)

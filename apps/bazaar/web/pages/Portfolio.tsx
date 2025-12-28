@@ -26,7 +26,10 @@ export default function PortfolioPage() {
       {/* Header */}
       <header className="mb-8">
         <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gradient-warm flex items-center gap-3 mb-2">
-          <span className="text-3xl md:text-4xl animate-bounce-subtle" aria-hidden="true">
+          <span
+            className="text-3xl md:text-4xl animate-bounce-subtle"
+            aria-hidden="true"
+          >
             📊
           </span>
           <span>Portfolio</span>
@@ -38,27 +41,15 @@ export default function PortfolioPage() {
 
       {/* Stats Grid */}
       <Grid cols={4} className="mb-8">
-        <StatCard
-          icon="💰"
-          label="Total Value"
-          value="$0.00"
-        />
+        <StatCard icon="💰" label="Total Value" value="$0.00" />
         <StatCard
           icon="📈"
           label="24h Change"
           value="—"
           trend={{ value: '0%', positive: true }}
         />
-        <StatCard
-          icon="🪙"
-          label="Tokens"
-          value="0"
-        />
-        <StatCard
-          icon="🖼️"
-          label="Items"
-          value="0"
-        />
+        <StatCard icon="🪙" label="Tokens" value="0" />
+        <StatCard icon="🖼️" label="Items" value="0" />
       </Grid>
 
       {/* Holdings Sections */}
@@ -70,12 +61,17 @@ export default function PortfolioPage() {
               <span aria-hidden="true">🪙</span>
               Tokens
             </h2>
-            <Link to="/coins" className="text-sm text-primary-color hover:underline">
+            <Link
+              to="/coins"
+              className="text-sm text-primary-color hover:underline"
+            >
               Browse →
             </Link>
           </header>
           <div className="text-center py-8">
-            <div className="text-4xl mb-3 animate-float" aria-hidden="true">🪙</div>
+            <div className="text-4xl mb-3 animate-float" aria-hidden="true">
+              🪙
+            </div>
             <p className="text-tertiary mb-4">No tokens found</p>
             <Link to="/swap" className="btn-secondary text-sm">
               Get Your First Token
@@ -90,12 +86,17 @@ export default function PortfolioPage() {
               <span aria-hidden="true">🖼️</span>
               Collectibles
             </h2>
-            <Link to="/items" className="text-sm text-primary-color hover:underline">
+            <Link
+              to="/items"
+              className="text-sm text-primary-color hover:underline"
+            >
               Browse →
             </Link>
           </header>
           <div className="text-center py-8">
-            <div className="text-4xl mb-3 animate-float" aria-hidden="true">🖼️</div>
+            <div className="text-4xl mb-3 animate-float" aria-hidden="true">
+              🖼️
+            </div>
             <p className="text-tertiary mb-4">No collectibles found</p>
             <Link to="/items" className="btn-secondary text-sm">
               Explore Items
@@ -113,7 +114,9 @@ export default function PortfolioPage() {
           </h2>
         </header>
         <div className="text-center py-8">
-          <div className="text-4xl mb-3 animate-float" aria-hidden="true">📜</div>
+          <div className="text-4xl mb-3 animate-float" aria-hidden="true">
+            📜
+          </div>
           <p className="text-tertiary">No recent activity</p>
         </div>
       </section>

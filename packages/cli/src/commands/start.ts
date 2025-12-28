@@ -1,6 +1,9 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { getEQLiteBlockProducerUrl, getFarcasterHubUrl } from '@jejunetwork/config'
+import {
+  getEQLiteBlockProducerUrl,
+  getFarcasterHubUrl,
+} from '@jejunetwork/config'
 import { Command } from 'commander'
 import { execa } from 'execa'
 import { bootstrapContracts, stopLocalnet } from '../lib/chain'

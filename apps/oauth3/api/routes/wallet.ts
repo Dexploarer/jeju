@@ -1,17 +1,20 @@
 /**
  * Wallet authentication routes
+ *
+ * SECURITY: Sessions use ephemeral keys and encrypted PII storage.
  */
 
 import { Elysia, t } from 'elysia'
 import type { Address, Hex } from 'viem'
 import { isAddress, isHex, verifyMessage } from 'viem'
 import type { AuthConfig, WalletAuthChallenge } from '../../lib/types'
+import { getEphemeralKey } from '../services/kms'
+import { authCodeState, clientState, sessionState } from '../services/state'
 import {
   createHtmlPage,
   escapeHtml,
   escapeJsString,
 } from '../shared/html-templates'
-import { authCodeState, clientState, sessionState } from '../services/state'
 
 /**
  * Validate redirect URI against client's registered patterns.
@@ -285,7 +288,7 @@ No transaction will be sent. No gas fees.`
         const userId = `wallet:${address.toLowerCase()}`
 
         console.log('[OAuth3] Wallet verified, creating auth code:', {
-          code: code.substring(0, 8) + '...',
+          code: `${code.substring(0, 8)}...`,
           userId,
           clientId: challenge.clientId,
           redirectUri: challenge.redirectUri,
@@ -301,16 +304,19 @@ No transaction will be sent. No gas fees.`
 
         console.log('[OAuth3] Auth code saved successfully')
 
-        // Create session
+        // Create session with ephemeral key
         const sessionId = crypto.randomUUID()
+        const ephemeralKey = await getEphemeralKey(sessionId)
+
         await sessionState.save({
           sessionId,
           userId,
           provider: 'wallet',
-          address: address,
+          address, // Will be encrypted by sessionState.save()
           createdAt: Date.now(),
           expiresAt: Date.now() + 24 * 60 * 60 * 1000,
           metadata: {},
+          ephemeralKeyId: ephemeralKey.keyId,
         })
 
         // Clean up challenge

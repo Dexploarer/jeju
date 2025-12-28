@@ -7,12 +7,10 @@
 
 import {
   ArrowRight,
-  Bot,
   Brain,
   Briefcase,
   DollarSign,
   GitBranch,
-  Loader2,
   MessageSquare,
   Package,
   Sparkles,
@@ -20,12 +18,8 @@ import {
   Zap,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { EmptyState, LoadingState, StatsGrid } from '../components/shared'
 import { WalletButton } from '../components/WalletButton'
-import {
-  EmptyState,
-  LoadingState,
-  StatsGrid,
-} from '../components/shared'
 import { useBounties, useBountyStats } from '../hooks/useBounties'
 import { useRepositoryStats } from '../hooks/useGit'
 import { useJobStats } from '../hooks/useJobs'
@@ -33,7 +27,9 @@ import { usePackages } from '../hooks/usePackages'
 import { formatCompactNumber, formatDeadline } from '../lib/format'
 
 export function HomePage() {
-  const { bounties, isLoading: bountiesLoading } = useBounties({ status: 'open' })
+  const { bounties, isLoading: bountiesLoading } = useBounties({
+    status: 'open',
+  })
   const { stats: bountyStats, isLoading: bountyStatsLoading } = useBountyStats()
   const { stats: jobStats, isLoading: jobStatsLoading } = useJobStats()
   const { stats: repoStats, isLoading: repoStatsLoading } = useRepositoryStats()
@@ -69,10 +65,34 @@ export function HomePage() {
   ]
 
   const quickActions = [
-    { href: '/bounties', label: 'Create Bounty', icon: DollarSign, gradient: 'from-success-500/20 to-success-600/10', iconColor: 'text-success-400' },
-    { href: '/git', label: 'New Repository', icon: GitBranch, gradient: 'from-accent-500/20 to-accent-600/10', iconColor: 'text-accent-400' },
-    { href: '/packages', label: 'Publish Package', icon: Package, gradient: 'from-info-500/20 to-info-600/10', iconColor: 'text-info-400' },
-    { href: '/models', label: 'Upload Model', icon: Brain, gradient: 'from-warning-500/20 to-warning-600/10', iconColor: 'text-warning-400' },
+    {
+      href: '/bounties',
+      label: 'Create Bounty',
+      icon: DollarSign,
+      gradient: 'from-success-500/20 to-success-600/10',
+      iconColor: 'text-success-400',
+    },
+    {
+      href: '/git',
+      label: 'New Repository',
+      icon: GitBranch,
+      gradient: 'from-accent-500/20 to-accent-600/10',
+      iconColor: 'text-accent-400',
+    },
+    {
+      href: '/packages',
+      label: 'Publish Package',
+      icon: Package,
+      gradient: 'from-info-500/20 to-info-600/10',
+      iconColor: 'text-info-400',
+    },
+    {
+      href: '/models',
+      label: 'Upload Model',
+      icon: Brain,
+      gradient: 'from-warning-500/20 to-warning-600/10',
+      iconColor: 'text-warning-400',
+    },
   ]
 
   const quickStats = [
@@ -134,7 +154,10 @@ export function HomePage() {
               className="text-xl font-semibold text-surface-50 flex items-center gap-2.5 font-display"
             >
               <div className="w-8 h-8 rounded-lg bg-success-500/15 flex items-center justify-center">
-                <DollarSign className="w-4 h-4 text-success-400" aria-hidden="true" />
+                <DollarSign
+                  className="w-4 h-4 text-success-400"
+                  aria-hidden="true"
+                />
               </div>
               Featured Bounties
             </h2>
@@ -188,7 +211,8 @@ export function HomePage() {
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-surface-400">
-                      {formatDeadline(bounty.deadline)} · {bounty.applicants} applicants
+                      {formatDeadline(bounty.deadline)} · {bounty.applicants}{' '}
+                      applicants
                     </span>
                     <span className="btn btn-primary text-sm py-1.5 px-4">
                       <Zap className="w-3.5 h-3.5" />
@@ -208,7 +232,10 @@ export function HomePage() {
             className="text-xl font-semibold text-surface-50 flex items-center gap-2.5 mb-5 font-display"
           >
             <div className="w-8 h-8 rounded-lg bg-info-500/15 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4 text-info-400" aria-hidden="true" />
+              <TrendingUp
+                className="w-4 h-4 text-info-400"
+                aria-hidden="true"
+              />
             </div>
             Quick Stats
           </h2>
@@ -224,7 +251,10 @@ export function HomePage() {
                   <div
                     className={`w-9 h-9 rounded-lg flex items-center justify-center ${stat.bgColor}`}
                   >
-                    <stat.icon className={`w-4 h-4 ${stat.iconColor}`} aria-hidden="true" />
+                    <stat.icon
+                      className={`w-4 h-4 ${stat.iconColor}`}
+                      aria-hidden="true"
+                    />
                   </div>
                   <div>
                     <p className="text-surface-100 font-medium">{stat.label}</p>
@@ -274,7 +304,10 @@ export function HomePage() {
             className="text-xl font-semibold text-surface-50 flex items-center gap-2.5 font-display"
           >
             <div className="w-8 h-8 rounded-lg bg-accent-500/15 flex items-center justify-center">
-              <MessageSquare className="w-4 h-4 text-accent-400" aria-hidden="true" />
+              <MessageSquare
+                className="w-4 h-4 text-accent-400"
+                aria-hidden="true"
+              />
             </div>
             Community Feed
           </h2>

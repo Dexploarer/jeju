@@ -6,9 +6,9 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { Address } from 'viem'
 import { useAccount } from 'wagmi'
 import { fetchApi, postApi } from '../lib/eden'
-import type { Address } from 'viem'
 
 // Types for cache responses
 interface CacheStats {
@@ -131,8 +131,7 @@ export function useCacheStats() {
 export function useCachePlans() {
   return useQuery({
     queryKey: ['cache-plans'],
-    queryFn: () =>
-      fetchApi<{ plans: CachePlan[] }>('/cache/plans'),
+    queryFn: () => fetchApi<{ plans: CachePlan[] }>('/cache/plans'),
   })
 }
 
@@ -297,7 +296,7 @@ export function useCacheClear() {
     mutationFn: (namespace?: string) => {
       const params = namespace ? `?namespace=${namespace}` : ''
       return fetch(`/cache/clear${params}`, { method: 'DELETE' }).then((r) =>
-        r.json()
+        r.json(),
       ) as Promise<{ success: boolean }>
     },
     onSuccess: () => {
@@ -321,7 +320,11 @@ export function useCacheHSet() {
 
 export function useCacheHGet() {
   return useMutation({
-    mutationFn: (params: { key: string; field: string; namespace?: string }) => {
+    mutationFn: (params: {
+      key: string
+      field: string
+      namespace?: string
+    }) => {
       const searchParams = new URLSearchParams({
         key: params.key,
         field: params.field,
@@ -338,7 +341,7 @@ export function useCacheHGetAll() {
       const searchParams = new URLSearchParams({ key: params.key })
       if (params.namespace) searchParams.set('namespace', params.namespace)
       return fetchApi<{ hash: Record<string, string> }>(
-        `/cache/hgetall?${searchParams}`
+        `/cache/hgetall?${searchParams}`,
       )
     },
   })
@@ -426,5 +429,3 @@ export function useCacheZRange() {
     },
   })
 }
-
-

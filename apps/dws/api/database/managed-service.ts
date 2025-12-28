@@ -1,6 +1,6 @@
 /**
  * Managed Database Service
- * 
+ *
  * Provides unified API for managing EQLite and PostgreSQL databases:
  * - Instance lifecycle management
  * - Connection pooling (PgBouncer for PostgreSQL)
@@ -29,7 +29,12 @@ import type { BackendManager } from '../storage/backends'
 // Types
 // ============================================================================
 
-export type DatabaseEngine = 'eqlite' | 'postgresql' | 'mysql' | 'redis' | 'mongodb'
+export type DatabaseEngine =
+  | 'eqlite'
+  | 'postgresql'
+  | 'mysql'
+  | 'redis'
+  | 'mongodb'
 
 export type DatabaseStatus =
   | 'pending'
@@ -43,7 +48,12 @@ export type DatabaseStatus =
   | 'failed'
   | 'terminated'
 
-export type BackupStatus = 'pending' | 'in_progress' | 'completed' | 'failed' | 'expired'
+export type BackupStatus =
+  | 'pending'
+  | 'in_progress'
+  | 'completed'
+  | 'failed'
+  | 'expired'
 
 export type ReplicaRole = 'primary' | 'read_replica' | 'standby'
 
@@ -151,23 +161,29 @@ export interface EQLiteConnection {
 // ============================================================================
 
 export const CreateDatabaseSchema = z.object({
-  name: z.string().min(1).max(63).regex(/^[a-z][a-z0-9-]*$/),
+  name: z
+    .string()
+    .min(1)
+    .max(63)
+    .regex(/^[a-z][a-z0-9-]*$/),
   engine: z.enum(['eqlite', 'postgresql', 'mysql', 'redis', 'mongodb']),
   planId: z.string(),
   region: z.string().default('us-east-1'),
-  config: z.object({
-    vcpus: z.number().min(1).max(64).optional(),
-    memoryMb: z.number().min(512).max(524288).optional(),
-    storageMb: z.number().min(1024).max(10485760).optional(),
-    readReplicas: z.number().min(0).max(5).optional(),
-    maxConnections: z.number().min(10).max(10000).optional(),
-    connectionPoolSize: z.number().min(5).max(1000).optional(),
-    backupRetentionDays: z.number().min(1).max(365).optional(),
-    pointInTimeRecovery: z.boolean().optional(),
-    publicAccess: z.boolean().optional(),
-    replicationFactor: z.number().min(1).max(7).optional(),
-    consistencyMode: z.enum(['strong', 'eventual']).optional(),
-  }).optional(),
+  config: z
+    .object({
+      vcpus: z.number().min(1).max(64).optional(),
+      memoryMb: z.number().min(512).max(524288).optional(),
+      storageMb: z.number().min(1024).max(10485760).optional(),
+      readReplicas: z.number().min(0).max(5).optional(),
+      maxConnections: z.number().min(10).max(10000).optional(),
+      connectionPoolSize: z.number().min(5).max(1000).optional(),
+      backupRetentionDays: z.number().min(1).max(365).optional(),
+      pointInTimeRecovery: z.boolean().optional(),
+      publicAccess: z.boolean().optional(),
+      replicationFactor: z.number().min(1).max(7).optional(),
+      consistencyMode: z.enum(['strong', 'eventual']).optional(),
+    })
+    .optional(),
 })
 
 export const UpdateDatabaseSchema = z.object({
@@ -203,16 +219,20 @@ class ConnectionPoolManager {
     this.waitQueue.set(instanceId, [])
   }
 
-  async acquire(instanceId: string, clientId: string, timeoutMs = 5000): Promise<PooledConnection> {
+  async acquire(
+    instanceId: string,
+    clientId: string,
+    timeoutMs = 5000,
+  ): Promise<PooledConnection> {
     const pool = this.pools.get(instanceId)
     const config = this.configs.get(instanceId)
-    
+
     if (!pool || !config) {
       throw new Error(`Pool not configured for instance: ${instanceId}`)
     }
 
     // Try to find an available connection
-    const available = pool.find(c => !c.inUse)
+    const available = pool.find((c) => !c.inUse)
     if (available) {
       available.inUse = true
       available.lastUsedAt = Date.now()
@@ -259,7 +279,7 @@ class ConnectionPoolManager {
     const pool = this.pools.get(instanceId)
     if (!pool) return
 
-    const conn = pool.find(c => c.id === connectionId)
+    const conn = pool.find((c) => c.id === connectionId)
     if (!conn) return
 
     conn.inUse = false
@@ -274,14 +294,19 @@ class ConnectionPoolManager {
     }
   }
 
-  getStats(instanceId: string): { total: number; inUse: number; available: number; waiting: number } {
+  getStats(instanceId: string): {
+    total: number
+    inUse: number
+    available: number
+    waiting: number
+  } {
     const pool = this.pools.get(instanceId) ?? []
     const queue = this.waitQueue.get(instanceId) ?? []
-    
+
     return {
       total: pool.length,
-      inUse: pool.filter(c => c.inUse).length,
-      available: pool.filter(c => !c.inUse).length,
+      inUse: pool.filter((c) => c.inUse).length,
+      available: pool.filter((c) => !c.inUse).length,
       waiting: queue.length,
     }
   }
@@ -296,7 +321,9 @@ class ConnectionPoolManager {
 
     // Remove idle connections above minimum
     while (pool.length > minConnections) {
-      const idleIdx = pool.findIndex(c => !c.inUse && now - c.lastUsedAt > maxIdleMs)
+      const idleIdx = pool.findIndex(
+        (c) => !c.inUse && now - c.lastUsedAt > maxIdleMs,
+      )
       if (idleIdx < 0) break
       pool.splice(idleIdx, 1)
     }
@@ -326,17 +353,16 @@ interface ProvisioningJob {
 
 class DatabaseProvisioner {
   private jobs = new Map<string, ProvisioningJob>()
-  
-  constructor(_backend: BackendManager) {
-    // Backend will be used for production provisioning
-  }
 
   async provision(
     instanceId: string,
     engine: DatabaseEngine,
     config: DatabaseConfig,
     region: string,
-  ): Promise<{ connectionString: string; credentials: Record<string, string> }> {
+  ): Promise<{
+    connectionString: string
+    credentials: Record<string, string>
+  }> {
     const job: ProvisioningJob = {
       instanceId,
       engine,
@@ -349,7 +375,9 @@ class DatabaseProvisioner {
     }
     this.jobs.set(instanceId, job)
 
-    console.log(`[DatabaseProvisioner] Starting provisioning for ${instanceId} (${engine})`)
+    console.log(
+      `[DatabaseProvisioner] Starting provisioning for ${instanceId} (${engine})`,
+    )
 
     if (engine === 'eqlite') {
       return this.provisionEQLite(instanceId, config, region)
@@ -364,26 +392,32 @@ class DatabaseProvisioner {
     instanceId: string,
     config: DatabaseConfig,
     region: string,
-  ): Promise<{ connectionString: string; credentials: Record<string, string> }> {
+  ): Promise<{
+    connectionString: string
+    credentials: Record<string, string>
+  }> {
     // Generate auth token
-    const authToken = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '')
-    
+    const authToken =
+      crypto.randomUUID().replace(/-/g, '') +
+      crypto.randomUUID().replace(/-/g, '')
+
     // Determine node count based on replication factor
     const nodeCount = Math.max(3, config.replicationFactor)
-    
+
     // In production, this would:
     // 1. Find available EQLite nodes in the region
     // 2. Initialize database cluster with replication
     // 3. Set up WAL shipping between nodes
     // 4. Configure consistency mode
-    
-    const nodes = Array.from({ length: nodeCount }, (_, i) => 
-      `eqlite-${region}-${i}.dws.jejunetwork.org:4500`
+
+    const nodes = Array.from(
+      { length: nodeCount },
+      (_, i) => `eqlite-${region}-${i}.dws.jejunetwork.org:4500`,
     )
-    
+
     const endpoint = `https://eqlite-${instanceId}.dws.jejunetwork.org`
     const syncUrl = `wss://eqlite-${instanceId}.dws.jejunetwork.org/sync`
-    
+
     const connectionString = `eqlite://${endpoint}?auth=${authToken}&consistency=${config.consistencyMode}`
 
     const job = this.jobs.get(instanceId)
@@ -392,7 +426,9 @@ class DatabaseProvisioner {
       job.completedAt = Date.now()
     }
 
-    console.log(`[DatabaseProvisioner] EQLite ${instanceId} provisioned with ${nodeCount} nodes`)
+    console.log(
+      `[DatabaseProvisioner] EQLite ${instanceId} provisioned with ${nodeCount} nodes`,
+    )
 
     return {
       connectionString,
@@ -409,12 +445,17 @@ class DatabaseProvisioner {
     instanceId: string,
     _config: DatabaseConfig,
     _region: string,
-  ): Promise<{ connectionString: string; credentials: Record<string, string> }> {
+  ): Promise<{
+    connectionString: string
+    credentials: Record<string, string>
+  }> {
     // Generate credentials
     const dbUser = `u_${instanceId.slice(0, 8)}`
-    const dbPassword = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 16)
+    const dbPassword =
+      crypto.randomUUID().replace(/-/g, '') +
+      crypto.randomUUID().replace(/-/g, '').slice(0, 16)
     const dbName = `db_${instanceId.slice(0, 8)}`
-    
+
     // In production, this would:
     // 1. Find available PostgreSQL nodes with capacity
     // 2. Initialize PostgreSQL instance with pg_basebackup
@@ -422,15 +463,15 @@ class DatabaseProvisioner {
     // 4. Set up PgBouncer for connection pooling
     // 5. Configure streaming replication for replicas
     // 6. Set up automatic failover with Patroni
-    
+
     const directHost = `pg-${instanceId}.dws.jejunetwork.org`
     const poolerHost = `pgpool-${instanceId}.dws.jejunetwork.org`
     const port = 5432
     const poolerPort = 6432
-    
+
     // Connection string for direct access
     const directConnectionString = `postgresql://${dbUser}:${dbPassword}@${directHost}:${port}/${dbName}?sslmode=require`
-    
+
     // Connection string for pooled access (recommended)
     const pooledConnectionString = `postgresql://${dbUser}:${dbPassword}@${poolerHost}:${poolerPort}/${dbName}?sslmode=require`
 
@@ -488,7 +529,7 @@ interface BackupJob {
 class BackupManager {
   private jobs = new Map<string, BackupJob>()
   private backend: BackendManager
-  
+
   constructor(backend: BackendManager) {
     this.backend = backend
   }
@@ -536,7 +577,9 @@ class BackupManager {
       job.sizeBytes = backupData.length
       job.storageCid = uploadResult.cid
 
-      console.log(`[BackupManager] Backup ${backupId} completed, CID: ${uploadResult.cid}`)
+      console.log(
+        `[BackupManager] Backup ${backupId} completed, CID: ${uploadResult.cid}`,
+      )
     } catch (error) {
       job.status = 'failed'
       job.error = error instanceof Error ? error.message : String(error)
@@ -544,15 +587,17 @@ class BackupManager {
     }
   }
 
-  private async backupEQLite(connectionInfo: Record<string, string>): Promise<Buffer> {
-    const endpoint = connectionInfo['endpoint']
-    const authToken = connectionInfo['authToken']
-    
+  private async backupEQLite(
+    connectionInfo: Record<string, string>,
+  ): Promise<Buffer> {
+    const endpoint = connectionInfo.endpoint
+    const authToken = connectionInfo.authToken
+
     // Call EQLite backup API
     const response = await fetch(`${endpoint}/backup`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${authToken}`,
+        Authorization: `Bearer ${authToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ format: 'sqlite' }),
@@ -560,22 +605,24 @@ class BackupManager {
 
     if (!response.ok) {
       // Fallback: dump via SQL queries if backup API not available
-      console.warn(`[BackupManager] EQLite backup API unavailable, using SQL dump fallback`)
+      console.warn(
+        `[BackupManager] EQLite backup API unavailable, using SQL dump fallback`,
+      )
       const dumpResponse = await fetch(`${endpoint}/query`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${authToken}`,
+          Authorization: `Bearer ${authToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           sql: `.dump`,
         }),
       })
-      
+
       if (!dumpResponse.ok) {
         throw new Error(`EQLite backup failed: ${dumpResponse.status}`)
       }
-      
+
       const dumpData = await dumpResponse.text()
       const compressed = Bun.gzipSync(Buffer.from(dumpData))
       return Buffer.from(compressed)
@@ -586,35 +633,40 @@ class BackupManager {
     return Buffer.from(compressed)
   }
 
-  private async backupPostgreSQL(connectionInfo: Record<string, string>): Promise<Buffer> {
-    const host = connectionInfo['host']
-    const port = connectionInfo['port'] ?? '5432'
-    const database = connectionInfo['database']
-    const user = connectionInfo['user']
-    const password = connectionInfo['password']
+  private async backupPostgreSQL(
+    connectionInfo: Record<string, string>,
+  ): Promise<Buffer> {
+    const host = connectionInfo.host
+    const port = connectionInfo.port ?? '5432'
+    const database = connectionInfo.database
+    const user = connectionInfo.user
+    const password = connectionInfo.password
 
     // Use pg_dump via subprocess
-    const proc = Bun.spawn([
-      'pg_dump',
-      '--format=custom',
-      '--compress=9',
-      '--no-password',
-      `--host=${host}`,
-      `--port=${port}`,
-      `--username=${user}`,
-      `--dbname=${database}`,
-    ], {
-      env: {
-        ...process.env,
-        PGPASSWORD: password,
+    const proc = Bun.spawn(
+      [
+        'pg_dump',
+        '--format=custom',
+        '--compress=9',
+        '--no-password',
+        `--host=${host}`,
+        `--port=${port}`,
+        `--username=${user}`,
+        `--dbname=${database}`,
+      ],
+      {
+        env: {
+          ...process.env,
+          PGPASSWORD: password,
+        },
+        stdout: 'pipe',
+        stderr: 'pipe',
       },
-      stdout: 'pipe',
-      stderr: 'pipe',
-    })
+    )
 
     const chunks: Uint8Array[] = []
     const reader = proc.stdout.getReader()
-    
+
     while (true) {
       const { done, value } = await reader.read()
       if (done) break
@@ -661,17 +713,20 @@ class BackupManager {
     console.log(`[BackupManager] Restore completed for ${instanceId}`)
   }
 
-  private async restoreEQLite(connectionInfo: Record<string, string>, data: Buffer): Promise<void> {
-    const endpoint = connectionInfo['endpoint']
-    const authToken = connectionInfo['authToken']
-    
+  private async restoreEQLite(
+    connectionInfo: Record<string, string>,
+    data: Buffer,
+  ): Promise<void> {
+    const endpoint = connectionInfo.endpoint
+    const authToken = connectionInfo.authToken
+
     // Convert Buffer to ArrayBuffer for Bun APIs
     const dataArray = new ArrayBuffer(data.length)
     const view = new Uint8Array(dataArray)
     for (let i = 0; i < data.length; i++) {
       view[i] = data[i]
     }
-    
+
     // Decompress if gzipped
     let bodyData: ArrayBuffer
     try {
@@ -683,58 +738,70 @@ class BackupManager {
     } catch {
       bodyData = dataArray
     }
-    
-    console.log(`[BackupManager] Restoring ${bodyData.byteLength} bytes to EQLite at ${endpoint}`)
-    
+
+    console.log(
+      `[BackupManager] Restoring ${bodyData.byteLength} bytes to EQLite at ${endpoint}`,
+    )
+
     // Send restore request to EQLite
     const response = await fetch(`${endpoint}/restore`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${authToken}`,
+        Authorization: `Bearer ${authToken}`,
         'Content-Type': 'application/octet-stream',
       },
       body: bodyData,
     })
 
     if (!response.ok) {
-      throw new Error(`EQLite restore failed: ${response.status} ${await response.text()}`)
+      throw new Error(
+        `EQLite restore failed: ${response.status} ${await response.text()}`,
+      )
     }
   }
 
-  private async restorePostgreSQL(connectionInfo: Record<string, string>, data: Buffer): Promise<void> {
-    const host = connectionInfo['host']
-    const port = connectionInfo['port'] ?? '5432'
-    const database = connectionInfo['database']
-    const user = connectionInfo['user']
-    const password = connectionInfo['password']
+  private async restorePostgreSQL(
+    connectionInfo: Record<string, string>,
+    data: Buffer,
+  ): Promise<void> {
+    const host = connectionInfo.host
+    const port = connectionInfo.port ?? '5432'
+    const database = connectionInfo.database
+    const user = connectionInfo.user
+    const password = connectionInfo.password
 
-    console.log(`[BackupManager] Restoring ${data.length} bytes to PostgreSQL at ${host}:${port}/${database}`)
+    console.log(
+      `[BackupManager] Restoring ${data.length} bytes to PostgreSQL at ${host}:${port}/${database}`,
+    )
 
     // Write backup to temp file for pg_restore
     const tempFile = `/tmp/dws-restore-${Date.now()}.dump`
     await Bun.write(tempFile, data)
-    
+
     try {
       // Use pg_restore via subprocess
-      const proc = Bun.spawn([
-        'pg_restore',
-        '--format=custom',
-        '--clean',
-        '--if-exists',
-        '--no-password',
-        `--host=${host}`,
-        `--port=${port}`,
-        `--username=${user}`,
-        `--dbname=${database}`,
-        tempFile,
-      ], {
-        env: {
-          ...process.env,
-          PGPASSWORD: password,
+      const proc = Bun.spawn(
+        [
+          'pg_restore',
+          '--format=custom',
+          '--clean',
+          '--if-exists',
+          '--no-password',
+          `--host=${host}`,
+          `--port=${port}`,
+          `--username=${user}`,
+          `--dbname=${database}`,
+          tempFile,
+        ],
+        {
+          env: {
+            ...process.env,
+            PGPASSWORD: password,
+          },
+          stdout: 'pipe',
+          stderr: 'pipe',
         },
-        stdout: 'pipe',
-        stderr: 'pipe',
-      })
+      )
 
       const exitCode = await proc.exited
       if (exitCode !== 0) {
@@ -753,7 +820,7 @@ class BackupManager {
       }
     } finally {
       // Clean up temp file
-      const fs = await import('fs/promises')
+      const fs = await import('node:fs/promises')
       await fs.unlink(tempFile).catch(() => {})
     }
   }
@@ -781,20 +848,33 @@ export class ManagedDatabaseService {
   private walletClient: ReturnType<typeof createWalletClient> | null = null
   private registryAddress: Address
 
-  constructor(backend: BackendManager, config: { rpcUrl: string; registryAddress: Address; privateKey?: Hex }) {
+  constructor(
+    backend: BackendManager,
+    config: { rpcUrl: string; registryAddress: Address; privateKey?: Hex },
+  ) {
     this.backend = backend
     this.poolManager = new ConnectionPoolManager()
     this.provisioner = new DatabaseProvisioner(backend)
     this.backupManager = new BackupManager(backend)
-    
+
     this.registryAddress = config.registryAddress
-    
-    const chain = { ...foundry, rpcUrls: { default: { http: [config.rpcUrl] } } }
-    this.publicClient = createPublicClient({ chain, transport: http(config.rpcUrl) })
-    
+
+    const chain = {
+      ...foundry,
+      rpcUrls: { default: { http: [config.rpcUrl] } },
+    }
+    this.publicClient = createPublicClient({
+      chain,
+      transport: http(config.rpcUrl),
+    })
+
     if (config.privateKey) {
       const account = privateKeyToAccount(config.privateKey)
-      this.walletClient = createWalletClient({ account, chain, transport: http(config.rpcUrl) })
+      this.walletClient = createWalletClient({
+        account,
+        chain,
+        transport: http(config.rpcUrl),
+      })
     }
   }
 
@@ -816,8 +896,10 @@ export class ManagedDatabaseService {
     owner: Address,
     params: z.infer<typeof CreateDatabaseSchema>,
   ): Promise<DatabaseInstance> {
-    const instanceId = keccak256(stringToBytes(`${owner}-${params.name}-${Date.now()}`)) as Hex
-    
+    const instanceId = keccak256(
+      stringToBytes(`${owner}-${params.name}-${Date.now()}`),
+    ) as Hex
+
     const defaultConfig: DatabaseConfig = {
       vcpus: params.config?.vcpus ?? 1,
       memoryMb: params.config?.memoryMb ?? 1024,
@@ -852,8 +934,11 @@ export class ManagedDatabaseService {
     this.instances.set(instanceId, instance)
 
     // Provision asynchronously
-    this.provisionInstance(instance).catch(error => {
-      console.error(`[ManagedDatabaseService] Provisioning failed for ${instanceId}:`, error)
+    this.provisionInstance(instance).catch((error) => {
+      console.error(
+        `[ManagedDatabaseService] Provisioning failed for ${instanceId}:`,
+        error,
+      )
       instance.status = 'failed'
     })
 
@@ -861,7 +946,9 @@ export class ManagedDatabaseService {
   }
 
   private async provisionInstance(instance: DatabaseInstance): Promise<void> {
-    console.log(`[ManagedDatabaseService] Provisioning ${instance.name} (${instance.engine})`)
+    console.log(
+      `[ManagedDatabaseService] Provisioning ${instance.name} (${instance.engine})`,
+    )
 
     const result = await this.provisioner.provision(
       instance.instanceId,
@@ -889,22 +976,22 @@ export class ManagedDatabaseService {
 
       const creds = result.credentials
       this.connections.set(instance.instanceId, {
-        host: creds['host'],
-        port: parseInt(creds['port'], 10),
-        database: creds['database'],
-        user: creds['user'],
-        password: creds['password'],
-        ssl: creds['sslmode'] === 'require',
-        poolerEndpoint: creds['pooledUrl'],
-        directEndpoint: creds['directUrl'],
+        host: creds.host,
+        port: parseInt(creds.port, 10),
+        database: creds.database,
+        user: creds.user,
+        password: creds.password,
+        ssl: creds.sslmode === 'require',
+        poolerEndpoint: creds.pooledUrl,
+        directEndpoint: creds.directUrl,
       } as PostgresConnection)
     } else if (instance.engine === 'eqlite') {
       const creds = result.credentials
       this.connections.set(instance.instanceId, {
-        endpoint: creds['endpoint'],
-        authToken: creds['authToken'],
-        syncUrl: creds['syncUrl'],
-        nodes: creds['nodes'].split(','),
+        endpoint: creds.endpoint,
+        authToken: creds.authToken,
+        syncUrl: creds.syncUrl,
+        nodes: creds.nodes.split(','),
       } as EQLiteConnection)
     }
 
@@ -926,14 +1013,22 @@ export class ManagedDatabaseService {
 
     // Apply updates
     if (updates.vcpus !== undefined) instance.config.vcpus = updates.vcpus
-    if (updates.memoryMb !== undefined) instance.config.memoryMb = updates.memoryMb
-    if (updates.storageMb !== undefined) instance.config.storageMb = updates.storageMb
-    if (updates.readReplicas !== undefined) instance.config.readReplicas = updates.readReplicas
-    if (updates.maxConnections !== undefined) instance.config.maxConnections = updates.maxConnections
-    if (updates.connectionPoolSize !== undefined) instance.config.connectionPoolSize = updates.connectionPoolSize
+    if (updates.memoryMb !== undefined)
+      instance.config.memoryMb = updates.memoryMb
+    if (updates.storageMb !== undefined)
+      instance.config.storageMb = updates.storageMb
+    if (updates.readReplicas !== undefined)
+      instance.config.readReplicas = updates.readReplicas
+    if (updates.maxConnections !== undefined)
+      instance.config.maxConnections = updates.maxConnections
+    if (updates.connectionPoolSize !== undefined)
+      instance.config.connectionPoolSize = updates.connectionPoolSize
 
     // Reconfigure pool
-    if (instance.engine === 'postgresql' && updates.connectionPoolSize !== undefined) {
+    if (
+      instance.engine === 'postgresql' &&
+      updates.connectionPoolSize !== undefined
+    ) {
       this.poolManager.configure(instanceId, {
         mode: 'transaction',
         defaultPoolSize: instance.config.connectionPoolSize,
@@ -945,8 +1040,8 @@ export class ManagedDatabaseService {
     }
 
     // Simulate scaling delay
-    await new Promise(r => setTimeout(r, 2000))
-    
+    await new Promise((r) => setTimeout(r, 2000))
+
     instance.status = 'running'
     instance.updatedAt = Date.now()
 
@@ -993,7 +1088,10 @@ export class ManagedDatabaseService {
   // Connections
   // =========================================================================
 
-  async getConnection(instanceId: string, owner: Address): Promise<PostgresConnection | EQLiteConnection> {
+  async getConnection(
+    instanceId: string,
+    owner: Address,
+  ): Promise<PostgresConnection | EQLiteConnection> {
     const instance = this.instances.get(instanceId)
     if (!instance) throw new Error(`Instance not found: ${instanceId}`)
     if (instance.owner !== owner) throw new Error('Not authorized')
@@ -1005,7 +1103,10 @@ export class ManagedDatabaseService {
     return conn
   }
 
-  async acquirePooledConnection(instanceId: string, clientId: string): Promise<string> {
+  async acquirePooledConnection(
+    instanceId: string,
+    clientId: string,
+  ): Promise<string> {
     const instance = this.instances.get(instanceId)
     if (!instance || instance.engine !== 'postgresql') {
       throw new Error('Pooling only available for PostgreSQL')
@@ -1019,7 +1120,12 @@ export class ManagedDatabaseService {
     this.poolManager.release(instanceId, connectionId)
   }
 
-  getPoolStats(instanceId: string): { total: number; inUse: number; available: number; waiting: number } {
+  getPoolStats(instanceId: string): {
+    total: number
+    inUse: number
+    available: number
+    waiting: number
+  } {
     return this.poolManager.getStats(instanceId)
   }
 
@@ -1033,7 +1139,9 @@ export class ManagedDatabaseService {
     if (instance.owner !== owner) throw new Error('Not authorized')
     if (instance.status !== 'running') throw new Error('Instance not running')
 
-    const backupId = keccak256(stringToBytes(`${instanceId}-${Date.now()}`)) as Hex
+    const backupId = keccak256(
+      stringToBytes(`${instanceId}-${Date.now()}`),
+    ) as Hex
     const creds = this.credentials.get(instanceId)
     if (!creds) throw new Error('Credentials not available')
 
@@ -1045,7 +1153,8 @@ export class ManagedDatabaseService {
       completedAt: 0,
       sizeBytes: 0,
       storageCid: '',
-      expiresAt: Date.now() + (instance.config.backupRetentionDays * 24 * 60 * 60 * 1000),
+      expiresAt:
+        Date.now() + instance.config.backupRetentionDays * 24 * 60 * 60 * 1000,
       isAutomatic: false,
     }
 
@@ -1053,23 +1162,29 @@ export class ManagedDatabaseService {
     instance.updatedAt = Date.now()
 
     // Run backup asynchronously
-    this.backupManager.createBackup(backupId, instanceId, instance.engine, creds).then(() => {
-      const job = this.backupManager.getJob(backupId)
-      if (job) {
-        backup.status = job.status
-        backup.completedAt = job.completedAt ?? 0
-        backup.sizeBytes = job.sizeBytes
-        backup.storageCid = job.storageCid ?? ''
-      }
-      instance.status = 'running'
-      instance.lastBackupAt = Date.now()
-      instance.updatedAt = Date.now()
-    })
+    this.backupManager
+      .createBackup(backupId, instanceId, instance.engine, creds)
+      .then(() => {
+        const job = this.backupManager.getJob(backupId)
+        if (job) {
+          backup.status = job.status
+          backup.completedAt = job.completedAt ?? 0
+          backup.sizeBytes = job.sizeBytes
+          backup.storageCid = job.storageCid ?? ''
+        }
+        instance.status = 'running'
+        instance.lastBackupAt = Date.now()
+        instance.updatedAt = Date.now()
+      })
 
     return backup
   }
 
-  async restoreBackup(instanceId: string, backupId: string, owner: Address): Promise<void> {
+  async restoreBackup(
+    instanceId: string,
+    backupId: string,
+    owner: Address,
+  ): Promise<void> {
     const instance = this.instances.get(instanceId)
     if (!instance) throw new Error(`Instance not found: ${instanceId}`)
     if (instance.owner !== owner) throw new Error('Not authorized')
@@ -1080,13 +1195,21 @@ export class ManagedDatabaseService {
     // Get backup job to retrieve storage CID
     const backupJob = this.backupManager.getJob(backupId)
     if (!backupJob) throw new Error(`Backup not found: ${backupId}`)
-    if (backupJob.status !== 'completed') throw new Error(`Backup not ready: ${backupJob.status}`)
-    if (!backupJob.storageCid) throw new Error('Backup storage CID not available')
+    if (backupJob.status !== 'completed')
+      throw new Error(`Backup not ready: ${backupJob.status}`)
+    if (!backupJob.storageCid)
+      throw new Error('Backup storage CID not available')
 
     instance.status = 'restoring'
     instance.updatedAt = Date.now()
 
-    await this.backupManager.restoreBackup(backupId, instanceId, instance.engine, creds, backupJob.storageCid)
+    await this.backupManager.restoreBackup(
+      backupId,
+      instanceId,
+      instance.engine,
+      creds,
+      backupJob.storageCid,
+    )
 
     instance.status = 'running'
     instance.updatedAt = Date.now()
@@ -1096,14 +1219,21 @@ export class ManagedDatabaseService {
   // Replicas (PostgreSQL)
   // =========================================================================
 
-  async createReplica(instanceId: string, owner: Address, region: string): Promise<Replica> {
+  async createReplica(
+    instanceId: string,
+    owner: Address,
+    region: string,
+  ): Promise<Replica> {
     const instance = this.instances.get(instanceId)
     if (!instance) throw new Error(`Instance not found: ${instanceId}`)
     if (instance.owner !== owner) throw new Error('Not authorized')
-    if (instance.engine !== 'postgresql') throw new Error('Replicas only available for PostgreSQL')
+    if (instance.engine !== 'postgresql')
+      throw new Error('Replicas only available for PostgreSQL')
     if (instance.status !== 'running') throw new Error('Instance not running')
 
-    const replicaId = keccak256(stringToBytes(`${instanceId}-replica-${region}-${Date.now()}`)) as Hex
+    const replicaId = keccak256(
+      stringToBytes(`${instanceId}-replica-${region}-${Date.now()}`),
+    ) as Hex
 
     const replica: Replica = {
       replicaId,
@@ -1115,7 +1245,9 @@ export class ManagedDatabaseService {
       healthy: true,
     }
 
-    console.log(`[ManagedDatabaseService] Created replica ${replicaId} in ${region}`)
+    console.log(
+      `[ManagedDatabaseService] Created replica ${replicaId} in ${region}`,
+    )
 
     return replica
   }
@@ -1134,7 +1266,7 @@ export class ManagedDatabaseService {
   }
 
   getInstancesByOwner(owner: Address): DatabaseInstance[] {
-    return Array.from(this.instances.values()).filter(i => i.owner === owner)
+    return Array.from(this.instances.values()).filter((i) => i.owner === owner)
   }
 
   listInstances(): DatabaseInstance[] {
@@ -1159,10 +1291,13 @@ export class ManagedDatabaseService {
 
 let managedDatabaseService: ManagedDatabaseService | null = null
 
-export function getManagedDatabaseService(backend: BackendManager): ManagedDatabaseService {
+export function getManagedDatabaseService(
+  backend: BackendManager,
+): ManagedDatabaseService {
   if (!managedDatabaseService) {
     const rpcUrl = getRpcUrl()
-    const registryAddress = (getContract('dws', 'managedDatabaseRegistry') ?? '0x0000000000000000000000000000000000000000') as Address
+    const registryAddress = (getContract('dws', 'managedDatabaseRegistry') ??
+      '0x0000000000000000000000000000000000000000') as Address
     const privateKey = process.env.DWS_OPERATOR_KEY as Hex | undefined
 
     managedDatabaseService = new ManagedDatabaseService(backend, {
@@ -1173,4 +1308,3 @@ export function getManagedDatabaseService(backend: BackendManager): ManagedDatab
   }
   return managedDatabaseService
 }
-

@@ -18,8 +18,8 @@
  * ```
  */
 
-import type { ConnectionConfig } from './ConnectionConfig'
 import { Connection } from './Connection'
+import type { ConnectionConfig } from './ConnectionConfig'
 import { ConnectionPool, type PoolConfig } from './ConnectionPool'
 
 // ============================================================================
@@ -55,14 +55,17 @@ export interface SQLChunk {
 
 /**
  * SQL template tag for safe query building
- * 
+ *
  * @example
  * ```typescript
  * const id = 1
  * const result = await db.execute(sql`SELECT * FROM users WHERE id = ${id}`)
  * ```
  */
-export function sql(strings: TemplateStringsArray, ...values: unknown[]): SQLChunk {
+export function sql(
+  strings: TemplateStringsArray,
+  ...values: unknown[]
+): SQLChunk {
   let sqlString = ''
   const params: unknown[] = []
 
@@ -85,7 +88,12 @@ export function sql(strings: TemplateStringsArray, ...values: unknown[]): SQLChu
 }
 
 function isSQL(value: unknown): value is SQLChunk {
-  return typeof value === 'object' && value !== null && 'sql' in value && 'params' in value
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'sql' in value &&
+    'params' in value
+  )
 }
 
 // ============================================================================
@@ -102,7 +110,7 @@ interface FromBuilder<T> {
   limit(count: number): LimitBuilder<T>
   offset(offset: number): OffsetBuilder<T>
   then<TResult = T[]>(
-    onfulfilled?: (value: T[]) => TResult | PromiseLike<TResult>
+    onfulfilled?: (value: T[]) => TResult | PromiseLike<TResult>,
   ): Promise<TResult>
 }
 
@@ -118,9 +126,12 @@ interface InsertBuilder<T> {
 interface InsertValuesBuilder<T> {
   returning(): ReturningBuilder<T>
   onConflictDoNothing(): InsertValuesBuilder<T>
-  onConflictDoUpdate(config: { target: SQLChunk; set: Partial<T> }): InsertValuesBuilder<T>
+  onConflictDoUpdate(config: {
+    target: SQLChunk
+    set: Partial<T>
+  }): InsertValuesBuilder<T>
   then<TResult = QueryResult>(
-    onfulfilled?: (value: QueryResult) => TResult | PromiseLike<TResult>
+    onfulfilled?: (value: QueryResult) => TResult | PromiseLike<TResult>,
   ): Promise<TResult>
 }
 
@@ -132,7 +143,7 @@ interface UpdateSetBuilder<T> {
   where(condition: SQLChunk): UpdateWhereBuilder<T>
   returning(): ReturningBuilder<T>
   then<TResult = QueryResult>(
-    onfulfilled?: (value: QueryResult) => TResult | PromiseLike<TResult>
+    onfulfilled?: (value: QueryResult) => TResult | PromiseLike<TResult>,
   ): Promise<TResult>
 }
 
@@ -142,7 +153,7 @@ interface DeleteBuilder<T> {
   where(condition: SQLChunk): DeleteWhereBuilder<T>
   returning(): ReturningBuilder<T>
   then<TResult = QueryResult>(
-    onfulfilled?: (value: QueryResult) => TResult | PromiseLike<TResult>
+    onfulfilled?: (value: QueryResult) => TResult | PromiseLike<TResult>,
   ): Promise<TResult>
 }
 
@@ -150,7 +161,7 @@ interface DeleteWhereBuilder<T> extends DeleteBuilder<T> {}
 
 interface ReturningBuilder<T> {
   then<TResult = T[]>(
-    onfulfilled?: (value: T[]) => TResult | PromiseLike<TResult>
+    onfulfilled?: (value: T[]) => TResult | PromiseLike<TResult>,
   ): Promise<TResult>
 }
 
@@ -203,7 +214,9 @@ export class EQLiteDrizzle {
   /**
    * Execute a raw SQL query
    */
-  async execute<T = QueryResultRow>(query: SQLChunk | string): Promise<QueryResult<T>> {
+  async execute<T = QueryResultRow>(
+    query: SQLChunk | string,
+  ): Promise<QueryResult<T>> {
     const { sqlString, params } = this.parseQuery(query)
     const rows = await this.runQuery(sqlString, params)
     return {
@@ -215,7 +228,9 @@ export class EQLiteDrizzle {
   /**
    * Select query builder
    */
-  select<T = QueryResultRow>(columns?: Record<string, SQLChunk>): SelectBuilder<T> {
+  select<T = QueryResultRow>(
+    columns?: Record<string, SQLChunk>,
+  ): SelectBuilder<T> {
     const db = this
     const columnList = columns
       ? Object.entries(columns)
@@ -225,7 +240,7 @@ export class EQLiteDrizzle {
 
     return {
       from(table: TableLike): FromBuilder<T> {
-        let sqlParts = [`SELECT ${columnList} FROM ${table._.name}`]
+        const sqlParts = [`SELECT ${columnList} FROM ${table._.name}`]
         let whereClause: SQLChunk | null = null
         let orderByColumns: SQLChunk[] = []
         let limitValue: number | null = null
@@ -248,8 +263,9 @@ export class EQLiteDrizzle {
             offsetValue = offset
             return builder
           },
+          // biome-ignore lint/suspicious/noThenProperty: Implementing PromiseLike interface for query builder
           async then<TResult = T[]>(
-            onfulfilled?: (value: T[]) => TResult | PromiseLike<TResult>
+            onfulfilled?: (value: T[]) => TResult | PromiseLike<TResult>,
           ): Promise<TResult> {
             let query = sqlParts.join(' ')
             const params: unknown[] = []
@@ -261,7 +277,9 @@ export class EQLiteDrizzle {
 
             if (orderByColumns.length > 0) {
               query += ` ORDER BY ${orderByColumns.map((c) => c.sql).join(', ')}`
-              orderByColumns.forEach((c) => params.push(...c.params))
+              for (const c of orderByColumns) {
+                params.push(...c.params)
+              }
             }
 
             if (limitValue !== null) {
@@ -274,7 +292,9 @@ export class EQLiteDrizzle {
 
             const result = await db.execute({ sql: query, params })
             const value = result.rows as T[]
-            return onfulfilled ? onfulfilled(value) : (value as unknown as TResult)
+            return onfulfilled
+              ? onfulfilled(value)
+              : (value as unknown as TResult)
           },
         }
 
@@ -300,12 +320,15 @@ export class EQLiteDrizzle {
           returning() {
             returning = true
             return {
+              // biome-ignore lint/suspicious/noThenProperty: Implementing PromiseLike interface for query builder
               async then<TResult = T[]>(
-                onfulfilled?: (value: T[]) => TResult | PromiseLike<TResult>
+                onfulfilled?: (value: T[]) => TResult | PromiseLike<TResult>,
               ): Promise<TResult> {
                 const result = await executeInsert()
                 const value = result.rows as T[]
-                return onfulfilled ? onfulfilled(value) : (value as unknown as TResult)
+                return onfulfilled
+                  ? onfulfilled(value)
+                  : (value as unknown as TResult)
               },
             }
           },
@@ -320,11 +343,16 @@ export class EQLiteDrizzle {
             onConflict = ` ON CONFLICT (${config.target.sql}) DO UPDATE SET ${setClause}`
             return builder
           },
+          // biome-ignore lint/suspicious/noThenProperty: Implementing PromiseLike interface for query builder
           async then<TResult = QueryResult>(
-            onfulfilled?: (value: QueryResult) => TResult | PromiseLike<TResult>
+            onfulfilled?: (
+              value: QueryResult,
+            ) => TResult | PromiseLike<TResult>,
           ): Promise<TResult> {
             const result = await executeInsert()
-            return onfulfilled ? onfulfilled(result) : (result as unknown as TResult)
+            return onfulfilled
+              ? onfulfilled(result)
+              : (result as unknown as TResult)
           },
         }
 
@@ -334,7 +362,7 @@ export class EQLiteDrizzle {
             .map(() => `(${columns.map(() => '?').join(', ')})`)
             .join(', ')
           const values = dataArray.flatMap((row) =>
-            columns.map((col) => (row as Record<string, unknown>)[col])
+            columns.map((col) => (row as Record<string, unknown>)[col]),
           )
 
           let query = `INSERT INTO ${tableName} (${columns.join(', ')}) VALUES ${placeholders}${onConflict}`
@@ -342,7 +370,10 @@ export class EQLiteDrizzle {
             query += ' RETURNING *'
           }
 
-          return db.execute({ sql: query, params: values }) as Promise<QueryResult>
+          return db.execute({
+            sql: query,
+            params: values,
+          }) as Promise<QueryResult>
         }
 
         return builder
@@ -370,27 +401,37 @@ export class EQLiteDrizzle {
           returning() {
             returning = true
             return {
+              // biome-ignore lint/suspicious/noThenProperty: Implementing PromiseLike interface for query builder
               async then<TResult = T[]>(
-                onfulfilled?: (value: T[]) => TResult | PromiseLike<TResult>
+                onfulfilled?: (value: T[]) => TResult | PromiseLike<TResult>,
               ): Promise<TResult> {
                 const result = await executeUpdate()
                 const value = result.rows as T[]
-                return onfulfilled ? onfulfilled(value) : (value as unknown as TResult)
+                return onfulfilled
+                  ? onfulfilled(value)
+                  : (value as unknown as TResult)
               },
             }
           },
+          // biome-ignore lint/suspicious/noThenProperty: Implementing PromiseLike interface for query builder
           async then<TResult = QueryResult>(
-            onfulfilled?: (value: QueryResult) => TResult | PromiseLike<TResult>
+            onfulfilled?: (
+              value: QueryResult,
+            ) => TResult | PromiseLike<TResult>,
           ): Promise<TResult> {
             const result = await executeUpdate()
-            return onfulfilled ? onfulfilled(result) : (result as unknown as TResult)
+            return onfulfilled
+              ? onfulfilled(result)
+              : (result as unknown as TResult)
           },
         }
 
         async function executeUpdate(): Promise<QueryResult> {
           const columns = Object.keys(data as object)
           const setClause = columns.map((col) => `${col} = ?`).join(', ')
-          const values = columns.map((col) => (data as Record<string, unknown>)[col])
+          const values = columns.map(
+            (col) => (data as Record<string, unknown>)[col],
+          )
 
           let query = `UPDATE ${tableName} SET ${setClause}`
           const params = [...values]
@@ -435,20 +476,28 @@ export class EQLiteDrizzle {
           returning() {
             returning = true
             return {
+              // biome-ignore lint/suspicious/noThenProperty: Implementing PromiseLike interface for query builder
               async then<TResult = T[]>(
-                onfulfilled?: (value: T[]) => TResult | PromiseLike<TResult>
+                onfulfilled?: (value: T[]) => TResult | PromiseLike<TResult>,
               ): Promise<TResult> {
                 const result = await executeDelete()
                 const value = result.rows as T[]
-                return onfulfilled ? onfulfilled(value) : (value as unknown as TResult)
+                return onfulfilled
+                  ? onfulfilled(value)
+                  : (value as unknown as TResult)
               },
             }
           },
+          // biome-ignore lint/suspicious/noThenProperty: Implementing PromiseLike interface for query builder
           async then<TResult = QueryResult>(
-            onfulfilled?: (value: QueryResult) => TResult | PromiseLike<TResult>
+            onfulfilled?: (
+              value: QueryResult,
+            ) => TResult | PromiseLike<TResult>,
           ): Promise<TResult> {
             const result = await executeDelete()
-            return onfulfilled ? onfulfilled(result) : (result as unknown as TResult)
+            return onfulfilled
+              ? onfulfilled(result)
+              : (result as unknown as TResult)
           },
         }
 
@@ -464,26 +513,32 @@ export class EQLiteDrizzle {
       },
       returning() {
         return {
+          // biome-ignore lint/suspicious/noThenProperty: Implementing PromiseLike interface for query builder
           async then<TResult = T[]>(
-            onfulfilled?: (value: T[]) => TResult | PromiseLike<TResult>
+            onfulfilled?: (value: T[]) => TResult | PromiseLike<TResult>,
           ): Promise<TResult> {
             const result = await db.execute<T>({
               sql: `DELETE FROM ${tableName} RETURNING *`,
               params: [],
             })
             const value = result.rows as T[]
-            return onfulfilled ? onfulfilled(value) : (value as unknown as TResult)
+            return onfulfilled
+              ? onfulfilled(value)
+              : (value as unknown as TResult)
           },
         }
       },
+      // biome-ignore lint/suspicious/noThenProperty: Implementing PromiseLike interface for query builder
       async then<TResult = QueryResult>(
-        onfulfilled?: (value: QueryResult) => TResult | PromiseLike<TResult>
+        onfulfilled?: (value: QueryResult) => TResult | PromiseLike<TResult>,
       ): Promise<TResult> {
         const result = await db.execute({
           sql: `DELETE FROM ${tableName}`,
           params: [],
         })
-        return onfulfilled ? onfulfilled(result as QueryResult) : (result as unknown as TResult)
+        return onfulfilled
+          ? onfulfilled(result as QueryResult)
+          : (result as unknown as TResult)
       },
     }
   }
@@ -504,14 +559,20 @@ export class EQLiteDrizzle {
   // Private Methods
   // =========================================================================
 
-  private parseQuery(query: SQLChunk | string): { sqlString: string; params: unknown[] } {
+  private parseQuery(query: SQLChunk | string): {
+    sqlString: string
+    params: unknown[]
+  } {
     if (typeof query === 'string') {
       return { sqlString: query, params: [] }
     }
     return { sqlString: query.sql, params: query.params }
   }
 
-  private async runQuery(sql: string, params: unknown[]): Promise<Record<string, unknown>[] | null> {
+  private async runQuery(
+    sql: string,
+    params: unknown[],
+  ): Promise<Record<string, unknown>[] | null> {
     // Determine if it's a read or write operation
     const isRead = sql.trim().toUpperCase().startsWith('SELECT')
 
@@ -519,7 +580,9 @@ export class EQLiteDrizzle {
       return isRead ? this.pool.query(sql, params) : this.pool.exec(sql, params)
     }
     if (this.connection) {
-      return isRead ? this.connection.query(sql, params) : this.connection.exec(sql, params)
+      return isRead
+        ? this.connection.query(sql, params)
+        : this.connection.exec(sql, params)
     }
     throw new Error('Database not connected')
   }
@@ -596,30 +659,46 @@ export const isNotNull = (column: ColumnLike | string): SQLChunk => {
   return { sql: `${colName} IS NOT NULL`, params: [] }
 }
 
-export const inArray = <T>(column: ColumnLike | string, values: T[]): SQLChunk => {
+export const inArray = <T>(
+  column: ColumnLike | string,
+  values: T[],
+): SQLChunk => {
   const colName = typeof column === 'string' ? column : column.name
   const placeholders = values.map(() => '?').join(', ')
   return { sql: `${colName} IN (${placeholders})`, params: values }
 }
 
-export const notInArray = <T>(column: ColumnLike | string, values: T[]): SQLChunk => {
+export const notInArray = <T>(
+  column: ColumnLike | string,
+  values: T[],
+): SQLChunk => {
   const colName = typeof column === 'string' ? column : column.name
   const placeholders = values.map(() => '?').join(', ')
   return { sql: `${colName} NOT IN (${placeholders})`, params: values }
 }
 
-export const like = (column: ColumnLike | string, pattern: string): SQLChunk => {
+export const like = (
+  column: ColumnLike | string,
+  pattern: string,
+): SQLChunk => {
   const colName = typeof column === 'string' ? column : column.name
   return { sql: `${colName} LIKE ?`, params: [pattern] }
 }
 
-export const ilike = (column: ColumnLike | string, pattern: string): SQLChunk => {
+export const ilike = (
+  column: ColumnLike | string,
+  pattern: string,
+): SQLChunk => {
   const colName = typeof column === 'string' ? column : column.name
   // SQLite doesn't have ILIKE, use LOWER()
   return { sql: `LOWER(${colName}) LIKE LOWER(?)`, params: [pattern] }
 }
 
-export const between = <T>(column: ColumnLike | string, min: T, max: T): SQLChunk => {
+export const between = <T>(
+  column: ColumnLike | string,
+  min: T,
+  max: T,
+): SQLChunk => {
   const colName = typeof column === 'string' ? column : column.name
   return { sql: `${colName} BETWEEN ? AND ?`, params: [min, max] }
 }
@@ -660,7 +739,11 @@ export const desc = (column: ColumnLike | string): SQLChunk => {
  * Aggregate functions
  */
 export const count = (column?: ColumnLike | string): SQLChunk => {
-  const colName = column ? (typeof column === 'string' ? column : column.name) : '*'
+  const colName = column
+    ? typeof column === 'string'
+      ? column
+      : column.name
+    : '*'
   return { sql: `COUNT(${colName})`, params: [] }
 }
 
@@ -683,4 +766,3 @@ export const max = (column: ColumnLike | string): SQLChunk => {
   const colName = typeof column === 'string' ? column : column.name
   return { sql: `MAX(${colName})`, params: [] }
 }
-

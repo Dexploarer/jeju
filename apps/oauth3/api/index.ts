@@ -9,8 +9,8 @@ import { cors } from '@elysiajs/cors'
 import { Elysia } from 'elysia'
 import type { Address } from 'viem'
 import { isAddress } from 'viem'
-import { config as oauth3Config } from './config'
 import type { AuthConfig } from '../lib/types'
+import { config as oauth3Config } from './config'
 import { createAuthInitRouter } from './routes/auth-init'
 import { createClientRouter } from './routes/client'
 import { createFarcasterRouter } from './routes/farcaster'
@@ -64,7 +64,7 @@ async function createApp() {
     'https://cloud.elizaos.com',
     'https://eliza.cloud',
     'https://elizaos.ai',
-    ...authConfig.allowedOrigins.filter(o => o !== '*'),
+    ...authConfig.allowedOrigins.filter((o) => o !== '*'),
   ]
 
   const app = new Elysia()

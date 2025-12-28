@@ -53,10 +53,53 @@ let memoryMode = USE_MEMORY_STATE
 const memoryStores = {
   sessions: new Map<string, AuthSession>(),
   clients: new Map<string, RegisteredClient>(),
-  authCodes: new Map<string, { clientId: string; redirectUri: string; userId: string; scope: string[]; expiresAt: number; codeChallenge?: string; codeChallengeMethod?: string }>(),
-  refreshTokens: new Map<string, { sessionId: string; clientId: string; userId: string; expiresAt: number; revoked: boolean }>(),
-  oauthStates: new Map<string, { nonce: string; provider: string; clientId: string; redirectUri: string; codeVerifier?: string; expiresAt: number }>(),
-  clientReports: new Map<string, { reportId: string; clientId: string; reporterAddress: string; category: string; evidence: string; status: 'pending' | 'resolved' | 'dismissed'; createdAt: number; resolvedAt?: number; resolution?: string }>(),
+  authCodes: new Map<
+    string,
+    {
+      clientId: string
+      redirectUri: string
+      userId: string
+      scope: string[]
+      expiresAt: number
+      codeChallenge?: string
+      codeChallengeMethod?: string
+    }
+  >(),
+  refreshTokens: new Map<
+    string,
+    {
+      sessionId: string
+      clientId: string
+      userId: string
+      expiresAt: number
+      revoked: boolean
+    }
+  >(),
+  oauthStates: new Map<
+    string,
+    {
+      nonce: string
+      provider: string
+      clientId: string
+      redirectUri: string
+      codeVerifier?: string
+      expiresAt: number
+    }
+  >(),
+  clientReports: new Map<
+    string,
+    {
+      reportId: string
+      clientId: string
+      reporterAddress: string
+      category: string
+      evidence: string
+      status: 'pending' | 'resolved' | 'dismissed'
+      createdAt: number
+      resolvedAt?: number
+      resolution?: string
+    }
+  >(),
 }
 
 async function getEQLiteClient(): Promise<EQLiteClient | null> {
@@ -81,7 +124,9 @@ async function getEQLiteClient(): Promise<EQLiteClient | null> {
             'Or run: bun run start (which starts all dependencies)',
         )
       }
-      console.warn('[OAuth3] EQLite not available, falling back to in-memory storage')
+      console.warn(
+        '[OAuth3] EQLite not available, falling back to in-memory storage',
+      )
       memoryMode = true
       return null
     }
@@ -239,7 +284,7 @@ export const sessionState = {
     }
 
     const client = await getEQLiteClient()
-    
+
     if (!client) {
       const session = memoryStores.sessions.get(sessionId)
       if (!session || session.expiresAt <= Date.now()) return null
@@ -283,11 +328,12 @@ export const sessionState = {
 
   async findByUserId(userId: string): Promise<AuthSession[]> {
     const client = await getEQLiteClient()
-    
+
     if (!client) {
       const now = Date.now()
-      return Array.from(memoryStores.sessions.values())
-        .filter(s => s.userId === userId && s.expiresAt > now)
+      return Array.from(memoryStores.sessions.values()).filter(
+        (s) => s.userId === userId && s.expiresAt > now,
+      )
     }
 
     const result = await client.query<SessionRow>(
@@ -364,7 +410,7 @@ export const clientState = {
     }
 
     const db = await getEQLiteClient()
-    
+
     if (!db) {
       return memoryStores.clients.get(clientId) ?? null
     }
@@ -448,7 +494,7 @@ export const authCodeState = {
     codeChallengeMethod?: string
   } | null> {
     const client = await getEQLiteClient()
-    
+
     if (!client) {
       const data = memoryStores.authCodes.get(code)
       if (!data || data.expiresAt <= Date.now()) return null
@@ -529,7 +575,7 @@ export const refreshTokenState = {
     revoked: boolean
   } | null> {
     const client = await getEQLiteClient()
-    
+
     if (!client) {
       return memoryStores.refreshTokens.get(token) ?? null
     }
@@ -626,7 +672,7 @@ export const oauthStateStore = {
     codeVerifier?: string
   } | null> {
     const client = await getEQLiteClient()
-    
+
     if (!client) {
       const data = memoryStores.oauthStates.get(state)
       if (!data || data.expiresAt <= Date.now()) return null
@@ -871,7 +917,7 @@ export const clientReportState = {
 
   async get(reportId: string): Promise<ClientReport | null> {
     const db = await getEQLiteClient()
-    
+
     if (!db) {
       return memoryStores.clientReports.get(reportId) ?? null
     }
@@ -910,10 +956,10 @@ export const clientReportState = {
 
   async getByClient(clientId: string): Promise<ClientReport[]> {
     const db = await getEQLiteClient()
-    
+
     if (!db) {
       return Array.from(memoryStores.clientReports.values())
-        .filter(r => r.clientId === clientId)
+        .filter((r) => r.clientId === clientId)
         .sort((a, b) => b.createdAt - a.createdAt)
     }
 
@@ -955,10 +1001,12 @@ export const clientReportState = {
     const cutoff = Date.now() - withinMs
 
     if (!db) {
-      return Array.from(memoryStores.clientReports.values())
-        .some(r => r.clientId === clientId && 
-                   r.reporterAddress.toLowerCase() === reporterAddress.toLowerCase() && 
-                   r.createdAt > cutoff)
+      return Array.from(memoryStores.clientReports.values()).some(
+        (r) =>
+          r.clientId === clientId &&
+          r.reporterAddress.toLowerCase() === reporterAddress.toLowerCase() &&
+          r.createdAt > cutoff,
+      )
     }
 
     const result = await db.query<{ count: number }>(

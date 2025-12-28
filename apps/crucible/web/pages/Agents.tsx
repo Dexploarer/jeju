@@ -38,10 +38,9 @@ export default function AgentsPage() {
       </header>
 
       {/* Filters */}
-      <div
-        className="flex flex-wrap items-center gap-4 mb-8 p-4 rounded-xl"
+      <fieldset
+        className="flex flex-wrap items-center gap-4 mb-8 p-4 rounded-xl border-0"
         style={{ backgroundColor: 'var(--bg-secondary)' }}
-        role="group"
         aria-label="Filter agents"
       >
         <div className="flex items-center gap-2">
@@ -72,19 +71,16 @@ export default function AgentsPage() {
             {data.total} result{data.total !== 1 ? 's' : ''}
           </span>
         )}
-      </div>
+      </fieldset>
 
       {/* Loading State */}
       {isLoading && (
-        <div className="flex flex-col items-center justify-center py-20" role="status">
+        <output className="flex flex-col items-center justify-center py-20">
           <LoadingSpinner size="lg" />
-          <p
-            className="mt-4 text-sm"
-            style={{ color: 'var(--text-tertiary)' }}
-          >
+          <p className="mt-4 text-sm" style={{ color: 'var(--text-tertiary)' }}>
             Loading agents
           </p>
-        </div>
+        </output>
       )}
 
       {/* Error State */}
@@ -117,7 +113,11 @@ export default function AgentsPage() {
       {/* Empty State */}
       {data && data.agents.length === 0 && (
         <div className="card-static p-12 text-center">
-          <div className="text-6xl mb-6 animate-float" role="img" aria-label="Robot">
+          <div
+            className="text-6xl mb-6 animate-float"
+            role="img"
+            aria-label="Robot"
+          >
             🤖
           </div>
           <h2
@@ -153,17 +153,16 @@ export default function AgentsPage() {
 
       {/* Agent Grid */}
       {data && data.agents.length > 0 && (
-        <div
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 stagger-children"
-          role="list"
+        <ul
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 stagger-children list-none"
           aria-label="Agent list"
         >
           {data.agents.map((agent) => (
-            <div key={agent.agentId} role="listitem">
+            <li key={agent.agentId}>
               <AgentCard agent={agent} />
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
 
       {/* Load More */}

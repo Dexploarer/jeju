@@ -49,6 +49,7 @@ import {
   registerAutocratTriggers,
   startLocalCron,
 } from './compute-trigger'
+import { config as autocratConfig, configureAutocrat } from './config'
 import { createDAOService, type DAOService } from './dao-service'
 import { type ERC8004Config, getERC8004Client } from './erc8004'
 import { type FundingOracle, getFundingOracle } from './funding-oracle'
@@ -68,7 +69,6 @@ import {
   type RegistryIntegrationConfig,
 } from './registry-integration'
 import { getResearchAgent } from './research-agent'
-import { config as autocratConfig, configureAutocrat } from './config'
 import { getTEEMode } from './tee'
 
 /**
@@ -231,7 +231,7 @@ function getConfig(): CouncilConfig {
       specialties: ['governance', 'strategy'],
     },
     // Default CEO model - can be overridden by DAO creator or governance vote
-      ceoModelId: autocratConfig.ceoModelId,
+    ceoModelId: autocratConfig.ceoModelId,
     fundingConfig: {
       minStake: BigInt('1000000000000000'),
       maxStake: BigInt('100000000000000000000'),

@@ -19,7 +19,12 @@ import {
 import { useBounties, useBountyStats } from '../hooks/useBounties'
 import { formatDeadline } from '../lib/format'
 
-type BountyStatusFilter = 'open' | 'in_progress' | 'review' | 'completed' | 'all'
+type BountyStatusFilter =
+  | 'open'
+  | 'in_progress'
+  | 'review'
+  | 'completed'
+  | 'all'
 type SortOption = 'reward' | 'deadline' | 'applicants'
 
 const statusColors: Record<string, string> = {
@@ -75,18 +80,45 @@ export function BountiesPage() {
       })
   }, [bounties, search, sortBy])
 
-  const handleSortChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value
-    if (value === 'reward' || value === 'deadline' || value === 'applicants') {
-      setSortBy(value)
-    }
-  }, [])
+  const handleSortChange = useCallback(
+    (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const value = e.target.value
+      if (
+        value === 'reward' ||
+        value === 'deadline' ||
+        value === 'applicants'
+      ) {
+        setSortBy(value)
+      }
+    },
+    [],
+  )
 
   const statsData = [
-    { label: 'Open Bounties', value: stats.openBounties.toString(), color: 'text-success-400', loading: statsLoading },
-    { label: 'Total Value', value: stats.totalValue, color: 'text-warning-400', loading: statsLoading },
-    { label: 'Completed', value: stats.completed.toString(), color: 'text-info-400', loading: statsLoading },
-    { label: 'Avg. Payout', value: stats.avgPayout, color: 'text-accent-400', loading: statsLoading },
+    {
+      label: 'Open Bounties',
+      value: stats.openBounties.toString(),
+      color: 'text-success-400',
+      loading: statsLoading,
+    },
+    {
+      label: 'Total Value',
+      value: stats.totalValue,
+      color: 'text-warning-400',
+      loading: statsLoading,
+    },
+    {
+      label: 'Completed',
+      value: stats.completed.toString(),
+      color: 'text-info-400',
+      loading: statsLoading,
+    },
+    {
+      label: 'Avg. Payout',
+      value: stats.avgPayout,
+      color: 'text-accent-400',
+      loading: statsLoading,
+    },
   ]
 
   return (
@@ -112,7 +144,10 @@ export function BountiesPage() {
             className="flex-1 mb-0 p-0 border-0 bg-transparent shadow-none"
           />
 
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Status filters">
+          <fieldset
+            className="flex flex-wrap gap-2 border-0"
+            aria-label="Status filters"
+          >
             {statusFilters.map((status) => (
               <button
                 key={status.value}
@@ -129,7 +164,7 @@ export function BountiesPage() {
                 {status.label}
               </button>
             ))}
-          </div>
+          </fieldset>
 
           <select
             value={sortBy}
@@ -154,7 +189,11 @@ export function BountiesPage() {
         <EmptyState
           icon={DollarSign}
           title="No bounties found"
-          description={search ? 'Try a different search term' : 'Create a bounty to fund open-source work'}
+          description={
+            search
+              ? 'Try a different search term'
+              : 'Create a bounty to fund open-source work'
+          }
           actionLabel="Create Bounty"
           actionHref="/bounties/create"
         />
@@ -173,7 +212,9 @@ export function BountiesPage() {
                     <h3 className="font-semibold text-surface-100 truncate">
                       {bounty.title}
                     </h3>
-                    <span className={clsx('badge', statusColors[bounty.status])}>
+                    <span
+                      className={clsx('badge', statusColors[bounty.status])}
+                    >
                       {statusLabels[bounty.status]}
                     </span>
                   </div>
@@ -209,7 +250,9 @@ export function BountiesPage() {
                         key={`${reward.token}-${reward.amount}`}
                         className={clsx(
                           'font-bold font-display',
-                          idx === 0 ? 'text-xl text-success-400' : 'text-sm text-surface-400',
+                          idx === 0
+                            ? 'text-xl text-success-400'
+                            : 'text-sm text-surface-400',
                         )}
                       >
                         {reward.amount} {reward.token}

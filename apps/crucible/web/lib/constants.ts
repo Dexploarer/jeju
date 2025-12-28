@@ -52,7 +52,9 @@ export const ROOM_TYPE_CONFIG = {
 export type RoomTypeKey = keyof typeof ROOM_TYPE_CONFIG
 
 export function getRoomTypeConfig(roomType: string) {
-  return ROOM_TYPE_CONFIG[roomType as RoomTypeKey] ?? ROOM_TYPE_CONFIG.collaboration
+  return (
+    ROOM_TYPE_CONFIG[roomType as RoomTypeKey] ?? ROOM_TYPE_CONFIG.collaboration
+  )
 }
 
 export const NAV_ITEMS = [

@@ -4,8 +4,8 @@
 
 import { cors } from '@elysiajs/cors'
 import { validateOrThrow } from '@jejunetwork/types'
-import { config } from './config'
 import { Elysia } from 'elysia'
+import { config } from './config'
 import {
   buildAccountQuery,
   buildAgentQuery,

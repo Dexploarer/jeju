@@ -40,19 +40,19 @@ interface S3ObjectListResponse {
   KeyCount?: number
 }
 
-interface S3PutResponse {
+export interface S3PutResponse {
   ETag: string
   VersionId?: string
 }
 
-interface S3HeadResponse {
+export interface S3HeadResponse {
   ContentLength: number
   ContentType: string
   ETag: string
   LastModified?: string
 }
 
-interface S3MultipartInitResponse {
+export interface S3MultipartInitResponse {
   UploadId: string
   Bucket: string
   Key: string
@@ -81,7 +81,11 @@ describe('AWS S3 SDK Compatibility', () => {
 
   describe('Bucket Operations', () => {
     test('CreateBucket - creates a new bucket', async () => {
-      const bucket = await s3Backend.createBucket(TEST_BUCKET, TEST_OWNER, 'us-east-1')
+      const bucket = await s3Backend.createBucket(
+        TEST_BUCKET,
+        TEST_OWNER,
+        'us-east-1',
+      )
 
       expect(bucket.name).toBe(TEST_BUCKET)
       expect(bucket.owner).toBe(TEST_OWNER)
@@ -323,14 +327,20 @@ describe('AWS S3 SDK Compatibility', () => {
     const numParts = 3
 
     test('CreateMultipartUpload - initiates upload', async () => {
-      const uploadId = await s3Backend.createMultipartUpload(TEST_BUCKET, largeKey)
+      const uploadId = await s3Backend.createMultipartUpload(
+        TEST_BUCKET,
+        largeKey,
+      )
       expect(uploadId).toBeDefined()
       expect(typeof uploadId).toBe('string')
     })
 
     test('complete multipart upload flow', async () => {
       // Initiate
-      const uploadId = await s3Backend.createMultipartUpload(TEST_BUCKET, `${largeKey}-complete`)
+      const uploadId = await s3Backend.createMultipartUpload(
+        TEST_BUCKET,
+        `${largeKey}-complete`,
+      )
 
       // Upload parts - store parts separately
       const parts: Array<{ partNumber: number; etag: string }> = []
@@ -357,7 +367,10 @@ describe('AWS S3 SDK Compatibility', () => {
       } catch (e) {
         // Multipart completion may fail in local test environment
         // This is expected if parts aren't persistently stored
-        console.log('[S3 SDK Test] Multipart completion failed (expected in local mode):', (e as Error).message)
+        console.log(
+          '[S3 SDK Test] Multipart completion failed (expected in local mode):',
+          (e as Error).message,
+        )
         // Upload as single object instead
         const combined = Buffer.concat(partBuffers)
         const fallback = await s3Backend.putObject({
@@ -370,7 +383,10 @@ describe('AWS S3 SDK Compatibility', () => {
     })
 
     test('AbortMultipartUpload - cancels upload', async () => {
-      const uploadId = await s3Backend.createMultipartUpload(TEST_BUCKET, `${largeKey}-abort`)
+      const uploadId = await s3Backend.createMultipartUpload(
+        TEST_BUCKET,
+        `${largeKey}-abort`,
+      )
 
       await s3Backend.uploadPart(uploadId, 1, Buffer.alloc(1024, 1))
       await s3Backend.abortMultipartUpload(uploadId)
@@ -440,7 +456,7 @@ describe('AWS S3 SDK Compatibility', () => {
         presignedKey,
         signature,
         expires,
-        operation
+        operation,
       )
 
       expect(isValid).toBe(true)
@@ -456,7 +472,7 @@ describe('AWS S3 SDK Compatibility', () => {
         presignedKey,
         'fake-signature',
         pastDate.toISOString(),
-        'getObject'
+        'getObject',
       )
 
       expect(isValid).toBe(false)
@@ -476,9 +492,7 @@ describe('AWS S3 SDK Compatibility', () => {
           id: 'transition-to-archive',
           prefix: 'archives/',
           status: 'Enabled',
-          transitions: [
-            { days: 90, storageClass: 'ARCHIVE' },
-          ],
+          transitions: [{ days: 90, storageClass: 'ARCHIVE' }],
         },
       ])
 
@@ -502,7 +516,9 @@ describe('AWS S3 SDK Compatibility', () => {
 
     afterAll(async () => {
       // Cleanup: delete test object and bucket
-      await dwsRequest(`/s3/${HTTP_TEST_BUCKET}/http-test.txt`, { method: 'DELETE' })
+      await dwsRequest(`/s3/${HTTP_TEST_BUCKET}/http-test.txt`, {
+        method: 'DELETE',
+      })
       await dwsRequest(`/s3/${HTTP_TEST_BUCKET}`, { method: 'DELETE' })
     })
 
@@ -512,7 +528,7 @@ describe('AWS S3 SDK Compatibility', () => {
       })
 
       expect(res.status).toBe(200)
-      const data = await res.json() as S3BucketListResponse
+      const data = (await res.json()) as S3BucketListResponse
       expect(data.Buckets).toBeInstanceOf(Array)
     })
 
@@ -568,7 +584,7 @@ describe('AWS S3 SDK Compatibility', () => {
       const res = await dwsRequest(`/s3/${HTTP_TEST_BUCKET}?list-type=2`)
 
       expect(res.status).toBe(200)
-      const data = await res.json() as S3ObjectListResponse
+      const data = (await res.json()) as S3ObjectListResponse
       expect(data.Contents).toBeInstanceOf(Array)
     })
 
@@ -607,4 +623,3 @@ describe('AWS S3 SDK Compatibility', () => {
     })
   })
 })
-

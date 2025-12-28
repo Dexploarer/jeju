@@ -1,6 +1,6 @@
 /**
  * Cluster Autoscaler
- * 
+ *
  * Implements automatic scaling for DWS infrastructure:
  * - Pod/Worker horizontal autoscaling
  * - Node pool autoscaling
@@ -10,7 +10,7 @@
  * - Cost optimization
  */
 
-import { createHash } from 'crypto'
+import { createHash } from 'node:crypto'
 import type { Address } from 'viem'
 
 // ============================================================================
@@ -19,31 +19,36 @@ import type { Address } from 'viem'
 
 export type ScalingDirection = 'up' | 'down' | 'none'
 
-export type MetricType = 'cpu' | 'memory' | 'requests' | 'queue-depth' | 'custom'
+export type MetricType =
+  | 'cpu'
+  | 'memory'
+  | 'requests'
+  | 'queue-depth'
+  | 'custom'
 
 export interface ScalingPolicy {
   policyId: string
   targetId: string
   targetType: 'worker' | 'container' | 'node-pool'
   name: string
-  
+
   // Scaling bounds
   minReplicas: number
   maxReplicas: number
   currentReplicas: number
-  
+
   // Metrics
   metrics: ScalingMetric[]
-  
+
   // Behavior
   scaleUpBehavior: ScalingBehavior
   scaleDownBehavior: ScalingBehavior
   cooldownSeconds: number
-  
+
   // Scale to zero
   scaleToZero: boolean
   scaleToZeroDelaySeconds: number
-  
+
   // Metadata
   owner: Address
   enabled: boolean
@@ -89,18 +94,18 @@ export interface NodePool {
   minNodes: number
   maxNodes: number
   currentNodes: number
-  
+
   // Resource info
   cpuPerNode: number
   memoryPerNode: number
-  
+
   // Status
   pendingNodes: number
   drainingNodes: number
-  
+
   // Cost
   costPerHour: number
-  
+
   createdAt: number
   updatedAt: number
 }
@@ -132,49 +137,59 @@ class MetricCollector {
   record(targetId: string, metricType: MetricType, value: number): void {
     const key = `${targetId}:${metricType}`
     const samples = this.samples.get(key) ?? []
-    
+
     samples.push({
       metricType,
       value,
       timestamp: Date.now(),
     })
-    
+
     // Keep only recent samples
     while (samples.length > this.maxSamples) {
       samples.shift()
     }
-    
+
     this.samples.set(key, samples)
   }
 
-  getAverage(targetId: string, metricType: MetricType, windowSeconds: number): number | null {
+  getAverage(
+    targetId: string,
+    metricType: MetricType,
+    windowSeconds: number,
+  ): number | null {
     const key = `${targetId}:${metricType}`
     const samples = this.samples.get(key)
-    
+
     if (!samples || samples.length === 0) return null
-    
-    const cutoff = Date.now() - (windowSeconds * 1000)
-    const recentSamples = samples.filter(s => s.timestamp >= cutoff)
-    
+
+    const cutoff = Date.now() - windowSeconds * 1000
+    const recentSamples = samples.filter((s) => s.timestamp >= cutoff)
+
     if (recentSamples.length === 0) return null
-    
-    return recentSamples.reduce((sum, s) => sum + s.value, 0) / recentSamples.length
+
+    return (
+      recentSamples.reduce((sum, s) => sum + s.value, 0) / recentSamples.length
+    )
   }
 
-  getP99(targetId: string, metricType: MetricType, windowSeconds: number): number | null {
+  getP99(
+    targetId: string,
+    metricType: MetricType,
+    windowSeconds: number,
+  ): number | null {
     const key = `${targetId}:${metricType}`
     const samples = this.samples.get(key)
-    
+
     if (!samples || samples.length === 0) return null
-    
-    const cutoff = Date.now() - (windowSeconds * 1000)
-    const recentSamples = samples.filter(s => s.timestamp >= cutoff)
-    
+
+    const cutoff = Date.now() - windowSeconds * 1000
+    const recentSamples = samples.filter((s) => s.timestamp >= cutoff)
+
     if (recentSamples.length === 0) return null
-    
-    const sorted = recentSamples.map(s => s.value).sort((a, b) => a - b)
+
+    const sorted = recentSamples.map((s) => s.value).sort((a, b) => a - b)
     const index = Math.floor(sorted.length * 0.99)
-    
+
     return sorted[Math.min(index, sorted.length - 1)]
   }
 
@@ -197,15 +212,23 @@ export class ClusterAutoscaler {
   private nodePools = new Map<string, NodePool>()
   private decisions: ScalingDecision[] = []
   private nodePoolDecisions: NodePoolScalingDecision[] = []
-  
+
   private metricCollector: MetricCollector
-  private scaleCallback: (targetId: string, targetType: string, replicas: number) => Promise<void>
+  private scaleCallback: (
+    targetId: string,
+    targetType: string,
+    replicas: number,
+  ) => Promise<void>
   private nodeCallback: (poolId: string, nodes: number) => Promise<void>
-  
+
   private scalingInterval: ReturnType<typeof setInterval> | null = null
 
   constructor(
-    scaleCallback: (targetId: string, targetType: string, replicas: number) => Promise<void>,
+    scaleCallback: (
+      targetId: string,
+      targetType: string,
+      replicas: number,
+    ) => Promise<void>,
     nodeCallback: (poolId: string, nodes: number) => Promise<void>,
   ) {
     this.scaleCallback = scaleCallback
@@ -267,12 +290,17 @@ export class ClusterAutoscaler {
     this.policies.set(policyId, policy)
     this.policiesByTarget.set(targetId, policyId)
 
-    console.log(`[Autoscaler] Created policy ${name} for ${targetType} ${targetId}`)
+    console.log(
+      `[Autoscaler] Created policy ${name} for ${targetType} ${targetId}`,
+    )
 
     return policy
   }
 
-  updatePolicy(policyId: string, updates: Partial<ScalingPolicy>): ScalingPolicy | null {
+  updatePolicy(
+    policyId: string,
+    updates: Partial<ScalingPolicy>,
+  ): ScalingPolicy | null {
     const policy = this.policies.get(policyId)
     if (!policy) return null
 
@@ -313,7 +341,9 @@ export class ClusterAutoscaler {
   // Node Pool Management
   // =========================================================================
 
-  registerNodePool(pool: Omit<NodePool, 'poolId' | 'createdAt' | 'updatedAt'>): NodePool {
+  registerNodePool(
+    pool: Omit<NodePool, 'poolId' | 'createdAt' | 'updatedAt'>,
+  ): NodePool {
     const poolId = createHash('sha256')
       .update(`${pool.name}-${Date.now()}`)
       .digest('hex')
@@ -328,7 +358,9 @@ export class ClusterAutoscaler {
 
     this.nodePools.set(poolId, fullPool)
 
-    console.log(`[Autoscaler] Registered node pool ${pool.name} (${pool.currentNodes}/${pool.maxNodes} nodes)`)
+    console.log(
+      `[Autoscaler] Registered node pool ${pool.name} (${pool.currentNodes}/${pool.maxNodes} nodes)`,
+    )
 
     return fullPool
   }
@@ -386,7 +418,7 @@ export class ClusterAutoscaler {
       if (!policy.enabled) continue
 
       const decision = this.evaluatePolicy(policy)
-      
+
       if (decision.direction !== 'none') {
         await this.applyDecision(policy, decision)
       }
@@ -398,9 +430,12 @@ export class ClusterAutoscaler {
 
   private evaluatePolicy(policy: ScalingPolicy): ScalingDecision {
     const now = Date.now()
-    
+
     // Check cooldown
-    if (policy.lastScaleTime && (now - policy.lastScaleTime) < (policy.cooldownSeconds * 1000)) {
+    if (
+      policy.lastScaleTime &&
+      now - policy.lastScaleTime < policy.cooldownSeconds * 1000
+    ) {
       return {
         policyId: policy.policyId,
         direction: 'none',
@@ -412,19 +447,28 @@ export class ClusterAutoscaler {
       }
     }
 
-    const metricResults: Array<{ type: MetricType; current: number; target: number; ratio: number }> = []
+    const metricResults: Array<{
+      type: MetricType
+      current: number
+      target: number
+      ratio: number
+    }> = []
     let weightedRatio = 0
     let totalWeight = 0
 
     // Calculate scaling ratio from each metric
     for (const metric of policy.metrics) {
-      const current = this.metricCollector.getAverage(policy.targetId, metric.type, 60)
-      
+      const current = this.metricCollector.getAverage(
+        policy.targetId,
+        metric.type,
+        60,
+      )
+
       if (current === null) continue
 
       const target = metric.target
       const ratio = current / target
-      
+
       metricResults.push({
         type: metric.type,
         current,
@@ -453,7 +497,10 @@ export class ClusterAutoscaler {
 
     // Clamp to bounds
     const effectiveMin = policy.scaleToZero ? 0 : policy.minReplicas
-    desiredReplicas = Math.max(effectiveMin, Math.min(policy.maxReplicas, desiredReplicas))
+    desiredReplicas = Math.max(
+      effectiveMin,
+      Math.min(policy.maxReplicas, desiredReplicas),
+    )
 
     // Apply behavior policies
     if (desiredReplicas > policy.currentReplicas) {
@@ -468,10 +515,10 @@ export class ClusterAutoscaler {
 
     if (desiredReplicas > policy.currentReplicas) {
       direction = 'up'
-      reason = `Scaling up: ${metricResults.map(m => `${m.type}=${m.current.toFixed(1)}/${m.target}`).join(', ')}`
+      reason = `Scaling up: ${metricResults.map((m) => `${m.type}=${m.current.toFixed(1)}/${m.target}`).join(', ')}`
     } else if (desiredReplicas < policy.currentReplicas) {
       direction = 'down'
-      reason = `Scaling down: ${metricResults.map(m => `${m.type}=${m.current.toFixed(1)}/${m.target}`).join(', ')}`
+      reason = `Scaling down: ${metricResults.map((m) => `${m.type}=${m.current.toFixed(1)}/${m.target}`).join(', ')}`
     }
 
     return {
@@ -480,7 +527,11 @@ export class ClusterAutoscaler {
       currentReplicas: policy.currentReplicas,
       desiredReplicas,
       reason,
-      metrics: metricResults.map(m => ({ type: m.type, current: m.current, target: m.target })),
+      metrics: metricResults.map((m) => ({
+        type: m.type,
+        current: m.current,
+        target: m.target,
+      })),
       timestamp: now,
     }
   }
@@ -490,40 +541,60 @@ export class ClusterAutoscaler {
       return policy.currentReplicas
     }
 
-    const maxIncrease = policy.scaleUpBehavior.policies.reduce((max, p) => {
-      const increase = p.type === 'pods'
-        ? p.value
-        : Math.ceil(policy.currentReplicas * (p.value / 100))
-      return policy.scaleUpBehavior.selectPolicy === 'max'
-        ? Math.max(max, increase)
-        : Math.min(max, increase)
-    }, policy.scaleUpBehavior.selectPolicy === 'max' ? 0 : Infinity)
+    const maxIncrease = policy.scaleUpBehavior.policies.reduce(
+      (max, p) => {
+        const increase =
+          p.type === 'pods'
+            ? p.value
+            : Math.ceil(policy.currentReplicas * (p.value / 100))
+        return policy.scaleUpBehavior.selectPolicy === 'max'
+          ? Math.max(max, increase)
+          : Math.min(max, increase)
+      },
+      policy.scaleUpBehavior.selectPolicy === 'max' ? 0 : Infinity,
+    )
 
     return Math.min(desired, policy.currentReplicas + maxIncrease)
   }
 
-  private applyScaleDownBehavior(policy: ScalingPolicy, desired: number): number {
+  private applyScaleDownBehavior(
+    policy: ScalingPolicy,
+    desired: number,
+  ): number {
     if (policy.scaleDownBehavior.selectPolicy === 'disabled') {
       return policy.currentReplicas
     }
 
-    const maxDecrease = policy.scaleDownBehavior.policies.reduce((max, p) => {
-      const decrease = p.type === 'pods'
-        ? p.value
-        : Math.ceil(policy.currentReplicas * (p.value / 100))
-      return policy.scaleDownBehavior.selectPolicy === 'min'
-        ? Math.min(max, decrease)
-        : Math.max(max, decrease)
-    }, policy.scaleDownBehavior.selectPolicy === 'min' ? Infinity : 0)
+    const maxDecrease = policy.scaleDownBehavior.policies.reduce(
+      (max, p) => {
+        const decrease =
+          p.type === 'pods'
+            ? p.value
+            : Math.ceil(policy.currentReplicas * (p.value / 100))
+        return policy.scaleDownBehavior.selectPolicy === 'min'
+          ? Math.min(max, decrease)
+          : Math.max(max, decrease)
+      },
+      policy.scaleDownBehavior.selectPolicy === 'min' ? Infinity : 0,
+    )
 
     return Math.max(desired, policy.currentReplicas - maxDecrease)
   }
 
-  private async applyDecision(policy: ScalingPolicy, decision: ScalingDecision): Promise<void> {
-    console.log(`[Autoscaler] ${policy.name}: ${decision.currentReplicas} -> ${decision.desiredReplicas} (${decision.reason})`)
+  private async applyDecision(
+    policy: ScalingPolicy,
+    decision: ScalingDecision,
+  ): Promise<void> {
+    console.log(
+      `[Autoscaler] ${policy.name}: ${decision.currentReplicas} -> ${decision.desiredReplicas} (${decision.reason})`,
+    )
 
     try {
-      await this.scaleCallback(policy.targetId, policy.targetType, decision.desiredReplicas)
+      await this.scaleCallback(
+        policy.targetId,
+        policy.targetType,
+        decision.desiredReplicas,
+      )
 
       policy.currentReplicas = decision.desiredReplicas
       policy.lastScaleTime = Date.now()
@@ -547,7 +618,7 @@ export class ClusterAutoscaler {
   private async evaluateNodePools(): Promise<void> {
     for (const pool of this.nodePools.values()) {
       const decision = this.evaluateNodePool(pool)
-      
+
       if (decision.direction !== 'none') {
         await this.applyNodePoolDecision(pool, decision)
       }
@@ -560,7 +631,8 @@ export class ClusterAutoscaler {
     let totalMemoryRequired = 0
 
     for (const policy of this.policies.values()) {
-      if (policy.targetType !== 'worker' && policy.targetType !== 'container') continue
+      if (policy.targetType !== 'worker' && policy.targetType !== 'container')
+        continue
 
       // Estimate resource per replica
       const cpuPerReplica = 0.5 // Would come from actual resource requests
@@ -581,18 +653,25 @@ export class ClusterAutoscaler {
     // Scale up if utilization > 80%
     if (cpuUtilization > 0.8 || memoryUtilization > 0.8) {
       const cpuNeeded = Math.ceil(totalCpuRequired / (pool.cpuPerNode * 0.8))
-      const memoryNeeded = Math.ceil(totalMemoryRequired / (pool.memoryPerNode * 0.8))
+      const memoryNeeded = Math.ceil(
+        totalMemoryRequired / (pool.memoryPerNode * 0.8),
+      )
       desiredNodes = Math.max(cpuNeeded, memoryNeeded)
     }
     // Scale down if utilization < 50%
     else if (cpuUtilization < 0.5 && memoryUtilization < 0.5) {
       const cpuNeeded = Math.ceil(totalCpuRequired / (pool.cpuPerNode * 0.7))
-      const memoryNeeded = Math.ceil(totalMemoryRequired / (pool.memoryPerNode * 0.7))
+      const memoryNeeded = Math.ceil(
+        totalMemoryRequired / (pool.memoryPerNode * 0.7),
+      )
       desiredNodes = Math.max(cpuNeeded, memoryNeeded, pool.minNodes)
     }
 
     // Clamp to bounds
-    desiredNodes = Math.max(pool.minNodes, Math.min(pool.maxNodes, desiredNodes))
+    desiredNodes = Math.max(
+      pool.minNodes,
+      Math.min(pool.maxNodes, desiredNodes),
+    )
 
     let direction: ScalingDirection = 'none'
     let reason = 'Utilization within target range'
@@ -605,9 +684,10 @@ export class ClusterAutoscaler {
       reason = `Scaling down: CPU=${(cpuUtilization * 100).toFixed(1)}%, Memory=${(memoryUtilization * 100).toFixed(1)}%`
     }
 
-    const estimatedSavings = direction === 'down'
-      ? (pool.currentNodes - desiredNodes) * pool.costPerHour * 24 * 30
-      : undefined
+    const estimatedSavings =
+      direction === 'down'
+        ? (pool.currentNodes - desiredNodes) * pool.costPerHour * 24 * 30
+        : undefined
 
     return {
       poolId: pool.poolId,
@@ -620,11 +700,18 @@ export class ClusterAutoscaler {
     }
   }
 
-  private async applyNodePoolDecision(pool: NodePool, decision: NodePoolScalingDecision): Promise<void> {
-    console.log(`[Autoscaler] Node pool ${pool.name}: ${decision.currentNodes} -> ${decision.desiredNodes} nodes (${decision.reason})`)
+  private async applyNodePoolDecision(
+    pool: NodePool,
+    decision: NodePoolScalingDecision,
+  ): Promise<void> {
+    console.log(
+      `[Autoscaler] Node pool ${pool.name}: ${decision.currentNodes} -> ${decision.desiredNodes} nodes (${decision.reason})`,
+    )
 
     if (decision.estimatedSavings) {
-      console.log(`[Autoscaler] Estimated monthly savings: $${decision.estimatedSavings.toFixed(2)}`)
+      console.log(
+        `[Autoscaler] Estimated monthly savings: $${decision.estimatedSavings.toFixed(2)}`,
+      )
     }
 
     try {
@@ -639,7 +726,10 @@ export class ClusterAutoscaler {
         this.nodePoolDecisions.shift()
       }
     } catch (error) {
-      console.error(`[Autoscaler] Failed to scale node pool ${pool.name}:`, error)
+      console.error(
+        `[Autoscaler] Failed to scale node pool ${pool.name}:`,
+        error,
+      )
     }
   }
 
@@ -684,7 +774,11 @@ export class ClusterAutoscaler {
 let clusterAutoscaler: ClusterAutoscaler | null = null
 
 export function getClusterAutoscaler(
-  scaleCallback: (targetId: string, targetType: string, replicas: number) => Promise<void>,
+  scaleCallback: (
+    targetId: string,
+    targetType: string,
+    replicas: number,
+  ) => Promise<void>,
   nodeCallback: (poolId: string, nodes: number) => Promise<void>,
 ): ClusterAutoscaler {
   if (!clusterAutoscaler) {
@@ -693,4 +787,3 @@ export function getClusterAutoscaler(
   }
   return clusterAutoscaler
 }
-

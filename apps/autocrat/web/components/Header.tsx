@@ -34,12 +34,13 @@ export function Header() {
     connect({ connector: injected() })
   }, [connect])
 
-  const formatAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`
+  const formatAddress = (addr: string) =>
+    `${addr.slice(0, 6)}...${addr.slice(-4)}`
 
   // Close mobile menu on route change
   useEffect(() => {
     setMobileMenuOpen(false)
-  }, [location.pathname])
+  }, [])
 
   // Close mobile menu on escape key
   useEffect(() => {
@@ -57,7 +58,7 @@ export function Header() {
   useEffect(() => {
     if (mobileMenuOpen && mobileMenuRef.current) {
       const focusableElements = mobileMenuRef.current.querySelectorAll(
-        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
       )
       const firstElement = focusableElements[0] as HTMLElement
       firstElement?.focus()
@@ -90,7 +91,11 @@ export function Header() {
           <Link
             to="/"
             className="flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded-lg p-1 -m-1"
-            style={{ '--tw-ring-color': 'var(--color-primary)' } as React.CSSProperties}
+            style={
+              {
+                '--tw-ring-color': 'var(--color-primary)',
+              } as React.CSSProperties
+            }
             aria-label="Autocrat - Home"
           >
             <div
@@ -108,7 +113,10 @@ export function Header() {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-2" aria-label="Main navigation">
+          <nav
+            className="hidden md:flex items-center gap-2"
+            aria-label="Main navigation"
+          >
             {NAV_LINKS.map((link) => {
               const Icon = link.icon
               const isActive = location.pathname === link.to
@@ -117,11 +125,17 @@ export function Header() {
                   key={link.to}
                   to={link.to}
                   className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2"
-                  style={{
-                    backgroundColor: isActive ? 'rgba(6, 214, 160, 0.12)' : 'transparent',
-                    color: isActive ? 'var(--color-primary)' : 'var(--text-secondary)',
-                    '--tw-ring-color': 'var(--color-primary)',
-                  } as React.CSSProperties}
+                  style={
+                    {
+                      backgroundColor: isActive
+                        ? 'rgba(6, 214, 160, 0.12)'
+                        : 'transparent',
+                      color: isActive
+                        ? 'var(--color-primary)'
+                        : 'var(--text-secondary)',
+                      '--tw-ring-color': 'var(--color-primary)',
+                    } as React.CSSProperties
+                  }
                   aria-current={isActive ? 'page' : undefined}
                 >
                   <Icon className="w-4 h-4" aria-hidden="true" />
@@ -137,10 +151,12 @@ export function Header() {
             <Link
               to="/create"
               className="hidden sm:inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all duration-200 hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-              style={{
-                background: 'var(--gradient-primary)',
-                '--tw-ring-color': 'var(--color-primary)',
-              } as React.CSSProperties}
+              style={
+                {
+                  background: 'var(--gradient-primary)',
+                  '--tw-ring-color': 'var(--color-primary)',
+                } as React.CSSProperties
+              }
             >
               <Plus className="w-4 h-4" aria-hidden="true" />
               Create DAO
@@ -152,11 +168,13 @@ export function Header() {
                 <Link
                   to="/my-daos"
                   className="p-2.5 rounded-xl transition-colors focus:outline-none focus-visible:ring-2"
-                  style={{
-                    backgroundColor: 'var(--surface)',
-                    color: 'var(--text-secondary)',
-                    '--tw-ring-color': 'var(--color-primary)',
-                  } as React.CSSProperties}
+                  style={
+                    {
+                      backgroundColor: 'var(--surface)',
+                      color: 'var(--text-secondary)',
+                      '--tw-ring-color': 'var(--color-primary)',
+                    } as React.CSSProperties
+                  }
                   aria-label="My DAOs"
                 >
                   <User className="w-5 h-5" aria-hidden="true" />
@@ -165,15 +183,19 @@ export function Header() {
                   type="button"
                   onClick={() => disconnect()}
                   className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2"
-                  style={{
-                    backgroundColor: 'var(--surface)',
-                    color: 'var(--text-primary)',
-                    border: '1px solid var(--border)',
-                    '--tw-ring-color': 'var(--color-primary)',
-                  } as React.CSSProperties}
+                  style={
+                    {
+                      backgroundColor: 'var(--surface)',
+                      color: 'var(--text-primary)',
+                      border: '1px solid var(--border)',
+                      '--tw-ring-color': 'var(--color-primary)',
+                    } as React.CSSProperties
+                  }
                 >
                   <Wallet className="w-4 h-4" aria-hidden="true" />
-                  <span className="hidden sm:inline">{formatAddress(address)}</span>
+                  <span className="hidden sm:inline">
+                    {formatAddress(address)}
+                  </span>
                 </button>
               </div>
             ) : (
@@ -182,18 +204,22 @@ export function Header() {
                 onClick={handleConnect}
                 disabled={isPending}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 focus:outline-none focus-visible:ring-2 disabled:opacity-60"
-                style={{
-                  backgroundColor: 'var(--surface)',
-                  color: 'var(--text-primary)',
-                  border: '1px solid var(--border)',
-                  '--tw-ring-color': 'var(--color-primary)',
-                } as React.CSSProperties}
+                style={
+                  {
+                    backgroundColor: 'var(--surface)',
+                    color: 'var(--text-primary)',
+                    border: '1px solid var(--border)',
+                    '--tw-ring-color': 'var(--color-primary)',
+                  } as React.CSSProperties
+                }
               >
                 <Wallet className="w-4 h-4" aria-hidden="true" />
                 <span className="hidden sm:inline">
                   {isPending ? 'Connecting...' : 'Connect Wallet'}
                 </span>
-                <span className="sm:hidden">{isPending ? '...' : 'Connect'}</span>
+                <span className="sm:hidden">
+                  {isPending ? '...' : 'Connect'}
+                </span>
               </button>
             )}
 
@@ -203,11 +229,15 @@ export function Header() {
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="md:hidden p-2.5 rounded-xl transition-colors focus:outline-none focus-visible:ring-2"
-              style={{
-                backgroundColor: mobileMenuOpen ? 'var(--bg-secondary)' : 'transparent',
-                color: 'var(--text-primary)',
-                '--tw-ring-color': 'var(--color-primary)',
-              } as React.CSSProperties}
+              style={
+                {
+                  backgroundColor: mobileMenuOpen
+                    ? 'var(--bg-secondary)'
+                    : 'transparent',
+                  color: 'var(--text-primary)',
+                  '--tw-ring-color': 'var(--color-primary)',
+                } as React.CSSProperties
+              }
               aria-expanded={mobileMenuOpen}
               aria-controls="mobile-menu"
               aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
@@ -236,7 +266,10 @@ export function Header() {
           aria-modal="true"
           aria-label="Mobile navigation"
         >
-          <nav className="container mx-auto py-4 space-y-1" aria-label="Mobile navigation">
+          <nav
+            className="container mx-auto py-4 space-y-1"
+            aria-label="Mobile navigation"
+          >
             {NAV_LINKS.map((link) => {
               const Icon = link.icon
               const isActive = location.pathname === link.to
@@ -247,8 +280,12 @@ export function Header() {
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors"
                   style={{
-                    backgroundColor: isActive ? 'rgba(6, 214, 160, 0.12)' : 'transparent',
-                    color: isActive ? 'var(--color-primary)' : 'var(--text-primary)',
+                    backgroundColor: isActive
+                      ? 'rgba(6, 214, 160, 0.12)'
+                      : 'transparent',
+                    color: isActive
+                      ? 'var(--color-primary)'
+                      : 'var(--text-primary)',
                   }}
                   aria-current={isActive ? 'page' : undefined}
                 >

@@ -18,8 +18,8 @@ import {
 import { createLogger } from '@jejunetwork/shared'
 import { type Address, type Hex, hexToBytes } from 'viem'
 import { z } from 'zod'
-import { config } from '../../config'
 import { storage } from '../../../web/platform/storage'
+import { config } from '../../config'
 
 const log = createLogger('wallet:messaging')
 

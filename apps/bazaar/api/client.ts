@@ -10,8 +10,7 @@ import { config } from './config'
 
 // API Base URL
 
-export const API_BASE =
-  typeof window !== 'undefined' ? '' : config.bazaarApiUrl
+export const API_BASE = typeof window !== 'undefined' ? '' : config.bazaarApiUrl
 
 // Query Keys for React Query
 

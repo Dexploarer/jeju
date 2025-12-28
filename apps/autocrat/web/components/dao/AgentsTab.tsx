@@ -62,7 +62,9 @@ function AgentCard({ agent, isCEO = false, onViewDetails }: AgentCardProps) {
       className="group relative rounded-2xl p-5 transition-all duration-300"
       style={{
         backgroundColor: 'var(--surface)',
-        border: isCEO ? '2px solid var(--color-accent)' : '1px solid var(--border)',
+        border: isCEO
+          ? '2px solid var(--color-accent)'
+          : '1px solid var(--border)',
         boxShadow: 'var(--shadow-card)',
       }}
     >
@@ -77,7 +79,6 @@ function AgentCard({ agent, isCEO = false, onViewDetails }: AgentCardProps) {
             animation: isRecentlyActive ? 'pulse 2s infinite' : 'none',
           }}
           title={isRecentlyActive ? 'Recently active' : 'Active'}
-          aria-label={isRecentlyActive ? 'Recently active' : 'Active'}
         />
       )}
 
@@ -183,7 +184,10 @@ function AgentCard({ agent, isCEO = false, onViewDetails }: AgentCardProps) {
             </span>
           ))}
           {agent.persona.traits.length > 3 && (
-            <span className="px-2 py-0.5 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+            <span
+              className="px-2 py-0.5 text-xs"
+              style={{ color: 'var(--text-tertiary)' }}
+            >
               +{agent.persona.traits.length - 3}
             </span>
           )}
@@ -245,7 +249,10 @@ function OrgChart({ dao }: { dao: DAODetail }) {
         {/* Connecting line */}
         <div
           className="absolute left-1/2 top-32 w-px h-8"
-          style={{ background: 'linear-gradient(to bottom, var(--color-accent), transparent)' }}
+          style={{
+            background:
+              'linear-gradient(to bottom, var(--color-accent), transparent)',
+          }}
           aria-hidden="true"
         />
 
@@ -321,7 +328,11 @@ export function AgentsTab({ dao }: AgentsTabProps) {
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           {dao.board.map((agent) => (
-            <AgentCard key={agent.id} agent={agent} onViewDetails={handleViewDetails} />
+            <AgentCard
+              key={agent.id}
+              agent={agent}
+              onViewDetails={handleViewDetails}
+            />
           ))}
         </div>
       </div>

@@ -14,8 +14,8 @@
  *   --skip-build  Skip building the app (assume already built)
  */
 
-import { spawn, type ChildProcess } from 'child_process'
-import { join } from 'path'
+import { type ChildProcess, spawn } from 'node:child_process'
+import { join } from 'node:path'
 
 type TauriApp = 'wallet' | 'node' | 'vpn'
 
@@ -40,7 +40,9 @@ const webMode = args.includes('--web')
 const skipBuild = args.includes('--skip-build')
 
 if (!appName || !APPS[appName]) {
-  console.error('Usage: bun run-tauri-tests.ts <wallet|node|vpn> [--web] [--skip-build]')
+  console.error(
+    'Usage: bun run-tauri-tests.ts <wallet|node|vpn> [--web] [--skip-build]',
+  )
   process.exit(1)
 }
 
@@ -107,7 +109,11 @@ async function main() {
     // Build the app if not skipped
     if (!skipBuild) {
       console.log('\n1. Building Tauri app...')
-      await runCommand('cargo', ['tauri', 'build', '--debug'], join(workspaceRoot, app.tauriDir))
+      await runCommand(
+        'cargo',
+        ['tauri', 'build', '--debug'],
+        join(workspaceRoot, app.tauriDir),
+      )
     }
 
     // Check if tauri-driver is installed
@@ -139,7 +145,7 @@ async function main() {
       join(workspaceRoot, app.path),
     )
     console.log('\n✅ All tests passed')
-  } catch (err) {
+  } catch (_err) {
     console.error('\n❌ Tests failed')
     process.exit(1)
   }
@@ -149,5 +155,3 @@ main().catch((err) => {
   console.error('Error:', err)
   process.exit(1)
 })
-
-

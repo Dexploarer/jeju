@@ -22,20 +22,20 @@ import {
   setDefaultTimeout,
   test,
 } from 'bun:test'
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, mkdirSync, rmSync } from 'node:fs'
 import type { Address, Hex } from 'viem'
 import { keccak256, toBytes } from 'viem'
+import type { WorkflowEngine } from '../../api/ci/workflow-engine'
+import type { GitRepoManager } from '../../api/git/repo-manager'
 import { createBackendManager } from '../../api/storage/backends'
-import { WorkflowEngine } from '../../api/ci/workflow-engine'
-import { GitRepoManager } from '../../api/git/repo-manager'
 import { dwsRequest } from '../setup'
 
 setDefaultTimeout(120000)
 
 const TEST_DIR = '/tmp/dws-git-workflow-test'
 const TEST_ADDRESS = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as Address
-const TEST_PRIVATE_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as Hex
+const _TEST_PRIVATE_KEY =
+  '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as Hex
 
 // Workflow types
 interface WorkflowConfig {
@@ -46,15 +46,18 @@ interface WorkflowConfig {
     workflow_dispatch?: Record<string, unknown>
     schedule?: Array<{ cron: string }>
   }
-  jobs: Record<string, {
-    'runs-on': string
-    steps: Array<{
-      name?: string
-      uses?: string
-      run?: string
-      with?: Record<string, string>
-    }>
-  }>
+  jobs: Record<
+    string,
+    {
+      'runs-on': string
+      steps: Array<{
+        name?: string
+        uses?: string
+        run?: string
+        with?: Record<string, string>
+      }>
+    }
+  >
 }
 
 interface WorkflowRun {
@@ -83,22 +86,22 @@ interface GitReposListResponse {
   repositories: GitRepoResponse[]
 }
 
-interface WorkflowsListResponse {
+export interface WorkflowsListResponse {
   workflows: Array<{ workflowId: string; name: string }>
 }
 
-interface RunsListResponse {
+export interface RunsListResponse {
   runs: WorkflowRun[]
 }
 
-interface RunnersListResponse {
+export interface RunnersListResponse {
   runners: RunnerInfo[]
 }
 
 describe('Git Workflow E2E', () => {
-  let repoManager: GitRepoManager
-  let workflowEngine: WorkflowEngine
-  let backend: ReturnType<typeof createBackendManager>
+  let _repoManager: GitRepoManager
+  let _workflowEngine: WorkflowEngine
+  let _backend: ReturnType<typeof createBackendManager>
   let testRepoId: Hex
 
   beforeAll(async () => {
@@ -109,7 +112,7 @@ describe('Git Workflow E2E', () => {
     mkdirSync(TEST_DIR, { recursive: true })
 
     // Initialize components
-    backend = createBackendManager()
+    _backend = createBackendManager()
 
     console.log('[Git Workflow Test] Test directory:', TEST_DIR)
   })
@@ -138,12 +141,15 @@ describe('Git Workflow E2E', () => {
 
       // Infrastructure may not be fully available
       if (res.status !== 201) {
-        console.log('[Git Workflow Test] Repository creation returned', res.status)
+        console.log(
+          '[Git Workflow Test] Repository creation returned',
+          res.status,
+        )
         return
       }
 
       expect(res.status).toBe(201)
-      const data = await res.json() as GitRepoResponse
+      const data = (await res.json()) as GitRepoResponse
       expect(data.id).toBeDefined()
       expect(data.name).toBe('workflow-test-repo')
       testRepoId = data.id as Hex
@@ -161,7 +167,7 @@ describe('Git Workflow E2E', () => {
       }
 
       expect(res.status).toBe(200)
-      const data = await res.json() as GitReposListResponse
+      const data = (await res.json()) as GitReposListResponse
       expect(data.repositories).toBeInstanceOf(Array)
     })
 
@@ -197,7 +203,11 @@ describe('Git Workflow E2E', () => {
         deploy: {
           'runs-on': 'jeju-compute',
           steps: [
-            { name: 'Deploy to DWS', uses: 'jeju/deploy@v1', with: { target: 'production' } },
+            {
+              name: 'Deploy to DWS',
+              uses: 'jeju/deploy@v1',
+              with: { target: 'production' },
+            },
           ],
         },
       },
@@ -387,7 +397,11 @@ jobs:
   describe('Workflow Artifacts', () => {
     test('POST /ci/runs/:id/artifacts uploads artifact', async () => {
       const formData = new FormData()
-      formData.append('file', new Blob([Buffer.from('build artifact')]), 'build.zip')
+      formData.append(
+        'file',
+        new Blob([Buffer.from('build artifact')]),
+        'build.zip',
+      )
       formData.append('name', 'build-output')
       formData.append('retention', '7')
 
@@ -409,9 +423,12 @@ jobs:
     })
 
     test('GET /ci/runs/:id/artifacts/:name downloads artifact', async () => {
-      const res = await dwsRequest('/ci/runs/test-run-id/artifacts/build-output', {
-        headers: { 'x-jeju-address': TEST_ADDRESS },
-      })
+      const res = await dwsRequest(
+        '/ci/runs/test-run-id/artifacts/build-output',
+        {
+          headers: { 'x-jeju-address': TEST_ADDRESS },
+        },
+      )
 
       expect([200, 400, 404, 500, 501]).toContain(res.status)
     })
@@ -471,11 +488,13 @@ jobs:
       })
 
       if (createRes.status !== 201) {
-        console.log('[Git Workflow Test] Repository creation not available, skipping flow test')
+        console.log(
+          '[Git Workflow Test] Repository creation not available, skipping flow test',
+        )
         return
       }
 
-      const repo = await createRes.json() as GitRepoResponse
+      const repo = (await createRes.json()) as GitRepoResponse
       expect(repo.id).toBeDefined()
 
       // Step 2: Simulate git push with workflow file
@@ -492,7 +511,10 @@ jobs:
       })
 
       // Workflow endpoints may not be fully implemented
-      console.log('[Git Workflow Test] Workflow status check:', statusRes.status)
+      console.log(
+        '[Git Workflow Test] Workflow status check:',
+        statusRes.status,
+      )
     })
   })
 
@@ -532,4 +554,3 @@ jobs:
     })
   })
 })
-

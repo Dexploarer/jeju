@@ -114,9 +114,7 @@ function App() {
         <div className="flex items-center gap-3">
           <div
             className={`p-2.5 rounded-xl transition-colors ${
-              isConnected 
-                ? 'bg-accent/10 shadow-glow' 
-                : 'bg-surface-elevated'
+              isConnected ? 'bg-accent/10 shadow-glow' : 'bg-surface-elevated'
             }`}
           >
             <Shield
@@ -240,4 +238,3 @@ function App() {
 }
 
 export default App
-

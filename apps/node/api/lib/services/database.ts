@@ -1,35 +1,35 @@
 /**
- * EQLite Database Service - Participate in EQLite mining and storage
+ * CQL Database Service - Participate in CovenantSQL mining and storage
  *
  * This service allows nodes to:
- * - Run as EQLite miner nodes for data storage and replication
+ * - Run as CQL miner nodes for data storage and replication
  * - Host database backups and serve queries
  * - Earn rewards for storage and query serving
  * - Participate in BFT-Raft consensus
  */
 
 import {
-  type EQLiteClient,
-  type EQLiteConfig,
+  type CQLClient,
+  type CQLConfig,
   type DatabaseInfo,
   type ExecResult,
-  getEQLite,
-  type QueryParam,
+  getCQL,
   type QueryResult,
 } from '@jejunetwork/db'
-import type { Address, Hex } from 'viem'
+import type { Address } from 'viem'
 import { z } from 'zod'
 import { DATABASE_PROVIDER_ABI } from '../abis'
-import { getChain, type NodeClient } from '../contracts'
+import type { NodeClient } from '../contracts'
+import { createSecureSigner, type SecureSigner } from '../secure-signer'
 
 // Configuration schema
 const DatabaseServiceConfigSchema = z.object({
-  /** EQLite block producer endpoint */
+  /** CQL block producer endpoint */
   blockProducerEndpoint: z.string().url(),
-  /** EQLite miner endpoint (this node's endpoint) */
+  /** CQL miner endpoint (this node's endpoint) */
   minerEndpoint: z.string().url(),
-  /** Private key for signing database operations */
-  privateKey: z.string().regex(/^0x[a-fA-F0-9]{64}$/),
+  /** KMS key ID for secure signing (no raw private keys) */
+  keyId: z.string().min(1),
   /** Storage capacity in GB */
   capacityGB: z.number().positive(),
   /** Price per GB per month in wei */
@@ -109,12 +109,13 @@ export function validateDatabaseStats(data: unknown): DatabaseStats {
 }
 
 /**
- * EQLite Database Service for node operators
+ * CQL Database Service for node operators
  */
 export class DatabaseService {
   private nodeClient: NodeClient
-  private eqliteClient: EQLiteClient | null = null
+  private cqlClient: CQLClient | null = null
   private config: DatabaseServiceConfig | null = null
+  private signer: SecureSigner | null = null
   private isRunning = false
   private queryCount = 0
   private queryLatencies: number[] = []
@@ -125,19 +126,27 @@ export class DatabaseService {
   }
 
   /**
-   * Initialize the EQLite client connection
+   * Initialize the CQL client connection with KMS-backed signing
+   *
+   * SECURITY: No private keys in memory. All signing via KMS MPC.
    */
   async initialize(config: DatabaseServiceConfig): Promise<void> {
     this.config = validateDatabaseServiceConfig(config)
 
-    const eqliteConfig: EQLiteConfig = {
+    // Create secure signer for KMS-backed signing
+    this.signer = createSecureSigner(this.config.keyId)
+
+    // CQL client uses KMS for signing via secure signer
+    // The CQL package should be updated to accept a signer interface
+    // For now, we pass the keyId and let CQL handle KMS integration
+    const cqlConfig: CQLConfig = {
       blockProducerEndpoint: this.config.blockProducerEndpoint,
       minerEndpoint: this.config.minerEndpoint,
-      privateKey: this.config.privateKey as Hex,
+      keyId: this.config.keyId, // KMS key ID instead of raw private key
       timeout: this.config.queryTimeoutMs,
     }
 
-    this.eqliteClient = getEQLite(eqliteConfig)
+    this.cqlClient = getCQL(cqlConfig)
   }
 
   /**
@@ -173,21 +182,22 @@ export class DatabaseService {
 
   /**
    * Register as a database provider on-chain
+   *
+   * SECURITY: Transaction signed via KMS MPC, no local private keys
    */
   async register(config: DatabaseServiceConfig): Promise<string> {
     const validatedConfig = validateDatabaseServiceConfig(config)
 
-    if (!this.nodeClient.walletClient?.account) {
-      throw new Error('Wallet not connected')
+    if (!this.signer) {
+      throw new Error('Service not initialized - call initialize() first')
     }
 
     const capacityBytes =
       BigInt(validatedConfig.capacityGB) * 1024n * 1024n * 1024n
 
-    const hash = await this.nodeClient.walletClient.writeContract({
-      chain: getChain(this.nodeClient.chainId),
-      account: this.nodeClient.walletClient.account,
-      address: this.nodeClient.addresses.databaseProvider,
+    // Encode contract call
+    const { encodeFunctionData } = await import('viem')
+    const data = encodeFunctionData({
       abi: DATABASE_PROVIDER_ABI,
       functionName: 'registerProvider',
       args: [
@@ -195,7 +205,19 @@ export class DatabaseService {
         capacityBytes,
         validatedConfig.pricePerGBMonth,
       ],
+    })
+
+    // Sign transaction via KMS and broadcast
+    const { signedTransaction, hash } = await this.signer.signTransaction({
+      to: this.nodeClient.addresses.databaseProvider,
+      data,
       value: validatedConfig.stakeAmount,
+      chainId: this.nodeClient.chainId,
+    })
+
+    // Broadcast the signed transaction
+    await this.nodeClient.publicClient.sendRawTransaction({
+      serializedTransaction: signedTransaction,
     })
 
     return hash
@@ -206,16 +228,16 @@ export class DatabaseService {
    */
   async start(): Promise<void> {
     if (this.isRunning) return
-    if (!this.eqliteClient || !this.config) {
+    if (!this.cqlClient || !this.config) {
       throw new Error(
         'Database service not initialized. Call initialize() first.',
       )
     }
 
-    // Verify EQLite connection
-    const healthy = await this.eqliteClient.isHealthy()
+    // Verify CQL connection
+    const healthy = await this.cqlClient.isHealthy()
     if (!healthy) {
-      throw new Error('Cannot connect to EQLite block producer')
+      throw new Error('Cannot connect to CQL block producer')
     }
 
     this.isRunning = true
@@ -234,9 +256,9 @@ export class DatabaseService {
     if (!this.isRunning) return
     this.isRunning = false
 
-    // Close EQLite client connections
-    if (this.eqliteClient) {
-      await this.eqliteClient.close()
+    // Close CQL client connections
+    if (this.cqlClient) {
+      await this.cqlClient.close()
     }
   }
 
@@ -244,12 +266,12 @@ export class DatabaseService {
    * Host a database (participate in replication)
    */
   async hostDatabase(databaseId: string): Promise<void> {
-    if (!this.eqliteClient) {
+    if (!this.cqlClient) {
       throw new Error('Database service not initialized')
     }
 
     // Get database info to verify it exists
-    const info = await this.eqliteClient.getDatabase(databaseId)
+    const info = await this.cqlClient.getDatabase(databaseId)
     if (!info) {
       throw new Error(`Database ${databaseId} not found`)
     }
@@ -279,12 +301,12 @@ export class DatabaseService {
     params: QueryParam[],
     databaseId: string,
   ): Promise<QueryResult<T>> {
-    if (!this.eqliteClient) {
+    if (!this.cqlClient) {
       throw new Error('Database service not initialized')
     }
 
     const startTime = performance.now()
-    const result = await this.eqliteClient.query<T>(sql, params, databaseId)
+    const result = await this.cqlClient.query<T>(sql, params, databaseId)
     const latency = performance.now() - startTime
 
     this.queryCount++
@@ -305,23 +327,23 @@ export class DatabaseService {
     params: QueryParam[],
     databaseId: string,
   ): Promise<ExecResult> {
-    if (!this.eqliteClient) {
+    if (!this.cqlClient) {
       throw new Error('Database service not initialized')
     }
 
-    return this.eqliteClient.exec(sql, params, databaseId)
+    return this.cqlClient.exec(sql, params, databaseId)
   }
 
   /**
    * Create a backup of a database
    */
   async createBackup(databaseId: string): Promise<BackupInfo> {
-    if (!this.eqliteClient) {
+    if (!this.cqlClient) {
       throw new Error('Database service not initialized')
     }
 
     // Get current database state
-    const info = await this.eqliteClient.getDatabase(databaseId)
+    const info = await this.cqlClient.getDatabase(databaseId)
     if (!info) {
       throw new Error(`Database ${databaseId} not found`)
     }
@@ -355,7 +377,7 @@ export class DatabaseService {
     _backupId: string,
     _targetDatabaseId: string,
   ): Promise<void> {
-    if (!this.eqliteClient) {
+    if (!this.cqlClient) {
       throw new Error('Database service not initialized')
     }
 
@@ -383,7 +405,7 @@ export class DatabaseService {
       avgQueryLatencyMs: avgLatency,
       activeConnections: 0, // TODO: Track active connections
       replicationLag: 0, // TODO: Calculate replication lag
-      blockHeight: 0, // TODO: Get from EQLite
+      blockHeight: 0, // TODO: Get from CQL
       consensusHealth: this.isRunning ? 'healthy' : 'unhealthy',
     })
   }
@@ -392,13 +414,13 @@ export class DatabaseService {
    * List all databases this node is hosting
    */
   async listHostedDatabases(): Promise<DatabaseInfo[]> {
-    if (!this.eqliteClient || !this.config) {
+    if (!this.cqlClient || !this.config) {
       return []
     }
 
     const databases: DatabaseInfo[] = []
     for (const dbId of this.config.hostedDatabases) {
-      const info = await this.eqliteClient.getDatabase(dbId)
+      const info = await this.cqlClient.getDatabase(dbId)
       if (info) {
         databases.push(info)
       }
@@ -410,27 +432,40 @@ export class DatabaseService {
    * Get available rental plans
    */
   async listRentalPlans() {
-    if (!this.eqliteClient) {
+    if (!this.cqlClient) {
       return []
     }
-    return this.eqliteClient.listPlans()
+    return this.cqlClient.listPlans()
   }
 
   /**
    * Claim pending rewards from database operations
+   *
+   * SECURITY: Transaction signed via KMS MPC, no local private keys
    */
   async claimRewards(): Promise<string> {
-    if (!this.nodeClient.walletClient?.account) {
-      throw new Error('Wallet not connected')
+    if (!this.signer) {
+      throw new Error('Service not initialized - call initialize() first')
     }
 
-    const hash = await this.nodeClient.walletClient.writeContract({
-      chain: getChain(this.nodeClient.chainId),
-      account: this.nodeClient.walletClient.account,
-      address: this.nodeClient.addresses.databaseProvider,
+    // Encode contract call
+    const { encodeFunctionData } = await import('viem')
+    const data = encodeFunctionData({
       abi: DATABASE_PROVIDER_ABI,
       functionName: 'claimRewards',
       args: [],
+    })
+
+    // Sign transaction via KMS and broadcast
+    const { signedTransaction, hash } = await this.signer.signTransaction({
+      to: this.nodeClient.addresses.databaseProvider,
+      data,
+      chainId: this.nodeClient.chainId,
+    })
+
+    // Broadcast the signed transaction
+    await this.nodeClient.publicClient.sendRawTransaction({
+      serializedTransaction: signedTransaction,
     })
 
     return hash
@@ -444,10 +479,10 @@ export class DatabaseService {
   }
 
   /**
-   * Get the EQLite client for direct operations
+   * Get the CQL client for direct operations
    */
-  getEQLiteClient(): EQLiteClient | null {
-    return this.eqliteClient
+  getCQLClient(): CQLClient | null {
+    return this.cqlClient
   }
 }
 

@@ -5,7 +5,15 @@
  */
 
 import { clsx } from 'clsx'
-import { AlertCircle, CheckCircle2, ExternalLink, Key, Loader2, User, Wallet } from 'lucide-react'
+import {
+  AlertCircle,
+  CheckCircle2,
+  ExternalLink,
+  Key,
+  Loader2,
+  User,
+  Wallet,
+} from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useAccount, useSignMessage } from 'wagmi'
 import {
@@ -21,17 +29,24 @@ interface FarcasterConnectProps {
   compact?: boolean
 }
 
-export function FarcasterConnect({ onComplete, compact }: FarcasterConnectProps) {
+export function FarcasterConnect({
+  onComplete,
+  compact,
+}: FarcasterConnectProps) {
   const { address, isConnected: walletConnected } = useAccount()
   const { signMessageAsync } = useSignMessage()
-  const { data: farcasterStatus, isLoading: statusLoading } = useFarcasterStatus()
-  const { data: onboarding, isLoading: onboardingLoading } = useOnboardingStatus()
+  const { data: farcasterStatus, isLoading: statusLoading } =
+    useFarcasterStatus()
+  const { data: onboarding, isLoading: onboardingLoading } =
+    useOnboardingStatus()
   const { data: lookup, isLoading: lookupLoading } = useLookupFid(address)
 
   const quickConnect = useQuickConnect()
   const activateSigner = useActivateSigner()
 
-  const [step, setStep] = useState<'lookup' | 'connect' | 'sign' | 'done'>('lookup')
+  const [step, setStep] = useState<'lookup' | 'connect' | 'sign' | 'done'>(
+    'lookup',
+  )
   const [error, setError] = useState<string | null>(null)
   const [pendingSignature, setPendingSignature] = useState<{
     message: string
@@ -42,7 +57,10 @@ export function FarcasterConnect({ onComplete, compact }: FarcasterConnectProps)
   useEffect(() => {
     if (farcasterStatus?.connected) {
       setStep('done')
-    } else if (onboarding?.steps.linkFid.complete && !onboarding.steps.activateSigner.complete) {
+    } else if (
+      onboarding?.steps.linkFid.complete &&
+      !onboarding.steps.activateSigner.complete
+    ) {
       setStep('sign')
     } else if (lookup?.found) {
       setStep('connect')
@@ -79,7 +97,9 @@ export function FarcasterConnect({ onComplete, compact }: FarcasterConnectProps)
     if (!pendingSignature) return
 
     setError(null)
-    const signature = await signMessageAsync({ message: pendingSignature.message })
+    const signature = await signMessageAsync({
+      message: pendingSignature.message,
+    })
 
     await activateSigner.mutateAsync({
       signerPublicKey: pendingSignature.publicKey,
@@ -97,7 +117,10 @@ export function FarcasterConnect({ onComplete, compact }: FarcasterConnectProps)
     if (compact) {
       return (
         <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-success-500/10 border border-success-500/20">
-          <CheckCircle2 className="w-5 h-5 text-success-400" aria-hidden="true" />
+          <CheckCircle2
+            className="w-5 h-5 text-success-400"
+            aria-hidden="true"
+          />
           <p className="text-sm font-medium text-surface-100">
             Connected as @{farcasterStatus.username}
           </p>
@@ -125,8 +148,13 @@ export function FarcasterConnect({ onComplete, compact }: FarcasterConnectProps)
             </p>
             <p className="text-surface-400">@{farcasterStatus.username}</p>
             <div className="flex items-center gap-2 mt-2">
-              <CheckCircle2 className="w-4 h-4 text-success-400" aria-hidden="true" />
-              <span className="text-sm text-success-400">Connected to Farcaster</span>
+              <CheckCircle2
+                className="w-4 h-4 text-success-400"
+                aria-hidden="true"
+              />
+              <span className="text-sm text-success-400">
+                Connected to Farcaster
+              </span>
             </div>
           </div>
         </div>
@@ -141,8 +169,12 @@ export function FarcasterConnect({ onComplete, compact }: FarcasterConnectProps)
         <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-surface-800/80 flex items-center justify-center">
           <Wallet className="w-7 h-7 text-surface-500" aria-hidden="true" />
         </div>
-        <h3 className="text-lg font-semibold text-surface-100 mb-2 font-display">Connect Wallet</h3>
-        <p className="text-surface-400 text-sm">Connect your wallet to link Farcaster</p>
+        <h3 className="text-lg font-semibold text-surface-100 mb-2 font-display">
+          Connect Wallet
+        </h3>
+        <p className="text-surface-400 text-sm">
+          Connect your wallet to link Farcaster
+        </p>
       </div>
     )
   }
@@ -150,7 +182,10 @@ export function FarcasterConnect({ onComplete, compact }: FarcasterConnectProps)
   if (isLoading) {
     return (
       <div className="card p-8 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-factory-400" aria-hidden="true" />
+        <Loader2
+          className="w-8 h-8 animate-spin text-factory-400"
+          aria-hidden="true"
+        />
       </div>
     )
   }
@@ -158,21 +193,58 @@ export function FarcasterConnect({ onComplete, compact }: FarcasterConnectProps)
   return (
     <div className="card p-6">
       {/* Progress steps */}
-      <div className="flex items-center gap-2 mb-6" role="progressbar" aria-valuenow={step === 'done' ? 100 : step === 'sign' ? 66 : step === 'connect' ? 33 : 0}>
-        <StepIndicator icon={User} label="Find FID" active={step === 'lookup'} complete={step !== 'lookup'} />
-        <div className={clsx('flex-1 h-0.5', step !== 'lookup' ? 'bg-factory-500' : 'bg-surface-800')} />
+      <div
+        className="flex items-center gap-2 mb-6"
+        role="progressbar"
+        aria-valuenow={
+          step === 'done'
+            ? 100
+            : step === 'sign'
+              ? 66
+              : step === 'connect'
+                ? 33
+                : 0
+        }
+      >
+        <StepIndicator
+          icon={User}
+          label="Find FID"
+          active={step === 'lookup'}
+          complete={step !== 'lookup'}
+        />
+        <div
+          className={clsx(
+            'flex-1 h-0.5',
+            step !== 'lookup' ? 'bg-factory-500' : 'bg-surface-800',
+          )}
+        />
         <StepIndicator
           icon={Key}
           label="Create Signer"
           active={step === 'connect'}
           complete={step === 'sign' || step === 'done'}
         />
-        <div className={clsx('flex-1 h-0.5', step === 'sign' || step === 'done' ? 'bg-factory-500' : 'bg-surface-800')} />
-        <StepIndicator icon={CheckCircle2} label="Sign" active={step === 'sign'} complete={step === 'done'} />
+        <div
+          className={clsx(
+            'flex-1 h-0.5',
+            step === 'sign' || step === 'done'
+              ? 'bg-factory-500'
+              : 'bg-surface-800',
+          )}
+        />
+        <StepIndicator
+          icon={CheckCircle2}
+          label="Sign"
+          active={step === 'sign'}
+          complete={step === 'done'}
+        />
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 p-3 mb-4 rounded-xl bg-error-500/10 border border-error-500/20 text-error-400" role="alert">
+        <div
+          className="flex items-center gap-2 p-3 mb-4 rounded-xl bg-error-500/10 border border-error-500/20 text-error-400"
+          role="alert"
+        >
           <AlertCircle className="w-5 h-5" aria-hidden="true" />
           <span className="text-sm">{error}</span>
         </div>
@@ -185,7 +257,11 @@ export function FarcasterConnect({ onComplete, compact }: FarcasterConnectProps)
             <>
               <div className="flex items-center justify-center gap-4 mb-6">
                 {lookup.user?.pfpUrl ? (
-                  <img src={lookup.user.pfpUrl} alt={lookup.user.username} className="w-16 h-16 rounded-full object-cover" />
+                  <img
+                    src={lookup.user.pfpUrl}
+                    alt={lookup.user.username}
+                    className="w-16 h-16 rounded-full object-cover"
+                  />
                 ) : (
                   <div className="w-16 h-16 rounded-full bg-surface-700 flex items-center justify-center text-surface-400 text-xl">
                     {lookup.user?.username?.slice(0, 2).toUpperCase() ?? '?'}
@@ -195,12 +271,22 @@ export function FarcasterConnect({ onComplete, compact }: FarcasterConnectProps)
                   <p className="font-semibold text-surface-100 font-display">
                     {lookup.user?.displayName || lookup.user?.username}
                   </p>
-                  <p className="text-surface-400 text-sm">@{lookup.user?.username}</p>
-                  <p className="text-surface-500 text-xs mt-1">FID: {lookup.fid}</p>
+                  <p className="text-surface-400 text-sm">
+                    @{lookup.user?.username}
+                  </p>
+                  <p className="text-surface-500 text-xs mt-1">
+                    FID: {lookup.fid}
+                  </p>
                 </div>
               </div>
-              <p className="text-surface-400 text-sm mb-4">This account is linked to your wallet</p>
-              <button type="button" className="btn btn-primary" onClick={() => setStep('connect')}>
+              <p className="text-surface-400 text-sm mb-4">
+                This account is linked to your wallet
+              </p>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => setStep('connect')}
+              >
                 Continue
               </button>
             </>
@@ -209,8 +295,12 @@ export function FarcasterConnect({ onComplete, compact }: FarcasterConnectProps)
               <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-surface-800/80 flex items-center justify-center">
                 <User className="w-7 h-7 text-surface-500" aria-hidden="true" />
               </div>
-              <h3 className="text-lg font-semibold text-surface-100 mb-2 font-display">No Farcaster Account</h3>
-              <p className="text-surface-400 text-sm mb-4">This wallet is not linked to Farcaster</p>
+              <h3 className="text-lg font-semibold text-surface-100 mb-2 font-display">
+                No Farcaster Account
+              </h3>
+              <p className="text-surface-400 text-sm mb-4">
+                This wallet is not linked to Farcaster
+              </p>
               <a
                 href="https://warpcast.com"
                 target="_blank"
@@ -220,7 +310,9 @@ export function FarcasterConnect({ onComplete, compact }: FarcasterConnectProps)
                 Create on Warpcast
                 <ExternalLink className="w-4 h-4 ml-2" aria-hidden="true" />
               </a>
-              <p className="text-surface-500 text-xs mt-4">After signing up, verify this wallet in Warpcast</p>
+              <p className="text-surface-500 text-xs mt-4">
+                After signing up, verify this wallet in Warpcast
+              </p>
             </>
           )}
         </div>
@@ -232,9 +324,12 @@ export function FarcasterConnect({ onComplete, compact }: FarcasterConnectProps)
           <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-factory-500/15 flex items-center justify-center">
             <Key className="w-7 h-7 text-factory-400" aria-hidden="true" />
           </div>
-          <h3 className="text-lg font-semibold text-surface-100 mb-2 font-display">Create Signer</h3>
+          <h3 className="text-lg font-semibold text-surface-100 mb-2 font-display">
+            Create Signer
+          </h3>
           <p className="text-surface-400 text-sm mb-6">
-            Authorize Factory to post on your behalf. You can revoke this at any time.
+            Authorize Factory to post on your behalf. You can revoke this at any
+            time.
           </p>
           <button
             type="button"
@@ -242,7 +337,9 @@ export function FarcasterConnect({ onComplete, compact }: FarcasterConnectProps)
             onClick={handleConnect}
             disabled={quickConnect.isPending}
           >
-            {quickConnect.isPending && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
+            {quickConnect.isPending && (
+              <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+            )}
             Create Signer
           </button>
         </div>
@@ -254,15 +351,21 @@ export function FarcasterConnect({ onComplete, compact }: FarcasterConnectProps)
           <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-factory-500/15 flex items-center justify-center">
             <Wallet className="w-7 h-7 text-factory-400" aria-hidden="true" />
           </div>
-          <h3 className="text-lg font-semibold text-surface-100 mb-2 font-display">Authorize</h3>
-          <p className="text-surface-400 text-sm mb-6">Sign a message to complete authorization</p>
+          <h3 className="text-lg font-semibold text-surface-100 mb-2 font-display">
+            Authorize
+          </h3>
+          <p className="text-surface-400 text-sm mb-6">
+            Sign a message to complete authorization
+          </p>
           <button
             type="button"
             className="btn btn-primary"
             onClick={handleSign}
             disabled={activateSigner.isPending}
           >
-            {activateSigner.isPending && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
+            {activateSigner.isPending && (
+              <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+            )}
             Sign Message
           </button>
         </div>
@@ -294,9 +397,18 @@ function StepIndicator({
               : 'bg-surface-800 text-surface-500',
         )}
       >
-        {complete ? <CheckCircle2 className="w-5 h-5" aria-hidden="true" /> : <Icon className="w-4 h-4" aria-hidden="true" />}
+        {complete ? (
+          <CheckCircle2 className="w-5 h-5" aria-hidden="true" />
+        ) : (
+          <Icon className="w-4 h-4" aria-hidden="true" />
+        )}
       </div>
-      <span className={clsx('text-xs', complete || active ? 'text-surface-300' : 'text-surface-500')}>
+      <span
+        className={clsx(
+          'text-xs',
+          complete || active ? 'text-surface-300' : 'text-surface-500',
+        )}
+      >
         {label}
       </span>
     </div>

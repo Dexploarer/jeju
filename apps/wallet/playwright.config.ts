@@ -39,22 +39,22 @@ export default defineConfig({
         },
       ]
     : [
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-    },
-  ],
+        {
+          name: 'chromium',
+          use: { ...devices['Desktop Chrome'] },
+        },
+      ],
 
   // Web server for preview testing
   // Set SKIP_WEBSERVER=1 if app is already running
   // Native mode doesn't need web server
   webServer:
     isNativeMode || process.env.SKIP_WEBSERVER
-    ? undefined
-    : {
-        command: 'bun run start',
-        url: `http://localhost:${PORT}`,
-        reuseExistingServer: true,
-        timeout: 180000,
-      },
+      ? undefined
+      : {
+          command: 'bun run start',
+          url: `http://localhost:${PORT}`,
+          reuseExistingServer: true,
+          timeout: 180000,
+        },
 })

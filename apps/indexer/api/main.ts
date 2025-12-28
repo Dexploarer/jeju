@@ -5,7 +5,6 @@
 import './init'
 
 import { ZERO_ADDRESS } from '@jejunetwork/types'
-import { config } from './config'
 import { type Store, TypeormDatabase } from '@subsquid/typeorm-store'
 import {
   Account,
@@ -25,6 +24,7 @@ import {
   TransactionStatus,
 } from '../src/model'
 import { processComputeEvents } from './compute-processor'
+import { config } from './config'
 import {
   ERC20_APPROVAL,
   ERC20_TRANSFER,
@@ -45,8 +45,8 @@ import { processOracleEvents } from './oracle-processor'
 import { type ProcessorContext, processor } from './processor'
 import { processRegistryEvents } from './registry-game-processor'
 import { processStorageEvents } from './storage-processor'
-import { getEQLiteSync } from './utils/eqlite-sync'
 import { getDataSource } from './utils/db'
+import { getEQLiteSync } from './utils/eqlite-sync'
 
 const eqliteSync = getEQLiteSync()
 let eqliteInitialized = false

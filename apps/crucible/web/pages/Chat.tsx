@@ -25,7 +25,8 @@ export default function ChatPage() {
   const navigate = useNavigate()
   const initialCharacter = searchParams.get('character')
 
-  const [selectedCharacter, setSelectedCharacter] = useState<CharacterWithRuntime | null>(null)
+  const [selectedCharacter, setSelectedCharacter] =
+    useState<CharacterWithRuntime | null>(null)
   const [showCreateRoom, setShowCreateRoom] = useState(false)
   const [roomName, setRoomName] = useState('')
   const [roomType, setRoomType] = useState<RoomType>('collaboration')
@@ -56,9 +57,9 @@ export default function ChatPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20" role="status">
+      <output className="flex flex-col items-center justify-center py-20">
         <LoadingSpinner size="lg" />
-      </div>
+      </output>
     )
   }
 
@@ -106,7 +107,6 @@ export default function ChatPage() {
                 onChange={(e) => setRoomName(e.target.value)}
                 className="input max-w-md"
                 required
-                autoFocus
               />
             </div>
 
@@ -196,7 +196,10 @@ export default function ChatPage() {
               role="listbox"
             >
               {characters?.length === 0 && (
-                <p className="text-sm p-3" style={{ color: 'var(--text-tertiary)' }}>
+                <p
+                  className="text-sm p-3"
+                  style={{ color: 'var(--text-tertiary)' }}
+                >
                   No agents
                 </p>
               )}
@@ -228,7 +231,9 @@ export default function ChatPage() {
                     </p>
                     <div
                       className={`flex-shrink-0 ${
-                        character.hasRuntime ? 'status-dot-active' : 'status-dot-inactive'
+                        character.hasRuntime
+                          ? 'status-dot-active'
+                          : 'status-dot-inactive'
                       }`}
                     />
                   </div>
@@ -247,10 +252,10 @@ export default function ChatPage() {
             />
           ) : (
             <div className="card-static p-12 text-center min-h-[400px] flex flex-col items-center justify-center">
-              <div className="text-5xl mb-4" aria-hidden="true">💬</div>
-              <p style={{ color: 'var(--text-secondary)' }}>
-                Select an agent
-              </p>
+              <div className="text-5xl mb-4" aria-hidden="true">
+                💬
+              </div>
+              <p style={{ color: 'var(--text-secondary)' }}>Select an agent</p>
             </div>
           )}
         </main>

@@ -8,8 +8,14 @@
  * - Quality gatekeeping with helpful guidance
  */
 
-import { encodePacked, keccak256, stringToHex } from 'viem'
-import { privateKeyToAccount } from 'viem/accounts'
+import { isProductionEnv } from '@jejunetwork/config'
+import {
+  type Address,
+  encodePacked,
+  type Hex,
+  keccak256,
+  stringToHex,
+} from 'viem'
 import {
   type CasualProposalCategory,
   type CEOPersona,
@@ -20,6 +26,7 @@ import {
   toHex,
 } from '../lib'
 import { checkDWSCompute, dwsGenerate } from './agents/runtime'
+import { createKMSAccount, type KMSAccount } from './kms-signer'
 import { findSimilarProposals, indexProposal } from './local-services'
 export interface ProposalDraft {
   title: string
@@ -736,10 +743,39 @@ Return JSON: {"title":"...","summary":"...","description":"..."}`
       ),
     )
 
-    const account = privateKeyToAccount(toHex(assessorKey))
-    const signature = await account.signMessage({
-      message: { raw: messageHash },
-    })
+    // Create KMS-based signer for assessor
+    // assessorKey can be a hex private key (development) or address (production KMS lookup)
+    const assessorHex = toHex(assessorKey) as Hex
+    const isPrivateKey = assessorHex.length === 66 // 0x + 64 chars = private key
+
+    // SECURITY: Block raw private keys in production
+    if (isPrivateKey && isProductionEnv()) {
+      throw new Error(
+        'SECURITY: Raw private keys are not allowed in production. ' +
+          'Provide an address for KMS lookup instead of a private key.',
+      )
+    }
+
+    let assessor: KMSAccount
+    if (isPrivateKey) {
+      // Development only: private key provided, derive address for KMS config
+      console.warn(
+        '[ProposalAssistant] ⚠️  Using local private key. NOT secure for production.',
+      )
+      const { privateKeyToAccount } = await import('viem/accounts')
+      const tempAccount = privateKeyToAccount(assessorHex)
+      assessor = await createKMSAccount({
+        address: tempAccount.address,
+        fallbackKey: assessorHex,
+      })
+    } else {
+      // Production: address provided, use KMS for signing
+      assessor = await createKMSAccount({
+        address: assessorHex as Address,
+      })
+    }
+
+    const signature = await assessor.signMessage({ raw: messageHash })
 
     return {
       contentHash,
@@ -747,7 +783,7 @@ Return JSON: {"title":"...","summary":"...","description":"..."}`
       timestamp,
       submitter: submitterAddress,
       signature,
-      assessor: account.address,
+      assessor: assessor.address,
     }
   }
 

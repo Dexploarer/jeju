@@ -133,7 +133,10 @@ export async function checkInfrastructure(): Promise<typeof infraStatus> {
  * Wait for infrastructure to be ready
  */
 export async function waitForInfra(
-  services: ('eqlite' | 'anvil' | 'dws' | 'ipfs' | 'docker')[] = ['eqlite', 'anvil'],
+  services: ('eqlite' | 'anvil' | 'dws' | 'ipfs' | 'docker')[] = [
+    'eqlite',
+    'anvil',
+  ],
   timeout = 60000,
 ): Promise<boolean> {
   const start = Date.now()
@@ -158,7 +161,10 @@ export async function waitForInfra(
  * Throw if required infrastructure is not available
  */
 export async function requireInfra(
-  services: ('eqlite' | 'anvil' | 'dws' | 'ipfs' | 'docker')[] = ['eqlite', 'anvil'],
+  services: ('eqlite' | 'anvil' | 'dws' | 'ipfs' | 'docker')[] = [
+    'eqlite',
+    'anvil',
+  ],
 ): Promise<void> {
   const status = await checkInfrastructure()
 

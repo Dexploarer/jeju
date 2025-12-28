@@ -185,7 +185,10 @@ describe('Terraform SDK Compatibility', () => {
     mkdirSync(TEST_DIR, { recursive: true })
 
     console.log('[Terraform SDK Test] Test directory:', TEST_DIR)
-    console.log('[Terraform SDK Test] Terraform available:', TERRAFORM_AVAILABLE)
+    console.log(
+      '[Terraform SDK Test] Terraform available:',
+      TERRAFORM_AVAILABLE,
+    )
   })
 
   afterAll(() => {
@@ -199,7 +202,7 @@ describe('Terraform SDK Compatibility', () => {
       const res = await dwsRequest('/terraform/v1/schema')
       expect(res.status).toBe(200)
 
-      const schema = await res.json() as {
+      const schema = (await res.json()) as {
         version: number
         provider: { block: { attributes: Record<string, unknown> } }
         resource_schemas: Record<string, unknown>
@@ -229,13 +232,14 @@ describe('Terraform SDK Compatibility', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           endpoint: 'https://dws.jejunetwork.org',
-          private_key: '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
+          private_key:
+            '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
           network: 'testnet',
         }),
       })
 
       expect(res.status).toBe(200)
-      const data = await res.json() as { success: boolean; network: string }
+      const data = (await res.json()) as { success: boolean; network: string }
       expect(data.success).toBe(true)
       expect(data.network).toBe('testnet')
     })
@@ -260,34 +264,46 @@ describe('Terraform SDK Compatibility', () => {
       })
 
       expect(createRes.status).toBe(201)
-      const created = await createRes.json() as { id: string; name: string; runtime: string }
+      const created = (await createRes.json()) as {
+        id: string
+        name: string
+        runtime: string
+      }
       expect(created.id).toBeDefined()
       expect(created.name).toBe('tf-crud-worker')
       expect(created.runtime).toBe('bun')
 
       // Read
-      const readRes = await dwsRequest(`/terraform/v1/resources/dws_worker/${created.id}`)
+      const readRes = await dwsRequest(
+        `/terraform/v1/resources/dws_worker/${created.id}`,
+      )
       expect(readRes.status).toBe(200)
 
       // Update
-      const updateRes = await dwsRequest(`/terraform/v1/resources/dws_worker/${created.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-jeju-address': '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
+      const updateRes = await dwsRequest(
+        `/terraform/v1/resources/dws_worker/${created.id}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-jeju-address': '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
+          },
+          body: JSON.stringify({
+            name: 'tf-crud-worker',
+            code_cid: 'QmUpdatedCid',
+            max_instances: 10,
+          }),
         },
-        body: JSON.stringify({
-          name: 'tf-crud-worker',
-          code_cid: 'QmUpdatedCid',
-          max_instances: 10,
-        }),
-      })
+      )
       expect(updateRes.status).toBe(200)
 
       // Delete
-      const deleteRes = await dwsRequest(`/terraform/v1/resources/dws_worker/${created.id}`, {
-        method: 'DELETE',
-      })
+      const deleteRes = await dwsRequest(
+        `/terraform/v1/resources/dws_worker/${created.id}`,
+        {
+          method: 'DELETE',
+        },
+      )
       expect(deleteRes.status).toBe(200)
     })
 
@@ -307,7 +323,7 @@ describe('Terraform SDK Compatibility', () => {
         }),
       })
       expect(workerRes.status).toBe(201)
-      const worker = await workerRes.json() as { id: string }
+      const worker = (await workerRes.json()) as { id: string }
 
       // Create database container
       const dbRes = await dwsRequest('/terraform/v1/resources/dws_container', {
@@ -325,24 +341,27 @@ describe('Terraform SDK Compatibility', () => {
         }),
       })
       expect(dbRes.status).toBe(201)
-      const db = await dbRes.json() as { id: string }
+      const db = (await dbRes.json()) as { id: string }
 
       // Create storage
-      const storageRes = await dwsRequest('/terraform/v1/resources/dws_storage', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-jeju-address': '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
+      const storageRes = await dwsRequest(
+        '/terraform/v1/resources/dws_storage',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-jeju-address': '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
+          },
+          body: JSON.stringify({
+            name: 'fullstack-storage',
+            size_gb: 50,
+            type: 's3',
+            replication: 3,
+          }),
         },
-        body: JSON.stringify({
-          name: 'fullstack-storage',
-          size_gb: 50,
-          type: 's3',
-          replication: 3,
-        }),
-      })
+      )
       expect(storageRes.status).toBe(200)
-      const storage = await storageRes.json() as { id: string }
+      const storage = (await storageRes.json()) as { id: string }
 
       // Create domain
       const domainRes = await dwsRequest('/terraform/v1/resources/dws_domain', {
@@ -359,9 +378,15 @@ describe('Terraform SDK Compatibility', () => {
       expect(domainRes.status).toBe(200)
 
       // Cleanup
-      await dwsRequest(`/terraform/v1/resources/dws_worker/${worker.id}`, { method: 'DELETE' })
-      await dwsRequest(`/terraform/v1/resources/dws_container/${db.id}`, { method: 'DELETE' })
-      await dwsRequest(`/terraform/v1/resources/dws_storage/${storage.id}`, { method: 'DELETE' })
+      await dwsRequest(`/terraform/v1/resources/dws_worker/${worker.id}`, {
+        method: 'DELETE',
+      })
+      await dwsRequest(`/terraform/v1/resources/dws_container/${db.id}`, {
+        method: 'DELETE',
+      })
+      await dwsRequest(`/terraform/v1/resources/dws_storage/${storage.id}`, {
+        method: 'DELETE',
+      })
     })
   })
 
@@ -393,29 +418,36 @@ describe('Terraform SDK Compatibility', () => {
     })
 
     test('terraform apply creates infrastructure', async () => {
-      const result = Bun.spawnSync(['terraform', 'apply', '-auto-approve', '-no-color'], {
-        cwd: TEST_DIR,
-        env: { ...process.env, TF_IN_AUTOMATION: '1' },
-      })
+      const result = Bun.spawnSync(
+        ['terraform', 'apply', '-auto-approve', '-no-color'],
+        {
+          cwd: TEST_DIR,
+          env: { ...process.env, TF_IN_AUTOMATION: '1' },
+        },
+      )
 
       expect(result.exitCode).toBe(0)
 
       // Verify outputs were created
       const workerResult = JSON.parse(
-        Bun.spawnSync(['cat', 'worker-result.json'], { cwd: TEST_DIR }).stdout.toString() || '{}'
+        Bun.spawnSync(['cat', 'worker-result.json'], {
+          cwd: TEST_DIR,
+        }).stdout.toString() || '{}',
       )
       expect(workerResult.id).toBeDefined()
       expect(workerResult.name).toBe('terraform-test-worker')
     })
 
     test('terraform destroy cleans up infrastructure', async () => {
-      const result = Bun.spawnSync(['terraform', 'destroy', '-auto-approve', '-no-color'], {
-        cwd: TEST_DIR,
-        env: { ...process.env, TF_IN_AUTOMATION: '1' },
-      })
+      const result = Bun.spawnSync(
+        ['terraform', 'destroy', '-auto-approve', '-no-color'],
+        {
+          cwd: TEST_DIR,
+          env: { ...process.env, TF_IN_AUTOMATION: '1' },
+        },
+      )
 
       expect(result.exitCode).toBe(0)
     })
   })
 })
-

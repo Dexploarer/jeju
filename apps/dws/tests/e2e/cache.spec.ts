@@ -51,7 +51,7 @@ test.describe('Cache Service E2E', () => {
 
     // Get value
     const getResponse = await request.get(
-      `${DWS_API_URL}/cache/get?key=${testKey}&namespace=e2e-test`
+      `${DWS_API_URL}/cache/get?key=${testKey}&namespace=e2e-test`,
     )
     expect(getResponse.ok()).toBe(true)
     const getData = await getResponse.json()
@@ -84,7 +84,7 @@ test.describe('Cache Service E2E', () => {
 
     // Verify it's gone
     const getResponse = await request.get(
-      `${DWS_API_URL}/cache/get?key=${testKey}&namespace=e2e-test`
+      `${DWS_API_URL}/cache/get?key=${testKey}&namespace=e2e-test`,
     )
     const getData = await getResponse.json()
     expect(getData.found).toBe(false)
@@ -183,7 +183,7 @@ test.describe('Cache Service E2E', () => {
 
     // Get single field
     const hgetResponse = await request.get(
-      `${DWS_API_URL}/cache/hget?key=${testKey}&field=name&namespace=e2e-test`
+      `${DWS_API_URL}/cache/hget?key=${testKey}&field=name&namespace=e2e-test`,
     )
     expect(hgetResponse.ok()).toBe(true)
     const hgetData = await hgetResponse.json()
@@ -191,7 +191,7 @@ test.describe('Cache Service E2E', () => {
 
     // Get all fields
     const hgetallResponse = await request.get(
-      `${DWS_API_URL}/cache/hgetall?key=${testKey}&namespace=e2e-test`
+      `${DWS_API_URL}/cache/hgetall?key=${testKey}&namespace=e2e-test`,
     )
     expect(hgetallResponse.ok()).toBe(true)
     const hgetallData = await hgetallResponse.json()
@@ -255,7 +255,7 @@ test.describe('Cache Service E2E', () => {
 
     // Get members
     const smembersResponse = await request.get(
-      `${DWS_API_URL}/cache/smembers?key=${testKey}&namespace=e2e-test`
+      `${DWS_API_URL}/cache/smembers?key=${testKey}&namespace=e2e-test`,
     )
     expect(smembersResponse.ok()).toBe(true)
     const smembersData = await smembersResponse.json()
@@ -281,7 +281,7 @@ test.describe('Cache Service E2E', () => {
 
     // Get range (sorted by score)
     const zrangeResponse = await request.get(
-      `${DWS_API_URL}/cache/zrange?key=${testKey}&start=0&stop=-1&namespace=e2e-test`
+      `${DWS_API_URL}/cache/zrange?key=${testKey}&start=0&stop=-1&namespace=e2e-test`,
     )
     expect(zrangeResponse.ok()).toBe(true)
     const zrangeData = await zrangeResponse.json()
@@ -303,7 +303,7 @@ test.describe('Cache Service E2E', () => {
 
     // Check TTL
     const ttlResponse = await request.get(
-      `${DWS_API_URL}/cache/ttl?key=${testKey}&namespace=e2e-test`
+      `${DWS_API_URL}/cache/ttl?key=${testKey}&namespace=e2e-test`,
     )
     expect(ttlResponse.ok()).toBe(true)
     const ttlData = await ttlResponse.json()
@@ -339,7 +339,7 @@ test.describe('Cache Service E2E', () => {
 
     // List all keys with prefix
     const keysResponse = await request.get(
-      `${DWS_API_URL}/cache/keys?pattern=${prefix}*&namespace=e2e-test`
+      `${DWS_API_URL}/cache/keys?pattern=${prefix}*&namespace=e2e-test`,
     )
     expect(keysResponse.ok()).toBe(true)
     const keysData = await keysResponse.json()
@@ -456,16 +456,15 @@ test.describe('Cache Service E2E', () => {
 
     // Clear the namespace
     const clearResponse = await request.delete(
-      `${DWS_API_URL}/cache/clear?namespace=e2e-clear-test`
+      `${DWS_API_URL}/cache/clear?namespace=e2e-clear-test`,
     )
     expect(clearResponse.ok()).toBe(true)
 
     // Verify keys are gone
     const keysResponse = await request.get(
-      `${DWS_API_URL}/cache/keys?namespace=e2e-clear-test`
+      `${DWS_API_URL}/cache/keys?namespace=e2e-clear-test`,
     )
     const keysData = await keysResponse.json()
     expect(keysData.keys.length).toBe(0)
   })
 })
-

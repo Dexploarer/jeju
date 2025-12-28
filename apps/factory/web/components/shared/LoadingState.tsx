@@ -16,9 +16,8 @@ export function LoadingState({
   className = '',
 }: LoadingStateProps) {
   return (
-    <div
+    <output
       className={`card p-12 flex flex-col items-center justify-center gap-4 animate-in ${className}`}
-      role="status"
       aria-label={text}
     >
       <Loader2
@@ -26,6 +25,6 @@ export function LoadingState({
         aria-hidden="true"
       />
       <p className="text-surface-400 text-sm">{text}</p>
-    </div>
+    </output>
   )
 }

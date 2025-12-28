@@ -71,7 +71,7 @@ export function MobileNav() {
   // Close menu on route change
   useEffect(() => {
     setIsOpen(false)
-  }, [pathname])
+  }, [])
 
   // Prevent scroll when menu is open
   useEffect(() => {
@@ -176,7 +176,6 @@ export function MobileNav() {
             'absolute top-16 left-0 bottom-0 w-[280px] bg-surface-900/98 backdrop-blur-lg border-r border-surface-800/50 overflow-y-auto custom-scrollbar transition-transform duration-300 ease-out',
             isOpen ? 'translate-x-0' : '-translate-x-full',
           )}
-          role="navigation"
           aria-label="Mobile navigation"
         >
           <div className="p-4 space-y-6">
@@ -189,7 +188,7 @@ export function MobileNav() {
                 <h3 className="text-xs font-semibold text-surface-500 uppercase tracking-wider mb-2 px-3">
                   {section.title}
                 </h3>
-                <ul className="space-y-1" role="list">
+                <ul className="space-y-1">
                   {section.items.map((item) => (
                     <li key={item.href}>
                       <Link

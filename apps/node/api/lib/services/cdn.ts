@@ -1,10 +1,16 @@
+/**
+ * SECURITY TODO: Migrate to SecureTransactionExecutor for KMS-backed signing
+ * Current implementation uses walletClient.writeContract which requires
+ * private keys in memory. Should use createSecureTransactionExecutor()
+ * from '../secure-transactions' for TEE-safe operations.
+ */
 import { getRpcUrl } from '@jejunetwork/config'
 import type { CDNRegion } from '@jejunetwork/types'
 import { expectAddress, expectHex, toBigInt } from '@jejunetwork/types'
 import type { Address, Hex } from 'viem'
 import { z } from 'zod'
+import { config as nodeConfig } from '../../config'
 import { CDN_REGISTRY_ABI } from '../abis'
-import { config } from '../config'
 import { getChain, type NodeClient } from '../contracts'
 
 /** Type for CDN edge node as returned by getEdgeNode contract call */
