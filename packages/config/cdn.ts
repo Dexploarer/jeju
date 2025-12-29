@@ -371,8 +371,8 @@ export function getJNSContracts(): {
   jnsResolver: string
 } {
   return {
-    jnsRegistry: getContract('jns', 'jnsRegistry') ?? '',
-    jnsResolver: getContract('jns', 'jnsResolver') ?? '',
+    jnsRegistry: getContract('jns', 'registry') ?? '',
+    jnsResolver: getContract('jns', 'resolver') ?? '',
   }
 }
 

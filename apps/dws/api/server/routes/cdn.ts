@@ -67,9 +67,9 @@ function getJNSGateway(): JNSGateway | null {
   if (jnsGateway) return jnsGateway
 
   const jnsRegistry =
-    cdnRouterConfig.jnsRegistryAddress || getContract('jns', 'jnsRegistry')
+    cdnRouterConfig.jnsRegistryAddress || getContract('jns', 'registry')
   const jnsResolver =
-    cdnRouterConfig.jnsResolverAddress || getContract('jns', 'jnsResolver')
+    cdnRouterConfig.jnsResolverAddress || getContract('jns', 'resolver')
 
   if (
     !jnsRegistry ||

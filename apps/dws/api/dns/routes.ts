@@ -58,7 +58,7 @@ let dnsMirror: ReturnType<typeof createDNSMirror> | null = null
 function getDoHServer(): ReturnType<typeof createDoHServer> {
   if (dohServer) return dohServer
 
-  const jnsRegistry = getContract('jns', 'jnsRegistry') as Address | undefined
+  const jnsRegistry = getContract('jns', 'registry') as Address | undefined
 
   const config: Partial<DoHServerConfig> = {
     port: 5353,
@@ -79,7 +79,7 @@ function getDoHServer(): ReturnType<typeof createDoHServer> {
 function getRecursiveResolver(): ReturnType<typeof createRecursiveResolver> {
   if (recursiveResolver) return recursiveResolver
 
-  const jnsRegistry = getContract('jns', 'jnsRegistry') as Address | undefined
+  const jnsRegistry = getContract('jns', 'registry') as Address | undefined
 
   recursiveResolver = createRecursiveResolver({
     jns: jnsRegistry
@@ -106,7 +106,7 @@ function getRecursiveResolver(): ReturnType<typeof createRecursiveResolver> {
 function getDNSMirror(): ReturnType<typeof createDNSMirror> | null {
   if (dnsMirror) return dnsMirror
 
-  const jnsRegistry = getContract('jns', 'jnsRegistry') as Address | undefined
+  const jnsRegistry = getContract('jns', 'registry') as Address | undefined
   if (!jnsRegistry) return null
 
   // Check for mirror configuration
@@ -241,7 +241,7 @@ export function createDNSRouter() {
       // === JNS-specific endpoints ===
 
       .get('/jns/:name', async ({ params, set }) => {
-        const jnsRegistry = getContract('jns', 'jnsRegistry') as
+        const jnsRegistry = getContract('jns', 'registry') as
           | Address
           | undefined
         if (!jnsRegistry) {
@@ -264,7 +264,7 @@ export function createDNSRouter() {
       })
 
       .get('/jns/:name/text/:key', async ({ params, set }) => {
-        const jnsRegistry = getContract('jns', 'jnsRegistry') as
+        const jnsRegistry = getContract('jns', 'registry') as
           | Address
           | undefined
         if (!jnsRegistry) {
@@ -287,7 +287,7 @@ export function createDNSRouter() {
       })
 
       .get('/jns/:name/contenthash', async ({ params, set }) => {
-        const jnsRegistry = getContract('jns', 'jnsRegistry') as
+        const jnsRegistry = getContract('jns', 'registry') as
           | Address
           | undefined
         if (!jnsRegistry) {
