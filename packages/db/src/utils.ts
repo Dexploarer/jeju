@@ -1,5 +1,5 @@
 /**
- * Shared utilities for EQLite package
+ * Shared utilities for SQLit package
  */
 
 import { z } from 'zod'
