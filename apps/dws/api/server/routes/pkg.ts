@@ -145,8 +145,11 @@ export function createPkgRouter(ctx: PkgContext) {
           }> = []
 
           for (const [fullName, pkg] of localPackages) {
-            if (text === '' || fullName.toLowerCase().includes(text) || 
-                pkg.description.toLowerCase().includes(text)) {
+            if (
+              text === '' ||
+              fullName.toLowerCase().includes(text) ||
+              pkg.description.toLowerCase().includes(text)
+            ) {
               inMemoryResults.push({
                 name: pkg.name,
                 scope: pkg.scope,
@@ -168,14 +171,18 @@ export function createPkgRouter(ctx: PkgContext) {
             updatedAt: bigint
           }> = []
           try {
-            onChainPackages = await registryManager.searchPackages(text, from, size)
+            onChainPackages = await registryManager.searchPackages(
+              text,
+              from,
+              size,
+            )
           } catch {
             // Contract not deployed, use in-memory only
           }
 
           // Combine results
           const allPackages = [
-            ...inMemoryResults.map(pkg => ({
+            ...inMemoryResults.map((pkg) => ({
               name: getFullName(pkg.name, pkg.scope),
               scope: pkg.scope || undefined,
               version: pkg.version,
@@ -183,7 +190,7 @@ export function createPkgRouter(ctx: PkgContext) {
               date: pkg.updatedAt.toISOString(),
               publisher: { username: pkg.owner },
             })),
-            ...onChainPackages.map(pkg => ({
+            ...onChainPackages.map((pkg) => ({
               name: registryManager.getFullName(pkg.name, pkg.scope),
               scope: pkg.scope || undefined,
               version: pkg.version,

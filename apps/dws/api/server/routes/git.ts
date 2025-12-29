@@ -986,19 +986,22 @@ export function createGitRouter(ctx: GitContext) {
         }
 
         const packfile = await createPackfile(objectStore, neededOids)
-        
+
         // For stateless-rpc with side-band-64k, wrap packfile in sideband
         const parts: Buffer[] = []
         parts.push(createPktLine('NAK'))
-        
+
         // Send packfile data through sideband channel 1 in chunks
         const CHUNK_SIZE = 65515 // 65535 - 4 (length) - 1 (band) - 15 (margin)
         for (let i = 0; i < packfile.length; i += CHUNK_SIZE) {
-          const chunk = packfile.subarray(i, Math.min(i + CHUNK_SIZE, packfile.length))
+          const chunk = packfile.subarray(
+            i,
+            Math.min(i + CHUNK_SIZE, packfile.length),
+          )
           parts.push(createSidebandPktLine(chunk, 1))
         }
         parts.push(createFlushPkt())
-        
+
         const response = Buffer.concat(parts)
 
         return new Response(response, {
