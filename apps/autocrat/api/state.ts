@@ -670,7 +670,7 @@ const StoredObjectSchema = z.discriminatedUnion('type', [
     timestamp: z.string(),
     model: z.string(),
     teeMode: z.string(),
-    isHumanDecision: z.boolean(),
+    isHumanDecision: z.boolean().optional(),
   }),
   z.object({
     type: z.literal('autocrat_vote_detail'),
@@ -691,7 +691,7 @@ const StoredObjectSchema = z.discriminatedUnion('type', [
     teeDecision: TEEDecisionDataSchema,
     personaResponse: z.string(),
     decidedAt: z.number(),
-    isHumanDecision: z.boolean(),
+    isHumanDecision: z.boolean().optional(),
   }),
 ])
 

@@ -1,13 +1,15 @@
 /**
- * NSFW/Adult Content Detection
+ * Image Validation Provider
  *
- * Tags adult content, flags for CSAM verification.
- * Local fallback - for real detection use Hive/AWS Rekognition.
+ * IMPORTANT: This provider only validates image format.
+ * Actual CSAM detection requires external API (Hive or AWS Rekognition).
+ * Configure HIVE_API_KEY or AWS credentials for real image moderation.
+ *
+ * nsfwjs/TensorFlow does not work with Bun runtime.
  */
 
 import type { ModerationProvider, ModerationResult } from '../types'
 
-// Image magic bytes
 const JPEG = [0xff, 0xd8, 0xff]
 const PNG = [0x89, 0x50, 0x4e, 0x47]
 const GIF = [0x47, 0x49, 0x46, 0x38]
@@ -15,6 +17,7 @@ const WEBP_RIFF = [0x52, 0x49, 0x46, 0x46]
 const WEBP_MAGIC = [0x57, 0x45, 0x42, 0x50]
 
 export interface NSFWProviderConfig {
+  /** Always flag images for external CSAM verification (default: true) */
   alwaysCheckCsam?: boolean
 }
 
@@ -30,14 +33,15 @@ export class NSFWDetectionProvider {
     const start = Date.now()
 
     if (!buf || buf.length < 12) {
-      return this.error('Empty or invalid image', start)
+      return this.error('Empty or invalid image data', start)
     }
 
     if (!this.isValidImage(buf)) {
-      return this.error('Invalid image format', start)
+      return this.error('Invalid image format (must be JPEG, PNG, GIF, or WebP)', start)
     }
 
-    // Local provider can't detect adult content - flag all for CSAM check
+    // This provider can only validate format.
+    // Flag ALL images for external CSAM check via Hive/AWS.
     return {
       safe: true,
       action: 'allow',
@@ -52,8 +56,7 @@ export class NSFWDetectionProvider {
 
   private isValidImage(buf: Buffer): boolean {
     const match = (sig: number[], offset = 0) => sig.every((b, i) => buf[offset + i] === b)
-    return match(JPEG) || match(PNG) || match(GIF) ||
-      (match(WEBP_RIFF) && match(WEBP_MAGIC, 8))
+    return match(JPEG) || match(PNG) || match(GIF) || (match(WEBP_RIFF) && match(WEBP_MAGIC, 8))
   }
 
   private error(reason: string, start: number): ModerationResult {

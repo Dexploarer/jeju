@@ -176,7 +176,8 @@ export async function createKMSWalletClient<TTransport extends Transport>(
     publicKey: kmsAccount.publicKey,
     signMessage: async ({ message }) => kmsAccount.signMessage(message),
     signTransaction: async (tx) => kmsAccount.signTransaction(tx),
-    signTypedData: async (typedData) => kmsAccount.signTypedData(typedData),
+    signTypedData: async (typedData) =>
+      kmsAccount.signTypedData(typedData as Parameters<typeof kmsAccount.signTypedData>[0]),
   }
 
   return createWalletClient({

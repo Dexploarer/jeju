@@ -1,36 +1,18 @@
 /**
  * Cloudflare Content Moderation Provider
- *
- * Integration with Cloudflare Images and Workers AI for content moderation.
- * Uses nsfw-image-classification model for visual content.
- *
  * @see https://developers.cloudflare.com/workers-ai/models/nsfw-image-classification/
  */
 
 import { z } from 'zod'
-import type {
-  CategoryScore,
-  ContentType,
-  ModerationCategory,
-  ModerationProvider,
-  ModerationResult,
-} from '../types'
+import type { CategoryScore, ModerationCategory, ModerationProvider, ModerationResult } from '../types'
 
-// ============ Cloudflare Response Schemas ============
-
-const ClassificationResultSchema = z.object({
-  label: z.string(),
-  score: z.number(),
-})
-
-const CloudflareAIResponseSchema = z.object({
-  result: z.array(ClassificationResultSchema).optional(),
+const ImageResponseSchema = z.object({
+  result: z.array(z.object({ label: z.string(), score: z.number() })).optional(),
   success: z.boolean(),
   errors: z.array(z.string()).optional(),
 })
 
-// For text classification (toxicity model)
-const TextClassificationSchema = z.object({
+const TextResponseSchema = z.object({
   result: z.object({
     toxic: z.number().optional(),
     severe_toxic: z.number().optional(),
@@ -40,284 +22,115 @@ const TextClassificationSchema = z.object({
     identity_hate: z.number().optional(),
   }).optional(),
   success: z.boolean(),
-  errors: z.array(z.string()).optional(),
 })
 
-// ============ Category Mapping ============
-
 const CF_IMAGE_TO_CATEGORY: Record<string, ModerationCategory> = {
-  nsfw: 'adult',
-  sexual: 'adult',
-  porn: 'adult',
-  hentai: 'adult',
-  sexy: 'adult',
-  drawing: 'clean', // Drawings are generally safe unless combined with other labels
-  neutral: 'clean',
+  nsfw: 'adult', sexual: 'adult', porn: 'adult', hentai: 'adult', sexy: 'adult',
 }
-
-// ============ Provider Implementation ============
 
 export interface CloudflareProviderConfig {
   accountId: string
   apiToken: string
-  endpoint?: string
   timeout?: number
-  imageModel?: string
-  textModel?: string
 }
 
 export class CloudflareModerationProvider {
   readonly name: ModerationProvider = 'cloudflare'
-  readonly supportedTypes: ContentType[] = ['image', 'text']
-
   private apiToken: string
   private endpoint: string
   private timeout: number
 
   constructor(config: CloudflareProviderConfig) {
     this.apiToken = config.apiToken
-    this.endpoint =
-      config.endpoint ??
-      `https://api.cloudflare.com/client/v4/accounts/${config.accountId}/ai/run`
+    this.endpoint = `https://api.cloudflare.com/client/v4/accounts/${config.accountId}/ai/run`
     this.timeout = config.timeout ?? 30000
   }
 
-  async moderateImage(imageBuffer: Buffer): Promise<ModerationResult> {
-    const startTime = Date.now()
+  async moderateImage(buf: Buffer): Promise<ModerationResult> {
+    const start = Date.now()
+    const arr = new Uint8Array(buf.length)
+    for (let i = 0; i < buf.length; i++) arr[i] = buf[i]
 
-    // Use NSFW classification model
-    // Create a proper Uint8Array copy for fetch
-    const uint8Array = new Uint8Array(imageBuffer.length)
-    for (let i = 0; i < imageBuffer.length; i++) {
-      uint8Array[i] = imageBuffer[i]
-    }
-    const response = await fetch(
-      `${this.endpoint}/@cf/nsfw-image-classification`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.apiToken}`,
-          'Content-Type': 'application/octet-stream',
-        },
-        body: uint8Array,
-        signal: AbortSignal.timeout(this.timeout),
-      }
-    )
+    const res = await fetch(`${this.endpoint}/@cf/nsfw-image-classification`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${this.apiToken}`, 'Content-Type': 'application/octet-stream' },
+      body: arr,
+      signal: AbortSignal.timeout(this.timeout),
+    })
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`Cloudflare API error: ${response.status} ${errorText}`)
-    }
+    if (!res.ok) throw new Error(`Cloudflare API error: ${res.status}`)
+    const data = ImageResponseSchema.parse(await res.json())
+    if (!data.success) throw new Error(`Cloudflare AI failed: ${data.errors?.join(', ')}`)
 
-    const rawData: unknown = await response.json()
-    const parseResult = CloudflareAIResponseSchema.safeParse(rawData)
-
-    if (!parseResult.success) {
-      throw new Error(`Invalid Cloudflare response: ${parseResult.error.message}`)
-    }
-
-    const data = parseResult.data
-    if (!data.success) {
-      throw new Error(`Cloudflare AI failed: ${data.errors?.join(', ')}`)
-    }
-
-    return this.processImageResponse(data, startTime)
+    return this.processImage(data, start)
   }
 
   async moderateText(text: string): Promise<ModerationResult> {
-    const startTime = Date.now()
+    const start = Date.now()
+    const res = await fetch(`${this.endpoint}/@cf/toxicity-classification`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${this.apiToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+      signal: AbortSignal.timeout(this.timeout),
+    })
 
-    // Use toxicity classification model
-    const response = await fetch(
-      `${this.endpoint}/@cf/toxicity-classification`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.apiToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ text }),
-        signal: AbortSignal.timeout(this.timeout),
-      }
-    )
-
-    if (!response.ok) {
-      // Fallback: Cloudflare might not have toxicity model available
-      // Return empty result rather than failing
-      console.warn(
-        `[Cloudflare] Text moderation unavailable: ${response.status}`
-      )
-      return {
-        safe: true,
-        action: 'allow',
-        severity: 'none',
-        categories: [],
-        reviewRequired: false,
-        processingTimeMs: Date.now() - startTime,
-        providers: ['cloudflare'],
-      }
+    if (!res.ok) {
+      console.warn(`[Cloudflare] Text moderation unavailable: ${res.status}`)
+      return this.empty(start)
     }
 
-    const rawData: unknown = await response.json()
-    const parseResult = TextClassificationSchema.safeParse(rawData)
-
-    if (!parseResult.success || !parseResult.data.result) {
-      // Return neutral result if parsing fails
-      return {
-        safe: true,
-        action: 'allow',
-        severity: 'none',
-        categories: [],
-        reviewRequired: false,
-        processingTimeMs: Date.now() - startTime,
-        providers: ['cloudflare'],
-      }
-    }
-
-    return this.processTextResponse(parseResult.data.result, startTime)
+    const parsed = TextResponseSchema.safeParse(await res.json())
+    if (!parsed.success || !parsed.data.result) return this.empty(start)
+    return this.processText(parsed.data.result, start)
   }
 
-  private processImageResponse(
-    data: z.infer<typeof CloudflareAIResponseSchema>,
-    startTime: number
-  ): ModerationResult {
+  private processImage(data: z.infer<typeof ImageResponseSchema>, start: number): ModerationResult {
     const categories: CategoryScore[] = []
-    const categoryMaxScores = new Map<ModerationCategory, number>()
+    let adultScore = 0
 
-    // Process classification results
-    for (const result of data.result ?? []) {
-      const category = CF_IMAGE_TO_CATEGORY[result.label.toLowerCase()]
-      if (category && category !== 'clean') {
-        const existing = categoryMaxScores.get(category) ?? 0
-        if (result.score > existing) {
-          categoryMaxScores.set(category, result.score)
-        }
+    for (const r of data.result ?? []) {
+      const cat = CF_IMAGE_TO_CATEGORY[r.label.toLowerCase()]
+      if (cat) {
+        categories.push({ category: cat, score: r.score, confidence: 0.85, provider: 'cloudflare' })
+        if (cat === 'adult') adultScore = Math.max(adultScore, r.score)
       }
     }
-
-    // Build category scores
-    for (const [category, score] of categoryMaxScores) {
-      categories.push({
-        category,
-        score,
-        confidence: 0.85,
-        provider: 'cloudflare',
-      })
-    }
-
-    // Determine action
-    const adultScore = categoryMaxScores.get('adult') ?? 0
 
     let action: ModerationResult['action'] = 'allow'
     let severity: ModerationResult['severity'] = 'none'
-    let reviewRequired = false
-
-    if (adultScore > 0.9) {
-      action = 'block'
-      severity = 'high'
-      reviewRequired = true
-    } else if (adultScore > 0.7) {
-      action = 'warn'
-      severity = 'medium'
-    } else if (adultScore > 0.5) {
-      action = 'warn'
-      severity = 'low'
-    }
-
-    const primaryCategory =
-      categories.length > 0
-        ? categories.reduce((a, b) => (a.score > b.score ? a : b)).category
-        : undefined
+    if (adultScore > 0.7) { action = 'warn'; severity = 'low' }
 
     return {
       safe: action === 'allow',
       action,
       severity,
       categories,
-      primaryCategory,
-      blockedReason:
-        action !== 'allow' ? `Cloudflare detection: ${primaryCategory}` : undefined,
-      reviewRequired,
-      processingTimeMs: Date.now() - startTime,
+      primaryCategory: categories[0]?.category,
+      blockedReason: action !== 'allow' ? `Cloudflare: adult` : undefined,
+      reviewRequired: false,
+      processingTimeMs: Date.now() - start,
       providers: ['cloudflare'],
     }
   }
 
-  private processTextResponse(
-    result: NonNullable<z.infer<typeof TextClassificationSchema>['result']>,
-    startTime: number
-  ): ModerationResult {
+  private processText(result: NonNullable<z.infer<typeof TextResponseSchema>['result']>, start: number): ModerationResult {
     const categories: CategoryScore[] = []
-    const categoryMaxScores = new Map<ModerationCategory, number>()
-
-    // Map toxicity scores to categories
-    if (result.toxic && result.toxic > 0.5) {
-      categoryMaxScores.set('harassment', result.toxic)
-    }
-    if (result.severe_toxic && result.severe_toxic > 0.5) {
-      categoryMaxScores.set('harassment', 
-        Math.max(result.severe_toxic, categoryMaxScores.get('harassment') ?? 0))
-    }
-    if (result.obscene && result.obscene > 0.5) {
-      categoryMaxScores.set('adult', result.obscene)
-    }
-    if (result.threat && result.threat > 0.5) {
-      categoryMaxScores.set('violence', result.threat)
-    }
-    if (result.insult && result.insult > 0.5) {
-      categoryMaxScores.set('harassment', 
-        Math.max(result.insult, categoryMaxScores.get('harassment') ?? 0))
-    }
-    if (result.identity_hate && result.identity_hate > 0.5) {
-      categoryMaxScores.set('hate', result.identity_hate)
-    }
-
-    // Build category scores
-    for (const [category, score] of categoryMaxScores) {
-      categories.push({
-        category,
-        score,
-        confidence: 0.8,
-        provider: 'cloudflare',
-      })
-    }
-
-    // Determine action
-    const maxScore = Math.max(...categoryMaxScores.values(), 0)
-    
-    let action: ModerationResult['action'] = 'allow'
-    let severity: ModerationResult['severity'] = 'none'
-    let reviewRequired = false
-
-    if (maxScore > 0.9) {
-      action = 'block'
-      severity = 'high'
-      reviewRequired = true
-    } else if (maxScore > 0.7) {
-      action = 'warn'
-      severity = 'medium'
-    } else if (maxScore > 0.5) {
-      action = 'warn'
-      severity = 'low'
-    }
-
-    const primaryCategory =
-      categories.length > 0
-        ? categories.reduce((a, b) => (a.score > b.score ? a : b)).category
-        : undefined
+    if (result.obscene && result.obscene > 0.5) categories.push({ category: 'adult', score: result.obscene, confidence: 0.8, provider: 'cloudflare' })
+    if (result.threat && result.threat > 0.5) categories.push({ category: 'violence', score: result.threat, confidence: 0.8, provider: 'cloudflare' })
+    if (result.identity_hate && result.identity_hate > 0.5) categories.push({ category: 'hate', score: result.identity_hate, confidence: 0.8, provider: 'cloudflare' })
 
     return {
-      safe: action === 'allow',
-      action,
-      severity,
+      safe: true,
+      action: 'allow',
+      severity: 'none',
       categories,
-      primaryCategory,
-      blockedReason:
-        action !== 'allow' ? `Cloudflare detection: ${primaryCategory}` : undefined,
-      reviewRequired,
-      processingTimeMs: Date.now() - startTime,
+      reviewRequired: false,
+      processingTimeMs: Date.now() - start,
       providers: ['cloudflare'],
     }
+  }
+
+  private empty(start: number): ModerationResult {
+    return { safe: true, action: 'allow', severity: 'none', categories: [], reviewRequired: false, processingTimeMs: Date.now() - start, providers: ['cloudflare'] }
   }
 }
-

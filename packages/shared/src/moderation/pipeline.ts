@@ -23,8 +23,6 @@ import { OpenAIModerationProvider, type OpenAIModerationConfig } from './provide
 import { HiveModerationProvider, type HiveProviderConfig } from './providers/hive'
 import { AWSRekognitionProvider, type AWSRekognitionConfig } from './providers/aws-rekognition'
 
-// Thresholds - only CSAM and adult matter
-const CSAM_THRESHOLD = 0.01
 const ADULT_THRESHOLD = 0.6
 
 export type ReputationTier = 'new' | 'basic' | 'trusted' | 'verified' | 'elite'
@@ -32,6 +30,14 @@ export type ReputationTier = 'new' | 'basic' | 'trusted' | 'verified' | 'elite'
 export interface ReputationProvider {
   getReputation(address: Address): Promise<{ tier: ReputationTier; violations: number }>
   recordViolation(address: Address, category: ModerationCategory): Promise<void>
+}
+
+export interface QueuedContent {
+  content: Buffer | string
+  contentType: 'text' | 'image'
+  senderAddress?: Address
+  result: ModerationResult
+  timestamp: number
 }
 
 export interface PipelineConfig {
@@ -42,6 +48,8 @@ export interface PipelineConfig {
   hive?: HiveProviderConfig
   awsRekognition?: AWSRekognitionConfig
   reputationProvider?: ReputationProvider
+  /** Callback when content is queued for review. If not set, queued content is logged only. */
+  onQueue?: (item: QueuedContent) => void | Promise<void>
 }
 
 export class ContentModerationPipeline {
@@ -72,7 +80,28 @@ export class ContentModerationPipeline {
 
   async initialize(): Promise<void> {
     await this.hashProvider.initialize()
-    logger.info('[ModerationPipeline] Initialized - Free speech, CSAM detection only')
+
+    const stats = this.hashProvider.getStats()
+    const hasImageCsam = !!(this.hiveProvider || this.awsProvider)
+    const hasTextCsam = !!this.openaiProvider
+    const hasHashDb = stats.csamCount > 0
+
+    if (!hasImageCsam) {
+      logger.warn('[ModerationPipeline] No image CSAM AI configured. Set HIVE_API_KEY or AWS_ACCESS_KEY_ID.')
+    }
+    if (!hasTextCsam) {
+      logger.warn('[ModerationPipeline] No text CSAM AI configured. Set OPENAI_API_KEY.')
+    }
+    if (!hasHashDb) {
+      logger.warn('[ModerationPipeline] No CSAM hash database loaded. Set CSAM_HASH_LIST_PATH to path of hash file.')
+    }
+
+    logger.info('[ModerationPipeline] Initialized', {
+      mode: 'free-speech',
+      imageCsam: hasImageCsam,
+      textCsam: hasTextCsam,
+      hashCount: stats.csamCount,
+    })
   }
 
   async moderate(request: ModerationRequest): Promise<ModerationResult> {
@@ -134,7 +163,7 @@ export class ContentModerationPipeline {
     }
 
     // Queue for manual review
-    return {
+    const queueResult: ModerationResult = {
       safe: false,
       action: 'queue',
       severity: 'medium',
@@ -145,6 +174,28 @@ export class ContentModerationPipeline {
       processingTimeMs: Date.now() - start,
       providers,
     }
+
+    // Notify queue handler if configured
+    if (this.config.onQueue) {
+      try {
+        await this.config.onQueue({
+          content: text,
+          contentType: 'text',
+          senderAddress: sender,
+          result: queueResult,
+          timestamp: Date.now(),
+        })
+      } catch (err) {
+        logger.warn('[ModerationPipeline] onQueue callback failed', { error: String(err) })
+      }
+    } else {
+      logger.warn('[ModerationPipeline] Content queued but no onQueue handler configured', {
+        primaryCategory: 'csam',
+        sender: sender ?? 'unknown',
+      })
+    }
+
+    return queueResult
   }
 
   private async moderateImage(
@@ -237,13 +288,8 @@ export class ContentModerationPipeline {
   getStats() {
     return {
       mode: 'free-speech',
-      csamThreshold: CSAM_THRESHOLD,
       adultThreshold: ADULT_THRESHOLD,
-      providers: {
-        openai: !!this.openaiProvider,
-        hive: !!this.hiveProvider,
-        aws: !!this.awsProvider,
-      },
+      providers: { openai: !!this.openaiProvider, hive: !!this.hiveProvider, aws: !!this.awsProvider },
     }
   }
 }
@@ -254,6 +300,10 @@ let instance: ContentModerationPipeline | null = null
 export function getContentModerationPipeline(): ContentModerationPipeline {
   if (!instance) {
     instance = new ContentModerationPipeline({
+      hash: {
+        csamHashListPath: process.env.CSAM_HASH_LIST_PATH,
+        malwareHashListPath: process.env.MALWARE_HASH_LIST_PATH,
+      },
       openai: process.env.OPENAI_API_KEY ? { apiKey: process.env.OPENAI_API_KEY } : undefined,
       hive: process.env.HIVE_API_KEY ? { apiKey: process.env.HIVE_API_KEY } : undefined,
       awsRekognition: process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY

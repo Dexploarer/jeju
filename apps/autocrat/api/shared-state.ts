@@ -145,10 +145,10 @@ export function getSharedState(): {
     config,
     autocratConfig,
     contracts: {
-      feeConfig: config.contracts.feeConfig,
-      treasury: config.contracts.treasury,
-      council: config.contracts.council,
-      daoRegistry: config.contracts.daoRegistry,
+      feeConfig: config.contracts.feeConfig ?? ZERO_ADDRESS,
+      treasury: config.contracts.treasury ?? ZERO_ADDRESS,
+      council: config.contracts.council ?? ZERO_ADDRESS,
+      daoRegistry: config.contracts.daoRegistry ?? ZERO_ADDRESS,
     },
     clients: {
       publicClient: blockchain.client,

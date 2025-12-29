@@ -343,9 +343,13 @@ export class AutocratOrchestrator {
       if (this.daoStates.has(daoId)) continue
 
       const daoFull = await this.daoService.getDAOFull(daoId)
+      const councilAddr = daoFull.dao.council
+      const ceoAgentAddr = daoFull.dao.ceoAgent
       if (
-        !daoFull.dao.council ||
-        daoFull.dao.council === '0x0000000000000000000000000000000000000000'
+        !councilAddr ||
+        councilAddr === '0x0000000000000000000000000000000000000000' ||
+        !ceoAgentAddr ||
+        ceoAgentAddr === '0x0000000000000000000000000000000000000000'
       ) {
         continue
       }
@@ -353,8 +357,8 @@ export class AutocratOrchestrator {
       this.daoStates.set(daoId, {
         daoId,
         daoFull,
-        councilAddress: daoFull.dao.council,
-        ceoAgentAddress: daoFull.dao.ceoAgent,
+        councilAddress: councilAddr,
+        ceoAgentAddress: ceoAgentAddr,
         lastProcessed: 0,
         processedCount: 0,
         errors: [],
@@ -585,6 +589,9 @@ export class AutocratOrchestrator {
   ): Promise<void> {
     const { councilAddress, daoFull } = state
     const persona = daoFull.ceoPersona
+    if (!persona) {
+      throw new Error(`DAO ${state.daoId} has no CEO persona`)
+    }
 
     const votes = (await readContract(this.client, {
       address: councilAddress,
@@ -921,18 +928,26 @@ export class AutocratOrchestrator {
     if (!this.daoService) return
 
     const daoFull = await this.daoService.getDAOFull(daoId)
+    const councilAddr = daoFull.dao.council
+    const ceoAgentAddr = daoFull.dao.ceoAgent
+    
+    if (!councilAddr || !ceoAgentAddr) {
+      console.log(`[Orchestrator] DAO ${daoId} missing required addresses`)
+      return
+    }
+    
     const existing = this.daoStates.get(daoId)
 
     if (existing) {
       existing.daoFull = daoFull
-      existing.councilAddress = daoFull.dao.council
-      existing.ceoAgentAddress = daoFull.dao.ceoAgent
+      existing.councilAddress = councilAddr
+      existing.ceoAgentAddress = ceoAgentAddr
     } else {
       this.daoStates.set(daoId, {
         daoId,
         daoFull,
-        councilAddress: daoFull.dao.council,
-        ceoAgentAddress: daoFull.dao.ceoAgent,
+        councilAddress: councilAddr,
+        ceoAgentAddress: ceoAgentAddr,
         lastProcessed: 0,
         processedCount: 0,
         errors: [],

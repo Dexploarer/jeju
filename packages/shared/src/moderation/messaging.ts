@@ -3,6 +3,11 @@
  *
  * Screens XMTP/Farcaster messages for CSAM.
  * Caller must provide plaintext - service does NOT decrypt.
+ *
+ * LIMITATIONS:
+ * - Audit log is stored IN MEMORY only (lost on restart)
+ * - Max 10,000 entries before truncation
+ * - For production, implement external audit storage via getAuditLog() export
  */
 
 import type { Address, Hex } from 'viem'
@@ -27,7 +32,7 @@ export interface MessageScreeningResult {
   warning?: string
 }
 
-interface AuditEntry {
+export interface AuditEntry {
   timestamp: number
   messageId: string
   contentHash: Hex
@@ -37,14 +42,24 @@ interface AuditEntry {
   category?: string
 }
 
+export interface MessagingConfig extends PipelineConfig {
+  /** Callback for external audit persistence. Called on every moderation action. */
+  onAudit?: (entry: AuditEntry) => void | Promise<void>
+  /** Max in-memory audit entries before truncation (default: 10000) */
+  maxAuditSize?: number
+}
+
 export class MessagingModerationService {
   private pipeline: ContentModerationPipeline
   private audit: AuditEntry[] = []
   private stats = { blocked: 0, warned: 0, allowed: 0 }
-  private maxAuditSize = 10000
+  private maxAuditSize: number
+  private onAudit?: (entry: AuditEntry) => void | Promise<void>
 
-  constructor(config: PipelineConfig) {
+  constructor(config: MessagingConfig) {
     this.pipeline = new ContentModerationPipeline(config)
+    this.onAudit = config.onAudit
+    this.maxAuditSize = config.maxAuditSize ?? 10000
   }
 
   async initialize(): Promise<void> {
@@ -79,7 +94,7 @@ export class MessagingModerationService {
   }
 
   private logAudit(msg: MessageEnvelope, result: ModerationResult): void {
-    this.audit.push({
+    const entry: AuditEntry = {
       timestamp: Date.now(),
       messageId: msg.id,
       contentHash: msg.contentHash,
@@ -87,16 +102,25 @@ export class MessagingModerationService {
       action: result.action,
       severity: result.severity,
       category: result.primaryCategory,
-    })
+    }
+
+    this.audit.push(entry)
 
     // Update stats
     if (result.action === 'allow') this.stats.allowed++
     else if (result.action === 'warn') this.stats.warned++
     else this.stats.blocked++
 
-    // Trim audit log
+    // Trim in-memory audit log
     if (this.audit.length > this.maxAuditSize) {
       this.audit = this.audit.slice(-this.maxAuditSize / 2)
+    }
+
+    // Call external audit handler if configured
+    if (this.onAudit) {
+      Promise.resolve(this.onAudit(entry)).catch(() => {
+        // Swallow errors - don't let audit failures affect message flow
+      })
     }
   }
 

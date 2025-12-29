@@ -799,7 +799,7 @@ Return ONLY a JSON object with these exact fields (scores 0-100):
 
   private async listModels(): Promise<SkillResult> {
     if (!this.blockchain.ceoDeployed) {
-      const ceoModel = this.config.agents?.ceo.model ?? 'local'
+      const ceoModel = this.config.agents?.ceo?.model ?? 'local'
       return {
         message: 'Contract not deployed',
         data: { models: [ceoModel], currentModel: ceoModel },

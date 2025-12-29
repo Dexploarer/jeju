@@ -171,7 +171,10 @@ export class ERC8004Client {
       chain: this.chain,
       rpcUrl: this.rpcUrl,
     })
-    this.walletClient = walletClient
+    if (!walletClient.chain) {
+      throw new Error('Wallet client chain not configured')
+    }
+    this.walletClient = walletClient as WalletClient<Transport, Chain>
     console.log(
       `[ERC8004Client] KMS initialized for ${operatorAddress} (${walletClient.account?.type || 'local'})`,
     )
