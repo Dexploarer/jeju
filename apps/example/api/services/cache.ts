@@ -6,7 +6,7 @@ import {
 
 const DWS_CACHE_ENDPOINT = getDwsCacheEndpoint() ?? `${getDWSUrl()}/cache`
 const CACHE_NAMESPACE = getCacheNamespace()
-const CACHE_TIMEOUT = 5000
+const CACHE_TIMEOUT = 1000
 
 type CacheValue =
   | string
