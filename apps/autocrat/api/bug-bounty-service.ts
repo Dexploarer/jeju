@@ -1,13 +1,3 @@
-/**
- * Bug Bounty Service - Decentralized Security Vulnerability Management
- *
- * Fully integrated with:
- * - EQLite for persistent state
- * - SecurityBountyRegistry smart contract for on-chain operations
- * - DWS compute for sandbox validation
- * - dstack TEE for secure execution (simulator in local dev)
- */
-
 import {
   getCurrentNetwork,
   getDWSComputeUrl,
@@ -64,10 +54,8 @@ import { createKMSWalletClient, getOperatorConfig } from './kms-signer'
 
 const EQLITE_DATABASE_ID = config.eqliteDatabaseId
 
-// KMS wallet client result (initialized lazily)
-let kmsWalletClientResult: Awaited<
-  ReturnType<typeof createKMSWalletClient>
-> | null = null
+// KMS wallet client (initialized lazily)
+let kmsWalletClient: Awaited<ReturnType<typeof createKMSHttpWalletClient>> | null = null
 
 // Config handles env overrides
 function getDWSEndpoint(): string {
@@ -252,20 +240,20 @@ function getPublicClient() {
 }
 
 async function getKMSWalletClientInstance() {
-  if (!kmsWalletClientResult) {
+  if (!kmsWalletClient) {
     const operatorConfig = getOperatorConfig()
     if (!operatorConfig) {
       throw new Error(
         'OPERATOR_KEY or OPERATOR_PRIVATE_KEY required for contract operations',
       )
     }
-    kmsWalletClientResult = await createKMSWalletClient(
-      operatorConfig,
-      getChain(),
-      getRpcUrl(),
-    )
+    kmsWalletClient = await createKMSHttpWalletClient({
+      ...operatorConfig,
+      chain: getChain(),
+      rpcUrl: getRpcUrl(),
+    })
   }
-  return kmsWalletClientResult
+  return kmsWalletClient
 }
 
 function getContractAddressOrThrow(): Address {
@@ -600,7 +588,8 @@ export async function submitBounty(
 
   // Submit to smart contract - fail if contract is required
   const contractAddr = getContractAddressOrThrow()
-  const { client: walletClient, account } = await getKMSWalletClientInstance()
+  const walletClient = await getKMSWalletClientInstance()
+  const account = walletClient.account
   const publicClient = getPublicClient()
 
   // Convert CID and keyId to bytes32-compatible hex (padded to 32 bytes)
@@ -784,7 +773,8 @@ export async function completeValidation(
 
   // Update on-chain
   const contractAddr = getContractAddressOrThrow()
-  const { client: walletClient, account } = await getKMSWalletClientInstance()
+  const walletClient = await getKMSWalletClientInstance()
+  const account = walletClient.account
   const publicClient = getPublicClient()
 
   if (!account) {
@@ -863,7 +853,8 @@ export async function submitGuardianVote(
 
   // Update on-chain
   const contractAddr = getContractAddressOrThrow()
-  const { client: walletClient, account } = await getKMSWalletClientInstance()
+  const walletClient = await getKMSWalletClientInstance()
+  const account = walletClient.account
   const publicClient = getPublicClient()
 
   if (!account) {
@@ -942,7 +933,8 @@ export async function ceoDecision(
 
   // Update on-chain
   const contractAddr = getContractAddressOrThrow()
-  const { client: walletClient, account } = await getKMSWalletClientInstance()
+  const walletClient = await getKMSWalletClientInstance()
+  const account = walletClient.account
   const publicClient = getPublicClient()
 
   if (!account) {
@@ -993,7 +985,8 @@ export async function payReward(
 
   // Execute on-chain payout
   const contractAddr = getContractAddressOrThrow()
-  const { client: walletClient, account } = await getKMSWalletClientInstance()
+  const walletClient = await getKMSWalletClientInstance()
+  const account = walletClient.account
   const publicClient = getPublicClient()
 
   if (!account) {
