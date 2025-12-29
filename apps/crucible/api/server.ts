@@ -102,7 +102,7 @@ function constantTimeCompare(a: string, b: string): boolean {
 
 // Wallet signature config for ownership verification
 const walletSignatureConfig: WalletSignatureConfig = {
-  domain: 'crucible.jeju.network',
+  domain: 'crucible.jejunetwork.org',
   validityWindowMs: 5 * 60 * 1000, // 5 minutes
 }
 

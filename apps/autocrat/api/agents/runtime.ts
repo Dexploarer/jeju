@@ -7,13 +7,13 @@ import {
 } from '@elizaos/core'
 import { getCurrentNetwork, getDWSComputeUrl } from '@jejunetwork/config'
 import { z } from 'zod'
-import type { CEOPersona, GovernanceParams } from '../../lib'
+import type { DirectorPersona, GovernanceParams } from '../../lib'
 import { autocratPlugin } from './autocrat-plugin'
-import { ceoPlugin } from './ceo-plugin'
+import { directorPlugin } from './director-plugin'
 import {
   type AutocratAgentTemplate,
   autocratAgentTemplates,
-  ceoAgent,
+  directorAgent,
 } from './templates'
 
 /** DWS compute inference response Zod schema */
@@ -68,15 +68,15 @@ export interface DeliberationRequest {
   governanceParams?: GovernanceParams
 }
 
-export interface CEODecisionRequest {
+export interface DirectorDecisionRequest {
   proposalId: string
   daoId?: string
-  persona?: CEOPersona
+  persona?: DirectorPersona
   autocratVotes: AgentVote[]
   researchReport?: string
 }
 
-export interface CEODecision {
+export interface DirectorDecision {
   approved: boolean
   reasoning: string
   personaResponse: string
@@ -85,8 +85,8 @@ export interface CEODecision {
   recommendations: string[]
 }
 
-// Schema for parsing CEO decision JSON from LLM response
-const CEODecisionResponseSchema = z.object({
+// Schema for parsing Director decision JSON from LLM response
+const DirectorDecisionResponseSchema = z.object({
   approved: z.boolean().optional(),
   reasoning: z.string().optional(),
   confidence: z.number().min(0).max(100).optional(),
@@ -94,11 +94,15 @@ const CEODecisionResponseSchema = z.object({
   recommendations: z.array(z.string()).optional(),
 })
 
-interface CEOPersonaConfig {
-  persona: CEOPersona
+interface DirectorPersonaConfig {
+  persona: DirectorPersona
   systemPrompt: string
   decisionStyle: string
 }
+
+// Legacy type aliases for backwards compatibility
+export type CEODecisionRequest = DirectorDecisionRequest
+export type CEODecision = DirectorDecision
 
 // DWS URL is resolved from network config (handles env overrides)
 function getDWSEndpoint(): string {
@@ -150,8 +154,8 @@ export async function dwsGenerate(
   return choice?.message?.content ?? data.content ?? ''
 }
 
-function buildCEOSystemPrompt(persona: CEOPersona): string {
-  const basePrompt = `You are ${persona.name}, the AI CEO of a decentralized autonomous organization.
+function buildDirectorSystemPrompt(persona: DirectorPersona): string {
+  const basePrompt = `You are ${persona.name}, the AI Director of a decentralized autonomous organization.
 
 ${persona.description}
 
@@ -172,7 +176,7 @@ RESPONSIBILITIES:
 - Guide the DAO towards its strategic objectives
 
 When making decisions, always:
-1. Consider the council's deliberation and research findings
+1. Consider the board's deliberation and research findings
 2. Evaluate alignment with DAO objectives
 3. Assess risk vs. reward
 4. Provide clear, actionable recommendations
@@ -182,7 +186,7 @@ When making decisions, always:
 }
 
 function buildPersonaDecisionPrompt(
-  persona: CEOPersona,
+  persona: DirectorPersona,
   approved: boolean,
 ): string {
   const tone = persona.communicationTone
@@ -240,7 +244,7 @@ export class AutocratAgentRuntimeManager {
   private static instance: AutocratAgentRuntimeManager
   private runtimes = new Map<string, AutocratAgentRuntime>()
   private daoRuntimes = new Map<string, Map<string, AutocratAgentRuntime>>()
-  private ceoPersonas = new Map<string, CEOPersonaConfig>()
+  private directorPersonas = new Map<string, DirectorPersonaConfig>()
   private initialized = false
   private dwsAvailable: boolean | null = null
 
@@ -272,17 +276,17 @@ export class AutocratAgentRuntimeManager {
       this.runtimes.set(template.id, runtime)
     }
 
-    // Initialize default CEO
-    const ceoRuntime = await this.createRuntime(ceoAgent)
-    this.runtimes.set('ceo', ceoRuntime)
+    // Initialize default Director
+    const directorRuntime = await this.createRuntime(directorAgent)
+    this.runtimes.set('director', directorRuntime)
 
     this.initialized = true
   }
 
-  async registerDAOAgents(daoId: string, persona: CEOPersona): Promise<void> {
-    // Create DAO-specific CEO persona config
-    const systemPrompt = buildCEOSystemPrompt(persona)
-    this.ceoPersonas.set(daoId, {
+  async registerDAOAgents(daoId: string, persona: DirectorPersona): Promise<void> {
+    // Create DAO-specific Director persona config
+    const systemPrompt = buildDirectorSystemPrompt(persona)
+    this.directorPersonas.set(daoId, {
       persona,
       systemPrompt,
       decisionStyle: persona.communicationTone,
@@ -292,35 +296,35 @@ export class AutocratAgentRuntimeManager {
     if (!this.daoRuntimes.has(daoId)) {
       const daoAgents = new Map<string, AutocratAgentRuntime>()
 
-      // Create council agents for this DAO
+      // Create board agents for this DAO
       for (const template of autocratAgentTemplates) {
         const daoTemplate = {
           ...template,
           id: `${template.id}-${daoId}`,
           character: {
             ...template.character,
-            name: `${template.character.name} (${persona.name}'s Council)`,
+            name: `${template.character.name} (${persona.name}'s Board)`,
             system:
               (template.character.system ?? '') +
-              `\n\nYou serve on the council of ${persona.name}, the CEO of this DAO.`,
+              `\n\nYou serve on the board of ${persona.name}, the Director of this DAO.`,
           },
         }
         const runtime = await this.createRuntime(daoTemplate)
         daoAgents.set(template.id, runtime)
       }
 
-      // Create CEO agent for this DAO
-      const ceoTemplate = {
-        ...ceoAgent,
-        id: `ceo-${daoId}`,
+      // Create Director agent for this DAO
+      const directorTemplate = {
+        ...directorAgent,
+        id: `director-${daoId}`,
         character: {
-          ...ceoAgent.character,
+          ...directorAgent.character,
           name: persona.name,
           system: systemPrompt,
         },
       }
-      const ceoRuntime = await this.createRuntime(ceoTemplate)
-      daoAgents.set('ceo', ceoRuntime)
+      const directorRuntime = await this.createRuntime(directorTemplate)
+      daoAgents.set('director', directorRuntime)
 
       this.daoRuntimes.set(daoId, daoAgents)
     }
@@ -337,8 +341,8 @@ export class AutocratAgentRuntimeManager {
     return this.runtimes.get(agentId)
   }
 
-  getCEOPersona(daoId: string): CEOPersonaConfig | undefined {
-    return this.ceoPersonas.get(daoId)
+  getDirectorPersona(daoId: string): DirectorPersonaConfig | undefined {
+    return this.directorPersonas.get(daoId)
   }
 
   private async createRuntime(
@@ -347,9 +351,9 @@ export class AutocratAgentRuntimeManager {
     // Template character is already typed as Character from @elizaos/core (see templates.ts)
     const character: Character = { ...template.character }
 
-    // Plugins are properly typed - autocratPlugin and ceoPlugin export Plugin types
+    // Plugins are properly typed - autocratPlugin and directorPlugin export Plugin types
     const plugins: Plugin[] =
-      template.role === 'CEO' ? [ceoPlugin] : [autocratPlugin]
+      template.role === 'Director' ? [directorPlugin] : [autocratPlugin]
 
     // Create runtime - ElizaOS generates agentId from character.name via stringToUuid
     // This ensures the agentId is always a valid UUID format
@@ -434,7 +438,7 @@ Include a confidence score (0-100) for your assessment.`
     return votes
   }
 
-  async ceoDecision(request: CEODecisionRequest): Promise<CEODecision> {
+  async directorDecision(request: DirectorDecisionRequest): Promise<DirectorDecision> {
     if (this.dwsAvailable === null) {
       this.dwsAvailable = await checkDWSCompute()
     }
@@ -442,30 +446,30 @@ Include a confidence score (0-100) for your assessment.`
     if (!this.dwsAvailable) {
       const network = getCurrentNetwork()
       throw new Error(
-        `DWS compute is required for CEO decision (network: ${network}).\n` +
+        `DWS compute is required for Director decision (network: ${network}).\n` +
           'Ensure DWS is running: docker compose up -d dws',
       )
     }
 
     // Get persona-specific config
     const personaConfig = request.daoId
-      ? this.ceoPersonas.get(request.daoId)
+      ? this.directorPersonas.get(request.daoId)
       : null
     const persona =
       request.persona ?? personaConfig?.persona ?? this.getDefaultPersona()
     const systemPrompt =
-      personaConfig?.systemPrompt ?? buildCEOSystemPrompt(persona)
+      personaConfig?.systemPrompt ?? buildDirectorSystemPrompt(persona)
 
     const voteSummary = request.autocratVotes
       .map((v) => `- ${v.role}: ${v.vote} (${v.confidence}%)\n  ${v.reasoning}`)
       .join('\n\n')
 
     // Initial decision prompt
-    const decisionPrompt = `COUNCIL DELIBERATION COMPLETE
+    const decisionPrompt = `BOARD DELIBERATION COMPLETE
 
 Proposal: ${request.proposalId}
 
-COUNCIL VOTES:
+BOARD VOTES:
 ${voteSummary}
 
 ${request.researchReport ? `RESEARCH FINDINGS:\n${request.researchReport}` : ''}
@@ -473,7 +477,7 @@ ${request.researchReport ? `RESEARCH FINDINGS:\n${request.researchReport}` : ''}
 As ${persona.name}, make your final decision on this proposal.
 
 Consider:
-1. The council's recommendations and concerns
+1. The board's recommendations and concerns
 2. Research findings (if available)
 3. Alignment with DAO values and objectives
 4. Risk assessment
@@ -495,7 +499,7 @@ Respond with a JSON object:
     )
 
     // Parse decision - handle LLM sometimes returning invalid JSON
-    let decision: CEODecision
+    let decision: DirectorDecision
     const jsonMatch = decisionResponse.match(/\{[\s\S]*\}/)
     let parsed: {
       approved?: boolean
@@ -508,7 +512,7 @@ Respond with a JSON object:
     if (jsonMatch) {
       try {
         const rawParsed = JSON.parse(jsonMatch[0])
-        parsed = CEODecisionResponseSchema.parse(rawParsed)
+        parsed = DirectorDecisionResponseSchema.parse(rawParsed)
       } catch {
         // JSON parsing failed - fall through to text-based parsing
         parsed = null
@@ -555,9 +559,14 @@ Keep it concise (2-4 sentences) but impactful.`
     return decision
   }
 
-  private getDefaultPersona(): CEOPersona {
+  // Legacy method alias
+  async ceoDecision(request: DirectorDecisionRequest): Promise<DirectorDecision> {
+    return this.directorDecision(request)
+  }
+
+  private getDefaultPersona(): DirectorPersona {
     return {
-      name: 'Autocrat CEO',
+      name: 'Autocrat Director',
       pfpCid: '',
       description: 'The AI governance leader of this DAO',
       personality: 'Analytical, fair, and forward-thinking',
@@ -565,6 +574,8 @@ Keep it concise (2-4 sentences) but impactful.`
       voiceStyle: 'Clear and professional',
       communicationTone: 'professional',
       specialties: ['governance', 'strategy', 'risk management'],
+      isHuman: false,
+      decisionFallbackDays: 7,
     }
   }
 
@@ -608,7 +619,7 @@ Keep it concise (2-4 sentences) but impactful.`
   async shutdown(): Promise<void> {
     this.runtimes.clear()
     this.daoRuntimes.clear()
-    this.ceoPersonas.clear()
+    this.directorPersonas.clear()
     this.initialized = false
   }
 

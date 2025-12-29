@@ -175,7 +175,7 @@ const CASUAL_CATEGORIES: Record<
       'Why is this change needed?',
     ],
   },
-  ceo_model_change: {
+  director_model_change: {
     label: 'CEO Model Change',
     description: 'Propose a different CEO model',
     prompts: [
@@ -448,7 +448,7 @@ Generate helpful questions and guidance. Return JSON:
 
 **Impact Analysis:** [Effects of change]`,
 
-      ceo_model_change: `## CEO Model Change Proposal
+      director_model_change: `## Director Model Change Proposal
 
 **Current Model:** [Current CEO model]
 
@@ -476,7 +476,7 @@ Generate helpful questions and guidance. Return JSON:
       package_funding: 6, // GRANT
       repo_funding: 6, // GRANT
       parameter_change: 0, // PARAMETER_CHANGE
-      ceo_model_change: 0, // PARAMETER_CHANGE
+      director_model_change: 0, // PARAMETER_CHANGE
     }
 
     return {

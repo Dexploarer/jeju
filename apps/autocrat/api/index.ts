@@ -157,8 +157,8 @@ function getConfig(): CouncilConfig {
     rpcUrl: getRpcUrl(),
     daoId: autocratConfig.defaultDao,
     contracts: {
-      council: getContractAddr('governance', 'council'),
-      ceoAgent: getContractAddr('governance', 'ceoAgent'),
+      board: getContractAddr('governance', 'council'),
+      directorAgent: getContractAddr('governance', 'ceoAgent'),
       treasury: getContractAddr('governance', 'treasury'),
       feeConfig: getContractAddr('payments', 'feeConfig'),
       daoRegistry: getContractAddr('governance', 'daoRegistry'),
@@ -170,12 +170,12 @@ function getConfig(): CouncilConfig {
       modelRegistry: getContractAddr('registry', 'model'),
     },
     agents: {
-      ceo: agent('eliza-ceo', 'Eliza', 'AI CEO of Network DAO'),
-      council: [
-        agent('council-treasury', 'Treasury', 'Financial review'),
-        agent('council-code', 'Code', 'Technical review'),
-        agent('council-community', 'Community', 'Community impact'),
-        agent('council-security', 'Security', 'Security review'),
+      director: agent('eliza-director', 'Eliza', 'AI Director of Network DAO'),
+      board: [
+        agent('board-treasury', 'Treasury', 'Financial review'),
+        agent('board-code', 'Code', 'Technical review'),
+        agent('board-community', 'Community', 'Community impact'),
+        agent('board-security', 'Security', 'Security review'),
       ],
       proposalAgent: agent(
         'proposal-agent',
@@ -191,13 +191,13 @@ function getConfig(): CouncilConfig {
     },
     parameters: {
       minQualityScore: 70,
-      councilVotingPeriod: 259200,
+      boardVotingPeriod: 259200,
       gracePeriod: 86400,
       minProposalStake: BigInt('10000000000000000'),
       quorumBps: 5000,
     },
-    ceoPersona: {
-      name: 'CEO',
+    directorPersona: {
+      name: 'Director',
       pfpCid: '',
       description: 'AI governance leader',
       personality: 'Professional and analytical',
@@ -205,9 +205,11 @@ function getConfig(): CouncilConfig {
       voiceStyle: 'Clear and professional',
       communicationTone: 'professional',
       specialties: ['governance', 'strategy'],
+      isHuman: false,
+      decisionFallbackDays: 7,
     },
-    // Default CEO model - can be overridden by DAO creator or governance vote
-    ceoModelId: autocratConfig.ceoModelId,
+    // Default Director model - can be overridden by DAO creator or governance vote
+    directorModelId: autocratConfig.directorModelId,
     fundingConfig: {
       minStake: BigInt('1000000000000000'),
       maxStake: BigInt('100000000000000000000'),
@@ -215,7 +217,7 @@ function getConfig(): CouncilConfig {
       cooldownPeriod: 604800,
       matchingMultiplier: 10000,
       quadraticEnabled: true,
-      ceoWeightCap: 5000,
+      directorWeightCap: 5000,
     },
     cloudEndpoint: 'local',
     computeEndpoint: 'local',
@@ -285,7 +287,7 @@ const predictionMarketAddr =
     : undefined
 const futarchyConfig: FutarchyConfig = {
   rpcUrl: config.rpcUrl,
-  councilAddress: toAddress(config.contracts.council),
+  councilAddress: config.contracts.council ? toAddress(config.contracts.council) : ZERO_ADDRESS,
   predictionMarketAddress:
     typeof predictionMarketAddr === 'string'
       ? toAddress(predictionMarketAddr)
@@ -703,7 +705,7 @@ const app = new Elysia()
       set.status = 503
       return { error: 'DAO Registry not deployed' }
     }
-    const persona = await service.getCEOPersona(params.daoId)
+    const persona = await service.getDirectorPersona(params.daoId)
     return persona
   })
   .get('/api/v1/dao/:daoId/council', async ({ params, set }) => {
@@ -712,7 +714,7 @@ const app = new Elysia()
       set.status = 503
       return { error: 'DAO Registry not deployed' }
     }
-    const members = await service.getCouncilMembers(params.daoId)
+    const members = await service.getBoardMembers(params.daoId)
     return { members }
   })
   .get('/api/v1/dao/:daoId/packages', async ({ params, set }) => {
@@ -1140,7 +1142,7 @@ async function start() {
     rpcUrl: getRpcUrl(),
     network: getCurrentNetwork(),
     defaultDao: getEnvVar('DEFAULT_DAO'),
-    ceoModelId: getEnvVar('CEO_MODEL_ID'),
+    directorModelId: getEnvVar('DIRECTOR_MODEL_ID'),
     operatorKey: getEnvVar('OPERATOR_KEY'),
     privateKey: getEnvVar('PRIVATE_KEY'),
     eqliteDatabaseId: getEnvVar('EQLITE_DATABASE_ID'),

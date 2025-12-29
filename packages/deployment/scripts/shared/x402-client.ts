@@ -28,6 +28,7 @@
  *   resource: '/api/premium',
  * });
  * ```
+ */
 
  */
 

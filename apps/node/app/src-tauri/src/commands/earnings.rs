@@ -1,5 +1,6 @@
 //! Earnings tracking commands
 
+use crate::earnings::EarningsEventType;
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
 use tauri::State;
@@ -87,6 +88,7 @@ pub struct EarningsHistoryRequest {
 #[tauri::command]
 pub async fn get_earnings_summary(state: State<'_, AppState>) -> Result<EarningsSummary, String> {
     let inner = state.inner.read().await;
+<<<<<<< HEAD
     let stats = inner.earnings_tracker.get_stats();
 
     let today_wei = inner.earnings_tracker.get_total_today();
@@ -103,23 +105,85 @@ pub async fn get_earnings_summary(state: State<'_, AppState>) -> Result<Earnings
             total_usd: (amount as f64) / 1e18 * 2000.0,
             today_wei: "0".to_string(),
             today_usd: 0.0,
+=======
+    let tracker = &inner.earnings_tracker;
+    let stats = tracker.get_stats();
+
+    // Calculate time boundaries
+    let now = chrono::Utc::now();
+    let today_start = now
+        .date_naive()
+        .and_hms_opt(0, 0, 0)
+        .map(|t| t.and_utc().timestamp())
+        .unwrap_or(0);
+    let week_start = (now - chrono::Duration::days(7)).timestamp();
+    let month_start = (now - chrono::Duration::days(30)).timestamp();
+
+    // Get entries for different time periods
+    let today_entries = tracker.get_entries(None, Some(today_start), None, None);
+    let week_entries = tracker.get_entries(None, Some(week_start), None, None);
+    let month_entries = tracker.get_entries(None, Some(month_start), None, None);
+
+    // Sum up earnings
+    let today_total: u128 = today_entries
+        .iter()
+        .filter_map(|e| e.amount_wei.parse::<u128>().ok())
+        .sum();
+    let week_total: u128 = week_entries
+        .iter()
+        .filter_map(|e| e.amount_wei.parse::<u128>().ok())
+        .sum();
+    let month_total: u128 = month_entries
+        .iter()
+        .filter_map(|e| e.amount_wei.parse::<u128>().ok())
+        .sum();
+
+    // Calculate earnings by service
+    let mut earnings_by_service = vec![];
+    for (service_id, total_wei) in &stats.by_service {
+        let today_service: u128 = today_entries
+            .iter()
+            .filter(|e| &e.service_id == service_id)
+            .filter_map(|e| e.amount_wei.parse::<u128>().ok())
+            .sum();
+
+        earnings_by_service.push(ServiceEarnings {
+            service_id: service_id.clone(),
+            service_name: service_id.clone(),
+            total_wei: total_wei.clone(),
+            total_usd: wei_to_usd(total_wei),
+            today_wei: today_service.to_string(),
+            today_usd: wei_to_usd(&today_service.to_string()),
+>>>>>>> db0e2406eef4fd899ba4a5aa090db201bcbe36bf
             requests_served: 0,
             uptime_percent: 100.0,
         });
     }
 
+<<<<<<< HEAD
+=======
+    // Calculate earnings by bot
+>>>>>>> db0e2406eef4fd899ba4a5aa090db201bcbe36bf
     let mut earnings_by_bot = vec![];
     for (bot_id, status) in &inner.bot_status {
         let gross: u128 = status.total_profit_wei.parse().unwrap_or(0);
         let treasury: u128 = status.treasury_share_wei.parse().unwrap_or(0);
         let net = gross.saturating_sub(treasury);
+<<<<<<< HEAD
+=======
+
+>>>>>>> db0e2406eef4fd899ba4a5aa090db201bcbe36bf
         earnings_by_bot.push(BotEarnings {
             bot_id: bot_id.clone(),
             bot_name: status.name.clone(),
             gross_profit_wei: status.total_profit_wei.clone(),
             treasury_share_wei: status.treasury_share_wei.clone(),
             net_profit_wei: net.to_string(),
+<<<<<<< HEAD
             net_profit_usd: (net as f64) / 1e18 * 2000.0,
+=======
+            net_profit_usd: wei_to_usd(&net.to_string()),
+>>>>>>> db0e2406eef4fd899ba4a5aa090db201bcbe36bf
             opportunities_executed: status.opportunities_executed,
             success_rate_percent: if status.opportunities_found > 0 {
                 (status.opportunities_executed as f64 / status.opportunities_found as f64) * 100.0
@@ -129,6 +193,7 @@ pub async fn get_earnings_summary(state: State<'_, AppState>) -> Result<Earnings
         });
     }
 
+<<<<<<< HEAD
     let avg_hourly_rate_usd = if !stats.by_day.is_empty() {
         let total_usd = (total_wei as f64) / 1e18 * 2000.0;
         total_usd / (stats.by_day.len() as f64 * 24.0)
@@ -149,7 +214,35 @@ pub async fn get_earnings_summary(state: State<'_, AppState>) -> Result<Earnings
         earnings_by_bot,
         avg_hourly_rate_usd,
         projected_monthly_usd: avg_hourly_rate_usd * 24.0 * 30.0,
+=======
+    // Calculate average hourly rate (based on last 30 days)
+    let total: u128 = stats.total_wei.parse().unwrap_or(0);
+    let hours_tracked = 720.0; // 30 days
+    let avg_hourly_rate = wei_to_usd(&(total / 720).to_string());
+
+    Ok(EarningsSummary {
+        total_earnings_wei: stats.total_wei.clone(),
+        total_earnings_usd: wei_to_usd(&stats.total_wei),
+        earnings_today_wei: today_total.to_string(),
+        earnings_today_usd: wei_to_usd(&today_total.to_string()),
+        earnings_this_week_wei: week_total.to_string(),
+        earnings_this_week_usd: wei_to_usd(&week_total.to_string()),
+        earnings_this_month_wei: month_total.to_string(),
+        earnings_this_month_usd: wei_to_usd(&month_total.to_string()),
+        earnings_by_service,
+        earnings_by_bot,
+        avg_hourly_rate_usd: avg_hourly_rate,
+        projected_monthly_usd: avg_hourly_rate * hours_tracked,
+>>>>>>> db0e2406eef4fd899ba4a5aa090db201bcbe36bf
     })
+}
+
+/// Convert wei to USD (placeholder conversion rate)
+fn wei_to_usd(wei_str: &str) -> f64 {
+    let wei: u128 = wei_str.parse().unwrap_or(0);
+    // Assuming 1 ETH = $2000, 1 ETH = 10^18 wei
+    let eth = wei as f64 / 1e18;
+    eth * 2000.0
 }
 
 #[tauri::command]
@@ -158,27 +251,41 @@ pub async fn get_earnings_history(
     request: EarningsHistoryRequest,
 ) -> Result<Vec<EarningsHistoryEntry>, String> {
     let inner = state.inner.read().await;
+<<<<<<< HEAD
 
     let entries = inner.earnings_tracker.get_entries(
+=======
+    let tracker = &inner.earnings_tracker;
+
+    let entries = tracker.get_entries(
+>>>>>>> db0e2406eef4fd899ba4a5aa090db201bcbe36bf
         request.service_id.as_deref(),
         request.start_timestamp,
         request.end_timestamp,
         request.limit.map(|l| l as usize),
     );
 
+<<<<<<< HEAD
     let result = entries
+=======
+    Ok(entries
+>>>>>>> db0e2406eef4fd899ba4a5aa090db201bcbe36bf
         .into_iter()
         .map(|e| {
             let date = chrono::DateTime::from_timestamp(e.timestamp, 0)
                 .map(|dt| dt.format("%Y-%m-%d").to_string())
                 .unwrap_or_default();
+<<<<<<< HEAD
             let amount: u128 = e.amount_wei.parse().unwrap_or(0);
+=======
+>>>>>>> db0e2406eef4fd899ba4a5aa090db201bcbe36bf
 
             EarningsHistoryEntry {
                 timestamp: e.timestamp,
                 date,
                 service_id: e.service_id.clone(),
                 amount_wei: e.amount_wei.clone(),
+<<<<<<< HEAD
                 amount_usd: (amount as f64) / 1e18 * 2000.0,
                 tx_hash: e.tx_hash.clone(),
                 event_type: format!("{:?}", e.event_type).to_lowercase(),
@@ -187,6 +294,21 @@ pub async fn get_earnings_history(
         .collect();
 
     Ok(result)
+=======
+                amount_usd: wei_to_usd(&e.amount_wei),
+                tx_hash: e.tx_hash.clone(),
+                event_type: match e.event_type {
+                    EarningsEventType::Reward => "reward",
+                    EarningsEventType::Claim => "claim",
+                    EarningsEventType::BotProfit => "bot_profit",
+                    EarningsEventType::Stake => "stake",
+                    EarningsEventType::Unstake => "unstake",
+                }
+                .to_string(),
+            }
+        })
+        .collect())
+>>>>>>> db0e2406eef4fd899ba4a5aa090db201bcbe36bf
 }
 
 #[tauri::command]
@@ -282,11 +404,16 @@ pub async fn get_projected_earnings(
 #[tauri::command]
 pub async fn export_earnings(
     state: State<'_, AppState>,
+<<<<<<< HEAD
     format: String,
+=======
+    format: String, // "csv" or "json"
+>>>>>>> db0e2406eef4fd899ba4a5aa090db201bcbe36bf
     start_timestamp: Option<i64>,
     end_timestamp: Option<i64>,
 ) -> Result<String, String> {
     let inner = state.inner.read().await;
+<<<<<<< HEAD
 
     let entries = inner
         .earnings_tracker
@@ -305,20 +432,49 @@ pub async fn export_earnings(
             let mut csv_content =
                 "timestamp,date,service_id,amount_wei,amount_usd,tx_hash,event_type\n".to_string();
 
+=======
+    let tracker = &inner.earnings_tracker;
+
+    let entries = tracker.get_entries(None, start_timestamp, end_timestamp, None);
+
+    let data_dir = crate::config::NodeConfig::data_dir().map_err(|e| e.to_string())?;
+    let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
+    let filename = format!("earnings_export_{}.{}", timestamp, format);
+    let filepath = data_dir.join(&filename);
+
+    match format.as_str() {
+        "csv" => {
+            let mut csv_content = String::from(
+                "timestamp,date,service_id,amount_wei,amount_usd,tx_hash,event_type\n",
+            );
+>>>>>>> db0e2406eef4fd899ba4a5aa090db201bcbe36bf
             for e in entries {
                 let date = chrono::DateTime::from_timestamp(e.timestamp, 0)
                     .map(|dt| dt.format("%Y-%m-%d").to_string())
                     .unwrap_or_default();
+<<<<<<< HEAD
                 let amount: u128 = e.amount_wei.parse().unwrap_or(0);
                 let amount_usd = (amount as f64) / 1e18 * 2000.0;
                 let tx_hash = e.tx_hash.clone().unwrap_or_default();
 
                 csv_content.push_str(&format!(
                     "{},{},{},{},{:.2},{},{:?}\n",
+=======
+                let event_type = match e.event_type {
+                    EarningsEventType::Reward => "reward",
+                    EarningsEventType::Claim => "claim",
+                    EarningsEventType::BotProfit => "bot_profit",
+                    EarningsEventType::Stake => "stake",
+                    EarningsEventType::Unstake => "unstake",
+                };
+                csv_content.push_str(&format!(
+                    "{},{},{},{},{:.6},{},{}\n",
+>>>>>>> db0e2406eef4fd899ba4a5aa090db201bcbe36bf
                     e.timestamp,
                     date,
                     e.service_id,
                     e.amount_wei,
+<<<<<<< HEAD
                     amount_usd,
                     tx_hash,
                     e.event_type
@@ -365,4 +521,49 @@ pub async fn export_earnings(
             format
         )),
     }
+=======
+                    wei_to_usd(&e.amount_wei),
+                    e.tx_hash.as_deref().unwrap_or(""),
+                    event_type
+                ));
+            }
+            std::fs::write(&filepath, csv_content).map_err(|e| e.to_string())?;
+        }
+        "json" => {
+            let json_entries: Vec<_> = entries
+                .into_iter()
+                .map(|e| {
+                    serde_json::json!({
+                        "timestamp": e.timestamp,
+                        "date": chrono::DateTime::from_timestamp(e.timestamp, 0)
+                            .map(|dt| dt.format("%Y-%m-%d").to_string())
+                            .unwrap_or_default(),
+                        "service_id": e.service_id,
+                        "amount_wei": e.amount_wei,
+                        "amount_usd": wei_to_usd(&e.amount_wei),
+                        "tx_hash": e.tx_hash,
+                        "event_type": match e.event_type {
+                            EarningsEventType::Reward => "reward",
+                            EarningsEventType::Claim => "claim",
+                            EarningsEventType::BotProfit => "bot_profit",
+                            EarningsEventType::Stake => "stake",
+                            EarningsEventType::Unstake => "unstake",
+                        }
+                    })
+                })
+                .collect();
+            let json_content =
+                serde_json::to_string_pretty(&json_entries).map_err(|e| e.to_string())?;
+            std::fs::write(&filepath, json_content).map_err(|e| e.to_string())?;
+        }
+        _ => {
+            return Err(format!(
+                "Unsupported format: {}. Use 'csv' or 'json'.",
+                format
+            ))
+        }
+    }
+
+    Ok(filepath.to_string_lossy().to_string())
+>>>>>>> db0e2406eef4fd899ba4a5aa090db201bcbe36bf
 }

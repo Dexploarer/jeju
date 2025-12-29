@@ -468,3 +468,4 @@ export async function isHSMAvailable(): Promise<boolean> {
   await kdf.initialize()
   return kdf.isHSMMode()
 }
+

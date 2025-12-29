@@ -160,6 +160,7 @@ impl WalletManager {
     }
 
     /// Get balances
+<<<<<<< HEAD
     pub async fn get_balance(&self) -> Result<BalanceInfo, String> {
         let signer = self.signer.as_ref().ok_or("Wallet not initialized")?;
         let address = signer.address();
@@ -177,6 +178,14 @@ impl WalletManager {
             .await
             .map_err(|e| format!("Failed to fetch balance: {}", e))?;
 
+=======
+    /// Note: Balance fetching is now done through ContractClient in commands/wallet.rs
+    /// This method is kept for compatibility but delegates to a simpler implementation
+    #[allow(dead_code)]
+    pub async fn get_balance(&self) -> Result<BalanceInfo, String> {
+        // Balance fetching is now done through ContractClient
+        // This returns empty balances - use ContractClient for actual balances
+>>>>>>> db0e2406eef4fd899ba4a5aa090db201bcbe36bf
         Ok(BalanceInfo {
             eth: eth_balance.to_string(),
             jeju: "0".to_string(),

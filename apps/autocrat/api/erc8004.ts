@@ -25,7 +25,7 @@ import { type LocalAccount, privateKeyToAccount } from 'viem/accounts'
 import { base, baseSepolia, localhost } from 'viem/chains'
 import { z } from 'zod'
 import { toAddress, toHex } from '../lib'
-import { createKMSWalletClient } from './kms-signer'
+import { createKMSHttpWalletClient } from './kms-signer'
 
 // Schema for tokenURI JSON
 const TokenURIDataSchema = z.object({
@@ -71,7 +71,7 @@ export interface ERC8004Config {
 
 export class ERC8004Client {
   private readonly client: PublicClient<Transport, Chain>
-  private walletClient: WalletClient<Transport, Chain>
+  private walletClient: WalletClient
   private account: LocalAccount | null
   private readonly chain: ReturnType<typeof inferChainFromRpcUrl>
   private readonly rpcUrl: string
@@ -166,6 +166,7 @@ export class ERC8004Client {
    * Call this in production before any write operations
    */
   async initializeKMS(operatorAddress: Address): Promise<void> {
+<<<<<<< HEAD
     if (!this.chain) {
       throw new Error('Chain not configured - cannot initialize KMS')
     }
@@ -175,8 +176,19 @@ export class ERC8004Client {
       this.rpcUrl,
     )
     this.walletClient = result.client as WalletClient<Transport, Chain>
+=======
+    const walletClient = await createKMSHttpWalletClient({
+      address: operatorAddress,
+      chain: this.chain,
+      rpcUrl: this.rpcUrl,
+    })
+    if (!walletClient.chain) {
+      throw new Error('Wallet client chain not configured')
+    }
+    this.walletClient = walletClient as WalletClient<Transport, Chain>
+>>>>>>> db0e2406eef4fd899ba4a5aa090db201bcbe36bf
     console.log(
-      `[ERC8004Client] KMS initialized for ${operatorAddress} (${result.account.type})`,
+      `[ERC8004Client] KMS initialized for ${operatorAddress} (${walletClient.account?.type || 'local'})`,
     )
   }
 

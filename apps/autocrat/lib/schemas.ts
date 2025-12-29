@@ -63,7 +63,7 @@ export const CasualProposalCategorySchema = z.enum([
   'package_funding',
   'repo_funding',
   'parameter_change',
-  'ceo_model_change',
+  'director_model_change',
 ])
 
 export const FundingStatusSchema = z.nativeEnum({
@@ -806,7 +806,7 @@ export const GovernanceStatsDataSchema = z.object({
 })
 export type GovernanceStatsData = z.infer<typeof GovernanceStatsDataSchema>
 
-export const CEOStatusDataSchema = z.object({
+export const DirectorStatusDataSchema = z.object({
   currentModel: z.object({
     name: z.string(),
     modelId: z.string(),
@@ -820,7 +820,11 @@ export const CEOStatusDataSchema = z.object({
     })
     .optional(),
 })
-export type CEOStatusData = z.infer<typeof CEOStatusDataSchema>
+export type DirectorStatusData = z.infer<typeof DirectorStatusDataSchema>
+
+// Legacy export for backwards compatibility
+export const CEOStatusDataSchema = DirectorStatusDataSchema
+export type CEOStatusData = DirectorStatusData
 
 export const AutocratStatusDataSchema = z.object({
   roles: z.array(

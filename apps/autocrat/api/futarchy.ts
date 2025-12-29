@@ -19,7 +19,7 @@ import { type LocalAccount, privateKeyToAccount } from 'viem/accounts'
 import { readContract, waitForTransactionReceipt } from 'viem/actions'
 import { base, baseSepolia, localhost } from 'viem/chains'
 import { toAddress, toHex } from '../lib'
-import { createKMSWalletClient } from './kms-signer'
+import { createKMSHttpWalletClient } from './kms-signer'
 
 function inferChainFromRpcUrl(rpcUrl: string) {
   if (rpcUrl.includes('base-sepolia') || rpcUrl.includes('84532')) {
@@ -84,7 +84,7 @@ type TxResult = {
 
 export class FutarchyClient {
   private readonly client: PublicClient<Transport, Chain>
-  private walletClient: WalletClient<Transport, Chain>
+  private walletClient: WalletClient
   private account: LocalAccount | null
   private readonly chain: ReturnType<typeof inferChainFromRpcUrl>
   private readonly rpcUrl: string
@@ -175,6 +175,7 @@ export class FutarchyClient {
    * Call this in production before any write operations
    */
   async initializeKMS(operatorAddress: Address): Promise<void> {
+<<<<<<< HEAD
     if (!this.chain) {
       throw new Error('Chain not configured - cannot initialize KMS')
     }
@@ -184,8 +185,19 @@ export class FutarchyClient {
       this.rpcUrl,
     )
     this.walletClient = result.client as WalletClient<Transport, Chain>
+=======
+    const walletClient = await createKMSHttpWalletClient({
+      address: operatorAddress,
+      chain: this.chain,
+      rpcUrl: this.rpcUrl,
+    })
+    if (!walletClient.chain) {
+      throw new Error('Wallet client chain not configured')
+    }
+    this.walletClient = walletClient as WalletClient<Transport, Chain>
+>>>>>>> db0e2406eef4fd899ba4a5aa090db201bcbe36bf
     console.log(
-      `[FutarchyClient] KMS initialized for ${operatorAddress} (${result.account.type})`,
+      `[FutarchyClient] KMS initialized for ${operatorAddress} (${walletClient.account?.type || 'local'})`,
     )
   }
 
