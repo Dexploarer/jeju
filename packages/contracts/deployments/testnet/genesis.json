@@ -86,6 +86,27 @@
     },
     "0x1c8D40d6E81289B5a1B6e4E3a2E34eA23d1c2A0E": {
       "balance": "0x21e19e0c9bab2400000"
+    },
+    "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266": {
+      "balance": "0x21e19e0c9bab2400000"
+    },
+    "0x70997970c51812dc3a010c7d01b50e0d17dc79c8": {
+      "balance": "0x21e19e0c9bab2400000"
+    },
+    "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc": {
+      "balance": "0x21e19e0c9bab2400000"
+    },
+    "0x90f79bf6eb2c4f870365e785982e1f101e93b906": {
+      "balance": "0x21e19e0c9bab2400000"
+    },
+    "0x15d34aaf54267db7d7c367839aaf71a00a2c6a65": {
+      "balance": "0x21e19e0c9bab2400000"
+    },
+    "0x169a20665f6a2175580d669869efd6b20045f6aa": {
+      "balance": "0x21e19e0c9bab2400000"
+    },
+    "0x2ebb43d33a5e2d95b9f7a4cffa60ef77e2695c2c": {
+      "balance": "0x21e19e0c9bab2400000"
     }
   },
   "number": "0x0",

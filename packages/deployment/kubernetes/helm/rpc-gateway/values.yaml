@@ -39,6 +39,7 @@ service:
   type: ClusterIP
   http:
     port: 80
+    targetPort: 8080  # Container listens on 8080, service exposes 80
   ws:
     port: 8546
   metrics:

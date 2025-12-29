@@ -1,9 +1,9 @@
 replicaCount: 2
 
 image:
-  repository: ghcr.io/stackup-wallet/stackup-bundler
+  repository: 502713364895.dkr.ecr.us-east-1.amazonaws.com/jeju/bundler
   pullPolicy: IfNotPresent
-  tag: "v0.7.0"
+  tag: "testnet-latest"
 
 nameOverride: ""
 fullnameOverride: ""
