@@ -1,108 +1,47 @@
 /**
  * AWS Rekognition Moderation Provider
- *
- * Integration with AWS Rekognition for image content moderation.
- * Uses DetectModerationLabels API for detecting unsafe content.
- *
  * @see https://docs.aws.amazon.com/rekognition/latest/dg/moderation.html
  */
 
 import { z } from 'zod'
-import type {
-  CategoryScore,
-  ContentType,
-  ModerationCategory,
-  ModerationProvider,
-  ModerationResult,
-} from '../types'
-
-// ============ AWS Response Schemas ============
-
-const ModerationLabelSchema = z.object({
-  Name: z.string(),
-  Confidence: z.number(),
-  ParentName: z.string().optional(),
-  TaxonomyLevel: z.number().optional(),
-})
+import type { CategoryScore, ModerationCategory, ModerationProvider, ModerationResult } from '../types'
 
 const RekognitionResponseSchema = z.object({
-  ModerationLabels: z.array(ModerationLabelSchema),
-  ModerationModelVersion: z.string().optional(),
-  ContentTypes: z.array(z.object({
+  ModerationLabels: z.array(z.object({
     Name: z.string(),
     Confidence: z.number(),
-  })).optional(),
+    ParentName: z.string().optional(),
+  })),
+  ModerationModelVersion: z.string().optional(),
 })
 
-// ============ Category Mapping ============
-
-// AWS Rekognition labels mapped to our categories
 const AWS_TO_CATEGORY: Record<string, ModerationCategory> = {
-  // Explicit content
-  'Explicit Nudity': 'adult',
-  'Nudity': 'adult',
-  'Graphic Male Nudity': 'adult',
-  'Graphic Female Nudity': 'adult',
-  'Sexual Activity': 'adult',
-  'Illustrated Explicit Nudity': 'adult',
-  'Adult Toys': 'adult',
-  
-  // Suggestive
-  'Suggestive': 'adult',
-  'Female Swimwear Or Underwear': 'adult',
-  'Male Swimwear Or Underwear': 'adult',
-  'Partial Nudity': 'adult',
-  'Revealing Clothes': 'adult',
-  
-  // Violence
-  'Violence': 'violence',
-  'Graphic Violence Or Gore': 'violence',
-  'Physical Violence': 'violence',
-  'Weapon Violence': 'violence',
-  'Weapons': 'violence',
-  'Self Injury': 'self_harm',
-  
-  // Hate
+  'Explicit Nudity': 'adult', Nudity: 'adult', 'Graphic Male Nudity': 'adult', 'Graphic Female Nudity': 'adult',
+  'Sexual Activity': 'adult', 'Illustrated Explicit Nudity': 'adult', 'Adult Toys': 'adult',
+  Suggestive: 'adult', 'Female Swimwear Or Underwear': 'adult', 'Male Swimwear Or Underwear': 'adult',
+  'Partial Nudity': 'adult', 'Revealing Clothes': 'adult',
+  Violence: 'violence', 'Graphic Violence Or Gore': 'violence', 'Physical Violence': 'violence',
+  'Weapon Violence': 'violence', Weapons: 'violence', 'Self Injury': 'self_harm',
   'Hate Symbols': 'hate',
-  
-  // Drugs
-  'Drugs': 'drugs',
-  'Tobacco': 'drugs',
-  'Alcohol': 'drugs',
-  'Drug Paraphernalia': 'drugs',
-  'Pills': 'drugs',
-  
-  // Gambling (map to spam for our purposes)
-  'Gambling': 'spam',
-  
-  // Visually disturbing
-  'Visually Disturbing': 'violence',
-  'Emaciated Bodies': 'self_harm',
-  'Corpses': 'violence',
-  'Hanging': 'self_harm',
-  'Air Crash': 'violence',
-  'Explosions And Blasts': 'violence',
+  Drugs: 'drugs', Tobacco: 'drugs', Alcohol: 'drugs', 'Drug Paraphernalia': 'drugs', Pills: 'drugs',
+  Gambling: 'spam',
+  'Visually Disturbing': 'violence', 'Emaciated Bodies': 'self_harm', Corpses: 'violence',
+  Hanging: 'self_harm', 'Air Crash': 'violence', 'Explosions And Blasts': 'violence',
 }
-
-// ============ Provider Implementation ============
 
 export interface AWSRekognitionConfig {
   accessKeyId: string
   secretAccessKey: string
   region?: string
-  endpoint?: string
   timeout?: number
   minConfidence?: number
 }
 
 export class AWSRekognitionProvider {
   readonly name: ModerationProvider = 'aws_rekognition'
-  readonly supportedTypes: ContentType[] = ['image']
-
   private accessKeyId: string
   private secretAccessKey: string
   private region: string
-  private endpoint: string
   private timeout: number
   private minConfidence: number
 
@@ -110,243 +49,110 @@ export class AWSRekognitionProvider {
     this.accessKeyId = config.accessKeyId
     this.secretAccessKey = config.secretAccessKey
     this.region = config.region ?? 'us-east-1'
-    this.endpoint =
-      config.endpoint ?? `https://rekognition.${this.region}.amazonaws.com`
     this.timeout = config.timeout ?? 30000
     this.minConfidence = config.minConfidence ?? 50
   }
 
-  async moderateImage(imageBuffer: Buffer): Promise<ModerationResult> {
-    const startTime = Date.now()
+  async moderateImage(buf: Buffer): Promise<ModerationResult> {
+    const start = Date.now()
+    const { headers, body } = await this.sign(buf)
 
-    // Create AWS signature
-    const { headers, body } = await this.createSignedRequest(imageBuffer)
-
-    const response = await fetch(this.endpoint, {
+    const res = await fetch(`https://rekognition.${this.region}.amazonaws.com`, {
       method: 'POST',
       headers,
       body,
       signal: AbortSignal.timeout(this.timeout),
     })
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`AWS Rekognition error: ${response.status} ${errorText}`)
-    }
-
-    const rawData: unknown = await response.json()
-    const parseResult = RekognitionResponseSchema.safeParse(rawData)
-
-    if (!parseResult.success) {
-      throw new Error(`Invalid AWS response: ${parseResult.error.message}`)
-    }
-
-    return this.processResponse(parseResult.data, startTime)
+    if (!res.ok) throw new Error(`AWS Rekognition error: ${res.status} ${await res.text()}`)
+    return this.process(RekognitionResponseSchema.parse(await res.json()), start)
   }
 
-  private async createSignedRequest(
-    imageBuffer: Buffer
-  ): Promise<{ headers: Record<string, string>; body: string }> {
+  private async sign(buf: Buffer): Promise<{ headers: Record<string, string>; body: string }> {
     const amzDate = new Date().toISOString().replace(/[:-]|\.\d{3}/g, '')
     const dateStamp = amzDate.slice(0, 8)
-    
-    const requestBody = JSON.stringify({
-      Image: {
-        Bytes: imageBuffer.toString('base64'),
-      },
-      MinConfidence: this.minConfidence,
-    })
-
-    const service = 'rekognition'
     const host = `rekognition.${this.region}.amazonaws.com`
-    const contentType = 'application/x-amz-json-1.1'
-    const amzTarget = 'RekognitionService.DetectModerationLabels'
+    const body = JSON.stringify({ Image: { Bytes: buf.toString('base64') }, MinConfidence: this.minConfidence })
 
-    // Create canonical request
-    const canonicalUri = '/'
-    const canonicalQueryString = ''
-    const canonicalHeaders = [
-      `content-type:${contentType}`,
-      `host:${host}`,
-      `x-amz-date:${amzDate}`,
-      `x-amz-target:${amzTarget}`,
-    ].join('\n') + '\n'
+    const canonicalHeaders = `content-type:application/x-amz-json-1.1\nhost:${host}\nx-amz-date:${amzDate}\nx-amz-target:RekognitionService.DetectModerationLabels\n`
     const signedHeaders = 'content-type;host;x-amz-date;x-amz-target'
+    const payloadHash = await this.sha256(body)
+    const canonicalRequest = `POST\n/\n\n${canonicalHeaders}\n${signedHeaders}\n${payloadHash}`
 
-    // Hash the payload
-    const payloadHash = await this.sha256(requestBody)
+    const credentialScope = `${dateStamp}/${this.region}/rekognition/aws4_request`
+    const stringToSign = `AWS4-HMAC-SHA256\n${amzDate}\n${credentialScope}\n${await this.sha256(canonicalRequest)}`
 
-    const canonicalRequest = [
-      'POST',
-      canonicalUri,
-      canonicalQueryString,
-      canonicalHeaders,
-      signedHeaders,
-      payloadHash,
-    ].join('\n')
-
-    // Create string to sign
-    const algorithm = 'AWS4-HMAC-SHA256'
-    const credentialScope = `${dateStamp}/${this.region}/${service}/aws4_request`
-    const canonicalRequestHash = await this.sha256(canonicalRequest)
-    const stringToSign = [
-      algorithm,
-      amzDate,
-      credentialScope,
-      canonicalRequestHash,
-    ].join('\n')
-
-    // Calculate signature
-    const signingKey = await this.getSignatureKey(
-      this.secretAccessKey,
-      dateStamp,
-      this.region,
-      service
-    )
-    const signature = await this.hmacSha256Hex(signingKey, stringToSign)
-
-    const authorizationHeader = [
-      `${algorithm} Credential=${this.accessKeyId}/${credentialScope}`,
-      `SignedHeaders=${signedHeaders}`,
-      `Signature=${signature}`,
-    ].join(', ')
+    const signingKey = await this.getSignKey(dateStamp)
+    const signature = await this.hmacHex(signingKey, stringToSign)
 
     return {
       headers: {
-        'Content-Type': contentType,
+        'Content-Type': 'application/x-amz-json-1.1',
         'X-Amz-Date': amzDate,
-        'X-Amz-Target': amzTarget,
-        Authorization: authorizationHeader,
+        'X-Amz-Target': 'RekognitionService.DetectModerationLabels',
+        Authorization: `AWS4-HMAC-SHA256 Credential=${this.accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
       },
-      body: requestBody,
+      body,
     }
   }
 
-  private async sha256(message: string): Promise<string> {
-    const encoder = new TextEncoder()
-    const data = encoder.encode(message)
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-    return Array.from(new Uint8Array(hashBuffer))
-      .map((b) => b.toString(16).padStart(2, '0'))
-      .join('')
+  private async sha256(msg: string): Promise<string> {
+    const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg))
+    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('')
   }
 
-  private async hmacSha256(
-    key: ArrayBuffer | Uint8Array,
-    message: string
-  ): Promise<ArrayBuffer> {
-    const encoder = new TextEncoder()
-    // Ensure we have a proper ArrayBuffer for importKey
-    const keyBuffer = key instanceof ArrayBuffer ? key : new Uint8Array(key).buffer
-    const cryptoKey = await crypto.subtle.importKey(
-      'raw',
-      keyBuffer,
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['sign']
-    )
-    return crypto.subtle.sign('HMAC', cryptoKey, encoder.encode(message))
+  private async hmac(key: ArrayBuffer, msg: string): Promise<ArrayBuffer> {
+    const k = await crypto.subtle.importKey('raw', key, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+    return crypto.subtle.sign('HMAC', k, new TextEncoder().encode(msg))
   }
 
-  private async hmacSha256Hex(
-    key: ArrayBuffer | Uint8Array,
-    message: string
-  ): Promise<string> {
-    const sig = await this.hmacSha256(key, message)
-    return Array.from(new Uint8Array(sig))
-      .map((b) => b.toString(16).padStart(2, '0'))
-      .join('')
+  private async hmacHex(key: ArrayBuffer, msg: string): Promise<string> {
+    const sig = await this.hmac(key, msg)
+    return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('')
   }
 
-  private async getSignatureKey(
-    key: string,
-    dateStamp: string,
-    region: string,
-    service: string
-  ): Promise<ArrayBuffer> {
-    const encoder = new TextEncoder()
-    const kDate = await this.hmacSha256(
-      encoder.encode(`AWS4${key}`),
-      dateStamp
-    )
-    const kRegion = await this.hmacSha256(kDate, region)
-    const kService = await this.hmacSha256(kRegion, service)
-    return this.hmacSha256(kService, 'aws4_request')
+  private async getSignKey(dateStamp: string): Promise<ArrayBuffer> {
+    const kDate = await this.hmac(new TextEncoder().encode(`AWS4${this.secretAccessKey}`).buffer as ArrayBuffer, dateStamp)
+    const kRegion = await this.hmac(kDate, this.region)
+    const kService = await this.hmac(kRegion, 'rekognition')
+    return this.hmac(kService, 'aws4_request')
   }
 
-  private processResponse(
-    data: z.infer<typeof RekognitionResponseSchema>,
-    startTime: number
-  ): ModerationResult {
+  private process(data: z.infer<typeof RekognitionResponseSchema>, start: number): ModerationResult {
     const categories: CategoryScore[] = []
-    const categoryMaxScores = new Map<ModerationCategory, number>()
+    const maxScores = new Map<ModerationCategory, number>()
 
-    // Process all moderation labels
     for (const label of data.ModerationLabels) {
-      const category = AWS_TO_CATEGORY[label.Name]
-      if (category) {
-        const score = label.Confidence / 100 // Convert to 0-1
-        const existing = categoryMaxScores.get(category) ?? 0
-        if (score > existing) {
-          categoryMaxScores.set(category, score)
-        }
+      const cat = AWS_TO_CATEGORY[label.Name]
+      if (cat) {
+        const score = label.Confidence / 100
+        const curr = maxScores.get(cat) ?? 0
+        if (score > curr) maxScores.set(cat, score)
       }
     }
 
-    // Build category scores
-    for (const [category, score] of categoryMaxScores) {
-      categories.push({
-        category,
-        score,
-        confidence: 0.9,
-        provider: 'aws_rekognition',
-      })
+    for (const [cat, score] of maxScores) {
+      categories.push({ category: cat, score, confidence: 0.9, provider: 'aws_rekognition' })
     }
 
-    // Determine action
-    const adultScore = categoryMaxScores.get('adult') ?? 0
-    const violenceScore = categoryMaxScores.get('violence') ?? 0
-    const hateScore = categoryMaxScores.get('hate') ?? 0
-    const selfHarmScore = categoryMaxScores.get('self_harm') ?? 0
-
+    const adult = maxScores.get('adult') ?? 0
     let action: ModerationResult['action'] = 'allow'
     let severity: ModerationResult['severity'] = 'none'
-    let reviewRequired = false
 
-    // Note: AWS doesn't directly detect CSAM - combine with other providers
-    if (adultScore > 0.9 || violenceScore > 0.9 || hateScore > 0.9) {
-      action = 'block'
-      severity = 'high'
-      reviewRequired = true
-    } else if (selfHarmScore > 0.8) {
-      action = 'block'
-      severity = 'high'
-      reviewRequired = true
-    } else if (adultScore > 0.7 || violenceScore > 0.7) {
-      action = 'warn'
-      severity = 'medium'
-    } else if (categories.some((c) => c.score > 0.5)) {
-      action = 'warn'
-      severity = 'low'
-    }
+    if (adult > 0.7) { action = 'warn'; severity = 'low' }
 
-    const primaryCategory =
-      categories.length > 0
-        ? categories.reduce((a, b) => (a.score > b.score ? a : b)).category
-        : undefined
+    const primary = categories.length ? categories.reduce((a, b) => a.score > b.score ? a : b).category : undefined
 
     return {
       safe: action === 'allow',
       action,
       severity,
       categories,
-      primaryCategory,
-      blockedReason:
-        action !== 'allow' ? `AWS detection: ${primaryCategory}` : undefined,
-      reviewRequired,
-      processingTimeMs: Date.now() - startTime,
+      primaryCategory: primary,
+      blockedReason: action !== 'allow' ? `AWS: ${primary}` : undefined,
+      reviewRequired: false,
+      processingTimeMs: Date.now() - start,
       providers: ['aws_rekognition'],
     }
   }
 }
-

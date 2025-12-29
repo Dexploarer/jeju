@@ -476,7 +476,7 @@ export interface DirectorDecision {
   confidence: number
   alignmentScore: number
   personaResponse: string
-  isHumanDecision: boolean
+  isHumanDecision?: boolean
 }
 
 // Legacy alias
@@ -680,7 +680,7 @@ export interface DirectorDecisionStorage {
   timestamp: string
   model: string
   teeMode: string
-  isHumanDecision: boolean
+  isHumanDecision?: boolean
 }
 
 // Legacy alias
@@ -727,7 +727,7 @@ export interface DirectorAnalysisResult {
   confidence: number
   alignment: number
   recommendations: string[]
-  isHumanDecision: boolean
+  isHumanDecision?: boolean
 }
 
 // Legacy alias
@@ -742,7 +742,7 @@ export interface DirectorDecisionDetailStorage {
   teeDecision: TEEDecisionData
   personaResponse: string
   decidedAt: number
-  isHumanDecision: boolean
+  isHumanDecision?: boolean
 }
 
 // Legacy alias
@@ -1015,7 +1015,7 @@ export interface DirectorDecisionMadeEventData {
   proposalId: string
   approved: boolean
   confidenceScore: number
-  isHumanDecision: boolean
+  isHumanDecision?: boolean
 }
 
 // Legacy alias
@@ -1336,5 +1336,5 @@ export interface AppealDirectorDecision {
   restoreAccount: boolean
   reasoning: string
   decidedAt: number
-  isHumanDecision: boolean
+  isHumanDecision?: boolean
 }

@@ -1,26 +1,15 @@
-/**
- * Content Moderation System
- *
- * Free speech policy with CSAM detection.
- */
-
 // Types
 export type {
   CategoryScore,
-  ContentMetadata,
   ContentType,
   HashMatch,
   ModerationAction,
-  ModerationAttestation,
   ModerationCategory,
-  ModerationEvent,
   ModerationPipelineConfig,
   ModerationProvider,
   ModerationRequest,
   ModerationResult,
-  ModerationReviewItem,
   ModerationSeverity,
-  ProviderConfig,
 } from './types'
 
 // Pipeline
@@ -47,12 +36,14 @@ export { CloudflareModerationProvider, type CloudflareProviderConfig } from './p
 // Name Moderation
 export { canRegisterName, moderateName, type NameModerationResult } from './name-filter'
 
-// Messaging Moderation
+// Messaging
 export {
   createMessagingModerationService,
   getMessagingModerationService,
   MessagingModerationService,
   resetMessagingModerationService,
+  type AuditEntry,
   type MessageEnvelope,
+  type MessagingConfig,
   type MessageScreeningResult,
 } from './messaging'

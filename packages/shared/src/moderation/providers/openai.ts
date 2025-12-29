@@ -1,22 +1,10 @@
 /**
- * OpenAI Moderation Provider
- *
- * Integration with OpenAI's free Moderation API for text content.
- * Uses the omni-moderation-latest model.
- *
+ * OpenAI Moderation Provider - Free speech, CSAM detection only
  * @see https://platform.openai.com/docs/guides/moderation
  */
 
 import { z } from 'zod'
-import type {
-  CategoryScore,
-  ContentType,
-  ModerationCategory,
-  ModerationProvider,
-  ModerationResult,
-} from '../types'
-
-// ============ OpenAI Response Schemas ============
+import type { CategoryScore, ModerationCategory, ModerationProvider, ModerationResult } from '../types'
 
 const CategoryScoresSchema = z.object({
   harassment: z.number(),
@@ -30,7 +18,6 @@ const CategoryScoresSchema = z.object({
   'sexual/minors': z.number(),
   violence: z.number(),
   'violence/graphic': z.number(),
-  // New omni categories
   illicit: z.number().optional(),
   'illicit/violent': z.number().optional(),
 })
@@ -57,13 +44,11 @@ const ModerationResultSchema = z.object({
   category_scores: CategoryScoresSchema,
 })
 
-const OpenAIModerationResponseSchema = z.object({
+const OpenAIResponseSchema = z.object({
   id: z.string(),
   model: z.string(),
   results: z.array(ModerationResultSchema),
 })
-
-// ============ Category Mapping ============
 
 type OpenAICategory = keyof z.infer<typeof CategoryScoresSchema>
 
@@ -76,14 +61,12 @@ const OPENAI_TO_CATEGORY: Record<OpenAICategory, ModerationCategory> = {
   'self-harm/instructions': 'self_harm',
   'self-harm/intent': 'self_harm',
   sexual: 'adult',
-  'sexual/minors': 'csam', // CRITICAL
+  'sexual/minors': 'csam',
   violence: 'violence',
   'violence/graphic': 'violence',
   illicit: 'illegal',
   'illicit/violent': 'illegal',
 }
-
-// ============ Provider Implementation ============
 
 export interface OpenAIModerationConfig {
   apiKey: string
@@ -94,8 +77,6 @@ export interface OpenAIModerationConfig {
 
 export class OpenAIModerationProvider {
   readonly name: ModerationProvider = 'openai'
-  readonly supportedTypes: ContentType[] = ['text']
-
   private apiKey: string
   private endpoint: string
   private timeout: number
@@ -109,110 +90,64 @@ export class OpenAIModerationProvider {
   }
 
   async moderateText(text: string): Promise<ModerationResult> {
-    const startTime = Date.now()
+    const start = Date.now()
 
     const response = await fetch(this.endpoint, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: this.model,
-        input: text,
-      }),
+      headers: { Authorization: `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: this.model, input: text }),
       signal: AbortSignal.timeout(this.timeout),
     })
 
     if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`OpenAI Moderation error: ${response.status} ${errorText}`)
+      throw new Error(`OpenAI Moderation error: ${response.status} ${await response.text()}`)
     }
 
-    const rawData: unknown = await response.json()
-    const parseResult = OpenAIModerationResponseSchema.safeParse(rawData)
+    const data = OpenAIResponseSchema.parse(await response.json())
+    const result = data.results[0]
+    if (!result) throw new Error('No moderation result')
 
-    if (!parseResult.success) {
-      throw new Error(`Invalid OpenAI response: ${parseResult.error.message}`)
-    }
-
-    const data = parseResult.data
-    const firstResult = data.results[0]
-    
-    if (!firstResult) {
-      throw new Error('No moderation result returned from OpenAI')
-    }
-
-    return this.processResponse(firstResult, startTime)
+    return this.process(result, start)
   }
 
-  private processResponse(
-    result: z.infer<typeof ModerationResultSchema>,
-    startTime: number
-  ): ModerationResult {
+  private process(result: z.infer<typeof ModerationResultSchema>, start: number): ModerationResult {
     const categories: CategoryScore[] = []
-    const categoryMaxScores = new Map<ModerationCategory, number>()
+    const maxScores = new Map<ModerationCategory, number>()
 
-    // Process all category scores
-    const scores = result.category_scores
-    for (const [openaiCategory, score] of Object.entries(scores)) {
-      const category = OPENAI_TO_CATEGORY[openaiCategory as OpenAICategory]
-      if (category && score > 0.01) {
-        const existing = categoryMaxScores.get(category) ?? 0
-        if (score > existing) {
-          categoryMaxScores.set(category, score)
-        }
+    for (const [key, score] of Object.entries(result.category_scores)) {
+      const cat = OPENAI_TO_CATEGORY[key as OpenAICategory]
+      if (cat && score > 0.01) {
+        const curr = maxScores.get(cat) ?? 0
+        if (score > curr) maxScores.set(cat, score)
       }
     }
 
-    // Build category scores
-    for (const [category, score] of categoryMaxScores) {
-      categories.push({
-        category,
-        score,
-        confidence: 0.95, // OpenAI is highly reliable
-        provider: 'openai',
-      })
+    for (const [cat, score] of maxScores) {
+      categories.push({ category: cat, score, confidence: 0.95, provider: 'openai' })
     }
 
-    // Check for CSAM only - free speech policy
-    const csamScore = categoryMaxScores.get('csam') ?? 0
-    const adultScore = categoryMaxScores.get('adult') ?? 0
+    const csam = maxScores.get('csam') ?? 0
+    const adult = maxScores.get('adult') ?? 0
 
     let action: ModerationResult['action'] = 'allow'
     let severity: ModerationResult['severity'] = 'none'
-    let reviewRequired = false
+    let review = false
 
-    // CSAM is ALWAYS immediate ban - OpenAI's sexual/minors category
-    // This is the only thing we block under free speech policy
-    if (csamScore > 0.1) {
-      action = 'ban'
-      severity = 'critical'
-      reviewRequired = true
-    } else if (adultScore > 0.7) {
-      // Tag adult content for downstream consumers
-      action = 'warn'
-      severity = 'low'
-    }
-    // All other categories (hate, violence, etc) are FREE SPEECH
+    if (csam > 0.1) { action = 'ban'; severity = 'critical'; review = true }
+    else if (adult > 0.7) { action = 'warn'; severity = 'low' }
 
-    const primaryCategory =
-      categories.length > 0
-        ? categories.reduce((a, b) => (a.score > b.score ? a : b)).category
-        : undefined
+    const primary = categories.length ? categories.reduce((a, b) => a.score > b.score ? a : b).category : undefined
 
     return {
       safe: action === 'allow',
       action,
       severity,
       categories,
-      primaryCategory,
-      blockedReason:
-        action !== 'allow' ? `OpenAI detection: ${primaryCategory}` : undefined,
-      reviewRequired,
-      processingTimeMs: Date.now() - startTime,
+      primaryCategory: primary,
+      blockedReason: action !== 'allow' ? `OpenAI: ${primary}` : undefined,
+      reviewRequired: review,
+      processingTimeMs: Date.now() - start,
       providers: ['openai'],
     }
   }
 }
-
