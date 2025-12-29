@@ -50,7 +50,7 @@ import {
   VulnerabilityTypeSchema,
 } from '../lib'
 import { config } from './config'
-import { createKMSHttpWalletClient, getOperatorConfig } from './kms-signer'
+import { createKMSWalletClient, getOperatorConfig } from './kms-signer'
 
 const EQLITE_DATABASE_ID = config.eqliteDatabaseId
 
@@ -609,7 +609,6 @@ export async function submitBounty(
     functionName: 'submitVulnerability',
     args: [submission.severity, submission.vulnType, cidHex, keyIdHex, pocHash],
     value: stake,
-    account,
     chain: getChain(),
   })
 
@@ -786,7 +785,6 @@ export async function completeValidation(
     abi: SECURITY_BOUNTY_REGISTRY_ABI,
     functionName: 'completeValidation',
     args: [toHex(submissionId), result, notes],
-    account,
     chain: getChain(),
   })
 
@@ -867,7 +865,6 @@ export async function submitGuardianVote(
     abi: SECURITY_BOUNTY_REGISTRY_ABI,
     functionName: 'submitGuardianVote',
     args: [toHex(submissionId), approved, suggestedReward, feedback],
-    account,
     chain: getChain(),
   })
 
@@ -948,7 +945,6 @@ export async function ceoDecision(
     abi: SECURITY_BOUNTY_REGISTRY_ABI,
     functionName: 'ceoDecision',
     args: [toHex(submissionId), approved, rewardAmount, reasoning],
-    account,
     chain: getChain(),
   })
 
@@ -1001,7 +997,6 @@ export async function payReward(
     abi: SECURITY_BOUNTY_REGISTRY_ABI,
     functionName: 'payReward',
     args: [toHex(submissionId)],
-    account,
     chain: getChain(),
   })
 

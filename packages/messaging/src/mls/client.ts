@@ -26,8 +26,34 @@ import {
   http,
   type PublicClient,
 } from 'viem'
-import { KEY_REGISTRY_ABI } from '../sdk/abis'
 import { JejuGroup } from './group'
+
+// Minimal KeyRegistry ABI for MLS key management
+const KEY_REGISTRY_ABI = [
+  {
+    name: 'registerKeyBundle',
+    type: 'function',
+    inputs: [
+      { name: 'identityKey', type: 'bytes32' },
+      { name: 'preKey', type: 'bytes32' },
+      { name: 'preKeySignature', type: 'bytes' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    name: 'getKeyBundle',
+    type: 'function',
+    inputs: [{ name: 'account', type: 'address' }],
+    outputs: [
+      { name: 'identityKey', type: 'bytes32' },
+      { name: 'preKey', type: 'bytes32' },
+      { name: 'preKeySignature', type: 'bytes' },
+      { name: 'isActive', type: 'bool' },
+    ],
+    stateMutability: 'view',
+  },
+] as const
 import type {
   DeviceInfo,
   GroupConfig,
@@ -542,7 +568,9 @@ export class JejuMLSClient {
           args: [member],
         })
         .then((bundle) => {
-          const { identityKey } = bundle as { identityKey: Hex }
+          // ABI returns tuple: [identityKey, preKey, preKeySignature, isActive]
+          const result = bundle as readonly [Hex, Hex, Hex, boolean]
+          const identityKey = result[0]
           return identityKey !== '0x' && identityKey !== EMPTY_KEY
         })
         .catch(() => false)
@@ -762,7 +790,9 @@ export class JejuMLSClient {
             args: [data.inviterAddress as Address],
           })
           .then((bundle) => {
-            const { identityKey } = bundle as { identityKey: Hex }
+            // ABI returns tuple: [identityKey, preKey, preKeySignature, isActive]
+            const result = bundle as readonly [Hex, Hex, Hex, boolean]
+            const identityKey = result[0]
             return identityKey !== '0x' && identityKey !== EMPTY_KEY
           })
           .catch(() => false)

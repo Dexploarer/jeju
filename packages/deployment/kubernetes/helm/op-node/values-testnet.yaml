@@ -24,14 +24,14 @@ config:
   l1ChainId: 11155111
   l2ChainId: 420690
   l1:
-    # Internal L1 full node - Reth + Prysm (Pectra/Fulu compatible)
-    rpcUrl: "http://reth-l1.l1.svc.cluster.local:8545"
+    # DRPC Sepolia RPC - better rate limits
+    rpcUrl: "https://sepolia.drpc.org"
     rpcKind: "standard"
-    trustrpc: true
+    trustrpc: false
     rpcMaxBatchSize: 20
     beacon:
-      # Internal Prysm beacon node
-      url: "http://prysm.l1.svc.cluster.local:3500"
+      # Lodestar Sepolia beacon node
+      url: "https://lodestar-sepolia.chainsafe.io"
   l2:
     engineRpc: "http://reth-sequencer.execution.svc.cluster.local:8551"
     engineJwtSecret: "/secrets/jwt-secret.txt"

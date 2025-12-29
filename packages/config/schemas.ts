@@ -823,3 +823,121 @@ export const BridgeConfigSchema = z.object({
   security: BridgeSecurityConfigSchema.optional(),
 })
 export type BridgeConfig = z.infer<typeof BridgeConfigSchema>
+
+// ============================================================================
+// Moderation Configuration
+// ============================================================================
+
+/** Moderation provider pricing */
+const ModerationPricingSchema = z.object({
+  perImage: z.number().optional(),
+  perSecondVideo: z.number().optional(),
+  perRequest: z.number().optional(),
+})
+
+/** Moderation provider configuration */
+export const ModerationProviderConfigSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  enabled: z.boolean(),
+  priority: z.number().int().nonnegative(),
+  endpoint: z.string().optional(),
+  model: z.string().optional(),
+  contentTypes: z.array(z.string()),
+  categories: z.array(z.string()),
+  envKey: z.string().optional(),
+  envKeys: z.record(z.string()).optional(),
+  defaultRegion: z.string().optional(),
+  sources: z.record(z.object({
+    provider: z.string(),
+    envKey: z.string(),
+    refreshIntervalMs: z.number().int().positive(),
+  })).optional(),
+  pricing: ModerationPricingSchema,
+})
+export type ModerationProviderConfig = z.infer<typeof ModerationProviderConfigSchema>
+
+/** Moderation environment configuration */
+export const ModerationEnvironmentConfigSchema = z.object({
+  providers: z.array(z.string()),
+  strictMode: z.boolean(),
+})
+export type ModerationEnvironmentConfig = z.infer<typeof ModerationEnvironmentConfigSchema>
+
+/** Moderation reputation configuration */
+const ModerationReputationSchema = z.object({
+  tiers: z.array(z.string()),
+  reducedScanningLevel: z.string(),
+  successesForBackoff: z.number().int().positive(),
+  neverBypass: z.array(z.string()),
+  backoffSchedule: z.record(z.number()),
+})
+
+/** Moderation TEE configuration */
+const ModerationTeeSchema = z.object({
+  platforms: z.array(z.string()),
+  requireAttestation: z.boolean(),
+  sensitiveCategories: z.array(z.string()),
+  auditLogRetentionDays: z.number().int().positive(),
+})
+
+/** Moderation queue configuration */
+const ModerationQueueSchema = z.object({
+  enabled: z.boolean(),
+  maxPendingReviews: z.number().int().positive(),
+  reviewTimeoutMs: z.number().int().positive(),
+  priorityCategories: z.array(z.string()),
+})
+
+/** Full moderation configuration schema */
+export const ModerationConfigSchema = z.object({
+  version: z.string(),
+  lastUpdated: z.string(),
+  description: z.string(),
+  providers: z.record(ModerationProviderConfigSchema),
+  thresholds: z.record(z.number()),
+  actions: z.record(z.string()),
+  reputation: ModerationReputationSchema,
+  tee: ModerationTeeSchema,
+  queue: ModerationQueueSchema,
+  environments: z.record(ModerationEnvironmentConfigSchema),
+})
+export type ModerationConfig = z.infer<typeof ModerationConfigSchema>
+
+// ============================================================================
+// PoC (Proof of Compute) Verification Configuration
+// ============================================================================
+
+/** AMD KDS configuration */
+export const PoCKdsConfigSchema = z.object({
+  baseUrl: z.string().url(),
+  timeoutMs: z.number().int().positive(),
+  retryCount: z.number().int().nonnegative(),
+  retryDelayMs: z.number().int().positive(),
+  defaultProduct: z.string(),
+})
+export type PoCKdsConfig = z.infer<typeof PoCKdsConfigSchema>
+
+/** TCB minimums for each platform */
+export const PoCTcbMinimumsSchema = z.object({
+  intelTdx: z.object({
+    cpu: z.number().int().nonnegative(),
+    tcb: z.number().int().nonnegative(),
+  }),
+  intelSgx: z.object({
+    cpu: z.number().int().nonnegative(),
+    tcb: z.number().int().nonnegative(),
+  }),
+  amdSev: z.object({
+    snp: z.number().int().nonnegative(),
+  }),
+})
+export type PoCTcbMinimums = z.infer<typeof PoCTcbMinimumsSchema>
+
+/** Full PoC verification configuration */
+export const PoCVerificationConfigSchema = z.object({
+  intelRootCaFingerprints: z.array(z.string()),
+  amdKds: PoCKdsConfigSchema,
+  tcbMinimums: PoCTcbMinimumsSchema,
+})
+export type PoCVerificationConfig = z.infer<typeof PoCVerificationConfigSchema>

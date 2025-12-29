@@ -1,12 +1,12 @@
 /**
  * Unified Farcaster-Messaging Integration
  *
- * Combines Jeju messaging SDK with Farcaster Direct Casts to provide
+ * Combines real XMTP SDK with Farcaster Direct Casts to provide
  * a unified messaging experience that works with both wallet addresses
  * and Farcaster FIDs.
  *
  * Features:
- * - Wallet-to-wallet messaging via Jeju messaging SDK
+ * - Wallet-to-wallet messaging via real XMTP SDK
  * - FID-to-FID messaging via Farcaster Direct Casts
  * - Unified conversation view
  * - EQLite storage for persistence
@@ -14,12 +14,17 @@
  */
 
 import type { Address } from 'viem'
+import { toBytes } from 'viem'
+import { createHash } from 'crypto'
 import type { DCClientConfig, DirectCast, DirectCastClient } from './farcaster'
 import {
-  createMessagingClient,
-  type MessagingClient,
-  type MessagingClientConfig,
-} from './sdk'
+  Client as XMTPClient,
+  type Signer as XMTPSigner,
+  type ClientOptions as XMTPClientOptions,
+  type Identifier,
+  type IdentifierKind,
+} from '@xmtp/node-sdk'
+import { createKMSSigner, type KMSSigner } from '@jejunetwork/kms'
 import {
   createEQLiteStorage,
   type EQLiteConfig,
@@ -28,8 +33,12 @@ import {
 } from './storage/eqlite-storage'
 
 export interface UnifiedMessagingConfig {
-  /** Jeju messaging client config */
-  messaging: MessagingClientConfig
+  /** User's wallet address */
+  address: Address
+  /** XMTP environment */
+  xmtpEnv?: 'local' | 'dev' | 'production'
+  /** XMTP DB path */
+  xmtpDbPath?: string
   /** Farcaster Direct Cast client config */
   farcaster?: DCClientConfig
   /** EQLite storage config */
@@ -71,22 +80,52 @@ async function getDirectCastClient(
   return new DirectCastClientClass(config)
 }
 
+/**
+ * Create XMTP signer from KMS
+ */
+function createXMTPKMSSigner(kmsSigner: KMSSigner, address: Address): XMTPSigner {
+  return {
+    type: 'EOA',
+    getIdentifier: (): Identifier => ({
+      identifier: address.toLowerCase(),
+      identifierKind: 0 as IdentifierKind, // 0 = Ethereum in IdentifierKind enum
+    }),
+    signMessage: async (message: string): Promise<Uint8Array> => {
+      const result = await kmsSigner.signMessage(message)
+      return toBytes(result.signature)
+    },
+  }
+}
+
+/**
+ * Get DB encryption key from KMS
+ */
+async function getDbEncryptionKey(kmsSigner: KMSSigner): Promise<Uint8Array> {
+  const result = await kmsSigner.signMessage('XMTP_DB_ENCRYPTION_KEY_V1')
+  const hash = createHash('sha256').update(toBytes(result.signature)).digest()
+  return new Uint8Array(hash)
+}
+
 /** Default chain ID for Jeju network */
 const DEFAULT_CHAIN_ID = 420690
 
 export class UnifiedMessagingService {
-  private messagingClient: MessagingClient
+  private xmtpClient: XMTPClient | null = null
+  private kmsSigner: KMSSigner | null = null
   private farcasterClient?: DirectCastClient
   private farcasterConfig?: DCClientConfig
   private storage: EQLiteMessageStorage
   private initialized = false
   private address: Address
+  private xmtpEnv: 'local' | 'dev' | 'production'
+  private xmtpDbPath?: string
   private farcasterFid?: number
   private chainId: number
 
   constructor(config: UnifiedMessagingConfig) {
-    this.messagingClient = createMessagingClient(config.messaging)
-    this.address = config.messaging.address as Address
+    this.address = config.address
+    this.xmtpEnv = config.xmtpEnv ?? 'dev'
+    this.xmtpDbPath = config.xmtpDbPath
     this.chainId = DEFAULT_CHAIN_ID
 
     if (config.farcaster) {
@@ -96,13 +135,25 @@ export class UnifiedMessagingService {
     this.storage = createEQLiteStorage(config.storage)
   }
 
-  async initialize(signature?: string): Promise<void> {
+  async initialize(): Promise<void> {
     if (this.initialized) return
 
-    // Initialize messaging client
-    if (signature) {
-      await this.messagingClient.initialize(signature)
-    }
+    // Initialize KMS signer
+    this.kmsSigner = createKMSSigner({
+      serviceId: `xmtp-unified-${this.address.toLowerCase()}`,
+      allowLocalDev: true,
+    })
+    await this.kmsSigner.initialize()
+
+    // Create XMTP client with KMS signer
+    const xmtpSigner = createXMTPKMSSigner(this.kmsSigner, this.address)
+    const dbEncryptionKey = await getDbEncryptionKey(this.kmsSigner)
+
+    this.xmtpClient = await XMTPClient.create(xmtpSigner, {
+      env: this.xmtpEnv,
+      dbPath: this.xmtpDbPath ?? `./data/xmtp/${this.address.toLowerCase()}.db3`,
+      dbEncryptionKey,
+    })
 
     // Initialize Farcaster client (lazy load)
     if (this.farcasterConfig) {
@@ -148,25 +199,28 @@ export class UnifiedMessagingService {
     content: string,
     options?: { metadata?: Record<string, unknown> },
   ): Promise<UnifiedMessage> {
-    const response = await this.messagingClient.sendMessage({
-      to: recipient,
-      content,
-    })
-
-    if (!response.success) {
-      throw new Error(response.error ?? 'Failed to send message')
+    if (!this.xmtpClient) {
+      throw new Error('XMTP client not initialized')
     }
 
-    const conversationId = this.getWalletConversationId(recipient)
-    const timestamp = response.timestamp
+    // Create or find DM with recipient
+    const dm = await this.xmtpClient.conversations.newDmWithIdentifier({
+      identifier: recipient.toLowerCase(),
+      identifierKind: 0 as IdentifierKind, // 0 = Ethereum in IdentifierKind enum
+    })
 
-    // Store the message metadata - actual encrypted content comes from the client
+    // Send the message via XMTP
+    const messageId = await dm.send(content)
+    const timestamp = Date.now()
+    const conversationId = this.getWalletConversationId(recipient)
+
+    // Store the message metadata
     const stored: StoredMessage = {
-      id: response.messageId,
+      id: messageId,
       conversationId,
       sender: this.address,
       recipient,
-      encryptedContent: '', // Encrypted by client, stored separately
+      encryptedContent: '', // XMTP handles encryption
       ephemeralPublicKey: '',
       nonce: '',
       timestamp,
@@ -226,20 +280,21 @@ export class UnifiedMessagingService {
 
     const conversations: Map<string, UnifiedConversation> = new Map()
 
-    // Get wallet conversations
-    const walletConvs = await this.storage.getUserConversations(
-      this.address,
-      options,
-    )
-    for (const conv of walletConvs) {
-      conversations.set(conv.id, {
-        id: conv.id,
-        type: 'wallet',
-        participants: conv.participants,
-        unreadCount: conv.unreadCount,
-        createdAt: conv.createdAt,
-        updatedAt: conv.lastMessageAt,
-      })
+    // Get XMTP conversations
+    if (this.xmtpClient) {
+      await this.xmtpClient.conversations.sync()
+      const dms = this.xmtpClient.conversations.listDms()
+
+      for (const dm of dms) {
+        conversations.set(`xmtp-${dm.id}`, {
+          id: `xmtp-${dm.id}`,
+          type: 'wallet',
+          participants: [this.address, dm.peerInboxId as unknown as Address],
+          unreadCount: 0,
+          createdAt: dm.createdAt.getTime(),
+          updatedAt: dm.createdAt.getTime(),
+        })
+      }
     }
 
     // Get Farcaster conversations
@@ -294,40 +349,28 @@ export class UnifiedMessagingService {
       }))
     }
 
-    // Wallet conversation
-    const stored = await this.storage.getConversationMessages(
-      conversationId,
-      options,
-    )
+    // XMTP conversation (format: "xmtp-<id>")
+    if (conversationId.startsWith('xmtp-') && this.xmtpClient) {
+      const xmtpConvId = conversationId.slice(5)
+      const conversation = await this.xmtpClient.conversations.getConversationById(xmtpConvId)
+      if (!conversation) return []
 
-    // Decrypt messages using the messaging client's keys
-    const decryptedMessages = await Promise.all(
-      stored.map(async (msg) => {
-        let content: string
-        try {
-          content = await this.messagingClient.decryptContent(
-            msg.encryptedContent,
-            msg.ephemeralPublicKey,
-            msg.nonce,
-          )
-        } catch {
-          // If decryption fails (e.g., message for different recipient), mark as unreadable
-          content = '[unable to decrypt]'
-        }
+      await conversation.sync()
+      const messages = await conversation.messages({ limit: options?.limit ?? 50 })
 
-        return {
-          id: msg.id,
-          conversationId: msg.conversationId,
-          sender: msg.sender,
-          recipient: msg.recipient,
-          content,
-          timestamp: msg.timestamp,
-          messageType: 'wallet' as const,
-          deliveryStatus: msg.deliveryStatus,
-        }
-      }),
-    )
-    return decryptedMessages
+      return messages.map((msg) => ({
+        id: msg.id,
+        conversationId,
+        sender: msg.senderInboxId as unknown as Address,
+        recipient: this.address,
+        content: String(msg.content),
+        timestamp: msg.sentAt.getTime(),
+        messageType: 'wallet' as const,
+        deliveryStatus: 'delivered' as const,
+      }))
+    }
+
+    return []
   }
 
   private getWalletConversationId(recipient: Address): string {
@@ -342,6 +385,15 @@ export class UnifiedMessagingService {
     if (!this.initialized) {
       throw new Error('UnifiedMessagingService not initialized')
     }
+  }
+
+  /**
+   * Cleanup resources
+   */
+  async destroy(): Promise<void> {
+    this.xmtpClient = null
+    this.kmsSigner = null
+    this.initialized = false
   }
 }
 

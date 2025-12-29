@@ -1,0 +1,4 @@
+test/
+bin/sqlit*
+conf/testnet*/*.keystore
+*.cover.out

@@ -121,8 +121,8 @@ jobs:
             ${{ steps.login-ecr.outputs.registry }}/jeju/${{ matrix.app }}:mainnet-latest
           platforms: linux/amd64
 
-  build-eqlite:
-    name: Build EQLite (Multi-Arch)
+  build-sqlit:
+    name: Build SQLIT (Multi-Arch)
     runs-on: ubuntu-latest
     needs: validate-prerequisites
     steps:
@@ -141,15 +141,15 @@ jobs:
       - name: Set up QEMU for multi-arch
         uses: docker/setup-qemu-action@v3
 
-      - name: Build and push EQLite
+      - name: Build and push SQLIT
         uses: docker/build-push-action@v5
         with:
-          context: ./packages/deployment/docker/eqlite
-          file: ./packages/deployment/docker/eqlite/Dockerfile
+          context: ./packages/deployment/docker/sqlit
+          file: ./packages/deployment/docker/sqlit/Dockerfile
           push: true
           tags: |
-            ${{ steps.login-ecr.outputs.registry }}/jeju/eqlite:mainnet-${{ github.sha }}
-            ${{ steps.login-ecr.outputs.registry }}/jeju/eqlite:mainnet-latest
+            ${{ steps.login-ecr.outputs.registry }}/jeju/sqlit:mainnet-${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/jeju/sqlit:mainnet-latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
@@ -157,7 +157,7 @@ jobs:
   deploy-kubernetes:
     name: Deploy to Kubernetes
     runs-on: ubuntu-latest
-    needs: [build-and-push, build-eqlite, deploy-infrastructure]
+    needs: [build-and-push, build-sqlit, deploy-infrastructure]
     environment: mainnet
     steps:
       - uses: actions/checkout@v4
