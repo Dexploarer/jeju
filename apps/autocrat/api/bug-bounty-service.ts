@@ -54,14 +54,8 @@ import { createKMSHttpWalletClient, getOperatorConfig } from './kms-signer'
 
 const EQLITE_DATABASE_ID = config.eqliteDatabaseId
 
-<<<<<<< HEAD
-// KMS wallet client instance (initialized lazily)
-=======
-// KMS wallet client result (initialized lazily)
->>>>>>> db0e2406eef4fd899ba4a5aa090db201bcbe36bf
-let kmsWalletClientResult: Awaited<
-  ReturnType<typeof createKMSWalletClient>
-> | null = null
+// KMS wallet client (initialized lazily)
+let kmsWalletClient: Awaited<ReturnType<typeof createKMSHttpWalletClient>> | null = null
 
 // Config handles env overrides
 function getDWSEndpoint(): string {
@@ -246,29 +240,20 @@ function getPublicClient() {
 }
 
 async function getKMSWalletClientInstance() {
-  if (!kmsWalletClientResult) {
-<<<<<<< HEAD
-    const opConfig = getOperatorConfig()
-    if (!opConfig) {
-=======
+  if (!kmsWalletClient) {
     const operatorConfig = getOperatorConfig()
     if (!operatorConfig) {
->>>>>>> db0e2406eef4fd899ba4a5aa090db201bcbe36bf
       throw new Error(
         'OPERATOR_KEY or OPERATOR_PRIVATE_KEY required for contract operations',
       )
     }
-    kmsWalletClientResult = await createKMSWalletClient(
-<<<<<<< HEAD
-      opConfig,
-=======
-      operatorConfig,
->>>>>>> db0e2406eef4fd899ba4a5aa090db201bcbe36bf
-      getChain(),
-      getRpcUrl(),
-    )
+    kmsWalletClient = await createKMSHttpWalletClient({
+      ...operatorConfig,
+      chain: getChain(),
+      rpcUrl: getRpcUrl(),
+    })
   }
-  return kmsWalletClientResult
+  return kmsWalletClient
 }
 
 function getContractAddressOrThrow(): Address {
@@ -603,7 +588,8 @@ export async function submitBounty(
 
   // Submit to smart contract - fail if contract is required
   const contractAddr = getContractAddressOrThrow()
-  const { client: walletClient, account } = await getKMSWalletClientInstance()
+  const walletClient = await getKMSWalletClientInstance()
+  const account = walletClient.account
   const publicClient = getPublicClient()
 
   // Convert CID and keyId to bytes32-compatible hex (padded to 32 bytes)
@@ -623,11 +609,7 @@ export async function submitBounty(
     functionName: 'submitVulnerability',
     args: [submission.severity, submission.vulnType, cidHex, keyIdHex, pocHash],
     value: stake,
-<<<<<<< HEAD
-    account: account.address,
-=======
     account,
->>>>>>> db0e2406eef4fd899ba4a5aa090db201bcbe36bf
     chain: getChain(),
   })
 
@@ -792,7 +774,8 @@ export async function completeValidation(
 
   // Update on-chain
   const contractAddr = getContractAddressOrThrow()
-  const { client: walletClient, account } = await getKMSWalletClientInstance()
+  const walletClient = await getKMSWalletClientInstance()
+  const account = walletClient.account
   const publicClient = getPublicClient()
 
   if (!account) {
@@ -803,11 +786,7 @@ export async function completeValidation(
     abi: SECURITY_BOUNTY_REGISTRY_ABI,
     functionName: 'completeValidation',
     args: [toHex(submissionId), result, notes],
-<<<<<<< HEAD
-    account: account.address,
-=======
     account,
->>>>>>> db0e2406eef4fd899ba4a5aa090db201bcbe36bf
     chain: getChain(),
   })
 
@@ -876,7 +855,8 @@ export async function submitGuardianVote(
 
   // Update on-chain
   const contractAddr = getContractAddressOrThrow()
-  const { client: walletClient, account } = await getKMSWalletClientInstance()
+  const walletClient = await getKMSWalletClientInstance()
+  const account = walletClient.account
   const publicClient = getPublicClient()
 
   if (!account) {
@@ -887,11 +867,7 @@ export async function submitGuardianVote(
     abi: SECURITY_BOUNTY_REGISTRY_ABI,
     functionName: 'submitGuardianVote',
     args: [toHex(submissionId), approved, suggestedReward, feedback],
-<<<<<<< HEAD
-    account: account.address,
-=======
     account,
->>>>>>> db0e2406eef4fd899ba4a5aa090db201bcbe36bf
     chain: getChain(),
   })
 
@@ -960,7 +936,8 @@ export async function ceoDecision(
 
   // Update on-chain
   const contractAddr = getContractAddressOrThrow()
-  const { client: walletClient, account } = await getKMSWalletClientInstance()
+  const walletClient = await getKMSWalletClientInstance()
+  const account = walletClient.account
   const publicClient = getPublicClient()
 
   if (!account) {
@@ -971,11 +948,7 @@ export async function ceoDecision(
     abi: SECURITY_BOUNTY_REGISTRY_ABI,
     functionName: 'ceoDecision',
     args: [toHex(submissionId), approved, rewardAmount, reasoning],
-<<<<<<< HEAD
-    account: account.address,
-=======
     account,
->>>>>>> db0e2406eef4fd899ba4a5aa090db201bcbe36bf
     chain: getChain(),
   })
 
@@ -1016,7 +989,8 @@ export async function payReward(
 
   // Execute on-chain payout
   const contractAddr = getContractAddressOrThrow()
-  const { client: walletClient, account } = await getKMSWalletClientInstance()
+  const walletClient = await getKMSWalletClientInstance()
+  const account = walletClient.account
   const publicClient = getPublicClient()
 
   if (!account) {
@@ -1027,11 +1001,7 @@ export async function payReward(
     abi: SECURITY_BOUNTY_REGISTRY_ABI,
     functionName: 'payReward',
     args: [toHex(submissionId)],
-<<<<<<< HEAD
-    account: account.address,
-=======
     account,
->>>>>>> db0e2406eef4fd899ba4a5aa090db201bcbe36bf
     chain: getChain(),
   })
 
