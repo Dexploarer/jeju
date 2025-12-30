@@ -17,7 +17,7 @@ ingress:
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
     alb.ingress.kubernetes.io/ssl-redirect: "443"
     # ACM certificate ARN - set via Helmfile or terraform output
-    # alb.ingress.kubernetes.io/certificate-arn: "${ACM_CERTIFICATE_ARN}"
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-1:502713364895:certificate/414c8f7b-6ebf-470b-86c4-fc5d1722b8b7"
     alb.ingress.kubernetes.io/group.name: jeju-testnet
   hosts:
     # Core DWS services
@@ -48,11 +48,14 @@ ingress:
         - path: /
           pathType: Prefix
     # JNS Gateway (serves decentralized apps)
-    - host: "*.jns.testnet.jejunetwork.org"
+    - host: jns.testnet.jejunetwork.org
       paths:
         - path: /
           pathType: Prefix
-    - host: jns.testnet.jejunetwork.org
+    # App routing - ALL apps go through DWS (primary pattern)
+    # This catches appname.testnet.jejunetwork.org patterns
+    # DWS app router handles frontend (IPFS) + backend (workers) routing
+    - host: "*.testnet.jejunetwork.org"
       paths:
         - path: /
           pathType: Prefix
@@ -95,14 +98,46 @@ config:
       - type: webtorrent
         enabled: true
   
-  # JNS Gateway - serves apps at *.jns.testnet.jejunetwork.org
+  # JNS Gateway - serves apps at jns.testnet.jejunetwork.org
   jnsGateway:
     enabled: true
     domain: "jns.testnet.jejunetwork.org"
-    wildcardDomain: "*.jns.testnet.jejunetwork.org"
     defaultTtl: 300
     cacheEnabled: true
     fallbackToIpfs: true
+  
+  # App Router - handles *.testnet.jejunetwork.org routing
+  # Routes frontend to IPFS and backend to DWS workers
+  appRouter:
+    enabled: true
+    domain: "testnet.jejunetwork.org"
+    wildcardDomain: "*.testnet.jejunetwork.org"
+    # System subdomains that should NOT be routed as apps
+    systemSubdomains:
+      - dws
+      - api
+      - rpc
+      - ws
+      - explorer
+      - bridge
+      - faucet
+      - docs
+      - gateway
+      - storage
+      - git
+      - npm
+      - hub
+      - registry
+      - jns
+    # Default API paths to route to backend
+    defaultApiPaths:
+      - /api
+      - /health
+      - /a2a
+      - /mcp
+      - /oauth
+      - /callback
+      - /webhook
   
   cdn:
     enabled: true

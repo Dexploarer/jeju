@@ -1,7 +1,7 @@
 # OP-Proposer values for testnet
 # Uses internal L1 full node
 
-replicaCount: 0  # Disabled - L2OutputOracle contract not deployed yet
+replicaCount: 1  # Enable proposer for L1/L2 connectivity
 
 resources:
   limits:

@@ -25,14 +25,53 @@ spec:
             - containerPort: 4000
               name: http
           env:
+            - name: DATABASE_URL
+              value: "postgresql://{{ .Values.externalDatabase.username }}:blockscout-password@{{ .Values.externalDatabase.host }}:{{ .Values.externalDatabase.port }}/{{ .Values.externalDatabase.database }}?ssl=true"
+            - name: POOL_SIZE
+              value: "50"
+            - name: POOL_SIZE_API
+              value: "50"
+            - name: ACCOUNT_POOL_SIZE
+              value: "10"
             - name: ETHEREUM_JSONRPC_VARIANT
               value: "geth"
             - name: ETHEREUM_JSONRPC_HTTP_URL
               value: {{ .Values.config.ethereum.jsonRpcUrl | quote }}
+            - name: ETHEREUM_JSONRPC_TRACE_URL
+              value: {{ .Values.config.ethereum.traceUrl | default .Values.config.ethereum.jsonRpcUrl | quote }}
+            - name: ETHEREUM_JSONRPC_WS_URL
+              value: {{ .Values.config.ethereum.wsUrl | quote }}
             - name: CHAIN_ID
               value: {{ .Values.config.chainId | quote }}
             - name: NETWORK
               value: {{ .Values.config.network | quote }}
+            - name: SUBNETWORK
+              value: {{ .Values.config.subnetwork | quote }}
+            - name: INDEXER_DISABLE_PENDING_TRANSACTIONS_FETCHER
+              value: "true"
+            {{- if .Values.config.rollup.enabled }}
+            - name: INDEXER_OPTIMISM_L1_RPC
+              value: {{ .Values.config.rollup.l1RpcUrl | quote }}
+            {{- end }}
+          startupProbe:
+            httpGet:
+              path: /
+              port: 4000
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 4000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 4000
+            initialDelaySeconds: 10
+            periodSeconds: 5
           resources:
             {{- toYaml .Values.backend.resources | nindent 12 }}
 ---
@@ -63,8 +102,16 @@ spec:
             - containerPort: 3000
               name: http
           env:
-            - name: PUBLIC_API_HOST
-              value: "http://{{ include "blockscout.fullname" . }}-backend:4000"
+            - name: NEXT_PUBLIC_API_HOST
+              value: {{ .Values.config.publicApiHost | default (printf "http://%s-backend:4000" (include "blockscout.fullname" .)) | quote }}
+            - name: NEXT_PUBLIC_API_PROTOCOL
+              value: {{ .Values.config.publicApiProtocol | default "http" | quote }}
+            - name: NEXT_PUBLIC_API_WEBSOCKET_PROTOCOL
+              value: {{ .Values.config.publicApiWebsocketProtocol | default "ws" | quote }}
+            - name: NEXT_PUBLIC_AD_TEXT_PROVIDER
+              value: "none"
+            - name: NEXT_PUBLIC_AD_BANNER_PROVIDER
+              value: "none"
           resources:
             {{- toYaml .Values.frontend.resources | nindent 12 }}
 

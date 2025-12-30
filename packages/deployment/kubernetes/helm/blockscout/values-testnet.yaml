@@ -11,9 +11,6 @@ ingress:
     alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-1:502713364895:certificate/34c89eb5-a94f-406a-be3c-c40008f4f693"
   hosts:
     - host: explorer.testnet.jejunetwork.org
-      paths:
-        - path: /
-          pathType: Prefix
   tls:
     - secretName: blockscout-testnet-tls
       hosts:
@@ -22,6 +19,12 @@ ingress:
 config:
   subnetwork: "Testnet"
   chainId: 420690
+  # Public URL for frontend to connect to backend API
+  publicApiHost: "explorer.testnet.jejunetwork.org"
+  publicApiProtocol: "https"
+  publicApiWebsocketProtocol: "wss"
+  # Use AWS RDS PostgreSQL
+  useRDS: true
   ethereum:
     jsonRpcUrl: "http://reth-archive.rpc.svc.cluster.local:8545"
     traceUrl: "http://reth-archive.rpc.svc.cluster.local:8545"

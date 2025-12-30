@@ -128,6 +128,7 @@ import { createStorageRouter } from './routes/storage'
 import { createVPNRouter } from './routes/vpn'
 import { createDefaultWorkerdRouter } from './routes/workerd'
 import { createWorkersRouter } from './routes/workers'
+import { createAppRouter, initializeAppRouter } from './routes/app-router'
 
 // Config injection for workerd compatibility
 export interface DWSServerConfig {
@@ -297,6 +298,9 @@ const app = new Elysia()
   .use(cors({ origin: '*' }))
   .use(rateLimiter())
   .use(banCheckMiddleware())
+  // App router - routes requests by hostname to deployed apps
+  // Must come early to intercept app-specific requests before other routes
+  .use(createAppRouter())
 
 const backendManager = createBackendManager()
 
@@ -550,7 +554,33 @@ app
     }
   })
 
-  .get('/', () => ({
+  // Serve frontend at root
+  .get('/', async ({ set }) => {
+    const decentralizedResponse =
+      await decentralized.frontend.serveAsset('index.html')
+    if (decentralizedResponse) return decentralizedResponse
+
+    const file = Bun.file('./dist/index.html')
+    if (await file.exists()) {
+      const html = await file.text()
+      return new Response(html, {
+        headers: {
+          'Content-Type': 'text/html',
+          'X-DWS-Source': 'local',
+        },
+      })
+    }
+
+    // Fallback if frontend not built
+    set.status = 404
+    return {
+      error:
+        'Frontend not available. Build the frontend with `bun run build:web` or set DWS_FRONTEND_CID.',
+    }
+  })
+
+  // API info endpoint (moved from root)
+  .get('/api/info', () => ({
     name: 'DWS',
     description: 'Decentralized Web Services',
     version: '1.0.0',
@@ -747,13 +777,45 @@ app.use(createIngressRouter(getIngressController()))
 app.use(createServiceMeshRouter(getServiceMesh()))
 app.use(createKubernetesBridgeRouter())
 
+// Serve static assets (JS, CSS, images) from /web/*
+app.get('/web/*', async ({ request, set }) => {
+  const url = new URL(request.url)
+  const assetPath = url.pathname.replace('/web/', '')
+
+  const decentralizedResponse = await decentralized.frontend.serveAsset(`web/${assetPath}`)
+  if (decentralizedResponse) return decentralizedResponse
+
+  const file = Bun.file(`./dist/web/${assetPath}`)
+  if (await file.exists()) {
+    const contentType = assetPath.endsWith('.js') ? 'application/javascript'
+      : assetPath.endsWith('.css') ? 'text/css'
+      : assetPath.endsWith('.json') ? 'application/json'
+      : assetPath.endsWith('.png') ? 'image/png'
+      : assetPath.endsWith('.jpg') || assetPath.endsWith('.jpeg') ? 'image/jpeg'
+      : assetPath.endsWith('.svg') ? 'image/svg+xml'
+      : assetPath.endsWith('.woff') || assetPath.endsWith('.woff2') ? 'font/woff2'
+      : 'application/octet-stream'
+
+    return new Response(file, {
+      headers: {
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=31536000, immutable',
+        'X-DWS-Source': 'local',
+      },
+    })
+  }
+
+  set.status = 404
+  return { error: 'Asset not found' }
+})
+
 // Serve frontend - from IPFS when configured, fallback to local
 app.get('/app', async ({ set }) => {
   const decentralizedResponse =
     await decentralized.frontend.serveAsset('index.html')
   if (decentralizedResponse) return decentralizedResponse
 
-  const file = Bun.file('./frontend/index.html')
+  const file = Bun.file('./dist/index.html')
   if (await file.exists()) {
     const html = await file.text()
     return new Response(html, {
@@ -1371,6 +1433,15 @@ if (import.meta.main) {
       }
     })
     .catch(console.error)
+
+  // Initialize app router (loads deployed apps from registry and ingress rules)
+  initializeAppRouter()
+    .then(() => {
+      console.log('[DWS] App router initialized')
+    })
+    .catch((err) => {
+      console.warn('[DWS] App router init failed:', err.message)
+    })
 
   // Start database keepalive service
   startKeepaliveService({

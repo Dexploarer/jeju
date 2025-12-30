@@ -47,14 +47,26 @@ COPY packages/sqlit/ ./packages/sqlit/
 COPY apps/dws/ ./apps/dws/
 COPY tsconfig.json tsconfig.base.json ./
 
-# Build packages that export dist
+# Build packages that export dist (order matters for dependencies)
+# First build contracts (no dependencies)
+RUN cd packages/contracts && bun run build || true
+
+# Then build types and config (depend on contracts)
 RUN cd packages/types && bun x tsc || true
 RUN cd packages/config && bun x tsc || true
-RUN cd packages/api && bun x tsc || true
-RUN cd packages/shared && bun x tsc || true
+
+# Then build core packages (depend on types/config/contracts)
 RUN cd packages/db && bun x tsc || true
+RUN cd packages/shared && bun x tsc || true
+RUN cd packages/auth && bun x tsc || true
+RUN cd packages/api && bun x tsc || true
 RUN cd packages/kms && bun x tsc || true
 RUN cd packages/sdk && bun x tsc || true
+
+# Build DWS web frontend
+WORKDIR /app/apps/dws
+# Set NETWORK env var for frontend build to use correct API URLs
+RUN NETWORK=testnet bun run build:web
 
 # Production stage
 FROM --platform=linux/amd64 oven/bun:1.3
@@ -66,6 +78,9 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages ./packages
 COPY --from=builder /app/apps/dws ./apps/dws
 COPY --from=builder /app/tsconfig.json ./
+
+# Ensure dist directory with frontend is available
+# (already copied as part of apps/dws, but explicitly documenting)
 
 WORKDIR /app/apps/dws
 

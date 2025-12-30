@@ -1,7 +1,7 @@
 # Blockscout Block Explorer for Jeju L2
 # https://docs.blockscout.com/setup/deployment
 
-replicaCount: 2
+replicaCount: 1
 
 backend:
   image:
@@ -72,7 +72,7 @@ ingress:
 
 # External PostgreSQL (RDS)
 externalDatabase:
-  host: ""
+  host: "jeju-testnet-postgres.ca7gycy041nx.us-east-1.rds.amazonaws.com"
   port: 5432
   database: blockscout
   username: blockscout

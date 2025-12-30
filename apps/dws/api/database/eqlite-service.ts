@@ -20,10 +20,10 @@ let sqlitServiceInstance: ServiceInstance | null = null
 let initializationPromise: Promise<ServiceInstance> | null = null
 
 /**
- * Get or initialize the SQLit service
+ * Get or initialize the SQLit service (eqlite implementation - legacy)
  * Called automatically when DWS starts
  */
-export async function ensureSQLitService(): Promise<ServiceInstance> {
+export async function ensureEQLiteService(): Promise<ServiceInstance> {
   // Return existing if healthy
   if (sqlitServiceInstance?.status === 'running') {
     return sqlitServiceInstance

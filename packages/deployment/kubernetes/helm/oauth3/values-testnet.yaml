@@ -1,5 +1,20 @@
 # Testnet configuration for OAuth3
-replicaCount: 3
+#
+# DEPRECATION NOTICE:
+# ===================
+# This standalone K8s deployment is DEPRECATED.
+# OAuth3 should be deployed through DWS using:
+#   bun run packages/deployment/scripts/deploy/deploy-app-to-dws-full.ts oauth3 testnet
+#
+# The DWS deployment will:
+# - Upload frontend to IPFS
+# - Deploy backend to DWS compute workers
+# - Configure routing at oauth3.testnet.jejunetwork.org
+#
+# Set replicaCount: 0 to disable this standalone deployment.
+# Traffic will be handled by DWS app router.
+#
+replicaCount: 0  # Set to 3 for legacy standalone deployment
 
 image:
   repository: ghcr.io/jeju-network/oauth3-agent

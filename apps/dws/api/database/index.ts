@@ -31,17 +31,10 @@ export {
 } from './secure-proxy'
 export {
   ensureSQLitService,
-  ensureSQLitService,
-  getDatabaseConnectionInfo,
   getDatabaseConnectionInfo,
   getSQLitClientPort,
-  getSQLitClientPort,
-  getSQLitEndpoint,
   getSQLitEndpoint,
   getSQLitStatus,
-  getSQLitStatus,
   isSQLitHealthy,
-  isSQLitHealthy,
-  provisionAppDatabase,
   provisionAppDatabase,
 } from './sqlit-service'

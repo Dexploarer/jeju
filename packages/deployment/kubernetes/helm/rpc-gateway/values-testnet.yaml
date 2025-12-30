@@ -35,7 +35,8 @@ resources:
     memory: 512Mi
 
 backend:
-  rpcService: "reth-rpc"
+  # Point to sequencer for now - reth-rpc needs op-node connection to sync
+  rpcService: "reth-sequencer.execution"
   rpcPort: 8545
   wsPort: 8546
 

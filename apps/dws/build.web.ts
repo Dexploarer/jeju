@@ -85,7 +85,6 @@ const result = await Bun.build({
     // Server-only Jeju packages
     '@jejunetwork/db',
     '@jejunetwork/dws',
-    '@jejunetwork/kms',
     '@jejunetwork/deployment',
     '@jejunetwork/training',
     // Server frameworks
@@ -112,10 +111,16 @@ const result = await Bun.build({
     'process.env.NODE_ENV': JSON.stringify(
       process.env.NODE_ENV || 'development',
     ),
+    'process.env.JEJU_NETWORK': JSON.stringify(
+      process.env.NETWORK || process.env.JEJU_NETWORK || 'testnet',
+    ),
     'process.browser': 'true',
     // Provide a minimal process shim for browser - process.env access defaults to undefined
     process: JSON.stringify({
-      env: { NODE_ENV: process.env.NODE_ENV || 'development' },
+      env: {
+        NODE_ENV: process.env.NODE_ENV || 'development',
+        JEJU_NETWORK: process.env.NETWORK || process.env.JEJU_NETWORK || 'testnet',
+      },
       browser: true,
     }),
   },
@@ -140,6 +145,8 @@ const cssFile = result.outputs.find((o) => o.path.endsWith('.css'))
 const cssFileName = cssFile ? cssFile.path.split('/').pop() : null
 
 let indexHtml = readFileSync('./index.html', 'utf-8')
+// Remove the development CSS reference
+indexHtml = indexHtml.replace('<link rel="stylesheet" href="/index.css">', '')
 indexHtml = indexHtml.replace('/web/main.tsx', `/web/${mainFileName}`)
 // Add CSS link if CSS was generated
 if (cssFileName) {

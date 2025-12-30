@@ -1,66 +1,66 @@
 # Autocrat - AI-Powered Autonomous Governance
-# Multi-stage build for production deployment
+FROM --platform=linux/amd64 oven/bun:1.3 AS builder
 
-# Build stage
-FROM oven/bun:1.1-alpine AS builder
+# Install Python and setuptools for native deps
+RUN apt-get update && apt-get install -y python3 python3-setuptools && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy root package files
-COPY package.json bun.lock ./
-COPY packages/db/package.json ./packages/db/
+# Copy workspace root files
+COPY package.json bun.lockb ./
+COPY patches/ ./patches/
+
+# Copy all workspace package.json files for dependency resolution
+COPY packages/api/package.json ./packages/api/
+COPY packages/auth/package.json ./packages/auth/
 COPY packages/config/package.json ./packages/config/
-COPY packages/shared/package.json ./packages/shared/
+COPY packages/contracts/package.json ./packages/contracts/
+COPY packages/db/package.json ./packages/db/
+COPY packages/kms/package.json ./packages/kms/
+COPY packages/messaging/package.json ./packages/messaging/
 COPY packages/sdk/package.json ./packages/sdk/
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/tests/package.json ./packages/tests/
+COPY packages/training/package.json ./packages/training/
 COPY packages/types/package.json ./packages/types/
+COPY packages/ui/package.json ./packages/ui/
+COPY packages/token/package.json ./packages/token/
+COPY packages/sqlit/package.json ./packages/sqlit/
 COPY apps/autocrat/package.json ./apps/autocrat/
+COPY apps/dws/package.json ./apps/dws/
 
-# Install dependencies (ignore preinstall scripts that may fail)
-RUN bun install --frozen-lockfile --ignore-scripts || bun install --ignore-scripts
+# Install all dependencies
+RUN bun install --ignore-scripts
 
-# Copy source code
-COPY packages/db ./packages/db
-COPY packages/config ./packages/config
-COPY packages/shared ./packages/shared
-COPY packages/sdk ./packages/sdk
-COPY packages/types ./packages/types
-COPY apps/autocrat ./apps/autocrat
-COPY tsconfig.json ./
-
-# Build
-WORKDIR /app/apps/autocrat
-RUN bun run build
+# Copy source files
+COPY packages/ ./packages/
+COPY apps/autocrat/ ./apps/autocrat/
+COPY apps/dws/ ./apps/dws/
+COPY tsconfig.json tsconfig.base.json ./
 
 # Production stage
-FROM oven/bun:1.1-alpine AS production
+FROM --platform=linux/amd64 oven/bun:1.3
 
 WORKDIR /app
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S autocrat -u 1001 -G nodejs
-
-# Copy built artifacts
+# Copy everything from builder
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages ./packages
-COPY --from=builder /app/apps/autocrat/dist ./apps/autocrat/dist
-COPY --from=builder /app/apps/autocrat/src ./apps/autocrat/src
-COPY --from=builder /app/apps/autocrat/package.json ./apps/autocrat/
-
-# Set ownership
-RUN chown -R autocrat:nodejs /app
-
-USER autocrat
+COPY --from=builder /app/apps/autocrat ./apps/autocrat
+COPY --from=builder /app/tsconfig.json ./
 
 WORKDIR /app/apps/autocrat
 
-# Expose ports (API: 4040, Web: 4042, Agent: 4041)
-EXPOSE 4040 4041 4042
+# Expose ports (API: 4040)
+EXPOSE 4040
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:4040/health || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+  CMD wget -q -O- http://localhost:4040/health || exit 1
 
-# Default command
-CMD ["bun", "run", "start"]
+# Set environment
+ENV NODE_ENV=production
+ENV PORT=4040
 
+# Run the API server directly
+CMD ["bun", "run", "api/index.ts"]
