@@ -24,13 +24,14 @@ import {
   CORE_PORTS,
   getDWSComputeUrl,
   getDwsApiUrl,
-  getSQLitBlockProducerUrl,
   getIpfsApiUrl,
   getLocalhostHost,
   getServiceUrl,
+  getSQLitBlockProducerUrl,
   getStorageApiEndpoint,
   INFRA_PORTS,
 } from '@jejunetwork/config'
+
 import type { Subprocess } from 'bun'
 import type { InfraStatus } from './schemas'
 import {

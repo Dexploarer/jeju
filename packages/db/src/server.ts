@@ -1,5 +1,5 @@
 /**
- * SQLit Server - SQLit-backed SQLit-compatible API
+ * SQLit Server - SQLite-backed SQLit-compatible API
  *
  * Provides a local development server that mimics the SQLit HTTP API.
  * Used by `jeju dev`, `jeju test`, and `jeju start` when Docker is unavailable.
@@ -11,7 +11,7 @@ import { Database } from 'bun:sqlite'
 import { existsSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { cors } from '@elysiajs/cors'
-import { getSQLitPort, getLocalhostHost } from '@jejunetwork/config'
+import { getLocalhostHost, getSQLitPort } from '@jejunetwork/config'
 import { Elysia, t } from 'elysia'
 
 const PORT = getSQLitPort()
@@ -308,7 +308,7 @@ const app = new Elysia()
 // Start server
 app.listen(PORT, () => {
   const host = getLocalhostHost()
-  console.log(`SQLit Server (SQLit-compat) running on http://${host}:${PORT}`)
+  console.log(`SQLit Server (SQLite-compat) running on http://${host}:${PORT}`)
   console.log(`  Data directory: ${DATA_DIR}`)
   console.log(`  Mode: local development`)
   console.log(`  Health: http://${host}:${PORT}/health`)

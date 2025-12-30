@@ -29,7 +29,6 @@
  */
 
 import {
-  getSQLitBlockProducerUrl,
   getIndexerGraphqlUrl,
   getIpfsApiUrl,
   getL1RpcUrl,
@@ -39,7 +38,9 @@ import {
   getRpcUrl,
   getServiceUrl,
   getSolanaRpcUrl,
+  getSQLitBlockProducerUrl,
 } from '@jejunetwork/config'
+
 import { z } from 'zod'
 
 // Infrastructure configuration from environment

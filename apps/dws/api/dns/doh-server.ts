@@ -317,7 +317,7 @@ export class DoHServer {
       // Get JNS contract addresses
       const jnsRegistry =
         this.config.jnsResolverAddress ||
-        (getContract('jns', 'jnsRegistry') as Address | undefined)
+        (getContract('jns', 'registry') as Address | undefined)
       const rpcUrl = this.config.rpcUrl || getRpcUrl()
 
       if (!jnsRegistry || !rpcUrl) {

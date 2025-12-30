@@ -13,7 +13,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
  * @dev Supports multiple database engines with unified provisioning, billing, and management
  *
  * Database Engines:
- * - SQLit: Distributed SQLit with edge replication
+ * - SQLit: Distributed SQLite with edge replication
  * - PostgreSQL: Managed PostgreSQL with read replicas
  * - (Future: MySQL, Redis, etc.)
  *

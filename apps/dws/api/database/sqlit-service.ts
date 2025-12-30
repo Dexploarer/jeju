@@ -1,6 +1,6 @@
 import {
-  getSQLitBlockProducerUrl,
   getLocalhostHost,
+  getSQLitBlockProducerUrl,
   INFRA_PORTS,
 } from '@jejunetwork/config'
 import type { Address } from 'viem'
@@ -13,7 +13,7 @@ import {
 
 // SQLIT service configuration
 const SQLIT_SERVICE_NAME = 'sqlit-primary'
-const SQLIT_HTTP_PORT = INFRA_PORTS.SQLIT.get()
+const SQLIT_HTTP_PORT = INFRA_PORTS.SQLit.get()
 
 // SQLIT service state
 let sqlitServiceInstance: ServiceInstance | null = null

@@ -8,7 +8,8 @@
 export { SQLitDatabaseAdapter } from './adapter'
 export {
   checkMigrationStatus,
-  SQLIT_SCHEMA,
   runSQLitMigrations,
+  SQLIT_SCHEMA,
 } from './migrations'
+
 export { sqlitDatabasePlugin } from './plugin'

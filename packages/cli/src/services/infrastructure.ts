@@ -6,11 +6,11 @@ import { join } from 'node:path'
 import {
   CORE_PORTS,
   getDWSUrl,
-  getSQLitBlockProducerUrl,
   getFarcasterHubUrl,
   getIpfsApiUrl,
   getL2RpcUrl,
   getLocalhostHost,
+  getSQLitBlockProducerUrl,
   INFRA_PORTS,
 } from '@jejunetwork/config'
 import { execa, type ResultPromise } from 'execa'
@@ -120,8 +120,8 @@ export class InfrastructureService {
       }
     }
 
-    // Fall back to SQLit-based SQLit server
-    logger.step('Starting SQLit SQLit server...')
+    // Fall back to SQLite-based SQLit server
+    logger.step('Starting SQLit server...')
 
     const serverPath = join(this.rootDir, 'packages/db/src/server.ts')
     if (!existsSync(serverPath)) {
@@ -143,7 +143,7 @@ export class InfrastructureService {
     for (let i = 0; i < 20; i++) {
       await this.sleep(250)
       if (await this.isSQLitRunning()) {
-        logger.success(`SQLit SQLit server running on port ${SQLIT_PORT}`)
+        logger.success(`SQLit server running on port ${SQLIT_PORT}`)
         logger.keyValue(
           '  API Endpoint',
           `http://${getLocalhostHost()}:${SQLIT_PORT}`,

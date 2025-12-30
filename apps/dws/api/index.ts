@@ -20,21 +20,22 @@ export {
   WorkflowEngine,
   type WorkflowEngineConfig,
 } from './ci/workflow-engine'
-export {
-  type Backup,
+export type {
+  Backup,
   CreateDatabaseSchema,
-  type DatabaseConfig,
-  type DatabaseEngine,
-  type DatabaseInstance,
-  type DatabasePlan,
-  type SQLitConnection,
+  DatabaseConfig,
+  DatabaseEngine,
+  DatabaseInstance,
+  DatabasePlan,
   getManagedDatabaseService,
   ManagedDatabaseService,
   type PostgresConnection,
   type Replica,
+  type SQLitConnection,
   UpdateDatabaseSchema,
   type UsageMetrics,
 } from './database/managed-service'
+
 export { createDatabaseRoutes } from './database/routes'
 // Git & Deployments
 export {

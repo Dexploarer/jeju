@@ -99,7 +99,7 @@ resource "aws_security_group" "sqlit" {
     to_port     = 4001
     protocol    = "tcp"
     cidr_blocks = var.allowed_cidr_blocks
-    description = "SQLit SQLit port"
+    description = "SQLit port"
   }
 
   # HTTP API

@@ -20,7 +20,7 @@ import { type IAgentRuntime, logger, type Plugin } from '@elizaos/core'
 import { getSQLitDatabaseId } from '@jejunetwork/config'
 import { getSQLit } from '@jejunetwork/db'
 import { SQLitDatabaseAdapter } from './adapter'
-import { checkMigrationStatus, runSQLitMigrations } from './migrations'
+import { checkMigrationStatus, } from './migrations'
 
 /**
  * Create a SQLit database adapter for the given agent

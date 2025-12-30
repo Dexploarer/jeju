@@ -852,23 +852,32 @@ export const ModerationProviderConfigSchema = z.object({
   contentTypes: z.array(z.string()),
   categories: z.array(z.string()),
   envKey: z.string().optional(),
-  envKeys: z.record(z.string()).optional(),
+  envKeys: z.record(z.string(), z.string()).optional(),
   defaultRegion: z.string().optional(),
-  sources: z.record(z.object({
-    provider: z.string(),
-    envKey: z.string(),
-    refreshIntervalMs: z.number().int().positive(),
-  })).optional(),
+  sources: z
+    .record(
+      z.string(),
+      z.object({
+        provider: z.string(),
+        envKey: z.string(),
+        refreshIntervalMs: z.number().int().positive(),
+      }),
+    )
+    .optional(),
   pricing: ModerationPricingSchema,
 })
-export type ModerationProviderConfig = z.infer<typeof ModerationProviderConfigSchema>
+export type ModerationProviderConfig = z.infer<
+  typeof ModerationProviderConfigSchema
+>
 
 /** Moderation environment configuration */
 export const ModerationEnvironmentConfigSchema = z.object({
   providers: z.array(z.string()),
   strictMode: z.boolean(),
 })
-export type ModerationEnvironmentConfig = z.infer<typeof ModerationEnvironmentConfigSchema>
+export type ModerationEnvironmentConfig = z.infer<
+  typeof ModerationEnvironmentConfigSchema
+>
 
 /** Moderation reputation configuration */
 const ModerationReputationSchema = z.object({
@@ -876,7 +885,7 @@ const ModerationReputationSchema = z.object({
   reducedScanningLevel: z.string(),
   successesForBackoff: z.number().int().positive(),
   neverBypass: z.array(z.string()),
-  backoffSchedule: z.record(z.number()),
+  backoffSchedule: z.record(z.string(), z.number()),
 })
 
 /** Moderation TEE configuration */
@@ -900,13 +909,13 @@ export const ModerationConfigSchema = z.object({
   version: z.string(),
   lastUpdated: z.string(),
   description: z.string(),
-  providers: z.record(ModerationProviderConfigSchema),
-  thresholds: z.record(z.number()),
-  actions: z.record(z.string()),
+  providers: z.record(z.string(), ModerationProviderConfigSchema),
+  thresholds: z.record(z.string(), z.number()),
+  actions: z.record(z.string(), z.string()),
   reputation: ModerationReputationSchema,
   tee: ModerationTeeSchema,
   queue: ModerationQueueSchema,
-  environments: z.record(ModerationEnvironmentConfigSchema),
+  environments: z.record(z.string(), ModerationEnvironmentConfigSchema),
 })
 export type ModerationConfig = z.infer<typeof ModerationConfigSchema>
 

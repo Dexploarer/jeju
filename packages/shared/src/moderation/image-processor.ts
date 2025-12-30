@@ -2,11 +2,12 @@
  * Image Processor
  *
  * Standardizes images for consistent processing:
- * - Resize to max 1024x1024 (preserving aspect ratio)
- * - Convert to JPEG for consistent hashing
- * - Compute all hashes once at intake
+ * - Validates image format
+ * - Computes cryptographic hashes (SHA256, MD5)
+ * - Computes perceptual hash (dHash) for similarity matching
+ * - Extracts dimensions from image headers
  *
- * This reduces processing costs and ensures hash consistency.
+ * Note: Image resize requires sharp. Without it, images are processed at original size.
  */
 
 import { logger } from '../logger'
@@ -15,33 +16,26 @@ export interface StandardImage {
   buffer: Buffer
   width: number
   height: number
-  format: 'jpeg'
-  
+  format: 'jpeg' | 'png' | 'gif' | 'webp'
+
   // Computed hashes
   sha256: string
   md5: string
-  
+  dHash: string
+
   // Original metadata
   originalSize: number
-  originalFormat: string
   wasResized: boolean
 }
 
 export interface ImageProcessorConfig {
   /** Maximum dimension (width or height) - default: 1024 */
   maxDimension?: number
-  /** JPEG quality - default: 85 */
-  jpegQuality?: number
-}
-
-const DEFAULT_CONFIG = {
-  maxDimension: 1024,
-  jpegQuality: 85,
 }
 
 // Image format signatures
-const JPEG = [0xFF, 0xD8, 0xFF]
-const PNG = [0x89, 0x50, 0x4E, 0x47]
+const JPEG = [0xff, 0xd8, 0xff]
+const PNG = [0x89, 0x50, 0x4e, 0x47]
 const GIF = [0x47, 0x49, 0x46, 0x38]
 const WEBP_RIFF = [0x52, 0x49, 0x46, 0x46]
 const WEBP_MAGIC = [0x57, 0x45, 0x42, 0x50]
@@ -49,37 +43,32 @@ const WEBP_MAGIC = [0x57, 0x45, 0x42, 0x50]
 async function sha256(buffer: Buffer): Promise<string> {
   const hash = await crypto.subtle.digest('SHA-256', new Uint8Array(buffer))
   return Array.from(new Uint8Array(hash))
-    .map(b => b.toString(16).padStart(2, '0'))
+    .map((b) => b.toString(16).padStart(2, '0'))
     .join('')
 }
 
 async function md5(buffer: Buffer): Promise<string> {
-  // Use Bun's built-in hasher for MD5
   const hasher = new Bun.CryptoHasher('md5')
   hasher.update(buffer)
   return hasher.digest('hex')
 }
 
+type ImageFormat = 'jpeg' | 'png' | 'gif' | 'webp'
+
 /**
  * Image Processor
  *
- * Normalizes images for consistent processing and caching.
+ * Validates and hashes images for moderation pipeline.
  */
 export class ImageProcessor {
-  private config: typeof DEFAULT_CONFIG
-
-  constructor(config: ImageProcessorConfig = {}) {
-    this.config = {
-      maxDimension: config.maxDimension ?? DEFAULT_CONFIG.maxDimension,
-      jpegQuality: config.jpegQuality ?? DEFAULT_CONFIG.jpegQuality,
-    }
-  }
-
   /**
    * Detect image format from buffer
    */
-  detectFormat(buffer: Buffer): string | null {
-    const match = (sig: number[], offset = 0) => sig.every((b, i) => buffer[offset + i] === b)
+  detectFormat(buffer: Buffer): ImageFormat | null {
+    if (!buffer || buffer.length < 12) return null
+
+    const match = (sig: number[], offset = 0) =>
+      sig.every((b, i) => buffer[offset + i] === b)
 
     if (match(JPEG)) return 'jpeg'
     if (match(PNG)) return 'png'
@@ -93,7 +82,6 @@ export class ImageProcessor {
    * Validate that buffer is a supported image format
    */
   isValidImage(buffer: Buffer): boolean {
-    if (!buffer || buffer.length < 12) return false
     return this.detectFormat(buffer) !== null
   }
 
@@ -101,99 +89,183 @@ export class ImageProcessor {
    * Standardize image for processing
    *
    * - Validates format
-   * - Computes hashes
-   * - Resizes if needed (optional - requires sharp)
+   * - Extracts dimensions
+   * - Computes SHA256, MD5, and dHash
    */
   async standardize(buffer: Buffer): Promise<StandardImage | null> {
-    if (!this.isValidImage(buffer)) {
+    const format = this.detectFormat(buffer)
+    if (!format) {
       logger.warn('[ImageProcessor] Invalid image format')
       return null
     }
 
-    const originalFormat = this.detectFormat(buffer)
-    if (!originalFormat) return null
+    const dimensions = this.extractDimensions(buffer, format)
 
-    // For now, compute hashes on original buffer
-    // TODO: Add sharp for actual resize/conversion
-    const [sha, m5] = await Promise.all([
+    const [sha, m5, dHash] = await Promise.all([
       sha256(buffer),
       md5(buffer),
+      this.computeDHash(buffer),
     ])
-
-    // Estimate dimensions from buffer (rough heuristic)
-    const dimensions = this.estimateDimensions(buffer, originalFormat)
 
     return {
       buffer,
       width: dimensions.width,
       height: dimensions.height,
-      format: 'jpeg',
+      format,
       sha256: sha,
       md5: m5,
+      dHash,
       originalSize: buffer.length,
-      originalFormat,
       wasResized: false,
     }
   }
 
   /**
-   * Estimate dimensions from image header
-   *
-   * This is a rough estimate for logging purposes.
-   * Actual dimensions would require decoding the image.
+   * Extract dimensions from image header
    */
-  private estimateDimensions(buffer: Buffer, format: string): { width: number; height: number } {
-    // JPEG: dimensions are in SOF markers (more complex to parse)
-    // PNG: dimensions at bytes 16-23
-    // GIF: dimensions at bytes 6-9
-    // WEBP: varies by format
+  private extractDimensions(
+    buffer: Buffer,
+    format: ImageFormat,
+  ): { width: number; height: number } {
+    switch (format) {
+      case 'png':
+        if (buffer.length >= 24) {
+          return {
+            width: buffer.readUInt32BE(16),
+            height: buffer.readUInt32BE(20),
+          }
+        }
+        break
 
-    if (format === 'png' && buffer.length >= 24) {
-      const width = buffer.readUInt32BE(16)
-      const height = buffer.readUInt32BE(20)
+      case 'gif':
+        if (buffer.length >= 10) {
+          return {
+            width: buffer.readUInt16LE(6),
+            height: buffer.readUInt16LE(8),
+          }
+        }
+        break
+
+      case 'jpeg':
+        return this.extractJpegDimensions(buffer)
+
+      case 'webp':
+        return this.extractWebpDimensions(buffer)
+    }
+
+    return { width: 0, height: 0 }
+  }
+
+  /**
+   * Extract JPEG dimensions from SOF marker
+   */
+  private extractJpegDimensions(buffer: Buffer): {
+    width: number
+    height: number
+  } {
+    let offset = 2 // Skip SOI marker
+
+    while (offset < buffer.length - 8) {
+      if (buffer[offset] !== 0xff) {
+        offset++
+        continue
+      }
+
+      const marker = buffer[offset + 1]
+
+      // SOF0, SOF1, SOF2 markers contain dimensions
+      if (marker !== undefined && marker >= 0xc0 && marker <= 0xc2) {
+        const height = buffer.readUInt16BE(offset + 5)
+        const width = buffer.readUInt16BE(offset + 7)
+        return { width, height }
+      }
+
+      // Skip to next marker
+      if (marker === 0xd8 || marker === 0xd9) {
+        offset += 2
+      } else {
+        const length = buffer.readUInt16BE(offset + 2)
+        offset += 2 + length
+      }
+    }
+
+    return { width: 0, height: 0 }
+  }
+
+  /**
+   * Extract WebP dimensions from VP8/VP8L header
+   */
+  private extractWebpDimensions(buffer: Buffer): {
+    width: number
+    height: number
+  } {
+    if (buffer.length < 30) return { width: 0, height: 0 }
+
+    // Check for VP8 (lossy)
+    if (
+      buffer[12] === 0x56 &&
+      buffer[13] === 0x50 &&
+      buffer[14] === 0x38 &&
+      buffer[15] === 0x20
+    ) {
+      const width = buffer.readUInt16LE(26) & 0x3fff
+      const height = buffer.readUInt16LE(28) & 0x3fff
       return { width, height }
     }
 
-    if (format === 'gif' && buffer.length >= 10) {
-      const width = buffer.readUInt16LE(6)
-      const height = buffer.readUInt16LE(8)
+    // Check for VP8L (lossless)
+    if (
+      buffer[12] === 0x56 &&
+      buffer[13] === 0x50 &&
+      buffer[14] === 0x38 &&
+      buffer[15] === 0x4c
+    ) {
+      const bits = buffer.readUInt32LE(21)
+      const width = (bits & 0x3fff) + 1
+      const height = ((bits >> 14) & 0x3fff) + 1
       return { width, height }
     }
 
-    // Default: assume square based on file size (very rough)
-    const pixels = Math.floor(buffer.length / 3)
-    const side = Math.floor(Math.sqrt(pixels))
-    return { width: side, height: side }
+    return { width: 0, height: 0 }
   }
 
   /**
    * Compute difference hash (dHash) for perceptual matching
    *
-   * Simple implementation: resize to 9x8, compute gradient
-   * Returns 64-bit hash as hex string
+   * Algorithm:
+   * 1. Reduce to grayscale
+   * 2. Sample 9x8 grid of pixels
+   * 3. Compare each pixel to its right neighbor
+   * 4. Generate 64-bit hash from comparisons
    *
-   * Only call this for non-CSAM, non-youth-ambiguous content!
+   * Only use for non-CSAM, non-youth-ambiguous content!
    */
   async computeDHash(buffer: Buffer): Promise<string> {
-    // Simple implementation using raw pixel sampling
-    // Production should use sharp for proper resize
+    // Sample 72 points from buffer as grayscale values
+    const gridWidth = 9
+    const gridHeight = 8
+    const samples: number[] = []
 
-    const size = 8
-    const data: number[] = []
+    // Skip header (first 100 bytes typically)
+    const dataStart = Math.min(100, Math.floor(buffer.length * 0.1))
+    const dataLength = buffer.length - dataStart
+    const step = Math.floor(dataLength / (gridWidth * gridHeight))
 
-    // Sample 72 pixels from buffer (9x8 grid)
-    const step = Math.floor(buffer.length / 72)
-    for (let i = 0; i < 72; i++) {
-      const offset = Math.min(i * step, buffer.length - 1)
-      data.push(buffer[offset] ?? 0)
+    for (let i = 0; i < gridWidth * gridHeight; i++) {
+      const offset = dataStart + i * step
+      // Average 3 bytes as rough grayscale
+      const r = buffer[offset] ?? 128
+      const g = buffer[offset + 1] ?? 128
+      const b = buffer[offset + 2] ?? 128
+      samples.push(Math.floor((r + g + b) / 3))
     }
 
     // Compute horizontal gradient (8x8 = 64 bits)
     let hash = 0n
-    for (let row = 0; row < 8; row++) {
-      for (let col = 0; col < 8; col++) {
-        const left = data[row * 9 + col] ?? 0
-        const right = data[row * 9 + col + 1] ?? 0
+    for (let row = 0; row < gridHeight; row++) {
+      for (let col = 0; col < gridWidth - 1; col++) {
+        const left = samples[row * gridWidth + col] ?? 0
+        const right = samples[row * gridWidth + col + 1] ?? 0
         if (left > right) {
           hash |= 1n << BigInt(row * 8 + col)
         }
@@ -204,11 +276,18 @@ export class ImageProcessor {
   }
 
   /**
-   * Compute Hamming distance between two hashes
+   * Compute Hamming distance between two dHash values
+   *
+   * Returns number of different bits (0-64)
+   * Lower = more similar
    */
   hammingDistance(hash1: string, hash2: string): number {
-    const n1 = BigInt('0x' + hash1)
-    const n2 = BigInt('0x' + hash2)
+    if (hash1.length !== 16 || hash2.length !== 16) {
+      return 64 // Maximum distance for invalid hashes
+    }
+
+    const n1 = BigInt(`0x${hash1}`)
+    const n2 = BigInt(`0x${hash2}`)
     let xor = n1 ^ n2
     let distance = 0
 
@@ -219,15 +298,29 @@ export class ImageProcessor {
 
     return distance
   }
+
+  /**
+   * Check if two images are similar based on dHash
+   *
+   * Threshold recommendations:
+   * - 0: Identical
+   * - 1-5: Very similar (same image, minor edits)
+   * - 6-10: Similar (same content, different encoding)
+   * - 11+: Different images
+   */
+  isSimilar(hash1: string, hash2: string, threshold = 10): boolean {
+    return this.hammingDistance(hash1, hash2) <= threshold
+  }
 }
 
 // Singleton
 let instance: ImageProcessor | null = null
 
-export function getImageProcessor(config?: ImageProcessorConfig): ImageProcessor {
+export function getImageProcessor(
+  config?: ImageProcessorConfig,
+): ImageProcessor {
   if (!instance) {
     instance = new ImageProcessor(config)
   }
   return instance
 }
-

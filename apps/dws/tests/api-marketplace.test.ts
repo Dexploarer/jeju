@@ -13,11 +13,8 @@ import {
 } from './test-environment'
 
 // SQLit is required - will throw error with instructions if not available
-let SQLIT_AVAILABLE = false
-
 beforeAll(async () => {
   const env = await detectEnvironment()
-  SQLIT_AVAILABLE = env.sqlit
   requireDependency('SQLit', env.sqlit, SETUP_INSTRUCTIONS.sqlit)
 })
 

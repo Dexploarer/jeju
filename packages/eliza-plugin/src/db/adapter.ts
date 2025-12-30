@@ -33,11 +33,12 @@ import {
 } from '@elizaos/core'
 import { getSQLitDatabaseId } from '@jejunetwork/config'
 import {
-  type SQLitClient,
   getSQLit,
   type QueryParam,
   serializeFloat32Vector,
+  type SQLitClient,
 } from '@jejunetwork/db'
+
 import type { JsonRecord, JsonValue } from '@jejunetwork/types'
 import { v4 as uuidv4 } from 'uuid'
 import type { ZodType } from 'zod'
