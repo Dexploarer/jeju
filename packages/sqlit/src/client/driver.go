@@ -135,7 +135,22 @@ func Init(configFile string, masterKey []byte) (err error) {
 	}
 
 	route.InitKMS(conf.GConf.PubKeyStoreFile)
-	kms.InitBP() // Initialize BP info from config
+
+	// Initialize BP info - find first Leader/Follower node from config
+	if conf.GConf.KnownNodes != nil {
+		for _, n := range conf.GConf.KnownNodes {
+			if n.Role == proto.Leader || n.Role == proto.Follower {
+				conf.GConf.BP = &conf.BPInfo{
+					PublicKey: n.PublicKey,
+					NodeID:    n.ID,
+					Nonce:     n.Nonce,
+				}
+				break
+			}
+		}
+	}
+	kms.InitBP() // Initialize BP struct from conf.GConf.BP
+
 	if err = kms.InitLocalKeyPair(conf.GConf.PrivateKeyFile, masterKey); err != nil {
 		return
 	}
