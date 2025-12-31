@@ -5,7 +5,7 @@
 import './init'
 
 import { ZERO_ADDRESS } from '@jejunetwork/types'
-import { type Store, TypeormDatabase } from '@subsquid/typeorm-store'
+import { type Store } from '@subsquid/typeorm-store'
 import {
   Account,
   Block as BlockEntity,
@@ -44,35 +44,16 @@ import { processOIFEvents } from './oif-processor'
 import { processOracleEvents } from './oracle-processor'
 import { type ProcessorContext, processor } from './processor'
 import { processRegistryEvents } from './registry-game-processor'
+import { SQLitDatabase } from './sqlit-database'
 import { processStorageEvents } from './storage-processor'
-import { getDataSource } from './utils/db'
-import { getSQLitSync } from './utils/sqlit-sync'
 
-const sqlitSync = getSQLitSync()
-let sqlitInitialized = false
+const SQLIT_DATABASE_ID = config.sqlitDatabaseId || 'indexer-testnet'
+
+console.log(`[Indexer] Using SQLit database: ${SQLIT_DATABASE_ID}`)
 
 processor.run(
-  new TypeormDatabase({ supportHotBlocks: true }),
+  new SQLitDatabase({ databaseId: SQLIT_DATABASE_ID }),
   async (ctx: ProcessorContext<Store>) => {
-    if (
-      ctx.blocks.length > 0 &&
-      !sqlitInitialized &&
-      !sqlitSync.getStats().running
-    ) {
-      sqlitInitialized = true
-      getDataSource()
-        .then((dataSource) => {
-          if (!dataSource) throw new Error('DataSource not available')
-          return sqlitSync.initialize(dataSource)
-        })
-        .then(() => sqlitSync.start())
-        .catch((err: Error) => {
-          ctx.log.error(
-            `SQLit sync initialization failed: ${err.message}. Continuing without decentralized reads.`,
-          )
-          sqlitInitialized = false
-        })
-    }
     const blocks: BlockEntity[] = []
     const transactions: TransactionEntity[] = []
     const logs: LogEntity[] = []

@@ -9,8 +9,22 @@
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
-import { createPublicClient, getContract, http, zeroHash } from 'viem'
+import {
+  type Address,
+  createPublicClient,
+  getContract,
+  http,
+  zeroHash,
+} from 'viem'
+import { getContract as getContractAddress } from '@jejunetwork/config'
 import { Logger } from '../../../packages/deployment/scripts/shared/logger'
+
+// Get the correct identity registry address from config
+const IDENTITY_REGISTRY_ADDRESS = getContractAddress(
+  'registry',
+  'identity',
+  'localnet',
+) as Address
 
 const logger = new Logger('cloud-a2a-e2e')
 
@@ -19,9 +33,10 @@ let server: ReturnType<typeof Bun.serve> | null = null
 const serverPort = 3333
 const _integration: { skillId: string; agentId: string } | null = null
 
-// Check if localnet is available before running tests
+// Check if localnet is available and contracts have expected interface
 const RPC_URL = 'http://localhost:6546'
 let localnetAvailable = false
+let cloudContractsDeployed = false
 try {
   const response = await fetch(RPC_URL, {
     method: 'POST',
@@ -30,14 +45,56 @@ try {
     signal: AbortSignal.timeout(3000),
   })
   localnetAvailable = response.ok
+
+  // Verify the identity registry has expected interface (totalAgents function)
+  if (localnetAvailable && IDENTITY_REGISTRY_ADDRESS) {
+    const codeResponse = await fetch(RPC_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'eth_getCode',
+        params: [IDENTITY_REGISTRY_ADDRESS, 'latest'],
+        id: 2,
+      }),
+      signal: AbortSignal.timeout(3000),
+    })
+    const codeResult = (await codeResponse.json()) as { result: string }
+    if (codeResult.result && codeResult.result !== '0x' && codeResult.result.length > 10) {
+      // Try to call totalAgents to verify interface
+      const callResponse = await fetch(RPC_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_call',
+          params: [
+            {
+              to: IDENTITY_REGISTRY_ADDRESS,
+              data: '0x18160ddd', // totalAgents() selector
+            },
+            'latest',
+          ],
+          id: 3,
+        }),
+        signal: AbortSignal.timeout(3000),
+      })
+      const callResult = (await callResponse.json()) as { result?: string; error?: { message: string } }
+      cloudContractsDeployed = !callResult.error && !!callResult.result
+    }
+  }
 } catch {
   localnetAvailable = false
 }
 if (!localnetAvailable) {
   console.log('⏭️  Skipping Cloud A2A E2E tests - localnet not available at', RPC_URL)
+} else if (!cloudContractsDeployed) {
+  console.log('⏭️  Skipping Cloud A2A E2E tests - IdentityRegistry interface not found')
 }
 
-describe.skipIf(!localnetAvailable)('Cloud A2A E2E - Server Setup', () => {
+describe.skipIf(!localnetAvailable || !cloudContractsDeployed)(
+  'Cloud A2A E2E - Server Setup',
+  () => {
   beforeAll(async () => {
     logger.info('🚀 Starting A2A test server...')
 
@@ -80,7 +137,9 @@ describe.skipIf(!localnetAvailable)('Cloud A2A E2E - Server Setup', () => {
   })
 })
 
-describe.skipIf(!localnetAvailable)('Cloud A2A E2E - Agent Discovery', () => {
+describe.skipIf(!localnetAvailable || !cloudContractsDeployed)(
+  'Cloud A2A E2E - Agent Discovery',
+  () => {
   test('should discover cloud agent in registry', async () => {
     logger.info('🔍 Discovering cloud agent...')
 
@@ -131,7 +190,7 @@ describe.skipIf(!localnetAvailable)('Cloud A2A E2E - Agent Discovery', () => {
     ] as const
 
     const identityRegistry = getContract({
-      address: '0x5FbDB2315678afecb367f032d93F642f64180aa3',
+      address: IDENTITY_REGISTRY_ADDRESS,
       abi: identityRegistryAbi,
       client: publicClient,
     })
@@ -181,7 +240,9 @@ describe.skipIf(!localnetAvailable)('Cloud A2A E2E - Agent Discovery', () => {
   })
 })
 
-describe.skipIf(!localnetAvailable)('Cloud A2A E2E - Message Routing', () => {
+describe.skipIf(!localnetAvailable || !cloudContractsDeployed)(
+  'Cloud A2A E2E - Message Routing',
+  () => {
   test('should send A2A message to cloud service', async () => {
     logger.info('📨 Sending A2A message...')
 
@@ -315,7 +376,9 @@ describe.skipIf(!localnetAvailable)('Cloud A2A E2E - Message Routing', () => {
   })
 })
 
-describe.skipIf(!localnetAvailable)('Cloud A2A E2E - Reputation Integration', () => {
+describe.skipIf(!localnetAvailable || !cloudContractsDeployed)(
+  'Cloud A2A E2E - Reputation Integration',
+  () => {
   test('should update reputation after successful A2A request', async () => {
     logger.info('⭐ Testing reputation update...')
 

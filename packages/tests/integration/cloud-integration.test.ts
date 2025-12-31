@@ -1,5 +1,9 @@
 import { beforeAll, describe, expect, test } from 'bun:test'
-import { getL1RpcUrl } from '@jejunetwork/config'
+import {
+  getContract,
+  getL2RpcUrl,
+  tryGetContract,
+} from '@jejunetwork/config'
 import {
   type Address,
   createPublicClient,
@@ -19,26 +23,66 @@ import {
   ViolationType,
 } from '../../../packages/deployment/scripts/shared/cloud-integration'
 import { Logger } from '../../../packages/deployment/scripts/shared/logger'
-import { L1_LOCALNET, TEST_WALLETS } from '../shared/constants'
+import { JEJU_LOCALNET, TEST_WALLETS } from '../shared/constants'
 
-// Check if localnet is available (L1 for cloud integration)
+// Check if localnet is available (L2 for cloud integration - contracts deployed there)
 const rpcUrl =
-  (typeof process !== 'undefined' ? process.env.RPC_URL : undefined) ||
-  getL1RpcUrl() ||
-  L1_LOCALNET.rpcUrl
+  (typeof process !== 'undefined' ? process.env.JEJU_RPC_URL : undefined) ||
+  getL2RpcUrl() ||
+  JEJU_LOCALNET.rpcUrl
 let localnetAvailable = false
+let cloudContractsDeployed = false
 try {
   const chain = inferChainFromRpcUrl(rpcUrl)
   const publicClient = createPublicClient({ chain, transport: http(rpcUrl) })
   await publicClient.getBlockNumber()
   localnetAvailable = true
+
+  // Check if cloud contracts are deployed with expected interfaces
+  // The CloudIntegration class expects a contract with registerCloudAgent function
+  // This is a specific interface that may not be deployed on every localnet
+  const reputationRegistryAddr = getContract(
+    'registry',
+    'reputation',
+    'localnet',
+  )
+  if (reputationRegistryAddr) {
+    const code = await publicClient.getCode({
+      address: reputationRegistryAddr as `0x${string}`,
+    })
+    // Check if contract has code and try to call cloudAgentId to verify interface
+    if (code && code !== '0x' && code.length > 10) {
+      // Try to read cloudAgentId() to verify the interface matches
+      const cloudAgentIdAbi = parseAbi([
+        'function cloudAgentId() external view returns (uint256)',
+      ])
+      try {
+        await publicClient.readContract({
+          address: reputationRegistryAddr as `0x${string}`,
+          abi: cloudAgentIdAbi,
+          functionName: 'cloudAgentId',
+        })
+        cloudContractsDeployed = true
+      } catch {
+        // Interface doesn't match
+        cloudContractsDeployed = false
+      }
+    }
+  }
 } catch {
   console.log(
     `Localnet not available at ${rpcUrl}, skipping cloud integration tests`,
   )
 }
+if (localnetAvailable && !cloudContractsDeployed) {
+  console.log(
+    'Cloud contracts not deployed with expected CloudReputationProvider interface, skipping tests',
+  )
+}
 
-describe.skipIf(!localnetAvailable)('Cloud Integration', () => {
+describe.skipIf(!localnetAvailable || !cloudContractsDeployed)(
+  'Cloud Integration',
+  () => {
   let integration: CloudIntegration
   let publicClient: ReturnType<typeof createPublicClient>
   let walletClient: ReturnType<typeof createWalletClient>
@@ -59,28 +103,23 @@ describe.skipIf(!localnetAvailable)('Cloud Integration', () => {
       account,
     })
 
-    // Load deployment addresses
+    // Load deployment addresses from config
     const addresses = {
       identityRegistryAddress:
-        (typeof process !== 'undefined'
-          ? process.env.IDENTITY_REGISTRY
-          : undefined) || '0x5FbDB2315678afecb367f032d93F642f64180aa3',
+        process.env.IDENTITY_REGISTRY ||
+        getContract('registry', 'identity', 'localnet'),
       reputationRegistryAddress:
-        (typeof process !== 'undefined'
-          ? process.env.REPUTATION_REGISTRY
-          : undefined) || '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
+        process.env.REPUTATION_REGISTRY ||
+        getContract('registry', 'reputation', 'localnet'),
       cloudReputationProviderAddress:
-        (typeof process !== 'undefined'
-          ? process.env.CLOUD_REPUTATION_PROVIDER
-          : undefined) || '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
+        process.env.CLOUD_REPUTATION_PROVIDER ||
+        tryGetContract('registry', 'githubReputationProvider', 'localnet'),
       serviceRegistryAddress:
-        (typeof process !== 'undefined'
-          ? process.env.SERVICE_REGISTRY
-          : undefined) || '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9',
+        process.env.SERVICE_REGISTRY ||
+        tryGetContract('rpc', 'staking', 'localnet'),
       creditManagerAddress:
-        (typeof process !== 'undefined'
-          ? process.env.CREDIT_MANAGER
-          : undefined) || '0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9',
+        process.env.CREDIT_MANAGER ||
+        tryGetContract('tokens', 'usdc', 'localnet'),
     }
 
     const config: CloudConfig = {

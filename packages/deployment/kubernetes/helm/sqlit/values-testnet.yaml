@@ -1,8 +1,8 @@
 # SQLit Testnet Configuration
 # Decentralized SQL Database for DWS
 
-# 2-node mode for debugging
-replicaCount: 2
+# Single-node mode - multi-node identity verification failing
+replicaCount: 1
 
 image:
   # Use the ECR SQLit image for testnet
@@ -197,14 +197,6 @@ clusterNodes:
     nonceC: "0"
     nonceD: "0"
     role: "Leader"
-  - name: sqlit-1
-    nodeId: "00000061c823e12a6bfb95e3130b798347baf58dba370086f81628e48d8bcc6d"
-    publicKey: "030bc2bd089dffa577d25e5afe587e3ce76797cc831af63d98fb77fc3217cd6030"
-    nonceA: "10803944"
-    nonceB: "0"
-    nonceC: "4260857733"
-    nonceD: "0"
-    role: "Follower"
 
 # HTTP Adapter for DWS integration
 adapter:
