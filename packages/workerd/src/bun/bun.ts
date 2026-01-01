@@ -1,14 +1,46 @@
+// Copyright (c) 2024 Jeju Network
 // Bun Runtime Compatibility Layer for Workerd
+// Licensed under the Apache 2.0 license
 
-import { ERR_FS_FILE_NOT_FOUND, ERR_WORKERD_UNAVAILABLE } from 'bun-internal:errors'
+/**
+ * Bun Runtime for Workerd
+ *
+ * This module provides Bun-compatible APIs for running Bun applications
+ * on workerd/Cloudflare Workers infrastructure.
+ *
+ * Implemented APIs:
+ * - Bun.file() - File handling
+ * - Bun.write() - File writing
+ * - Bun.serve() - HTTP server (maps to fetch handler)
+ * - Bun.env - Environment variables
+ * - Bun.version - Version info
+ * - Bun.hash() - Hashing utilities
+ * - Bun.sleep() / Bun.sleepSync() - Sleep utilities
+ * - Bun.escapeHTML() - HTML escaping
+ * - Bun.stringWidth() - String width calculation
+ * - Bun.deepEquals() - Deep equality
+ * - Bun.inspect() - Object inspection
+ * - Bun.nanoseconds() - High-precision time
+ * - Bun.ArrayBufferSink - Buffer sink
+ * - Bun.readableStreamTo*() - Stream utilities
+ */
+
+import {
+  ERR_FS_FILE_NOT_FOUND,
+  ERR_WORKERD_UNAVAILABLE,
+} from 'bun-internal:errors'
 import { isArrayBuffer, isString, isUint8Array } from 'bun-internal:types'
 
+// =============================================================================
 // Types
+// =============================================================================
+
 export interface BunFile {
   readonly size: number
   readonly type: string
   readonly name: string
   readonly lastModified: number
+
   text(): Promise<string>
   json<T = unknown>(): Promise<T>
   arrayBuffer(): Promise<ArrayBuffer>
@@ -82,11 +114,18 @@ export type HashAlgorithm =
   | 'murmur32v3'
   | 'murmur64v2'
 
-// Virtual filesystem storage
+// =============================================================================
+// Internal Storage
+// =============================================================================
+
+// In-memory file storage for workerd environment (no real filesystem)
 const fileStorage = new Map<string, Uint8Array>()
 const fileMetadata = new Map<string, { type: string; lastModified: number }>()
 
-// BunFile implementation
+// =============================================================================
+// BunFile Implementation
+// =============================================================================
+
 class BunFileImpl implements BunFile {
   private readonly path: string
   private readonly _type: string
@@ -97,38 +136,49 @@ class BunFileImpl implements BunFile {
   }
 
   get size(): number {
-    return fileStorage.get(this.path)?.byteLength ?? 0
+    const data = fileStorage.get(this.path)
+    return data?.byteLength ?? 0
   }
 
   get type(): string {
-    return fileMetadata.get(this.path)?.type ?? this._type
+    const meta = fileMetadata.get(this.path)
+    return meta?.type ?? this._type
   }
 
   get name(): string {
+    // Bun's BunFile.name returns the full path, not just the filename
     return this.path
   }
 
   get lastModified(): number {
-    return fileMetadata.get(this.path)?.lastModified ?? Date.now()
+    const meta = fileMetadata.get(this.path)
+    return meta?.lastModified ?? Date.now()
   }
 
   async text(): Promise<string> {
     const data = fileStorage.get(this.path)
-    if (!data) throw new ERR_FS_FILE_NOT_FOUND(this.path)
+    if (!data) {
+      throw new ERR_FS_FILE_NOT_FOUND(this.path)
+    }
     return new TextDecoder().decode(data)
   }
 
   async json<T = unknown>(): Promise<T> {
-    return JSON.parse(await this.text()) as T
+    const text = await this.text()
+    return JSON.parse(text) as T
   }
 
   async arrayBuffer(): Promise<ArrayBuffer> {
     const data = fileStorage.get(this.path)
-    if (!data) throw new ERR_FS_FILE_NOT_FOUND(this.path)
+    if (!data) {
+      throw new ERR_FS_FILE_NOT_FOUND(this.path)
+    }
+    // Use ArrayBuffer.prototype.slice to ensure we get an ArrayBuffer
     const ab = data.buffer
     if (ab instanceof ArrayBuffer) {
       return ab.slice(data.byteOffset, data.byteOffset + data.byteLength)
     }
+    // For SharedArrayBuffer, create a copy as ArrayBuffer
     const copy = new ArrayBuffer(data.byteLength)
     new Uint8Array(copy).set(data)
     return copy
@@ -136,13 +186,17 @@ class BunFileImpl implements BunFile {
 
   async bytes(): Promise<Uint8Array> {
     const data = fileStorage.get(this.path)
-    if (!data) throw new ERR_FS_FILE_NOT_FOUND(this.path)
+    if (!data) {
+      throw new ERR_FS_FILE_NOT_FOUND(this.path)
+    }
     return new Uint8Array(data)
   }
 
   stream(): ReadableStream<Uint8Array> {
     const data = fileStorage.get(this.path)
-    if (!data) throw new ERR_FS_FILE_NOT_FOUND(this.path)
+    if (!data) {
+      throw new ERR_FS_FILE_NOT_FOUND(this.path)
+    }
     return new ReadableStream({
       start(controller) {
         controller.enqueue(data)
@@ -153,7 +207,9 @@ class BunFileImpl implements BunFile {
 
   slice(start?: number, end?: number, type?: string): BunFile {
     const data = fileStorage.get(this.path)
-    if (!data) return new BunFileImpl(this.path, { type: type ?? this._type })
+    if (!data) {
+      return new BunFileImpl(this.path, { type: type ?? this._type })
+    }
     const sliced = data.slice(start, end)
     const slicePath = `${this.path}#slice(${start},${end})`
     fileStorage.set(slicePath, sliced)
@@ -170,16 +226,19 @@ class BunFileImpl implements BunFile {
 
     return {
       write(data: string | ArrayBuffer | Uint8Array): number {
-        const bytes =
-          typeof data === 'string'
-            ? new TextEncoder().encode(data)
-            : data instanceof ArrayBuffer
-              ? new Uint8Array(data)
-              : data
+        let bytes: Uint8Array
+        if (typeof data === 'string') {
+          bytes = new TextEncoder().encode(data)
+        } else if (data instanceof ArrayBuffer) {
+          bytes = new Uint8Array(data)
+        } else {
+          bytes = data
+        }
         chunks.push(bytes)
         return bytes.byteLength
       },
       flush(): void {
+        // Merge all chunks
         const totalLength = chunks.reduce((sum, c) => sum + c.byteLength, 0)
         const result = new Uint8Array(totalLength)
         let offset = 0
@@ -188,7 +247,10 @@ class BunFileImpl implements BunFile {
           offset += chunk.byteLength
         }
         fileStorage.set(path, result)
-        fileMetadata.set(path, { type: 'application/octet-stream', lastModified: Date.now() })
+        fileMetadata.set(path, {
+          type: 'application/octet-stream',
+          lastModified: Date.now(),
+        })
       },
       end(): void {
         this.flush()
@@ -198,11 +260,20 @@ class BunFileImpl implements BunFile {
   }
 }
 
-// File operations
+// =============================================================================
+// Core Bun Functions
+// =============================================================================
+
+/**
+ * Create a BunFile reference
+ */
 export function file(path: string | URL, options?: { type?: string }): BunFile {
   return new BunFileImpl(path, options)
 }
 
+/**
+ * Write data to a file
+ */
 export async function write(
   destination: string | URL | BunFile,
   data: string | ArrayBuffer | Uint8Array | Blob | Response | BunFile,
@@ -214,6 +285,7 @@ export async function write(
       : destination.name
 
   let bytes: Uint8Array
+
   if (isString(data)) {
     bytes = new TextEncoder().encode(data)
   } else if (isArrayBuffer(data)) {
@@ -225,19 +297,31 @@ export async function write(
   } else if (data instanceof Response) {
     bytes = new Uint8Array(await data.arrayBuffer())
   } else {
+    // BunFile
     bytes = await data.bytes()
   }
 
   fileStorage.set(path, bytes)
-  fileMetadata.set(path, { type: 'application/octet-stream', lastModified: Date.now() })
+  fileMetadata.set(path, {
+    type: 'application/octet-stream',
+    lastModified: Date.now(),
+  })
+
   return bytes.byteLength
 }
 
-// Server
+/**
+ * Serve HTTP requests
+ *
+ * In workerd, this is a compatibility shim - actual serving is handled
+ * by the workerd fetch handler. This function stores the configuration
+ * and returns a mock Server object.
+ */
 let currentServeOptions: ServeOptions | null = null
 
 export function serve(options: ServeOptions): Server {
   currentServeOptions = options
+
   const port = options.port ?? 3000
   const hostname = options.hostname ?? 'localhost'
 
@@ -255,7 +339,9 @@ export function serve(options: ServeOptions): Server {
       currentServeOptions = { ...currentServeOptions!, ...newOptions }
     },
     async fetch(request: Request): Promise<Response> {
-      if (!currentServeOptions) throw new Error('Server is not running')
+      if (!currentServeOptions) {
+        throw new Error('Server is not running')
+      }
       try {
         return await currentServeOptions.fetch(request)
       } catch (error) {
@@ -268,57 +354,135 @@ export function serve(options: ServeOptions): Server {
   }
 }
 
+/**
+ * Get the current serve options (for workerd integration)
+ */
 export function getServeHandler(): ServeOptions | null {
   return currentServeOptions
 }
 
-// Environment - simplified proxy
-type ProcessEnv = { env?: Record<string, string> }
-const getProcess = (): ProcessEnv | undefined =>
-  (globalThis as Record<string, unknown>).process as ProcessEnv | undefined
+// =============================================================================
+// Environment
+// =============================================================================
 
-export const env: Record<string, string | undefined> = new Proxy({} as Record<string, string | undefined>, {
-  get(_, prop: string) {
-    return getProcess()?.env?.[prop]
+/**
+ * Environment variables (proxied to globalThis.process.env if available)
+ */
+export const env: Record<string, string | undefined> = new Proxy(
+  {},
+  {
+    get(_target, prop: string): string | undefined {
+      // Try process.env first
+      if (typeof globalThis !== 'undefined') {
+        const proc = (globalThis as Record<string, unknown>).process as
+          | { env?: Record<string, string> }
+          | undefined
+        if (proc?.env) {
+          return proc.env[prop]
+        }
+      }
+      return undefined
+    },
+    set(_target, prop: string, value: string): boolean {
+      if (typeof globalThis !== 'undefined') {
+        const proc = (globalThis as Record<string, unknown>).process as
+          | { env?: Record<string, string> }
+          | undefined
+        if (proc?.env) {
+          proc.env[prop] = value
+        }
+      }
+      return true
+    },
+    has(_target, prop: string): boolean {
+      if (typeof globalThis !== 'undefined') {
+        const proc = (globalThis as Record<string, unknown>).process as
+          | { env?: Record<string, string> }
+          | undefined
+        if (proc?.env) {
+          return prop in proc.env
+        }
+      }
+      return false
+    },
+    ownKeys(): string[] {
+      if (typeof globalThis !== 'undefined') {
+        const proc = (globalThis as Record<string, unknown>).process as
+          | { env?: Record<string, string> }
+          | undefined
+        if (proc?.env) {
+          return Object.keys(proc.env)
+        }
+      }
+      return []
+    },
+    getOwnPropertyDescriptor(target, prop: string) {
+      const value = Reflect.get(target, prop)
+      if (value !== undefined) {
+        return {
+          enumerable: true,
+          configurable: true,
+          value,
+        }
+      }
+      // Check process.env
+      if (typeof globalThis !== 'undefined') {
+        const proc = (globalThis as Record<string, unknown>).process as
+          | { env?: Record<string, string> }
+          | undefined
+        if (proc?.env && prop in proc.env) {
+          return {
+            enumerable: true,
+            configurable: true,
+            value: proc.env[prop],
+          }
+        }
+      }
+      return undefined
+    },
   },
-  set(_, prop: string, value: string) {
-    const proc = getProcess()
-    if (proc?.env) proc.env[prop] = value
-    return true
-  },
-  has(_, prop: string) {
-    return prop in (getProcess()?.env ?? {})
-  },
-  ownKeys() {
-    return Object.keys(getProcess()?.env ?? {})
-  },
-  getOwnPropertyDescriptor(_, prop: string) {
-    const env = getProcess()?.env
-    if (env && prop in env) {
-      return { enumerable: true, configurable: true, value: env[prop] }
-    }
-    return undefined
-  },
-})
+)
 
-// Version
-export const version = '1.0.0-workerd'
+// =============================================================================
+// Version Info
+// =============================================================================
+
+export const version = '1.3.0' // Bun version we're compatible with
 export const revision = 'workerd-compat'
 
+// =============================================================================
 // Utilities
+// =============================================================================
+
+/**
+ * Sleep for a specified number of milliseconds
+ */
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+/**
+ * Synchronous sleep (blocks the event loop - use with caution)
+ * Note: In workerd, this uses a busy wait since true sync sleep isn't available
+ */
 export function sleepSync(ms: number): void {
   const end = Date.now() + ms
-  while (Date.now() < end) {}
+  while (Date.now() < end) {
+    // Busy wait - not ideal but necessary for sync behavior
+  }
 }
 
+/**
+ * Get high-precision time in nanoseconds
+ */
 export function nanoseconds(): bigint {
+  // Use performance.now() and convert to nanoseconds
   return BigInt(Math.floor(performance.now() * 1_000_000))
 }
 
+/**
+ * Escape HTML special characters
+ */
 export function escapeHTML(str: string): string {
   return str
     .replace(/&/g, '&amp;')
@@ -328,26 +492,37 @@ export function escapeHTML(str: string): string {
     .replace(/'/g, '&#039;')
 }
 
+/**
+ * Calculate the display width of a string (accounting for wide chars)
+ */
 export function stringWidth(str: string): number {
   let width = 0
   for (const char of str) {
     const code = char.codePointAt(0)!
-    const isWide =
-      (code >= 0x1100 && code <= 0x115f) ||
-      (code >= 0x2e80 && code <= 0xa4cf) ||
-      (code >= 0xac00 && code <= 0xd7a3) ||
-      (code >= 0xf900 && code <= 0xfaff) ||
-      (code >= 0xfe10 && code <= 0xfe1f) ||
-      (code >= 0xfe30 && code <= 0xfe6f) ||
-      (code >= 0xff00 && code <= 0xff60) ||
-      (code >= 0xffe0 && code <= 0xffe6) ||
-      (code >= 0x20000 && code <= 0x2fffd) ||
-      (code >= 0x30000 && code <= 0x3fffd)
-    width += isWide ? 2 : 1
+    // CJK characters and other wide characters
+    if (
+      (code >= 0x1100 && code <= 0x115f) || // Hangul Jamo
+      (code >= 0x2e80 && code <= 0xa4cf) || // CJK
+      (code >= 0xac00 && code <= 0xd7a3) || // Hangul Syllables
+      (code >= 0xf900 && code <= 0xfaff) || // CJK Compatibility
+      (code >= 0xfe10 && code <= 0xfe1f) || // Vertical forms
+      (code >= 0xfe30 && code <= 0xfe6f) || // CJK Compatibility Forms
+      (code >= 0xff00 && code <= 0xff60) || // Fullwidth Forms
+      (code >= 0xffe0 && code <= 0xffe6) || // Fullwidth Forms
+      (code >= 0x20000 && code <= 0x2fffd) || // CJK Extension B
+      (code >= 0x30000 && code <= 0x3fffd) // CJK Extension C
+    ) {
+      width += 2
+    } else {
+      width += 1
+    }
   }
   return width
 }
 
+/**
+ * Deep equality comparison
+ */
 export function deepEquals(a: unknown, b: unknown): boolean {
   if (a === b) return true
   if (typeof a !== typeof b) return false
@@ -363,6 +538,7 @@ export function deepEquals(a: unknown, b: unknown): boolean {
     const bObj = b as Record<string, unknown>
     const aKeys = Object.keys(aObj)
     const bKeys = Object.keys(bObj)
+
     if (aKeys.length !== bKeys.length) return false
     return aKeys.every((key) => key in bObj && deepEquals(aObj[key], bObj[key]))
   }
@@ -370,19 +546,35 @@ export function deepEquals(a: unknown, b: unknown): boolean {
   return false
 }
 
-export function inspect(obj: unknown, options?: { depth?: number; colors?: boolean }): string {
+/**
+ * Inspect an object (similar to Node's util.inspect)
+ */
+export function inspect(
+  obj: unknown,
+  options?: { depth?: number; colors?: boolean },
+): string {
   const depth = options?.depth ?? 2
   return inspectValue(obj, depth, new Set())
 }
 
-function inspectValue(value: unknown, depth: number, seen: Set<unknown>): string {
+function inspectValue(
+  value: unknown,
+  depth: number,
+  seen: Set<unknown>,
+): string {
   if (value === null) return 'null'
   if (value === undefined) return 'undefined'
 
   const type = typeof value
+
   if (type === 'string') return JSON.stringify(value)
-  if (type === 'number' || type === 'boolean' || type === 'bigint') return String(value)
-  if (type === 'function') return `[Function: ${(value as { name?: string }).name || 'anonymous'}]`
+  if (type === 'number' || type === 'boolean' || type === 'bigint') {
+    return String(value)
+  }
+  if (type === 'function') {
+    const fn = value as Function
+    return `[Function: ${fn.name || 'anonymous'}]`
+  }
   if (type === 'symbol') return value.toString()
 
   if (seen.has(value)) return '[Circular]'
@@ -397,13 +589,17 @@ function inspectValue(value: unknown, depth: number, seen: Set<unknown>): string
 
   if (value instanceof Date) return value.toISOString()
   if (value instanceof RegExp) return value.toString()
-  if (value instanceof Error) return `${value.name}: ${value.message}`
+  if (value instanceof Error) {
+    return `${value.name}: ${value.message}`
+  }
 
   if (type === 'object') {
     if (depth < 0) return '[Object]'
     seen.add(value)
     const obj = value as Record<string, unknown>
-    const entries = Object.entries(obj).map(([k, v]) => `${k}: ${inspectValue(v, depth - 1, seen)}`)
+    const entries = Object.entries(obj).map(
+      ([k, v]) => `${k}: ${inspectValue(v, depth - 1, seen)}`,
+    )
     seen.delete(value)
     return `{ ${entries.join(', ')} }`
   }
@@ -411,15 +607,26 @@ function inspectValue(value: unknown, depth: number, seen: Set<unknown>): string
   return String(value)
 }
 
+// =============================================================================
 // Hashing
-export function hash(data: string | ArrayBuffer | Uint8Array, algorithm?: HashAlgorithm): number | bigint {
+// =============================================================================
+
+/**
+ * Hash data using various algorithms
+ */
+export function hash(
+  data: string | ArrayBuffer | Uint8Array,
+  algorithm?: HashAlgorithm,
+): number | bigint {
   const bytes = isString(data)
     ? new TextEncoder().encode(data)
     : isArrayBuffer(data)
       ? new Uint8Array(data)
       : data
 
-  switch (algorithm ?? 'wyhash') {
+  const algo = algorithm ?? 'wyhash'
+
+  switch (algo) {
     case 'wyhash':
       return wyhash(bytes)
     case 'crc32':
@@ -434,14 +641,17 @@ export function hash(data: string | ArrayBuffer | Uint8Array, algorithm?: HashAl
       return murmur32v3(bytes)
     case 'murmur64v2':
       return murmur64v2(bytes)
+    default:
+      return wyhash(bytes)
   }
 }
 
+// Simple hash implementations
 function wyhash(data: Uint8Array, seed = 0): bigint {
   let h = BigInt(seed)
   for (let i = 0; i < data.length; i++) {
-    h = (h ^ BigInt(data[i])) * 0x9e3779b97f4a7c15n
-    h = h ^ (h >> 32n)
+    h = (h ^ BigInt(data[i])) * BigInt(0x9e3779b97f4a7c15n)
+    h = h ^ (h >> BigInt(32))
   }
   return h
 }
@@ -458,8 +668,8 @@ function crc32(data: Uint8Array): number {
 }
 
 function adler32(data: Uint8Array): number {
-  let a = 1,
-    b = 0
+  let a = 1
+  let b = 0
   const mod = 65521
   for (let i = 0; i < data.length; i++) {
     a = (a + data[i]) % mod
@@ -469,6 +679,7 @@ function adler32(data: Uint8Array): number {
 }
 
 function cityhash32(data: Uint8Array): number {
+  // Simplified CityHash32-like implementation
   let h = 0x811c9dc5
   for (let i = 0; i < data.length; i++) {
     h ^= data[i]
@@ -478,18 +689,18 @@ function cityhash32(data: Uint8Array): number {
 }
 
 function cityhash64(data: Uint8Array): bigint {
-  let h = 0xcbf29ce484222325n
+  let h = BigInt(0xcbf29ce484222325n)
   for (let i = 0; i < data.length; i++) {
     h ^= BigInt(data[i])
-    h *= 0x100000001b3n
+    h *= BigInt(0x100000001b3n)
   }
   return h
 }
 
 function murmur32v3(data: Uint8Array, seed = 0): number {
   let h = seed
-  const c1 = 0xcc9e2d51,
-    c2 = 0x1b873593
+  const c1 = 0xcc9e2d51
+  const c2 = 0x1b873593
 
   for (let i = 0; i < data.length; i += 4) {
     let k =
@@ -511,27 +722,30 @@ function murmur32v3(data: Uint8Array, seed = 0): number {
   h ^= h >>> 13
   h = Math.imul(h, 0xc2b2ae35)
   h ^= h >>> 16
+
   return h >>> 0
 }
 
 function murmur64v2(data: Uint8Array, seed = 0): bigint {
-  let h = BigInt(seed) ^ (BigInt(data.length) * 0xc6a4a7935bd1e995n)
-  const m = 0xc6a4a7935bd1e995n,
-    r = 47n
+  let h = BigInt(seed) ^ (BigInt(data.length) * BigInt(0xc6a4a7935bd1e995n))
+  const m = BigInt(0xc6a4a7935bd1e995n)
+  const r = BigInt(47)
 
   for (let i = 0; i < data.length - 7; i += 8) {
     let k =
       BigInt(data[i]) |
-      (BigInt(data[i + 1]) << 8n) |
-      (BigInt(data[i + 2]) << 16n) |
-      (BigInt(data[i + 3]) << 24n) |
-      (BigInt(data[i + 4]) << 32n) |
-      (BigInt(data[i + 5]) << 40n) |
-      (BigInt(data[i + 6]) << 48n) |
-      (BigInt(data[i + 7]) << 56n)
+      (BigInt(data[i + 1]) << BigInt(8)) |
+      (BigInt(data[i + 2]) << BigInt(16)) |
+      (BigInt(data[i + 3]) << BigInt(24)) |
+      (BigInt(data[i + 4]) << BigInt(32)) |
+      (BigInt(data[i + 5]) << BigInt(40)) |
+      (BigInt(data[i + 6]) << BigInt(48)) |
+      (BigInt(data[i + 7]) << BigInt(56))
+
     k *= m
     k ^= k >> r
     k *= m
+
     h ^= k
     h *= m
   }
@@ -539,61 +753,129 @@ function murmur64v2(data: Uint8Array, seed = 0): bigint {
   h ^= h >> r
   h *= m
   h ^= h >> r
+
   return h
 }
 
-// Password hashing (PBKDF2-based for workerd)
+/**
+ * Password hashing utilities
+ *
+ * WARNING: Real Bun uses bcrypt/argon2 for password hashing.
+ * In workerd, we use PBKDF2 with SHA-256 as a reasonable alternative.
+ * Hashes are NOT compatible with real Bun's password.hash().
+ */
 export const password = {
   async hash(
     password: string,
-    options?: { algorithm?: 'bcrypt' | 'argon2id' | 'argon2d' | 'argon2i'; cost?: number },
+    options?: {
+      algorithm?: 'bcrypt' | 'argon2id' | 'argon2d' | 'argon2i'
+      cost?: number
+    },
   ): Promise<string> {
     const algorithm = options?.algorithm ?? 'bcrypt'
     const cost = options?.cost ?? 10
 
-    const passwordData = new TextEncoder().encode(password)
-    const salt = crypto.getRandomValues(new Uint8Array(16))
-    const keyMaterial = await crypto.subtle.importKey('raw', passwordData, 'PBKDF2', false, ['deriveBits'])
-    const iterations = 2 ** cost * 100
+    // Use PBKDF2 as a workerd-compatible alternative
+    const encoder = new TextEncoder()
+    const passwordData = encoder.encode(password)
 
+    // Generate a random salt
+    const salt = crypto.getRandomValues(new Uint8Array(16))
+
+    // Import password as key material
+    const keyMaterial = await crypto.subtle.importKey(
+      'raw',
+      passwordData,
+      'PBKDF2',
+      false,
+      ['deriveBits'],
+    )
+
+    // Derive key using PBKDF2
+    const iterations = 2 ** cost * 100
     const derivedBits = await crypto.subtle.deriveBits(
-      { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
+      {
+        name: 'PBKDF2',
+        salt,
+        iterations,
+        hash: 'SHA-256',
+      },
       keyMaterial,
       256,
     )
 
-    const toHex = (arr: Uint8Array) => Array.from(arr).map((b) => b.toString(16).padStart(2, '0')).join('')
-    return `$workerd$${algorithm}$${cost}$${toHex(salt)}$${toHex(new Uint8Array(derivedBits))}`
+    // Combine salt + derived key
+    const hashArray = new Uint8Array(derivedBits)
+    const saltHex = Array.from(salt)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
+    const hashHex = Array.from(hashArray)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
+
+    // Return in format: $workerd$algorithm$cost$salt$hash
+    return `$workerd$${algorithm}$${cost}$${saltHex}$${hashHex}`
   },
 
   async verify(password: string, hash: string): Promise<boolean> {
+    // Parse the hash format
     if (!hash.startsWith('$workerd$')) {
-      const data = new TextEncoder().encode(password)
+      // Try to handle legacy hashes (plain SHA-256)
+      const encoder = new TextEncoder()
+      const data = encoder.encode(password)
       const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-      const computed = Array.from(new Uint8Array(hashBuffer)).map((b) => b.toString(16).padStart(2, '0')).join('')
+      const computed = Array.from(new Uint8Array(hashBuffer))
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('')
       return computed === hash
     }
 
     const parts = hash.split('$')
-    if (parts.length !== 6) return false
+    if (parts.length !== 6) {
+      return false
+    }
 
-    const [, , , costStr, saltHex, expectedHashHex] = parts
+    const [, , _algorithm, costStr, saltHex, expectedHashHex] = parts
     const cost = parseInt(costStr, 10)
-    const passwordData = new TextEncoder().encode(password)
-    const salt = new Uint8Array(saltHex.match(/.{2}/g)?.map((byte) => parseInt(byte, 16)) ?? [])
-    const keyMaterial = await crypto.subtle.importKey('raw', passwordData, 'PBKDF2', false, ['deriveBits'])
-    const iterations = 2 ** cost * 100
 
+    // Recreate the hash with the same parameters
+    const encoder = new TextEncoder()
+    const passwordData = encoder.encode(password)
+
+    // Parse salt from hex
+    const salt = new Uint8Array(
+      saltHex.match(/.{2}/g)?.map((byte) => parseInt(byte, 16)) ?? [],
+    )
+
+    const keyMaterial = await crypto.subtle.importKey(
+      'raw',
+      passwordData,
+      'PBKDF2',
+      false,
+      ['deriveBits'],
+    )
+
+    const iterations = 2 ** cost * 100
     const derivedBits = await crypto.subtle.deriveBits(
-      { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
+      {
+        name: 'PBKDF2',
+        salt,
+        iterations,
+        hash: 'SHA-256',
+      },
       keyMaterial,
       256,
     )
 
-    const computedHashHex = Array.from(new Uint8Array(derivedBits)).map((b) => b.toString(16).padStart(2, '0')).join('')
+    const computedHashHex = Array.from(new Uint8Array(derivedBits))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
 
     // Constant-time comparison
-    if (computedHashHex.length !== expectedHashHex.length) return false
+    if (computedHashHex.length !== expectedHashHex.length) {
+      return false
+    }
+
     let result = 0
     for (let i = 0; i < computedHashHex.length; i++) {
       result |= computedHashHex.charCodeAt(i) ^ expectedHashHex.charCodeAt(i)
@@ -602,8 +884,16 @@ export const password = {
   },
 }
 
-// Stream utilities
-export async function readableStreamToArray<T>(stream: ReadableStream<T>): Promise<T[]> {
+// =============================================================================
+// Stream Utilities
+// =============================================================================
+
+/**
+ * Convert a ReadableStream to an array of chunks
+ */
+export async function readableStreamToArray<T>(
+  stream: ReadableStream<T>,
+): Promise<T[]> {
   const reader = stream.getReader()
   const chunks: T[] = []
   while (true) {
@@ -614,13 +904,23 @@ export async function readableStreamToArray<T>(stream: ReadableStream<T>): Promi
   return chunks
 }
 
-export async function readableStreamToText(stream: ReadableStream<Uint8Array>): Promise<string> {
+/**
+ * Convert a ReadableStream to a string
+ */
+export async function readableStreamToText(
+  stream: ReadableStream<Uint8Array>,
+): Promise<string> {
   const chunks = await readableStreamToArray(stream)
   const decoder = new TextDecoder()
   return chunks.map((chunk) => decoder.decode(chunk, { stream: true })).join('')
 }
 
-export async function readableStreamToArrayBuffer(stream: ReadableStream<Uint8Array>): Promise<ArrayBuffer> {
+/**
+ * Convert a ReadableStream to an ArrayBuffer
+ */
+export async function readableStreamToArrayBuffer(
+  stream: ReadableStream<Uint8Array>,
+): Promise<ArrayBuffer> {
   const chunks = await readableStreamToArray(stream)
   const totalLength = chunks.reduce((sum, chunk) => sum + chunk.byteLength, 0)
   const result = new Uint8Array(totalLength)
@@ -632,26 +932,43 @@ export async function readableStreamToArrayBuffer(stream: ReadableStream<Uint8Ar
   return result.buffer
 }
 
-export async function readableStreamToBlob(stream: ReadableStream<Uint8Array>, type?: string): Promise<Blob> {
+/**
+ * Convert a ReadableStream to a Blob
+ */
+export async function readableStreamToBlob(
+  stream: ReadableStream<Uint8Array>,
+  type?: string,
+): Promise<Blob> {
   const buffer = await readableStreamToArrayBuffer(stream)
   return new Blob([buffer], { type })
 }
 
-export async function readableStreamToJSON<T = unknown>(stream: ReadableStream<Uint8Array>): Promise<T> {
-  return JSON.parse(await readableStreamToText(stream)) as T
+/**
+ * Convert a ReadableStream to JSON
+ */
+export async function readableStreamToJSON<T = unknown>(
+  stream: ReadableStream<Uint8Array>,
+): Promise<T> {
+  const text = await readableStreamToText(stream)
+  return JSON.parse(text) as T
 }
 
+// =============================================================================
 // ArrayBufferSink
+// =============================================================================
+
 export class ArrayBufferSink {
   private chunks: Uint8Array[] = []
 
   write(data: string | ArrayBuffer | Uint8Array): void {
-    const bytes =
-      typeof data === 'string'
-        ? new TextEncoder().encode(data)
-        : data instanceof ArrayBuffer
-          ? new Uint8Array(data)
-          : data
+    let bytes: Uint8Array
+    if (typeof data === 'string') {
+      bytes = new TextEncoder().encode(data)
+    } else if (data instanceof ArrayBuffer) {
+      bytes = new Uint8Array(data)
+    } else {
+      bytes = data
+    }
     this.chunks.push(bytes)
   }
 
@@ -667,60 +984,115 @@ export class ArrayBufferSink {
     return result.buffer
   }
 
-  flush(): void {}
+  flush(): void {
+    // No-op for ArrayBufferSink
+  }
 
   start(): void {
     this.chunks = []
   }
 }
 
-// DNS (unavailable)
+// =============================================================================
+// DNS
+// =============================================================================
+
 export const dns = {
-  async lookup(hostname: string): Promise<never> {
-    throw new ERR_WORKERD_UNAVAILABLE('Bun.dns.lookup', `DNS lookups for '${hostname}' not available`)
+  async lookup(
+    hostname: string,
+    _options?: { family?: 4 | 6 },
+  ): Promise<{ address: string; family: 4 | 6 }[]> {
+    // In workerd, direct DNS lookups are not available
+    // Suggest using fetch() which handles DNS internally
+    throw new ERR_WORKERD_UNAVAILABLE(
+      'Bun.dns.lookup',
+      `DNS lookups for '${hostname}' are not available. Use fetch() which handles DNS internally.`,
+    )
   },
-  async reverse(ip: string): Promise<never> {
-    throw new ERR_WORKERD_UNAVAILABLE('Bun.dns.reverse', `Reverse DNS for '${ip}' not available`)
+
+  async reverse(ip: string): Promise<string[]> {
+    throw new ERR_WORKERD_UNAVAILABLE(
+      'Bun.dns.reverse',
+      `Reverse DNS lookups for '${ip}' are not available in workerd.`,
+    )
   },
-  async resolve(hostname: string): Promise<never> {
-    throw new ERR_WORKERD_UNAVAILABLE('Bun.dns.resolve', `DNS resolution for '${hostname}' not available`)
+
+  async resolve(hostname: string, _recordType?: string): Promise<string[]> {
+    throw new ERR_WORKERD_UNAVAILABLE(
+      'Bun.dns.resolve',
+      `DNS resolution for '${hostname}' is not available in workerd.`,
+    )
   },
 }
 
-// Misc
+// =============================================================================
+// Miscellaneous
+// =============================================================================
+
+/**
+ * Check if running as the main module
+ */
 export const main = (() => {
-  const proc = getProcess() as { argv?: string[] } | undefined
+  if (typeof globalThis === 'undefined') return false
+  const proc = (globalThis as Record<string, unknown>).process as
+    | { argv?: string[] }
+    | undefined
   return proc?.argv?.[1] !== undefined
 })()
 
+/**
+ * Generate a v4 UUID
+ */
 export function randomUUIDv7(): string {
+  // UUIDv7 includes timestamp for sortability
   const timestamp = Date.now()
   const timestampHex = timestamp.toString(16).padStart(12, '0')
   const random = crypto.getRandomValues(new Uint8Array(10))
-  const randomHex = Array.from(random).map((b) => b.toString(16).padStart(2, '0')).join('')
+  const randomHex = Array.from(random)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
 
   return [
     timestampHex.slice(0, 8),
     timestampHex.slice(8, 12),
-    `7${randomHex.slice(0, 3)}`,
-    ((parseInt(randomHex.slice(3, 5), 16) & 0x3f) | 0x80).toString(16).padStart(2, '0') + randomHex.slice(5, 7),
+    `7${randomHex.slice(0, 3)}`, // Version 7
+    ((parseInt(randomHex.slice(3, 5), 16) & 0x3f) | 0x80)
+      .toString(16)
+      .padStart(2, '0') + randomHex.slice(5, 7), // Variant
     randomHex.slice(7, 19),
   ].join('-')
 }
 
-const resolvedPromises = new WeakMap<Promise<unknown>, { resolved: boolean; value: unknown; error: unknown }>()
+/**
+ * Peek at a promise without blocking
+ *
+ * Note: In standard JavaScript, we cannot synchronously peek at promise state.
+ * This implementation tracks promise resolution to provide peek-like behavior.
+ */
+const resolvedPromises = new WeakMap<
+  Promise<unknown>,
+  { resolved: boolean; value: unknown; error: unknown }
+>()
 
 export function peek<T>(promise: Promise<T>): T | Promise<T> {
+  // Check if we've already tracked this promise
   const cached = resolvedPromises.get(promise as Promise<unknown>)
   if (cached) {
     if (cached.resolved) {
-      if (cached.error !== undefined) throw cached.error
+      if (cached.error !== undefined) {
+        throw cached.error
+      }
       return cached.value as T
     }
     return promise
   }
 
-  const tracker = { resolved: false, value: undefined as unknown, error: undefined as unknown }
+  // Start tracking the promise
+  const tracker = {
+    resolved: false,
+    value: undefined as unknown,
+    error: undefined as unknown,
+  }
   resolvedPromises.set(promise as Promise<unknown>, tracker)
 
   promise
@@ -736,36 +1108,76 @@ export function peek<T>(promise: Promise<T>): T | Promise<T> {
   return promise
 }
 
-export function gc(): void {}
-export function shrink(): void {}
+/**
+ * Force garbage collection (no-op in workerd)
+ */
+export function gc(): void {
+  // No-op - GC is handled by the runtime
+}
 
+/**
+ * Shrink memory (no-op in workerd)
+ */
+export function shrink(): void {
+  // No-op - memory management is handled by the runtime
+}
+
+/**
+ * Generate heap snapshot (not available in workerd)
+ */
 export function generateHeapSnapshot(): never {
   throw new Error('generateHeapSnapshot is not available in workerd')
 }
 
-export function openInEditor(_path: string, _options?: { line?: number; column?: number }): never {
+/**
+ * Open file in editor (not available in workerd)
+ */
+export function openInEditor(
+  _path: string,
+  _options?: { line?: number; column?: number },
+): never {
   throw new Error('openInEditor is not available in workerd')
 }
 
+/**
+ * Convert file URL to path
+ */
 export function fileURLToPath(url: string | URL): string {
   const urlObj = typeof url === 'string' ? new URL(url) : url
-  if (urlObj.protocol !== 'file:') throw new Error('URL must use file: protocol')
+  if (urlObj.protocol !== 'file:') {
+    throw new Error('URL must use file: protocol')
+  }
   return urlObj.pathname
 }
 
+/**
+ * Convert path to file URL
+ */
 export function pathToFileURL(path: string): URL {
   return new URL(`file://${path.startsWith('/') ? '' : '/'}${path}`)
 }
 
-// Default export
+// =============================================================================
+// Default Export
+// =============================================================================
+
 export default {
+  // File operations
   file,
   write,
+
+  // Server
   serve,
   getServeHandler,
+
+  // Environment
   env,
+
+  // Version
   version,
   revision,
+
+  // Utilities
   sleep,
   sleepSync,
   nanoseconds,
@@ -773,15 +1185,23 @@ export default {
   stringWidth,
   deepEquals,
   inspect,
+
+  // Hashing
   hash,
   password,
+
+  // Streams
   readableStreamToArray,
   readableStreamToText,
   readableStreamToArrayBuffer,
   readableStreamToBlob,
   readableStreamToJSON,
   ArrayBufferSink,
+
+  // DNS
   dns,
+
+  // Misc
   main,
   randomUUIDv7,
   peek,

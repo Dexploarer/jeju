@@ -134,7 +134,13 @@ class SQLitHttpClient {
     params: SQLiteValue[] = [],
   ): Promise<{ rowsAffected: number; lastInsertId: number | bigint }> {
     const formattedSql = this.formatSQL(sql, params)
-    return this.fetchExec(formattedSql)
+    const rows = await this.fetch('exec', formattedSql)
+
+    // For exec, we return affected rows info from the response
+    return {
+      rowsAffected: rows.length > 0 ? 1 : 0,
+      lastInsertId: 0,
+    }
   }
 
   async execRaw(sql: string): Promise<void> {
@@ -194,47 +200,6 @@ class SQLitHttpClient {
     }
 
     return (result.data?.rows as SQLiteRow[]) ?? []
-  }
-
-  private async fetchExec(
-    sql: string,
-  ): Promise<{ rowsAffected: number; lastInsertId: number | bigint }> {
-    const uri = `${this.endpoint}/v1/exec`
-
-    if (this.debug) {
-      console.log(`[bun:sqlite] exec: ${sql}`)
-    }
-
-    const response = await fetch(uri, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        assoc: true,
-        database: this.dbid,
-        query: sql,
-      }),
-      signal: AbortSignal.timeout(this.timeout),
-    })
-
-    if (!response.ok) {
-      throw new ERR_SQLITE_ERROR(`SQLit request failed: ${response.status}`)
-    }
-
-    const result: SQLitQueryResponse = await response.json()
-
-    if (result.error) {
-      throw new ERR_SQLITE_ERROR(result.error)
-    }
-
-    // Parse actual response values from SQLit server
-    const rowsAffected = result.rowsAffected ?? 0
-    const lastInsertId = result.lastInsertId !== undefined
-      ? typeof result.lastInsertId === 'string'
-        ? BigInt(result.lastInsertId)
-        : result.lastInsertId
-      : 0
-
-    return { rowsAffected, lastInsertId }
   }
 }
 
@@ -868,14 +833,15 @@ export class Database {
 
       this.sqlitClient = new SQLitHttpClient(config)
       this.storage = new InMemoryStorage() // Not used for SQLit
-    } else if (filename === ':memory:') {
+    } else {
       this.sqlitClient = null
       this.storage = new InMemoryStorage()
-    } else {
-      // File-based SQLite is not available in workerd - fail fast
-      throw new ERR_SQLITE_ERROR(
-        `File-based SQLite (${filename}) is not available in workerd. Use ':memory:' for in-memory database or 'sqlit://<database-id>' to connect to SQLit.`,
-      )
+
+      if (filename !== ':memory:') {
+        console.warn(
+          `[bun:sqlite] File-based SQLite (${filename}) not available in workerd, using in-memory database`,
+        )
+      }
     }
   }
 

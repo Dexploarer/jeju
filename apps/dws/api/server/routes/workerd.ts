@@ -17,9 +17,39 @@ import {
   getFormString,
 } from '@jejunetwork/types'
 import { Elysia, t } from 'elysia'
-import type { Address } from 'viem'
+import { type Address, recoverMessageAddress } from 'viem'
 import { base, baseSepolia, localhost } from 'viem/chains'
 import { z } from 'zod'
+
+// Signature verification for authenticated requests
+async function verifySignature(
+  address: string,
+  timestamp: string,
+  nonce: string,
+  signature: string,
+): Promise<boolean> {
+  // Allow localnet without signature
+  if (getCurrentNetwork() === 'localnet') {
+    return true
+  }
+  
+  // Check timestamp is within 5 minutes
+  const ts = parseInt(timestamp, 10)
+  const now = Math.floor(Date.now() / 1000)
+  if (Math.abs(now - ts) > 300) {
+    return false
+  }
+  
+  // Reconstruct message and verify signature
+  const message = `DWS Deploy Request\nTimestamp: ${timestamp}\nNonce: ${nonce}`
+  
+  try {
+    const recovered = await recoverMessageAddress({ message, signature: signature as `0x${string}` })
+    return recovered.toLowerCase() === address.toLowerCase()
+  } catch {
+    return false
+  }
+}
 import type { BackendManager } from '../../storage/backends'
 import {
   DEFAULT_ROUTER_CONFIG,
@@ -167,6 +197,24 @@ export function createWorkerdRouter(options: WorkerdRouterOptions) {
           return { error: 'x-jeju-address header required' }
         }
         const owner = ownerHeader as Address
+        
+        // Verify signature for non-localnet deployments
+        const timestamp = headers['x-jeju-timestamp']
+        const nonce = headers['x-jeju-nonce']
+        const signature = headers['x-jeju-signature']
+        
+        if (getCurrentNetwork() !== 'localnet') {
+          if (!timestamp || !nonce || !signature) {
+            set.status = 401
+            return { error: 'Signature required for deployment (x-jeju-timestamp, x-jeju-nonce, x-jeju-signature)' }
+          }
+          
+          const isValid = await verifySignature(ownerHeader, timestamp, nonce, signature)
+          if (!isValid) {
+            set.status = 403
+            return { error: 'Invalid or expired signature' }
+          }
+        }
 
         const contentType = headers['content-type'] ?? ''
 
@@ -330,6 +378,9 @@ export function createWorkerdRouter(options: WorkerdRouterOptions) {
       {
         headers: t.Object({
           'x-jeju-address': t.Optional(t.String()),
+          'x-jeju-timestamp': t.Optional(t.String()),
+          'x-jeju-nonce': t.Optional(t.String()),
+          'x-jeju-signature': t.Optional(t.String()),
           'content-type': t.Optional(t.String()),
         }),
       },

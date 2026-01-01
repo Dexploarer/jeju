@@ -92,7 +92,7 @@ export function createAutocratApp(env?: Partial<AutocratEnv>) {
         : [
             'https://autocrat.jejunetwork.org',
             'https://jejunetwork.org',
-            getCoreAppUrl('AUTOCRAT'),
+            getCoreAppUrl('AUTOCRAT_API'),
           ],
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],

@@ -99,7 +99,6 @@ import { createAPIMarketplaceRouter } from './routes/api-marketplace'
 import {
   createAppRouter,
   getDeployedApp,
-  getDeployedApps,
   initializeAppRouter,
 } from './routes/app-router'
 import { createCDNRouter } from './routes/cdn'
@@ -1442,31 +1441,25 @@ if (import.meta.main) {
         hostname !== 'localhost'
       ) {
         const appName = hostname.split('.')[0]
-        // Look up by app name first, then by JNS name
-        let deployedApp = getDeployedApp(appName)
-        if (!deployedApp) {
-          // Try to find by JNS subdomain (e.g., auth.testnet.jejunetwork.org → auth.jeju)
-          const jnsName = `${appName}.jeju`
-          for (const candidate of getDeployedApps()) {
-            if (candidate.jnsName === jnsName) {
-              deployedApp = candidate
-              break
-            }
-          }
-        }
+        const deployedApp = getDeployedApp(appName)
         if (deployedApp?.enabled) {
           console.log(`[Bun.serve] Routing to deployed app: ${appName}`)
           // Route to backend for API paths
-          const apiPaths = deployedApp.apiPaths ?? []
-          const isApiRequest = apiPaths.length > 0 && apiPaths.some(
+          const isApiRequest = deployedApp.apiPaths.some(
             (path) =>
               url.pathname === path || url.pathname.startsWith(`${path}/`),
           )
-          if (isApiRequest && (deployedApp.backendEndpoint || deployedApp.backendWorkerId)) {
-            // Use the app-router's proxyToBackend which handles worker deployment from CID
-            const { proxyToBackend } = await import('./routes/app-router.js')
-            console.log(`[Bun.serve] Proxying API to backend via app-router: ${url.pathname}`)
-            return proxyToBackend(req, deployedApp, url.pathname)
+          if (isApiRequest && deployedApp.backendEndpoint) {
+            const targetUrl = `${deployedApp.backendEndpoint}${url.pathname}${url.search}`
+            console.log(`[Bun.serve] Proxying to backend: ${targetUrl}`)
+            return fetch(targetUrl, {
+              method: req.method,
+              headers: req.headers,
+              body:
+                req.method !== 'GET' && req.method !== 'HEAD'
+                  ? req.body
+                  : undefined,
+            })
           }
           // Serve frontend from IPFS/storage if configured
           console.log(

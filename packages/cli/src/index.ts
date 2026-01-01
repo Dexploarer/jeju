@@ -33,6 +33,7 @@ import { forkCommand } from './commands/fork'
 import { fundCommand } from './commands/fund'
 import { infraCommand } from './commands/infra'
 import { initCommand } from './commands/init'
+import { localnetFullCommand } from './commands/localnet-full'
 import { keysCommand } from './commands/keys'
 import { loginCommand, logoutCommand, whoamiCommand } from './commands/login'
 import { logsCommand } from './commands/logs'
@@ -140,6 +141,7 @@ program.addCommand(storageCommand)
 program.addCommand(dwsCommand)
 program.addCommand(sqlitCommand)
 program.addCommand(proxyCommand)
+program.addCommand(localnetFullCommand)
 
 // Network and federation
 program.addCommand(forkCommand)
@@ -512,6 +514,11 @@ program.action(() => {
   )
 
   console.log(chalk.bold('Infrastructure:\n'))
+  console.log(
+    '  ' +
+      chalk.cyan(`${cliName} localnet-full`) +
+      '       Full stack (L1 + L2 + SQLit + Solana + DWS)',
+  )
   console.log(
     '  ' +
       chalk.cyan(`${cliName} infra start`) +

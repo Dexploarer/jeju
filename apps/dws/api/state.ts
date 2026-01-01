@@ -2065,7 +2065,6 @@ export async function initializeDWSState(): Promise<void> {
       const network = getCurrentNetwork()
       
       // In production on testnet/mainnet, SQLit failure is CRITICAL
-      // We allow the service to start but mark it as degraded
       if (isProductionEnv() && (network === 'testnet' || network === 'mainnet')) {
         console.error('╔═══════════════════════════════════════════════════════════════╗')
         console.error('║  CRITICAL: DWS RUNNING IN DEGRADED MODE - NO PERSISTENCE     ║')
@@ -2078,7 +2077,6 @@ export async function initializeDWSState(): Promise<void> {
       }
       
       // Allow running without SQLit for localnet development
-      // BUT mark as memory-only mode so consumers know data won't persist
       memoryOnlyMode = true
       initialized = true
       

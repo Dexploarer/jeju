@@ -31,11 +31,11 @@ interface PublishResult {
 function getDWSUrlForNetwork(network: NetworkType): string {
   switch (network) {
     case 'mainnet':
-      return process.env.MAINNET_DWS_URL ?? 'https://dws.jejunetwork.org'
+      return process.env.MAINNET_DWS_URL ?? getDWSUrl() ?? 'https://dws.jejunetwork.org'
     case 'testnet':
-      return process.env.TESTNET_DWS_URL ?? 'https://dws.testnet.jejunetwork.org'
+      return process.env.TESTNET_DWS_URL ?? getDWSUrl() ?? 'https://dws.testnet.jejunetwork.org'
     default:
-      return process.env.DWS_URL ?? getDWSUrl() ?? `http://${getLocalhostHost()}:4020`
+      return process.env.DWS_URL ?? getDWSUrl() ?? `http://${getLocalhostHost()}:4030`
   }
 }
 

@@ -42,7 +42,6 @@ let isExternalInfra = false
 // Default ports - use standard Jeju ports
 const L1_PORT = INFRA_PORTS.L1_RPC.get()
 const L2_PORT = INFRA_PORTS.L2_RPC.get()
-const _DWS_PORT = CORE_PORTS.DWS_API.get()
 
 // Docker service ports
 const DOCKER_SERVICES = {

@@ -87,6 +87,15 @@ async function buildModules() {
   })
   console.log('  - internal/types.js')
   
+  // Build internal/validators
+  await build({
+    ...commonOptions,
+    entryPoints: [path.join(__dirname, 'internal/validators.ts')],
+    outfile: path.join(internalDir, 'validators.js'),
+    external: ['bun-internal:*'],
+  })
+  console.log('  - internal/validators.js')
+  
   console.log('\nBuild complete.')
   console.log(`Output directory: ${outDir}`)
 }
@@ -96,47 +105,22 @@ async function buildCombinedBundle() {
   console.log('\nBuilding combined bundle for worker injection...')
   
   // Build a self-contained bundle that defines the Bun global
-  // NOTE: This must match bun.ts implementations exactly to avoid LARP
   const bundleCode = `
 // Auto-generated Bun compatibility bundle for workerd
 // This provides Bun APIs in workerd environments
-// IMPORTANT: Implementations must match src/bun/bun.ts exactly
 
 // Internal utilities
+const ERR_WORKERD_UNAVAILABLE = (api) => new Error(\`\${api} is not available in workerd\`)
+const ERR_FS_FILE_NOT_FOUND = (path) => new Error(\`ENOENT: no such file or directory, open '\${path}'\`)
+
 const isString = (v) => typeof v === 'string'
 const isUint8Array = (v) => v instanceof Uint8Array
 const isArrayBuffer = (v) => v instanceof ArrayBuffer
 
-class BunError extends Error {
-  constructor(message, code) {
-    super(message)
-    this.name = 'BunError'
-    this.code = code
-  }
-}
-
-class ERR_FS_FILE_NOT_FOUND extends BunError {
-  constructor(path) {
-    super(\`ENOENT: no such file or directory, open '\${path}'\`, 'ENOENT')
-    this.name = 'ERR_FS_FILE_NOT_FOUND'
-  }
-}
-
-class ERR_WORKERD_UNAVAILABLE extends BunError {
-  constructor(feature, reason) {
-    const msg = reason
-      ? \`\${feature} is not available in workerd: \${reason}\`
-      : \`\${feature} is not available in workerd\`
-    super(msg, 'ERR_WORKERD_UNAVAILABLE')
-    this.name = 'ERR_WORKERD_UNAVAILABLE'
-  }
-}
-
 // Virtual file system for workerd
 const virtualFS = new Map()
-const virtualFSMetadata = new Map()
 
-// BunFile implementation - matches bun.ts BunFileImpl
+// BunFile implementation
 class BunFileImpl {
   #path
   #type
@@ -151,19 +135,13 @@ class BunFileImpl {
     return data ? data.byteLength : 0
   }
   
-  get type() {
-    return virtualFSMetadata.get(this.#path)?.type ?? this.#type
-  }
-  
+  get type() { return this.#type }
   get name() { return this.#path }
-  
-  get lastModified() {
-    return virtualFSMetadata.get(this.#path)?.lastModified ?? Date.now()
-  }
+  get lastModified() { return Date.now() }
   
   async text() {
     const data = virtualFS.get(this.#path)
-    if (!data) throw new ERR_FS_FILE_NOT_FOUND(this.#path)
+    if (!data) throw ERR_FS_FILE_NOT_FOUND(this.#path)
     return new TextDecoder().decode(data)
   }
   
@@ -173,25 +151,23 @@ class BunFileImpl {
   
   async arrayBuffer() {
     const data = virtualFS.get(this.#path)
-    if (!data) throw new ERR_FS_FILE_NOT_FOUND(this.#path)
-    const ab = data.buffer
-    if (ab instanceof ArrayBuffer) {
-      return ab.slice(data.byteOffset, data.byteOffset + data.byteLength)
-    }
-    const copy = new ArrayBuffer(data.byteLength)
-    new Uint8Array(copy).set(data)
-    return copy
+    if (!data) throw ERR_FS_FILE_NOT_FOUND(this.#path)
+    return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)
   }
   
   async bytes() {
     const data = virtualFS.get(this.#path)
-    if (!data) throw new ERR_FS_FILE_NOT_FOUND(this.#path)
+    if (!data) throw ERR_FS_FILE_NOT_FOUND(this.#path)
     return new Uint8Array(data)
   }
   
   stream() {
     const data = virtualFS.get(this.#path)
-    if (!data) throw new ERR_FS_FILE_NOT_FOUND(this.#path)
+    if (!data) {
+      return new ReadableStream({
+        start(controller) { controller.error(ERR_FS_FILE_NOT_FOUND(this.#path)) }
+      })
+    }
     return new ReadableStream({
       start(controller) {
         controller.enqueue(data)
@@ -200,13 +176,8 @@ class BunFileImpl {
     })
   }
   
-  slice(start, end, type) {
-    const data = virtualFS.get(this.#path)
-    if (!data) return new BunFileImpl(this.#path, { type: type ?? this.#type })
-    const sliced = data.slice(start, end)
-    const slicePath = \`\${this.#path}#slice(\${start},\${end})\`
-    virtualFS.set(slicePath, sliced)
-    return new BunFileImpl(slicePath, { type: type ?? this.#type })
+  slice(start = 0, end = this.size, type = this.#type) {
+    return new BunFileImpl(this.#path, { type })
   }
   
   async exists() {
@@ -218,197 +189,160 @@ class BunFileImpl {
     const chunks = []
     return {
       write(data) {
-        const bytes = isString(data)
-          ? new TextEncoder().encode(data)
-          : data instanceof ArrayBuffer
-            ? new Uint8Array(data)
-            : data
+        const bytes = isString(data) ? new TextEncoder().encode(data) : new Uint8Array(data)
         chunks.push(bytes)
-        return bytes.byteLength
+        return bytes.length
       },
-      flush() {
-        const totalLength = chunks.reduce((sum, c) => sum + c.byteLength, 0)
-        const result = new Uint8Array(totalLength)
+      flush() {},
+      end() {
+        const total = chunks.reduce((acc, c) => acc + c.length, 0)
+        const result = new Uint8Array(total)
         let offset = 0
         for (const chunk of chunks) {
           result.set(chunk, offset)
-          offset += chunk.byteLength
+          offset += chunk.length
         }
         virtualFS.set(path, result)
-        virtualFSMetadata.set(path, { type: 'application/octet-stream', lastModified: Date.now() })
-      },
-      end() {
-        this.flush()
-        chunks.length = 0
       }
     }
   }
 }
 
-// ArrayBufferSink - matches bun.ts
+// ArrayBufferSink implementation
 class ArrayBufferSinkImpl {
   #chunks = []
+  #highWaterMark
+  #stream
   
-  write(data) {
-    const bytes = isString(data)
-      ? new TextEncoder().encode(data)
-      : data instanceof ArrayBuffer
-        ? new Uint8Array(data)
-        : data
-    this.#chunks.push(bytes)
+  constructor(options = {}) {
+    this.#highWaterMark = options.highWaterMark ?? 16384
+    if (options.stream) {
+      this.#stream = new ReadableStream({
+        pull: (controller) => {
+          if (this.#chunks.length > 0) {
+            controller.enqueue(this.#chunks.shift())
+          }
+        }
+      })
+    }
   }
   
+  write(chunk) {
+    const data = isString(chunk) ? new TextEncoder().encode(chunk) : new Uint8Array(chunk)
+    this.#chunks.push(data)
+    return data.length
+  }
+  
+  flush() { return this.end() }
+  
   end() {
-    const totalLength = this.#chunks.reduce((sum, c) => sum + c.byteLength, 0)
+    const totalLength = this.#chunks.reduce((acc, chunk) => acc + chunk.length, 0)
     const result = new Uint8Array(totalLength)
     let offset = 0
     for (const chunk of this.#chunks) {
       result.set(chunk, offset)
-      offset += chunk.byteLength
+      offset += chunk.length
     }
     this.#chunks = []
     return result.buffer
   }
   
-  flush() {}
-  start() { this.#chunks = [] }
+  get stream() { return this.#stream }
 }
 
-// Hashing - matches bun.ts wyhash implementation
-function wyhash(data, seed = 0) {
-  let h = BigInt(seed)
-  for (let i = 0; i < data.length; i++) {
-    h = (h ^ BigInt(data[i])) * 0x9e3779b97f4a7c15n
-    h = h ^ (h >> 32n)
+// Hash implementation using crypto.subtle
+async function hashData(algorithm, data) {
+  const bytes = isString(data) ? new TextEncoder().encode(data) : new Uint8Array(data)
+  const hashBuffer = await crypto.subtle.digest(algorithm, bytes)
+  return new Uint8Array(hashBuffer)
+}
+
+// Fast hash (non-crypto)
+function fastHash(data) {
+  const bytes = isString(data) ? new TextEncoder().encode(data) : new Uint8Array(data)
+  let hash = 0
+  for (let i = 0; i < bytes.length; i++) {
+    hash = ((hash << 5) - hash) + bytes[i]
+    hash = hash >>> 0
   }
-  return h
+  return hash
 }
 
-function crc32(data) {
-  let crc = 0xffffffff
-  for (let i = 0; i < data.length; i++) {
-    crc = crc ^ data[i]
-    for (let j = 0; j < 8; j++) {
-      crc = crc & 1 ? (crc >>> 1) ^ 0xedb88320 : crc >>> 1
-    }
-  }
-  return (crc ^ 0xffffffff) >>> 0
-}
-
-function hash(data, algorithm) {
-  const bytes = isString(data)
-    ? new TextEncoder().encode(data)
-    : isArrayBuffer(data)
-      ? new Uint8Array(data)
-      : data
-  
-  switch (algorithm ?? 'wyhash') {
-    case 'wyhash': return wyhash(bytes)
-    case 'crc32': return crc32(bytes)
-    default: return wyhash(bytes)
-  }
-}
-
-// Deep equals - matches bun.ts exactly
-function deepEquals(a, b) {
+// Deep equals
+function deepEquals(a, b, strict = false) {
   if (a === b) return true
+  if (a === null || b === null) return false
   if (typeof a !== typeof b) return false
-  if (a === null || b === null) return a === b
   
   if (Array.isArray(a) && Array.isArray(b)) {
     if (a.length !== b.length) return false
-    return a.every((item, index) => deepEquals(item, b[index]))
+    return a.every((v, i) => deepEquals(v, b[i], strict))
   }
   
-  if (typeof a === 'object' && typeof b === 'object') {
-    const aKeys = Object.keys(a)
-    const bKeys = Object.keys(b)
-    if (aKeys.length !== bKeys.length) return false
-    return aKeys.every((key) => key in b && deepEquals(a[key], b[key]))
+  if (typeof a === 'object') {
+    const keysA = Object.keys(a)
+    const keysB = Object.keys(b)
+    if (keysA.length !== keysB.length) return false
+    return keysA.every(key => deepEquals(a[key], b[key], strict))
   }
   
   return false
 }
 
-// Escape HTML - matches bun.ts (&#039; not &#39;)
+// Escape HTML
 function escapeHTML(str) {
   return str
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;')
+    .replace(/'/g, '&#39;')
 }
 
-// String width - matches bun.ts (no control char skip)
+// String width
 function stringWidth(str) {
   let width = 0
   for (const char of str) {
     const code = char.codePointAt(0)
-    const isWide =
-      (code >= 0x1100 && code <= 0x115f) ||
-      (code >= 0x2e80 && code <= 0xa4cf) ||
-      (code >= 0xac00 && code <= 0xd7a3) ||
-      (code >= 0xf900 && code <= 0xfaff) ||
-      (code >= 0xfe10 && code <= 0xfe1f) ||
-      (code >= 0xfe30 && code <= 0xfe6f) ||
-      (code >= 0xff00 && code <= 0xff60) ||
-      (code >= 0xffe0 && code <= 0xffe6) ||
-      (code >= 0x20000 && code <= 0x2fffd) ||
-      (code >= 0x30000 && code <= 0x3fffd)
-    width += isWide ? 2 : 1
+    if (code <= 0x1f || (code >= 0x7f && code <= 0x9f)) continue
+    if (code >= 0x1100 && (code <= 0x115f || code === 0x2329 || code === 0x232a ||
+        (code >= 0x2e80 && code <= 0xa4cf && code !== 0x303f) ||
+        (code >= 0xac00 && code <= 0xd7a3) ||
+        (code >= 0xf900 && code <= 0xfaff) ||
+        (code >= 0xfe10 && code <= 0xfe1f) ||
+        (code >= 0xfe30 && code <= 0xfe6f) ||
+        (code >= 0xff00 && code <= 0xff60) ||
+        (code >= 0xffe0 && code <= 0xffe6) ||
+        (code >= 0x20000 && code <= 0x2fffd) ||
+        (code >= 0x30000 && code <= 0x3fffd))) {
+      width += 2
+    } else {
+      width += 1
+    }
   }
   return width
 }
 
-// Inspect - matches bun.ts custom implementation
-function inspectValue(value, depth, seen) {
-  if (value === null) return 'null'
-  if (value === undefined) return 'undefined'
-  
-  const type = typeof value
-  if (type === 'string') return JSON.stringify(value)
-  if (type === 'number' || type === 'boolean' || type === 'bigint') return String(value)
-  if (type === 'function') return \`[Function: \${value.name || 'anonymous'}]\`
-  if (type === 'symbol') return value.toString()
-  
-  if (seen.has(value)) return '[Circular]'
-  
-  if (Array.isArray(value)) {
-    if (depth < 0) return '[Array]'
-    seen.add(value)
-    const items = value.map((item) => inspectValue(item, depth - 1, seen))
-    seen.delete(value)
-    return \`[ \${items.join(', ')} ]\`
-  }
-  
-  if (value instanceof Date) return value.toISOString()
-  if (value instanceof RegExp) return value.toString()
-  if (value instanceof Error) return \`\${value.name}: \${value.message}\`
-  
-  if (type === 'object') {
-    if (depth < 0) return '[Object]'
-    seen.add(value)
-    const entries = Object.entries(value).map(([k, v]) => \`\${k}: \${inspectValue(v, depth - 1, seen)}\`)
-    seen.delete(value)
-    return \`{ \${entries.join(', ')} }\`
-  }
-  
-  return String(value)
+// Inspect
+function inspect(value, options = {}) {
+  const { depth = 2, colors = false } = options
+  return JSON.stringify(value, (key, val) => {
+    if (typeof val === 'function') return '[Function]'
+    if (val instanceof Date) return val.toISOString()
+    if (val instanceof RegExp) return val.toString()
+    return val
+  }, 2)
 }
 
-function inspect(obj, options) {
-  const depth = options?.depth ?? 2
-  return inspectValue(obj, depth, new Set())
-}
-
-// Nanoseconds - matches bun.ts (absolute, not relative)
+// Nanoseconds
+let perfStartTime = typeof performance !== 'undefined' ? performance.now() : Date.now()
 function nanoseconds() {
-  return BigInt(Math.floor(performance.now() * 1_000_000))
+  const now = typeof performance !== 'undefined' ? performance.now() : Date.now()
+  return BigInt(Math.floor((now - perfStartTime) * 1_000_000))
 }
 
 // Sleep
-function sleep(ms) {
+async function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
@@ -417,157 +351,83 @@ function sleepSync(ms) {
   while (Date.now() < end) {}
 }
 
-// Stream utilities - match bun.ts
-async function readableStreamToArray(stream) {
+// Stream utilities
+async function readableStreamToArrayBuffer(stream) {
   const reader = stream.getReader()
   const chunks = []
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    chunks.push(value)
+  let done = false
+  while (!done) {
+    const result = await reader.read()
+    done = result.done
+    if (result.value) chunks.push(result.value)
   }
-  return chunks
-}
-
-async function readableStreamToText(stream) {
-  const chunks = await readableStreamToArray(stream)
-  const decoder = new TextDecoder()
-  return chunks.map((chunk) => decoder.decode(chunk, { stream: true })).join('')
-}
-
-async function readableStreamToArrayBuffer(stream) {
-  const chunks = await readableStreamToArray(stream)
-  const totalLength = chunks.reduce((sum, chunk) => sum + chunk.byteLength, 0)
+  const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0)
   const result = new Uint8Array(totalLength)
   let offset = 0
   for (const chunk of chunks) {
     result.set(chunk, offset)
-    offset += chunk.byteLength
+    offset += chunk.length
   }
   return result.buffer
 }
 
-async function readableStreamToBlob(stream, type) {
+async function readableStreamToText(stream) {
   const buffer = await readableStreamToArrayBuffer(stream)
-  return new Blob([buffer], { type })
+  return new TextDecoder().decode(buffer)
 }
 
 async function readableStreamToJSON(stream) {
-  return JSON.parse(await readableStreamToText(stream))
+  const text = await readableStreamToText(stream)
+  return JSON.parse(text)
 }
 
-// Write utility - matches bun.ts
+async function readableStreamToBlob(stream) {
+  const buffer = await readableStreamToArrayBuffer(stream)
+  return new Blob([buffer])
+}
+
+async function readableStreamToArray(stream) {
+  const reader = stream.getReader()
+  const chunks = []
+  let done = false
+  while (!done) {
+    const result = await reader.read()
+    done = result.done
+    if (result.value) chunks.push(result.value)
+  }
+  return chunks
+}
+
+// Write utility
 async function write(dest, data) {
-  const destPath = isString(dest) ? dest : dest instanceof URL ? dest.pathname : dest.name
+  const destPath = typeof dest === 'string' ? dest : dest.name
   let bytes
   
   if (isString(data)) {
     bytes = new TextEncoder().encode(data)
-  } else if (isArrayBuffer(data)) {
-    bytes = new Uint8Array(data)
   } else if (isUint8Array(data)) {
     bytes = data
+  } else if (isArrayBuffer(data)) {
+    bytes = new Uint8Array(data)
   } else if (data instanceof Blob) {
     bytes = new Uint8Array(await data.arrayBuffer())
   } else if (data instanceof Response) {
     bytes = new Uint8Array(await data.arrayBuffer())
-  } else {
+  } else if (data instanceof BunFileImpl) {
     bytes = await data.bytes()
+  } else {
+    throw new TypeError('Invalid data type for Bun.write')
   }
   
   virtualFS.set(destPath, bytes)
-  virtualFSMetadata.set(destPath, { type: 'application/octet-stream', lastModified: Date.now() })
-  return bytes.byteLength
+  return bytes.length
 }
 
-// Password hashing - REAL implementation using PBKDF2 (matches bun.ts)
-const password = {
-  async hash(pwd, options) {
-    const algorithm = options?.algorithm ?? 'bcrypt'
-    const cost = options?.cost ?? 10
-    
-    const passwordData = new TextEncoder().encode(pwd)
-    const salt = crypto.getRandomValues(new Uint8Array(16))
-    const keyMaterial = await crypto.subtle.importKey('raw', passwordData, 'PBKDF2', false, ['deriveBits'])
-    const iterations = 2 ** cost * 100
-    
-    const derivedBits = await crypto.subtle.deriveBits(
-      { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
-      keyMaterial,
-      256
-    )
-    
-    const toHex = (arr) => Array.from(arr).map((b) => b.toString(16).padStart(2, '0')).join('')
-    return \`\$workerd\$\${algorithm}\$\${cost}\$\${toHex(salt)}\$\${toHex(new Uint8Array(derivedBits))}\`
-  },
-  
-  async verify(pwd, hashStr) {
-    if (!hashStr.startsWith('\$workerd\$')) {
-      const data = new TextEncoder().encode(pwd)
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-      const computed = Array.from(new Uint8Array(hashBuffer)).map((b) => b.toString(16).padStart(2, '0')).join('')
-      return computed === hashStr
-    }
-    
-    const parts = hashStr.split('\$')
-    if (parts.length !== 6) return false
-    
-    const [, , , costStr, saltHex, expectedHashHex] = parts
-    const cost = parseInt(costStr, 10)
-    const passwordData = new TextEncoder().encode(pwd)
-    const salt = new Uint8Array(saltHex.match(/.{2}/g)?.map((byte) => parseInt(byte, 16)) ?? [])
-    const keyMaterial = await crypto.subtle.importKey('raw', passwordData, 'PBKDF2', false, ['deriveBits'])
-    const iterations = 2 ** cost * 100
-    
-    const derivedBits = await crypto.subtle.deriveBits(
-      { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
-      keyMaterial,
-      256
-    )
-    
-    const computedHashHex = Array.from(new Uint8Array(derivedBits)).map((b) => b.toString(16).padStart(2, '0')).join('')
-    
-    // Constant-time comparison
-    if (computedHashHex.length !== expectedHashHex.length) return false
-    let result = 0
-    for (let i = 0; i < computedHashHex.length; i++) {
-      result |= computedHashHex.charCodeAt(i) ^ expectedHashHex.charCodeAt(i)
-    }
-    return result === 0
-  }
-}
-
-// Miscellaneous - match bun.ts
-function randomUUIDv7() {
-  const timestamp = Date.now()
-  const timestampHex = timestamp.toString(16).padStart(12, '0')
-  const random = crypto.getRandomValues(new Uint8Array(10))
-  const randomHex = Array.from(random).map((b) => b.toString(16).padStart(2, '0')).join('')
-  
-  return [
-    timestampHex.slice(0, 8),
-    timestampHex.slice(8, 12),
-    \`7\${randomHex.slice(0, 3)}\`,
-    ((parseInt(randomHex.slice(3, 5), 16) & 0x3f) | 0x80).toString(16).padStart(2, '0') + randomHex.slice(5, 7),
-    randomHex.slice(7, 19),
-  ].join('-')
-}
-
-function fileURLToPath(url) {
-  const urlObj = typeof url === 'string' ? new URL(url) : url
-  if (urlObj.protocol !== 'file:') throw new Error('URL must use file: protocol')
-  return urlObj.pathname
-}
-
-function pathToFileURL(path) {
-  return new URL(\`file://\${path.startsWith('/') ? '' : '/'}\${path}\`)
-}
-
-// Main Bun object - matches bun.ts exports
+// Main Bun object
 const Bun = {
   version: '1.0.0-workerd',
-  revision: 'workerd-compat',  // MUST match bun.ts
-  main: false,
+  revision: 'workerd',
+  main: '',
   
   // Environment
   env: typeof process !== 'undefined' ? process.env : {},
@@ -576,50 +436,51 @@ const Bun = {
   file: (path, options) => new BunFileImpl(path, options),
   write,
   
-  // Hashing - REAL implementation
-  hash,
+  // Hashing
+  hash: fastHash,
+  sha: async (data, encoding) => hashData('SHA-1', data),
   
   // Utilities
   sleep,
   sleepSync,
-  nanoseconds,
   escapeHTML,
   stringWidth,
   deepEquals,
   inspect,
-  
-  // Password - REAL implementation
-  password,
+  nanoseconds,
   
   // Stream utilities
-  readableStreamToArray,
-  readableStreamToText,
   readableStreamToArrayBuffer,
-  readableStreamToBlob,
+  readableStreamToText,
   readableStreamToJSON,
+  readableStreamToBlob,
+  readableStreamToArray,
   
   // ArrayBufferSink
   ArrayBufferSink: ArrayBufferSinkImpl,
   
-  // Misc
-  randomUUIDv7,
-  fileURLToPath,
-  pathToFileURL,
+  // Serve (stub - workerd handles this)
+  serve: () => { throw ERR_WORKERD_UNAVAILABLE('Bun.serve') },
   
-  // No-op functions (documented as expected)
-  gc() {},
-  shrink() {},
+  // Unavailable APIs
+  openInEditor: () => { throw ERR_WORKERD_UNAVAILABLE('Bun.openInEditor') },
+  generateHeapSnapshot: () => { throw ERR_WORKERD_UNAVAILABLE('Bun.generateHeapSnapshot') },
+  shrink: () => { throw ERR_WORKERD_UNAVAILABLE('Bun.shrink') },
+  gc: () => { throw ERR_WORKERD_UNAVAILABLE('Bun.gc') },
   
-  // Unavailable APIs (throw with clear errors)
-  serve() { throw new ERR_WORKERD_UNAVAILABLE('Bun.serve', 'Use workerd fetch handler instead') },
-  openInEditor() { throw new ERR_WORKERD_UNAVAILABLE('Bun.openInEditor') },
-  generateHeapSnapshot() { throw new ERR_WORKERD_UNAVAILABLE('Bun.generateHeapSnapshot') },
+  // Password hashing
+  password: {
+    hash: async () => { throw ERR_WORKERD_UNAVAILABLE('Bun.password.hash') },
+    verify: async () => { throw ERR_WORKERD_UNAVAILABLE('Bun.password.verify') },
+    hashSync: () => { throw ERR_WORKERD_UNAVAILABLE('Bun.password.hashSync') },
+    verifySync: () => { throw ERR_WORKERD_UNAVAILABLE('Bun.password.verifySync') },
+  },
   
   // DNS (not available in workerd)
   dns: {
-    async lookup(hostname) { throw new ERR_WORKERD_UNAVAILABLE('Bun.dns.lookup', \`DNS lookups for '\${hostname}' not available\`) },
-    async reverse(ip) { throw new ERR_WORKERD_UNAVAILABLE('Bun.dns.reverse', \`Reverse DNS for '\${ip}' not available\`) },
-    async resolve(hostname) { throw new ERR_WORKERD_UNAVAILABLE('Bun.dns.resolve', \`DNS resolution for '\${hostname}' not available\`) },
+    lookup: async () => { throw ERR_WORKERD_UNAVAILABLE('Bun.dns.lookup') },
+    resolve: async () => { throw ERR_WORKERD_UNAVAILABLE('Bun.dns.resolve') },
+    prefetch: () => { throw ERR_WORKERD_UNAVAILABLE('Bun.dns.prefetch') },
   },
 }
 

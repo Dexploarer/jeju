@@ -130,6 +130,7 @@ async function verifyContentRetrievable(
   return response?.ok === true
 }
 
+
 // Upload file to IPFS
 async function uploadFile(
   dwsUrl: string,

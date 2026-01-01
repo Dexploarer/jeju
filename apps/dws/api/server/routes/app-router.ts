@@ -19,7 +19,7 @@ import { Elysia } from 'elysia'
 import { getAppRegistry } from '../../../src/cdn/app-registry'
 import { getLocalCDNServer } from '../../../src/cdn/local-server'
 import { getIngressController } from '../../infrastructure'
-import { deployedAppState, isDegradedMode } from '../../state'
+import { deployedAppState } from '../../state'
 import {
   isConfigMapAvailable,
   loadAppsFromConfigMap,
@@ -168,9 +168,6 @@ function isAssetPath(pathname: string): boolean {
 
 /**
  * Register a deployed app (persists to ConfigMap in K8s, SQLit otherwise)
- * 
- * IMPORTANT: This function will throw if persistence fails in production.
- * Memory-only mode is only allowed in localnet for development.
  */
 export async function registerDeployedApp(
   app: Omit<DeployedApp, 'deployedAt' | 'updatedAt'>,
@@ -187,20 +184,13 @@ export async function registerDeployedApp(
   // Update cache first
   deployedAppsCache.set(app.name, deployedApp)
 
-  // Track persistence success
-  let persisted = false
-  let persistenceError: Error | null = null
-
   // Persist to ConfigMap (primary for K8s) or SQLit (fallback)
   if (isConfigMapAvailable()) {
     // Save all apps to ConfigMap
     const allApps = Array.from(deployedAppsCache.values())
-    persisted = await saveAppsToConfigMap(allApps)
-    if (!persisted) {
-      persistenceError = new Error('ConfigMap save returned false')
-    }
+    await saveAppsToConfigMap(allApps)
   } else {
-    // Try SQLit as fallback
+    // Try SQLit as fallback (for local development)
     try {
       await deployedAppState.save({
         name: app.name,
@@ -213,36 +203,16 @@ export async function registerDeployedApp(
         spa: app.spa,
         enabled: app.enabled,
       })
-      persisted = true
-    } catch (error) {
-      persistenceError = error instanceof Error ? error : new Error(String(error))
-    }
-  }
-
-  // In production (testnet/mainnet), persistence failures are fatal
-  // In localnet, we allow memory-only mode for development
-  if (!persisted) {
-    const network = NETWORK
-    if (network === 'testnet' || network === 'mainnet') {
-      console.error(
-        `[AppRouter] CRITICAL: Failed to persist app registration for ${app.name}`,
-      )
-      console.error(
-        `[AppRouter] Error: ${persistenceError?.message ?? 'Unknown error'}`,
-      )
-      console.error(
-        '[AppRouter] App registrations will NOT survive pod restart. Fix persistence immediately.',
-      )
-      // Don't throw in API context to avoid breaking HTTP response, but log loudly
-    } else {
-      console.warn(
-        `[AppRouter] Memory-only mode (localnet): ${app.name} - not persisted`,
+    } catch (_error) {
+      // Neither ConfigMap nor SQLit available - cache-only mode
+      console.log(
+        `[AppRouter] Running in memory-only mode (no persistence): ${app.name}`,
       )
     }
   }
 
   console.log(
-    `[AppRouter] Registered app: ${app.name} (frontend: ${app.frontendCid ?? 'local'}, backend: ${app.backendWorkerId ?? app.backendEndpoint ?? 'none'}, persisted: ${persisted})`,
+    `[AppRouter] Registered app: ${app.name} (frontend: ${app.frontendCid ?? 'local'}, backend: ${app.backendWorkerId ?? app.backendEndpoint ?? 'none'})`,
   )
 }
 
@@ -312,33 +282,18 @@ async function serveFrontendFromStorage(
   }
 
   // Try to find CID for this path in staticFiles map
-  // Deploy scripts may store paths with or without leading slashes, so try both
   let fileCid: string | null = null
   if (app.staticFiles) {
-    // First try the path as-is (without leading slash)
     fileCid = app.staticFiles[path] ?? null
-    
-    // Try with leading slash
-    if (!fileCid) {
-      fileCid = app.staticFiles[`/${path}`] ?? null
-    }
-    
     // Also try with dist/ prefix for legacy paths like /dist/web/main.js
     if (!fileCid && path.startsWith('dist/')) {
       const withoutDist = path.replace(/^dist\//, '')
-      fileCid = app.staticFiles[withoutDist] ?? app.staticFiles[`/${withoutDist}`] ?? null
+      fileCid = app.staticFiles[withoutDist] ?? null
     }
-    
     // Try web/ prefix for /dist/web/* paths
     if (!fileCid && path.startsWith('dist/web/')) {
       const withoutDistWeb = path.replace(/^dist\/web\//, 'web/')
-      fileCid = app.staticFiles[withoutDistWeb] ?? app.staticFiles[`/${withoutDistWeb}`] ?? null
-    }
-    
-    // Try web/ prefix stripping (some apps use web/ subfolder)
-    if (!fileCid && path.startsWith('web/')) {
-      const withoutWeb = path.replace(/^web\//, '')
-      fileCid = app.staticFiles[withoutWeb] ?? app.staticFiles[`/${withoutWeb}`] ?? null
+      fileCid = app.staticFiles[withoutDistWeb] ?? null
     }
   }
 
@@ -471,75 +426,10 @@ async function serveFrontendFromLocalCDN(
   })
 }
 
-// Cache for deployed worker function IDs (CID -> functionId)
-const workerDeploymentCache = new Map<string, string>()
-
-/**
- * Check if string looks like an IPFS CID
- */
-function isIPFSCid(str: string): boolean {
-  return str.startsWith('Qm') || str.startsWith('bafy')
-}
-
-/**
- * Deploy a worker from CID if not already deployed on this pod
- */
-async function ensureWorkerDeployed(
-  workerId: string,
-  appName: string,
-): Promise<string> {
-  // If it's a UUID (already deployed), return as-is
-  if (!isIPFSCid(workerId)) {
-    return workerId
-  }
-
-  // Check if we've already deployed this CID on this pod
-  const cached = workerDeploymentCache.get(workerId)
-  if (cached) {
-    return cached
-  }
-
-  // Deploy the worker from CID
-  const host = getLocalhostHost()
-  console.log(`[AppRouter] Deploying worker for ${appName} from CID: ${workerId}`)
-
-  const response = await fetch(`http://${host}:4030/workers`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-jeju-address': '0x0000000000000000000000000000000000000000',
-    },
-    body: JSON.stringify({
-      name: appName,
-      codeCid: workerId,
-      runtime: 'bun',
-      handler: 'fetch',
-      memory: 512,
-      timeout: 60000,
-    }),
-  })
-
-  if (!response.ok) {
-    const error = await response.text()
-    console.error(`[AppRouter] Failed to deploy worker: ${error}`)
-    throw new Error(`Worker deployment failed: ${error}`)
-  }
-
-  const result = (await response.json()) as { functionId: string }
-  console.log(`[AppRouter] Worker deployed: ${result.functionId}`)
-
-  // Cache the function ID
-  workerDeploymentCache.set(workerId, result.functionId)
-  return result.functionId
-}
-
-// Backend proxy timeout in milliseconds (30 seconds)
-const BACKEND_PROXY_TIMEOUT_MS = 30000
-
 /**
  * Proxy request to backend
  */
-export async function proxyToBackend(
+async function proxyToBackend(
   request: Request,
   app: DeployedApp,
   pathname: string,
@@ -553,15 +443,8 @@ export async function proxyToBackend(
     // DWS worker - route through workers runtime
     // backendWorkerId can be either a function ID (UUID) or IPFS CID
     const host = getLocalhostHost()
-
-    // Ensure worker is deployed on this pod (lazy deployment from CID)
-    const functionId = await ensureWorkerDeployed(
-      app.backendWorkerId,
-      app.name,
-    )
-
     // Use workers HTTP endpoint for function invocation
-    targetUrl = `http://${host}:4030/workers/${functionId}/http${pathname}`
+    targetUrl = `http://${host}:4030/workers/${app.backendWorkerId}/http${pathname}`
   } else {
     return new Response(JSON.stringify({ error: 'No backend configured' }), {
       status: 502,
@@ -580,22 +463,7 @@ export async function proxyToBackend(
         : undefined,
   })
 
-  // Add timeout to prevent hanging requests
-  const response = await fetch(proxyRequest, {
-    signal: AbortSignal.timeout(BACKEND_PROXY_TIMEOUT_MS),
-  }).catch((error: Error) => {
-    console.error(`[AppRouter] Backend proxy failed: ${error.message}`)
-    if (error.name === 'TimeoutError' || error.message.includes('timeout')) {
-      return new Response(JSON.stringify({ error: 'Backend timeout' }), {
-        status: 504,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    }
-    return new Response(JSON.stringify({ error: `Backend error: ${error.message}` }), {
-      status: 502,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  })
+  const response = await fetch(proxyRequest)
 
   // Clone response with DWS headers
   const headers = new Headers(response.headers)
@@ -660,20 +528,8 @@ export function createAppRouter() {
           return undefined
         }
 
-        // Look up deployed app (from cache) by name first, then by JNS name
+        // Look up deployed app (from cache)
         let app = deployedAppsCache.get(appName)
-        
-        // If not found by name, try to find by JNS subdomain
-        // e.g., auth.testnet.jejunetwork.org → look for app with jnsName 'auth.jeju'
-        if (!app) {
-          const jnsName = `${appName}.jeju`
-          for (const candidate of deployedAppsCache.values()) {
-            if (candidate.jnsName === jnsName) {
-              app = candidate
-              break
-            }
-          }
-        }
         console.log(
           `[AppRouter] Found app: ${app?.name}, apiPaths: ${JSON.stringify(app?.apiPaths)}`,
         )
@@ -765,18 +621,7 @@ export function createAppRouter() {
           return { error: 'App name is required' }
         }
         await registerDeployedApp(data)
-        
-        // Warn if DWS is running in degraded mode (no persistence)
-        const degraded = isDegradedMode()
-        if (degraded) {
-          set.headers['X-DWS-Warning'] = 'Degraded mode - app registration will NOT persist'
-        }
-        
-        return { 
-          success: true, 
-          app: getDeployedApp(data.name),
-          warning: degraded ? 'DWS is running in degraded mode without persistence. App registration will be lost on restart.' : undefined,
-        }
+        return { success: true, app: getDeployedApp(data.name) }
       })
 
       .delete('/apps/deployed/:name', async ({ params }) => {

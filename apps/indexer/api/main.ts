@@ -43,17 +43,17 @@ import { processOIFEvents } from './oif-processor'
 import { processOracleEvents } from './oracle-processor'
 import { type ProcessorContext, processor } from './processor'
 import { processRegistryEvents } from './registry-game-processor'
-import { SQLitDatabase, type SQLitStoreImpl } from './sqlit-database'
+import { SQLitDatabase, type SQLitStoreInterface } from './sqlit-database'
 import { processStorageEvents } from './storage-processor'
 
 const SQLIT_DATABASE_ID = config.sqlitDatabaseId || 'indexer-testnet'
 
 console.log(`[Indexer] Using SQLit database: ${SQLIT_DATABASE_ID}`)
 
-// Using 'any' for store type since SQLitStoreImpl is compatible with Store interface
-processor.run(
-  new SQLitDatabase({ databaseId: SQLIT_DATABASE_ID }) as any,
-  async (ctx: ProcessorContext<any>) => {
+// SQLitDatabase implements all Store methods used by the indexer
+// Type assertion bridges our custom implementation with subsquid's types
+// @ts-expect-error - SQLitDatabase is compatible with subsquid's Database<Store> at runtime
+processor.run(new SQLitDatabase({ databaseId: SQLIT_DATABASE_ID }), async (ctx: ProcessorContext<Store>) => {
     const blocks: BlockEntity[] = []
     const transactions: TransactionEntity[] = []
     const logs: LogEntity[] = []
