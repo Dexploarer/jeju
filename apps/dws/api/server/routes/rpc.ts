@@ -134,6 +134,50 @@ const CHAINS: Record<number, ChainConfig> = {
     isTestnet: true,
     enabled: true,
   },
+  // Jeju
+  420690: {
+    id: 420690,
+    name: 'Jeju Testnet',
+    network: 'jeju-testnet',
+    symbol: 'JEJU',
+    rpcUrls: [],
+    explorerUrl: 'https://testnet-explorer.jejunetwork.org',
+    isTestnet: true,
+    enabled: true,
+  },
+  // Arbitrum Sepolia
+  421614: {
+    id: 421614,
+    name: 'Arbitrum Sepolia',
+    network: 'arbitrum-sepolia',
+    symbol: 'ETH',
+    rpcUrls: [],
+    explorerUrl: 'https://sepolia.arbiscan.io',
+    isTestnet: true,
+    enabled: true,
+  },
+  // Optimism Sepolia
+  11155420: {
+    id: 11155420,
+    name: 'Optimism Sepolia',
+    network: 'optimism-sepolia',
+    symbol: 'ETH',
+    rpcUrls: [],
+    explorerUrl: 'https://sepolia-optimism.etherscan.io',
+    isTestnet: true,
+    enabled: true,
+  },
+  // BSC Testnet
+  97: {
+    id: 97,
+    name: 'BSC Testnet',
+    network: 'bsc-testnet',
+    symbol: 'tBNB',
+    rpcUrls: [],
+    explorerUrl: 'https://testnet.bscscan.com',
+    isTestnet: true,
+    enabled: true,
+  },
 }
 
 const providers = new Map<string, RPCProvider>()

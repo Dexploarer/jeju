@@ -12,21 +12,21 @@
   "localnet": {
     "chainId": 31337,
     "tokens": {
-      "jeju": "0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82",
-      "usdc": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+      "jeju": "0x7a2088a1bFc9d81c55368AE168C2C02570cB814F",
+      "usdc": "0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82",
       "weth": "0x4200000000000000000000000000000000000006"
     },
     "registry": {
-      "identity": "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
-      "reputation": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
-      "validation": "0x0165878A594ca255338adfa4d48449f69242Eb8F",
-      "token": "0x610178dA211FEF7D417bC0e6FeD39F05609AD788",
+      "identity": "0x9A9f2CCfdE556A7E9Ff0848998Aa4a0CFD8863AE",
+      "reputation": "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+      "validation": "0x3Aa5ebB10DC797CAC828524e59A333d0A371443c",
+      "token": "0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44",
       "app": "",
       "node": "",
-      "githubReputationProvider": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707"
+      "githubReputationProvider": "0x68B1D87F95878fE05B998F19b66F4baba5De1aed"
     },
     "rpc": {
-      "staking": "0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44"
+      "staking": "0x95401dc811bb5740090279Ba06cfA8fcF6113778"
     },
     "moderation": {
       "banManager": "0x0000000000000000000000000000000000000000",
@@ -67,16 +67,16 @@
       "staking": "0x0000000000000000000000000000000000000000"
     },
     "dws": {
-      "jnsRegistry": "0xc5a5C42992dECbae36851359345FE25997F5C42d",
-      "jnsResolver": "0x67d269191c92Caf3cD7723F116c85e6E9bf55933",
-      "storageManager": "0x4C4a2f8c81640e47606d3fd77B353E87Ba015584",
-      "workerRegistry": "0x21dF544947ba3E8b3c32561399E88B52Dc8b2823",
-      "cdnRegistry": "0x2E2Ed0Cfd3AD2f1d34481277b3204d807Ca2F8c2"
+      "jnsRegistry": "0x9d4454B023096f34B160D6B654540c56A1F81688",
+      "jnsResolver": "0x5eb3Bc0a489C5A8288765d2336659EbCA68FCd00",
+      "storageManager": "0x46b142DD1E924FAb83eCc3c08e4D46E82f005e0E",
+      "workerRegistry": "0xC9a43158891282A2B1475592D5719c001986Aaec",
+      "cdnRegistry": "0x1c85638e118b37167e9298c2268758e058DdfDA0"
     },
     "payments": {
-      "creditManager": "0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1",
-      "universalPaymaster": "0x9A9f2CCfdE556A7E9Ff0848998Aa4a0CFD8863AE",
-      "paymasterFactory": "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e"
+      "creditManager": "0x67d269191c92Caf3cD7723F116c85e6E9bf55933",
+      "universalPaymaster": "0x84eA74d481Ee0A5332c457a4d796187F6Ba67fEB",
+      "paymasterFactory": "0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f"
     },
     "commerce": {
       "authCaptureEscrow": "",
@@ -157,8 +157,8 @@
       "agent0Registry": ""
     },
     "cloud": {
-      "serviceRegistry": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
-      "creditManager": "0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1"
+      "serviceRegistry": "0x0B306BF915C4d645ff596e518fAf3F9669b97016",
+      "creditManager": "0x67d269191c92Caf3cD7723F116c85e6E9bf55933"
     }
   },
   "testnet": {

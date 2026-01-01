@@ -24,6 +24,16 @@ import {
 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { base, baseSepolia } from 'viem/chains'
+
+// Custom chain definition for Jeju Testnet
+const jejuTestnet = {
+  id: 420690,
+  name: 'Jeju Testnet',
+  nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+  rpcUrls: {
+    default: { http: ['https://testnet-rpc.jejunetwork.org'] },
+  },
+} as const
 import type {
   DeployPublicClient,
   DeployWalletClient,
@@ -527,8 +537,8 @@ async function main() {
 
   // Setup clients
   const account = privateKeyToAccount(privateKey)
-  // Use baseSepolia for testnet, base for mainnet, custom for localnet
-  const chain = config.network === 'testnet' ? baseSepolia : base
+  // Use jejuTestnet for testnet, base for mainnet
+  const chain = config.network === 'testnet' ? jejuTestnet : base
 
   const publicClient = createPublicClient({
     chain,

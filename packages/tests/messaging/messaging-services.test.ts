@@ -15,16 +15,56 @@ const HUB_URL = 'https://hub.pinata.cloud'
 // ============================================================================
 
 // Gateway doesn't have a dedicated messaging service yet
-// When implemented, it should be at apps/gateway/api/messaging.ts
-describe.skip('Gateway Messaging Service', () => {
-  test.todo('service can be imported and instantiated')
-  test.todo('getChannelFeed returns proper structure')
-  test.todo('bridgeCompleteNotification generates correct payload')
-  test.todo('intentFilledNotification generates correct payload')
-  test.todo('nodeRewardNotification generates correct payload')
-  test.todo('liquidityUpdateNotification - add action')
-  test.todo('liquidityUpdateNotification - remove action with fees')
-  test.todo('createNotification wraps payload with channel')
+// Tests are skipped until apps/gateway/api/messaging.ts is implemented
+const gatewayMessagingExists = false // Set to true when implemented
+describe.skipIf(!gatewayMessagingExists)('Gateway Messaging Service', () => {
+  test('service can be imported and instantiated', async () => {
+    const { GatewayMessagingService, gatewayMessaging } = await import(
+      '../../../apps/gateway/api/messaging'
+    )
+    expect(gatewayMessaging).toBeDefined()
+    expect(gatewayMessaging).toBeInstanceOf(GatewayMessagingService)
+  })
+  test('getChannelFeed returns proper structure', async () => {
+    const { gatewayMessaging } = await import('../../../apps/gateway/api/messaging')
+    const result = await gatewayMessaging.getChannelFeed({ limit: 5 })
+    expect(result).toBeDefined()
+    expect(result.casts).toBeDefined()
+  })
+  test('bridgeCompleteNotification generates correct payload', async () => {
+    const { gatewayMessaging } = await import('../../../apps/gateway/api/messaging')
+    const notification = gatewayMessaging.bridgeCompleteNotification({
+      amount: '1 ETH',
+      from: 'Base',
+      to: 'Jeju',
+    })
+    expect(notification.type).toBe('bridge_complete')
+  })
+  test('intentFilledNotification generates correct payload', async () => {
+    const { gatewayMessaging } = await import('../../../apps/gateway/api/messaging')
+    const notification = gatewayMessaging.intentFilledNotification({ intentId: '0x123' })
+    expect(notification.type).toBe('intent_filled')
+  })
+  test('nodeRewardNotification generates correct payload', async () => {
+    const { gatewayMessaging } = await import('../../../apps/gateway/api/messaging')
+    const notification = gatewayMessaging.nodeRewardNotification({ reward: '10 JEJU' })
+    expect(notification.type).toBe('node_reward')
+  })
+  test('liquidityUpdateNotification - add action', async () => {
+    const { gatewayMessaging } = await import('../../../apps/gateway/api/messaging')
+    const notification = gatewayMessaging.liquidityUpdateNotification({ action: 'add', amount: '5 ETH' })
+    expect(notification.type).toBe('liquidity_update')
+  })
+  test('liquidityUpdateNotification - remove action with fees', async () => {
+    const { gatewayMessaging } = await import('../../../apps/gateway/api/messaging')
+    const notification = gatewayMessaging.liquidityUpdateNotification({ action: 'remove', amount: '2 ETH', fees: '0.1 ETH' })
+    expect(notification.type).toBe('liquidity_update')
+  })
+  test('createNotification wraps payload with channel', async () => {
+    const { gatewayMessaging } = await import('../../../apps/gateway/api/messaging')
+    const notification = gatewayMessaging.createNotification('test', { message: 'Hello' })
+    expect(notification.channel).toBeDefined()
+  })
 })
 
 // ============================================================================
@@ -142,19 +182,23 @@ describe('Crucible Messaging Service', () => {
     expect(crucibleMessaging).toBeInstanceOf(CrucibleMessagingService)
   })
 
-  test('getChannelFeed returns proper structure', async () => {
-    const { crucibleMessaging } = await import(
-      '../../../apps/crucible/api/messaging'
-    )
+  test(
+    'getChannelFeed returns proper structure',
+    async () => {
+      const { crucibleMessaging } = await import(
+        '../../../apps/crucible/api/messaging'
+      )
 
-    const result = await crucibleMessaging.getChannelFeed({ limit: 5 })
+      const result = await crucibleMessaging.getChannelFeed({ limit: 5 })
 
-    expect(result).toBeDefined()
-    expect(result.casts).toBeDefined()
-    expect(Array.isArray(result.casts)).toBe(true)
+      expect(result).toBeDefined()
+      expect(result.casts).toBeDefined()
+      expect(Array.isArray(result.casts)).toBe(true)
 
-    console.log(`Crucible feed: ${result.casts.length} casts`)
-  })
+      console.log(`Crucible feed: ${result.casts.length} casts`)
+    },
+    { timeout: 15000 },
+  )
 })
 
 // ============================================================================

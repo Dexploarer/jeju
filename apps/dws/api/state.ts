@@ -43,6 +43,11 @@ async function getSQLitClient(): Promise<MinimalSQLitClient> {
     await initPromise
   }
 
+  // If already in memory-only mode, throw immediately
+  if (memoryOnlyMode) {
+    throw new Error('SQLit unavailable (memory-only mode)')
+  }
+
   if (!sqlitClient) {
     // Reset any existing client to ensure fresh config
     resetSQLit()
@@ -241,6 +246,7 @@ async function ensureTablesExist(): Promise<void> {
       name TEXT PRIMARY KEY,
       jns_name TEXT NOT NULL,
       frontend_cid TEXT,
+      static_files TEXT,
       backend_worker_id TEXT,
       backend_endpoint TEXT,
       api_paths TEXT NOT NULL DEFAULT '[]',
@@ -393,42 +399,63 @@ export const computeJobState = {
       created_at: Date.now(),
     }
 
-    const client = await getSQLitClient()
-    await client.exec(
-      `INSERT INTO compute_jobs (job_id, command, shell, env, working_dir, timeout, status, output, exit_code, submitted_by, started_at, completed_at, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(job_id) DO UPDATE SET
-       status = excluded.status, output = excluded.output, exit_code = excluded.exit_code,
-       started_at = excluded.started_at, completed_at = excluded.completed_at`,
-      [
-        row.job_id,
-        row.command,
-        row.shell,
-        row.env,
-        row.working_dir,
-        row.timeout,
-        row.status,
-        row.output,
-        row.exit_code,
-        row.submitted_by,
-        row.started_at,
-        row.completed_at,
-        row.created_at,
-      ],
-      SQLIT_DATABASE_ID,
-    )
+    // Use memory store in memory-only mode
+    if (memoryOnlyMode) {
+      memoryStores.computeJobs.set(row.job_id, row)
+      return
+    }
 
-    await getCache().delete(`job:${row.job_id}`)
+    try {
+      const client = await getSQLitClient()
+      await client.exec(
+        `INSERT INTO compute_jobs (job_id, command, shell, env, working_dir, timeout, status, output, exit_code, submitted_by, started_at, completed_at, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(job_id) DO UPDATE SET
+         status = excluded.status, output = excluded.output, exit_code = excluded.exit_code,
+         started_at = excluded.started_at, completed_at = excluded.completed_at`,
+        [
+          row.job_id,
+          row.command,
+          row.shell,
+          row.env,
+          row.working_dir,
+          row.timeout,
+          row.status,
+          row.output,
+          row.exit_code,
+          row.submitted_by,
+          row.started_at,
+          row.completed_at,
+          row.created_at,
+        ],
+        SQLIT_DATABASE_ID,
+      )
+
+      await getCache().delete(`job:${row.job_id}`)
+    } catch {
+      // SQLit failed, save to memory store
+      memoryStores.computeJobs.set(row.job_id, row)
+    }
   },
 
   async get(jobId: string): Promise<ComputeJobRow | null> {
-    const client = await getSQLitClient()
-    const result = await client.query<ComputeJobRow>(
-      'SELECT * FROM compute_jobs WHERE job_id = ?',
-      [jobId],
-      SQLIT_DATABASE_ID,
-    )
-    return result.rows[0] ?? null
+    // Use memory store in memory-only mode
+    if (memoryOnlyMode) {
+      return memoryStores.computeJobs.get(jobId) ?? null
+    }
+
+    try {
+      const client = await getSQLitClient()
+      const result = await client.query<ComputeJobRow>(
+        'SELECT * FROM compute_jobs WHERE job_id = ?',
+        [jobId],
+        SQLIT_DATABASE_ID,
+      )
+      return result.rows[0] ?? null
+    } catch {
+      // SQLit failed, use memory store
+      return memoryStores.computeJobs.get(jobId) ?? null
+    }
   },
 
   async list(params?: {
@@ -436,29 +463,59 @@ export const computeJobState = {
     status?: string
     limit?: number
   }): Promise<ComputeJobRow[]> {
-    const client = await getSQLitClient()
-    const conditions: string[] = []
-    const values: Array<string | number> = []
-
-    if (params?.submittedBy) {
-      conditions.push('submitted_by = ?')
-      values.push(params.submittedBy.toLowerCase())
+    // Return from memory store in memory-only mode or when SQLit fails
+    if (memoryOnlyMode) {
+      let jobs = Array.from(memoryStores.computeJobs.values())
+      if (params?.submittedBy) {
+        jobs = jobs.filter(
+          (j) => j.submitted_by === params.submittedBy?.toLowerCase(),
+        )
+      }
+      if (params?.status) {
+        jobs = jobs.filter((j) => j.status === params.status)
+      }
+      jobs.sort((a, b) => b.created_at - a.created_at)
+      return jobs.slice(0, params?.limit ?? 50)
     }
-    if (params?.status) {
-      conditions.push('status = ?')
-      values.push(params.status)
+
+    try {
+      const client = await getSQLitClient()
+      const conditions: string[] = []
+      const values: Array<string | number> = []
+
+      if (params?.submittedBy) {
+        conditions.push('submitted_by = ?')
+        values.push(params.submittedBy.toLowerCase())
+      }
+      if (params?.status) {
+        conditions.push('status = ?')
+        values.push(params.status)
+      }
+
+      const where =
+        conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+      values.push(params?.limit ?? 50)
+
+      const result = await client.query<ComputeJobRow>(
+        `SELECT * FROM compute_jobs ${where} ORDER BY created_at DESC LIMIT ?`,
+        values,
+        SQLIT_DATABASE_ID,
+      )
+      return result.rows
+    } catch {
+      // SQLit failed, return from memory store
+      let jobs = Array.from(memoryStores.computeJobs.values())
+      if (params?.submittedBy) {
+        jobs = jobs.filter(
+          (j) => j.submitted_by === params.submittedBy?.toLowerCase(),
+        )
+      }
+      if (params?.status) {
+        jobs = jobs.filter((j) => j.status === params.status)
+      }
+      jobs.sort((a, b) => b.created_at - a.created_at)
+      return jobs.slice(0, params?.limit ?? 50)
     }
-
-    const where =
-      conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
-    values.push(params?.limit ?? 50)
-
-    const result = await client.query<ComputeJobRow>(
-      `SELECT * FROM compute_jobs ${where} ORDER BY created_at DESC LIMIT ?`,
-      values,
-      SQLIT_DATABASE_ID,
-    )
-    return result.rows
   },
 
   async getQueued(): Promise<ComputeJobRow[]> {
@@ -843,34 +900,71 @@ export const apiUserAccountState = {
   async getOrCreate(address: Address): Promise<ApiUserAccountRow> {
     const addr = address.toLowerCase()
     const now = Date.now()
-    const client = await getSQLitClient()
 
-    const result = await client.query<ApiUserAccountRow>(
-      'SELECT * FROM api_user_accounts WHERE address = ?',
-      [addr],
-      SQLIT_DATABASE_ID,
-    )
+    // Use memory store in memory-only mode
+    if (memoryOnlyMode) {
+      const existing = memoryStores.apiUserAccounts.get(addr)
+      if (existing) return existing
 
-    if (result.rows[0]) return result.rows[0]
-
-    const newAccount: ApiUserAccountRow = {
-      address: addr,
-      balance: '0',
-      total_spent: '0',
-      total_requests: 0,
-      active_listings: '[]',
-      created_at: now,
-      updated_at: now,
+      const newAccount: ApiUserAccountRow = {
+        address: addr,
+        balance: '0',
+        total_spent: '0',
+        total_requests: 0,
+        active_listings: '[]',
+        created_at: now,
+        updated_at: now,
+      }
+      memoryStores.apiUserAccounts.set(addr, newAccount)
+      return newAccount
     }
 
-    await client.exec(
-      `INSERT INTO api_user_accounts (address, balance, total_spent, total_requests, active_listings, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [addr, '0', '0', 0, '[]', now, now],
-      SQLIT_DATABASE_ID,
-    )
+    try {
+      const client = await getSQLitClient()
 
-    return newAccount
+      const result = await client.query<ApiUserAccountRow>(
+        'SELECT * FROM api_user_accounts WHERE address = ?',
+        [addr],
+        SQLIT_DATABASE_ID,
+      )
+
+      if (result.rows[0]) return result.rows[0]
+
+      const newAccount: ApiUserAccountRow = {
+        address: addr,
+        balance: '0',
+        total_spent: '0',
+        total_requests: 0,
+        active_listings: '[]',
+        created_at: now,
+        updated_at: now,
+      }
+
+      await client.exec(
+        `INSERT INTO api_user_accounts (address, balance, total_spent, total_requests, active_listings, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [addr, '0', '0', 0, '[]', now, now],
+        SQLIT_DATABASE_ID,
+      )
+
+      return newAccount
+    } catch {
+      // SQLit failed, use memory store
+      const existing = memoryStores.apiUserAccounts.get(addr)
+      if (existing) return existing
+
+      const newAccount: ApiUserAccountRow = {
+        address: addr,
+        balance: '0',
+        total_spent: '0',
+        total_requests: 0,
+        active_listings: '[]',
+        created_at: now,
+        updated_at: now,
+      }
+      memoryStores.apiUserAccounts.set(addr, newAccount)
+      return newAccount
+    }
   },
 
   async updateBalance(address: Address, delta: string): Promise<void> {
@@ -1574,6 +1668,7 @@ interface DeployedAppRow {
   name: string
   jns_name: string
   frontend_cid: string | null
+  static_files: string | null
   backend_worker_id: string | null
   backend_endpoint: string | null
   api_paths: string
@@ -1589,6 +1684,7 @@ export const deployedAppState = {
     name: string
     jnsName: string
     frontendCid: string | null
+    staticFiles: Record<string, string> | null
     backendWorkerId: string | null
     backendEndpoint: string | null
     apiPaths: string[]
@@ -1605,6 +1701,7 @@ export const deployedAppState = {
       name: app.name,
       jns_name: app.jnsName,
       frontend_cid: app.frontendCid,
+      static_files: app.staticFiles ? JSON.stringify(app.staticFiles) : null,
       backend_worker_id: app.backendWorkerId,
       backend_endpoint: app.backendEndpoint,
       api_paths: JSON.stringify(app.apiPaths),
@@ -1615,11 +1712,12 @@ export const deployedAppState = {
     }
 
     await client.exec(
-      `INSERT INTO deployed_apps (name, jns_name, frontend_cid, backend_worker_id, backend_endpoint, api_paths, spa, enabled, deployed_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO deployed_apps (name, jns_name, frontend_cid, static_files, backend_worker_id, backend_endpoint, api_paths, spa, enabled, deployed_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(name) DO UPDATE SET
        jns_name = excluded.jns_name,
        frontend_cid = excluded.frontend_cid,
+       static_files = excluded.static_files,
        backend_worker_id = excluded.backend_worker_id,
        backend_endpoint = excluded.backend_endpoint,
        api_paths = excluded.api_paths,
@@ -1630,6 +1728,7 @@ export const deployedAppState = {
         row.name,
         row.jns_name,
         row.frontend_cid,
+        row.static_files,
         row.backend_worker_id,
         row.backend_endpoint,
         row.api_paths,
@@ -1642,7 +1741,7 @@ export const deployedAppState = {
     )
 
     console.log(
-      `[DeployedAppState] Saved app: ${app.name} (frontend: ${app.frontendCid ?? 'none'}, backend: ${app.backendWorkerId ?? app.backendEndpoint ?? 'none'})`,
+      `[DeployedAppState] Saved app: ${app.name} (frontend: ${app.frontendCid ?? 'none'}, staticFiles: ${app.staticFiles ? Object.keys(app.staticFiles).length : 0}, backend: ${app.backendWorkerId ?? app.backendEndpoint ?? 'none'})`,
     )
   },
 
@@ -1704,6 +1803,12 @@ export const deployedAppState = {
 
 // Track if we're in memory-only mode (no SQLit)
 let memoryOnlyMode = false
+
+// In-memory stores for when SQLit is unavailable
+const memoryStores = {
+  computeJobs: new Map<string, ComputeJobRow>(),
+  apiUserAccounts: new Map<string, ApiUserAccountRow>(),
+}
 
 // Initialize state - uses promise to prevent race conditions
 export async function initializeDWSState(): Promise<void> {

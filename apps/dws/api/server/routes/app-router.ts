@@ -77,7 +77,7 @@ function extractAppName(hostname: string): string | null {
   // Handle testnet subdomain: appname.testnet.jejunetwork.org
   const testnetMatch = hostname.match(/^([^.]+)\.testnet\./)
   if (testnetMatch?.[1]) {
-    // Skip system subdomains
+    // Skip system subdomains (these are core infrastructure, not JNS apps)
     const systemSubdomains = [
       'dws',
       'api',
@@ -87,6 +87,18 @@ function extractAppName(hostname: string): string | null {
       'bridge',
       'faucet',
       'docs',
+      'ipfs',
+      'ipfs-api',
+      'storage',
+      'git',
+      'npm',
+      'hub',
+      'registry',
+      'jns',
+      'indexer',
+      'bundler',
+      'relay',
+      'kms',
     ]
     const name = testnetMatch[1]
     if (!systemSubdomains.includes(name)) {
@@ -184,6 +196,7 @@ export async function registerDeployedApp(
         name: app.name,
         jnsName: app.jnsName,
         frontendCid: app.frontendCid,
+        staticFiles: app.staticFiles,
         backendWorkerId: app.backendWorkerId,
         backendEndpoint: app.backendEndpoint,
         apiPaths: app.apiPaths,
@@ -424,10 +437,11 @@ async function proxyToBackend(
     // Direct endpoint (container or external service)
     targetUrl = `${app.backendEndpoint}${pathname}`
   } else if (app.backendWorkerId) {
-    // DWS worker - route through workerd executor
-    // For now, use the DWS compute endpoint
+    // DWS worker - route through workers runtime
+    // backendWorkerId can be either a function ID (UUID) or IPFS CID
     const host = getLocalhostHost()
-    targetUrl = `http://${host}:4030/workerd/execute/${app.backendWorkerId}${pathname}`
+    // Use workers HTTP endpoint for function invocation
+    targetUrl = `http://${host}:4030/workers/${app.backendWorkerId}/http${pathname}`
   } else {
     return new Response(JSON.stringify({ error: 'No backend configured' }), {
       status: 502,
@@ -578,6 +592,7 @@ export function createAppRouter() {
             name: app.name,
             jnsName: app.jnsName,
             frontendCid: app.frontendCid,
+            staticFiles: app.staticFiles,
             backendWorkerId: app.backendWorkerId,
             backendEndpoint: app.backendEndpoint,
             enabled: app.enabled,
@@ -645,7 +660,7 @@ export async function initializeAppRouter(): Promise<void> {
           name: row.name,
           jnsName: row.jns_name,
           frontendCid: row.frontend_cid,
-          staticFiles: null,
+          staticFiles: row.static_files ? JSON.parse(row.static_files) : null,
           backendWorkerId: row.backend_worker_id,
           backendEndpoint: row.backend_endpoint,
           apiPaths: JSON.parse(row.api_paths),
@@ -656,7 +671,7 @@ export async function initializeAppRouter(): Promise<void> {
         }
         deployedAppsCache.set(app.name, app)
         console.log(
-          `[AppRouter] Loaded from database: ${app.name} (frontend: ${app.frontendCid ?? 'none'}, backend: ${app.backendWorkerId ?? app.backendEndpoint ?? 'none'})`,
+          `[AppRouter] Loaded from database: ${app.name} (frontend: ${app.frontendCid ?? 'none'}, staticFiles: ${app.staticFiles ? Object.keys(app.staticFiles).length : 0}, backend: ${app.backendWorkerId ?? app.backendEndpoint ?? 'none'})`,
         )
       }
     } catch (error) {

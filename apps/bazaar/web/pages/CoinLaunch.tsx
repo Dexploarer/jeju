@@ -15,9 +15,12 @@ const TOKEN_FACTORY_ABI = parseAbi([
   'function createToken(string name, string symbol, uint8 decimals, uint256 initialSupply) returns (address)',
 ])
 
-const TOKEN_FACTORY_ADDRESS = getContract('bazaar', 'tokenFactory', NETWORK) as
-  | `0x${string}`
-  | undefined
+let TOKEN_FACTORY_ADDRESS: `0x${string}` | undefined
+try {
+  TOKEN_FACTORY_ADDRESS = getContract('bazaar', 'tokenFactory', NETWORK) as `0x${string}`
+} catch {
+  TOKEN_FACTORY_ADDRESS = undefined
+}
 
 export default function CoinLaunchPage() {
   const navigate = useNavigate()

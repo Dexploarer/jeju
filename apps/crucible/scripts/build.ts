@@ -1,16 +1,29 @@
 import { existsSync } from 'node:fs'
 import { cp, mkdir, rm } from 'node:fs/promises'
 import { resolve } from 'node:path'
+import { getCurrentNetwork } from '@jejunetwork/config'
 import type { BunPlugin } from 'bun'
 
 const DIST_DIR = './dist'
 const WEB_DIR = `${DIST_DIR}/web`
 const API_DIR = `${DIST_DIR}/api`
 
+const network = getCurrentNetwork()
+
 // Browser plugin for shimming and deduplication
 const browserPlugin: BunPlugin = {
   name: 'browser-plugin',
   setup(build) {
+    // Stub server-side packages for browser builds
+    const serverOnlyStub = resolve('./web/stubs/empty.ts')
+    
+    build.onResolve({ filter: /^@jejunetwork\/kms/ }, () => ({ path: serverOnlyStub }))
+    build.onResolve({ filter: /^@jejunetwork\/db/ }, () => ({ path: serverOnlyStub }))
+    build.onResolve({ filter: /^@jejunetwork\/deployment/ }, () => ({ path: serverOnlyStub }))
+    build.onResolve({ filter: /^ioredis/ }, () => ({ path: serverOnlyStub }))
+    build.onResolve({ filter: /^elysia/ }, () => ({ path: serverOnlyStub }))
+    build.onResolve({ filter: /^@elysiajs\// }, () => ({ path: serverOnlyStub }))
+    
     // Shim pino
     build.onResolve({ filter: /^pino(-pretty)?$/ }, () => ({
       path: resolve('./scripts/shims/pino.ts'),
@@ -47,6 +60,7 @@ const browserPlugin: BunPlugin = {
   },
 }
 
+// Node.js built-ins that need to be external for browser builds
 const BROWSER_EXTERNALS = [
   'bun:sqlite',
   'child_process',
@@ -67,14 +81,6 @@ const BROWSER_EXTERNALS = [
   'node:events',
   'node:module',
   'node:worker_threads',
-  '@jejunetwork/deployment',
-  '@jejunetwork/db',
-  '@jejunetwork/kms',
-  'elysia',
-  '@elysiajs/*',
-  'ioredis',
-  'pino',
-  'pino-pretty',
 ]
 
 async function buildCSS(): Promise<void> {
@@ -116,7 +122,19 @@ async function buildFrontend(): Promise<void> {
     plugins: [browserPlugin],
     define: {
       'process.env.NODE_ENV': JSON.stringify('production'),
+      'process.env.JEJU_NETWORK': JSON.stringify(network),
       'process.browser': 'true',
+      'globalThis.process': JSON.stringify({
+        env: { NODE_ENV: 'production', JEJU_NETWORK: network },
+        browser: true,
+      }),
+      'import.meta.env': JSON.stringify({
+        VITE_NETWORK: network,
+        MODE: 'production',
+        DEV: false,
+        PROD: true,
+      }),
+      'import.meta.env.VITE_NETWORK': JSON.stringify(network),
     },
     naming: {
       entry: '[name]-[hash].js',

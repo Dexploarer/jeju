@@ -301,7 +301,10 @@ export class SQLitIdentityService {
 
   /**
    * Compute NodeID from public key and nonce
-   * Algorithm: NodeID = sha256(blake2b-512(publicKey || nonce))
+   * Algorithm: NodeID = reverse(sha256(blake2b-512(publicKey || nonce)))
+   *
+   * - Nonce is serialized as 4x uint64 big-endian (A, B, C, D sequential)
+   * - Final hash is byte-reversed (Bitcoin-style hash display, matching CovenantSQL)
    */
   computeNodeId(
     publicKey: string,
@@ -310,23 +313,25 @@ export class SQLitIdentityService {
     // Convert public key to bytes
     const pubKeyBytes = Buffer.from(publicKey, 'hex')
 
-    // Convert nonce to little-endian bytes (32 bytes total)
+    // Convert nonce to BIG-ENDIAN bytes (32 bytes total)
+    // CovenantSQL uses binary.BigEndian for Uint256.Bytes()
     const nonceBytes = Buffer.alloc(32)
-    nonceBytes.writeBigUInt64LE(nonce.a, 0)
-    nonceBytes.writeBigUInt64LE(nonce.b, 8)
-    nonceBytes.writeBigUInt64LE(nonce.c, 16)
-    nonceBytes.writeBigUInt64LE(nonce.d, 24)
+    nonceBytes.writeBigUInt64BE(nonce.a, 0)   // A at offset 0
+    nonceBytes.writeBigUInt64BE(nonce.b, 8)   // B at offset 8
+    nonceBytes.writeBigUInt64BE(nonce.c, 16)  // C at offset 16
+    nonceBytes.writeBigUInt64BE(nonce.d, 24)  // D at offset 24
 
     // Concatenate: publicKey || nonce
     const input = Buffer.concat([pubKeyBytes, nonceBytes])
 
-    // blake2b-512
+    // THashH: blake2b-512 then sha256
     const blake2bHash = blake2b(input, { dkLen: 64 })
-
-    // sha256
     const sha256Hash = sha256(blake2bHash)
 
-    return Buffer.from(sha256Hash).toString('hex')
+    // Reverse bytes for CovenantSQL NodeID format (Bitcoin-style)
+    const reversed = Buffer.from(sha256Hash).reverse()
+
+    return reversed.toString('hex')
   }
 
   /**

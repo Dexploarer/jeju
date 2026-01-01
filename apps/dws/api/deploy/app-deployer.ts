@@ -628,16 +628,44 @@ export function createAppDeployerRouter() {
         return { error: 'Content-Type must be application/json or multipart/form-data' }
       }
 
-      // If codeCid provided, fetch code from storage
+      // Setup backend manager
+      const { createBackendManager } = await import('../storage/backends')
+      const backend = createBackendManager()
+
+      // If codeCid provided, fetch code from storage (with IPFS gateway fallback)
       if (codeCid && !codeBuffer) {
-        const { createBackendManager } = await import('../storage/backends')
-        const backend = createBackendManager()
-        const downloadResult = await backend.download(codeCid)
-        if (!downloadResult) {
-          set.status = 400
-          return { error: `Code not found in storage: ${codeCid}` }
+        try {
+          const downloadResult = await backend.download(codeCid)
+          codeBuffer = downloadResult.content
+        } catch (localError) {
+          // Fallback: try fetching from IPFS gateway
+          try {
+            const { getIpfsGatewayUrl } = await import('@jejunetwork/config')
+            const gatewayUrl = getIpfsGatewayUrl()
+            const ipfsUrl = `${gatewayUrl}/ipfs/${codeCid}`
+            console.log(`[AppDeployer] Fetching from IPFS gateway: ${ipfsUrl}`)
+            const response = await fetch(ipfsUrl)
+            if (!response.ok) {
+              throw new Error(`IPFS gateway returned ${response.status}`)
+            }
+            codeBuffer = Buffer.from(await response.arrayBuffer())
+          } catch (gatewayError) {
+            set.status = 400
+            return {
+              error: `Code not found in storage or IPFS: ${codeCid}`,
+              details: {
+                localError:
+                  localError instanceof Error
+                    ? localError.message
+                    : String(localError),
+                gatewayError:
+                  gatewayError instanceof Error
+                    ? gatewayError.message
+                    : String(gatewayError),
+              },
+            }
+          }
         }
-        codeBuffer = downloadResult
       }
 
       if (!codeBuffer) {
@@ -645,11 +673,13 @@ export function createAppDeployerRouter() {
         return { error: 'Either code file or codeCid is required' }
       }
 
-      // Deploy to workers runtime
-      const { createBackendManager } = await import('../storage/backends')
-      const backend = createBackendManager()
+      // Deploy to workers runtime - use shared runtime if available
+      const { getSharedWorkersRuntime } = await import(
+        '../server/routes/workers'
+      )
       const { WorkerRuntime } = await import('../workers/runtime')
-      const workerRuntime = new WorkerRuntime(backend)
+      const sharedRuntime = getSharedWorkersRuntime()
+      const workerRuntime = sharedRuntime ?? new WorkerRuntime(backend)
 
       // Upload code to storage if not already uploaded
       let finalCid = codeCid
@@ -716,7 +746,7 @@ export function createAppDeployerRouter() {
         set.status = 401
         return { error: 'x-jeju-address header required' }
       }
-      const owner = ownerHeader as Address
+      const ownerAddress = ownerHeader as Address
 
       const body = (await request.json()) as {
         name: string
@@ -742,8 +772,10 @@ export function createAppDeployerRouter() {
         const { WorkerRuntime } = await import('../workers/runtime')
         const workerRuntime = new WorkerRuntime(backend)
 
-        const downloadResult = await backend.download(body.backendCid)
-        if (!downloadResult) {
+        // Verify code exists in storage
+        try {
+          await backend.download(body.backendCid)
+        } catch {
           set.status = 400
           return { error: `Backend code not found in storage: ${body.backendCid}` }
         }
@@ -752,7 +784,7 @@ export function createAppDeployerRouter() {
         const fn = {
           id: functionId,
           name: `${body.name}-api`,
-          owner,
+          owner: ownerAddress,
           runtime: 'bun' as const,
           handler: 'server.js',
           codeCid: body.backendCid,

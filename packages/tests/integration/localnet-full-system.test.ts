@@ -425,35 +425,43 @@ describe.skipIf(!localnetAvailable)('Localnet Full System Integration', () => {
   })
 
   describe('4. Transaction Execution', () => {
-    it('should send ETH transfer and deploy contract', async () => {
-      const hash = await user1WalletClient.sendTransaction({
-        to: TEST_WALLETS.user2.address as Address,
-        value: parseEther('0.1'),
-      })
+    it(
+      'should send ETH transfer and deploy contract',
+      async () => {
+        const hash = await user1WalletClient.sendTransaction({
+          to: TEST_WALLETS.user2.address as Address,
+          value: parseEther('0.1'),
+        })
 
-      const receipt = await waitForTransactionReceipt(l2PublicClient, { hash })
-      expect(receipt.status).toBe('success')
-      expect(receipt.blockNumber).toBeGreaterThan(0n)
+        const receipt = await waitForTransactionReceipt(l2PublicClient, {
+          hash,
+          timeout: 30000,
+        })
+        expect(receipt.status).toBe('success')
+        expect(receipt.blockNumber).toBeGreaterThan(0n)
 
-      console.log(`   ✅ ETH transfer in block ${receipt.blockNumber}`)
-      console.log(`   📝 Transaction hash: ${receipt.transactionHash}`)
+        console.log(`   ✅ ETH transfer in block ${receipt.blockNumber}`)
+        console.log(`   📝 Transaction hash: ${receipt.transactionHash}`)
 
-      // Deploy a simple contract
-      const contractCode =
-        '0x608060405234801561001057600080fd5b50' as `0x${string}`
+        // Deploy a simple contract
+        const contractCode =
+          '0x608060405234801561001057600080fd5b50' as `0x${string}`
 
-      const deployHash = await user1WalletClient.sendTransaction({
-        data: contractCode,
-      })
+        const deployHash = await user1WalletClient.sendTransaction({
+          data: contractCode,
+        })
 
-      const deployReceipt = await waitForTransactionReceipt(l2PublicClient, {
-        hash: deployHash,
-      })
-      expect(deployReceipt.status).toBe('success')
-      expect(deployReceipt.contractAddress).toBeTruthy()
+        const deployReceipt = await waitForTransactionReceipt(l2PublicClient, {
+          hash: deployHash,
+          timeout: 30000,
+        })
+        expect(deployReceipt.status).toBe('success')
+        expect(deployReceipt.contractAddress).toBeTruthy()
 
-      console.log(`   ✅ Contract deployed at ${deployReceipt.contractAddress}`)
-    })
+        console.log(`   ✅ Contract deployed at ${deployReceipt.contractAddress}`)
+      },
+      { timeout: 60000 },
+    )
   })
 
   describe('5. Indexer Integration', () => {
@@ -779,11 +787,13 @@ describe.skipIf(!localnetAvailable)('Service Interaction Tests', () => {
   })
 
   describe('RPC → Indexer Flow', () => {
-    it('should verify transactions appear in indexer', async () => {
-      const deployerAddress = deployerAccount.address
+    it(
+      'should verify transactions appear in indexer',
+      async () => {
+        const deployerAddress = deployerAccount.address
 
-      // Step 1: Send a transaction on L2
-      const hash = await deployerWalletClient.sendTransaction({
+        // Step 1: Send a transaction on L2
+        const hash = await deployerWalletClient.sendTransaction({
         to: user1Account.address,
         value: parseEther('0.01'),
       })
@@ -801,7 +811,7 @@ describe.skipIf(!localnetAvailable)('Service Interaction Tests', () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             query: `{
-              transactions(where: { hash_eq: "${tx.hash}" }) {
+              transactions(where: { hash_eq: "${hash}" }) {
                 hash
                 from { address }
                 to { address }
@@ -839,11 +849,15 @@ describe.skipIf(!localnetAvailable)('Service Interaction Tests', () => {
           '   ⚠️  Indexer not available - start with: cd apps/indexer && bun run dev',
         )
       }
-    })
+      },
+      { timeout: 15000 },
+    )
   })
 
   describe('Token Transfer Event Indexing', () => {
-    it('should index ERC20 transfer events', async () => {
+    it(
+      'should index ERC20 transfer events',
+      async () => {
       // Deploy a token and transfer
       const deployHash = await deployContract(deployerWalletClient, {
         abi: MockERC20Artifact.abi,
@@ -910,7 +924,9 @@ describe.skipIf(!localnetAvailable)('Service Interaction Tests', () => {
       } catch {
         console.log('   ⚠️  Indexer not available')
       }
-    })
+      },
+      { timeout: 15000 },
+    )
   })
 
   describe('Block Production Verification', () => {

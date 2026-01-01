@@ -276,7 +276,14 @@ function rowToStats(row: StatsRow): ModeratorStats {
 
 export class ModerationSystem {
   async init(): Promise<void> {
-    await ensureTablesExist()
+    try {
+      await ensureTablesExist()
+    } catch (err) {
+      console.warn(
+        `[Moderation] Failed to initialize tables: ${err instanceof Error ? err.message : 'unknown'}`,
+      )
+      // Don't throw - tables might already exist or SQLit unavailable temporarily
+    }
   }
 
   async submitFlag(

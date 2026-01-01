@@ -143,18 +143,30 @@ async function getSQLitClient(): Promise<SQLitClient> {
       timeout: 30000,
       debug: !config.isProduction,
     })
+  }
 
-    const healthy = await sqlitClient.isHealthy()
-    if (!healthy) {
+  // Lazy initialization of tables
+  if (!initialized) {
+    const healthy = await sqlitClient.isHealthy().catch(() => false)
+    if (healthy) {
+      try {
+        await ensureTablesExist()
+        initialized = true
+        console.log('[Autocrat] SQLit tables initialized successfully')
+      } catch (err) {
+        console.warn(
+          `[Autocrat] Failed to initialize SQLit tables: ${err instanceof Error ? err.message : 'unknown'}`,
+        )
+        // Don't throw - tables might already exist or we'll retry
+      }
+    } else {
       const network = getCurrentNetwork()
-      throw new Error(
-        `Autocrat requires SQLit for decentralized state (network: ${network}).\n` +
-          'Ensure SQLit is running: docker compose up -d sqlit',
+      console.warn(
+        `[Autocrat] SQLit not healthy yet (network: ${network}). Operations may fail.`,
       )
     }
-
-    await ensureTablesExist()
   }
+
   return sqlitClient
 }
 

@@ -159,6 +159,10 @@ module "acm" {
     "testnet.${var.domain_name}",
     "testnet-rpc.${var.domain_name}",
     "testnet-ws.${var.domain_name}",
+    # WILDCARD: Enables permissionless JNS-based app deployment
+    # Any app registered via JNS (babylon.jeju, myapp.jeju) automatically gets HTTPS
+    "*.testnet.${var.domain_name}",
+    # Legacy explicit entries (kept for backwards compatibility)
     "gateway.testnet.${var.domain_name}",
     "bazaar.testnet.${var.domain_name}",
     "autocrat.testnet.${var.domain_name}",
@@ -178,6 +182,8 @@ module "acm" {
     "bundler.testnet.${var.domain_name}",
     "explorer.testnet.${var.domain_name}",
     "faucet.testnet.${var.domain_name}",
+    "ipfs.testnet.${var.domain_name}",
+    "ipfs-api.testnet.${var.domain_name}",
   ]
 
   tags = local.common_tags
@@ -601,6 +607,26 @@ resource "aws_route53_record" "oauth3" {
   count   = var.enable_dns_records ? 1 : 0
   zone_id = module.route53.zone_id
   name    = "oauth3.testnet"
+  type    = "A"
+
+  alias {
+    name                   = module.alb.alb_dns_name
+    zone_id                = module.alb.alb_zone_id
+    evaluate_target_health = true
+  }
+
+  depends_on = [module.route53, module.alb]
+}
+
+# =============================================================================
+# WILDCARD DNS RECORD - Enables Permissionless JNS-Based App Deployment
+# Any app registered via JNS automatically routes here without Terraform changes
+# DWS handles hostname-based routing internally via JNS resolution
+# =============================================================================
+resource "aws_route53_record" "testnet_wildcard" {
+  count   = var.enable_dns_records ? 1 : 0
+  zone_id = module.route53.zone_id
+  name    = "*.testnet"
   type    = "A"
 
   alias {

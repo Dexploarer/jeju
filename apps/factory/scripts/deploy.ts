@@ -11,7 +11,7 @@
  *   jeju deploy factory
  */
 
-import { existsSync, rmSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import {
   getCoreAppUrl,
   getCurrentNetwork,
@@ -72,7 +72,7 @@ async function deploy(): Promise<DeployResult> {
     throw new Error('Build failed')
   }
 
-  // Upload frontend to IPFS
+  // Upload frontend to IPFS - upload index.html directly for SPA support
   console.log('\nUploading frontend to IPFS...')
   const frontendDir = 'dist/client'
 
@@ -80,24 +80,20 @@ async function deploy(): Promise<DeployResult> {
     throw new Error(`Frontend not built: ${frontendDir} not found`)
   }
 
-  // Create tar.gz
-  const tarPath = '/tmp/factory-frontend.tar.gz'
-  const tarProc = Bun.spawn(['tar', '-czf', tarPath, '-C', frontendDir, '.'], {
-    stdout: 'pipe',
-    stderr: 'pipe',
-  })
-  await tarProc.exited
+  // Upload index.html as the main CID for the SPA
+  const indexHtmlPath = `${frontendDir}/index.html`
+  if (!existsSync(indexHtmlPath)) {
+    throw new Error(`Frontend not built: ${indexHtmlPath} not found`)
+  }
 
-  // Upload using multipart form data
-  const tarContent = Bun.file(tarPath)
-  const formData = new FormData()
-  formData.append('file', tarContent, 'factory-frontend.tar.gz')
-  formData.append('tier', 'system')
-  formData.append('backends', 'ipfs')
+  const indexFormData = new FormData()
+  indexFormData.append('file', Bun.file(indexHtmlPath), 'index.html')
+  indexFormData.append('tier', 'system')
+  indexFormData.append('backends', 'ipfs')
 
   const uploadResponse = await fetch(`${DWS_URL}/storage/upload`, {
     method: 'POST',
-    body: formData,
+    body: indexFormData,
   })
 
   if (!uploadResponse.ok) {
@@ -110,7 +106,45 @@ async function deploy(): Promise<DeployResult> {
     uploadJson,
     'upload response',
   ).cid
-  console.log(`  Frontend CID: ${frontendCid}`)
+  console.log(`  Frontend CID (index.html): ${frontendCid}`)
+
+  // Upload static assets and build a map of path -> CID
+  const staticFiles: Record<string, string> = {}
+
+  // Upload JS, CSS, and other assets
+  const { readdir, stat } = await import('node:fs/promises')
+  const { join, relative } = await import('node:path')
+
+  async function uploadDir(dir: string): Promise<void> {
+    const entries = await readdir(dir, { withFileTypes: true })
+    for (const entry of entries) {
+      const fullPath = join(dir, entry.name)
+      if (entry.isDirectory()) {
+        await uploadDir(fullPath)
+      } else if (!entry.name.endsWith('.map')) {
+        // Skip source maps to reduce upload size
+        const relPath = relative(frontendDir, fullPath)
+        const fileFormData = new FormData()
+        fileFormData.append('file', Bun.file(fullPath), entry.name)
+        fileFormData.append('tier', 'system')
+        fileFormData.append('backends', 'ipfs')
+
+        const resp = await fetch(`${DWS_URL}/storage/upload`, {
+          method: 'POST',
+          body: fileFormData,
+        })
+
+        if (resp.ok) {
+          const json: unknown = await resp.json()
+          const { cid } = parseResponse(UploadResponseSchema, json, `upload ${relPath}`)
+          staticFiles[relPath] = cid
+          console.log(`  Uploaded ${relPath}: ${cid.slice(0, 12)}...`)
+        }
+      }
+    }
+  }
+
+  await uploadDir(frontendDir)
 
   // Upload worker
   console.log('\nUploading worker...')
@@ -183,54 +217,12 @@ async function deploy(): Promise<DeployResult> {
     }),
   })
 
-  // If the deploy API doesn't exist or doesn't work, fall back to registering as an app
+  // Handle deploy response or fall back to app registration
   let deployResult: { functionId: string; codeCid: string; status: string }
 
   if (!deployResponse.ok) {
     const errorText = await deployResponse.text()
-    console.log(`  Direct worker deploy not available: ${errorText}`)
-    console.log(`  Registering as DWS app...`)
-
-    // Register through the app deployment system
-    const appDeployResponse = await fetch(`${DWS_URL}/deploy/apps`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-jeju-address': deployerAddress,
-      },
-      body: JSON.stringify({
-        name: 'factory',
-        frontendCid: frontendCid,
-        backendCid: workerCid,
-        jnsName: 'factory.jeju',
-      }),
-    })
-
-    if (!appDeployResponse.ok) {
-      // Last resort - just report the CIDs for manual deployment
-      console.log(`  App deployment not available, reporting CIDs for manual setup:`)
-      deployResult = {
-        functionId: 'manual-setup-required',
-        codeCid: workerCid,
-        status: 'pending',
-      }
-    } else {
-      const appDeployJson: unknown = await appDeployResponse.json()
-      const AppDeployResponseSchema = z.object({
-        appId: z.string(),
-        status: z.string(),
-      })
-      const appResult = parseResponse(
-        AppDeployResponseSchema,
-        appDeployJson,
-        'app deploy response',
-      )
-      deployResult = {
-        functionId: appResult.appId,
-        codeCid: workerCid,
-        status: appResult.status,
-      }
-    }
+    console.log(`  Worker deploy endpoint not available: ${errorText}`)
   } else {
     const deployJson: unknown = await deployResponse.json()
     const WorkerDeployResponseSchema = z.object({
@@ -250,14 +242,49 @@ async function deploy(): Promise<DeployResult> {
       codeCid: parsedResult.codeCid ?? workerCid,
       status: parsedResult.status,
     }
+    console.log(`  Worker ID: ${deployResult.functionId}`)
+    console.log(`  Code CID: ${deployResult.codeCid}`)
+    console.log(`  Status: ${deployResult.status}`)
   }
 
-  console.log(`  Worker ID: ${deployResult.functionId}`)
-  console.log(`  Code CID: ${deployResult.codeCid}`)
-  console.log(`  Status: ${deployResult.status}`)
+  // Always register the app with the DWS app router
+  console.log('\nRegistering app with DWS...')
+  const appRegistrationResponse = await fetch(`${DWS_URL}/apps/deployed`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-jeju-address': deployerAddress,
+    },
+    body: JSON.stringify({
+      name: 'factory',
+      jnsName: 'factory.jeju',
+      frontendCid: frontendCid,
+      staticFiles: Object.keys(staticFiles).length > 0 ? staticFiles : null,
+      backendWorkerId: null,
+      backendEndpoint: null, // Backend not running yet, will be deployed when workerd is ready
+      apiPaths: ['/api', '/health', '/a2a'],
+      spa: true,
+      enabled: true,
+    }),
+  })
 
-  // Cleanup
-  rmSync(tarPath, { force: true })
+  if (!appRegistrationResponse.ok) {
+    console.log(`  App registration failed: ${await appRegistrationResponse.text()}`)
+    deployResult = {
+      functionId: 'registration-failed',
+      codeCid: workerCid,
+      status: 'failed',
+    }
+  } else {
+    const regJson: unknown = await appRegistrationResponse.json()
+    console.log(`  App registered: ${JSON.stringify(regJson)}`)
+    deployResult = deployResult ?? {
+      functionId: 'app-registered',
+      codeCid: workerCid,
+      status: 'deployed',
+    }
+  }
+
 
   const result: DeployResult = {
     frontend: { cid: frontendCid, url: `${DWS_URL}/ipfs/${frontendCid}` },

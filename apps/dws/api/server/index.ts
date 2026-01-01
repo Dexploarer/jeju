@@ -90,6 +90,7 @@ import { createObservabilityRoutes } from '../observability/routes'
 import { PkgRegistryManager } from '../pkg/registry-manager'
 import { createSecurityRoutes } from '../security/routes'
 import { createServicesRouter, discoverExistingServices } from '../services'
+import { initializeDWSState } from '../state'
 import { createBackendManager } from '../storage/backends'
 import type { ServiceHealth } from '../types'
 import { WorkerdExecutor } from '../workers/workerd/executor'
@@ -302,7 +303,37 @@ const app = new Elysia()
 
     return { error: message }
   })
-  .use(cors({ origin: '*' }))
+  .use(
+    cors({
+      // Reflect requesting origin to support credentials
+      // When credentials: 'include' is used, Access-Control-Allow-Origin cannot be '*'
+      origin: (request) => {
+        const origin = request.headers.get('origin')
+        // Allow any *.jejunetwork.org origin and localhost for dev
+        if (origin) {
+          if (
+            origin.endsWith('.jejunetwork.org') ||
+            origin.includes('localhost') ||
+            origin.includes('127.0.0.1')
+          ) {
+            return origin
+          }
+        }
+        // Fallback for non-credentialed requests
+        return '*'
+      },
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
+      allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'X-Request-ID',
+        'X-Babylon-Api-Key',
+      ],
+      exposeHeaders: ['X-Request-ID', 'X-Rate-Limit-Remaining'],
+      maxAge: 86400,
+    }),
+  )
   .use(rateLimiter())
   .use(banCheckMiddleware())
   // App router - routes requests by hostname to deployed apps
@@ -1386,6 +1417,7 @@ if (import.meta.main) {
             })
           }
           // Serve frontend from IPFS/storage if configured
+          console.log(`[Bun.serve] App ${appName}: frontendCid=${deployedApp.frontendCid}, staticFiles=${deployedApp.staticFiles ? Object.keys(deployedApp.staticFiles).length : 0}`)
           if (deployedApp.frontendCid || deployedApp.staticFiles) {
             const gateway = getIpfsGatewayUrl(NETWORK)
             let assetPath = url.pathname === '/' ? '/index.html' : url.pathname
@@ -1393,11 +1425,17 @@ if (import.meta.main) {
             if (deployedApp.spa && !assetPath.match(/\.\w+$/)) {
               assetPath = '/index.html'
             }
+            console.log(`[Bun.serve] Looking for assetPath: ${assetPath}`)
             
             // Check staticFiles map first for individual file CIDs
             if (deployedApp.staticFiles) {
-              const filePath = assetPath.replace(/^\//, '')
-              const fileCid = deployedApp.staticFiles[filePath]
+              const filePathWithSlash = assetPath.startsWith('/') ? assetPath : `/${assetPath}`
+              const filePathWithoutSlash = assetPath.replace(/^\//, '')
+              console.log(`[Bun.serve] Checking staticFiles for: ${filePathWithSlash} or ${filePathWithoutSlash}`)
+              // Try both with and without leading slash since deploy scripts vary
+              const fileCid = deployedApp.staticFiles[filePathWithSlash] 
+                ?? deployedApp.staticFiles[filePathWithoutSlash]
+              console.log(`[Bun.serve] Found CID: ${fileCid}`)
               if (fileCid) {
                 // Fetch from DWS storage
                 const storageUrl = NETWORK === 'localnet'
@@ -1406,9 +1444,9 @@ if (import.meta.main) {
                 console.log(`[Bun.serve] Serving from staticFiles: ${storageUrl}`)
                 const resp = await fetch(storageUrl).catch(() => null)
                 if (resp?.ok) {
-                  const contentType = filePath.endsWith('.js') ? 'application/javascript'
-                    : filePath.endsWith('.css') ? 'text/css'
-                    : filePath.endsWith('.html') ? 'text/html'
+                  const contentType = filePathWithoutSlash.endsWith('.js') ? 'application/javascript'
+                    : filePathWithoutSlash.endsWith('.css') ? 'text/css'
+                    : filePathWithoutSlash.endsWith('.html') ? 'text/html'
                     : 'application/octet-stream'
                   return new Response(resp.body, {
                     headers: {
@@ -1586,6 +1624,15 @@ if (import.meta.main) {
     })
     .catch((err) => {
       console.warn('[DWS] Agent executor init failed:', err.message)
+    })
+
+  // Initialize DWS state (determines memory-only vs SQLit mode)
+  initializeDWSState()
+    .then(() => {
+      console.log('[DWS] State initialized')
+    })
+    .catch((err) => {
+      console.warn('[DWS] State init warning:', err.message)
     })
 
   // Discover existing DWS-managed containers on startup

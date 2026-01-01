@@ -117,34 +117,43 @@ describe('Infrastructure Services', () => {
       expect(data.ID).toBeDefined()
     })
 
-    test('should add and retrieve content', async () => {
-      if (!ipfsAvailable) return
+    test(
+      'should add and retrieve content',
+      async () => {
+        if (!ipfsAvailable) {
+          console.log('IPFS not available, skipping')
+          return
+        }
 
-      const testContent = 'Hello from Jeju integration test!'
-      const formData = new FormData()
-      formData.append('file', new Blob([testContent]))
+        const testContent = 'Hello from Jeju integration test!'
+        const formData = new FormData()
+        formData.append('file', new Blob([testContent]))
 
-      // Add content
-      const addResponse = await fetch(`${IPFS_API}/api/v0/add`, {
-        method: 'POST',
-        body: formData,
-      })
-
-      expect(addResponse.ok).toBe(true)
-      const addData = IpfsAddResponseSchema.parse(await addResponse.json())
-      expect(addData.Hash).toBeDefined()
-
-      // Retrieve content
-      const catResponse = await fetch(
-        `${IPFS_API}/api/v0/cat?arg=${addData.Hash}`,
-        {
+        // Add content with timeout
+        const addResponse = await fetch(`${IPFS_API}/api/v0/add`, {
           method: 'POST',
-        },
-      )
+          body: formData,
+          signal: AbortSignal.timeout(25000),
+        })
 
-      expect(catResponse.ok).toBe(true)
-      const content = await catResponse.text()
-      expect(content).toBe(testContent)
-    })
+        expect(addResponse.ok).toBe(true)
+        const addData = IpfsAddResponseSchema.parse(await addResponse.json())
+        expect(addData.Hash).toBeDefined()
+
+        // Retrieve content with timeout
+        const catResponse = await fetch(
+          `${IPFS_API}/api/v0/cat?arg=${addData.Hash}`,
+          {
+            method: 'POST',
+            signal: AbortSignal.timeout(25000),
+          },
+        )
+
+        expect(catResponse.ok).toBe(true)
+        const content = await catResponse.text()
+        expect(content).toBe(testContent)
+      },
+      { timeout: 60000 },
+    )
   })
 })

@@ -90,17 +90,28 @@ async function getSQLitClient(): Promise<SQLitClient> {
       timeout: 30000,
       debug: !config.isProduction,
     })
+  }
 
-    const healthy = await sqlitClient.isHealthy()
-    if (!healthy) {
-      throw new Error(
-        `Bug Bounty requires SQLit (network: ${getCurrentNetwork()}).\n` +
-          'Ensure SQLit is running: docker compose up -d sqlit',
+  // Lazy initialization of tables
+  if (!initialized) {
+    const healthy = await sqlitClient.isHealthy().catch(() => false)
+    if (healthy) {
+      try {
+        await ensureTablesExist()
+        initialized = true
+        console.log('[Bug Bounty] SQLit tables initialized successfully')
+      } catch (err) {
+        console.warn(
+          `[Bug Bounty] Failed to initialize SQLit tables: ${err instanceof Error ? err.message : 'unknown'}`,
+        )
+      }
+    } else {
+      console.warn(
+        `[Bug Bounty] SQLit not healthy yet (network: ${getCurrentNetwork()}).`,
       )
     }
-
-    await ensureTablesExist()
   }
+
   return sqlitClient
 }
 

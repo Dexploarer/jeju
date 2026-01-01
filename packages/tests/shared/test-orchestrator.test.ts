@@ -90,37 +90,75 @@ describe('Test Orchestrator - CLI Exists', () => {
   })
 })
 
-// Skip all CLI execution tests - they take too long in this codebase
-describe.skip('Test Orchestrator - Help Command', () => {
-  test.todo('should exit 0 with --help and show usage')
+// CLI execution tests skipped because the CLI takes >60s to execute in this codebase
+// Use: bun run jeju test --verbose for actual CLI execution testing
+const CLI_TESTS_ENABLED = false
+
+describe.skipIf(!CLI_TESTS_ENABLED)('Test Orchestrator - Help Command', () => {
+  test('should exit 0 with --help and show usage', async () => {
+    const result = await runCLI(['test', '--help'])
+    expect(result.exitCode).toBe(0)
+  })
 })
 
-describe.skip('Test Orchestrator - List Command', () => {
-  test.todo('should exit 0 with list subcommand and show apps')
+describe.skipIf(!CLI_TESTS_ENABLED)('Test Orchestrator - List Command', () => {
+  test('should exit 0 with list subcommand and show apps', async () => {
+    const result = await runCLI(['test', 'list'])
+    expect(result.exitCode).toBe(0)
+  })
 })
 
-describe.skip('Test Orchestrator - Error Handling', () => {
-  test.todo('should exit 1 when invalid mode provided')
+describe.skipIf(!CLI_TESTS_ENABLED)('Test Orchestrator - Error Handling', () => {
+  test('should exit 1 when invalid mode provided', async () => {
+    const result = await runCLI(['test', '--mode', 'invalid'])
+    expect(result.exitCode).toBe(1)
+  })
 })
 
-// Skip orchestrator flag tests as CLI takes >60s to execute in this codebase
-describe.skip('Test Orchestrator - Skip Flags', () => {
-  test.todo('should accept --skip-lock flag with list')
-  test.todo('should accept --force flag with list')
-  test.todo('should accept --verbose flag with list')
+describe.skipIf(!CLI_TESTS_ENABLED)('Test Orchestrator - Skip Flags', () => {
+  test('should accept --skip-lock flag with list', async () => {
+    const result = await runCLI(['test', '--skip-lock', 'list'])
+    expect(result.exitCode).toBe(0)
+  })
+  test('should accept --force flag with list', async () => {
+    const result = await runCLI(['test', '--force', 'list'])
+    expect(result.exitCode).toBe(0)
+  })
+  test('should accept --verbose flag with list', async () => {
+    const result = await runCLI(['test', '--verbose', 'list'])
+    expect(result.exitCode).toBe(0)
+  })
 })
 
-// Skip orchestrator mode tests as CLI takes >60s to execute in this codebase
-describe.skip('Test Orchestrator - Mode Flags', () => {
-  test.todo('should accept unit mode with list')
-  test.todo('should accept integration mode with list')
-  test.todo('should accept e2e mode with list')
+describe.skipIf(!CLI_TESTS_ENABLED)('Test Orchestrator - Mode Flags', () => {
+  test('should accept unit mode with list', async () => {
+    const result = await runCLI(['test', '--mode', 'unit', 'list'])
+    expect(result.exitCode).toBe(0)
+  })
+  test('should accept integration mode with list', async () => {
+    const result = await runCLI(['test', '--mode', 'integration', 'list'])
+    expect(result.exitCode).toBe(0)
+  })
+  test('should accept e2e mode with list', async () => {
+    const result = await runCLI(['test', '--mode', 'e2e', 'list'])
+    expect(result.exitCode).toBe(0)
+  })
 })
 
-// Skip concurrent tests as CLI takes >60s to execute in this codebase
-describe.skip('Test Orchestrator - Concurrent Access Protection', () => {
-  test.todo('should handle concurrent list commands')
-  test.todo('should allow concurrent with --force')
+describe.skipIf(!CLI_TESTS_ENABLED)('Test Orchestrator - Concurrent Access Protection', () => {
+  test('should handle concurrent list commands', async () => {
+    const results = await Promise.all([runCLI(['test', 'list']), runCLI(['test', 'list'])])
+    expect(results[0].exitCode).toBe(0)
+    expect(results[1].exitCode).toBe(0)
+  })
+  test('should allow concurrent with --force', async () => {
+    const results = await Promise.all([
+      runCLI(['test', '--force', 'list']),
+      runCLI(['test', '--force', 'list']),
+    ])
+    expect(results[0].exitCode).toBe(0)
+    expect(results[1].exitCode).toBe(0)
+  })
 })
 
 describe('Test Orchestrator - App Discovery', () => {

@@ -74,6 +74,23 @@ async function buildCSS(): Promise<string> {
 const browserPlugin: BunPlugin = {
   name: 'browser-plugin',
   setup(build) {
+    // Stub server-side packages for browser builds
+    const serverOnlyStub = resolve('./web/stubs/empty.ts')
+    const kmsStub = resolve('./web/stubs/kms.ts')
+    const messagingStub = resolve('./web/stubs/messaging.ts')
+    const dbStub = resolve('./web/stubs/db.ts')
+    const sharedStub = resolve('./web/stubs/shared.ts')
+    
+    build.onResolve({ filter: /^@jejunetwork\/kms/ }, () => ({ path: kmsStub }))
+    build.onResolve({ filter: /^@jejunetwork\/messaging/ }, () => ({ path: messagingStub }))
+    build.onResolve({ filter: /^@jejunetwork\/db/ }, () => ({ path: dbStub }))
+    build.onResolve({ filter: /^@jejunetwork\/deployment/ }, () => ({ path: serverOnlyStub }))
+    build.onResolve({ filter: /^@xmtp\/node-sdk/ }, () => ({ path: serverOnlyStub }))
+    build.onResolve({ filter: /^@xmtp\/node-bindings/ }, () => ({ path: serverOnlyStub }))
+    build.onResolve({ filter: /^ioredis/ }, () => ({ path: serverOnlyStub }))
+    build.onResolve({ filter: /^elysia/ }, () => ({ path: serverOnlyStub }))
+    build.onResolve({ filter: /^@elysiajs\// }, () => ({ path: serverOnlyStub }))
+    
     // Shim pino
     build.onResolve({ filter: /^pino(-pretty)?$/ }, () => ({
       path: resolve('./scripts/shims/pino.ts'),
@@ -119,11 +136,9 @@ const browserPlugin: BunPlugin = {
       const subpath = args.path.replace('@jejunetwork/auth/', '')
       return { path: resolve(`../../packages/auth/src/${subpath}.ts`) }
     })
-    build.onResolve({ filter: /^@jejunetwork\/shared$/ }, () => ({
-      path: resolve('../../packages/shared/src/index.ts'),
-    }))
-    build.onResolve({ filter: /^@jejunetwork\/shared\/(.*)$/ }, (args) => ({
-      path: resolve(`../../packages/shared/src/${args.path.split('/')[1]}.ts`),
+    // @jejunetwork/shared - use stub for browser, actual imports have server deps
+    build.onResolve({ filter: /^@jejunetwork\/shared/ }, () => ({
+      path: sharedStub,
     }))
     build.onResolve({ filter: /^@jejunetwork\/types$/ }, () => ({
       path: resolve('../../packages/types/src/index.ts'),
@@ -143,6 +158,8 @@ const browserPlugin: BunPlugin = {
   },
 }
 
+// Node.js built-ins that need to be external for browser builds
+// Server-side packages are stubbed via browserPlugin, not external
 const BROWSER_EXTERNALS = [
   'bun:sqlite',
   'child_process',
@@ -165,17 +182,6 @@ const BROWSER_EXTERNALS = [
   'node:process',
   'node:util/types',
   'node:worker_threads',
-  '@jejunetwork/deployment',
-  '@jejunetwork/db',
-  '@jejunetwork/kms',
-  '@jejunetwork/messaging',
-  '@xmtp/node-sdk',
-  '@xmtp/node-bindings',
-  'elysia',
-  '@elysiajs/*',
-  'ioredis',
-  'pino',
-  'pino-pretty',
 ]
 
 const WORKER_EXTERNALS = [
@@ -202,6 +208,7 @@ async function buildFrontend(): Promise<void> {
     plugins: [browserPlugin],
     define: {
       'process.env.NODE_ENV': JSON.stringify('production'),
+      'process.env.JEJU_NETWORK': JSON.stringify(network),
       'process.env.PUBLIC_API_URL': JSON.stringify(
         process.env.PUBLIC_API_URL || '',
       ),
@@ -209,6 +216,7 @@ async function buildFrontend(): Promise<void> {
       'globalThis.process': JSON.stringify({
         env: {
           NODE_ENV: 'production',
+          JEJU_NETWORK: network,
           PUBLIC_API_URL: process.env.PUBLIC_API_URL || '',
         },
         browser: true,
@@ -216,17 +224,20 @@ async function buildFrontend(): Promise<void> {
       process: JSON.stringify({
         env: {
           NODE_ENV: 'production',
+          JEJU_NETWORK: network,
           PUBLIC_API_URL: process.env.PUBLIC_API_URL || '',
         },
         browser: true,
       }),
       'import.meta.env': JSON.stringify({
         PUBLIC_NETWORK: network,
+        VITE_NETWORK: network,
         MODE: 'production',
         DEV: false,
         PROD: true,
       }),
       'import.meta.env.PUBLIC_NETWORK': JSON.stringify(network),
+      'import.meta.env.VITE_NETWORK': JSON.stringify(network),
     },
     naming: {
       entry: '[name]-[hash].js',

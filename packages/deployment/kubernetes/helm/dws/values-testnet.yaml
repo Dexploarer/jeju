@@ -204,8 +204,12 @@ env:
   # SQLit connection for decentralized database
   - name: SQLIT_ENABLED
     value: "true"
+  # Use sqlit-adapter service for HTTP API (sqlit pod itself only listens on native RPC port 4661)
   - name: SQLIT_HTTP_URL
-    value: "http://sqlit.dws.svc.cluster.local:8546"
+    value: "http://sqlit-adapter.dws.svc.cluster.local:8546"
+  - name: SQLIT_BLOCK_PRODUCER_ENDPOINT
+    value: "http://sqlit-adapter.dws.svc.cluster.local:8546"
+  # Native SQLit RPC connection
   - name: SQLIT_CLUSTER_URL
     value: "sqlit.dws.svc.cluster.local:4661"
 

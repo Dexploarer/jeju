@@ -3,7 +3,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { createConfig, http, WagmiProvider } from 'wagmi'
-import { base, baseSepolia, mainnet, sepolia } from 'wagmi/chains'
+import { defineChain } from 'viem'
 import { Layout } from './components/Layout'
 import AgentEditPage from './pages/AgentEdit'
 import CreateDAOPage from './pages/CreateDAO'
@@ -14,13 +14,28 @@ import MyDAOsPage from './pages/MyDAOs'
 import ProposalPage from './pages/Proposal'
 import './app/globals.css'
 
+// Define chains inline to avoid bundling issues with wagmi/chains
+const jejuTestnet = defineChain({
+  id: 84532,
+  name: 'Jeju Testnet (Base Sepolia)',
+  nativeCurrency: { decimals: 18, name: 'Ether', symbol: 'ETH' },
+  rpcUrls: { default: { http: ['https://sepolia.base.org'] } },
+  blockExplorers: { default: { name: 'BaseScan', url: 'https://sepolia.basescan.org' } },
+})
+
+const baseSepolia = defineChain({
+  id: 84532,
+  name: 'Base Sepolia',
+  nativeCurrency: { decimals: 18, name: 'Ether', symbol: 'ETH' },
+  rpcUrls: { default: { http: ['https://sepolia.base.org'] } },
+  blockExplorers: { default: { name: 'BaseScan', url: 'https://sepolia.basescan.org' } },
+})
+
 // Wagmi Configuration
 const config = createConfig({
-  chains: [mainnet, sepolia, base, baseSepolia],
+  chains: [jejuTestnet, baseSepolia],
   transports: {
-    [mainnet.id]: http(),
-    [sepolia.id]: http(),
-    [base.id]: http(),
+    [jejuTestnet.id]: http(),
     [baseSepolia.id]: http(),
   },
 })

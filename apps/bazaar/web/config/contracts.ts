@@ -38,24 +38,39 @@ interface NFTContracts {
   tradeEscrow?: Address
 }
 
-function buildV4Contracts(chainId: ChainId): V4Contracts {
-  const v4 = getUniswapV4(chainId)
-  return {
-    poolManager: toAddress(v4.poolManager),
-    weth: toAddress(v4.weth),
-    swapRouter: toOptionalAddress(v4.swapRouter),
-    positionManager: toOptionalAddress(v4.positionManager),
-    quoterV4: toOptionalAddress(v4.quoterV4),
-    stateView: toOptionalAddress(v4.stateView),
+function buildV4Contracts(chainId: ChainId): V4Contracts | null {
+  try {
+    const v4 = getUniswapV4(chainId)
+    return {
+      poolManager: toAddress(v4.poolManager),
+      weth: toAddress(v4.weth),
+      swapRouter: toOptionalAddress(v4.swapRouter),
+      positionManager: toOptionalAddress(v4.positionManager),
+      quoterV4: toOptionalAddress(v4.quoterV4),
+      stateView: toOptionalAddress(v4.stateView),
+    }
+  } catch {
+    console.warn(`Uniswap V4 not deployed on chain ${chainId}`)
+    return null
   }
 }
 
-const V4_CONTRACTS: Record<number, V4Contracts> = {
-  31337: buildV4Contracts(31337),
-  ...(JEJU_CHAIN_ID !== 31337
-    ? { [JEJU_CHAIN_ID]: buildV4Contracts(JEJU_CHAIN_ID as ChainId) }
-    : {}),
+function getV4ContractsMap(): Record<number, V4Contracts> {
+  const contracts: Record<number, V4Contracts> = {}
+  const localnetContracts = buildV4Contracts(31337)
+  if (localnetContracts) {
+    contracts[31337] = localnetContracts
+  }
+  if (JEJU_CHAIN_ID !== 31337) {
+    const jejuContracts = buildV4Contracts(JEJU_CHAIN_ID as ChainId)
+    if (jejuContracts) {
+      contracts[JEJU_CHAIN_ID] = jejuContracts
+    }
+  }
+  return contracts
 }
+
+const V4_CONTRACTS: Record<number, V4Contracts> = getV4ContractsMap()
 
 function buildNFTContracts(chainId: ChainId): NFTContracts {
   const marketplaceAddr = toAddress(getBazaarMarketplace(chainId))
@@ -71,12 +86,8 @@ const NFT_CONTRACTS: Record<number, NFTContracts> = {
     : {}),
 }
 
-export function getV4Contracts(chainId: number): V4Contracts {
-  const contracts = V4_CONTRACTS[chainId]
-  if (!contracts) {
-    throw new Error(`V4 contracts not configured for chain ${chainId}`)
-  }
-  return contracts
+export function getV4Contracts(chainId: number): V4Contracts | null {
+  return V4_CONTRACTS[chainId] ?? null
 }
 
 function getNFTContracts(chainId: number): NFTContracts {

@@ -1050,19 +1050,3 @@ function parseDeploymentOutput(output: string): DeploymentAddresses {
 
   return addresses
 }
-
-
-  return addresses
-}
-
-      addresses.identityRegistry = line.split(':')[1].trim()
-    }
-    // Add more parsing as needed
-  }
-
-  return addresses
-}
-
-
-  return addresses
-}

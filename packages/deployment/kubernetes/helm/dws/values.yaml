@@ -49,7 +49,16 @@ ingress:
     alb.ingress.kubernetes.io/healthcheck-path: /health
     alb.ingress.kubernetes.io/healthcheck-protocol: HTTP
   hosts:
+    # Primary DWS endpoint
     - host: dws.testnet.jejunetwork.org
+      paths:
+        - path: /
+          pathType: Prefix
+    # WILDCARD: Routes ALL *.testnet.jejunetwork.org to DWS
+    # This enables permissionless JNS-based app deployment
+    # Any app registered via JNS (babylon.jeju, etc.) automatically routes here
+    # DWS handles hostname-based routing internally via JNS resolution
+    - host: "*.testnet.jejunetwork.org"
       paths:
         - path: /
           pathType: Prefix
@@ -57,6 +66,7 @@ ingress:
     - secretName: dws-tls
       hosts:
         - dws.testnet.jejunetwork.org
+        - "*.testnet.jejunetwork.org"
 
 resources:
   limits:

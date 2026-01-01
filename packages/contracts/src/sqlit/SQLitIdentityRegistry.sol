@@ -199,21 +199,24 @@ contract SQLitIdentityRegistry is Ownable, ReentrancyGuard {
 
     /**
      * @notice Compute NodeID using CovenantSQL algorithm
-     * @dev NodeID = sha256(blake2b-512(publicKey || nonce))
+     * @dev NodeID = reverse(sha256(blake2b-512(publicKey || nonce)))
+     *      - Nonce is serialized as 4x uint64 big-endian (A, B, C, D sequential)
+     *      - Final hash is byte-reversed (Bitcoin-style hash display)
      * @param publicKey Compressed secp256k1 public key
      * @param nonce Proof-of-work nonce
-     * @return nodeId The computed 32-byte NodeID
+     * @return nodeId The computed 32-byte NodeID (byte-reversed for CovenantSQL compatibility)
      */
     function computeNodeId(
         bytes calldata publicKey,
         Nonce calldata nonce
     ) public view returns (bytes32) {
-        // Serialize nonce as 32 bytes (4 x uint64, little-endian for CovenantSQL compatibility)
+        // Serialize nonce as 32 bytes (4 x uint64, BIG-ENDIAN as per CovenantSQL)
+        // binary.Write(&binBuf, binary.BigEndian, i) in Go
         bytes memory nonceBytes = abi.encodePacked(
-            _toLittleEndian64(nonce.a),
-            _toLittleEndian64(nonce.b),
-            _toLittleEndian64(nonce.c),
-            _toLittleEndian64(nonce.d)
+            _toBigEndian64(nonce.a),
+            _toBigEndian64(nonce.b),
+            _toBigEndian64(nonce.c),
+            _toBigEndian64(nonce.d)
         );
 
         // Concatenate publicKey || nonce
@@ -223,7 +226,10 @@ contract SQLitIdentityRegistry is Ownable, ReentrancyGuard {
         bytes memory blake2bHash = _blake2b512(input);
 
         // Compute sha256 of the blake2b result
-        return sha256(blake2bHash);
+        bytes32 rawHash = sha256(blake2bHash);
+
+        // Reverse bytes for CovenantSQL NodeID format (Bitcoin-style)
+        return _reverseBytes32(rawHash);
     }
 
     /**
@@ -490,17 +496,25 @@ contract SQLitIdentityRegistry is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @notice Convert uint64 to little-endian bytes
+     * @notice Convert uint64 to big-endian bytes (as CovenantSQL serializes nonces)
+     * @dev Solidity stores uint64 in big-endian by default in abi.encodePacked
      */
-    function _toLittleEndian64(uint64 value) internal pure returns (bytes8) {
-        bytes8 result;
+    function _toBigEndian64(uint64 value) internal pure returns (bytes8) {
+        return bytes8(value);
+    }
+
+    /**
+     * @notice Reverse bytes in a bytes32 (for Bitcoin-style hash display)
+     * @dev CovenantSQL stores NodeIDs with reversed bytes compared to raw hash output
+     */
+    function _reverseBytes32(bytes32 input) internal pure returns (bytes32) {
+        bytes32 result;
         assembly {
-            // Swap bytes for little-endian
-            let v := value
-            v := or(shr(8, and(v, 0xFF00FF00FF00FF00)), shl(8, and(v, 0x00FF00FF00FF00FF)))
-            v := or(shr(16, and(v, 0xFFFF0000FFFF0000)), shl(16, and(v, 0x0000FFFF0000FFFF)))
-            v := or(shr(32, v), shl(32, v))
-            result := v
+            // Reverse all 32 bytes
+            for { let i := 0 } lt(i, 32) { i := add(i, 1) } {
+                let b := byte(i, input)
+                result := or(result, shl(mul(8, i), b))
+            }
         }
         return result;
     }

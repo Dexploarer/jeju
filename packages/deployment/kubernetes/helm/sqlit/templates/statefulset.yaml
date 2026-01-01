@@ -68,6 +68,9 @@ spec:
               NONCE_B=$(grep "^    b:" config.yaml | awk '{print $2}')
               NONCE_C=$(grep "^    c:" config.yaml | awk '{print $2}')
               NONCE_D=$(grep "^    d:" config.yaml | awk '{print $2}')
+              
+              # Get wallet address from generated config (for genesis account)
+              WALLET_ADDR=$(grep "WalletAddress:" config.yaml | awk '{print $2}')
 
               echo "This node ID: $NODE_ID"
               echo "This node PublicKey: $PUBLIC_KEY"
@@ -84,7 +87,9 @@ spec:
                 LEADER_NONCE_B="$NONCE_B"
                 LEADER_NONCE_C="$NONCE_C"
                 LEADER_NONCE_D="$NONCE_D"
+                LEADER_WALLET_ADDR="$WALLET_ADDR"
                 echo "This is the LEADER node - using own identity"
+                echo "Leader wallet address: $LEADER_WALLET_ADDR"
               else
                 # Followers use the configured leader identity
                 LEADER_NODE_ID="{{ (index .Values.clusterNodes 0).nodeId }}"
@@ -93,6 +98,7 @@ spec:
                 LEADER_NONCE_B="{{ (index .Values.clusterNodes 0).nonceB }}"
                 LEADER_NONCE_C="{{ (index .Values.clusterNodes 0).nonceC }}"
                 LEADER_NONCE_D="{{ (index .Values.clusterNodes 0).nonceD }}"
+                LEADER_WALLET_ADDR="{{ (index .Values.clusterNodes 0).walletAddress | default (index .Values.clusterNodes 0).nodeId }}"
                 echo "This is a FOLLOWER node - using configured leader identity"
               fi
 
@@ -143,24 +149,26 @@ spec:
               echo "    MerkleRoot: '0000000000000000000000000000000000000000000000000000000000000000'" >> /config/config.yaml
               echo "    ParentHash: '0000000000000000000000000000000000000000000000000000000000000000'" >> /config/config.yaml
               echo "    Timestamp: '2025-01-01T00:00:00Z'" >> /config/config.yaml
-              echo "    BaseAccounts: []" >> /config/config.yaml
+              # Genesis account with initial funds - uses wallet address (not node ID)
+              echo "    BaseAccounts:" >> /config/config.yaml
+              echo "      - Address: $LEADER_WALLET_ADDR" >> /config/config.yaml
+              echo "        StableCoinBalance: 10000000000000000000" >> /config/config.yaml
+              echo "        CovenantCoinBalance: 10000000000000000000" >> /config/config.yaml
 
-              # KnownNodes - use ALL STATIC values from helm for testing
+              # KnownNodes - for single-node mode, use only leader's generated identity
+              # For multi-node, pre-generated keys must be stored as secrets
               echo "KnownNodes:" >> /config/config.yaml
-
-              # IMPORTANT: For testing, use ONLY static helm values
-              # The leader (sqlit-0) must have ThisNodeID matching its own entry
-              {{- range $i, $node := .Values.clusterNodes }}
-              echo "  - ID: {{ $node.nodeId }}" >> /config/config.yaml
-              echo "    Role: {{ $node.role }}" >> /config/config.yaml
-              echo "    Addr: {{ include "sqlit.fullname" $ }}-{{ $i }}.{{ include "sqlit.fullname" $ }}-headless.{{ $.Release.Namespace }}.svc.cluster.local:{{ $.Values.config.network.clientPort | default 4661 }}" >> /config/config.yaml
-              echo "    PublicKey: {{ $node.publicKey }}" >> /config/config.yaml
+              
+              # Leader entry always uses its own generated identity
+              echo "  - ID: $LEADER_NODE_ID" >> /config/config.yaml
+              echo "    Role: Leader" >> /config/config.yaml
+              echo "    Addr: {{ include "sqlit.fullname" . }}-0.{{ include "sqlit.fullname" . }}-headless.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.config.network.clientPort | default 4661 }}" >> /config/config.yaml
+              echo "    PublicKey: $LEADER_PUBLIC_KEY" >> /config/config.yaml
               echo "    Nonce:" >> /config/config.yaml
-              echo "      a: {{ $node.nonceA }}" >> /config/config.yaml
-              echo "      b: {{ $node.nonceB }}" >> /config/config.yaml
-              echo "      c: {{ $node.nonceC }}" >> /config/config.yaml
-              echo "      d: {{ $node.nonceD }}" >> /config/config.yaml
-              {{- end }}
+              echo "      a: $LEADER_NONCE_A" >> /config/config.yaml
+              echo "      b: $LEADER_NONCE_B" >> /config/config.yaml
+              echo "      c: $LEADER_NONCE_C" >> /config/config.yaml
+              echo "      d: $LEADER_NONCE_D" >> /config/config.yaml
 
               echo "=== Final config ==="
               cat /config/config.yaml

@@ -45,8 +45,16 @@ const UpdateWorkerJsonBodySchema = z.object({
   handler: z.string().optional(),
 })
 
+// Shared runtime instance for use by other modules
+let sharedRuntime: WorkerRuntime | null = null
+
+export function getSharedWorkersRuntime(): WorkerRuntime | null {
+  return sharedRuntime
+}
+
 export function createWorkersRouter(backend: BackendManager) {
   const runtime = new WorkerRuntime(backend)
+  sharedRuntime = runtime // Store reference for shared access
 
   return (
     new Elysia({ name: 'workers', prefix: '/workers' })

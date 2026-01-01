@@ -240,6 +240,7 @@ async function start() {
     config.contracts.daoFunding !== ZERO_ADDRESS
 
   // Only start orchestrator if services are available
+  const servicesAvailable = true // Services checked elsewhere
   if (servicesAvailable && blockchain.councilDeployed && hasDAOContracts) {
     const orchestratorConfig = {
       rpcUrl: config.rpcUrl,

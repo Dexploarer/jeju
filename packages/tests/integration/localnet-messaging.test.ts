@@ -325,8 +325,25 @@ function startHubServer(): void {
   console.log(`[Hub] Running on port ${HUB_PORT}`)
 }
 
+// Quick check if localnet is available before starting tests
+let localnetAvailable = false
+try {
+  const response = await fetch(L2_RPC_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', method: 'eth_blockNumber', params: [], id: 1 }),
+    signal: AbortSignal.timeout(2000),
+  })
+  localnetAvailable = response.ok
+} catch {
+  localnetAvailable = false
+}
+if (!localnetAvailable) {
+  console.log('⏭️ Skipping Localnet Messaging Integration tests - localnet not available')
+}
+
 // Global setup wrapped in a describe for bun:test compatibility
-describe('Localnet Messaging Integration', () => {
+describe.skipIf(!localnetAvailable)('Localnet Messaging Integration', () => {
 
 beforeAll(async () => {
   console.log('\n=== Localnet Messaging Integration Tests ===\n')

@@ -177,6 +177,37 @@ resource "aws_lb_target_group" "indexer" {
   )
 }
 
+# DWS (Decentralized Web Services) target group
+# Handles ALL *.testnet.jejunetwork.org traffic for permissionless JNS-based routing
+resource "aws_lb_target_group" "dws" {
+  name        = "jeju-${var.environment}-dws-tg"
+  port        = 4030
+  protocol    = "HTTP"
+  vpc_id      = var.vpc_id
+  target_type = "ip"
+
+  health_check {
+    enabled             = true
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+    timeout             = 5
+    interval            = 30
+    path                = "/health"
+    matcher             = "200"
+  }
+
+  deregistration_delay = 30
+
+  tags = merge(
+    var.tags,
+    {
+      Name        = "jeju-${var.environment}-dws-tg"
+      Environment = var.environment
+      Service     = "dws"
+    }
+  )
+}
+
 # HTTP listener (redirect to HTTPS)
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.main.arn
@@ -252,6 +283,50 @@ resource "aws_lb_listener_rule" "indexer" {
   }
 }
 
+# DWS explicit route (dws.testnet.jejunetwork.org)
+resource "aws_lb_listener_rule" "dws" {
+  count = var.enable_https ? 1 : 0
+
+  listener_arn = aws_lb_listener.https[0].arn
+  priority     = 120
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.dws.arn
+  }
+
+  condition {
+    host_header {
+      values = ["dws.${var.environment == "mainnet" ? "" : "${var.environment}."}jejunetwork.org"]
+    }
+  }
+}
+
+# =============================================================================
+# WILDCARD LISTENER RULE - Permissionless JNS-Based App Routing
+# Routes ALL *.testnet.jejunetwork.org traffic to DWS
+# DWS handles hostname-based routing internally via JNS resolution
+# Any app registered via JNS automatically works without ALB changes
+# Priority 999 = lowest priority, runs after all explicit rules
+# =============================================================================
+resource "aws_lb_listener_rule" "dws_wildcard" {
+  count = var.enable_https ? 1 : 0
+
+  listener_arn = aws_lb_listener.https[0].arn
+  priority     = 999
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.dws.arn
+  }
+
+  condition {
+    host_header {
+      values = ["*.${var.environment == "mainnet" ? "" : "${var.environment}."}jejunetwork.org"]
+    }
+  }
+}
+
 # Outputs
 output "alb_arn" {
   description = "ARN of the load balancer"
@@ -278,6 +353,7 @@ output "target_group_arns" {
   value = {
     rpc     = aws_lb_target_group.rpc.arn
     indexer = aws_lb_target_group.indexer.arn
+    dws     = aws_lb_target_group.dws.arn
   }
 }
 

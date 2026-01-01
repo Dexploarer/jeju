@@ -27,7 +27,7 @@ async function build() {
 
   const network = getCurrentNetwork()
 
-  // Browser plugin for React deduplication
+  // Browser plugin for React deduplication and Node.js polyfills
   const browserPlugin: BunPlugin = {
     name: 'browser-plugin',
     setup(build) {
@@ -55,6 +55,31 @@ async function build() {
       }))
       build.onResolve({ filter: /^@noble\/hashes/ }, (args) => ({
         path: require.resolve(args.path),
+      }))
+      // Handle Node.js crypto for browser - return empty module
+      build.onResolve({ filter: /^node:crypto$/ }, () => ({
+        path: 'crypto-empty',
+        namespace: 'crypto-polyfill',
+      }))
+      build.onResolve({ filter: /^crypto$/ }, () => ({
+        path: 'crypto-empty',
+        namespace: 'crypto-polyfill',
+      }))
+      build.onLoad({ filter: /.*/, namespace: 'crypto-polyfill' }, () => ({
+        contents: `
+          // Browser polyfill for crypto - use Web Crypto API
+          const crypto = globalThis.crypto || {};
+          export const randomBytes = (size) => {
+            const bytes = new Uint8Array(size);
+            globalThis.crypto.getRandomValues(bytes);
+            return bytes;
+          };
+          export const createHash = () => ({
+            update: () => ({ digest: () => '' }),
+          });
+          export default crypto;
+        `,
+        loader: 'js',
       }))
     },
   }
