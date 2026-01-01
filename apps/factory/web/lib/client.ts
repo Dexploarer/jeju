@@ -1,32 +1,11 @@
 /** Factory API Client */
 
 import { treaty } from '@elysiajs/eden'
-import { getLocalhostHost } from '@jejunetwork/config'
 import { isPlainObject } from '@jejunetwork/types'
 import type { App } from '../../api/server'
+import { FACTORY_API_URL } from '../config/env'
 
-function getApiBase(): string {
-  if (typeof window === 'undefined') {
-    return `http://${getLocalhostHost()}:4009`
-  }
-
-  const { hostname, port, protocol } = window.location
-
-  // Localhost development
-  if (hostname === 'localhost' && port !== '4009') {
-    return `http://${getLocalhostHost()}:4009`
-  }
-
-  // Local dev proxy
-  if (hostname.includes('local.jejunetwork.org')) {
-    return `${protocol}//${hostname}${port ? `:${port}` : ''}`
-  }
-
-  // Production/testnet - use same origin (backend runs on same domain)
-  return `${protocol}//${hostname}`
-}
-
-const API_BASE = getApiBase()
+const API_BASE = FACTORY_API_URL
 
 export const api = treaty<App>(API_BASE)
 

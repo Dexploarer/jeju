@@ -42,8 +42,7 @@ export interface PackageListItem {
   verified: boolean
 }
 
-// Browser-only hook - API is same origin
-const API_BASE = ''
+import { API_BASE } from '../lib/api'
 
 async function fetchApi<T>(path: string): Promise<T | null> {
   const response = await fetch(`${API_BASE}${path}`, {
