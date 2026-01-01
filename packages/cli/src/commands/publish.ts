@@ -1,402 +1,384 @@
-/** Publish workspace packages to JejuPkg */
+/**
+ * Jeju Publish Command - Quick deploy to DWS
+ *
+ * Like `vercel` or `wrangler publish`, deploys the current project
+ * with smart defaults based on jeju-manifest.json
+ */
 
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { spawnSync } from 'node:child_process'
+import { getDWSUrl, getLocalhostHost } from '@jejunetwork/config'
 import { Command } from 'commander'
-import { execa } from 'execa'
-import { z } from 'zod'
+import type { Address } from 'viem'
+import { keccak256, stringToBytes } from 'viem'
 import { logger } from '../lib/logger'
-import { findMonorepoRoot } from '../lib/system'
-import { validate } from '../schemas'
+import { requireLogin } from './login'
+import type { NetworkType, AppManifest } from '../types'
 
-const PACKAGES = ['types', 'config', 'contracts', 'sdk', 'cli']
+interface PublishResult {
+  frontendUrl?: string
+  frontendCid?: string
+  workerUrl?: string
+  workerId?: string
+  jnsName?: string
+  previewUrl?: string
+}
 
-const PackageJsonSchema = z.object({
-  name: z.string().min(1),
-  version: z.string().min(1),
-  scripts: z.record(z.string(), z.string()).optional(),
-  dependencies: z.record(z.string(), z.string()).optional(),
-  peerDependencies: z.record(z.string(), z.string()).optional(),
-  devDependencies: z.record(z.string(), z.string()).optional(),
-})
+/**
+ * Get DWS URL for network
+ */
+function getDWSUrlForNetwork(network: NetworkType): string {
+  switch (network) {
+    case 'mainnet':
+      return process.env.MAINNET_DWS_URL ?? 'https://dws.jejunetwork.org'
+    case 'testnet':
+      return process.env.TESTNET_DWS_URL ?? 'https://dws.testnet.jejunetwork.org'
+    default:
+      return process.env.DWS_URL ?? getDWSUrl() ?? `http://${getLocalhostHost()}:4020`
+  }
+}
 
-type PackageJson = z.infer<typeof PackageJsonSchema>
+/**
+ * Get domain suffix for network
+ */
+function getDomainSuffix(network: NetworkType): string {
+  switch (network) {
+    case 'mainnet':
+      return 'jejunetwork.org'
+    case 'testnet':
+      return 'testnet.jejunetwork.org'
+    default:
+      return 'local.jejunetwork.org'
+  }
+}
+
+/**
+ * Load manifest from directory
+ */
+function loadManifest(dir: string): AppManifest {
+  const manifestPath = join(dir, 'jeju-manifest.json')
+  if (!existsSync(manifestPath)) {
+    throw new Error('No jeju-manifest.json found. Run `jeju init` to create one.')
+  }
+
+  return JSON.parse(readFileSync(manifestPath, 'utf-8'))
+}
+
+/**
+ * Build the project
+ */
+async function buildProject(dir: string, manifest: AppManifest): Promise<void> {
+  const buildCmd = manifest.commands?.build ?? 'bun run build'
+  logger.step(`Building: ${buildCmd}`)
+
+  const proc = spawnSync('sh', ['-c', buildCmd], {
+    cwd: dir,
+    stdio: 'inherit',
+  })
+
+  if (proc.status !== 0) {
+    throw new Error('Build failed')
+  }
+}
+
+/**
+ * Upload directory to IPFS via DWS
+ */
+async function uploadToIPFS(
+  dir: string,
+  network: NetworkType,
+  authToken: string,
+): Promise<string> {
+  const dwsUrl = getDWSUrlForNetwork(network)
+
+  // Collect all files
+  const files = collectFiles(dir)
+
+  if (files.length === 0) {
+    throw new Error(`No files found in ${dir}`)
+  }
+
+  // Create multipart form data
+  const formData = new FormData()
+  for (const file of files) {
+    const content = readFileSync(file.path)
+    formData.append('file', new Blob([content]), file.relativePath)
+  }
+
+  const response = await fetch(`${dwsUrl}/storage/upload?directory=true`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${authToken}`,
+    },
+    body: formData,
+  })
+
+  if (!response.ok) {
+    throw new Error(`Upload failed: ${response.statusText}`)
+  }
+
+  const result = await response.json()
+  return result.cid
+}
+
+/**
+ * Collect files recursively
+ */
+function collectFiles(
+  dir: string,
+  baseDir?: string,
+): Array<{ path: string; relativePath: string }> {
+  const base = baseDir ?? dir
+  const files: Array<{ path: string; relativePath: string }> = []
+
+  const entries = readdirSync(dir, { withFileTypes: true })
+
+  for (const entry of entries) {
+    const fullPath = join(dir, entry.name)
+
+    if (entry.isDirectory()) {
+      files.push(...collectFiles(fullPath, base))
+    } else {
+      files.push({
+        path: fullPath,
+        relativePath: fullPath.slice(base.length + 1),
+      })
+    }
+  }
+
+  return files
+}
+
+/**
+ * Deploy worker to DWS
+ */
+async function deployWorker(
+  codeCid: string,
+  manifest: AppManifest,
+  network: NetworkType,
+  authToken: string,
+  address: Address,
+): Promise<string> {
+  const dwsUrl = getDWSUrlForNetwork(network)
+
+  const response = await fetch(`${dwsUrl}/workers/deploy`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${authToken}`,
+      'X-Jeju-Address': address,
+    },
+    body: JSON.stringify({
+      name: manifest.name,
+      codeCid,
+      routes: [`/${manifest.name}/*`],
+      memory: 128,
+      timeout: 30000,
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    throw new Error(`Worker deploy failed: ${error}`)
+  }
+
+  const result = await response.json()
+  return result.workerId
+}
+
+/**
+ * Register JNS name
+ */
+async function registerJNS(
+  name: string,
+  frontendCid: string | undefined,
+  workerId: string | undefined,
+  network: NetworkType,
+  authToken: string,
+  address: Address,
+): Promise<string> {
+  const dwsUrl = getDWSUrlForNetwork(network)
+  const jnsName = `${name}.jeju`
+
+  const response = await fetch(`${dwsUrl}/jns/register`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${authToken}`,
+      'X-Jeju-Address': address,
+    },
+    body: JSON.stringify({
+      name: jnsName,
+      contentCid: frontendCid,
+      workerId,
+    }),
+  })
+
+  if (!response.ok) {
+    // JNS registration is optional, don't fail
+    logger.warn(`JNS registration failed: ${response.statusText}`)
+    return jnsName
+  }
+
+  return jnsName
+}
 
 export const publishCommand = new Command('publish')
-  .description('Publish workspace packages to JejuPkg (npm CLI compatible)')
-  .option('--dry-run', 'Simulate without publishing')
-  .option('--skip-build', 'Skip building packages')
-  .option('--package <name>', 'Publish specific package only')
+  .description('Deploy current project to Jeju Network')
+  .alias('deploy-app')
+  .option('--prod', 'Deploy to production')
+  .option('--preview', 'Create a preview deployment')
+  .option('--name <name>', 'Override project name')
+  .option('--skip-build', 'Skip build step')
+  .option('--dry-run', 'Show what would be deployed')
   .action(async (options) => {
-    const rootDir = findMonorepoRoot()
-    const dryRun = options.dryRun === true
-    const skipBuild = options.skipBuild === true
-    const singlePackage = options.package
+    const cwd = process.cwd()
+    const credentials = requireLogin()
+    const network = credentials.network as NetworkType
 
-    logger.header('PUBLISH PACKAGES')
-
-    if (dryRun) {
-      logger.warn('DRY RUN - no packages will be published')
-      logger.newline()
-    }
-
-    const packagesToPublish = singlePackage ? [singlePackage] : PACKAGES
-
-    // Get current versions
-    const versions = getVersions(rootDir)
-    logger.subheader('Package Versions')
-    for (const [name, version] of versions) {
-      logger.keyValue(name, version)
-    }
-    logger.newline()
-
-    // Store original package.json contents for restoration
-    const originals = new Map<string, string>()
-
+    // Load manifest
+    let manifest: AppManifest
     try {
-      // Phase 1: Replace workspace:* references
-      for (const pkg of packagesToPublish) {
-        const pkgPath = getPackagePath(rootDir, pkg)
-        if (!existsSync(pkgPath)) {
-          logger.warn(`Package not found: ${pkg}`)
-          continue
-        }
+      manifest = loadManifest(cwd)
+    } catch (error) {
+      logger.error(error instanceof Error ? error.message : String(error))
+      return
+    }
 
-        const packageJsonPath = join(pkgPath, 'package.json')
-        originals.set(pkg, readFileSync(packageJsonPath, 'utf-8'))
+    if (options.name) {
+      manifest.name = options.name
+    }
 
-        const data = readPackageJson(rootDir, pkg)
-        data.dependencies = replaceWorkspaceRefs(data.dependencies, versions)
-        data.peerDependencies = replaceWorkspaceRefs(
-          data.peerDependencies,
-          versions,
+    logger.header('JEJU PUBLISH')
+    logger.info(`Project: ${manifest.name}`)
+    logger.info(`Network: ${network}`)
+
+    const result: PublishResult = {}
+    const domainSuffix = getDomainSuffix(network)
+
+    // Build
+    if (!options.skipBuild) {
+      await buildProject(cwd, manifest)
+      logger.success('Build complete')
+    }
+
+    if (options.dryRun) {
+      logger.info('Dry run - skipping deployment')
+      return
+    }
+
+    // Deploy frontend
+    const frontendConfig = manifest.architecture?.frontend
+    if (frontendConfig) {
+      const outputDir =
+        typeof frontendConfig === 'object'
+          ? frontendConfig.outputDir ?? 'dist'
+          : 'dist'
+      const frontendPath = join(cwd, outputDir)
+
+      if (existsSync(frontendPath)) {
+        logger.step('Uploading frontend to IPFS...')
+        result.frontendCid = await uploadToIPFS(
+          frontendPath,
+          network,
+          credentials.authToken,
         )
-        data.devDependencies = replaceWorkspaceRefs(
-          data.devDependencies,
-          versions,
+        result.frontendUrl = `https://${manifest.name}.${domainSuffix}`
+        logger.success(`Frontend: ${result.frontendCid}`)
+      }
+    }
+
+    // Deploy backend worker
+    const backendConfig = manifest.architecture?.backend
+    if (backendConfig) {
+      const outputDir =
+        typeof backendConfig === 'object'
+          ? backendConfig.outputDir ?? 'dist/worker'
+          : 'dist/worker'
+      const workerPath = join(cwd, outputDir)
+
+      if (existsSync(workerPath)) {
+        logger.step('Uploading worker to IPFS...')
+        const workerCid = await uploadToIPFS(
+          workerPath,
+          network,
+          credentials.authToken,
         )
-        writePackageJson(rootDir, pkg, data)
+
+        logger.step('Deploying worker...')
+        result.workerId = await deployWorker(
+          workerCid,
+          manifest,
+          network,
+          credentials.authToken,
+          credentials.address as Address,
+        )
+        result.workerUrl = `https://api.${manifest.name}.${domainSuffix}`
+        logger.success(`Worker: ${result.workerId}`)
       }
-      logger.success('Workspace references replaced')
-      logger.newline()
-
-      if (!skipBuild) {
-        logger.step('Building packages')
-        for (const pkg of packagesToPublish) {
-          const pkgPath = getPackagePath(rootDir, pkg)
-          if (!existsSync(pkgPath)) continue
-
-          const pkgJson = readPackageJson(rootDir, pkg)
-          if (pkgJson.scripts?.build) {
-            logger.info(`  Building ${pkg}...`)
-            if (!dryRun) {
-              await execa('bun', ['run', 'build'], {
-                cwd: pkgPath,
-                stdio: 'pipe',
-              })
-            }
-          }
-        }
-        logger.success('Packages built')
-        logger.newline()
-      }
-
-      logger.step('Publishing to JejuPkg')
-      for (const pkg of packagesToPublish) {
-        const pkgPath = getPackagePath(rootDir, pkg)
-        if (!existsSync(pkgPath)) continue
-
-        const pkgJson = readPackageJson(rootDir, pkg)
-        logger.info(`  ${pkgJson.name}@${pkgJson.version}`)
-
-        if (!dryRun) {
-          await execa('npm', ['publish', '--access', 'public'], {
-            cwd: pkgPath,
-            stdio: 'pipe',
-          })
-          logger.success(`  Published ${pkgJson.name}`)
-        } else {
-          logger.info(
-            `  [dry-run] Would publish ${pkgJson.name}@${pkgJson.version}`,
-          )
-        }
-      }
-
-      logger.newline()
-      logger.success('All packages published')
-    } finally {
-      logger.newline()
-      logger.step('Restoring workspace:* references')
-      for (const pkg of packagesToPublish) {
-        const original = originals.get(pkg)
-        if (original) {
-          const packageJsonPath = join(
-            getPackagePath(rootDir, pkg),
-            'package.json',
-          )
-          writeFileSync(packageJsonPath, original)
-        }
-      }
-      logger.success('References restored')
     }
-  })
 
-function getPackagePath(rootDir: string, pkg: string): string {
-  return join(rootDir, 'packages', pkg)
-}
-
-function readPackageJson(rootDir: string, pkg: string): PackageJson {
-  const path = join(getPackagePath(rootDir, pkg), 'package.json')
-  const rawData = JSON.parse(readFileSync(path, 'utf-8'))
-  return validate(rawData, PackageJsonSchema, `package.json for ${pkg}`)
-}
-
-function writePackageJson(
-  rootDir: string,
-  pkg: string,
-  data: PackageJson,
-): void {
-  const path = join(getPackagePath(rootDir, pkg), 'package.json')
-  writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`)
-}
-
-function getVersions(rootDir: string): Map<string, string> {
-  const versions = new Map<string, string>()
-  for (const pkg of PACKAGES) {
-    const pkgPath = getPackagePath(rootDir, pkg)
-    if (!existsSync(pkgPath)) continue
-    const data = readPackageJson(rootDir, pkg)
-    versions.set(data.name, data.version)
-  }
-  return versions
-}
-
-function replaceWorkspaceRefs(
-  deps: Record<string, string> | undefined,
-  versions: Map<string, string>,
-): Record<string, string> | undefined {
-  if (!deps) return deps
-
-  const result: Record<string, string> = {}
-  for (const [name, version] of Object.entries(deps)) {
-    if (version.startsWith('workspace:')) {
-      const realVersion = versions.get(name)
-      if (realVersion) {
-        result[name] = `^${realVersion}`
-      } else {
-        result[name] = version
-      }
-    } else {
-      result[name] = version
+    // Register JNS
+    if (result.frontendCid || result.workerId) {
+      logger.step('Registering JNS name...')
+      result.jnsName = await registerJNS(
+        manifest.name,
+        result.frontendCid,
+        result.workerId,
+        network,
+        credentials.authToken,
+        credentials.address as Address,
+      )
     }
-  }
-  return result
-}
 
-const PublishPackageJsonSchema = z.object({
-  name: z.string().min(1),
-  version: z.string().min(1),
-  private: z.boolean().optional(),
-  main: z.string().optional(),
-  types: z.string().optional(),
-  license: z.string().optional(),
-  repository: z
-    .object({
-      type: z.string(),
-      url: z.string(),
-      directory: z.string().optional(),
-    })
-    .optional(),
-  publishConfig: z.object({ access: z.string() }).optional(),
-  files: z.array(z.string()).optional(),
-})
+    // Generate preview URL if requested
+    if (options.preview) {
+      const previewId = keccak256(stringToBytes(`${manifest.name}-${Date.now()}`)).slice(0, 10)
+      result.previewUrl = `https://${previewId}.preview.${domainSuffix}`
+    }
 
-interface ValidationResult {
-  package: string
-  valid: boolean
-  errors: string[]
-  warnings: string[]
-  files: string[]
-}
-
-const REQUIRED_STRING_FIELDS = [
-  'name',
-  'version',
-  'main',
-  'types',
-  'license',
-] as const
-
-publishCommand
-  .command('check')
-  .description('Check packages for npm publishing readiness')
-  .action(async () => {
-    const rootDir = findMonorepoRoot()
-    const packagesDir = join(rootDir, 'packages')
-
-    logger.header('PUBLISH CHECK')
-    logger.info('Checking packages for npm publishing readiness...')
+    // Summary
+    logger.newline()
+    logger.success('Deployed.')
     logger.newline()
 
-    const packages = await getPackageList(packagesDir)
-    const results: ValidationResult[] = []
-
-    for (const pkg of packages) {
-      const result = await validatePackage(packagesDir, pkg)
-      results.push(result)
+    if (result.frontendUrl) {
+      logger.keyValue('Frontend', result.frontendUrl)
+    }
+    if (result.frontendCid) {
+      logger.keyValue('IPFS CID', result.frontendCid)
+    }
+    if (result.workerUrl) {
+      logger.keyValue('API', result.workerUrl)
+    }
+    if (result.workerId) {
+      logger.keyValue('Worker ID', result.workerId)
+    }
+    if (result.jnsName) {
+      logger.keyValue('JNS', result.jnsName)
+    }
+    if (result.previewUrl) {
+      logger.keyValue('Preview', result.previewUrl)
     }
 
-    // Print results
-    let hasErrors = false
-    const publicPackages: ValidationResult[] = []
-    const privatePackages: ValidationResult[] = []
-
-    for (const r of results) {
-      if (r.warnings.some((w) => w.includes('private'))) {
-        privatePackages.push(r)
-      } else {
-        publicPackages.push(r)
-      }
-    }
-
-    logger.subheader('Public Packages')
-    for (const r of publicPackages) {
-      const status = r.valid ? '✅' : '❌'
-      logger.info(`${status} @jejunetwork/${r.package}`)
-
-      for (const err of r.errors) {
-        logger.error(`   ⛔ ${err}`)
-        hasErrors = true
-      }
-      for (const warn of r.warnings) {
-        logger.warn(`   ⚠️  ${warn}`)
-      }
-      if (r.files.length > 0 && r.valid) {
-        logger.info(`   📄 ${r.files.length} files would be published`)
-      }
-    }
-
-    logger.newline()
-    logger.subheader('Private Packages (not published)')
-    for (const r of privatePackages) {
-      logger.info(`   ${r.package}`)
-    }
-
-    logger.newline()
-    if (hasErrors) {
-      logger.error('Some packages have errors. Fix them before publishing.')
-      process.exit(1)
-    }
-
-    logger.success(
-      `All ${publicPackages.length} public packages are ready for publishing.`,
+    // Save deployment info
+    const deploymentPath = join(cwd, '.jeju-deployment.json')
+    writeFileSync(
+      deploymentPath,
+      JSON.stringify(
+        {
+          ...result,
+          deployedAt: Date.now(),
+          network,
+          address: credentials.address,
+        },
+        null,
+        2,
+      ),
     )
-    logger.info(`${privatePackages.length} private packages will be skipped.`)
+
+    logger.newline()
+    logger.info('View logs: jeju logs')
+    logger.info('View metrics: jeju account info')
   })
-
-async function getPackageList(packagesDir: string): Promise<string[]> {
-  const { readdir } = await import('node:fs/promises')
-  const entries = await readdir(packagesDir, { withFileTypes: true })
-  return entries.filter((e) => e.isDirectory()).map((e) => e.name)
-}
-
-async function validatePackage(
-  packagesDir: string,
-  pkgDir: string,
-): Promise<ValidationResult> {
-  const pkgPath = join(packagesDir, pkgDir, 'package.json')
-  const result: ValidationResult = {
-    package: pkgDir,
-    valid: true,
-    errors: [],
-    warnings: [],
-    files: [],
-  }
-
-  if (!existsSync(pkgPath)) {
-    result.valid = false
-    result.errors.push('Could not read package.json')
-    return result
-  }
-
-  const content = readFileSync(pkgPath, 'utf-8')
-  const parseResult = PublishPackageJsonSchema.safeParse(JSON.parse(content))
-
-  if (!parseResult.success) {
-    result.valid = false
-    result.errors.push('Invalid package.json format')
-    return result
-  }
-
-  const pkg = parseResult.data
-
-  if (pkg.private) {
-    result.warnings.push('Package is private (will not be published)')
-    return result
-  }
-
-  // Check required string fields
-  for (const field of REQUIRED_STRING_FIELDS) {
-    if (!pkg[field]) {
-      result.errors.push(`Missing required field: ${field}`)
-      result.valid = false
-    }
-  }
-
-  // Check repository object
-  if (!pkg.repository?.url) {
-    result.errors.push('Missing required field: repository')
-    result.valid = false
-  }
-
-  // Check publishConfig
-  if (!pkg.publishConfig?.access) {
-    result.errors.push('Missing required field: publishConfig.access')
-    result.valid = false
-  }
-
-  // Check publishConfig.access
-  if (pkg.publishConfig && pkg.publishConfig.access !== 'public') {
-    result.warnings.push(
-      "publishConfig.access should be 'public' for scoped packages",
-    )
-  }
-
-  // Check for dist directory if main points to dist
-  if (pkg.main?.includes('dist/')) {
-    const distPath = join(packagesDir, pkgDir, 'dist')
-    const distIndexExists = existsSync(join(distPath, 'index.js'))
-    if (!distIndexExists) {
-      result.errors.push('dist/index.js does not exist - run build first')
-      result.valid = false
-    }
-  }
-
-  // Check files field includes dist
-  if (pkg.files && pkg.main?.includes('dist/') && !pkg.files.includes('dist')) {
-    result.warnings.push("'files' field should include 'dist'")
-  }
-
-  // Run npm pack --dry-run
-  const pkgFullPath = join(packagesDir, pkgDir)
-  const { $ } = await import('bun')
-  const packResult = await $`cd ${pkgFullPath} && npm pack --dry-run 2>&1`
-    .text()
-    .catch((e: Error) => e.message)
-
-  if (packResult.includes('npm error') || packResult.includes('npm ERR')) {
-    result.errors.push(`npm pack failed: ${packResult.slice(0, 200)}`)
-    result.valid = false
-  } else {
-    // Extract files that would be included
-    const lines = packResult.split('\n')
-    for (const line of lines) {
-      if (line.startsWith('npm notice') && !line.includes('=')) {
-        const match = line.match(/npm notice \d+[.\d]*[kKMG]?B\s+(.+)/)
-        if (match) result.files.push(match[1])
-      }
-    }
-  }
-
-  return result
-}

@@ -2056,29 +2056,37 @@ export async function initializeDWSState(): Promise<void> {
     try {
       await getSQLitClient()
       initialized = true
-      console.log('[DWS State] Initialized with SQLit')
+      console.log('[DWS State] Initialized with SQLit - persistence enabled')
     } catch (error) {
       // Log the actual error for debugging
       const errorMsg = error instanceof Error ? error.message : String(error)
       console.error(`[DWS State] SQLit connection failed: ${errorMsg}`)
       
-      // In production on testnet/mainnet, SQLit should be required for data persistence
       const network = getCurrentNetwork()
+      
+      // In production on testnet/mainnet, SQLit failure is CRITICAL
+      // We allow the service to start but mark it as degraded
       if (isProductionEnv() && (network === 'testnet' || network === 'mainnet')) {
-        console.error('[DWS State] CRITICAL: SQLit is required in production. App registrations will not persist.')
-        console.error('[DWS State] Ensure SQLit is running and accessible. Check SQLIT_URL environment variable.')
+        console.error('╔═══════════════════════════════════════════════════════════════╗')
+        console.error('║  CRITICAL: DWS RUNNING IN DEGRADED MODE - NO PERSISTENCE     ║')
+        console.error('╠═══════════════════════════════════════════════════════════════╣')
+        console.error('║  SQLit is REQUIRED for production. App registrations will    ║')
+        console.error('║  NOT persist across pod restarts. This is NOT decentralized. ║')
+        console.error('║                                                               ║')
+        console.error('║  Fix: Ensure SQLit is running and SQLIT_URL is configured.   ║')
+        console.error('╚═══════════════════════════════════════════════════════════════╝')
       }
       
-      // Allow running without SQLit in memory-only mode for local development
+      // Allow running without SQLit for localnet development
+      // BUT mark as memory-only mode so consumers know data won't persist
       memoryOnlyMode = true
       initialized = true
-      const env = isProductionEnv() ? 'production' : 'local dev'
-      console.warn(
-        `[DWS State] SQLit unavailable - running in memory-only mode (${env})`,
-      )
-      console.warn(
-        '[DWS State] Some features will be limited. Start SQLit for full functionality.',
-      )
+      
+      if (network === 'localnet') {
+        console.warn('[DWS State] Memory-only mode (localnet) - data will not persist')
+      } else {
+        console.error('[DWS State] Memory-only mode (PRODUCTION) - THIS IS A LARP')
+      }
     }
   })()
 
@@ -2087,6 +2095,14 @@ export async function initializeDWSState(): Promise<void> {
   } finally {
     initPromise = null
   }
+}
+
+/**
+ * Check if DWS is running in degraded mode (no persistence)
+ * Use this to fail fast when persistence is required
+ */
+export function isDegradedMode(): boolean {
+  return memoryOnlyMode
 }
 
 // Get state mode

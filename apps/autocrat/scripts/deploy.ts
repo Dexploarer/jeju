@@ -276,9 +276,16 @@ async function setupCDN(
       path.includes('-') && (path.endsWith('.js') || path.endsWith('.css')),
   }))
 
+  const domain =
+    config.network === 'testnet'
+      ? 'autocrat.testnet.jejunetwork.org'
+      : config.network === 'mainnet'
+        ? 'autocrat.jejunetwork.org'
+        : 'autocrat.local.jejunetwork.org'
+
   const cdnConfig = {
     name: 'autocrat',
-    domain: 'autocrat.jejunetwork.org',
+    domain,
     spa: {
       enabled: true,
       fallback: '/index.html',
@@ -318,6 +325,49 @@ function getContentType(path: string): string {
   return 'application/octet-stream'
 }
 
+// App Registration
+
+async function registerApp(
+  config: DeployConfig,
+  staticAssets: Map<string, UploadResult>,
+  workerId: string,
+): Promise<void> {
+  const indexCid = staticAssets.get('index.html')?.cid
+  const staticFiles: Record<string, string> = {}
+  for (const [path, result] of staticAssets) {
+    staticFiles[path] = result.cid
+  }
+
+  const backendEndpoint = `${config.dwsUrl}/workers/${workerId}`
+
+  const response = await fetch(`${config.dwsUrl}/apps/deployed`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-jeju-address': privateKeyToAccount(config.privateKey).address,
+    },
+    body: JSON.stringify({
+      name: 'autocrat',
+      jnsName: 'autocrat.jeju',
+      frontendCid: indexCid,
+      staticFiles: Object.keys(staticFiles).length > 0 ? staticFiles : null,
+      backendWorkerId: workerId,
+      backendEndpoint: backendEndpoint,
+      apiPaths: ['/api', '/a2a', '/mcp', '/health', '/rlaif', '/fees', '/.well-known'],
+      spa: true,
+      enabled: true,
+    }),
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`App registration failed: ${errorText}`)
+  }
+
+  const result: unknown = await response.json()
+  console.log(`   App registered: ${JSON.stringify(result)}`)
+}
+
 // Main Deploy Function
 
 async function deploy(): Promise<void> {
@@ -349,15 +399,26 @@ async function deploy(): Promise<void> {
   const workerId = await deployWorker(config, workerBundle)
   console.log(`   Worker ID: ${workerId}\n`)
 
-  // Setup CDN
+  // Register app with DWS app router (critical for API routing)
+  console.log('Registering app with DWS...')
+  await registerApp(config, staticAssets, workerId)
+
+  // Setup CDN (optional, for cache rules)
   console.log('Configuring CDN...')
   await setupCDN(config, staticAssets)
 
   // Print summary
   const indexCid = staticAssets.get('index.html')?.cid
+  const frontendDomain =
+    config.network === 'testnet'
+      ? 'autocrat.testnet.jejunetwork.org'
+      : config.network === 'mainnet'
+        ? 'autocrat.jejunetwork.org'
+        : 'autocrat.local.jejunetwork.org'
+
   console.log('\n[Autocrat] Deployment complete.')
   console.log('\nEndpoints:')
-  console.log(`   Frontend: https://autocrat.jejunetwork.org`)
+  console.log(`   Frontend: https://${frontendDomain}`)
   console.log(`   IPFS: ipfs://${indexCid}`)
   console.log(`   API: ${config.dwsUrl}/workers/${workerId}`)
   console.log(`   Health: ${config.dwsUrl}/workers/${workerId}/health`)

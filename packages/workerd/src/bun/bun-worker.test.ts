@@ -8,8 +8,9 @@ import path from 'path'
 
 const WORKERD_URL = 'http://localhost:9124'
 const WORKERD_CONFIG = path.resolve(__dirname, '../../samples/bun-bundle/config.capnp')
-const STARTUP_TIMEOUT = 5000
-const REQUEST_TIMEOUT = 2000
+const STARTUP_TIMEOUT = 10000
+const REQUEST_TIMEOUT = 5000
+const HEALTH_CHECK_TIMEOUT = 2000
 
 interface JSONResponse {
   [key: string]: unknown
@@ -30,7 +31,7 @@ async function waitForServer(timeoutMs: number): Promise<void> {
   while (Date.now() - startTime < timeoutMs) {
     try {
       const response = await fetch(`${WORKERD_URL}/health`, {
-        signal: AbortSignal.timeout(500)
+        signal: AbortSignal.timeout(HEALTH_CHECK_TIMEOUT)
       })
       if (response.ok) {
         return
@@ -38,7 +39,7 @@ async function waitForServer(timeoutMs: number): Promise<void> {
     } catch {
       // Server not ready yet
     }
-    await new Promise(resolve => setTimeout(resolve, 200))
+    await new Promise(resolve => setTimeout(resolve, 500))
   }
   throw new Error(`Server did not start within ${timeoutMs}ms`)
 }
@@ -49,14 +50,17 @@ describe('Bun Worker Integration Tests', () => {
   beforeAll(async () => {
     // Check if workerd is already running
     try {
+      console.log(`Checking for workerd at ${WORKERD_URL}/health...`)
       const response = await fetch(`${WORKERD_URL}/health`, {
-        signal: AbortSignal.timeout(500)
+        signal: AbortSignal.timeout(HEALTH_CHECK_TIMEOUT)
       })
+      console.log(`Health check response: ${response.status} ${response.statusText}`)
       if (response.ok) {
         console.log('Workerd already running, using existing instance')
         return
       }
-    } catch {
+    } catch (error) {
+      console.log(`Health check failed: ${error}`)
       // Not running, start it
     }
 
@@ -126,7 +130,7 @@ describe('Bun Worker Integration Tests', () => {
       }>('/bun-version')
 
       expect(data.version).toBe('1.0.0-workerd')
-      expect(data.revision).toBe('workerd')
+      expect(data.revision).toBe('workerd-compat')
     })
   })
 

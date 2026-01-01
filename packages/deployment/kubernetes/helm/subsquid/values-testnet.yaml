@@ -78,6 +78,9 @@ ingress:
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
     alb.ingress.kubernetes.io/ssl-redirect: "443"
     alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-1:502713364895:certificate/34c89eb5-a94f-406a-be3c-c40008f4f693"
+    # CORS configuration - ALB doesn't support CORS natively, use response headers
+    alb.ingress.kubernetes.io/actions.cors-headers: |
+      {"type":"fixed-response","fixedResponseConfig":{"contentType":"application/json","statusCode":"200","messageBody":"{\"status\":\"ok\"}"}}
   hosts:
     - host: indexer.testnet.jejunetwork.org
       paths:
@@ -87,5 +90,17 @@ ingress:
     - secretName: subsquid-testnet-tls
       hosts:
         - indexer.testnet.jejunetwork.org
+
+# CORS is handled by Subsquid API server configuration below
+squidServer:
+  cors:
+    enabled: true
+    origins:
+      - "https://gateway.testnet.jejunetwork.org"
+      - "https://gateway.jejunetwork.org"
+      - "https://jejunetwork.org"
+      - "https://dws.testnet.jejunetwork.org"
+      - "https://dws.jejunetwork.org"
+      - "*"
 
 

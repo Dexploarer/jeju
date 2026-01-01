@@ -157,8 +157,14 @@ export class OAuth3DecentralizedDiscovery {
   }
 
   private async getAppFromRegistry(appId: Hex): Promise<DiscoveredApp | null> {
+    // Skip contract calls if app registry is not deployed (zero address)
+    if (this.appRegistryAddress === ZERO_ADDRESS) {
+      return null
+    }
+
     const catchNotFound = (error: Error) => {
       if (error.message.includes('reverted')) return null
+      if (error.message.includes('returned no data')) return null
       throw error // Rethrow connection errors
     }
 
@@ -205,17 +211,23 @@ export class OAuth3DecentralizedDiscovery {
 
   private async buildAppFromJNS(jnsApp: OAuth3AppJNS): Promise<DiscoveredApp> {
     const appId = keccak256(toBytes(jnsApp.fullName))
-    const onChainApp = await this.client
-      .readContract({
-        address: this.appRegistryAddress,
-        abi: OAUTH3_APP_REGISTRY_ABI,
-        functionName: 'getApp',
-        args: [appId],
-      })
-      .catch((error: Error) => {
-        if (error.message.includes('reverted')) return null
-        throw error
-      })
+
+    // Only check on-chain if app registry is deployed
+    let onChainApp = null
+    if (this.appRegistryAddress !== ZERO_ADDRESS) {
+      onChainApp = await this.client
+        .readContract({
+          address: this.appRegistryAddress,
+          abi: OAUTH3_APP_REGISTRY_ABI,
+          functionName: 'getApp',
+          args: [appId],
+        })
+        .catch((error: Error) => {
+          if (error.message.includes('reverted')) return null
+          if (error.message.includes('returned no data')) return null
+          throw error
+        })
+    }
 
     const nodes = await this.discoverNodes()
     return {
@@ -383,6 +395,10 @@ export class OAuth3DecentralizedDiscovery {
   }
 
   async validateRedirectUri(appId: Hex, uri: string): Promise<boolean> {
+    // If no app registry deployed, allow all redirect URIs (JNS handles validation)
+    if (this.appRegistryAddress === ZERO_ADDRESS) {
+      return true
+    }
     return this.client.readContract({
       address: this.appRegistryAddress,
       abi: OAUTH3_APP_REGISTRY_ABI,
@@ -395,6 +411,10 @@ export class OAuth3DecentralizedDiscovery {
     appId: Hex,
     provider: AuthProvider,
   ): Promise<boolean> {
+    // If no app registry deployed, allow all providers
+    if (this.appRegistryAddress === ZERO_ADDRESS) {
+      return true
+    }
     const index = ALL_PROVIDERS.indexOf(provider)
     if (index === -1) return false
     return this.client.readContract({

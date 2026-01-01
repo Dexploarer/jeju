@@ -128,6 +128,43 @@
       }
     }
   },
+  "dws": {
+    "backend": {
+      "enabled": true,
+      "runtime": "workerd",
+      "entrypoint": "api/worker.ts",
+      "memory": 512,
+      "timeout": 30000,
+      "minInstances": 3,
+      "maxInstances": 100,
+      "teeRequired": false,
+      "regions": ["global"],
+      "env": {
+        "GENESIS_MODE": "false"
+      }
+    },
+    "bootstrap": {
+      "enabled": true,
+      "genesisNodes": 3,
+      "genesisRuntime": "bun",
+      "genesisEntrypoint": "api/server/index.ts",
+      "description": "Genesis nodes run full DWS with system access for workerd process management, git repos, and containers"
+    },
+    "cdn": {
+      "enabled": true,
+      "regions": ["global"],
+      "staticDir": "dist",
+      "cacheRules": [
+        { "pattern": "/assets/**", "ttl": 31536000, "immutable": true },
+        { "pattern": "/*.js", "ttl": 86400 },
+        { "pattern": "/**/*.html", "ttl": 60, "staleWhileRevalidate": 3600 }
+      ]
+    },
+    "database": {
+      "type": "sqlit",
+      "name": "dws-core"
+    }
+  },
   "endpoints": {
     "storage": "/storage/*",
     "compute": "/compute/*",
@@ -141,7 +178,11 @@
     "a2a": "/a2a/*",
     "mcp": "/mcp/*",
     "funding": "/funding/*",
-    "registry": "/registry/*"
+    "registry": "/registry/*",
+    "workerd": "/workerd/*",
+    "sqlit": "/sqlit/*",
+    "nodes": "/nodes/*",
+    "kms": "/kms/*"
   },
   "decentralization": {
     "frontend": {

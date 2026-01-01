@@ -29,8 +29,10 @@ const IPFSUploadResponseSchema = z.object({
 })
 
 const DWSWorkerDeployResponseSchema = z.object({
-  workerId: z.string(),
-  status: z.string().optional(),
+  functionId: z.string(),
+  name: z.string(),
+  codeCid: z.string(),
+  status: z.enum(['active', 'inactive', 'error']),
 })
 
 interface DeployConfig {
@@ -208,10 +210,21 @@ async function deployWorker(
     secrets: ['ELIZA_API_KEY', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY'],
   }
 
-  const response = await fetch(`${config.dwsUrl}/workers/deploy`, {
+  const response = await fetch(`${config.dwsUrl}/workers`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(deployRequest),
+    headers: {
+      'Content-Type': 'application/json',
+      'x-jeju-address': account.address,
+    },
+    body: JSON.stringify({
+      name: 'crucible-api',
+      codeCid: apiBundle.cid,
+      runtime: 'bun',
+      handler: 'index.js:default',
+      memory: deployRequest.resources.memoryMb,
+      timeout: deployRequest.resources.timeoutMs,
+      env: deployRequest.env,
+    }),
   })
 
   if (!response.ok) {
@@ -223,7 +236,7 @@ async function deployWorker(
   if (!parsed.success) {
     throw new Error(`Invalid deploy response: ${parsed.error.message}`)
   }
-  return parsed.data.workerId
+  return parsed.data.functionId
 }
 
 function getContentType(path: string): string {
@@ -253,9 +266,16 @@ async function setupCDN(
       path.includes('-') && (path.endsWith('.js') || path.endsWith('.css')),
   }))
 
+  const domain =
+    config.network === 'testnet'
+      ? 'crucible.testnet.jejunetwork.org'
+      : config.network === 'mainnet'
+        ? 'crucible.jejunetwork.org'
+        : 'crucible.local.jejunetwork.org'
+
   const cdnConfig = {
     name: 'crucible',
-    domain: 'crucible.jejunetwork.org',
+    domain,
     spa: {
       enabled: true,
       fallback: '/index.html',
@@ -321,16 +341,20 @@ async function deploy(): Promise<void> {
   await setupCDN(config, webAssets)
 
   const indexCid = webAssets.get('index.html')?.cid
+  const frontendDomain =
+    config.network === 'testnet'
+      ? 'crucible.testnet.jejunetwork.org'
+      : config.network === 'mainnet'
+        ? 'crucible.jejunetwork.org'
+        : 'crucible.local.jejunetwork.org'
+
   console.log('')
-  console.log('╔════════════════════════════════════════════════════════════╗')
-  console.log('║                  Deployment Complete                        ║')
-  console.log('╠════════════════════════════════════════════════════════════╣')
-  console.log(`║  Frontend: https://crucible.jejunetwork.org                 ║`)
-  console.log(
-    `║  IPFS:     ipfs://${indexCid?.slice(0, 20)}...                  ║`,
-  )
-  console.log(`║  Worker:   ${workerId.slice(0, 36)}...  ║`)
-  console.log('╚════════════════════════════════════════════════════════════╝')
+  console.log('[Crucible] Deployment complete.')
+  console.log('\nEndpoints:')
+  console.log(`   Frontend: https://${frontendDomain}`)
+  console.log(`   IPFS: ipfs://${indexCid}`)
+  console.log(`   Worker: ${workerId}`)
+  console.log(`   API: ${config.dwsUrl}/workers/${workerId}`)
 }
 
 deploy().catch((error) => {

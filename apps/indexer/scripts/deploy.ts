@@ -81,6 +81,21 @@ interface UploadResult {
   rootCid: string
 }
 
+/**
+ * Verify content is retrievable from storage
+ */
+async function verifyContentRetrievable(
+  dwsUrl: string,
+  cid: string,
+): Promise<boolean> {
+  const response = await fetch(`${dwsUrl}/storage/download/${cid}`, {
+    method: 'HEAD',
+    signal: AbortSignal.timeout(10000),
+  }).catch(() => null)
+  
+  return response?.ok === true
+}
+
 async function uploadFile(
   dwsUrl: string,
   content: Buffer,
@@ -105,6 +120,13 @@ async function uploadFile(
       }
 
       const result = StorageUploadResponseSchema.parse(await response.json())
+      
+      // Verify the content is retrievable before returning success
+      const verified = await verifyContentRetrievable(dwsUrl, result.cid)
+      if (!verified) {
+        throw new Error(`Upload verification failed for ${filename} - content not retrievable`)
+      }
+      
       return { cid: result.cid, size: content.length }
     } catch (err) {
       if (attempt === retries) throw err

@@ -83,6 +83,14 @@ async function buildFrontend(
 ): Promise<boolean> {
   const buildCommand =
     manifest.decentralization?.frontend?.buildCommand || 'bun run build'
+  const buildDir = manifest.decentralization?.frontend?.buildDir || 'dist'
+  const distPath = join(appDir, buildDir, 'web')
+  
+  // Skip rebuild if dist exists with index.html (prevents hash mismatches)
+  if (existsSync(join(distPath, 'index.html'))) {
+    console.log(`[${manifest.name}] ✅ Frontend already built (using existing dist)`)
+    return true
+  }
 
   console.log(`[${manifest.name}] Building frontend...`)
   try {
@@ -349,42 +357,128 @@ async function deployApp(
     const entrypoint = manifest.dws.backend.entrypoint || 'api/server.ts'
     const entrypointPath = join(appDir, entrypoint)
     const runtime = manifest.dws.backend.runtime || 'bun'
+    const isWorkerd = runtime === 'workerd'
 
     if (existsSync(entrypointPath)) {
       try {
-        // Read the entrypoint code
-        const code = readFileSync(entrypointPath)
+        let codeCid: string
 
-        // Upload worker code to DWS storage
-        const codeFormData = new FormData()
-        codeFormData.append(
-          'file',
-          new Blob([code]),
-          `${manifest.name}-worker.ts`,
-        )
-        codeFormData.append('tier', 'system')
-        codeFormData.append('category', 'worker')
+        if (isWorkerd) {
+          // Build the worker using Bun to generate a JavaScript bundle
+          console.log(`[${manifest.name}] Building workerd bundle...`)
+          const distDir = join(appDir, 'dist', 'worker')
+          const bundlePath = join(distDir, 'worker.js')
 
-        const codeResponse = await fetch(`${dwsUrl}/storage/upload`, {
-          method: 'POST',
-          body: codeFormData,
-        })
+          const buildResult = await Bun.build({
+            entrypoints: [entrypointPath],
+            outdir: distDir,
+            target: 'browser', // Workerd uses web-standard APIs
+            format: 'esm',
+            minify: true,
+            external: [],
+            define: {
+              'process.env.NODE_ENV': '"production"',
+              'process.env.JEJU_NETWORK': `"${network}"`,
+            },
+          })
 
-        if (codeResponse.ok) {
+          if (!buildResult.success) {
+            console.error(`[${manifest.name}] ❌ Worker build failed:`, buildResult.logs)
+            throw new Error('Worker build failed')
+          }
+
+          // Read the built bundle
+          const bundleCode = readFileSync(bundlePath)
+
+          // Upload worker bundle to DWS storage
+          const codeFormData = new FormData()
+          codeFormData.append(
+            'file',
+            new Blob([bundleCode], { type: 'application/javascript' }),
+            `${manifest.name}-worker.js`,
+          )
+          codeFormData.append('tier', 'system')
+          codeFormData.append('category', 'worker')
+
+          const codeResponse = await fetch(`${dwsUrl}/storage/upload`, {
+            method: 'POST',
+            body: codeFormData,
+          })
+
+          if (!codeResponse.ok) {
+            throw new Error(`Worker code upload failed: ${await codeResponse.text()}`)
+          }
+
           const codeResult = (await codeResponse.json()) as { cid: string }
+          codeCid = codeResult.cid
 
-          // Deploy to DWS Workers (supports bun/node/deno runtimes)
+          // Deploy to workerd endpoint (V8 isolate-based)
+          const workerDeployResponse = await fetch(`${dwsUrl}/workerd`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-jeju-address': '0x0000000000000000000000000000000000000000',
+            },
+            body: JSON.stringify({
+              name: manifest.name,
+              codeCid,
+              memoryMb: manifest.dws.backend.memory || 256,
+              timeoutMs: manifest.dws.backend.timeout || 30000,
+              cpuTimeMs: 5000,
+              compatibilityDate: '2024-01-01',
+              bindings: [
+                { name: 'JEJU_NETWORK', type: 'text', value: network },
+                { name: 'APP_NAME', type: 'text', value: manifest.name },
+              ],
+            }),
+          })
+
+          if (workerDeployResponse.ok) {
+            const workerResult = (await workerDeployResponse.json()) as { workerId: string }
+            backendWorkerId = workerResult.workerId
+            backendEndpoint = `${dwsUrl}/workerd/${backendWorkerId}/invoke`
+            console.log(`[${manifest.name}] ✅ Backend deployed to workerd: ${backendWorkerId}`)
+          } else {
+            const errorText = await workerDeployResponse.text()
+            throw new Error(`Workerd deployment failed: ${errorText}`)
+          }
+        } else {
+          // Process-based deployment (bun/node/deno)
+          const code = readFileSync(entrypointPath)
+
+          // Upload worker code to DWS storage
+          const codeFormData = new FormData()
+          codeFormData.append(
+            'file',
+            new Blob([code]),
+            `${manifest.name}-worker.ts`,
+          )
+          codeFormData.append('tier', 'system')
+          codeFormData.append('category', 'worker')
+
+          const codeResponse = await fetch(`${dwsUrl}/storage/upload`, {
+            method: 'POST',
+            body: codeFormData,
+          })
+
+          if (!codeResponse.ok) {
+            throw new Error(`Worker code upload failed: ${await codeResponse.text()}`)
+          }
+
+          const codeResult = (await codeResponse.json()) as { cid: string }
+          codeCid = codeResult.cid
+
+          // Deploy to DWS Workers (process-based)
           const workerDeployResponse = await fetch(`${dwsUrl}/workers`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'x-jeju-address':
-                '0x0000000000000000000000000000000000000000', // System deployment
+              'x-jeju-address': '0x0000000000000000000000000000000000000000',
             },
             body: JSON.stringify({
               name: manifest.name,
               runtime,
-              codeCid: codeResult.cid,
+              codeCid,
               handler: 'default',
               memory: manifest.dws.backend.memory || 512,
               timeout: manifest.dws.backend.timeout || 30000,
@@ -396,31 +490,20 @@ async function deployApp(
           })
 
           if (workerDeployResponse.ok) {
-            const workerResult = (await workerDeployResponse.json()) as {
-              functionId: string
-            }
+            const workerResult = (await workerDeployResponse.json()) as { functionId: string }
             backendWorkerId = workerResult.functionId
-            // Route through DWS workers endpoint
             backendEndpoint = `${dwsUrl}/workers/${backendWorkerId}/http`
-            console.log(
-              `[${manifest.name}] ✅ Backend deployed to DWS Workers (${runtime}): ${backendWorkerId}`,
-            )
+            console.log(`[${manifest.name}] ✅ Backend deployed to DWS Workers (${runtime}): ${backendWorkerId}`)
           } else {
             const errorText = await workerDeployResponse.text()
-            console.warn(
-              `[${manifest.name}] ⚠️ Worker deployment failed: ${errorText}`,
-            )
+            throw new Error(`Worker deployment failed: ${errorText}`)
           }
-        } else {
-          console.warn(`[${manifest.name}] ⚠️ Worker code upload failed`)
         }
       } catch (error) {
         console.warn(`[${manifest.name}] ⚠️ Worker deployment error:`, error)
       }
     } else {
-      console.log(
-        `[${manifest.name}] No backend entrypoint found at ${entrypoint}`,
-      )
+      console.log(`[${manifest.name}] No backend entrypoint found at ${entrypoint}`)
     }
 
     // If DWS Workers deployment failed, do NOT fall back to K8s

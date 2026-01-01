@@ -81,8 +81,8 @@
   "dws": {
     "backend": {
       "enabled": true,
-      "runtime": "bun",
-      "entrypoint": "api/index.ts",
+      "runtime": "workerd",
+      "entrypoint": "api/worker.ts",
       "memory": 256,
       "timeout": 30000,
       "minInstances": 1,

@@ -34,7 +34,8 @@
   "jns": {
     "name": "crucible.jeju",
     "description": "Agent Orchestration Platform",
-    "url": "https://crucible.jejunetwork.org"
+    "testnet": "https://crucible.testnet.jejunetwork.org",
+    "mainnet": "https://crucible.jejunetwork.org"
   },
   "healthCheck": {
     "url": "http://localhost:4021/health",
@@ -70,8 +71,8 @@
   "dws": {
     "backend": {
       "enabled": true,
-      "runtime": "bun",
-      "entrypoint": "api/server.ts",
+      "runtime": "workerd",
+      "entrypoint": "api/worker.ts",
       "memory": 512,
       "timeout": 30000,
       "minInstances": 1,
@@ -136,6 +137,7 @@
       "buildDir": "dist/web",
       "spa": true,
       "fallbackOrigins": [
+        "https://crucible.testnet.jejunetwork.org",
         "https://crucible.jejunetwork.org"
       ]
     },

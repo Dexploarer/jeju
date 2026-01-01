@@ -108,7 +108,7 @@ bun run test:worker
 | `Bun.serve()` | ✅ | Maps to fetch handler |
 | `Bun.env` | ✅ | Proxies process.env |
 | `Bun.version` | ✅ | Returns "1.0.0-workerd" |
-| `Bun.revision` | ✅ | Returns "workerd" |
+| `Bun.revision` | ✅ | Returns "workerd-compat" |
 | `Bun.hash()` | ✅ | Fast non-crypto hash |
 | `Bun.hash.wyhash()` | ✅ | |
 | `Bun.hash.crc32()` | ✅ | |

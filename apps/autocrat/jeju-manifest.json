@@ -64,7 +64,8 @@
   "jns": {
     "name": "autocrat.jeju",
     "description": "AI-Powered Autonomous Governance",
-    "url": "https://autocrat.jejunetwork.org"
+    "testnet": "https://autocrat.testnet.jejunetwork.org",
+    "mainnet": "https://autocrat.jejunetwork.org"
   },
   "healthCheck": {
     "frontend": {
@@ -199,6 +200,17 @@
     "AgentRegistry": "0x0000000000000000000000000000000000000000"
   },
   "dws": {
+    "backend": {
+      "enabled": true,
+      "runtime": "workerd",
+      "entrypoint": "api/worker.ts",
+      "memory": 512,
+      "timeout": 60000,
+      "minInstances": 1,
+      "maxInstances": 10,
+      "teeRequired": true,
+      "regions": ["global"]
+    },
     "worker": {
       "name": "autocrat-api",
       "entrypoint": "api/worker.ts",

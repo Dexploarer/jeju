@@ -110,7 +110,7 @@ export function createGatewayApp(env?: Partial<GatewayEnv>) {
   app.get('/', () => ({
     name: 'Gateway API',
     version: '1.0.0',
-    description: 'Jeju Network Gateway - Faucet, RPC Proxy, x402 Payments, Oracle',
+    description: 'Jeju Gateway - Faucet, RPC Proxy, x402 Payments, Oracle',
     runtime: 'workerd',
     network,
     endpoints: {
@@ -126,7 +126,7 @@ export function createGatewayApp(env?: Partial<GatewayEnv>) {
   // Agent card endpoint
   app.get('/.well-known/agent-card.json', () => ({
     name: 'Gateway',
-    description: 'Jeju Network Gateway - Faucet, RPC Proxy, x402 Payments, Oracle',
+    description: 'Jeju Gateway - Faucet, RPC Proxy, x402 Payments, Oracle',
     version: '1.0.0',
     skills: [
       { id: 'faucet-claim', name: 'Claim Faucet', description: 'Claim testnet tokens from faucet' },

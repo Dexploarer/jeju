@@ -513,13 +513,22 @@ export function createComputeRouter() {
       )
 
       // Training runs
-      .get('/training/runs', async ({ query }) => {
+      .get('/training/runs', async ({ query, set }) => {
         const status = query.status as
           | 'active'
           | 'completed'
           | 'paused'
           | undefined
-        const runs = await trainingState.listRuns(status)
+
+        const runs = await trainingState.listRuns(status).catch((err: Error) => {
+          console.warn('[Compute] Training runs query failed:', err.message)
+          return []
+        })
+
+        if (!runs.length) {
+          // Return empty array with service status
+          return []
+        }
 
         return runs.map((r) => ({
           runId: r.run_id,
@@ -553,7 +562,10 @@ export function createComputeRouter() {
 
       // Nodes - returns compute nodes for dashboard
       .get('/nodes', async () => {
-        const trainingNodes = await trainingState.listNodes(true)
+        const trainingNodes = await trainingState.listNodes(true).catch((err: Error) => {
+          console.warn('[Compute] Training nodes query failed:', err.message)
+          return []
+        })
 
         // Transform training nodes to ComputeNode format expected by frontend
         const nodes = trainingNodes.map((n) => ({

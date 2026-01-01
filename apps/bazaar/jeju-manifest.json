@@ -42,7 +42,8 @@
   "jns": {
     "name": "bazaar.jeju",
     "description": "DeFi + NFT + Names Marketplace",
-    "url": "https://bazaar.jejunetwork.org"
+    "testnet": "https://bazaar.testnet.jejunetwork.org",
+    "mainnet": "https://bazaar.jejunetwork.org"
   },
   "healthCheck": {
     "frontend": {
@@ -69,6 +70,17 @@
     "jnsName": "bazaar.jeju"
   },
   "dws": {
+    "backend": {
+      "enabled": true,
+      "runtime": "workerd",
+      "entrypoint": "api/worker.ts",
+      "memory": 256,
+      "timeout": 60000,
+      "minInstances": 1,
+      "maxInstances": 10,
+      "teeRequired": false,
+      "regions": ["global"]
+    },
     "worker": {
       "name": "bazaar-api",
       "entrypoint": "api/worker.ts",

@@ -629,6 +629,31 @@ const app = new Elysia()
     stats: getRateLimitStats(),
     note: 'Stake tokens to increase rate limits',
   }))
+  // GraphQL proxy with CORS - forwards to Subsquid GraphQL server
+  .post('/graphql', async (ctx: Context) => {
+    const graphqlPort = process.env.GQL_PORT ?? '4350'
+    const graphqlUrl = `http://localhost:${graphqlPort}/graphql`
+
+    const response = await fetch(graphqlUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(ctx.body),
+    }).catch((err: Error) => {
+      console.error('[REST] GraphQL proxy error:', err.message)
+      return null
+    })
+
+    if (!response) {
+      ctx.set.status = 503
+      return { errors: [{ message: 'GraphQL server unavailable' }] }
+    }
+
+    const data = await response.json()
+    return data
+  })
   .onError(({ error, set }) => {
     if (error instanceof Error) {
       console.error('[REST] Unhandled error:', error.message, error.stack)

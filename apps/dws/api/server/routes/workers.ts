@@ -49,9 +49,74 @@ const UpdateWorkerJsonBodySchema = z.object({
 
 // Shared runtime instance for use by other modules
 let sharedRuntime: WorkerRuntime | null = null
+let sharedBackend: BackendManager | null = null
+
+// Cache for CID -> functionId mapping (for lazy deployment)
+const cidToFunctionId = new Map<string, string>()
 
 export function getSharedWorkersRuntime(): WorkerRuntime | null {
   return sharedRuntime
+}
+
+/**
+ * Check if a string looks like an IPFS CID
+ */
+function isIPFSCid(str: string): boolean {
+  return str.startsWith('Qm') || str.startsWith('bafy')
+}
+
+/**
+ * Deploy a worker from a CID on-demand
+ */
+async function deployFromCid(
+  runtime: WorkerRuntime,
+  backend: BackendManager,
+  cid: string,
+): Promise<WorkerFunction> {
+  // Check cache first
+  const cachedId = cidToFunctionId.get(cid)
+  if (cachedId) {
+    const fn = runtime.getFunction(cachedId)
+    if (fn) {
+      return fn
+    }
+    // Cached ID but function not in runtime - remove from cache and redeploy
+    cidToFunctionId.delete(cid)
+  }
+
+  console.log(`[Workers] Deploying worker from CID: ${cid}`)
+
+  // Verify code exists in storage
+  const codeExists = await backend.exists(cid)
+  if (!codeExists) {
+    throw new Error(`Code CID not found in storage: ${cid}`)
+  }
+
+  const functionId = crypto.randomUUID()
+  const fn: WorkerFunction = {
+    id: functionId,
+    name: `worker-${cid.slice(0, 8)}`,
+    owner: '0x0000000000000000000000000000000000000000' as Address,
+    runtime: 'bun',
+    handler: 'fetch',
+    codeCid: cid,
+    memory: 512,
+    timeout: 60000,
+    env: {},
+    status: 'active',
+    version: 1,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    invocationCount: 0,
+    avgDurationMs: 0,
+    errorCount: 0,
+  }
+
+  await runtime.deployFunction(fn)
+  cidToFunctionId.set(cid, functionId)
+  console.log(`[Workers] Deployed worker ${functionId} from CID ${cid}`)
+
+  return fn
 }
 
 /**
@@ -105,6 +170,7 @@ async function loadPersistedWorkers(runtime: WorkerRuntime): Promise<void> {
 export function createWorkersRouter(backend: BackendManager) {
   const runtime = new WorkerRuntime(backend)
   sharedRuntime = runtime // Store reference for shared access
+  sharedBackend = backend // Store reference for lazy CID deployment
 
   // Load persisted workers from SQLit on startup (async, non-blocking)
   loadPersistedWorkers(runtime).catch((err) => {
@@ -574,7 +640,27 @@ export function createWorkersRouter(backend: BackendManager) {
       .all(
         '/:functionId/http/*',
         async ({ params, request, set }) => {
-          const fn = runtime.getFunction(params.functionId)
+          let fn = runtime.getFunction(params.functionId)
+
+          // If not found, check if the ID is a CID and deploy on-demand
+          if (!fn && isIPFSCid(params.functionId)) {
+            console.log(
+              `[Workers] Function ${params.functionId} not found, attempting CID deployment`,
+            )
+            try {
+              const deployed = await deployFromCid(
+                runtime,
+                backend,
+                params.functionId,
+              )
+              fn = deployed
+            } catch (err) {
+              console.error(
+                `[Workers] Failed to deploy from CID: ${err instanceof Error ? err.message : String(err)}`,
+              )
+            }
+          }
+
           if (!fn) {
             set.status = 404
             return { error: 'Function not found' }

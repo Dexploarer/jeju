@@ -149,33 +149,9 @@ resource "aws_lb_target_group" "rpc" {
   )
 }
 
-resource "aws_lb_target_group" "indexer" {
-  name     = "jeju-${var.environment}-indexer-tg"
-  port     = 4350
-  protocol = "HTTP"
-  vpc_id   = var.vpc_id
-
-  health_check {
-    enabled             = true
-    healthy_threshold   = 2
-    unhealthy_threshold = 3
-    timeout             = 5
-    interval            = 30
-    path                = "/health"
-    matcher             = "200"
-  }
-
-  deregistration_delay = 30
-
-  tags = merge(
-    var.tags,
-    {
-      Name        = "jeju-${var.environment}-indexer-tg"
-      Environment = var.environment
-      Service     = "indexer"
-    }
-  )
-}
+# NOTE: Indexer target group removed - indexer now routes through DWS wildcard rule
+# DWS app router proxies API requests to the K8s backend endpoint registered in deployed apps
+# This enables decentralized frontend serving via IPFS while keeping the backend reachable
 
 # DWS (Decentralized Web Services) target group
 # Handles ALL *.testnet.jejunetwork.org traffic for permissionless JNS-based routing
@@ -265,23 +241,9 @@ resource "aws_lb_listener_rule" "rpc" {
   }
 }
 
-resource "aws_lb_listener_rule" "indexer" {
-  count = var.enable_https ? 1 : 0
-
-  listener_arn = aws_lb_listener.https[0].arn
-  priority     = 110
-
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.indexer.arn
-  }
-
-  condition {
-    host_header {
-      values = ["indexer.${var.environment == "mainnet" ? "" : "${var.environment}."}jejunetwork.org"]
-    }
-  }
-}
+# NOTE: Indexer listener rule removed - now routes through DWS wildcard rule (priority 999)
+# indexer.testnet.jejunetwork.org → DWS → App Router → IPFS frontend / K8s backend
+# Fully decentralized routing via JNS name resolution
 
 # DWS explicit route (dws.testnet.jejunetwork.org)
 resource "aws_lb_listener_rule" "dws" {
@@ -351,9 +313,9 @@ output "security_group_id" {
 output "target_group_arns" {
   description = "Map of service names to target group ARNs"
   value = {
-    rpc     = aws_lb_target_group.rpc.arn
-    indexer = aws_lb_target_group.indexer.arn
-    dws     = aws_lb_target_group.dws.arn
+    rpc = aws_lb_target_group.rpc.arn
+    dws = aws_lb_target_group.dws.arn
+    # NOTE: indexer removed - now routes through DWS wildcard for decentralized routing
   }
 }
 

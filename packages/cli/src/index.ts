@@ -14,6 +14,7 @@ import {
 } from '@jejunetwork/config'
 import chalk from 'chalk'
 import { Command } from 'commander'
+import { accountCommand } from './commands/account'
 import { appsCommand } from './commands/apps'
 import { botsCommand } from './commands/bots'
 import { buildCommand } from './commands/build'
@@ -33,11 +34,15 @@ import { fundCommand } from './commands/fund'
 import { infraCommand } from './commands/infra'
 import { initCommand } from './commands/init'
 import { keysCommand } from './commands/keys'
+import { loginCommand, logoutCommand, whoamiCommand } from './commands/login'
+import { logsCommand } from './commands/logs'
 import { pkgCommand } from './commands/pkg'
 import { portsCommand } from './commands/ports'
+import { previewCommand } from './commands/preview'
 import { proxyCommand } from './commands/proxy'
 import { publishCommand } from './commands/publish'
 import { pypkgCommand } from './commands/pypkg'
+import { secretCommand } from './commands/secret'
 import { seedCommand } from './commands/seed'
 import { serviceCommand } from './commands/service'
 import { setupCommand } from './commands/setup'
@@ -52,6 +57,7 @@ import { trainingCommand } from './commands/training'
 import { validateCommand } from './commands/validate'
 import { vendorCommand } from './commands/vendor'
 import { verifyStage2Command } from './commands/verify-stage2'
+import { workerCommand } from './commands/worker'
 import { logger } from './lib/logger'
 import { CommanderErrorSchema, PackageJsonSchema, validate } from './schemas'
 
@@ -96,49 +102,168 @@ program
     })
   })
 
-// Core commands
+// Authentication commands
+program.addCommand(loginCommand)
+program.addCommand(logoutCommand)
+program.addCommand(whoamiCommand)
+program.addCommand(accountCommand)
+
+// Core development commands
 program.addCommand(devCommand)
 program.addCommand(startCommand)
 program.addCommand(testCommand)
+program.addCommand(initCommand)
+program.addCommand(buildCommand)
+
+// Deployment commands
+program.addCommand(publishCommand)
 program.addCommand(deployCommand)
+program.addCommand(previewCommand)
+
+// Worker commands (wrangler-like)
+program.addCommand(workerCommand)
+
+// Logs and secrets
+program.addCommand(logsCommand)
+program.addCommand(secretCommand)
+
+// Keys and accounts
 program.addCommand(keysCommand)
 program.addCommand(statusCommand)
 program.addCommand(fundCommand)
+program.addCommand(faucetCommand)
+
+// Infrastructure
+program.addCommand(infraCommand)
+program.addCommand(computeCommand)
+program.addCommand(storageCommand)
+program.addCommand(dwsCommand)
+program.addCommand(sqlitCommand)
+program.addCommand(proxyCommand)
+
+// Network and federation
 program.addCommand(forkCommand)
 program.addCommand(federationCommand)
 program.addCommand(superchainCommand)
-program.addCommand(computeCommand)
-program.addCommand(initCommand)
+program.addCommand(decentralizeCommand)
+program.addCommand(deployMipsCommand)
+program.addCommand(verifyStage2Command)
+
+// Apps and packages
 program.addCommand(appsCommand)
+program.addCommand(pkgCommand)
+program.addCommand(pypkgCommand)
+
+// Utilities
 program.addCommand(portsCommand)
-program.addCommand(buildCommand)
 program.addCommand(circularCommand)
 program.addCommand(cleanCommand)
 program.addCommand(cleanupCommand)
 program.addCommand(serviceCommand)
 program.addCommand(setupCommand)
 program.addCommand(seedCommand)
-program.addCommand(publishCommand)
-program.addCommand(pkgCommand)
-program.addCommand(pypkgCommand)
-program.addCommand(infraCommand)
-program.addCommand(sqlitCommand)
 program.addCommand(tokenCommand)
-program.addCommand(dwsCommand)
 program.addCommand(validateCommand)
 program.addCommand(trainingCommand)
-program.addCommand(proxyCommand)
-program.addCommand(decentralizeCommand)
-program.addCommand(deployMipsCommand)
-program.addCommand(verifyStage2Command)
-program.addCommand(faucetCommand)
 program.addCommand(botsCommand)
 program.addCommand(vendorCommand)
-program.addCommand(storageCommand)
 
 // Default: show help
 program.action(() => {
   printBanner()
+
+  console.log(chalk.bold('Authentication:\n'))
+  console.log(
+    '  ' +
+      chalk.cyan(`${cliName} login`) +
+      '            Authenticate with your wallet',
+  )
+  console.log(
+    '  ' +
+      chalk.cyan(`${cliName} logout`) +
+      '           Sign out',
+  )
+  console.log(
+    '  ' +
+      chalk.cyan(`${cliName} whoami`) +
+      '           Show current user',
+  )
+  console.log(
+    '  ' +
+      chalk.cyan(`${cliName} account`) +
+      '          View account info, balance, usage\n',
+  )
+
+  console.log(chalk.bold('Quick Deploy (Vercel-like):\n'))
+  console.log(
+    '  ' +
+      chalk.cyan(`${cliName} publish`) +
+      '          Deploy current project to Jeju Network',
+  )
+  console.log(
+    '  ' +
+      chalk.cyan(`${cliName} preview`) +
+      '          Create preview deployment',
+  )
+  console.log(
+    '  ' +
+      chalk.cyan(`${cliName} logs`) +
+      '             View application logs',
+  )
+  console.log(
+    '  ' +
+      chalk.cyan(`${cliName} logs --tail`) +
+      '      Stream logs in real-time\n',
+  )
+
+  console.log(chalk.bold('Workers (Wrangler-like):\n'))
+  console.log(
+    '  ' +
+      chalk.cyan(`${cliName} worker dev`) +
+      '       Run worker locally with hot reload',
+  )
+  console.log(
+    '  ' +
+      chalk.cyan(`${cliName} worker deploy`) +
+      '    Deploy worker to DWS',
+  )
+  console.log(
+    '  ' +
+      chalk.cyan(`${cliName} worker list`) +
+      '      List deployed workers',
+  )
+  console.log(
+    '  ' +
+      chalk.cyan(`${cliName} worker logs`) +
+      '      View worker logs',
+  )
+  console.log(
+    '  ' +
+      chalk.cyan(`${cliName} worker tail`) +
+      '      Stream worker logs\n',
+  )
+
+  console.log(chalk.bold('Secrets & Environment:\n'))
+  console.log(
+    '  ' +
+      chalk.cyan(`${cliName} secret set KEY val`) +
+      '  Set an environment secret',
+  )
+  console.log(
+    '  ' +
+      chalk.cyan(`${cliName} secret list`) +
+      '        List all secrets',
+  )
+  console.log(
+    '  ' +
+      chalk.cyan(`${cliName} secret pull`) +
+      '        Pull secrets to .env.local',
+  )
+  console.log(
+    '  ' +
+      chalk.cyan(`${cliName} secret push`) +
+      '        Push .env.local to secrets\n',
+  )
 
   console.log(chalk.bold('Development:\n'))
   console.log(
@@ -173,6 +298,9 @@ program.action(() => {
   console.log(`  ${chalk.cyan(`${cliName} fund 0x...`)}       Fund address`)
   console.log(
     `  ${chalk.cyan(`${cliName} fund --all`)}       Fund all dev accounts`,
+  )
+  console.log(
+    `  ${chalk.cyan(`${cliName} account topup 1`)}  Add 1 ETH of credits`,
   )
   console.log(
     `  ${chalk.cyan(`${cliName} faucet`)}           Request testnet funds`,

@@ -28,9 +28,10 @@ const IPFSUploadResponseSchema = z.object({
 })
 
 const DWSWorkerDeployResponseSchema = z.object({
-  workerId: z.string(),
-  status: z.enum(['deployed', 'pending', 'failed']),
-  endpoint: z.string().optional(),
+  functionId: z.string(),
+  name: z.string(),
+  codeCid: z.string(),
+  status: z.enum(['active', 'inactive', 'error']),
 })
 
 // Configuration
@@ -220,10 +221,21 @@ async function deployWorker(
     },
   }
 
-  const response = await fetch(`${config.dwsUrl}/workers/deploy`, {
+  const response = await fetch(`${config.dwsUrl}/workers`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(deployRequest),
+    headers: {
+      'Content-Type': 'application/json',
+      'x-jeju-address': privateKeyToAccount(config.privateKey).address,
+    },
+    body: JSON.stringify({
+      name: 'bazaar-api',
+      codeCid: workerBundle.cid,
+      runtime: 'bun',
+      handler: 'worker.js:default',
+      memory: deployRequest.resources.memoryMb,
+      timeout: deployRequest.resources.timeoutMs,
+      env: deployRequest.env,
+    }),
   })
 
   if (!response.ok) {
@@ -235,7 +247,7 @@ async function deployWorker(
   if (!parsed.success) {
     throw new Error(`Invalid deploy response: ${parsed.error.message}`)
   }
-  return parsed.data.workerId
+  return parsed.data.functionId
 }
 
 // CDN Setup
@@ -258,9 +270,16 @@ async function setupCDN(
       path.includes('-') && (path.endsWith('.js') || path.endsWith('.css')),
   }))
 
+  const domain =
+    config.network === 'testnet'
+      ? 'bazaar.testnet.jejunetwork.org'
+      : config.network === 'mainnet'
+        ? 'bazaar.jejunetwork.org'
+        : 'bazaar.local.jejunetwork.org'
+
   const cdnConfig = {
     name: 'bazaar',
-    domain: 'bazaar.jejunetwork.org',
+    domain,
     spa: {
       enabled: true,
       fallback: '/index.html',
@@ -337,9 +356,16 @@ async function deploy(): Promise<void> {
 
   // Print summary
   const indexCid = staticAssets.get('index.html')?.cid
-  console.log('\n✅ Deployment complete!')
-  console.log('\n📍 Endpoints:')
-  console.log(`   Frontend: https://bazaar.jejunetwork.org`)
+  const frontendDomain =
+    config.network === 'testnet'
+      ? 'bazaar.testnet.jejunetwork.org'
+      : config.network === 'mainnet'
+        ? 'bazaar.jejunetwork.org'
+        : 'bazaar.local.jejunetwork.org'
+
+  console.log('\nDeployment complete.')
+  console.log('\nEndpoints:')
+  console.log(`   Frontend: https://${frontendDomain}`)
   console.log(`   IPFS: ipfs://${indexCid}`)
   console.log(`   API: ${config.dwsUrl}/workers/${workerId}`)
   console.log(`   Health: ${config.dwsUrl}/workers/${workerId}/health`)
