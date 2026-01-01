@@ -1,10 +1,12 @@
 import {
   createAppConfig,
+  CORE_PORTS,
   getCurrentNetwork,
   getEnvNumber,
   getEnvVar,
   getLocalhostHost,
   getServicesConfig,
+  getSQLitBlockProducerUrl,
 } from '@jejunetwork/config'
 
 export interface CrucibleConfig {
@@ -76,7 +78,7 @@ const { config, configure: setCrucibleConfig } =
     autocratTreasuryAddress: getEnvVar('AUTOCRAT_TREASURY_ADDRESS'),
     computeMarketplaceUrl: getEnvVar('COMPUTE_MARKETPLACE_URL'),
     sqlitEndpoint:
-      getEnvVar('SQLIT_ENDPOINT') ?? servicesConfig.sqlit.blockProducer,
+      getEnvVar('SQLIT_ENDPOINT') ?? getSQLitBlockProducerUrl(),
     dexCacheUrl: getEnvVar('DEX_CACHE_URL'),
     botsEnabled: getEnvVar('BOTS_ENABLED') !== 'false',
     autonomousEnabled: getEnvVar('AUTONOMOUS_ENABLED') === 'true',

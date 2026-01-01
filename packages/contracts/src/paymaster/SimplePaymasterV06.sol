@@ -1,15 +1,17 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.12;
+pragma solidity ^0.8.28;
 
-import {IEntryPoint} from "account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {IPaymaster} from "account-abstraction/contracts/interfaces/IPaymaster.sol";
-import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
+import {IEntryPoint} from "account-abstraction/interfaces/IEntryPoint.sol";
+import {IPaymaster} from "account-abstraction/interfaces/IPaymaster.sol";
+import {PackedUserOperation} from "account-abstraction/interfaces/PackedUserOperation.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
- * @title SimplePaymasterV06
- * @notice A simple v0.6 compatible paymaster that sponsors all UserOperations
+ * @title SimplePaymasterV07
+ * @notice A simple paymaster that sponsors all UserOperations (v0.7 compatible)
+ * @dev Renamed from SimplePaymasterV06 to reflect v0.7 interface compatibility
  */
-contract SimplePaymasterV06 is IPaymaster, Ownable {
+contract SimplePaymasterV07 is IPaymaster, Ownable {
     IEntryPoint public immutable entryPoint;
 
     constructor(IEntryPoint _entryPoint, address _owner) Ownable(_owner) {
@@ -17,7 +19,7 @@ contract SimplePaymasterV06 is IPaymaster, Ownable {
     }
 
     function validatePaymasterUserOp(
-        UserOperation calldata,
+        PackedUserOperation calldata,
         bytes32,
         uint256
     ) external pure override returns (bytes memory context, uint256 validationData) {
@@ -25,8 +27,9 @@ contract SimplePaymasterV06 is IPaymaster, Ownable {
     }
 
     function postOp(
-        PostOpMode,
+        IPaymaster.PostOpMode,
         bytes calldata,
+        uint256,
         uint256
     ) external pure override {
         // No post-op needed
@@ -48,20 +51,4 @@ contract SimplePaymasterV06 is IPaymaster, Ownable {
         entryPoint.depositTo{value: msg.value}(address(this));
     }
 }
-
-// v0.6 UserOperation struct
-struct UserOperation {
-    address sender;
-    uint256 nonce;
-    bytes initCode;
-    bytes callData;
-    uint256 callGasLimit;
-    uint256 verificationGasLimit;
-    uint256 preVerificationGas;
-    uint256 maxFeePerGas;
-    uint256 maxPriorityFeePerGas;
-    bytes paymasterAndData;
-    bytes signature;
-}
-
 

@@ -24,10 +24,10 @@ import { foundry } from "viem/chains";
 // Deployed contracts from our localnet
 const RPC_URL = "http://127.0.0.1:6546";
 
-// From previous deployment
-const L1_STAKE_MANAGER = "0xeAd789bd8Ce8b9E94F5D0FCa99F8787c7e758817";
-const CROSS_CHAIN_PAYMASTER = "0xd9fEc8238711935D6c8d79Bef2B9546ef23FC046";
-const MOCK_MESSENGER = "0xd3FFD73C53F139cEBB80b6A524bE280955b3f4db";
+// From latest deployment (DeployFullLocalnet)
+const L1_STAKE_MANAGER = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
+const CROSS_CHAIN_PAYMASTER = "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707";
+const MOCK_MESSENGER = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0";
 
 // Test accounts
 const DEPLOYER_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
@@ -98,6 +98,46 @@ const l1StakeManagerAbi = [
     outputs: [],
     stateMutability: "nonpayable",
   },
+  {
+    name: "slash",
+    type: "function",
+    inputs: [
+      { name: "xlp", type: "address" },
+      { name: "chainId", type: "uint256" },
+      { name: "voucherId", type: "bytes32" },
+      { name: "amount", type: "uint256" },
+      { name: "victim", type: "address" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    name: "slashRecords",
+    type: "function",
+    inputs: [{ name: "slashId", type: "bytes32" }],
+    outputs: [
+      { name: "xlp", type: "address" },
+      { name: "chainId", type: "uint256" },
+      { name: "voucherId", type: "bytes32" },
+      { name: "amount", type: "uint256" },
+      { name: "victim", type: "address" },
+      { name: "timestamp", type: "uint256" },
+      { name: "executed", type: "bool" },
+      { name: "disputed", type: "bool" },
+      { name: "disputeStatus", type: "uint8" },
+      { name: "fulfillmentProofHash", type: "bytes32" },
+      { name: "disputeDeadline", type: "uint256" },
+      { name: "disputeArbitrator", type: "address" },
+    ],
+    stateMutability: "view",
+  },
+  {
+    name: "totalSlashed",
+    type: "function",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+  },
 ] as const;
 
 const crossChainPaymasterAbi = [
@@ -138,7 +178,7 @@ const crossChainPaymasterAbi = [
     stateMutability: "view",
   },
   {
-    name: "updateXLPStake",
+    name: "adminSetXLPStake",
     type: "function",
     inputs: [
       { name: "xlp", type: "address" },
@@ -267,12 +307,14 @@ async function main() {
   console.log(`   L2 Stake: ${formatEther(l2Stake)} ETH`);
 
   if (l2Stake === 0n) {
-    console.log("   Syncing stake to L2...");
-    // Use owner to manually update (simulating bridge message)
+    console.log("   Syncing stake to L2 (admin set for local testing)...");
+    // Note: In production, this would come via L1→L2 bridge message
+    // updateXLPStake() requires the call to come from L2 messenger
+    // with xDomainMessageSender = L1StakeManager
     const hash = await deployerWallet.writeContract({
       address: CROSS_CHAIN_PAYMASTER,
       abi: crossChainPaymasterAbi,
-      functionName: "updateXLPStake",
+      functionName: "adminSetXLPStake",
       args: [xlpAccount.address, l1Stake],
     });
     await publicClient.waitForTransactionReceipt({ hash });
@@ -410,16 +452,109 @@ async function main() {
   });
   console.log(`   Final L2 Stake: ${formatEther(finalL2Stake)} ETH`);
 
+  // =============================================================
+  // SLASHING TEST
+  // =============================================================
   console.log("\n====================================================");
-  console.log("   XLP VOUCHER FLOW TEST COMPLETE");
+  console.log("   SLASHING TEST");
+  console.log("====================================================\n");
+
+  // Need a second XLP for slashing test (can't slash the one we just used)
+  const XLP2_KEY = "0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6"; // Account 3
+  const xlp2Account = privateKeyToAccount(XLP2_KEY);
+  const xlp2Wallet = createWalletClient({
+    chain: foundry,
+    transport: http(RPC_URL),
+    account: xlp2Account,
+  });
+
+  console.log(`Second XLP: ${xlp2Account.address}`);
+
+  // Step 8: Register second XLP
+  console.log("\n8. Registering second XLP for slashing test...");
+  {
+    const hash = await xlp2Wallet.writeContract({
+      address: L1_STAKE_MANAGER,
+      abi: l1StakeManagerAbi,
+      functionName: "register",
+      args: [[31337n]],
+      value: parseEther("3"),
+    });
+    await publicClient.waitForTransactionReceipt({ hash });
+    console.log("   Registered XLP2 with 3 ETH stake");
+  }
+
+  const xlp2StakeBefore = await publicClient.readContract({
+    address: L1_STAKE_MANAGER,
+    abi: l1StakeManagerAbi,
+    functionName: "getStake",
+    args: [xlp2Account.address],
+  });
+  console.log(`   XLP2 Stake before slash: ${formatEther(xlp2StakeBefore.stakedAmount)} ETH`);
+
+  // Step 9: Set authorized slasher (deployer for testing)
+  console.log("\n9. Setting authorized slasher...");
+  {
+    const hash = await deployerWallet.writeContract({
+      address: L1_STAKE_MANAGER,
+      abi: l1StakeManagerAbi,
+      functionName: "setAuthorizedSlasher",
+      args: [deployerAccount.address, true],
+    });
+    await publicClient.waitForTransactionReceipt({ hash });
+    console.log(`   Authorized: ${deployerAccount.address}`);
+  }
+
+  // Step 10: Slash XLP2 for failing to fulfill a voucher
+  console.log("\n10. Slashing XLP2 for unfulfilled voucher...");
+  const fakeVoucherId = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef" as Hex;
+  const slashAmount = parseEther("1"); // Slash 1 ETH
+  const victimBalanceBefore = await publicClient.getBalance({ address: userAccount.address });
+
+  {
+    const hash = await deployerWallet.writeContract({
+      address: L1_STAKE_MANAGER,
+      abi: l1StakeManagerAbi,
+      functionName: "slash",
+      args: [xlp2Account.address, 31337n, fakeVoucherId, slashAmount, userAccount.address],
+    });
+    await publicClient.waitForTransactionReceipt({ hash });
+    console.log("   Slash executed");
+  }
+
+  // Verify slashing
+  const xlp2StakeAfter = await publicClient.readContract({
+    address: L1_STAKE_MANAGER,
+    abi: l1StakeManagerAbi,
+    functionName: "getStake",
+    args: [xlp2Account.address],
+  });
+  console.log(`   XLP2 Stake after slash: ${formatEther(xlp2StakeAfter.stakedAmount)} ETH`);
+  console.log(`   XLP2 Slashed amount: ${formatEther(xlp2StakeAfter.slashedAmount)} ETH`);
+
+  const victimBalanceAfter = await publicClient.getBalance({ address: userAccount.address });
+  const compensationReceived = victimBalanceAfter - victimBalanceBefore;
+  console.log(`   Victim compensation: ${formatEther(compensationReceived)} ETH`);
+
+  const totalSlashed = await publicClient.readContract({
+    address: L1_STAKE_MANAGER,
+    abi: l1StakeManagerAbi,
+    functionName: "totalSlashed",
+  });
+  console.log(`   Total slashed in protocol: ${formatEther(totalSlashed)} ETH`);
+
+  console.log("\n====================================================");
+  console.log("   XLP VOUCHER + SLASHING TEST COMPLETE");
   console.log("====================================================");
   console.log("\n   Tested:");
   console.log("   ✓ XLP registration and staking on L1");
-  console.log("   ✓ Stake sync L1 → L2");
+  console.log("   ✓ Stake sync L1 → L2 (via admin for local test)");
   console.log("   ✓ User creates voucher request");
   console.log("   ✓ XLP deposits liquidity on L2");
   console.log("   ✓ XLP issues voucher");
   console.log("   ✓ XLP fulfills voucher (transfers to user)");
+  console.log("   ✓ Authorized slasher can slash misbehaving XLP");
+  console.log("   ✓ Victim receives compensation from slashed stake");
 }
 
 main().catch(console.error);

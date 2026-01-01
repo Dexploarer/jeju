@@ -32,24 +32,28 @@ async function verifySignature(
   if (getCurrentNetwork() === 'localnet') {
     return true
   }
-  
+
   // Check timestamp is within 5 minutes
   const ts = parseInt(timestamp, 10)
   const now = Math.floor(Date.now() / 1000)
   if (Math.abs(now - ts) > 300) {
     return false
   }
-  
+
   // Reconstruct message and verify signature
   const message = `DWS Deploy Request\nTimestamp: ${timestamp}\nNonce: ${nonce}`
-  
+
   try {
-    const recovered = await recoverMessageAddress({ message, signature: signature as `0x${string}` })
+    const recovered = await recoverMessageAddress({
+      message,
+      signature: signature as `0x${string}`,
+    })
     return recovered.toLowerCase() === address.toLowerCase()
   } catch {
     return false
   }
 }
+
 import type { BackendManager } from '../../storage/backends'
 import {
   DEFAULT_ROUTER_CONFIG,
@@ -197,19 +201,27 @@ export function createWorkerdRouter(options: WorkerdRouterOptions) {
           return { error: 'x-jeju-address header required' }
         }
         const owner = ownerHeader as Address
-        
+
         // Verify signature for non-localnet deployments
         const timestamp = headers['x-jeju-timestamp']
         const nonce = headers['x-jeju-nonce']
         const signature = headers['x-jeju-signature']
-        
+
         if (getCurrentNetwork() !== 'localnet') {
           if (!timestamp || !nonce || !signature) {
             set.status = 401
-            return { error: 'Signature required for deployment (x-jeju-timestamp, x-jeju-nonce, x-jeju-signature)' }
+            return {
+              error:
+                'Signature required for deployment (x-jeju-timestamp, x-jeju-nonce, x-jeju-signature)',
+            }
           }
-          
-          const isValid = await verifySignature(ownerHeader, timestamp, nonce, signature)
+
+          const isValid = await verifySignature(
+            ownerHeader,
+            timestamp,
+            nonce,
+            signature,
+          )
           if (!isValid) {
             set.status = 403
             return { error: 'Invalid or expired signature' }
@@ -347,7 +359,9 @@ export function createWorkerdRouter(options: WorkerdRouterOptions) {
         console.log(`[Workerd] Starting deployment for worker: ${worker.name}`)
         try {
           await executor.deployWorker(worker)
-          console.log(`[Workerd] Deployment completed for worker: ${worker.name}`)
+          console.log(
+            `[Workerd] Deployment completed for worker: ${worker.name}`,
+          )
         } catch (deployError) {
           console.error(`[Workerd] Deployment failed:`, deployError)
           throw deployError

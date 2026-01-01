@@ -132,9 +132,9 @@ import { createPyPkgRouter } from './routes/pypkg'
 import { createRPCRouter } from './routes/rpc'
 import { createS3Router } from './routes/s3'
 import { createScrapingRouter } from './routes/scraping'
+import { createSQLitProxyRouter } from './routes/sqlit'
 import { createStakingRouter } from './routes/staking'
 import { createStorageRouter } from './routes/storage'
-import { createSQLitProxyRouter } from './routes/sqlit'
 import { createVPNRouter } from './routes/vpn'
 import { createDefaultWorkerdRouter } from './routes/workerd'
 import { createWorkersRouter } from './routes/workers'
@@ -504,7 +504,10 @@ app
     async function checkEndpoint(
       url: string,
       timeout = 2000,
-    ): Promise<{ status: 'healthy' | 'unhealthy' | 'not-running'; latencyMs?: number }> {
+    ): Promise<{
+      status: 'healthy' | 'unhealthy' | 'not-running'
+      latencyMs?: number
+    }> {
       const start = Date.now()
       try {
         const response = await fetch(url, {
@@ -517,7 +520,9 @@ app
         return { status: 'unhealthy', latencyMs }
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error)
-        console.warn(`[DWS Health] Endpoint check failed for ${url}: ${errorMsg}`)
+        console.warn(
+          `[DWS Health] Endpoint check failed for ${url}: ${errorMsg}`,
+        )
         return { status: 'not-running' }
       }
     }
@@ -538,7 +543,8 @@ app
 
     // Check SQLit status
     const sqlitStatus = getSQLitStatus()
-    const sqlitHealthy = sqlitStatus.running && sqlitStatus.healthStatus === 'healthy'
+    const sqlitHealthy =
+      sqlitStatus.running && sqlitStatus.healthStatus === 'healthy'
 
     // Check cache engine
     const cacheEngine = getSharedEngine()
@@ -578,7 +584,10 @@ app
           backends,
           health: backendHealth,
         },
-        compute: { status: 'available', description: 'Compute scheduling available' },
+        compute: {
+          status: 'available',
+          description: 'Compute scheduling available',
+        },
         cdn: {
           status: getLocalCDNServer() ? 'healthy' : 'available',
           description: 'Decentralized CDN with edge caching',
