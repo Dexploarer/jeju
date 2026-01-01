@@ -44,19 +44,24 @@ try {
   })
   if (response.ok) {
     // Also verify the CloudServiceRegistry has the expected interface
-    const cloudServiceRegistryAddress = (process.env.CLOUD_SERVICE_REGISTRY_ADDRESS ||
+    const cloudServiceRegistryAddress = (process.env
+      .CLOUD_SERVICE_REGISTRY_ADDRESS ||
       '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512') as Address
     const checkClient = createPublicClient({ transport: http(rpcUrl) })
     try {
       await checkClient.readContract({
         address: cloudServiceRegistryAddress,
-        abi: parseAbi(['function getServiceCost(string, address) view returns (uint256)']),
+        abi: parseAbi([
+          'function getServiceCost(string, address) view returns (uint256)',
+        ]),
         functionName: 'getServiceCost',
         args: ['test', '0x0000000000000000000000000000000000000000'],
       })
       localnetAvailable = true
     } catch {
-      console.log(`⏭️  CloudServiceRegistry not deployed with expected interface, skipping payment flow tests`)
+      console.log(
+        `⏭️  CloudServiceRegistry not deployed with expected interface, skipping payment flow tests`,
+      )
     }
   }
 } catch {

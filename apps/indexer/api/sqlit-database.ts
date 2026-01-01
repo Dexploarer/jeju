@@ -89,7 +89,6 @@ export class SQLitDatabase {
     const store = new SQLitStore(this.client, this.databaseId)
     
     try {
-      // Execute the callback with our store
       await cb(store)
       
       // Flush all pending writes
@@ -120,7 +119,7 @@ export class SQLitDatabase {
         )
         `,
         [],
-        this.databaseId
+        this.databaseId,
       )
     } catch (error) {
       console.warn('[SQLitDatabase] Failed to create status table:', error)
@@ -202,7 +201,10 @@ class SQLitStore implements SQLitStoreInterface {
       if (!this.pendingWrites.has(tableName)) {
         this.pendingWrites.set(tableName, [])
       }
-      this.pendingWrites.get(tableName)!.push(entityObj)
+      const pending = this.pendingWrites.get(tableName)
+      if (pending) {
+        pending.push(entityObj)
+      }
     }
   }
 
@@ -374,7 +376,6 @@ class SQLitStore implements SQLitStoreInterface {
       console.log(`[SQLitStore] Saved ${entities.length} ${tableName} records`)
     } catch (error) {
       console.error(`[SQLitStore] Failed to save ${tableName}:`, error)
-      // Don't throw - continue processing other tables
     }
   }
 

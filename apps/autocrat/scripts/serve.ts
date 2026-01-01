@@ -1,125 +1,138 @@
 #!/usr/bin/env bun
 /**
- * Autocrat Production Serve Script
+ * Production server script
  *
- * Runs the built production server locally.
- * Used by `bun run start` for local production testing.
+ * Serves the built static files from dist/static/
+ * and proxies API requests to the worker or standalone API server.
  */
 
-import { existsSync } from 'node:fs'
-import { resolve } from 'node:path'
-import { getLocalhostHost } from '@jejunetwork/config'
-import type { Subprocess } from 'bun'
+import { CORE_PORTS, getCoreAppUrl } from '@jejunetwork/config'
 
-const APP_DIR = resolve(import.meta.dir, '..')
-const API_PORT = Number(process.env.PORT) || 4040
+const PORT = CORE_PORTS.AUTOCRAT_WEB.get()
+const API_URL = getCoreAppUrl('AUTOCRAT_API')
+const STATIC_DIR = './dist/static'
 
-interface ProcessInfo {
-  name: string
-  process: Subprocess
-}
+Bun.serve({
+  port: PORT,
+  async fetch(req) {
+    const url = new URL(req.url)
+    let path = url.pathname
 
-const processes: ProcessInfo[] = []
-let shuttingDown = false
-
-function cleanup() {
-  if (shuttingDown) return
-  shuttingDown = true
-
-  console.log('\n[Autocrat] Shutting down...')
-
-  for (const { name, process } of processes) {
-    console.log(`[Autocrat] Stopping ${name}...`)
-    try {
-      process.kill()
-    } catch {
-      // Process may have already exited
-    }
-  }
-
-  process.exit(0)
-}
-
-process.on('SIGINT', cleanup)
-process.on('SIGTERM', cleanup)
-
-async function waitForPort(port: number, timeout = 30000): Promise<boolean> {
-  const host = getLocalhostHost()
-  const start = Date.now()
-  while (Date.now() - start < timeout) {
-    try {
-      const response = await fetch(`http://${host}:${port}/health`, {
-        signal: AbortSignal.timeout(1000),
+    // API proxy (to worker or standalone server)
+    if (
+      path.startsWith('/api/') ||
+      path.startsWith('/a2a') ||
+      path.startsWith('/mcp') ||
+      path.startsWith('/health') ||
+      path.startsWith('/rlaif') ||
+      path.startsWith('/fees') ||
+      path.startsWith('/.well-known/')
+    ) {
+      const targetUrl = `${API_URL}${path}${url.search}`
+      return fetch(targetUrl, {
+        method: req.method,
+        headers: req.headers,
+        body:
+          req.method !== 'GET' && req.method !== 'HEAD' ? req.body : undefined,
+      }).catch((error) => {
+        console.error('[Autocrat] API proxy error:', error.message)
+        return new Response(JSON.stringify({ error: 'Backend unavailable' }), {
+          status: 503,
+          headers: { 'Content-Type': 'application/json' },
+        })
       })
-      if (response.ok) return true
-    } catch {
-      // Port not ready yet
     }
-    await Bun.sleep(500)
-  }
-  return false
-}
 
-async function main() {
-  const host = getLocalhostHost()
-  console.log('[Autocrat] Starting production server...')
+    // Normalize path
+    if (path === '/') {
+      path = '/index.html'
+    }
 
-  // Check if build exists
-  const distApiPath = resolve(APP_DIR, 'dist/api/server.js')
-  const distWebPath = resolve(APP_DIR, 'dist/index.html')
+    // Try to serve static file
+    const file = Bun.file(`${STATIC_DIR}${path}`)
+    if (await file.exists()) {
+      const contentType = getContentType(path)
+      const cacheControl = getCacheControl(path)
+      return new Response(await file.arrayBuffer(), {
+        headers: {
+          'Content-Type': contentType,
+          'Cache-Control': cacheControl,
+        },
+      })
+    }
 
-  if (!existsSync(distApiPath) || !existsSync(distWebPath)) {
-    console.log('[Autocrat] Build not found, running build first...')
-    const buildProc = Bun.spawn(['bun', 'run', 'scripts/build.ts'], {
-      cwd: APP_DIR,
-      stdout: 'inherit',
-      stderr: 'inherit',
-    })
-    await buildProc.exited
-  }
+    // Check for chunks directory
+    if (path.startsWith('/chunks/')) {
+      const chunkFile = Bun.file(`${STATIC_DIR}${path}`)
+      if (await chunkFile.exists()) {
+        return new Response(await chunkFile.arrayBuffer(), {
+          headers: {
+            'Content-Type': 'application/javascript',
+            'Cache-Control': 'public, max-age=31536000, immutable',
+          },
+        })
+      }
+    }
 
-  // Start API server from built output
-  console.log(`[Autocrat] Starting API server on port ${API_PORT}...`)
+    // Check for assets directory
+    if (path.startsWith('/assets/')) {
+      const assetFile = Bun.file(`${STATIC_DIR}${path}`)
+      if (await assetFile.exists()) {
+        return new Response(await assetFile.arrayBuffer(), {
+          headers: {
+            'Content-Type': getContentType(path),
+            'Cache-Control': 'public, max-age=31536000, immutable',
+          },
+        })
+      }
+    }
 
-  const proc = Bun.spawn(['bun', 'run', 'dist/api/server.js'], {
-    cwd: APP_DIR,
-    stdout: 'inherit',
-    stderr: 'inherit',
-    env: {
-      ...process.env,
-      PORT: String(API_PORT),
-      NODE_ENV: 'production',
-    },
-  })
+    // SPA fallback - serve index.html for all unmatched routes
+    const indexFile = Bun.file(`${STATIC_DIR}/index.html`)
+    if (await indexFile.exists()) {
+      return new Response(await indexFile.arrayBuffer(), {
+        headers: {
+          'Content-Type': 'text/html',
+          'Cache-Control': 'no-cache',
+        },
+      })
+    }
 
-  processes.push({ name: 'api', process: proc })
-
-  const ready = await waitForPort(API_PORT, 30000)
-  if (!ready) {
-    console.error('[Autocrat] Failed to start API server')
-    cleanup()
-    process.exit(1)
-  }
-
-  console.log('')
-  console.log('╔════════════════════════════════════════════════════════════╗')
-  console.log('║           Autocrat Production Server Ready                  ║')
-  console.log('╠════════════════════════════════════════════════════════════╣')
-  console.log(
-    `║  Server:    http://${host}:${API_PORT}                          ║`,
-  )
-  console.log(
-    `║  Health:    http://${host}:${API_PORT}/health                   ║`,
-  )
-  console.log('╚════════════════════════════════════════════════════════════╝')
-  console.log('')
-  console.log('Press Ctrl+C to stop')
-
-  await proc.exited
-}
-
-main().catch((err) => {
-  console.error('[Autocrat] Error:', err)
-  cleanup()
-  process.exit(1)
+    return new Response('Not Found', { status: 404 })
+  },
 })
+
+function getContentType(path: string): string {
+  if (path.endsWith('.js')) return 'application/javascript'
+  if (path.endsWith('.css')) return 'text/css'
+  if (path.endsWith('.html')) return 'text/html'
+  if (path.endsWith('.json')) return 'application/json'
+  if (path.endsWith('.map')) return 'application/json'
+  if (path.endsWith('.svg')) return 'image/svg+xml'
+  if (path.endsWith('.png')) return 'image/png'
+  if (path.endsWith('.jpg') || path.endsWith('.jpeg')) return 'image/jpeg'
+  if (path.endsWith('.woff2')) return 'font/woff2'
+  if (path.endsWith('.woff')) return 'font/woff'
+  return 'application/octet-stream'
+}
+
+function getCacheControl(path: string): string {
+  // Hash-named files are immutable
+  if (path.match(/-[a-f0-9]{8,}\.(js|css)$/)) {
+    return 'public, max-age=31536000, immutable'
+  }
+  // Other JS/CSS files
+  if (path.endsWith('.js') || path.endsWith('.css')) {
+    return 'public, max-age=86400'
+  }
+  // HTML files
+  if (path.endsWith('.html')) {
+    return 'no-cache'
+  }
+  // Default
+  return 'public, max-age=3600'
+}
+
+console.log(`[Autocrat] Running at http://localhost:${PORT}`)
+console.log(`   API: ${API_URL}`)
+console.log(`   Static: ${STATIC_DIR}`)

@@ -3,8 +3,7 @@
  * Shared business logic for oracle-related operations
  */
 
-import type { DataSource } from 'typeorm'
-import { OracleFeed, OracleReport } from '../model'
+import { find, type OracleFeed, type OracleReport } from '../db'
 import type { OracleFeedResponse, OracleReportResponse } from './response-utils'
 import {
   mapOracleFeedResponse,
@@ -17,30 +16,30 @@ export interface OracleFeedDetail {
   recentReports: OracleReportResponse[]
 }
 
+/**
+ * Get oracle feed details with recent reports
+ */
 export async function getOracleFeedDetail(
-  dataSource: DataSource,
   feedId: string,
 ): Promise<OracleFeedDetail> {
-  if (!dataSource) {
-    throw new Error('DataSource is required')
-  }
   if (!feedId || feedId.trim().length === 0) {
     throw new Error('feedId is required and must be a non-empty string')
   }
 
-  const feed = await dataSource
-    .getRepository(OracleFeed)
-    .findOne({ where: { feedId } })
+  const feeds = await find<OracleFeed>('OracleFeed', {
+    where: { feedId },
+    take: 1,
+  })
 
+  const feed = feeds[0]
   if (!feed) {
     throw new NotFoundError('Oracle Feed', feedId)
   }
 
-  const recentReports = await dataSource.getRepository(OracleReport).find({
-    where: { feed: { id: feed.id } },
-    order: { submittedAt: 'DESC' },
+  const recentReports = await find<OracleReport>('OracleReport', {
+    where: { feedId: feed.id },
+    order: { timestamp: 'DESC' },
     take: 10,
-    relations: ['submittedBy', 'feed'],
   })
 
   return {

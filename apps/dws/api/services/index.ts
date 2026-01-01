@@ -156,8 +156,9 @@ async function removePersistedService(serviceId: string): Promise<void> {
       [serviceId],
       SERVICES_DATABASE_ID,
     )
-  } catch {
-    // Ignore SQLit errors
+  } catch (error) {
+    // Log SQLit errors instead of ignoring them
+    console.warn(`[Services] Failed to delete persisted service ${serviceId}: ${error instanceof Error ? error.message : String(error)}`)
   }
 }
 
@@ -465,7 +466,10 @@ export async function provisionService(
   }
 
   const containerName = `dws-${config.type}-${config.name}`
-  const image = `${SERVICE_IMAGES[config.type]}:${mergedConfig.version ?? 'latest'}`
+  // Get base image and handle version - don't add version if image already has a tag
+  const baseImage = SERVICE_IMAGES[config.type]
+  const hasTag = baseImage.includes(':')
+  const image = hasTag ? baseImage : `${baseImage}:${mergedConfig.version ?? 'latest'}`
 
   // Check if we already have this service tracked
   const existingService = getServiceByName(config.type, config.name)

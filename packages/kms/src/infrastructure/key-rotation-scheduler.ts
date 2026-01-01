@@ -472,8 +472,9 @@ export class KeyRotationScheduler {
             network: this.config.network,
           }),
         })
-      } catch {
-        log.error('Failed to send alert webhook')
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error)
+        log.error('Failed to send alert webhook', { error: errorMsg, webhook: this.config.alertWebhook })
       }
     }
   }

@@ -1,6 +1,6 @@
 /**
  * @jejunetwork/db browser stub
- * 
+ *
  * Database functionality is handled via API, not directly in browser.
  */
 

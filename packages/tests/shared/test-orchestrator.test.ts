@@ -108,12 +108,15 @@ describe.skipIf(!CLI_TESTS_ENABLED)('Test Orchestrator - List Command', () => {
   })
 })
 
-describe.skipIf(!CLI_TESTS_ENABLED)('Test Orchestrator - Error Handling', () => {
-  test('should exit 1 when invalid mode provided', async () => {
-    const result = await runCLI(['test', '--mode', 'invalid'])
-    expect(result.exitCode).toBe(1)
-  })
-})
+describe.skipIf(!CLI_TESTS_ENABLED)(
+  'Test Orchestrator - Error Handling',
+  () => {
+    test('should exit 1 when invalid mode provided', async () => {
+      const result = await runCLI(['test', '--mode', 'invalid'])
+      expect(result.exitCode).toBe(1)
+    })
+  },
+)
 
 describe.skipIf(!CLI_TESTS_ENABLED)('Test Orchestrator - Skip Flags', () => {
   test('should accept --skip-lock flag with list', async () => {
@@ -145,21 +148,27 @@ describe.skipIf(!CLI_TESTS_ENABLED)('Test Orchestrator - Mode Flags', () => {
   })
 })
 
-describe.skipIf(!CLI_TESTS_ENABLED)('Test Orchestrator - Concurrent Access Protection', () => {
-  test('should handle concurrent list commands', async () => {
-    const results = await Promise.all([runCLI(['test', 'list']), runCLI(['test', 'list'])])
-    expect(results[0].exitCode).toBe(0)
-    expect(results[1].exitCode).toBe(0)
-  })
-  test('should allow concurrent with --force', async () => {
-    const results = await Promise.all([
-      runCLI(['test', '--force', 'list']),
-      runCLI(['test', '--force', 'list']),
-    ])
-    expect(results[0].exitCode).toBe(0)
-    expect(results[1].exitCode).toBe(0)
-  })
-})
+describe.skipIf(!CLI_TESTS_ENABLED)(
+  'Test Orchestrator - Concurrent Access Protection',
+  () => {
+    test('should handle concurrent list commands', async () => {
+      const results = await Promise.all([
+        runCLI(['test', 'list']),
+        runCLI(['test', 'list']),
+      ])
+      expect(results[0].exitCode).toBe(0)
+      expect(results[1].exitCode).toBe(0)
+    })
+    test('should allow concurrent with --force', async () => {
+      const results = await Promise.all([
+        runCLI(['test', '--force', 'list']),
+        runCLI(['test', '--force', 'list']),
+      ])
+      expect(results[0].exitCode).toBe(0)
+      expect(results[1].exitCode).toBe(0)
+    })
+  },
+)
 
 describe('Test Orchestrator - App Discovery', () => {
   test('should discover apps with synpress config', () => {

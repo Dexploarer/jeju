@@ -83,13 +83,17 @@ try {
     try {
       await checkClient.readContract({
         address: CREDIT_MANAGER_ADDRESS as Address,
-        abi: parseAbi(['function getAllBalances(address) view returns (uint256, uint256)']),
+        abi: parseAbi([
+          'function getAllBalances(address) view returns (uint256, uint256)',
+        ]),
         functionName: 'getAllBalances',
         args: ['0x0000000000000000000000000000000000000000'],
       })
       localnetAvailable = true
     } catch {
-      console.log(`⏭️  Credit manager not deployed at ${CREDIT_MANAGER_ADDRESS}, skipping x402 tests`)
+      console.log(
+        `⏭️  Credit manager not deployed at ${CREDIT_MANAGER_ADDRESS}, skipping x402 tests`,
+      )
     }
   }
 } catch {

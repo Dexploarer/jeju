@@ -8,7 +8,7 @@
  * - Replica lag detection
  * - Circuit breaker behavior
  * - Failover scenarios
- * 
+ *
  * NOTE: These tests require the replica-router module which is not yet implemented.
  * They will be skipped until the module is available.
  */
@@ -17,16 +17,18 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
 
 // Try to import the module, skip tests if not available
 let DatabaseReplicaRouter: unknown = null
-let ReplicaRouterConfig: unknown = null
+let _ReplicaRouterConfig: unknown = null
 let moduleAvailable = false
 try {
   // Dynamic import to avoid compile errors
   const mod = await import('../../shared/src/db/replica-router')
   DatabaseReplicaRouter = mod.DatabaseReplicaRouter
-  ReplicaRouterConfig = mod.ReplicaRouterConfig
+  _ReplicaRouterConfig = mod.ReplicaRouterConfig
   moduleAvailable = true
 } catch {
-  console.log('⏭️  replica-router module not available, skipping database router tests')
+  console.log(
+    '⏭️  replica-router module not available, skipping database router tests',
+  )
 }
 
 // Skip if no PostgreSQL available or module not available

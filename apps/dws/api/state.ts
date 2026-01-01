@@ -255,6 +255,24 @@ async function ensureTablesExist(): Promise<void> {
       deployed_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     )`,
+    `CREATE TABLE IF NOT EXISTS dws_workers (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      owner TEXT NOT NULL,
+      runtime TEXT NOT NULL DEFAULT 'bun',
+      handler TEXT NOT NULL DEFAULT 'index.handler',
+      code_cid TEXT NOT NULL,
+      memory INTEGER NOT NULL DEFAULT 256,
+      timeout INTEGER NOT NULL DEFAULT 30000,
+      env TEXT NOT NULL DEFAULT '{}',
+      status TEXT NOT NULL DEFAULT 'active',
+      version INTEGER NOT NULL DEFAULT 1,
+      invocation_count INTEGER NOT NULL DEFAULT 0,
+      avg_duration_ms INTEGER NOT NULL DEFAULT 0,
+      error_count INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )`,
   ]
 
   const indexes = [
@@ -275,6 +293,9 @@ async function ensureTablesExist(): Promise<void> {
     'CREATE INDEX IF NOT EXISTS idx_bot_deployments_status ON bot_deployments(status)',
     'CREATE INDEX IF NOT EXISTS idx_external_nodes_active ON external_chain_nodes(is_active)',
     'CREATE INDEX IF NOT EXISTS idx_deployed_apps_enabled ON deployed_apps(enabled)',
+    'CREATE INDEX IF NOT EXISTS idx_dws_workers_owner ON dws_workers(owner)',
+    'CREATE INDEX IF NOT EXISTS idx_dws_workers_name ON dws_workers(name)',
+    'CREATE INDEX IF NOT EXISTS idx_dws_workers_status ON dws_workers(status)',
   ]
 
   for (const ddl of tables) {
@@ -432,8 +453,10 @@ export const computeJobState = {
       )
 
       await getCache().delete(`job:${row.job_id}`)
-    } catch {
-      // SQLit failed, save to memory store
+    } catch (error) {
+      // SQLit failed - log error and save to memory store
+      const errorMsg = error instanceof Error ? error.message : String(error)
+      console.error(`[DWS State] SQLit save failed for job ${row.job_id}: ${errorMsg}`)
       memoryStores.computeJobs.set(row.job_id, row)
     }
   },
@@ -452,8 +475,10 @@ export const computeJobState = {
         SQLIT_DATABASE_ID,
       )
       return result.rows[0] ?? null
-    } catch {
-      // SQLit failed, use memory store
+    } catch (error) {
+      // SQLit failed - log error and use memory store
+      const errorMsg = error instanceof Error ? error.message : String(error)
+      console.error(`[DWS State] SQLit get failed for job ${jobId}: ${errorMsg}`)
       return memoryStores.computeJobs.get(jobId) ?? null
     }
   },
@@ -502,8 +527,10 @@ export const computeJobState = {
         SQLIT_DATABASE_ID,
       )
       return result.rows
-    } catch {
-      // SQLit failed, return from memory store
+    } catch (error) {
+      // SQLit failed - log error and return from memory store
+      const errorMsg = error instanceof Error ? error.message : String(error)
+      console.error(`[DWS State] SQLit list jobs failed: ${errorMsg}`)
       let jobs = Array.from(memoryStores.computeJobs.values())
       if (params?.submittedBy) {
         jobs = jobs.filter(
@@ -948,8 +975,10 @@ export const apiUserAccountState = {
       )
 
       return newAccount
-    } catch {
-      // SQLit failed, use memory store
+    } catch (error) {
+      // SQLit failed - log error and use memory store
+      const errorMsg = error instanceof Error ? error.message : String(error)
+      console.error(`[DWS State] SQLit getOrCreate user failed for ${addr}: ${errorMsg}`)
       const existing = memoryStores.apiUserAccounts.get(addr)
       if (existing) return existing
 
@@ -1801,6 +1830,208 @@ export const deployedAppState = {
   },
 }
 
+// Worker state types and management
+interface DWSWorkerRow {
+  id: string
+  name: string
+  owner: string
+  runtime: string
+  handler: string
+  code_cid: string
+  memory: number
+  timeout: number
+  env: string
+  status: string
+  version: number
+  invocation_count: number
+  avg_duration_ms: number
+  error_count: number
+  created_at: number
+  updated_at: number
+}
+
+export interface DWSWorker {
+  id: string
+  name: string
+  owner: string
+  runtime: 'bun' | 'node' | 'deno'
+  handler: string
+  codeCid: string
+  memory: number
+  timeout: number
+  env: Record<string, string>
+  status: 'active' | 'inactive' | 'error'
+  version: number
+  invocationCount: number
+  avgDurationMs: number
+  errorCount: number
+  createdAt: number
+  updatedAt: number
+}
+
+function rowToWorker(row: DWSWorkerRow): DWSWorker {
+  return {
+    id: row.id,
+    name: row.name,
+    owner: row.owner,
+    runtime: row.runtime as 'bun' | 'node' | 'deno',
+    handler: row.handler,
+    codeCid: row.code_cid,
+    memory: row.memory,
+    timeout: row.timeout,
+    env: JSON.parse(row.env),
+    status: row.status as 'active' | 'inactive' | 'error',
+    version: row.version,
+    invocationCount: row.invocation_count,
+    avgDurationMs: row.avg_duration_ms,
+    errorCount: row.error_count,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+export const dwsWorkerState = {
+  async save(worker: DWSWorker): Promise<void> {
+    const client = await getSQLitClient()
+    const now = Date.now()
+
+    await client.exec(
+      `INSERT OR REPLACE INTO dws_workers (
+        id, name, owner, runtime, handler, code_cid, memory, timeout, env,
+        status, version, invocation_count, avg_duration_ms, error_count,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        worker.id,
+        worker.name,
+        worker.owner,
+        worker.runtime,
+        worker.handler,
+        worker.codeCid,
+        worker.memory,
+        worker.timeout,
+        JSON.stringify(worker.env),
+        worker.status,
+        worker.version,
+        worker.invocationCount,
+        worker.avgDurationMs,
+        worker.errorCount,
+        worker.createdAt ?? now,
+        now,
+      ],
+      SQLIT_DATABASE_ID,
+    )
+
+    console.log(
+      `[DWSWorkerState] Saved worker: ${worker.name} (${worker.id}) - codeCid: ${worker.codeCid}`,
+    )
+  },
+
+  async get(id: string): Promise<DWSWorker | null> {
+    const client = await getSQLitClient()
+    const result = await client.query<DWSWorkerRow>(
+      'SELECT * FROM dws_workers WHERE id = ?',
+      [id],
+      SQLIT_DATABASE_ID,
+    )
+    const row = result.rows[0]
+    return row ? rowToWorker(row) : null
+  },
+
+  async getByName(name: string): Promise<DWSWorker | null> {
+    const client = await getSQLitClient()
+    const result = await client.query<DWSWorkerRow>(
+      'SELECT * FROM dws_workers WHERE name = ? ORDER BY updated_at DESC LIMIT 1',
+      [name],
+      SQLIT_DATABASE_ID,
+    )
+    const row = result.rows[0]
+    return row ? rowToWorker(row) : null
+  },
+
+  async listAll(): Promise<DWSWorker[]> {
+    const client = await getSQLitClient()
+    const result = await client.query<DWSWorkerRow>(
+      'SELECT * FROM dws_workers ORDER BY updated_at DESC',
+      [],
+      SQLIT_DATABASE_ID,
+    )
+    return result.rows.map(rowToWorker)
+  },
+
+  async listByOwner(owner: string): Promise<DWSWorker[]> {
+    const client = await getSQLitClient()
+    const result = await client.query<DWSWorkerRow>(
+      'SELECT * FROM dws_workers WHERE owner = ? ORDER BY updated_at DESC',
+      [owner],
+      SQLIT_DATABASE_ID,
+    )
+    return result.rows.map(rowToWorker)
+  },
+
+  async listActive(): Promise<DWSWorker[]> {
+    const client = await getSQLitClient()
+    const result = await client.query<DWSWorkerRow>(
+      "SELECT * FROM dws_workers WHERE status = 'active' ORDER BY updated_at DESC",
+      [],
+      SQLIT_DATABASE_ID,
+    )
+    return result.rows.map(rowToWorker)
+  },
+
+  async delete(id: string): Promise<boolean> {
+    const client = await getSQLitClient()
+    const result = await client.exec(
+      'DELETE FROM dws_workers WHERE id = ?',
+      [id],
+      SQLIT_DATABASE_ID,
+    )
+
+    if (result.rowsAffected > 0) {
+      console.log(`[DWSWorkerState] Deleted worker: ${id}`)
+    }
+
+    return result.rowsAffected > 0
+  },
+
+  async updateStatus(
+    id: string,
+    status: 'active' | 'inactive' | 'error',
+  ): Promise<boolean> {
+    const client = await getSQLitClient()
+    const result = await client.exec(
+      'UPDATE dws_workers SET status = ?, updated_at = ? WHERE id = ?',
+      [status, Date.now(), id],
+      SQLIT_DATABASE_ID,
+    )
+    return result.rowsAffected > 0
+  },
+
+  async recordInvocation(
+    id: string,
+    durationMs: number,
+    isError: boolean,
+  ): Promise<void> {
+    const client = await getSQLitClient()
+    const worker = await this.get(id)
+    if (!worker) return
+
+    const newCount = worker.invocationCount + 1
+    const newAvg = Math.round(
+      (worker.avgDurationMs * worker.invocationCount + durationMs) / newCount,
+    )
+    const newErrors = isError ? worker.errorCount + 1 : worker.errorCount
+
+    await client.exec(
+      `UPDATE dws_workers SET
+        invocation_count = ?, avg_duration_ms = ?, error_count = ?, updated_at = ?
+      WHERE id = ?`,
+      [newCount, newAvg, newErrors, Date.now(), id],
+      SQLIT_DATABASE_ID,
+    )
+  },
+}
+
 // Track if we're in memory-only mode (no SQLit)
 let memoryOnlyMode = false
 
@@ -1826,9 +2057,19 @@ export async function initializeDWSState(): Promise<void> {
       await getSQLitClient()
       initialized = true
       console.log('[DWS State] Initialized with SQLit')
-    } catch (_error) {
-      // Allow running without SQLit in memory-only mode
-      // TODO: Once SQLit is deployed to testnet, make this stricter for production
+    } catch (error) {
+      // Log the actual error for debugging
+      const errorMsg = error instanceof Error ? error.message : String(error)
+      console.error(`[DWS State] SQLit connection failed: ${errorMsg}`)
+      
+      // In production on testnet/mainnet, SQLit should be required for data persistence
+      const network = getCurrentNetwork()
+      if (isProductionEnv() && (network === 'testnet' || network === 'mainnet')) {
+        console.error('[DWS State] CRITICAL: SQLit is required in production. App registrations will not persist.')
+        console.error('[DWS State] Ensure SQLit is running and accessible. Check SQLIT_URL environment variable.')
+      }
+      
+      // Allow running without SQLit in memory-only mode for local development
       memoryOnlyMode = true
       initialized = true
       const env = isProductionEnv() ? 'production' : 'local dev'
@@ -1838,11 +2079,6 @@ export async function initializeDWSState(): Promise<void> {
       console.warn(
         '[DWS State] Some features will be limited. Start SQLit for full functionality.',
       )
-      if (isProductionEnv()) {
-        console.warn(
-          '[DWS State] WARNING: Running in production without SQLit - app registrations will not persist across restarts',
-        )
-      }
     }
   })()
 

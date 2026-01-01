@@ -122,7 +122,9 @@ try {
     try {
       await checkClient.readContract({
         address: ADDRESSES.creditManager,
-        abi: parseAbi(['function getAllBalances(address) view returns (uint256, uint256, uint256)']),
+        abi: parseAbi([
+          'function getAllBalances(address) view returns (uint256, uint256, uint256)',
+        ]),
         functionName: 'getAllBalances',
         args: ['0x0000000000000000000000000000000000000000'],
       })
@@ -134,7 +136,9 @@ try {
     try {
       await checkClient.readContract({
         address: ADDRESSES.staking,
-        abi: parseAbi(['function getPoolStats() view returns (uint256, uint256, uint256, uint256, uint256, uint256)']),
+        abi: parseAbi([
+          'function getPoolStats() view returns (uint256, uint256, uint256, uint256, uint256, uint256)',
+        ]),
         functionName: 'getPoolStats',
       })
       stakingAvailable = true
@@ -394,76 +398,81 @@ describe.skipIf(!localnetAvailable || !creditManagerAvailable)(
       logger.info(`Initial ETH balance: ${formatEther(initialEth)}`)
       expect(typeof initialEth).toBe('bigint')
 
-      logger.success('ETH balance query successful (deposit requires wallet client)')
+      logger.success(
+        'ETH balance query successful (deposit requires wallet client)',
+      )
     })
   },
 )
 
-describe.skipIf(!localnetAvailable || !stakingAvailable)('Payment Integration - Staking', () => {
-  test('should query pool stats', async () => {
-    logger.info('Testing pool stats query...')
+describe.skipIf(!localnetAvailable || !stakingAvailable)(
+  'Payment Integration - Staking',
+  () => {
+    test('should query pool stats', async () => {
+      logger.info('Testing pool stats query...')
 
-    const [
-      totalStaked,
-      totalLocked,
-      rewardsPerShare,
-      _lastUpdateBlock,
-      _totalRewardsDistributed,
-      stakerCount,
-    ] = await staking.getPoolStats()
+      const [
+        totalStaked,
+        totalLocked,
+        rewardsPerShare,
+        _lastUpdateBlock,
+        _totalRewardsDistributed,
+        stakerCount,
+      ] = await staking.getPoolStats()
 
-    logger.info(`Total Staked: ${formatEther(totalStaked)}`)
-    logger.info(`Total Locked: ${formatEther(totalLocked)}`)
-    logger.info(`Rewards Per Share: ${rewardsPerShare}`)
-    logger.info(`Staker Count: ${stakerCount}`)
+      logger.info(`Total Staked: ${formatEther(totalStaked)}`)
+      logger.info(`Total Locked: ${formatEther(totalLocked)}`)
+      logger.info(`Rewards Per Share: ${rewardsPerShare}`)
+      logger.info(`Staker Count: ${stakerCount}`)
 
-    // All should be valid bigints
-    expect(typeof totalStaked).toBe('bigint')
-    expect(typeof totalLocked).toBe('bigint')
-    expect(typeof stakerCount).toBe('bigint')
+      // All should be valid bigints
+      expect(typeof totalStaked).toBe('bigint')
+      expect(typeof totalLocked).toBe('bigint')
+      expect(typeof stakerCount).toBe('bigint')
 
-    logger.success('Pool stats query successful')
-  })
+      logger.success('Pool stats query successful')
+    })
 
-  test('should query staker position', async () => {
-    logger.info('Testing position query...')
+    test('should query staker position', async () => {
+      logger.info('Testing position query...')
 
-    const [
-      stakedAmount,
-      lockedAmount,
-      _rewardDebt,
-      pendingRewards,
-      _lastClaimBlock,
-      _unbondingEnd,
-      isUnbonding,
-    ] = await staking.getPosition(staker.address)
+      const [
+        stakedAmount,
+        lockedAmount,
+        _rewardDebt,
+        pendingRewards,
+        _lastClaimBlock,
+        _unbondingEnd,
+        isUnbonding,
+      ] = await staking.getPosition(staker.address)
 
-    logger.info(`Staked: ${formatEther(stakedAmount)}`)
-    logger.info(`Locked: ${formatEther(lockedAmount)}`)
-    logger.info(`Pending Rewards: ${formatEther(pendingRewards)}`)
-    logger.info(`Is Unbonding: ${isUnbonding}`)
+      logger.info(`Staked: ${formatEther(stakedAmount)}`)
+      logger.info(`Locked: ${formatEther(lockedAmount)}`)
+      logger.info(`Pending Rewards: ${formatEther(pendingRewards)}`)
+      logger.info(`Is Unbonding: ${isUnbonding}`)
 
-    // Validate types
-    expect(typeof stakedAmount).toBe('bigint')
-    expect(typeof isUnbonding).toBe('boolean')
+      // Validate types
+      expect(typeof stakedAmount).toBe('bigint')
+      expect(typeof isUnbonding).toBe('boolean')
 
-    logger.success('Position query successful')
-  })
+      logger.success('Position query successful')
+    })
 
-  test('should query minimum stake requirement', async () => {
-    logger.info('Testing minimum stake query...')
+    test('should query minimum stake requirement', async () => {
+      logger.info('Testing minimum stake query...')
 
-    const totalStaked = await staking.totalStaked()
-    const minStake = await staking.minimumStake()
+      const totalStaked = await staking.totalStaked()
+      const minStake = await staking.minimumStake()
 
-    logger.info(`Total Staked: ${formatEther(totalStaked)}`)
-    logger.info(`Minimum Stake: ${formatEther(minStake)}`)
+      logger.info(`Total Staked: ${formatEther(totalStaked)}`)
+      logger.info(`Minimum Stake: ${formatEther(minStake)}`)
 
-    expect(minStake).toBeGreaterThanOrEqual(0n)
+      expect(minStake).toBeGreaterThanOrEqual(0n)
 
-    logger.success('Minimum stake query successful')
-  })
-})
+      logger.success('Minimum stake query successful')
+    })
+  },
+)
 
 describe.skipIf(!localnetAvailable)(
   'Payment Integration - Fee Distribution',
@@ -535,91 +544,92 @@ describe.skipIf(!localnetAvailable)(
 )
 
 // Skip Cross-App tests - they reference undefined `provider` variable
-describe.skip(
-  'Payment Integration - Cross-App Compatibility',
-  () => {
-    test('should use consistent x402 types across apps', () => {
-      // Verify types match across implementations
-      const testPayload: PaymentPayload = {
-        scheme: 'exact',
-        network: 'jeju',
-        asset: '0x0000000000000000000000000000000000000000' as Address,
-        payTo: ADDRESSES.x402Recipient,
-        amount: '1000000000000000',
-        resource: '/api/test',
-        nonce: 'test-nonce',
-        timestamp: Math.floor(Date.now() / 1000),
-      }
+describe.skip('Payment Integration - Cross-App Compatibility', () => {
+  test('should use consistent x402 types across apps', () => {
+    // Verify types match across implementations
+    const testPayload: PaymentPayload = {
+      scheme: 'exact',
+      network: 'jeju',
+      asset: '0x0000000000000000000000000000000000000000' as Address,
+      payTo: ADDRESSES.x402Recipient,
+      amount: '1000000000000000',
+      resource: '/api/test',
+      nonce: 'test-nonce',
+      timestamp: Math.floor(Date.now() / 1000),
+    }
 
-      // All fields should be present and typed correctly
-      expect(typeof testPayload.scheme).toBe('string')
-      expect(typeof testPayload.network).toBe('string')
-      expect(typeof testPayload.asset).toBe('string')
-      expect(typeof testPayload.payTo).toBe('string')
-      expect(typeof testPayload.amount).toBe('string')
-      expect(typeof testPayload.resource).toBe('string')
-      expect(typeof testPayload.nonce).toBe('string')
-      expect(typeof testPayload.timestamp).toBe('number')
+    // All fields should be present and typed correctly
+    expect(typeof testPayload.scheme).toBe('string')
+    expect(typeof testPayload.network).toBe('string')
+    expect(typeof testPayload.asset).toBe('string')
+    expect(typeof testPayload.payTo).toBe('string')
+    expect(typeof testPayload.amount).toBe('string')
+    expect(typeof testPayload.resource).toBe('string')
+    expect(typeof testPayload.nonce).toBe('string')
+    expect(typeof testPayload.timestamp).toBe('number')
 
-      logger.success('x402 types are consistent')
-    })
+    logger.success('x402 types are consistent')
+  })
 
-    test('should support multiple networks', () => {
-      const networks: Array<'base-sepolia' | 'base' | 'jeju' | 'jeju-testnet'> =
-        ['base-sepolia', 'base', 'jeju', 'jeju-testnet']
+  test('should support multiple networks', () => {
+    const networks: Array<'base-sepolia' | 'base' | 'jeju' | 'jeju-testnet'> = [
+      'base-sepolia',
+      'base',
+      'jeju',
+      'jeju-testnet',
+    ]
 
-      for (const network of networks) {
-        const requirement = createPaymentRequirement(
-          '/api/test',
-          parseEther('0.001'),
-          'Test',
-          {
-            recipientAddress: ADDRESSES.x402Recipient,
-            network,
-            serviceName: 'Test',
-          },
-        )
-
-        expect(requirement.accepts[0].network).toBe(network)
-      }
-
-      logger.success('Multi-network support verified')
-    })
-
-    test('should verify EIP-712 domain consistency', async () => {
-      logger.info('Testing EIP-712 domain...')
-
-      const _chainId = (await provider.getNetwork()).chainId
-
-      // Payment domain should match chain
-      const payload = createPaymentPayload(
-        '0x0000000000000000000000000000000000000000' as Address,
-        ADDRESSES.x402Recipient,
+    for (const network of networks) {
+      const requirement = createPaymentRequirement(
+        '/api/test',
         parseEther('0.001'),
-        '/test',
-        'jeju',
+        'Test',
+        {
+          recipientAddress: ADDRESSES.x402Recipient,
+          network,
+          serviceName: 'Test',
+        },
       )
 
-      // Sign and verify signer can be recovered
-      const signed = await signPaymentPayload(payload, USER_KEY)
-      expect(signed.signature).toBeDefined()
+      expect(requirement.accepts[0].network).toBe(network)
+    }
 
-      // Verify against expected amount
-      const verification = await verifyPayment(
-        signed,
-        parseEther('0.001'),
-        ADDRESSES.x402Recipient,
-      )
+    logger.success('Multi-network support verified')
+  })
 
-      expect(verification.valid).toBe(true)
-      expect(verification.signer?.toLowerCase()).toBe(
-        userAccount.address.toLowerCase(),
-      )
+  test('should verify EIP-712 domain consistency', async () => {
+    logger.info('Testing EIP-712 domain...')
 
-      logger.success('EIP-712 domain consistency verified')
-    })
-  },
-)
+    const _chainId = (await provider.getNetwork()).chainId
+
+    // Payment domain should match chain
+    const payload = createPaymentPayload(
+      '0x0000000000000000000000000000000000000000' as Address,
+      ADDRESSES.x402Recipient,
+      parseEther('0.001'),
+      '/test',
+      'jeju',
+    )
+
+    // Sign and verify signer can be recovered
+    const signed = await signPaymentPayload(payload, USER_KEY)
+    expect(signed.signature).toBeDefined()
+
+    // Verify against expected amount
+    const verification = await verifyPayment(
+      signed,
+      parseEther('0.001'),
+      ADDRESSES.x402Recipient,
+    )
+
+    expect(verification.valid).toBe(true)
+    expect(verification.signer?.toLowerCase()).toBe(
+      userAccount.address.toLowerCase(),
+    )
+
+    logger.success('EIP-712 domain consistency verified')
+  })
+})
 
 describe.skipIf(!localnetAvailable)('Payment Integration - Summary', () => {
   test('should print test summary', async () => {

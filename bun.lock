@@ -804,6 +804,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@jejunetwork/types": "workspace:*",
+        "permissionless": "0.2.0",
         "viem": "2.43.3",
         "zod": "4.2.1",
       },
@@ -7027,7 +7028,7 @@
 
     "perfect-debounce": ["perfect-debounce@1.0.0", "", {}, "sha512-xCy9V055GLEqoFaHoC1SoLIaLmWctgCUaBaWxDZ7/Zx4CTyX7cJQLJOok/orfjZAh9kEYpjJa4d0KcJmCbctZA=="],
 
-    "permissionless": ["permissionless@0.2.34", "", { "peerDependencies": { "viem": "^2.21.54", "webauthn-p256": "0.0.10" } }, "sha512-N9injuAHLIJ88hKBGixYSgIUqDAnfhbCPYH+fMdx2vC0D70NtsNT+IUma0XlhQe+AmZRUSXdPyaA6Fz4Kt/aCg=="],
+    "permissionless": ["permissionless@0.2.0", "", { "peerDependencies": { "viem": "^2.20.0" } }, "sha512-ivUDCDydjg5U62P5PqBKPm8zMgXvXUHedIn85E5zh2/1Olk/zbrVfeBXPyNRrBP/6C8M+P600a0n/GHvekrjcQ=="],
 
     "pg": ["pg@8.16.0", "", { "dependencies": { "pg-connection-string": "^2.9.0", "pg-pool": "^3.10.0", "pg-protocol": "^1.10.0", "pg-types": "2.2.0", "pgpass": "1.0.5" }, "optionalDependencies": { "pg-cloudflare": "^1.2.5" }, "peerDependencies": { "pg-native": ">=3.0.1" }, "optionalPeers": ["pg-native"] }, "sha512-7SKfdvP8CTNXjMUzfcVTaI+TDzBEeaUnVwiVGZQD1Hh33Kpev7liQba9uLd4CfN8r9mCVsD0JIpq03+Unpz+kg=="],
 
@@ -8754,6 +8755,8 @@
     "@jejunetwork/node/@tauri-apps/cli": ["@tauri-apps/cli@2.0.0", "", { "optionalDependencies": { "@tauri-apps/cli-darwin-arm64": "2.0.0", "@tauri-apps/cli-darwin-x64": "2.0.0", "@tauri-apps/cli-linux-arm-gnueabihf": "2.0.0", "@tauri-apps/cli-linux-arm64-gnu": "2.0.0", "@tauri-apps/cli-linux-arm64-musl": "2.0.0", "@tauri-apps/cli-linux-x64-gnu": "2.0.0", "@tauri-apps/cli-linux-x64-musl": "2.0.0", "@tauri-apps/cli-win32-arm64-msvc": "2.0.0", "@tauri-apps/cli-win32-ia32-msvc": "2.0.0", "@tauri-apps/cli-win32-x64-msvc": "2.0.0" }, "bin": { "tauri": "tauri.js" } }, "sha512-xxmPllRa6w/LRRcPczST3yHrYoi8l6ZZmzwabEmM0cgDdhVDmX+Y4oDJkiKD+8cVdxwwEzIuIKuaCwsX8iNsgA=="],
 
     "@jejunetwork/node/lucide-react": ["lucide-react@0.562.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-82hOAu7y0dbVuFfmO4bYF1XEwYk/mEbM5E+b1jgci/udUBEE/R7LF5Ip0CCEmXe8AybRM8L+04eP+LGZeDvkiw=="],
+
+    "@jejunetwork/sdk/permissionless": ["permissionless@0.2.34", "", { "peerDependencies": { "viem": "^2.21.54", "webauthn-p256": "0.0.10" } }, "sha512-N9injuAHLIJ88hKBGixYSgIUqDAnfhbCPYH+fMdx2vC0D70NtsNT+IUma0XlhQe+AmZRUSXdPyaA6Fz4Kt/aCg=="],
 
     "@jejunetwork/shared/@types/node": ["@types/node@22.15.30", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-6Q7lr06bEHdlfplU6YRbgG1SFBdlsfNC4/lX+SkhiTs0cpJkOElmWls8PxDFv4yY/xKb8Y6SO0OmSX4wgqTZbA=="],
 

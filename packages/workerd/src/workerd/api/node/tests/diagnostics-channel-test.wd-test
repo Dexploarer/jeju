@@ -1,0 +1,14 @@
+using Workerd = import "/workerd/workerd.capnp";
+
+const unitTests :Workerd.Config = (
+  services = [
+    ( name = "diagnostics-channel-test",
+      worker = (
+        modules = [
+          (name = "worker", esModule = embed "diagnostics-channel-test.js")
+        ],
+        compatibilityFlags = ["nodejs_compat", "nodejs_compat_v2"]
+      )
+    ),
+  ],
+);

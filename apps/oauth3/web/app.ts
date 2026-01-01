@@ -33,7 +33,11 @@ function detectEnvironment(): NetworkEnv {
   if (hostname.includes('testnet')) {
     return 'testnet'
   }
-  if (hostname.includes('local') || hostname === 'localhost' || hostname.startsWith('127.')) {
+  if (
+    hostname.includes('local') ||
+    hostname === 'localhost' ||
+    hostname.startsWith('127.')
+  ) {
     return 'localnet'
   }
   // Default to mainnet for production domains
@@ -45,7 +49,7 @@ function detectEnvironment(): NetworkEnv {
  */
 function getEnvUrls(): EnvUrls {
   const env = detectEnvironment()
-  
+
   const urlsByEnv: Record<NetworkEnv, EnvUrls> = {
     localnet: {
       docs: 'http://docs.local.jejunetwork.org:8080/',
@@ -75,29 +79,29 @@ function getEnvUrls(): EnvUrls {
  */
 function updateNavigationLinks(): void {
   const urls = getEnvUrls()
-  
+
   // Header navigation
   const docsLink = document.getElementById('nav-docs')
   if (docsLink) docsLink.setAttribute('href', urls.docs)
-  
+
   const gatewayLink = document.getElementById('nav-gateway')
   if (gatewayLink) gatewayLink.setAttribute('href', urls.gateway)
-  
+
   const configureLink = document.getElementById('nav-configure')
   if (configureLink) configureLink.setAttribute('href', urls.dwsOauth)
-  
+
   // Hero section
   const heroConfigureLink = document.getElementById('hero-configure')
   if (heroConfigureLink) heroConfigureLink.setAttribute('href', urls.dwsOauth)
-  
+
   // Config section
   const configDwsLink = document.getElementById('config-dws')
   if (configDwsLink) configDwsLink.setAttribute('href', urls.dwsOauth)
-  
+
   // Footer
   const footerDwsLink = document.getElementById('footer-dws')
   if (footerDwsLink) footerDwsLink.setAttribute('href', urls.dws)
-  
+
   console.log(`[OAuth3] Environment: ${detectEnvironment()}, URLs configured`)
 }
 

@@ -1,6 +1,6 @@
 /**
  * Browser-safe messaging utilities
- * 
+ *
  * Re-exports only browser-compatible parts of the messaging module.
  * Server-side functionality (FarcasterClient) is handled via API.
  */
@@ -101,9 +101,8 @@ class BazaarMessagingServiceBrowser {
   private apiUrl: string
 
   constructor() {
-    this.apiUrl = typeof window !== 'undefined' 
-      ? `${window.location.origin}/api`
-      : '/api'
+    this.apiUrl =
+      typeof window !== 'undefined' ? `${window.location.origin}/api` : '/api'
   }
 
   async getChannelFeed(
@@ -162,14 +161,20 @@ class BazaarMessagingServiceBrowser {
     })
   }
 
-  async getProfile(fid: number): Promise<{ username?: string; displayName?: string; pfpUrl?: string } | null> {
+  async getProfile(fid: number): Promise<{
+    username?: string
+    displayName?: string
+    pfpUrl?: string
+  } | null> {
     const response = await fetch(`${this.apiUrl}/messaging/profile?fid=${fid}`)
     if (!response.ok) return null
     return response.json()
   }
 
   async getFidByAddress(address: Address): Promise<number | null> {
-    const response = await fetch(`${this.apiUrl}/messaging/fid?address=${address}`)
+    const response = await fetch(
+      `${this.apiUrl}/messaging/fid?address=${address}`,
+    )
     if (!response.ok) return null
     const data = await response.json()
     return data.fid ?? null

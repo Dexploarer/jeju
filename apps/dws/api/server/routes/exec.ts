@@ -131,7 +131,7 @@ async function executeCommand(
       return {
         exitCode: 124, // Standard timeout exit code
         stdout,
-        stderr: stderr + '\n[TIMEOUT]',
+        stderr: `${stderr}\n[TIMEOUT]`,
       }
     }
 

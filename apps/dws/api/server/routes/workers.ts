@@ -13,6 +13,7 @@ import { Elysia, t } from 'elysia'
 import type { Address } from 'viem'
 import { z } from 'zod'
 import type { JSONValue } from '../../shared/validation'
+import { dwsWorkerState } from '../../state'
 import type { BackendManager } from '../../storage/backends'
 import { WorkerRuntime } from '../../workers/runtime'
 import type {
@@ -31,6 +32,7 @@ const DeployWorkerJsonBodySchema = z.object({
   runtime: RuntimeTypeSchema.optional(),
   handler: z.string().optional(),
   code: z.string().optional(),
+  codeCid: z.string().optional(), // Deploy from pre-uploaded IPFS CID
   memory: z.number().int().positive().optional(),
   timeout: z.number().int().positive().optional(),
   env: EnvRecordSchema.optional(),
@@ -52,9 +54,64 @@ export function getSharedWorkersRuntime(): WorkerRuntime | null {
   return sharedRuntime
 }
 
+/**
+ * Load persisted workers from SQLit and deploy them to the runtime
+ */
+async function loadPersistedWorkers(runtime: WorkerRuntime): Promise<void> {
+  try {
+    const workers = await dwsWorkerState.listActive()
+    console.log(
+      `[Workers] Loading ${workers.length} persisted workers from SQLit`,
+    )
+
+    for (const worker of workers) {
+      try {
+        const fn: WorkerFunction = {
+          id: worker.id,
+          name: worker.name,
+          owner: worker.owner as Address,
+          runtime: worker.runtime,
+          handler: worker.handler,
+          codeCid: worker.codeCid,
+          memory: worker.memory,
+          timeout: worker.timeout,
+          env: worker.env,
+          status: worker.status,
+          version: worker.version,
+          createdAt: worker.createdAt,
+          updatedAt: worker.updatedAt,
+          invocationCount: worker.invocationCount,
+          avgDurationMs: worker.avgDurationMs,
+          errorCount: worker.errorCount,
+        }
+        await runtime.deployFunction(fn)
+        console.log(`[Workers] Loaded worker: ${worker.name} (${worker.id})`)
+      } catch (err) {
+        console.warn(
+          `[Workers] Failed to load worker ${worker.name}: ${err instanceof Error ? err.message : String(err)}`,
+        )
+        // Mark as inactive if load fails
+        await dwsWorkerState.updateStatus(worker.id, 'error')
+      }
+    }
+  } catch (err) {
+    // SQLit might not be available - that's okay for development
+    console.log(
+      `[Workers] SQLit not available for worker persistence: ${err instanceof Error ? err.message : String(err)}`,
+    )
+  }
+}
+
 export function createWorkersRouter(backend: BackendManager) {
   const runtime = new WorkerRuntime(backend)
   sharedRuntime = runtime // Store reference for shared access
+
+  // Load persisted workers from SQLit on startup (async, non-blocking)
+  loadPersistedWorkers(runtime).catch((err) => {
+    console.warn(
+      `[Workers] Failed to load persisted workers: ${err instanceof Error ? err.message : String(err)}`,
+    )
+  })
 
   return (
     new Elysia({ name: 'workers', prefix: '/workers' })
@@ -118,6 +175,75 @@ export function createWorkersRouter(backend: BackendManager) {
               body,
               'Deploy worker body',
             )
+
+            // Support deploying from pre-uploaded CID
+            if (jsonBody.codeCid) {
+              // Verify code exists in storage
+              const codeExists = await backend.exists(jsonBody.codeCid)
+              if (!codeExists) {
+                set.status = 400
+                return {
+                  error: `Code CID not found in storage: ${jsonBody.codeCid}`,
+                }
+              }
+
+              const functionId = crypto.randomUUID()
+              const fn: WorkerFunction = {
+                id: functionId,
+                name: jsonBody.name ?? `worker-${functionId.slice(0, 8)}`,
+                owner: owner as Address,
+                runtime: jsonBody.runtime ?? 'bun',
+                handler: jsonBody.handler ?? 'index.handler',
+                codeCid: jsonBody.codeCid,
+                memory: jsonBody.memory ?? 256,
+                timeout: jsonBody.timeout ?? 30000,
+                env: jsonBody.env ?? {},
+                status: 'active',
+                version: 1,
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+                invocationCount: 0,
+                avgDurationMs: 0,
+                errorCount: 0,
+              }
+
+              await runtime.deployFunction(fn)
+
+              // Persist to SQLit for recovery across pod restarts
+              try {
+                await dwsWorkerState.save({
+                  id: fn.id,
+                  name: fn.name,
+                  owner: fn.owner,
+                  runtime: fn.runtime as 'bun' | 'node' | 'deno',
+                  handler: fn.handler,
+                  codeCid: fn.codeCid,
+                  memory: fn.memory,
+                  timeout: fn.timeout,
+                  env: fn.env,
+                  status: fn.status as 'active' | 'inactive' | 'error',
+                  version: fn.version,
+                  invocationCount: fn.invocationCount,
+                  avgDurationMs: fn.avgDurationMs,
+                  errorCount: fn.errorCount,
+                  createdAt: fn.createdAt,
+                  updatedAt: fn.updatedAt,
+                })
+              } catch (persistError) {
+                console.warn(
+                  `[Workers] Failed to persist worker to SQLit: ${persistError instanceof Error ? persistError.message : String(persistError)}`,
+                )
+              }
+
+              set.status = 201
+              return {
+                functionId: fn.id,
+                name: fn.name,
+                codeCid: fn.codeCid,
+                status: fn.status,
+              }
+            }
+
             params = {
               name: jsonBody.name ?? '',
               runtime: jsonBody.runtime,
@@ -169,6 +295,32 @@ export function createWorkersRouter(backend: BackendManager) {
           }
 
           await runtime.deployFunction(fn)
+
+          // Persist to SQLit for recovery across pod restarts
+          try {
+            await dwsWorkerState.save({
+              id: fn.id,
+              name: fn.name,
+              owner: fn.owner,
+              runtime: fn.runtime as 'bun' | 'node' | 'deno',
+              handler: fn.handler,
+              codeCid: fn.codeCid,
+              memory: fn.memory,
+              timeout: fn.timeout,
+              env: fn.env,
+              status: fn.status as 'active' | 'inactive' | 'error',
+              version: fn.version,
+              invocationCount: fn.invocationCount,
+              avgDurationMs: fn.avgDurationMs,
+              errorCount: fn.errorCount,
+              createdAt: fn.createdAt,
+              updatedAt: fn.updatedAt,
+            })
+          } catch (persistError) {
+            console.warn(
+              `[Workers] Failed to persist worker to SQLit: ${persistError instanceof Error ? persistError.message : String(persistError)}`,
+            )
+          }
 
           set.status = 201
           return {

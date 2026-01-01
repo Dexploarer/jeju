@@ -1,16 +1,21 @@
 /**
  * @jejunetwork/shared browser stub
- * 
+ *
  * Provides browser-safe stubs and re-exports for shared utilities.
  */
 
-import { type Address, formatEther, parseEther } from 'viem'
+import { type Address, parseEther } from 'viem'
+
+// Type for window with __ENV__ injection
+interface WindowWithEnv extends Window {
+  __ENV__?: Record<string, string>
+}
 
 // Environment utilities
 export function getEnv(key: string, defaultValue?: string): string {
   if (typeof window !== 'undefined') {
     // Try window.__ENV__ first (injected by server)
-    const windowEnv = (window as Record<string, Record<string, string>>).__ENV__
+    const windowEnv = (window as WindowWithEnv).__ENV__
     if (windowEnv && key in windowEnv) {
       return windowEnv[key]
     }

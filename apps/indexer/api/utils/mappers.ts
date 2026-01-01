@@ -1,10 +1,15 @@
+/**
+ * Mappers for database entities to API responses
+ * SQLit stores dates as ISO strings, so no .toISOString() calls needed
+ */
+
 import type {
   Block,
   ComputeProvider,
   RegisteredAgent,
   StorageProvider,
   Transaction,
-} from '../model'
+} from '../db'
 
 export function mapAgentSummary(agent: RegisteredAgent) {
   if (!agent) {
@@ -17,37 +22,71 @@ export function mapAgentSummary(agent: RegisteredAgent) {
     throw new Error('Agent registeredAt is required')
   }
 
+  // Parse tags if stored as JSON string
+  let tags: string[] = []
+  if (typeof agent.tags === 'string') {
+    try {
+      tags = JSON.parse(agent.tags)
+    } catch {
+      tags = []
+    }
+  } else if (Array.isArray(agent.tags)) {
+    tags = agent.tags
+  }
+
   return {
     agentId: agent.agentId.toString(),
     name: agent.name,
     description: agent.description,
-    tags: agent.tags,
+    tags,
     stakeTier: agent.stakeTier,
-    stakeAmount: agent.stakeAmount.toString(),
+    stakeAmount: agent.stakeAmount,
     active: agent.active,
     isBanned: agent.isBanned,
     a2aEndpoint: agent.a2aEndpoint,
     mcpEndpoint: agent.mcpEndpoint,
-    registeredAt: agent.registeredAt.toISOString(),
+    registeredAt: agent.registeredAt,
   }
 }
 
 export function mapAgentWithSkills(agent: RegisteredAgent) {
+  let skills: string[] = []
+  if (typeof agent.a2aSkills === 'string') {
+    try {
+      skills = JSON.parse(agent.a2aSkills)
+    } catch {
+      skills = []
+    }
+  } else if (Array.isArray(agent.a2aSkills)) {
+    skills = agent.a2aSkills
+  }
+
   return {
     agentId: agent.agentId.toString(),
     name: agent.name,
     a2aEndpoint: agent.a2aEndpoint,
-    skills: agent.a2aSkills,
+    skills,
     stakeTier: agent.stakeTier,
   }
 }
 
 export function mapAgentWithTools(agent: RegisteredAgent) {
+  let tools: string[] = []
+  if (typeof agent.mcpTools === 'string') {
+    try {
+      tools = JSON.parse(agent.mcpTools)
+    } catch {
+      tools = []
+    }
+  } else if (Array.isArray(agent.mcpTools)) {
+    tools = agent.mcpTools
+  }
+
   return {
     agentId: agent.agentId.toString(),
     name: agent.name,
     mcpEndpoint: agent.mcpEndpoint,
-    tools: agent.mcpTools,
+    tools,
     stakeTier: agent.stakeTier,
   }
 }
@@ -69,9 +108,9 @@ export function mapBlockSummary(block: Block) {
   return {
     number: block.number,
     hash: block.hash,
-    timestamp: block.timestamp.toISOString(),
+    timestamp: block.timestamp,
     transactionCount: block.transactionCount,
-    gasUsed: block.gasUsed.toString(),
+    gasUsed: block.gasUsed,
   }
 }
 
@@ -93,10 +132,10 @@ export function mapBlockDetail(block: Block) {
     number: block.number,
     hash: block.hash,
     parentHash: block.parentHash,
-    timestamp: block.timestamp.toISOString(),
+    timestamp: block.timestamp,
     transactionCount: block.transactionCount,
-    gasUsed: block.gasUsed.toString(),
-    gasLimit: block.gasLimit.toString(),
+    gasUsed: block.gasUsed,
+    gasLimit: block.gasLimit,
   }
 }
 
@@ -104,9 +143,9 @@ export function mapTransactionSummary(tx: Transaction) {
   return {
     hash: tx.hash,
     blockNumber: tx.blockNumber,
-    from: tx.from.address,
-    to: tx.to?.address,
-    value: tx.value.toString(),
+    from: tx.fromAddress,
+    to: tx.toAddress,
+    value: tx.value,
     status: tx.status,
   }
 }
@@ -115,11 +154,11 @@ export function mapTransactionDetail(tx: Transaction) {
   return {
     hash: tx.hash,
     blockNumber: tx.blockNumber,
-    from: tx.from.address,
-    to: tx.to?.address,
-    value: tx.value.toString(),
-    gasPrice: tx.gasPrice?.toString(),
-    gasUsed: tx.gasUsed?.toString(),
+    from: tx.fromAddress,
+    to: tx.toAddress,
+    value: tx.value,
+    gasPrice: tx.gasPrice,
+    gasUsed: tx.gasUsed,
     status: tx.status,
   }
 }
@@ -136,17 +175,14 @@ export function mapProviderSummary(
       `Invalid provider type: ${type}. Must be 'compute' or 'storage'`,
     )
   }
-  if (!p.address || typeof p.address !== 'string') {
-    throw new Error(`Invalid provider address: ${p.address}`)
+  if (!p.providerAddress || typeof p.providerAddress !== 'string') {
+    throw new Error(`Invalid provider address: ${p.providerAddress}`)
   }
 
   return {
-    address: p.address,
-    name: p.name,
-    endpoint: p.endpoint,
+    address: p.providerAddress,
     agentId: p.agentId,
-    ...(type === 'storage' && 'providerType' in p
-      ? { providerType: p.providerType }
-      : {}),
+    isActive: p.isActive,
+    stakeAmount: p.stakeAmount,
   }
 }

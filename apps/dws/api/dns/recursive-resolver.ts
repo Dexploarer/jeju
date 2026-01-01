@@ -38,6 +38,8 @@ export interface RecursiveResolverConfig {
   localZone?: Map<string, DNSResourceRecord[]>
   /** Cache TTL in seconds */
   cacheTTL?: number
+  /** DWS gateway IP address for A record resolution */
+  gatewayIp?: string
 }
 
 interface CacheEntry {
@@ -170,14 +172,18 @@ export class RecursiveResolver {
     // Convert JNS resolution to DNS records based on query type
     if (question.type === DNSRecordType.A) {
       // If there's a worker endpoint, return gateway IP
-      // In production, this would be the node's public IP
       if (resolution.records.workerEndpoint) {
+        // Use configured gateway IP or log warning and use localhost for dev only
+        const gatewayIp = this.config.gatewayIp
+        if (!gatewayIp) {
+          console.warn(`[RecursiveResolver] No gatewayIp configured for A record resolution of ${question.name}. Set gatewayIp in config for production.`)
+        }
         records.push({
           name: question.name,
           type: DNSRecordType.A,
           class: 1,
           ttl: resolution.ttl,
-          data: '127.0.0.1', // Placeholder - should be DWS node IP
+          data: gatewayIp ?? '127.0.0.1',
         })
       }
     } else if (question.type === DNSRecordType.TXT) {
@@ -312,17 +318,24 @@ export class RecursiveResolver {
       type: String(question.type),
     })
 
+    let lastError: string | null = null
     for (const upstream of this.config.upstreamServers) {
       try {
         const response = await fetch(`${upstream}?${params}`, {
           headers: { Accept: 'application/dns-json' },
         })
 
-        if (!response.ok) continue
+        if (!response.ok) {
+          lastError = `${upstream} returned ${response.status}`
+          continue
+        }
 
         const json = (await response.json()) as DoHResponse
 
-        if (json.Status !== DNSResponseCode.NOERROR) continue
+        if (json.Status !== DNSResponseCode.NOERROR) {
+          lastError = `${upstream} returned DNS status ${json.Status}`
+          continue
+        }
 
         const records: DNSResourceRecord[] =
           json.Answer?.map((a) => ({
@@ -345,10 +358,15 @@ export class RecursiveResolver {
           authenticated: false,
           dnssecValid: json.AD,
         }
-      } catch {}
+      } catch (error) {
+        lastError = `${upstream}: ${error instanceof Error ? error.message : String(error)}`
+      }
     }
 
-    // All upstreams failed
+    // All upstreams failed - log the last error
+    if (lastError) {
+      console.warn(`[RecursiveResolver] All upstream DNS servers failed for ${question.name}: ${lastError}`)
+    }
     return {
       name: question.name,
       records: [],

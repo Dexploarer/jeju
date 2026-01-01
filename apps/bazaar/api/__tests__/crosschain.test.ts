@@ -229,3 +229,4 @@ describe('calculateMinOutput', () => {
     expect(minOutput).toBe('0')
   })
 })
+

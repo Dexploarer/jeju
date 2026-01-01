@@ -3,7 +3,7 @@
  * Shared business logic for container-related operations
  */
 
-import type { ContainerImage } from '../model'
+import type { ContainerImage } from '../db'
 
 export interface ContainerListResponse {
   cid: string
@@ -23,6 +23,9 @@ export interface ContainerListResponse {
   lastPulledAt: string | null
 }
 
+/**
+ * Map ContainerImage database record to API response
+ */
 export function mapContainerListResponse(
   container: ContainerImage,
 ): ContainerListResponse {
@@ -31,19 +34,19 @@ export function mapContainerListResponse(
   }
   return {
     cid: container.cid,
-    name: container.name,
-    tag: container.tag,
-    sizeBytes: container.sizeBytes.toString(),
-    uploadedAt: container.uploadedAt.toISOString(),
-    uploadedBy: container.uploadedBy.address || null,
-    storageProvider: container.storageProvider?.address || null,
-    tier: container.tier,
-    architecture: container.architecture,
-    gpuRequired: container.gpuRequired,
-    minGpuVram: container.minGpuVram,
-    teeRequired: container.teeRequired,
+    name: container.name ?? '',
+    tag: 'latest',
+    sizeBytes: container.sizeBytes ?? '0',
+    uploadedAt: container.createdAt ?? new Date().toISOString(),
+    uploadedBy: container.ownerId ?? null,
+    storageProvider: null,
+    tier: 'standard',
+    architecture: container.architecture ?? 'amd64',
+    gpuRequired: false,
+    minGpuVram: null,
+    teeRequired: false,
     verified: container.verified,
     pullCount: container.pullCount,
-    lastPulledAt: container.lastPulledAt?.toISOString() || null,
+    lastPulledAt: null,
   }
 }

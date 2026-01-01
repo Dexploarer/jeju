@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * Deploy OAuth3 to Kubernetes
- * 
+ *
  * Updates the oauth3-config ConfigMap with the built frontend files
  * and restarts the deployment.
  */
@@ -25,7 +25,7 @@ async function deploy() {
   console.log('\n[2/4] Reading built files...')
   const indexHtml = readFileSync(join(APP_DIR, 'dist/web/index.html'), 'utf-8')
   const appJs = readFileSync(join(APP_DIR, 'dist/web/app.js'), 'utf-8')
-  
+
   console.log(`  index.html: ${indexHtml.length} bytes`)
   console.log(`  app.js: ${appJs.length} bytes`)
 
@@ -203,16 +203,19 @@ server.listen(PORT, () => {
 
   // Create ConfigMap
   console.log('\n[3/4] Creating ConfigMap...')
-  
+
   // Write server.js to temp file
   const tempFile = '/tmp/oauth3-server.js'
   Bun.write(tempFile, serverJs)
-  
+
   // Create ConfigMap from file
   try {
-    execSync(`kubectl create configmap oauth3-config -n ${NAMESPACE} --from-file=server.js=${tempFile} --dry-run=client -o yaml | kubectl apply -f -`, {
-      stdio: 'inherit'
-    })
+    execSync(
+      `kubectl create configmap oauth3-config -n ${NAMESPACE} --from-file=server.js=${tempFile} --dry-run=client -o yaml | kubectl apply -f -`,
+      {
+        stdio: 'inherit',
+      },
+    )
   } catch (e) {
     console.error('Failed to create ConfigMap:', e)
     process.exit(1)
@@ -220,15 +223,20 @@ server.listen(PORT, () => {
 
   // Restart deployment
   console.log('\n[4/4] Restarting deployment...')
-  execSync(`kubectl rollout restart deployment/oauth3 -n ${NAMESPACE}`, { stdio: 'inherit' })
-  execSync(`kubectl rollout status deployment/oauth3 -n ${NAMESPACE} --timeout=60s`, { stdio: 'inherit' })
+  execSync(`kubectl rollout restart deployment/oauth3 -n ${NAMESPACE}`, {
+    stdio: 'inherit',
+  })
+  execSync(
+    `kubectl rollout status deployment/oauth3 -n ${NAMESPACE} --timeout=60s`,
+    { stdio: 'inherit' },
+  )
 
   console.log('\n============================')
   console.log('Deployment complete!')
   console.log('OAuth3: https://oauth3.testnet.jejunetwork.org')
 }
 
-deploy().catch(e => {
+deploy().catch((e) => {
   console.error('Deployment failed:', e)
   process.exit(1)
 })

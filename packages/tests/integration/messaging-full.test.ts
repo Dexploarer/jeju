@@ -355,404 +355,151 @@ describe('Full Messaging Integration', () => {
     console.log('[Teardown] Done\n')
   })
 
-describe('Farcaster Integration', () => {
-  describe('Hub Connectivity', () => {
-    test('connects to hub and gets info', async () => {
-      const response = await fetch(`http://127.0.0.1:${MOCK_HUB_PORT}/v1/info`)
-      expect(response.ok).toBe(true)
+  describe('Farcaster Integration', () => {
+    describe('Hub Connectivity', () => {
+      test('connects to hub and gets info', async () => {
+        const response = await fetch(
+          `http://127.0.0.1:${MOCK_HUB_PORT}/v1/info`,
+        )
+        expect(response.ok).toBe(true)
 
-      const info = HubInfoSchema.parse(await response.json())
-      expect(info.version).toBeDefined()
-      expect(info.isSyncing).toBe(false)
+        const info = HubInfoSchema.parse(await response.json())
+        expect(info.version).toBeDefined()
+        expect(info.isSyncing).toBe(false)
+      })
+
+      test('fetches user data by FID', async () => {
+        const response = await fetch(
+          `http://127.0.0.1:${MOCK_HUB_PORT}/v1/userDataByFid?fid=12345`,
+        )
+        expect(response.ok).toBe(true)
+
+        const data = HubMessagesSchema.parse(await response.json())
+        expect(data.messages).toBeArray()
+        expect(data.messages.length).toBeGreaterThan(0)
+      })
+
+      test('fetches casts by FID', async () => {
+        const response = await fetch(
+          `http://127.0.0.1:${MOCK_HUB_PORT}/v1/castsByFid?fid=12345`,
+        )
+        expect(response.ok).toBe(true)
+
+        const data = HubMessagesSchema.parse(await response.json())
+        expect(data.messages).toBeArray()
+        expect(data.messages[0].data.castAddBody.text).toBeDefined()
+      })
     })
 
-    test('fetches user data by FID', async () => {
-      const response = await fetch(
-        `http://127.0.0.1:${MOCK_HUB_PORT}/v1/userDataByFid?fid=12345`,
-      )
-      expect(response.ok).toBe(true)
-
-      const data = HubMessagesSchema.parse(await response.json())
-      expect(data.messages).toBeArray()
-      expect(data.messages.length).toBeGreaterThan(0)
-    })
-
-    test('fetches casts by FID', async () => {
-      const response = await fetch(
-        `http://127.0.0.1:${MOCK_HUB_PORT}/v1/castsByFid?fid=12345`,
-      )
-      expect(response.ok).toBe(true)
-
-      const data = HubMessagesSchema.parse(await response.json())
-      expect(data.messages).toBeArray()
-      expect(data.messages[0].data.castAddBody.text).toBeDefined()
-    })
-  })
-
-  describe('Hub Posting', () => {
-    test('submits a cast', async () => {
-      const message = {
-        data: {
-          type: 'CAST_ADD',
-          fid: 12345,
-          timestamp: Date.now(),
-          castAddBody: {
-            text: 'Hello from integration test',
-            embeds: [],
-            mentions: [],
-            mentionsPositions: [],
-          },
-        },
-        hash: `0x${crypto.randomUUID().replace(/-/g, '')}`,
-        signature: `0x${'00'.repeat(64)}`,
-        signer: `0x${'00'.repeat(32)}`,
-      }
-
-      const response = await fetch(
-        `http://127.0.0.1:${MOCK_HUB_PORT}/v1/submitMessage`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(message),
-        },
-      )
-
-      expect(response.ok).toBe(true)
-      const result = HubSubmitResultSchema.parse(await response.json())
-      expect(result.hash).toBeDefined()
-      expect(result.hash).toMatch(/^0x[a-f0-9]+$/)
-    })
-
-    test('posts and retrieves a cast', async () => {
-      // Post
-      const postResponse = await fetch(
-        `http://127.0.0.1:${MOCK_HUB_PORT}/v1/submitMessage`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            data: {
-              type: 'CAST_ADD',
-              fid: 54321,
-              timestamp: Date.now(),
-              castAddBody: {
-                text: 'Roundtrip test cast',
-                embeds: [],
-                mentions: [],
-                mentionsPositions: [],
-              },
+    describe('Hub Posting', () => {
+      test('submits a cast', async () => {
+        const message = {
+          data: {
+            type: 'CAST_ADD',
+            fid: 12345,
+            timestamp: Date.now(),
+            castAddBody: {
+              text: 'Hello from integration test',
+              embeds: [],
+              mentions: [],
+              mentionsPositions: [],
             },
-            hash: `0x${crypto.randomUUID().replace(/-/g, '')}`,
-          }),
-        },
-      )
-
-      expect(postResponse.ok).toBe(true)
-
-      // Retrieve
-      const getResponse = await fetch(
-        `http://127.0.0.1:${MOCK_HUB_PORT}/v1/castsByFid?fid=12345`,
-      )
-      expect(getResponse.ok).toBe(true)
-
-      const casts = HubMessagesSchema.parse(await getResponse.json())
-      expect(casts.messages.length).toBeGreaterThan(0)
-    })
-  })
-
-  describe('Direct Casts', () => {
-    test('encrypts and sends a direct message', async () => {
-      // Generate keys
-      const _aliceKeys = generateKeyPair()
-      const _bobKeys = generateKeyPair()
-
-      // Simulate encryption (in real test, use actual crypto)
-      const message = 'Hello Bob, this is a secret message'
-      const encryptedContent = Buffer.from(message).toString('base64')
-
-      // Send via relay
-      const envelope = {
-        id: crypto.randomUUID(),
-        from: TEST_ACCOUNTS.alice.address,
-        to: TEST_ACCOUNTS.bob.address,
-        encryptedContent,
-        timestamp: Date.now(),
-      }
-
-      const response = await fetch(`http://127.0.0.1:${RELAY_PORT}/send`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(envelope),
-      })
-
-      expect(response.ok).toBe(true)
-      const result = RelaySendResultSchema.parse(await response.json())
-      expect(result.success).toBe(true)
-      expect(result.messageId).toBe(envelope.id)
-    })
-
-    test('retrieves pending direct messages', async () => {
-      // First send a message
-      const envelope = {
-        id: crypto.randomUUID(),
-        from: TEST_ACCOUNTS.charlie.address,
-        to: TEST_ACCOUNTS.alice.address,
-        encryptedContent: 'encrypted-content-placeholder',
-        timestamp: Date.now(),
-      }
-
-      await fetch(`http://127.0.0.1:${RELAY_PORT}/send`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(envelope),
-      })
-
-      // Retrieve
-      const response = await fetch(
-        `http://127.0.0.1:${RELAY_PORT}/messages/${TEST_ACCOUNTS.alice.address}`,
-      )
-      expect(response.ok).toBe(true)
-
-      const result = RelayMessagesSchema.parse(await response.json())
-      expect(result.count).toBeGreaterThan(0)
-      expect(result.messages.some((m) => m.id === envelope.id)).toBe(true)
-    })
-  })
-})
-
-describe('XMTP/MLS Integration', () => {
-  describe('Key Management', () => {
-    test('generates valid MLS key pairs', () => {
-      const keyPair = generateKeyPair()
-
-      expect(keyPair.publicKey).toBeInstanceOf(Uint8Array)
-      expect(keyPair.privateKey).toBeInstanceOf(Uint8Array)
-      expect(keyPair.publicKey.length).toBe(32)
-      expect(keyPair.privateKey.length).toBe(32)
-    })
-
-    test('derives deterministic keys from signature', () => {
-      const signature1 = '0xabcdef1234567890'
-      const signature2 = '0xabcdef1234567890'
-      const signature3 = '0xdifferentsig999'
-
-      // Mock deterministic derivation
-      const deriveKey = (sig: string) => {
-        const bytes = new Uint8Array(32)
-        for (let i = 0; i < 32; i++) {
-          bytes[i] = sig.charCodeAt(i % sig.length) ^ (i * 7)
+          },
+          hash: `0x${crypto.randomUUID().replace(/-/g, '')}`,
+          signature: `0x${'00'.repeat(64)}`,
+          signer: `0x${'00'.repeat(32)}`,
         }
-        return bytes
-      }
 
-      const key1 = deriveKey(signature1)
-      const key2 = deriveKey(signature2)
-      const key3 = deriveKey(signature3)
-
-      // Same signature should produce same key
-      expect(bytesToHex(key1)).toBe(bytesToHex(key2))
-
-      // Different signature should produce different key
-      expect(bytesToHex(key1)).not.toBe(bytesToHex(key3))
-    })
-  })
-
-  describe('Group Messaging', () => {
-    test('creates a group with multiple members', async () => {
-      const group = {
-        id: crypto.randomUUID(),
-        name: 'Test Group',
-        members: [TEST_ACCOUNTS.alice.address, TEST_ACCOUNTS.bob.address],
-        createdAt: Date.now(),
-      }
-
-      expect(group.id).toBeDefined()
-      expect(group.members).toHaveLength(2)
-    })
-
-    test('sends messages to group', async () => {
-      const groupId = crypto.randomUUID()
-      const messages: Array<{
-        id: string
-        groupId: string
-        sender: Address
-        content: string
-        timestamp: number
-      }> = []
-
-      // Simulate sending
-      const send = (sender: Address, content: string) => {
-        messages.push({
-          id: crypto.randomUUID(),
-          groupId,
-          sender,
-          content,
-          timestamp: Date.now(),
-        })
-      }
-
-      send(TEST_ACCOUNTS.alice.address, 'Hello group')
-      send(TEST_ACCOUNTS.bob.address, 'Hi Alice')
-      send(TEST_ACCOUNTS.alice.address, 'How are you?')
-
-      expect(messages).toHaveLength(3)
-      expect(messages[0].sender).toBe(TEST_ACCOUNTS.alice.address)
-      expect(messages[1].content).toBe('Hi Alice')
-    })
-
-    test('handles member join and leave', async () => {
-      const members = new Set([
-        TEST_ACCOUNTS.alice.address,
-        TEST_ACCOUNTS.bob.address,
-      ])
-
-      // Add member
-      members.add(TEST_ACCOUNTS.charlie.address)
-      expect(members.size).toBe(3)
-      expect(members.has(TEST_ACCOUNTS.charlie.address)).toBe(true)
-
-      // Remove member
-      members.delete(TEST_ACCOUNTS.bob.address)
-      expect(members.size).toBe(2)
-      expect(members.has(TEST_ACCOUNTS.bob.address)).toBe(false)
-    })
-  })
-
-  describe('Encryption', () => {
-    test('encrypts and decrypts messages', () => {
-      // Simple XOR encryption for testing (in production, use proper crypto)
-      const encrypt = (plaintext: string, key: Uint8Array): Uint8Array => {
-        const bytes = new TextEncoder().encode(plaintext)
-        return bytes.map((b, i) => b ^ key[i % key.length])
-      }
-
-      const decrypt = (ciphertext: Uint8Array, key: Uint8Array): string => {
-        const bytes = ciphertext.map((b, i) => b ^ key[i % key.length])
-        return new TextDecoder().decode(bytes)
-      }
-
-      const key = crypto.getRandomValues(new Uint8Array(32))
-      const message = 'Secret message for testing'
-
-      const encrypted = encrypt(message, key)
-      const decrypted = decrypt(encrypted, key)
-
-      expect(decrypted).toBe(message)
-      expect(bytesToHex(encrypted)).not.toBe(
-        bytesToHex(new TextEncoder().encode(message)),
-      )
-    })
-
-    test('handles unicode and emoji', () => {
-      const messages = ['你好世界', '🔐🎉🚀', 'Héllo Wörld', 'مرحبا']
-
-      const key = crypto.getRandomValues(new Uint8Array(32))
-
-      for (const msg of messages) {
-        const bytes = new TextEncoder().encode(msg)
-        const encrypted = bytes.map((b, i) => b ^ key[i % key.length])
-        const decrypted = new TextDecoder().decode(
-          encrypted.map((b, i) => b ^ key[i % key.length]),
+        const response = await fetch(
+          `http://127.0.0.1:${MOCK_HUB_PORT}/v1/submitMessage`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(message),
+          },
         )
 
-        expect(decrypted).toBe(msg)
-      }
-    })
-  })
-})
-
-describe('Messaging SDK Integration', () => {
-  describe('Relay Node', () => {
-    test('health check returns node info', async () => {
-      const response = await fetch(`http://127.0.0.1:${RELAY_PORT}/health`)
-      expect(response.ok).toBe(true)
-
-      const data = RelayHealthSchema.parse(await response.json())
-      expect(data.status).toBe('healthy')
-      expect(data.nodeId).toBeDefined()
-    })
-
-    test('returns stats', async () => {
-      const response = await fetch(`http://127.0.0.1:${RELAY_PORT}/stats`)
-      expect(response.ok).toBe(true)
-
-      const stats = RelayStatsSchema.parse(await response.json())
-      expect(stats.nodeId).toBeDefined()
-      expect(typeof stats.totalMessagesRelayed).toBe('number')
-    })
-  })
-
-  describe('Message Flow', () => {
-    test('complete message flow: encrypt -> send -> receive -> decrypt', async () => {
-      // Setup
-      const _aliceKeys = generateKeyPair()
-      const _bobKeys = generateKeyPair()
-
-      const aliceAddress = TEST_ACCOUNTS.alice.address
-      const bobAddress = TEST_ACCOUNTS.bob.address
-
-      // Alice creates encrypted message for Bob
-      const originalMessage = 'Hello Bob, encrypted via XMTP'
-      const key = crypto.getRandomValues(new Uint8Array(32))
-      const encrypted = new TextEncoder()
-        .encode(originalMessage)
-        .map((b, i) => b ^ key[i % key.length])
-
-      // Create envelope
-      const envelope = {
-        id: crypto.randomUUID(),
-        from: aliceAddress,
-        to: bobAddress,
-        encryptedContent: Buffer.from(encrypted).toString('base64'),
-        timestamp: Date.now(),
-      }
-
-      // Send
-      const sendResponse = await fetch(`http://127.0.0.1:${RELAY_PORT}/send`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(envelope),
+        expect(response.ok).toBe(true)
+        const result = HubSubmitResultSchema.parse(await response.json())
+        expect(result.hash).toBeDefined()
+        expect(result.hash).toMatch(/^0x[a-f0-9]+$/)
       })
-      expect(sendResponse.ok).toBe(true)
 
-      // Bob retrieves messages
-      const fetchResponse = await fetch(
-        `http://127.0.0.1:${RELAY_PORT}/messages/${bobAddress}`,
-      )
-      expect(fetchResponse.ok).toBe(true)
+      test('posts and retrieves a cast', async () => {
+        // Post
+        const postResponse = await fetch(
+          `http://127.0.0.1:${MOCK_HUB_PORT}/v1/submitMessage`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              data: {
+                type: 'CAST_ADD',
+                fid: 54321,
+                timestamp: Date.now(),
+                castAddBody: {
+                  text: 'Roundtrip test cast',
+                  embeds: [],
+                  mentions: [],
+                  mentionsPositions: [],
+                },
+              },
+              hash: `0x${crypto.randomUUID().replace(/-/g, '')}`,
+            }),
+          },
+        )
 
-      const result = RelayMessagesSchema.parse(await fetchResponse.json())
-      const received = result.messages.find((m) => m.id === envelope.id)
-      expect(received).toBeDefined()
+        expect(postResponse.ok).toBe(true)
 
-      // Bob decrypts
-      const encryptedBytes = new Uint8Array(
-        Buffer.from(received?.content, 'base64'),
-      )
-      const decrypted = new TextDecoder().decode(
-        encryptedBytes.map((b, i) => b ^ key[i % key.length]),
-      )
+        // Retrieve
+        const getResponse = await fetch(
+          `http://127.0.0.1:${MOCK_HUB_PORT}/v1/castsByFid?fid=12345`,
+        )
+        expect(getResponse.ok).toBe(true)
 
-      expect(decrypted).toBe(originalMessage)
+        const casts = HubMessagesSchema.parse(await getResponse.json())
+        expect(casts.messages.length).toBeGreaterThan(0)
+      })
     })
 
-    test('multiple messages between users', async () => {
-      const userA = `0xUserA${crypto.randomUUID().replace(/-/g, '').slice(0, 32)}`
-      const userB = `0xUserB${crypto.randomUUID().replace(/-/g, '').slice(0, 32)}`
+    describe('Direct Casts', () => {
+      test('encrypts and sends a direct message', async () => {
+        // Generate keys
+        const _aliceKeys = generateKeyPair()
+        const _bobKeys = generateKeyPair()
 
-      const messagesToSend = [
-        'First message from A to B',
-        'Second message from A to B',
-        'Third message from A to B',
-      ]
+        // Simulate encryption (in real test, use actual crypto)
+        const message = 'Hello Bob, this is a secret message'
+        const encryptedContent = Buffer.from(message).toString('base64')
 
-      // Send all messages
-      for (const msg of messagesToSend) {
+        // Send via relay
         const envelope = {
           id: crypto.randomUUID(),
-          from: userA,
-          to: userB,
-          encryptedContent: Buffer.from(msg).toString('base64'),
+          from: TEST_ACCOUNTS.alice.address,
+          to: TEST_ACCOUNTS.bob.address,
+          encryptedContent,
+          timestamp: Date.now(),
+        }
+
+        const response = await fetch(`http://127.0.0.1:${RELAY_PORT}/send`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(envelope),
+        })
+
+        expect(response.ok).toBe(true)
+        const result = RelaySendResultSchema.parse(await response.json())
+        expect(result.success).toBe(true)
+        expect(result.messageId).toBe(envelope.id)
+      })
+
+      test('retrieves pending direct messages', async () => {
+        // First send a message
+        const envelope = {
+          id: crypto.randomUUID(),
+          from: TEST_ACCOUNTS.charlie.address,
+          to: TEST_ACCOUNTS.alice.address,
+          encryptedContent: 'encrypted-content-placeholder',
           timestamp: Date.now(),
         }
 
@@ -761,246 +508,503 @@ describe('Messaging SDK Integration', () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(envelope),
         })
-      }
 
-      // Fetch all
-      const response = await fetch(
-        `http://127.0.0.1:${RELAY_PORT}/messages/${userB}`,
-      )
-      const result = RelayMessagesSchema.parse(await response.json())
+        // Retrieve
+        const response = await fetch(
+          `http://127.0.0.1:${RELAY_PORT}/messages/${TEST_ACCOUNTS.alice.address}`,
+        )
+        expect(response.ok).toBe(true)
 
-      const fromA = result.messages.filter((m) => m.from === userA)
-      expect(fromA.length).toBe(messagesToSend.length)
+        const result = RelayMessagesSchema.parse(await response.json())
+        expect(result.count).toBeGreaterThan(0)
+        expect(result.messages.some((m) => m.id === envelope.id)).toBe(true)
+      })
     })
   })
-})
 
-describe('End-to-End Messaging Flow', () => {
-  test('Farcaster public cast -> reply -> reaction flow', async () => {
-    const fid = 12345
-    const hubUrl = `http://127.0.0.1:${MOCK_HUB_PORT}`
+  describe('XMTP/MLS Integration', () => {
+    describe('Key Management', () => {
+      test('generates valid MLS key pairs', () => {
+        const keyPair = generateKeyPair()
 
-    // 1. Post a cast
-    const castResponse = await fetch(`${hubUrl}/v1/submitMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        data: {
-          type: 'CAST_ADD',
-          fid,
-          castAddBody: {
-            text: 'Original cast for E2E test',
-            embeds: [],
-            mentions: [],
-            mentionsPositions: [],
-          },
-        },
-        hash: `0xoriginal${crypto.randomUUID().replace(/-/g, '').slice(0, 30)}`,
-      }),
+        expect(keyPair.publicKey).toBeInstanceOf(Uint8Array)
+        expect(keyPair.privateKey).toBeInstanceOf(Uint8Array)
+        expect(keyPair.publicKey.length).toBe(32)
+        expect(keyPair.privateKey.length).toBe(32)
+      })
+
+      test('derives deterministic keys from signature', () => {
+        const signature1 = '0xabcdef1234567890'
+        const signature2 = '0xabcdef1234567890'
+        const signature3 = '0xdifferentsig999'
+
+        // Mock deterministic derivation
+        const deriveKey = (sig: string) => {
+          const bytes = new Uint8Array(32)
+          for (let i = 0; i < 32; i++) {
+            bytes[i] = sig.charCodeAt(i % sig.length) ^ (i * 7)
+          }
+          return bytes
+        }
+
+        const key1 = deriveKey(signature1)
+        const key2 = deriveKey(signature2)
+        const key3 = deriveKey(signature3)
+
+        // Same signature should produce same key
+        expect(bytesToHex(key1)).toBe(bytesToHex(key2))
+
+        // Different signature should produce different key
+        expect(bytesToHex(key1)).not.toBe(bytesToHex(key3))
+      })
     })
-    expect(castResponse.ok).toBe(true)
-    const cast = HubSubmitResultSchema.parse(await castResponse.json())
 
-    // 2. Reply to the cast
-    const replyResponse = await fetch(`${hubUrl}/v1/submitMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        data: {
-          type: 'CAST_ADD',
-          fid: 54321,
-          castAddBody: {
-            text: 'Reply to the original cast',
-            embeds: [],
-            mentions: [],
-            mentionsPositions: [],
-            parentCastId: { fid, hash: cast.hash },
-          },
-        },
-        hash: `0xreply${crypto.randomUUID().replace(/-/g, '').slice(0, 32)}`,
-      }),
-    })
-    expect(replyResponse.ok).toBe(true)
+    describe('Group Messaging', () => {
+      test('creates a group with multiple members', async () => {
+        const group = {
+          id: crypto.randomUUID(),
+          name: 'Test Group',
+          members: [TEST_ACCOUNTS.alice.address, TEST_ACCOUNTS.bob.address],
+          createdAt: Date.now(),
+        }
 
-    // 3. Add reaction (like)
-    const likeResponse = await fetch(`${hubUrl}/v1/submitMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        data: {
-          type: 'REACTION_ADD',
-          fid: 99999,
-          reactionBody: {
-            type: 'REACTION_TYPE_LIKE',
-            targetCastId: { fid, hash: cast.hash },
-          },
-        },
-        hash: `0xlike${crypto.randomUUID().replace(/-/g, '').slice(0, 34)}`,
-      }),
+        expect(group.id).toBeDefined()
+        expect(group.members).toHaveLength(2)
+      })
+
+      test('sends messages to group', async () => {
+        const groupId = crypto.randomUUID()
+        const messages: Array<{
+          id: string
+          groupId: string
+          sender: Address
+          content: string
+          timestamp: number
+        }> = []
+
+        // Simulate sending
+        const send = (sender: Address, content: string) => {
+          messages.push({
+            id: crypto.randomUUID(),
+            groupId,
+            sender,
+            content,
+            timestamp: Date.now(),
+          })
+        }
+
+        send(TEST_ACCOUNTS.alice.address, 'Hello group')
+        send(TEST_ACCOUNTS.bob.address, 'Hi Alice')
+        send(TEST_ACCOUNTS.alice.address, 'How are you?')
+
+        expect(messages).toHaveLength(3)
+        expect(messages[0].sender).toBe(TEST_ACCOUNTS.alice.address)
+        expect(messages[1].content).toBe('Hi Alice')
+      })
+
+      test('handles member join and leave', async () => {
+        const members = new Set([
+          TEST_ACCOUNTS.alice.address,
+          TEST_ACCOUNTS.bob.address,
+        ])
+
+        // Add member
+        members.add(TEST_ACCOUNTS.charlie.address)
+        expect(members.size).toBe(3)
+        expect(members.has(TEST_ACCOUNTS.charlie.address)).toBe(true)
+
+        // Remove member
+        members.delete(TEST_ACCOUNTS.bob.address)
+        expect(members.size).toBe(2)
+        expect(members.has(TEST_ACCOUNTS.bob.address)).toBe(false)
+      })
     })
-    expect(likeResponse.ok).toBe(true)
+
+    describe('Encryption', () => {
+      test('encrypts and decrypts messages', () => {
+        // Simple XOR encryption for testing (in production, use proper crypto)
+        const encrypt = (plaintext: string, key: Uint8Array): Uint8Array => {
+          const bytes = new TextEncoder().encode(plaintext)
+          return bytes.map((b, i) => b ^ key[i % key.length])
+        }
+
+        const decrypt = (ciphertext: Uint8Array, key: Uint8Array): string => {
+          const bytes = ciphertext.map((b, i) => b ^ key[i % key.length])
+          return new TextDecoder().decode(bytes)
+        }
+
+        const key = crypto.getRandomValues(new Uint8Array(32))
+        const message = 'Secret message for testing'
+
+        const encrypted = encrypt(message, key)
+        const decrypted = decrypt(encrypted, key)
+
+        expect(decrypted).toBe(message)
+        expect(bytesToHex(encrypted)).not.toBe(
+          bytesToHex(new TextEncoder().encode(message)),
+        )
+      })
+
+      test('handles unicode and emoji', () => {
+        const messages = ['你好世界', '🔐🎉🚀', 'Héllo Wörld', 'مرحبا']
+
+        const key = crypto.getRandomValues(new Uint8Array(32))
+
+        for (const msg of messages) {
+          const bytes = new TextEncoder().encode(msg)
+          const encrypted = bytes.map((b, i) => b ^ key[i % key.length])
+          const decrypted = new TextDecoder().decode(
+            encrypted.map((b, i) => b ^ key[i % key.length]),
+          )
+
+          expect(decrypted).toBe(msg)
+        }
+      })
+    })
   })
 
-  test('XMTP private messaging -> group creation -> message exchange', async () => {
-    const relayUrl = `http://127.0.0.1:${RELAY_PORT}`
+  describe('Messaging SDK Integration', () => {
+    describe('Relay Node', () => {
+      test('health check returns node info', async () => {
+        const response = await fetch(`http://127.0.0.1:${RELAY_PORT}/health`)
+        expect(response.ok).toBe(true)
 
-    // Setup users
-    const alice = TEST_ACCOUNTS.alice.address
-    const bob = TEST_ACCOUNTS.bob.address
-    const charlie = TEST_ACCOUNTS.charlie.address
+        const data = RelayHealthSchema.parse(await response.json())
+        expect(data.status).toBe('healthy')
+        expect(data.nodeId).toBeDefined()
+      })
 
-    // 1. Alice sends DM to Bob
-    const dm1 = {
-      id: crypto.randomUUID(),
-      from: alice,
-      to: bob,
-      encryptedContent: Buffer.from('Hey Bob, want to start a group?').toString(
-        'base64',
-      ),
-      timestamp: Date.now(),
-    }
+      test('returns stats', async () => {
+        const response = await fetch(`http://127.0.0.1:${RELAY_PORT}/stats`)
+        expect(response.ok).toBe(true)
 
-    const dmResponse = await fetch(`${relayUrl}/send`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(dm1),
+        const stats = RelayStatsSchema.parse(await response.json())
+        expect(stats.nodeId).toBeDefined()
+        expect(typeof stats.totalMessagesRelayed).toBe('number')
+      })
     })
-    expect(dmResponse.ok).toBe(true)
 
-    // 2. Bob retrieves DM
-    const bobMessages = await fetch(`${relayUrl}/messages/${bob}`)
-    const bobResult = RelayCountSchema.parse(await bobMessages.json())
-    expect(bobResult.count).toBeGreaterThan(0)
+    describe('Message Flow', () => {
+      test('complete message flow: encrypt -> send -> receive -> decrypt', async () => {
+        // Setup
+        const _aliceKeys = generateKeyPair()
+        const _bobKeys = generateKeyPair()
 
-    // 3. Simulate group creation (would be MLS in production)
-    const groupId = crypto.randomUUID()
-    const _group = {
-      id: groupId,
-      name: 'Integration Test Group',
-      members: [alice, bob, charlie],
-      createdAt: Date.now(),
-    }
+        const aliceAddress = TEST_ACCOUNTS.alice.address
+        const bobAddress = TEST_ACCOUNTS.bob.address
 
-    // 4. Send group message
-    const groupMessage = {
-      id: crypto.randomUUID(),
-      from: alice,
-      to: groupId,
-      encryptedContent: Buffer.from('Welcome to our test group.').toString(
-        'base64',
-      ),
-      timestamp: Date.now(),
-    }
+        // Alice creates encrypted message for Bob
+        const originalMessage = 'Hello Bob, encrypted via XMTP'
+        const key = crypto.getRandomValues(new Uint8Array(32))
+        const encrypted = new TextEncoder()
+          .encode(originalMessage)
+          .map((b, i) => b ^ key[i % key.length])
 
-    const groupResponse = await fetch(`${relayUrl}/send`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(groupMessage),
-    })
-    expect(groupResponse.ok).toBe(true)
+        // Create envelope
+        const envelope = {
+          id: crypto.randomUUID(),
+          from: aliceAddress,
+          to: bobAddress,
+          encryptedContent: Buffer.from(encrypted).toString('base64'),
+          timestamp: Date.now(),
+        }
 
-    // 5. Verify group receives message
-    const groupMessages = await fetch(`${relayUrl}/messages/${groupId}`)
-    const groupResult = RelayCountSchema.parse(await groupMessages.json())
-    expect(groupResult.count).toBeGreaterThan(0)
-  })
-
-  test('Combined Farcaster public + XMTP private messaging scenario', async () => {
-    const hubUrl = `http://127.0.0.1:${MOCK_HUB_PORT}`
-    const relayUrl = `http://127.0.0.1:${RELAY_PORT}`
-
-    const userFid = 12345
-    const userAddress = TEST_ACCOUNTS.alice.address
-
-    // 1. User posts public cast on Farcaster
-    const publicCast = await fetch(`${hubUrl}/v1/submitMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        data: {
-          type: 'CAST_ADD',
-          fid: userFid,
-          castAddBody: {
-            text: 'DM me for details.',
-            embeds: [],
-            mentions: [],
-            mentionsPositions: [],
+        // Send
+        const sendResponse = await fetch(
+          `http://127.0.0.1:${RELAY_PORT}/send`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(envelope),
           },
-        },
-        hash: `0xpublic${crypto.randomUUID().replace(/-/g, '').slice(0, 32)}`,
-      }),
+        )
+        expect(sendResponse.ok).toBe(true)
+
+        // Bob retrieves messages
+        const fetchResponse = await fetch(
+          `http://127.0.0.1:${RELAY_PORT}/messages/${bobAddress}`,
+        )
+        expect(fetchResponse.ok).toBe(true)
+
+        const result = RelayMessagesSchema.parse(await fetchResponse.json())
+        const received = result.messages.find((m) => m.id === envelope.id)
+        expect(received).toBeDefined()
+
+        // Bob decrypts
+        const encryptedBytes = new Uint8Array(
+          Buffer.from(received?.content, 'base64'),
+        )
+        const decrypted = new TextDecoder().decode(
+          encryptedBytes.map((b, i) => b ^ key[i % key.length]),
+        )
+
+        expect(decrypted).toBe(originalMessage)
+      })
+
+      test('multiple messages between users', async () => {
+        const userA = `0xUserA${crypto.randomUUID().replace(/-/g, '').slice(0, 32)}`
+        const userB = `0xUserB${crypto.randomUUID().replace(/-/g, '').slice(0, 32)}`
+
+        const messagesToSend = [
+          'First message from A to B',
+          'Second message from A to B',
+          'Third message from A to B',
+        ]
+
+        // Send all messages
+        for (const msg of messagesToSend) {
+          const envelope = {
+            id: crypto.randomUUID(),
+            from: userA,
+            to: userB,
+            encryptedContent: Buffer.from(msg).toString('base64'),
+            timestamp: Date.now(),
+          }
+
+          await fetch(`http://127.0.0.1:${RELAY_PORT}/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(envelope),
+          })
+        }
+
+        // Fetch all
+        const response = await fetch(
+          `http://127.0.0.1:${RELAY_PORT}/messages/${userB}`,
+        )
+        const result = RelayMessagesSchema.parse(await response.json())
+
+        const fromA = result.messages.filter((m) => m.from === userA)
+        expect(fromA.length).toBe(messagesToSend.length)
+      })
     })
-    expect(publicCast.ok).toBe(true)
-
-    // 2. Another user sends private DM via XMTP
-    const privateDm = {
-      id: crypto.randomUUID(),
-      from: TEST_ACCOUNTS.bob.address,
-      to: userAddress,
-      encryptedContent: Buffer.from(
-        'Hey, interested in details from your cast.',
-      ).toString('base64'),
-      timestamp: Date.now(),
-    }
-
-    const dmResponse = await fetch(`${relayUrl}/send`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(privateDm),
-    })
-    expect(dmResponse.ok).toBe(true)
-
-    // 3. User checks both public cast (via hub) and private DM (via relay)
-    const [hubCheck, relayCheck] = await Promise.all([
-      fetch(`${hubUrl}/health`),
-      fetch(`${relayUrl}/messages/${userAddress}`),
-    ])
-
-    expect(hubCheck.ok).toBe(true)
-    expect(relayCheck.ok).toBe(true)
-
-    const dms = RelayMessagesSchema.parse(await relayCheck.json())
-    expect(dms.messages.some((m) => m.id === privateDm.id)).toBe(true)
   })
-})
 
-describe('Performance', () => {
-  test('handles 100 messages quickly', async () => {
-    const relayUrl = `http://127.0.0.1:${RELAY_PORT}`
-    const recipient = `0xPerfTest${crypto.randomUUID().replace(/-/g, '').slice(0, 32)}`
+  describe('End-to-End Messaging Flow', () => {
+    test('Farcaster public cast -> reply -> reaction flow', async () => {
+      const fid = 12345
+      const hubUrl = `http://127.0.0.1:${MOCK_HUB_PORT}`
 
-    const start = Date.now()
-    const promises: Promise<Response>[] = []
+      // 1. Post a cast
+      const castResponse = await fetch(`${hubUrl}/v1/submitMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data: {
+            type: 'CAST_ADD',
+            fid,
+            castAddBody: {
+              text: 'Original cast for E2E test',
+              embeds: [],
+              mentions: [],
+              mentionsPositions: [],
+            },
+          },
+          hash: `0xoriginal${crypto.randomUUID().replace(/-/g, '').slice(0, 30)}`,
+        }),
+      })
+      expect(castResponse.ok).toBe(true)
+      const cast = HubSubmitResultSchema.parse(await castResponse.json())
 
-    for (let i = 0; i < 100; i++) {
-      const envelope = {
+      // 2. Reply to the cast
+      const replyResponse = await fetch(`${hubUrl}/v1/submitMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data: {
+            type: 'CAST_ADD',
+            fid: 54321,
+            castAddBody: {
+              text: 'Reply to the original cast',
+              embeds: [],
+              mentions: [],
+              mentionsPositions: [],
+              parentCastId: { fid, hash: cast.hash },
+            },
+          },
+          hash: `0xreply${crypto.randomUUID().replace(/-/g, '').slice(0, 32)}`,
+        }),
+      })
+      expect(replyResponse.ok).toBe(true)
+
+      // 3. Add reaction (like)
+      const likeResponse = await fetch(`${hubUrl}/v1/submitMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data: {
+            type: 'REACTION_ADD',
+            fid: 99999,
+            reactionBody: {
+              type: 'REACTION_TYPE_LIKE',
+              targetCastId: { fid, hash: cast.hash },
+            },
+          },
+          hash: `0xlike${crypto.randomUUID().replace(/-/g, '').slice(0, 34)}`,
+        }),
+      })
+      expect(likeResponse.ok).toBe(true)
+    })
+
+    test('XMTP private messaging -> group creation -> message exchange', async () => {
+      const relayUrl = `http://127.0.0.1:${RELAY_PORT}`
+
+      // Setup users
+      const alice = TEST_ACCOUNTS.alice.address
+      const bob = TEST_ACCOUNTS.bob.address
+      const charlie = TEST_ACCOUNTS.charlie.address
+
+      // 1. Alice sends DM to Bob
+      const dm1 = {
         id: crypto.randomUUID(),
-        from: `0xSender${i.toString().padStart(4, '0')}`,
-        to: recipient,
-        encryptedContent: Buffer.from(`Message ${i}`).toString('base64'),
+        from: alice,
+        to: bob,
+        encryptedContent: Buffer.from(
+          'Hey Bob, want to start a group?',
+        ).toString('base64'),
         timestamp: Date.now(),
       }
 
-      promises.push(
-        fetch(`${relayUrl}/send`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(envelope),
+      const dmResponse = await fetch(`${relayUrl}/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dm1),
+      })
+      expect(dmResponse.ok).toBe(true)
+
+      // 2. Bob retrieves DM
+      const bobMessages = await fetch(`${relayUrl}/messages/${bob}`)
+      const bobResult = RelayCountSchema.parse(await bobMessages.json())
+      expect(bobResult.count).toBeGreaterThan(0)
+
+      // 3. Simulate group creation (would be MLS in production)
+      const groupId = crypto.randomUUID()
+      const _group = {
+        id: groupId,
+        name: 'Integration Test Group',
+        members: [alice, bob, charlie],
+        createdAt: Date.now(),
+      }
+
+      // 4. Send group message
+      const groupMessage = {
+        id: crypto.randomUUID(),
+        from: alice,
+        to: groupId,
+        encryptedContent: Buffer.from('Welcome to our test group.').toString(
+          'base64',
+        ),
+        timestamp: Date.now(),
+      }
+
+      const groupResponse = await fetch(`${relayUrl}/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(groupMessage),
+      })
+      expect(groupResponse.ok).toBe(true)
+
+      // 5. Verify group receives message
+      const groupMessages = await fetch(`${relayUrl}/messages/${groupId}`)
+      const groupResult = RelayCountSchema.parse(await groupMessages.json())
+      expect(groupResult.count).toBeGreaterThan(0)
+    })
+
+    test('Combined Farcaster public + XMTP private messaging scenario', async () => {
+      const hubUrl = `http://127.0.0.1:${MOCK_HUB_PORT}`
+      const relayUrl = `http://127.0.0.1:${RELAY_PORT}`
+
+      const userFid = 12345
+      const userAddress = TEST_ACCOUNTS.alice.address
+
+      // 1. User posts public cast on Farcaster
+      const publicCast = await fetch(`${hubUrl}/v1/submitMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data: {
+            type: 'CAST_ADD',
+            fid: userFid,
+            castAddBody: {
+              text: 'DM me for details.',
+              embeds: [],
+              mentions: [],
+              mentionsPositions: [],
+            },
+          },
+          hash: `0xpublic${crypto.randomUUID().replace(/-/g, '').slice(0, 32)}`,
         }),
-      )
-    }
+      })
+      expect(publicCast.ok).toBe(true)
 
-    await Promise.all(promises)
-    const elapsed = Date.now() - start
+      // 2. Another user sends private DM via XMTP
+      const privateDm = {
+        id: crypto.randomUUID(),
+        from: TEST_ACCOUNTS.bob.address,
+        to: userAddress,
+        encryptedContent: Buffer.from(
+          'Hey, interested in details from your cast.',
+        ).toString('base64'),
+        timestamp: Date.now(),
+      }
 
-    console.log(`[Perf] Sent 100 messages in ${elapsed}ms`)
-    expect(elapsed).toBeLessThan(10000) // Should complete in under 10s
+      const dmResponse = await fetch(`${relayUrl}/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(privateDm),
+      })
+      expect(dmResponse.ok).toBe(true)
 
-    // Verify all received
-    const response = await fetch(`${relayUrl}/messages/${recipient}`)
-    const result = RelayCountSchema.parse(await response.json())
-    expect(result.count).toBe(100)
+      // 3. User checks both public cast (via hub) and private DM (via relay)
+      const [hubCheck, relayCheck] = await Promise.all([
+        fetch(`${hubUrl}/health`),
+        fetch(`${relayUrl}/messages/${userAddress}`),
+      ])
+
+      expect(hubCheck.ok).toBe(true)
+      expect(relayCheck.ok).toBe(true)
+
+      const dms = RelayMessagesSchema.parse(await relayCheck.json())
+      expect(dms.messages.some((m) => m.id === privateDm.id)).toBe(true)
+    })
   })
-})
 
+  describe('Performance', () => {
+    test('handles 100 messages quickly', async () => {
+      const relayUrl = `http://127.0.0.1:${RELAY_PORT}`
+      const recipient = `0xPerfTest${crypto.randomUUID().replace(/-/g, '').slice(0, 32)}`
+
+      const start = Date.now()
+      const promises: Promise<Response>[] = []
+
+      for (let i = 0; i < 100; i++) {
+        const envelope = {
+          id: crypto.randomUUID(),
+          from: `0xSender${i.toString().padStart(4, '0')}`,
+          to: recipient,
+          encryptedContent: Buffer.from(`Message ${i}`).toString('base64'),
+          timestamp: Date.now(),
+        }
+
+        promises.push(
+          fetch(`${relayUrl}/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(envelope),
+          }),
+        )
+      }
+
+      await Promise.all(promises)
+      const elapsed = Date.now() - start
+
+      console.log(`[Perf] Sent 100 messages in ${elapsed}ms`)
+      expect(elapsed).toBeLessThan(10000) // Should complete in under 10s
+
+      // Verify all received
+      const response = await fetch(`${relayUrl}/messages/${recipient}`)
+      const result = RelayCountSchema.parse(await response.json())
+      expect(result.count).toBe(100)
+    })
+  })
 }) // Close Full Messaging Integration describe

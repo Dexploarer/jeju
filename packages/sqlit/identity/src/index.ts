@@ -30,19 +30,17 @@
  * ```
  */
 
+import { secp256k1 } from '@noble/curves/secp256k1'
 import { blake2b } from '@noble/hashes/blake2b'
 import { sha256 } from '@noble/hashes/sha256'
-import { secp256k1 } from '@noble/curves/secp256k1'
 import {
   type Address,
-  type Hex,
-  type PublicClient,
-  type WalletClient,
   createPublicClient,
   createWalletClient,
+  type Hex,
   http,
-  encodeFunctionData,
-  decodeAbiParameters,
+  type PublicClient,
+  type WalletClient,
 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import * as yaml from 'yaml'
@@ -138,12 +136,16 @@ const REGISTRY_ABI = [
     type: 'function',
     inputs: [
       { name: 'publicKey', type: 'bytes' },
-      { name: 'nonce', type: 'tuple', components: [
-        { name: 'a', type: 'uint64' },
-        { name: 'b', type: 'uint64' },
-        { name: 'c', type: 'uint64' },
-        { name: 'd', type: 'uint64' },
-      ]},
+      {
+        name: 'nonce',
+        type: 'tuple',
+        components: [
+          { name: 'a', type: 'uint64' },
+          { name: 'b', type: 'uint64' },
+          { name: 'c', type: 'uint64' },
+          { name: 'd', type: 'uint64' },
+        ],
+      },
       { name: 'nodeId', type: 'bytes32' },
       { name: 'role', type: 'uint8' },
       { name: 'endpoint', type: 'string' },
@@ -160,12 +162,16 @@ const REGISTRY_ABI = [
       { name: 'nodeIds', type: 'bytes32[]' },
       { name: 'endpoints', type: 'string[]' },
       { name: 'publicKeys', type: 'bytes[]' },
-      { name: 'nonces', type: 'tuple[]', components: [
-        { name: 'a', type: 'uint64' },
-        { name: 'b', type: 'uint64' },
-        { name: 'c', type: 'uint64' },
-        { name: 'd', type: 'uint64' },
-      ]},
+      {
+        name: 'nonces',
+        type: 'tuple[]',
+        components: [
+          { name: 'a', type: 'uint64' },
+          { name: 'b', type: 'uint64' },
+          { name: 'c', type: 'uint64' },
+          { name: 'd', type: 'uint64' },
+        ],
+      },
     ],
     stateMutability: 'view',
   },
@@ -174,12 +180,16 @@ const REGISTRY_ABI = [
     type: 'function',
     inputs: [
       { name: 'publicKey', type: 'bytes' },
-      { name: 'nonce', type: 'tuple', components: [
-        { name: 'a', type: 'uint64' },
-        { name: 'b', type: 'uint64' },
-        { name: 'c', type: 'uint64' },
-        { name: 'd', type: 'uint64' },
-      ]},
+      {
+        name: 'nonce',
+        type: 'tuple',
+        components: [
+          { name: 'a', type: 'uint64' },
+          { name: 'b', type: 'uint64' },
+          { name: 'c', type: 'uint64' },
+          { name: 'd', type: 'uint64' },
+        ],
+      },
       { name: 'nodeId', type: 'bytes32' },
     ],
     outputs: [{ name: 'valid', type: 'bool' }],
@@ -189,23 +199,33 @@ const REGISTRY_ABI = [
     name: 'getIdentity',
     type: 'function',
     inputs: [{ name: 'nodeId', type: 'bytes32' }],
-    outputs: [{ name: 'identity', type: 'tuple', components: [
-      { name: 'nodeId', type: 'bytes32' },
-      { name: 'publicKey', type: 'bytes' },
-      { name: 'nonce', type: 'tuple', components: [
-        { name: 'a', type: 'uint64' },
-        { name: 'b', type: 'uint64' },
-        { name: 'c', type: 'uint64' },
-        { name: 'd', type: 'uint64' },
-      ]},
-      { name: 'operator', type: 'address' },
-      { name: 'stakedAmount', type: 'uint256' },
-      { name: 'registeredAt', type: 'uint256' },
-      { name: 'lastHeartbeat', type: 'uint256' },
-      { name: 'endpoint', type: 'string' },
-      { name: 'role', type: 'uint8' },
-      { name: 'status', type: 'uint8' },
-    ]}],
+    outputs: [
+      {
+        name: 'identity',
+        type: 'tuple',
+        components: [
+          { name: 'nodeId', type: 'bytes32' },
+          { name: 'publicKey', type: 'bytes' },
+          {
+            name: 'nonce',
+            type: 'tuple',
+            components: [
+              { name: 'a', type: 'uint64' },
+              { name: 'b', type: 'uint64' },
+              { name: 'c', type: 'uint64' },
+              { name: 'd', type: 'uint64' },
+            ],
+          },
+          { name: 'operator', type: 'address' },
+          { name: 'stakedAmount', type: 'uint256' },
+          { name: 'registeredAt', type: 'uint256' },
+          { name: 'lastHeartbeat', type: 'uint256' },
+          { name: 'endpoint', type: 'string' },
+          { name: 'role', type: 'uint8' },
+          { name: 'status', type: 'uint8' },
+        ],
+      },
+    ],
     stateMutability: 'view',
   },
 ] as const
@@ -249,7 +269,7 @@ export class SQLitIdentityService {
    */
   async generateIdentity(
     targetDifficulty = 24,
-    onProgress?: (difficulty: number, elapsed: number) => void
+    onProgress?: (difficulty: number, elapsed: number) => void,
   ): Promise<SQLitIdentity> {
     // Generate secp256k1 keypair
     const privateKeyBytes = secp256k1.utils.randomPrivateKey()
@@ -265,9 +285,9 @@ export class SQLitIdentityService {
     for (let attempt = 0; ; attempt++) {
       // Random nonce
       const nonce = {
-        a: BigInt(Math.floor(Math.random() * 0xFFFFFFFF)),
-        b: BigInt(Math.floor(Math.random() * 0xFFFFFFFF)),
-        c: BigInt(Math.floor(Math.random() * 0xFFFFFFFF)),
+        a: BigInt(Math.floor(Math.random() * 0xffffffff)),
+        b: BigInt(Math.floor(Math.random() * 0xffffffff)),
+        c: BigInt(Math.floor(Math.random() * 0xffffffff)),
         d: BigInt(0),
       }
 
@@ -308,7 +328,7 @@ export class SQLitIdentityService {
    */
   computeNodeId(
     publicKey: string,
-    nonce: { a: bigint; b: bigint; c: bigint; d: bigint }
+    nonce: { a: bigint; b: bigint; c: bigint; d: bigint },
   ): string {
     // Convert public key to bytes
     const pubKeyBytes = Buffer.from(publicKey, 'hex')
@@ -316,10 +336,10 @@ export class SQLitIdentityService {
     // Convert nonce to BIG-ENDIAN bytes (32 bytes total)
     // CovenantSQL uses binary.BigEndian for Uint256.Bytes()
     const nonceBytes = Buffer.alloc(32)
-    nonceBytes.writeBigUInt64BE(nonce.a, 0)   // A at offset 0
-    nonceBytes.writeBigUInt64BE(nonce.b, 8)   // B at offset 8
-    nonceBytes.writeBigUInt64BE(nonce.c, 16)  // C at offset 16
-    nonceBytes.writeBigUInt64BE(nonce.d, 24)  // D at offset 24
+    nonceBytes.writeBigUInt64BE(nonce.a, 0) // A at offset 0
+    nonceBytes.writeBigUInt64BE(nonce.b, 8) // B at offset 8
+    nonceBytes.writeBigUInt64BE(nonce.c, 16) // C at offset 16
+    nonceBytes.writeBigUInt64BE(nonce.d, 24) // D at offset 24
 
     // Concatenate: publicKey || nonce
     const input = Buffer.concat([pubKeyBytes, nonceBytes])
@@ -365,7 +385,7 @@ export class SQLitIdentityService {
     identity: SQLitIdentity,
     role: 'blockproducer' | 'miner',
     endpoint: string,
-    stakeAmount: bigint
+    stakeAmount: bigint,
   ): Promise<Hex> {
     if (!this.walletClient) {
       throw new Error('Wallet client required for registration')
@@ -426,12 +446,17 @@ export class SQLitIdentityService {
    * Discover all active block producer peers from on-chain registry
    */
   async discoverBlockProducers(): Promise<PeerIdentity[]> {
-    const result = await this.publicClient.readContract({
+    const result = (await this.publicClient.readContract({
       address: this.registryAddress,
       abi: REGISTRY_ABI,
       functionName: 'getActiveBlockProducers',
       args: [],
-    }) as [Hex[], string[], Hex[], { a: bigint; b: bigint; c: bigint; d: bigint }[]]
+    })) as [
+      Hex[],
+      string[],
+      Hex[],
+      { a: bigint; b: bigint; c: bigint; d: bigint }[],
+    ]
 
     const [nodeIds, endpoints, publicKeys, nonces] = result
 
@@ -464,7 +489,7 @@ export class SQLitIdentityService {
       workingRoot?: string
       listenAddr?: string
       role?: 'Leader' | 'Follower'
-    } = {}
+    } = {},
   ): string {
     const workingRoot = options.workingRoot ?? '/data/sqlit'
     const listenAddr = options.listenAddr ?? '0.0.0.0:4661'
@@ -494,10 +519,13 @@ export class SQLitIdentityService {
         ChainFileName: 'chain.db',
         BPGenesisInfo: {
           Version: 1,
-          BlockHash: '0000000000000000000000000000000000000000000000000000000000000000',
+          BlockHash:
+            '0000000000000000000000000000000000000000000000000000000000000000',
           Producer: leader.nodeId,
-          MerkleRoot: '0000000000000000000000000000000000000000000000000000000000000000',
-          ParentHash: '0000000000000000000000000000000000000000000000000000000000000000',
+          MerkleRoot:
+            '0000000000000000000000000000000000000000000000000000000000000000',
+          ParentHash:
+            '0000000000000000000000000000000000000000000000000000000000000000',
           Timestamp: '2025-01-01T00:00:00Z',
           BaseAccounts: [],
         },
@@ -530,7 +558,7 @@ export class SQLitIdentityService {
 export function verifyIdentityLocal(
   publicKey: string,
   nonce: { a: bigint; b: bigint; c: bigint; d: bigint },
-  expectedNodeId: string
+  expectedNodeId: string,
 ): boolean {
   const service = new SQLitIdentityService({
     rpcUrl: 'http://localhost:8545',

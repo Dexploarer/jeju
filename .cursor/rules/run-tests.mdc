@@ -3,7 +3,7 @@ description: Run tests yourself
 alwaysApply: true
 ---
 
-You should ALWAYS run the tests after you make any change and verify all tests pass. You should run the tests yourself. This includes playwright tests. For crypto, use dappwright (@tenkeylabs/dappwright) since it supports metamask and crypto and all that.
+You should ALWAYS run the tests after you make any change and verify all tests pass. You should run the tests yourself.
 
 ALWAYAS RUN THE TESTS. ALWAYS RUN THEM YOURSELF.
 
@@ -12,3 +12,5 @@ Do not wait for the user to run the tests. Assume that if you haven't tests your
 You CAN run the tests. If you can't fix the underlying stuff and then run them again and again until it all works.
 
 ALWAYS run frontend testing with Synpress. Don't make a website or anything that requires user feedback-- this just slows down iteration process.
+
+We use Jeju CLI to run the tests, which wraps Playwright and Synpress for e2e tests. Make sure to always run the tests, especially e2e tests, and make sure that tests never run unless we're running them with the Jeju CLI, backend services and chain running

@@ -1,265 +1,268 @@
-import { isProductionEnv } from '@jejunetwork/config'
-import { DataSource, DefaultNamingStrategy } from 'typeorm'
-import { config } from '../config'
-import * as models from '../model'
-
-function _requireEnv(name: string): string {
-  const value = process.env[name]
-  if (!value) throw new Error(`Missing required environment variable: ${name}`)
-  return value
-}
-
-const IS_PRODUCTION = config.isProduction
-const IS_SQLIT_ONLY_MODE = config.indexerMode === 'sqlit-only'
-
-function _parsePort(portStr: string, defaultPort: number): number {
-  const port = parseInt(portStr, 10)
-  if (Number.isNaN(port) || port <= 0 || port > 65535) {
-    return defaultPort
-  }
-  return port
-}
-
-function _parsePositiveInt(
-  value: string,
-  defaultValue: number,
-  name: string,
-): number {
-  const parsed = parseInt(value, 10)
-  if (Number.isNaN(parsed) || parsed <= 0) {
-    if (value !== undefined && value !== '') {
-      console.warn(`Invalid ${name}: ${value}. Using default: ${defaultValue}`)
-    }
-    return defaultValue
-  }
-  return parsed
-}
-
-function getDBConfig(): {
-  host: string
-  port: number
-  database: string
-  username: string
-  password: string
-} {
-  if (IS_SQLIT_ONLY_MODE) {
-    // Return dummy config - won't be used but needed for TypeORM initialization
-    return {
-      host: 'localhost',
-      port: 5432,
-      database: 'indexer',
-      username: 'postgres',
-      password: 'postgres',
-    }
-  }
-
-  // In production, require all DB config; in dev use config defaults
-  if (IS_PRODUCTION) {
-    if (!config.dbHost) throw new Error('DB_HOST required in production')
-    if (!config.dbName) throw new Error('DB_NAME required in production')
-    if (!config.dbUser) throw new Error('DB_USER required in production')
-    if (!config.dbPass) throw new Error('DB_PASS required in production')
-  }
-
-  return {
-    host: config.dbHost,
-    port: config.dbPort,
-    database: config.dbName,
-    username: config.dbUser,
-    password: config.dbPass,
-  }
-}
-
-const POOL_CONFIG = {
-  poolSize: config.dbPoolSize,
-  connectionTimeoutMillis: config.dbConnectTimeout,
-  idleTimeoutMillis: config.dbIdleTimeout,
-}
-
-function toSnakeCase(str: string): string {
-  return str
-    .replace(/([a-z\d])([A-Z])/g, '$1_$2')
-    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1_$2')
-    .toLowerCase()
-}
-
-class SnakeNamingStrategy extends DefaultNamingStrategy {
-  tableName(className: string, customName?: string) {
-    return customName || toSnakeCase(className)
-  }
-  columnName(
-    propertyName: string,
-    customName?: string,
-    prefixes: string[] = [],
-  ) {
-    return (
-      toSnakeCase(prefixes.join('_')) +
-      (customName || toSnakeCase(propertyName))
-    )
-  }
-  relationName(propertyName: string) {
-    return toSnakeCase(propertyName)
-  }
-  joinColumnName(relationName: string, referencedColumnName: string) {
-    return toSnakeCase(`${relationName}_${referencedColumnName}`)
-  }
-  joinTableName(firstTableName: string, secondTableName: string) {
-    return toSnakeCase(`${firstTableName}_${secondTableName}`)
-  }
-  joinTableColumnName(
-    tableName: string,
-    propertyName: string,
-    columnName?: string,
-  ) {
-    return `${toSnakeCase(tableName)}_${columnName || toSnakeCase(propertyName)}`
-  }
-}
-
-let dataSource: DataSource | null = null
-let postgresAvailable = false
-let schemaVerified = false
-
 /**
- * Get the database mode the indexer is running in
+ * Database utilities for Indexer
+ *
+ * Uses SQLit (distributed SQLite) with Drizzle adapter
+ * PostgreSQL is no longer required - all data is stored in SQLit
  */
-export function getIndexerMode(): 'postgres' | 'sqlit-only' | 'unavailable' {
-  if (IS_SQLIT_ONLY_MODE) return 'sqlit-only'
-  if (postgresAvailable) return 'postgres'
-  return 'unavailable'
+
+import {
+  getDatabaseId,
+  initializeSchema,
+  isAvailable,
+  count as sqlitCount,
+  find as sqlitFind,
+  findOne as sqlitFindOne,
+  query as sqlitQuery,
+} from '../db'
+
+let schemaReady = false
+
+/**
+ * Get the database mode - always SQLit
+ */
+export function getIndexerMode(): 'sqlit' {
+  return 'sqlit'
 }
 
 /**
- * Check if PostgreSQL is available
+ * Check if SQLit is available (replaces isPostgresAvailable)
  */
 export function isPostgresAvailable(): boolean {
-  return postgresAvailable && dataSource?.isInitialized === true
+  // For backwards compatibility, return true when SQLit is available
+  return schemaReady
 }
 
 /**
  * Check if database schema has been verified as ready
  */
 export function isSchemaReady(): boolean {
-  return schemaVerified
+  return schemaReady
 }
 
 /**
- * Mark schema as verified (called after verifyDatabaseSchema succeeds)
+ * Mark schema as verified
  */
 export function setSchemaVerified(verified: boolean): void {
-  schemaVerified = verified
+  schemaReady = verified
 }
 
 /**
- * Initialize and return the DataSource connection.
- * In SQLit-only mode, returns null without attempting PostgreSQL connection.
+ * Initialize SQLit database
+ * This replaces getDataSource() for PostgreSQL
  */
-export async function getDataSource(): Promise<DataSource | null> {
-  if (IS_SQLIT_ONLY_MODE) return null
-  if (dataSource?.isInitialized) return dataSource
+export async function initializeSQLit(): Promise<boolean> {
+  console.log(`[DB] Initializing SQLit database: ${getDatabaseId()}`)
 
-  const entities = Object.values(models).filter(
-    (v): boolean =>
-      typeof v === 'function' && v.prototype.constructor !== undefined,
-  ) as (new (
-    ...args: never[]
-  ) => object)[]
+  try {
+    // Initialize schema (creates tables if needed)
+    await initializeSchema()
 
-  const dbConfig = getDBConfig()
+    // Verify connection
+    const available = await isAvailable()
+    if (!available) {
+      console.error('[DB] SQLit connection failed')
+      return false
+    }
 
-  dataSource = new DataSource({
-    type: 'postgres',
-    ...dbConfig,
-    entities,
-    namingStrategy: new SnakeNamingStrategy(),
-    synchronize: false,
-    logging: config.dbLogging,
-    extra: {
-      max: POOL_CONFIG.poolSize,
-      connectionTimeoutMillis: POOL_CONFIG.connectionTimeoutMillis,
-      idleTimeoutMillis: POOL_CONFIG.idleTimeoutMillis,
-    },
-  })
-
-  await dataSource.initialize()
-  postgresAvailable = true
-  // Don't log connection details in production to prevent side-channel leakage
-  if (!isProductionEnv()) {
-    console.log(
-      `[DB] Connected: ${dbConfig.host}:${dbConfig.port}/${dbConfig.database}`,
-    )
-  } else {
-    console.log('[DB] Connected to PostgreSQL')
+    schemaReady = true
+    console.log('[DB] SQLit database ready')
+    return true
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error(`[DB] SQLit initialization failed: ${message}`)
+    return false
   }
-  return dataSource
 }
 
 /**
- * Connect to PostgreSQL with retry logic.
- * Returns DataSource if successful, null if all retries fail.
+ * Initialize SQLit with retry logic
  */
-export async function getDataSourceWithRetry(
+export async function initializeSQLitWithRetry(
   maxRetries = 3,
   retryDelayMs = 2000,
-): Promise<DataSource | null> {
-  if (IS_SQLIT_ONLY_MODE) {
-    console.log('[DB] SQLit-only mode - PostgreSQL disabled')
-    return null
-  }
-
+): Promise<boolean> {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await getDataSource()
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      console.warn(`[DB] Attempt ${attempt}/${maxRetries} failed: ${message}`)
-      if (attempt < maxRetries) {
-        await new Promise((r) => setTimeout(r, retryDelayMs))
-      }
+    const success = await initializeSQLit()
+    if (success) return true
+
+    if (attempt < maxRetries) {
+      console.log(`[DB] Retry ${attempt}/${maxRetries} in ${retryDelayMs}ms...`)
+      await new Promise((r) => setTimeout(r, retryDelayMs))
     }
   }
 
-  console.error('[DB] All connection attempts failed')
-  postgresAvailable = false
-  return null
+  console.error('[DB] All SQLit connection attempts failed')
+  return false
 }
 
+/**
+ * Close database connection (no-op for SQLit, kept for API compatibility)
+ */
 export async function closeDataSource(): Promise<void> {
-  if (dataSource?.isInitialized) {
-    await dataSource.destroy()
-    dataSource = null
-    postgresAvailable = false
-  }
+  // SQLit connections are managed by the pool
+  schemaReady = false
 }
 
 /**
  * Verify the database schema exists by checking for required tables.
- * Returns true if schema is ready, false if tables are missing.
  */
-export async function verifyDatabaseSchema(ds: DataSource): Promise<boolean> {
+export async function verifySQLitSchema(): Promise<boolean> {
   const requiredTables = ['block', 'transaction', 'registered_agent', 'account']
 
   try {
     for (const table of requiredTables) {
-      const result = await ds.query(
-        `SELECT EXISTS (
-          SELECT FROM information_schema.tables 
-          WHERE table_schema = 'public' AND table_name = $1
-        )`,
+      const result = await sqlitQuery<{ name: string }>(
+        `SELECT name FROM sqlite_master WHERE type='table' AND name = ?`,
         [table],
       )
-      const exists = result[0]?.exists === true
-      if (!exists) {
+      if (result.rows.length === 0) {
         console.warn(`[DB] Required table missing: ${table}`)
         return false
       }
     }
     console.log('[DB] Database schema verified')
     return true
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
     console.warn(`[DB] Schema verification failed: ${message}`)
     return false
   }
 }
 
-export { DataSource }
+// Re-export query utilities for direct use
+export {
+  sqlitCount as count,
+  sqlitFind as find,
+  sqlitFindOne as findOne,
+  sqlitQuery as query,
+}
+
+// Legacy compatibility - SQLitDataSource wrapper
+// This provides a similar interface to TypeORM DataSource for gradual migration
+
+interface Repository<T> {
+  find(options?: {
+    where?: Record<string, unknown>
+    order?: Record<string, 'ASC' | 'DESC'>
+    take?: number
+    skip?: number
+  }): Promise<T[]>
+  findOne(options: { where: Record<string, unknown> }): Promise<T | null>
+  count(options?: { where?: Record<string, unknown> }): Promise<number>
+}
+
+export class SQLitDataSource {
+  private _isInitialized = false
+
+  get isInitialized(): boolean {
+    return this._isInitialized
+  }
+
+  async initialize(): Promise<void> {
+    await initializeSQLit()
+    this._isInitialized = true
+  }
+
+  async destroy(): Promise<void> {
+    await closeDataSource()
+    this._isInitialized = false
+  }
+
+  getRepository<T>(entityClass: {
+    new (...args: unknown[]): T
+    name: string
+  }): Repository<T> {
+    const tableName = entityClass.name
+
+    return {
+      async find(options = {}) {
+        return sqlitFind<T>(tableName, {
+          where: options.where as Record<
+            string,
+            string | number | boolean | null
+          >,
+          order: options.order,
+          take: options.take,
+          skip: options.skip,
+        })
+      },
+
+      async findOne(options) {
+        const results = await sqlitFind<T>(tableName, {
+          where: options.where as Record<
+            string,
+            string | number | boolean | null
+          >,
+          take: 1,
+        })
+        return results[0] ?? null
+      },
+
+      async count(options = {}) {
+        return sqlitCount(
+          tableName,
+          options.where as Record<string, string | number | boolean | null>,
+        )
+      },
+    }
+  }
+
+  async query<T>(sql: string, params?: unknown[]): Promise<T[]> {
+    const result = await sqlitQuery<T>(
+      sql,
+      params as (string | number | boolean | null | bigint)[],
+    )
+    return result.rows
+  }
+}
+
+// Singleton instance for compatibility
+let sqlitDataSource: SQLitDataSource | null = null
+
+/**
+ * Get SQLit data source (replaces getDataSource for PostgreSQL)
+ */
+export async function getDataSource(): Promise<SQLitDataSource | null> {
+  if (!sqlitDataSource) {
+    sqlitDataSource = new SQLitDataSource()
+    await sqlitDataSource.initialize()
+  }
+  return sqlitDataSource
+}
+
+/**
+ * Get data source with retry (replaces getDataSourceWithRetry)
+ */
+export async function getDataSourceWithRetry(
+  maxRetries = 3,
+  retryDelayMs = 2000,
+): Promise<SQLitDataSource | null> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const ds = await getDataSource()
+      if (ds?.isInitialized) return ds
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      console.warn(`[DB] Attempt ${attempt}/${maxRetries} failed: ${message}`)
+    }
+
+    if (attempt < maxRetries) {
+      await new Promise((r) => setTimeout(r, retryDelayMs))
+    }
+  }
+
+  console.error('[DB] All connection attempts failed')
+  return null
+}
+
+/**
+ * Verify database schema (legacy compatibility)
+ */
+export async function verifyDatabaseSchema(
+  _ds: SQLitDataSource,
+): Promise<boolean> {
+  return verifySQLitSchema()
+}
+
+// Export DataSource type alias for compatibility
+export type DataSource = SQLitDataSource

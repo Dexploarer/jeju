@@ -11,21 +11,17 @@
  *   bun run scripts/register-jns.ts --help
  */
 
-import {
-  getContract,
-  getCurrentNetwork,
-  getRpcUrl,
-} from '@jejunetwork/config'
+import { getContract, getCurrentNetwork, getRpcUrl } from '@jejunetwork/config'
+import type { Address, Hex } from 'viem'
 import {
   createPublicClient,
   createWalletClient,
+  encodePacked,
   http,
   keccak256,
-  encodePacked,
   stringToBytes,
 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
-import type { Address, Hex } from 'viem'
 
 // Parse CLI arguments
 const args = process.argv.slice(2)
@@ -63,7 +59,10 @@ Example:
   process.exit(0)
 }
 
-const NETWORK = (argMap.get('network') ?? getCurrentNetwork()) as 'localnet' | 'testnet' | 'mainnet'
+const NETWORK = (argMap.get('network') ?? getCurrentNetwork()) as
+  | 'localnet'
+  | 'testnet'
+  | 'mainnet'
 const APP_NAME = argMap.get('name') ?? 'factory'
 const FRONTEND_CID = argMap.get('frontend-cid')
 const BACKEND_ENDPOINT = argMap.get('backend-endpoint')
@@ -183,7 +182,8 @@ const JNS_REGISTRY_ABI = [
 
 // Calculate namehash
 function namehash(name: string): Hex {
-  let node: Hex = '0x0000000000000000000000000000000000000000000000000000000000000000'
+  let node: Hex =
+    '0x0000000000000000000000000000000000000000000000000000000000000000'
   if (name) {
     const labels = name.split('.')
     for (let i = labels.length - 1; i >= 0; i--) {
@@ -201,7 +201,8 @@ function encodeIPFSContenthash(cid: string): Hex {
 
   // For CIDv0 "Qm..." format, we need to base58 decode to get the multihash
   if (cid.startsWith('Qm')) {
-    const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+    const BASE58_ALPHABET =
+      '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 
     function base58Decode(str: string): Uint8Array {
       const bytes: number[] = [0]
@@ -276,7 +277,11 @@ async function registerJNS(): Promise<void> {
   console.log('')
 
   // Get contract addresses
-  const jnsRegistrarAddress = getContract('jns', 'registrar', NETWORK) as Address
+  const jnsRegistrarAddress = getContract(
+    'jns',
+    'registrar',
+    NETWORK,
+  ) as Address
   const jnsResolverAddress = getContract('jns', 'resolver', NETWORK) as Address
   const jnsRegistryAddress = getContract('jns', 'registry', NETWORK) as Address
 
@@ -323,12 +328,13 @@ async function registerJNS(): Promise<void> {
     args: [node],
   })
 
-  const isRegistered = currentOwner !== '0x0000000000000000000000000000000000000000'
+  const isRegistered =
+    currentOwner !== '0x0000000000000000000000000000000000000000'
   const ownsName = currentOwner.toLowerCase() === account.address.toLowerCase()
 
   if (isRegistered && !ownsName) {
     throw new Error(
-      `Name ${fullName} is already registered to ${currentOwner}. You need ownership to update records.`
+      `Name ${fullName} is already registered to ${currentOwner}. You need ownership to update records.`,
     )
   }
 
@@ -345,7 +351,9 @@ async function registerJNS(): Promise<void> {
     })
 
     if (!available) {
-      console.log(`Name ${APP_NAME} is not available - checking if it's registered to someone else...`)
+      console.log(
+        `Name ${APP_NAME} is not available - checking if it's registered to someone else...`,
+      )
       // Try to proceed anyway - the name might be owned by the registry itself
     } else {
       // Get price for 1 year
@@ -376,7 +384,9 @@ async function registerJNS(): Promise<void> {
   } else {
     console.log(`Name ${fullName} already owned by ${currentOwner}`)
     if (!ownsName) {
-      console.log('  WARNING: You do not own this name. Will attempt to set records anyway...')
+      console.log(
+        '  WARNING: You do not own this name. Will attempt to set records anyway...',
+      )
     }
   }
 
@@ -435,7 +445,10 @@ async function registerJNS(): Promise<void> {
     key: 'url',
     value: `https://${APP_NAME}.${networkDomain}jejunetwork.org`,
   })
-  textRecords.push({ key: 'description', value: 'Factory - Bounty and Package Marketplace' })
+  textRecords.push({
+    key: 'description',
+    value: 'Factory - Bounty and Package Marketplace',
+  })
 
   for (const record of textRecords) {
     console.log(`Setting text record: ${record.key}...`)

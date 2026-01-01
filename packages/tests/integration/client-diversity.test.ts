@@ -424,7 +424,7 @@ describe('Client Diversity Summary', () => {
         return { client, health: { healthy: false }, version: 'N/A' }
       }
     }
-    
+
     console.log('\n=== CLIENT DIVERSITY REPORT ===\n')
 
     // Check all in parallel with quick timeouts

@@ -3,31 +3,19 @@
  * Shared business logic for computing various statistics
  */
 
-import type { DataSource } from 'typeorm'
 import { formatEther } from 'viem'
 import {
-  Account,
-  Block,
-  ComputeProvider,
-  ComputeRental,
+  type Block,
+  type ComputeProvider,
   ComputeRentalStatus,
-  ContainerImage,
-  Contract,
-  CrossServiceRequest,
   CrossServiceRequestStatus,
-  NodeStake,
-  OracleDispute,
+  count,
+  find,
   OracleDisputeStatus,
-  OracleFeed,
-  OracleOperator,
-  OracleReport,
-  OracleSubscription,
-  RegisteredAgent,
-  StorageDeal,
+  type OracleOperator,
   StorageDealStatus,
-  StorageProvider,
-  Transaction,
-} from '../model'
+  type StorageProvider,
+} from '../db'
 
 export interface MarketplaceStats {
   compute: {
@@ -66,79 +54,70 @@ export interface MarketplaceStats {
   lastUpdated: string
 }
 
-export async function getMarketplaceStats(
-  dataSource: DataSource,
-): Promise<MarketplaceStats> {
-  if (!dataSource) {
-    throw new Error('DataSource is required')
-  }
-
-  // Compute stats
-  const computeRepo = dataSource.getRepository(ComputeProvider)
-  const computeProviders = await computeRepo.find()
+/**
+ * Get marketplace statistics from SQLit
+ * @deprecated dataSource parameter is no longer used - queries go directly to SQLit
+ */
+export async function getMarketplaceStats(): Promise<MarketplaceStats> {
+  // Compute stats - using SQLit queries
+  const computeProviders = await find<ComputeProvider>('ComputeProvider', {})
   const activeCompute = computeProviders.filter((p) => p.isActive)
   const agentLinkedCompute = computeProviders.filter(
     (p) => p.agentId && p.agentId > 0,
   )
   const totalComputeStake = computeProviders.reduce(
-    (sum, p) => sum + (p.stakeAmount ?? 0n),
+    (sum, p) => sum + BigInt(p.stakeAmount ?? '0'),
     0n,
   )
   const totalComputeEarnings = computeProviders.reduce(
-    (sum, p) => sum + (p.totalEarnings ?? 0n),
+    (sum, p) => sum + BigInt(p.totalEarnings ?? '0'),
     0n,
   )
 
   // Storage stats
-  const storageRepo = dataSource.getRepository(StorageProvider)
-  const storageProviders = await storageRepo.find()
+  const storageProviders = await find<StorageProvider>('StorageProvider', {})
   const activeStorage = storageProviders.filter((p) => p.isActive)
   const agentLinkedStorage = storageProviders.filter(
     (p) => p.agentId && p.agentId > 0,
   )
   const totalStorageStake = storageProviders.reduce(
-    (sum, p) => sum + (p.stakeAmount ?? 0n),
+    (sum, p) => sum + BigInt(p.stakeAmount ?? '0'),
     0n,
   )
   const totalCapacity = storageProviders.reduce(
-    (sum, p) => sum + Number(p.totalCapacityGB ?? 0n),
+    (sum, p) => sum + Number(p.totalCapacityGb ?? '0'),
     0,
   )
   const usedCapacity = storageProviders.reduce(
-    (sum, p) => sum + Number(p.usedCapacityGB ?? 0n),
+    (sum, p) => sum + Number(p.usedCapacityGb ?? '0'),
     0,
   )
 
   // Cross-service stats
-  const containerRepo = dataSource.getRepository(ContainerImage)
-  const requestRepo = dataSource.getRepository(CrossServiceRequest)
   const [totalContainers, verifiedContainers] = await Promise.all([
-    containerRepo.count(),
-    containerRepo.count({ where: { verified: true } }),
+    count('ContainerImage', {}),
+    count('ContainerImage', { verified: true }),
   ])
   const [totalRequests, successfulRequests] = await Promise.all([
-    requestRepo.count(),
-    requestRepo.count({
-      where: { status: CrossServiceRequestStatus.COMPLETED },
+    count('CrossServiceRequest', {}),
+    count('CrossServiceRequest', {
+      status: CrossServiceRequestStatus.COMPLETED,
     }),
   ])
 
   // Rental stats
-  const rentalRepo = dataSource.getRepository(ComputeRental)
-  const dealRepo = dataSource.getRepository(StorageDeal)
   const [totalRentals, activeRentals] = await Promise.all([
-    rentalRepo.count(),
-    rentalRepo.count({ where: { status: ComputeRentalStatus.ACTIVE } }),
+    count('ComputeRental', {}),
+    count('ComputeRental', { status: ComputeRentalStatus.ACTIVE }),
   ])
   const [totalDeals, activeDeals] = await Promise.all([
-    dealRepo.count(),
-    dealRepo.count({ where: { status: StorageDealStatus.ACTIVE } }),
+    count('StorageDeal', {}),
+    count('StorageDeal', { status: StorageDealStatus.ACTIVE }),
   ])
 
   // Agent stats
-  const agentRepo = dataSource.getRepository(RegisteredAgent)
-  const totalAgents = await agentRepo.count({ where: { active: true } })
-  const bannedAgents = await agentRepo.count({ where: { isBanned: true } })
+  const totalAgents = await count('RegisteredAgent', { active: true })
+  const bannedAgents = await count('RegisteredAgent', { isBanned: true })
 
   // Full-stack agents (both compute and storage with same agent ID)
   const computeAgentIds = new Set(agentLinkedCompute.map((p) => p.agentId))
@@ -214,13 +193,10 @@ export interface OracleStats {
   lastUpdated: string
 }
 
-export async function getOracleStats(
-  dataSource: DataSource,
-): Promise<OracleStats> {
-  if (!dataSource) {
-    throw new Error('DataSource is required')
-  }
-
+/**
+ * Get oracle statistics from SQLit
+ */
+export async function getOracleStats(): Promise<OracleStats> {
   const [
     totalFeeds,
     activeFeeds,
@@ -232,26 +208,26 @@ export async function getOracleStats(
     totalSubscriptions,
     activeSubscriptions,
   ] = await Promise.all([
-    dataSource.getRepository(OracleFeed).count(),
-    dataSource.getRepository(OracleFeed).count({ where: { isActive: true } }),
-    dataSource.getRepository(OracleOperator).find(),
-    dataSource.getRepository(OracleReport).count(),
-    dataSource
-      .getRepository(OracleReport)
-      .count({ where: { isDisputed: true } }),
-    dataSource.getRepository(OracleDispute).count(),
-    dataSource
-      .getRepository(OracleDispute)
-      .count({ where: { status: OracleDisputeStatus.OPEN } }),
-    dataSource.getRepository(OracleSubscription).count(),
-    dataSource
-      .getRepository(OracleSubscription)
-      .count({ where: { isActive: true } }),
+    count('OracleFeed', {}),
+    count('OracleFeed', { isActive: true }),
+    find<OracleOperator>('OracleOperator', {}),
+    count('OracleReport', {}),
+    count('OracleReport', { isDisputed: true }),
+    count('OracleDispute', {}),
+    count('OracleDispute', { status: OracleDisputeStatus.OPEN }),
+    count('OracleSubscription', {}),
+    count('OracleSubscription', { isActive: true }),
   ])
 
   const activeOperators = operators.filter((o) => o.isActive && !o.isJailed)
-  const totalStaked = operators.reduce((sum, o) => sum + o.stakedAmount, 0n)
-  const totalEarnings = operators.reduce((sum, o) => sum + o.totalEarnings, 0n)
+  const totalStaked = operators.reduce(
+    (sum, o) => sum + BigInt(o.stakedAmount ?? '0'),
+    0n,
+  )
+  const totalEarnings = operators.reduce(
+    (sum, o) => sum + BigInt(o.totalEarnings ?? '0'),
+    0n,
+  )
   const avgParticipation =
     operators.length > 0
       ? Math.floor(
@@ -311,13 +287,10 @@ export interface NetworkStats {
   latestBlock: number
 }
 
-export async function getNetworkStats(
-  dataSource: DataSource,
-): Promise<NetworkStats> {
-  if (!dataSource) {
-    throw new Error('DataSource is required')
-  }
-
+/**
+ * Get network statistics from SQLit
+ */
+export async function getNetworkStats(): Promise<NetworkStats> {
   const [
     blockCount,
     txCount,
@@ -326,22 +299,20 @@ export async function getNetworkStats(
     agentCount,
     nodeCount,
   ] = await Promise.all([
-    dataSource.getRepository(Block).count(),
-    dataSource.getRepository(Transaction).count(),
-    dataSource.getRepository(Account).count(),
-    dataSource.getRepository(Contract).count(),
-    dataSource
-      .getRepository(RegisteredAgent)
-      .count({ where: { active: true } }),
-    dataSource.getRepository(NodeStake).count({ where: { isActive: true } }),
+    count('Block', {}),
+    count('Transaction', {}),
+    count('Account', {}),
+    count('Contract', {}),
+    count('RegisteredAgent', { active: true }),
+    count('NodeStake', { isActive: true }),
   ])
 
-  const latestBlock = await dataSource
-    .getRepository(Block)
-    .createQueryBuilder('b')
-    .orderBy('b.number', 'DESC')
-    .limit(1)
-    .getOne()
+  // Get latest block
+  const latestBlocks = await find<Block>('Block', {
+    order: { number: 'DESC' },
+    take: 1,
+  })
+  const latestBlock = latestBlocks[0]
 
   return {
     blocks: blockCount,

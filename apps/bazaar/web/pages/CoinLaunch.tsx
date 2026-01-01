@@ -17,7 +17,11 @@ const TOKEN_FACTORY_ABI = parseAbi([
 
 let TOKEN_FACTORY_ADDRESS: `0x${string}` | undefined
 try {
-  TOKEN_FACTORY_ADDRESS = getContract('bazaar', 'tokenFactory', NETWORK) as `0x${string}`
+  TOKEN_FACTORY_ADDRESS = getContract(
+    'bazaar',
+    'tokenFactory',
+    NETWORK,
+  ) as `0x${string}`
 } catch {
   TOKEN_FACTORY_ADDRESS = undefined
 }

@@ -122,7 +122,7 @@ const app = new Elysia()
   .use(rlaifRoutes)
   .use(bugBountyRoutes)
   // Root route - serve SPA if static files exist, otherwise return API info
-  .get('/', ({ request }) => {
+  .get('/', () => {
     // If static files exist, serve index.html for the root
     if (hasStaticFiles) {
       const indexFile = Bun.file(join(STATIC_DIR, 'index.html'))

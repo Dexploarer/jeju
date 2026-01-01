@@ -3,21 +3,19 @@
  * Shared utilities for querying nodes
  */
 
-import type { DataSource } from 'typeorm'
-import { NodeStake } from '../model'
+import { find, type NodeStake } from '../db'
 
 export interface NodesQueryOptions {
   active?: boolean
   limit: number
 }
 
+/**
+ * Get nodes from SQLit with optional filtering
+ */
 export async function getNodes(
-  dataSource: DataSource,
   options: NodesQueryOptions,
 ): Promise<NodeStake[]> {
-  if (!dataSource) {
-    throw new Error('DataSource is required')
-  }
   if (typeof options.limit !== 'number' || options.limit <= 0) {
     throw new Error(
       `Invalid limit: ${options.limit}. Must be a positive number.`,
@@ -29,9 +27,9 @@ export async function getNodes(
     where.isActive = options.active
   }
 
-  return await dataSource.getRepository(NodeStake).find({
+  return find<NodeStake>('NodeStake', {
     where,
-    order: { stakedValueUSD: 'DESC' },
+    order: { stakeAmount: 'DESC' },
     take: options.limit,
   })
 }

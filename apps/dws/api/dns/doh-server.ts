@@ -126,6 +126,8 @@ export interface DoHServerConfig {
   dnssecEnabled: boolean
   /** Cache TTL in seconds */
   cacheTTL: number
+  /** DWS gateway IP address for A record resolution */
+  gatewayIp?: string
   /** Custom TLDs handled by this server */
   customTLDs: string[]
 }
@@ -382,12 +384,16 @@ export class DoHServer {
             ]
           } else {
             // Return DWS gateway IP for this name
+            const gatewayIp = this.config.gatewayIp
+            if (!gatewayIp) {
+              console.warn(`[DoHServer] No gatewayIp configured for A record resolution of ${question.name}. Set gatewayIp in config for production.`)
+            }
             response.Answer = [
               {
                 name: question.name,
                 type: DNSRecordType.A,
                 TTL: this.config.cacheTTL,
-                data: '127.0.0.1', // DWS gateway IP
+                data: gatewayIp ?? '127.0.0.1',
               },
             ]
           }

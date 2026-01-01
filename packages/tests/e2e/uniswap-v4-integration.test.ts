@@ -6,7 +6,7 @@
  * Prerequisites:
  * - Localnet running (bun run localnet:start)
  * - V4 contracts deployed
- * 
+ *
  * NOTE: These tests require a specific deployment module which may not be available.
  * They will be skipped until the module is available.
  */
@@ -24,11 +24,15 @@ const TEST_ACCOUNTS = TEST_WALLETS
 let getLocalnetRpcUrl: (() => string) | undefined
 let moduleAvailable = false
 try {
-  const mod = await import('../../packages/deployment/scripts/shared/get-localnet-rpc')
+  const mod = await import(
+    '../../packages/deployment/scripts/shared/get-localnet-rpc'
+  )
   getLocalnetRpcUrl = mod.getLocalnetRpcUrl
   moduleAvailable = true
 } catch {
-  console.log('⏭️  get-localnet-rpc module not available, skipping uniswap v4 tests')
+  console.log(
+    '⏭️  get-localnet-rpc module not available, skipping uniswap v4 tests',
+  )
 }
 
 // Use shared test accounts (Anvil defaults) - fallback to env var for CI

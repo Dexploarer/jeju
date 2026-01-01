@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isAddress } from 'viem'
 import { usePublicClient } from 'wagmi'
 import { getContractAddressSafe } from '../config/contracts'
+import { API_BASE } from '../lib/api'
 import { api, extractDataSafe } from '../lib/client'
 
 export type AgentStatus = 'active' | 'paused' | 'offline'
@@ -55,9 +56,6 @@ interface ApiAgent {
   specializations: string[]
   reputation: number
 }
-
-// Browser-only hook - API is same origin
-const API_BASE = ''
 
 async function fetchApi<T>(
   path: string,

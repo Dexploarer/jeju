@@ -67,14 +67,16 @@ const DEFAULT_CONFIG: MultiBackendConfig = {
   defaultTier: 'popular',
   replicationFactor: 2,
 
-  // System content: WebTorrent + IPFS + local (local only if others unavailable)
-  systemContentBackends: ['webtorrent', 'ipfs', 'local'],
+  // System content: IPFS + Filecoin (no local fallback for system content)
+  // IPFS first for reliable CIDs, Filecoin for permanent storage
+  systemContentBackends: ['ipfs', 'filecoin'],
 
-  // Popular content: WebTorrent + IPFS + Filecoin + local
-  popularContentBackends: ['webtorrent', 'ipfs', 'filecoin', 'local'],
+  // Popular content: IPFS + Filecoin (no local fallback for popular content)
+  // Local backend returns non-IPFS CIDs which break decentralized routing
+  popularContentBackends: ['ipfs', 'filecoin'],
 
-  // Private content: IPFS (encrypted) + local
-  privateContentBackends: ['ipfs', 'local'],
+  // Private content: IPFS only (encrypted)
+  privateContentBackends: ['ipfs'],
 }
 
 // Multi-Backend Manager
@@ -137,14 +139,22 @@ export class MultiBackendManager {
 
   private initializeBackends(): void {
     // Local backend
+    // Local storage uses content hashes - primarily for caching and fallback reads
+    // IMPORTANT: Local backend should NOT be used for uploads in production
+    // as it returns non-IPFS CIDs that won't work with decentralized routing
     const localStorage = new Map<string, Buffer>()
     this.backends.set('local', {
       name: 'local',
       type: 'local',
       async upload(content: Buffer): Promise<{ cid: string; url: string }> {
-        const cid = keccak256(new Uint8Array(content)).slice(2, 50)
-        localStorage.set(cid, content)
-        return { cid, url: `/storage/${cid}` }
+        // Generate a local content hash for caching purposes
+        // Note: This is NOT an IPFS CID and should only be used as last resort
+        const contentHash = keccak256(new Uint8Array(content)).slice(2, 50)
+        localStorage.set(contentHash, content)
+        console.warn(
+          `[LocalBackend] Stored content locally with hash ${contentHash} - this is NOT an IPFS CID`,
+        )
+        return { cid: contentHash, url: `/storage/${contentHash}` }
       },
       async download(cid: string): Promise<Buffer> {
         const content = localStorage.get(cid)
@@ -499,16 +509,32 @@ export class MultiBackendManager {
   }
 
   /**
-   * Check if content exists
+   * Check if content exists (with timeout to prevent blocking)
    */
   async exists(cid: string): Promise<boolean> {
     if (this.contentRegistry.has(cid)) return true
 
-    for (const backend of this.backends.values()) {
-      if (await backend.exists(cid)) return true
-    }
+    // Check backends in parallel with individual timeouts
+    const checkPromises = Array.from(this.backends.entries()).map(
+      async ([name, backend]) => {
+        try {
+          const timeoutMs = 5000 // 5 second timeout per backend
+          const result = await Promise.race([
+            backend.exists(cid),
+            new Promise<boolean>((_, reject) =>
+              setTimeout(() => reject(new Error(`Timeout checking ${name}`)), timeoutMs)
+            ),
+          ])
+          return result
+        } catch (error) {
+          console.warn(`[MultiBackend] exists check failed for ${name}: ${error instanceof Error ? error.message : String(error)}`)
+          return false
+        }
+      }
+    )
 
-    return false
+    const results = await Promise.all(checkPromises)
+    return results.some((r) => r === true)
   }
 
   // Content Registry

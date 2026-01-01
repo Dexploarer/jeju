@@ -1,0 +1,28 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Yagiz Nizipli <yagiz@nizipli.com>
+Date: Thu, 19 Jun 2025 10:05:19 -0400
+Subject: Modify where to look for dragonbox
+
+
+diff --git a/BUILD.bazel b/BUILD.bazel
+index 426c92cf95d10815ebf4ac0c85622fee2952364d..36dbbc1bed46cc19330a45c5f7820b3486d2a3d4 100644
+--- a/BUILD.bazel
++++ b/BUILD.bazel
+@@ -4014,14 +4014,9 @@ filegroup(
+ )
+ 
+ v8_library(
+-  name = "lib_dragonbox",
+-  srcs = ["third_party/dragonbox/src/include/dragonbox/dragonbox.h"],
+-  hdrs = [
+-    "third_party/dragonbox/src/include/dragonbox/dragonbox.h",
+-  ],
+-  includes = [
+-    "third_party/dragonbox/src/include",
+-  ],
++    name = "lib_dragonbox",
++    srcs = [],
++    deps = ["@dragonbox"]
+ )
+ 
+ cc_library(

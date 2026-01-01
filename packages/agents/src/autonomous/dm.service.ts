@@ -187,7 +187,7 @@ Respond with JSON: { "shouldRespond": boolean, "content": "..." }`
       return {
         shouldRespond: false,
         chatId: chat.chatId,
-        reasoning: 'LLM generation failed: ' + errorMsg,
+        reasoning: `LLM generation failed: ${errorMsg}`,
       }
     }
   }

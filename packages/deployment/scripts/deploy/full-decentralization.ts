@@ -17,13 +17,8 @@
 
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { getDWSUrl, getRpcUrl } from '@jejunetwork/config'
 import { $ } from 'bun'
-import {
-  getCurrentNetwork,
-  getDWSUrl,
-  getIpfsGatewayUrl,
-  getRpcUrl,
-} from '@jejunetwork/config'
 
 const WORKSPACE = process.cwd()
 
@@ -136,9 +131,13 @@ async function registerProvider(): Promise<boolean> {
 
     // For now, skip on-chain registration if contracts not deployed
     // This will be done when DWSProviderRegistry is deployed to testnet
-    console.log('[Provider] ⚠️ Skipping on-chain registration (contracts not deployed)')
+    console.log(
+      '[Provider] ⚠️ Skipping on-chain registration (contracts not deployed)',
+    )
     console.log('[Provider] DWS will run in standalone mode')
-    console.log('[Provider] To register later: bun run packages/deployment/scripts/deploy/register-dws-provider.ts')
+    console.log(
+      '[Provider] To register later: bun run packages/deployment/scripts/deploy/register-dws-provider.ts',
+    )
 
     return true
   } catch (error) {
@@ -228,13 +227,16 @@ async function deployAppFrontends(): Promise<boolean> {
       console.log(`[${app}] Uploading to IPFS via DWS...`)
 
       // Upload to IPFS via DWS storage API
-      const uploadCmd = await $`cd ${distPath} && tar -cf - . | curl -s -X POST "${dwsUrl}/storage/upload" -H "Content-Type: application/octet-stream" --data-binary @-`.text()
+      const uploadCmd =
+        await $`cd ${distPath} && tar -cf - . | curl -s -X POST "${dwsUrl}/storage/upload" -H "Content-Type: application/octet-stream" --data-binary @-`.text()
 
       let uploadResult: { cid?: string }
       try {
         uploadResult = JSON.parse(uploadCmd)
       } catch {
-        console.log(`[${app}] ⚠️ Upload response not JSON, trying alternative...`)
+        console.log(
+          `[${app}] ⚠️ Upload response not JSON, trying alternative...`,
+        )
         // Try form-data upload
         const formUpload =
           await $`cd ${distPath} && find . -type f -exec curl -s -X POST "${dwsUrl}/storage/upload" -F "file=@{}" \; | tail -1`.text()
@@ -274,7 +276,9 @@ async function deployAppFrontends(): Promise<boolean> {
           console.log(`[${app}] ✅ Registered with app router`)
           successCount++
         } else {
-          console.log(`[${app}] ⚠️ Registration failed: ${await regResponse.text()}`)
+          console.log(
+            `[${app}] ⚠️ Registration failed: ${await regResponse.text()}`,
+          )
         }
       } else {
         console.log(`[${app}] ⚠️ No CID in upload response`)
@@ -366,7 +370,9 @@ async function configureAppRouter(): Promise<boolean> {
     }
   }
 
-  console.log(`\n[Backends] Configured ${configuredCount}/${Object.keys(appBackends).length} backends`)
+  console.log(
+    `\n[Backends] Configured ${configuredCount}/${Object.keys(appBackends).length} backends`,
+  )
   return configuredCount > 0
 }
 
@@ -402,7 +408,9 @@ async function registerJNS(): Promise<boolean> {
 
   // For now, JNS registration requires a deployment script with private key
   console.log('[JNS] ⚠️ Skipping JNS registration (requires manual execution)')
-  console.log('[JNS] DNS mirroring to Route53 is active via DWS /dns/mirror endpoints')
+  console.log(
+    '[JNS] DNS mirroring to Route53 is active via DWS /dns/mirror endpoints',
+  )
 
   return true
 }
@@ -412,7 +420,7 @@ async function verifyJNS(): Promise<boolean> {
   try {
     const response = await fetch(`${dwsUrl}/dns/health`)
     if (!response.ok) return false
-    const status = await response.json()
+    const _status = await response.json()
     console.log('[JNS] DNS service healthy')
     return true
   } catch {
@@ -428,7 +436,13 @@ async function deprecateK8sApps(): Promise<boolean> {
   console.log('\n[Step 6/6] Deprecating standalone K8s app deployments...\n')
 
   // Apps that should be served via DWS, not standalone K8s
-  const appsToDeprecate = ['oauth3', 'autocrat', 'bazaar', 'crucible', 'factory']
+  const appsToDeprecate = [
+    'oauth3',
+    'autocrat',
+    'bazaar',
+    'crucible',
+    'factory',
+  ]
 
   let deprecatedCount = 0
 
@@ -464,14 +478,22 @@ async function deprecateK8sApps(): Promise<boolean> {
     }
   }
 
-  console.log(`\n[Deprecation] Deprecated ${deprecatedCount}/${appsToDeprecate.length} standalone deployments`)
+  console.log(
+    `\n[Deprecation] Deprecated ${deprecatedCount}/${appsToDeprecate.length} standalone deployments`,
+  )
   console.log('[Deprecation] Apps will now be served via DWS')
 
   return true
 }
 
 async function verifyK8sDeprecation(): Promise<boolean> {
-  const appsToDeprecate = ['oauth3', 'autocrat', 'bazaar', 'crucible', 'factory']
+  const appsToDeprecate = [
+    'oauth3',
+    'autocrat',
+    'bazaar',
+    'crucible',
+    'factory',
+  ]
   let deprecatedCount = 0
 
   for (const app of appsToDeprecate) {
@@ -487,7 +509,9 @@ async function verifyK8sDeprecation(): Promise<boolean> {
     }
   }
 
-  console.log(`[Deprecation] ${deprecatedCount}/${appsToDeprecate.length} apps deprecated`)
+  console.log(
+    `[Deprecation] ${deprecatedCount}/${appsToDeprecate.length} apps deprecated`,
+  )
   return deprecatedCount === appsToDeprecate.length
 }
 
@@ -545,7 +569,8 @@ async function main() {
 
   console.log(`Running ${stepsToRun.length} deployment step(s)...`)
 
-  const results: Array<{ step: string; success: boolean; verified: boolean }> = []
+  const results: Array<{ step: string; success: boolean; verified: boolean }> =
+    []
 
   for (const step of stepsToRun) {
     console.log(`\n${'═'.repeat(80)}`)
@@ -590,8 +615,12 @@ async function main() {
     console.log('')
     console.log('Next steps:')
     console.log('  1. Verify apps at https://<app>.testnet.jejunetwork.org')
-    console.log('  2. Monitor DWS health at https://dws.testnet.jejunetwork.org/health')
-    console.log('  3. View registered apps: curl https://dws.testnet.jejunetwork.org/apps/deployed')
+    console.log(
+      '  2. Monitor DWS health at https://dws.testnet.jejunetwork.org/health',
+    )
+    console.log(
+      '  3. View registered apps: curl https://dws.testnet.jejunetwork.org/apps/deployed',
+    )
   } else if (allSuccessful) {
     console.log('⚠️ DEPLOYMENT COMPLETED WITH WARNINGS')
     console.log(`${'═'.repeat(80)}\n`)

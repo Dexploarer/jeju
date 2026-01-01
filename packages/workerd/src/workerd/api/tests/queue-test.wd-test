@@ -1,0 +1,18 @@
+using Workerd = import "/workerd/workerd.capnp";
+
+const unitTests :Workerd.Config = (
+  services = [
+    ( name = "queue-test",
+      worker = (
+        modules = [
+          ( name = "worker", esModule = embed "queue-test.js" )
+        ],
+        bindings = [
+          ( name = "QUEUE", queue = "queue-test" ),
+          ( name = "SERVICE", service = "queue-test" ),
+        ],
+        compatibilityFlags = ["nodejs_compat", "service_binding_extra_handlers", "queues_json_messages", "rpc", "capture_async_api_throws", "disable_fast_jsg_struct"],
+      )
+    ),
+  ],
+);

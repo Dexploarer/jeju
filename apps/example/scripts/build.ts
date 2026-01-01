@@ -66,9 +66,7 @@ async function build() {
   console.log('[Example] Frontend built successfully')
 
   // Find the main entry file with hash
-  const mainEntry = frontendResult.outputs.find(
-    (o) => o.kind === 'entry-point',
-  )
+  const mainEntry = frontendResult.outputs.find((o) => o.kind === 'entry-point')
   const mainFileName = mainEntry ? mainEntry.path.split('/').pop() : 'app.js'
 
   const indexHtml = await readFile(resolve(APP_DIR, 'web/index.html'), 'utf-8')

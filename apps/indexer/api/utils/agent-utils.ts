@@ -3,17 +3,16 @@
  * Shared business logic for agent-related operations
  */
 
-import type { DataSource } from 'typeorm'
-import { RegisteredAgent } from '../model'
+import { query, type RegisteredAgent } from '../db'
 
+/**
+ * Get agents by tag from SQLit
+ * Note: SQLit stores tags as JSON string, so we search with LIKE
+ */
 export async function getAgentsByTag(
-  dataSource: DataSource,
   tag: string,
   limit: number,
 ): Promise<{ tag: string; agents: RegisteredAgent[] }> {
-  if (!dataSource) {
-    throw new Error('DataSource is required')
-  }
   if (!tag || tag.trim().length === 0) {
     throw new Error('tag is required and must be a non-empty string')
   }
@@ -23,17 +22,17 @@ export async function getAgentsByTag(
 
   const normalizedTag = tag.toLowerCase()
 
-  const agents = await dataSource
-    .getRepository(RegisteredAgent)
-    .createQueryBuilder('a')
-    .where(':tag = ANY(a.tags)', { tag: normalizedTag })
-    .andWhere('a.active = true')
-    .orderBy('a.stakeTier', 'DESC')
-    .take(limit)
-    .getMany()
+  // SQLit stores tags as JSON string, search with LIKE
+  const result = await query<RegisteredAgent>(
+    `SELECT * FROM registered_agent 
+     WHERE tags LIKE ? AND active = 1
+     ORDER BY stake_amount DESC
+     LIMIT ?`,
+    [`%"${normalizedTag}"%`, limit],
+  )
 
   return {
     tag: normalizedTag,
-    agents,
+    agents: result.rows,
   }
 }

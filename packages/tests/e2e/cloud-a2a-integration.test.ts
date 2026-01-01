@@ -9,6 +9,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
+import { getContract as getContractAddress } from '@jejunetwork/config'
 import {
   type Address,
   createPublicClient,
@@ -16,7 +17,6 @@ import {
   http,
   zeroHash,
 } from 'viem'
-import { getContract as getContractAddress } from '@jejunetwork/config'
 import { Logger } from '../../../packages/deployment/scripts/shared/logger'
 
 // Get the correct identity registry address from config
@@ -41,7 +41,12 @@ try {
   const response = await fetch(RPC_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ jsonrpc: '2.0', method: 'eth_blockNumber', params: [], id: 1 }),
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      method: 'eth_blockNumber',
+      params: [],
+      id: 1,
+    }),
     signal: AbortSignal.timeout(3000),
   })
   localnetAvailable = response.ok
@@ -60,7 +65,11 @@ try {
       signal: AbortSignal.timeout(3000),
     })
     const codeResult = (await codeResponse.json()) as { result: string }
-    if (codeResult.result && codeResult.result !== '0x' && codeResult.result.length > 10) {
+    if (
+      codeResult.result &&
+      codeResult.result !== '0x' &&
+      codeResult.result.length > 10
+    ) {
       // Try to call totalAgents to verify interface
       const callResponse = await fetch(RPC_URL, {
         method: 'POST',
@@ -79,7 +88,10 @@ try {
         }),
         signal: AbortSignal.timeout(3000),
       })
-      const callResult = (await callResponse.json()) as { result?: string; error?: { message: string } }
+      const callResult = (await callResponse.json()) as {
+        result?: string
+        error?: { message: string }
+      }
       cloudContractsDeployed = !callResult.error && !!callResult.result
     }
   }
@@ -87,379 +99,390 @@ try {
   localnetAvailable = false
 }
 if (!localnetAvailable) {
-  console.log('⏭️  Skipping Cloud A2A E2E tests - localnet not available at', RPC_URL)
+  console.log(
+    '⏭️  Skipping Cloud A2A E2E tests - localnet not available at',
+    RPC_URL,
+  )
 } else if (!cloudContractsDeployed) {
-  console.log('⏭️  Skipping Cloud A2A E2E tests - IdentityRegistry interface not found')
+  console.log(
+    '⏭️  Skipping Cloud A2A E2E tests - IdentityRegistry interface not found',
+  )
 }
 
 describe.skipIf(!localnetAvailable || !cloudContractsDeployed)(
   'Cloud A2A E2E - Server Setup',
   () => {
-  beforeAll(async () => {
-    logger.info('🚀 Starting A2A test server...')
+    beforeAll(async () => {
+      logger.info('🚀 Starting A2A test server...')
 
-    // Start test server with A2A endpoint
-    server = Bun.serve({
-      port: serverPort,
-      async fetch(req) {
-        const url = new URL(req.url)
+      // Start test server with A2A endpoint
+      server = Bun.serve({
+        port: serverPort,
+        async fetch(req) {
+          const url = new URL(req.url)
 
-        if (url.pathname === '/a2a' && req.method === 'POST') {
-          return handleA2ARequest(req)
-        }
+          if (url.pathname === '/a2a' && req.method === 'POST') {
+            return handleA2ARequest(req)
+          }
 
-        if (url.pathname === '/health') {
-          return new Response(JSON.stringify({ status: 'ok' }))
-        }
+          if (url.pathname === '/health') {
+            return new Response(JSON.stringify({ status: 'ok' }))
+          }
 
-        return new Response('Not found', { status: 404 })
-      },
+          return new Response('Not found', { status: 404 })
+        },
+      })
+
+      logger.success(`✓ Test server running on port ${serverPort}`)
     })
 
-    logger.success(`✓ Test server running on port ${serverPort}`)
-  })
+    afterAll(() => {
+      if (server) {
+        server.stop()
+        logger.info('✓ Test server stopped')
+      }
+    })
 
-  afterAll(() => {
-    if (server) {
-      server.stop()
-      logger.info('✓ Test server stopped')
-    }
-  })
+    test('should verify server is running', async () => {
+      const response = await fetch(`http://localhost:${serverPort}/health`)
+      expect(response.ok).toBe(true)
 
-  test('should verify server is running', async () => {
-    const response = await fetch(`http://localhost:${serverPort}/health`)
-    expect(response.ok).toBe(true)
+      const data = await response.json()
+      expect(data.status).toBe('ok')
 
-    const data = await response.json()
-    expect(data.status).toBe('ok')
-
-    logger.success('✓ Server health check passed')
-  })
-})
+      logger.success('✓ Server health check passed')
+    })
+  },
+)
 
 describe.skipIf(!localnetAvailable || !cloudContractsDeployed)(
   'Cloud A2A E2E - Agent Discovery',
   () => {
-  test('should discover cloud agent in registry', async () => {
-    logger.info('🔍 Discovering cloud agent...')
+    test('should discover cloud agent in registry', async () => {
+      logger.info('🔍 Discovering cloud agent...')
 
-    // Query IdentityRegistry for cloud agent
-    const publicClient = createPublicClient({
-      transport: http('http://localhost:6546'),
-    })
-    const identityRegistryAbi = [
-      {
-        name: 'totalAgents',
-        type: 'function',
-        stateMutability: 'view',
-        inputs: [],
-        outputs: [{ type: 'uint256' }],
-      },
-      {
-        name: 'getAgent',
-        type: 'function',
-        stateMutability: 'view',
-        inputs: [{ name: 'agentId', type: 'uint256' }],
-        outputs: [
-          {
-            type: 'tuple',
-            components: [
-              { name: 'agentId', type: 'uint256' },
-              { name: 'owner', type: 'address' },
-              { name: 'tier', type: 'uint8' },
-              { name: 'stakedToken', type: 'address' },
-              { name: 'stakedAmount', type: 'uint256' },
-              { name: 'registeredAt', type: 'uint256' },
-              { name: 'lastActivityAt', type: 'uint256' },
-              { name: 'isBanned', type: 'bool' },
-              { name: 'isSlashed', type: 'bool' },
-            ],
-          },
-        ],
-      },
-      {
-        name: 'getMetadata',
-        type: 'function',
-        stateMutability: 'view',
-        inputs: [
-          { name: 'agentId', type: 'uint256' },
-          { name: 'key', type: 'string' },
-        ],
-        outputs: [{ type: 'bytes' }],
-      },
-    ] as const
+      // Query IdentityRegistry for cloud agent
+      const publicClient = createPublicClient({
+        transport: http('http://localhost:6546'),
+      })
+      const identityRegistryAbi = [
+        {
+          name: 'totalAgents',
+          type: 'function',
+          stateMutability: 'view',
+          inputs: [],
+          outputs: [{ type: 'uint256' }],
+        },
+        {
+          name: 'getAgent',
+          type: 'function',
+          stateMutability: 'view',
+          inputs: [{ name: 'agentId', type: 'uint256' }],
+          outputs: [
+            {
+              type: 'tuple',
+              components: [
+                { name: 'agentId', type: 'uint256' },
+                { name: 'owner', type: 'address' },
+                { name: 'tier', type: 'uint8' },
+                { name: 'stakedToken', type: 'address' },
+                { name: 'stakedAmount', type: 'uint256' },
+                { name: 'registeredAt', type: 'uint256' },
+                { name: 'lastActivityAt', type: 'uint256' },
+                { name: 'isBanned', type: 'bool' },
+                { name: 'isSlashed', type: 'bool' },
+              ],
+            },
+          ],
+        },
+        {
+          name: 'getMetadata',
+          type: 'function',
+          stateMutability: 'view',
+          inputs: [
+            { name: 'agentId', type: 'uint256' },
+            { name: 'key', type: 'string' },
+          ],
+          outputs: [{ type: 'bytes' }],
+        },
+      ] as const
 
-    const identityRegistry = getContract({
-      address: IDENTITY_REGISTRY_ADDRESS,
-      abi: identityRegistryAbi,
-      client: publicClient,
-    })
+      const identityRegistry = getContract({
+        address: IDENTITY_REGISTRY_ADDRESS,
+        abi: identityRegistryAbi,
+        client: publicClient,
+      })
 
-    const totalAgents = await identityRegistry.read.totalAgents()
-    expect(totalAgents).toBeGreaterThan(0n)
+      const totalAgents = await identityRegistry.read.totalAgents()
+      expect(totalAgents).toBeGreaterThan(0n)
 
-    logger.info(`✓ Found ${totalAgents} agents in registry`)
+      logger.info(`✓ Found ${totalAgents} agents in registry`)
 
-    // Find cloud agent by checking metadata
-    for (let i = 1; i <= Number(totalAgents); i++) {
-      const agent = await identityRegistry.read.getAgent([BigInt(i)])
-      if (agent.isBanned) continue
+      // Find cloud agent by checking metadata
+      for (let i = 1; i <= Number(totalAgents); i++) {
+        const agent = await identityRegistry.read.getAgent([BigInt(i)])
+        if (agent.isBanned) continue
 
-      try {
-        const typeBytes = await identityRegistry.read.getMetadata([
-          BigInt(i),
-          'type',
-        ])
-        const type = new TextDecoder().decode(typeBytes)
-
-        if (type === 'cloud-service') {
-          logger.success(`✓ Found cloud agent at ID: ${i}`)
-
-          const nameBytes = await identityRegistry.read.getMetadata([
+        try {
+          const typeBytes = await identityRegistry.read.getMetadata([
             BigInt(i),
-            'name',
+            'type',
           ])
-          const name = new TextDecoder().decode(nameBytes)
-          logger.info(`  Name: ${name}`)
+          const type = new TextDecoder().decode(typeBytes)
 
-          const endpointBytes = await identityRegistry.read.getMetadata([
-            BigInt(i),
-            'endpoint',
-          ])
-          const endpoint = new TextDecoder().decode(endpointBytes)
-          logger.info(`  A2A Endpoint: ${endpoint}`)
+          if (type === 'cloud-service') {
+            logger.success(`✓ Found cloud agent at ID: ${i}`)
 
-          return
+            const nameBytes = await identityRegistry.read.getMetadata([
+              BigInt(i),
+              'name',
+            ])
+            const name = new TextDecoder().decode(nameBytes)
+            logger.info(`  Name: ${name}`)
+
+            const endpointBytes = await identityRegistry.read.getMetadata([
+              BigInt(i),
+              'endpoint',
+            ])
+            const endpoint = new TextDecoder().decode(endpointBytes)
+            logger.info(`  A2A Endpoint: ${endpoint}`)
+
+            return
+          }
+        } catch {
+          // No metadata, skip
         }
-      } catch {
-        // No metadata, skip
       }
-    }
 
-    logger.warn('Cloud agent not found, may need to run setup first')
-  })
-})
+      logger.warn('Cloud agent not found, may need to run setup first')
+    })
+  },
+)
 
 describe.skipIf(!localnetAvailable || !cloudContractsDeployed)(
   'Cloud A2A E2E - Message Routing',
   () => {
-  test('should send A2A message to cloud service', async () => {
-    logger.info('📨 Sending A2A message...')
+    test('should send A2A message to cloud service', async () => {
+      logger.info('📨 Sending A2A message...')
 
-    const a2aRequest = {
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'message/send',
-      params: {
-        message: {
-          role: 'user',
-          parts: [
-            {
-              kind: 'text',
-              text: 'Generate a test image',
-            },
-            {
-              kind: 'data',
-              data: {
-                skillId: 'image-generation',
-                prompt: 'A beautiful sunset over mountains',
+      const a2aRequest = {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'message/send',
+        params: {
+          message: {
+            role: 'user',
+            parts: [
+              {
+                kind: 'text',
+                text: 'Generate a test image',
               },
-            },
-          ],
-          messageId: `test-${Date.now()}`,
-          kind: 'message',
-        },
-      },
-    }
-
-    const response = await fetch(`http://localhost:${serverPort}/a2a`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(a2aRequest),
-    })
-
-    expect(response.ok).toBe(true)
-    const result = await response.json()
-
-    expect(result.jsonrpc).toBe('2.0')
-    expect(result.id).toBe(1)
-    expect(result.result).toBeDefined()
-
-    logger.success('✓ A2A message delivered and processed')
-    logger.info(
-      `  Result: ${JSON.stringify(result.result).substring(0, 100)}...`,
-    )
-  })
-
-  test('should reject message from banned agent', async () => {
-    logger.info('🚫 Testing banned agent rejection...')
-
-    const a2aRequest = {
-      jsonrpc: '2.0',
-      id: 2,
-      method: 'message/send',
-      params: {
-        message: {
-          role: 'user',
-          parts: [
-            {
-              kind: 'data',
-              data: {
-                skillId: 'chat-completion',
-                agentId: '999', // Simulate banned agent
+              {
+                kind: 'data',
+                data: {
+                  skillId: 'image-generation',
+                  prompt: 'A beautiful sunset over mountains',
+                },
               },
-            },
-          ],
-          messageId: `banned-${Date.now()}`,
-          kind: 'message',
+            ],
+            messageId: `test-${Date.now()}`,
+            kind: 'message',
+          },
         },
-      },
-    }
+      }
 
-    const response = await fetch(`http://localhost:${serverPort}/a2a`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(a2aRequest),
-    })
+      const response = await fetch(`http://localhost:${serverPort}/a2a`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(a2aRequest),
+      })
 
-    const result = await response.json()
-
-    // Should return error for banned agent
-    if (result.error) {
-      expect(result.error.code).toBeDefined()
-      logger.success('✓ Banned agent rejected correctly')
-    } else {
-      logger.info('  Agent not actually banned in test')
-    }
-  })
-
-  test('should handle multiple concurrent A2A requests', async () => {
-    logger.info('🔄 Testing concurrent requests...')
-
-    const requests = Array.from({ length: 5 }, (_, i) => ({
-      jsonrpc: '2.0',
-      id: 100 + i,
-      method: 'message/send',
-      params: {
-        message: {
-          role: 'user',
-          parts: [
-            {
-              kind: 'data',
-              data: {
-                skillId: 'chat-completion',
-                requestId: i,
-              },
-            },
-          ],
-          messageId: `concurrent-${i}-${Date.now()}`,
-          kind: 'message',
-        },
-      },
-    }))
-
-    const responses = await Promise.all(
-      requests.map((req) =>
-        fetch(`http://localhost:${serverPort}/a2a`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(req),
-        }),
-      ),
-    )
-
-    for (const response of responses) {
       expect(response.ok).toBe(true)
-    }
+      const result = await response.json()
 
-    logger.success(`✓ ${responses.length} concurrent requests handled`)
-  })
-})
+      expect(result.jsonrpc).toBe('2.0')
+      expect(result.id).toBe(1)
+      expect(result.result).toBeDefined()
+
+      logger.success('✓ A2A message delivered and processed')
+      logger.info(
+        `  Result: ${JSON.stringify(result.result).substring(0, 100)}...`,
+      )
+    })
+
+    test('should reject message from banned agent', async () => {
+      logger.info('🚫 Testing banned agent rejection...')
+
+      const a2aRequest = {
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'message/send',
+        params: {
+          message: {
+            role: 'user',
+            parts: [
+              {
+                kind: 'data',
+                data: {
+                  skillId: 'chat-completion',
+                  agentId: '999', // Simulate banned agent
+                },
+              },
+            ],
+            messageId: `banned-${Date.now()}`,
+            kind: 'message',
+          },
+        },
+      }
+
+      const response = await fetch(`http://localhost:${serverPort}/a2a`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(a2aRequest),
+      })
+
+      const result = await response.json()
+
+      // Should return error for banned agent
+      if (result.error) {
+        expect(result.error.code).toBeDefined()
+        logger.success('✓ Banned agent rejected correctly')
+      } else {
+        logger.info('  Agent not actually banned in test')
+      }
+    })
+
+    test('should handle multiple concurrent A2A requests', async () => {
+      logger.info('🔄 Testing concurrent requests...')
+
+      const requests = Array.from({ length: 5 }, (_, i) => ({
+        jsonrpc: '2.0',
+        id: 100 + i,
+        method: 'message/send',
+        params: {
+          message: {
+            role: 'user',
+            parts: [
+              {
+                kind: 'data',
+                data: {
+                  skillId: 'chat-completion',
+                  requestId: i,
+                },
+              },
+            ],
+            messageId: `concurrent-${i}-${Date.now()}`,
+            kind: 'message',
+          },
+        },
+      }))
+
+      const responses = await Promise.all(
+        requests.map((req) =>
+          fetch(`http://localhost:${serverPort}/a2a`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(req),
+          }),
+        ),
+      )
+
+      for (const response of responses) {
+        expect(response.ok).toBe(true)
+      }
+
+      logger.success(`✓ ${responses.length} concurrent requests handled`)
+    })
+  },
+)
 
 describe.skipIf(!localnetAvailable || !cloudContractsDeployed)(
   'Cloud A2A E2E - Reputation Integration',
   () => {
-  test('should update reputation after successful A2A request', async () => {
-    logger.info('⭐ Testing reputation update...')
+    test('should update reputation after successful A2A request', async () => {
+      logger.info('⭐ Testing reputation update...')
 
-    const publicClient = createPublicClient({
-      transport: http('http://localhost:6546'),
-    })
-    const reputationRegistryAbi = [
-      {
-        name: 'getSummary',
-        type: 'function',
-        stateMutability: 'view',
-        inputs: [
-          { name: 'agentId', type: 'uint256' },
-          { name: 'clientAddresses', type: 'address[]' },
-          { name: 'tag1', type: 'bytes32' },
-          { name: 'tag2', type: 'bytes32' },
-        ],
-        outputs: [
-          { name: 'count', type: 'uint64' },
-          { name: 'averageScore', type: 'uint8' },
-        ],
-      },
-    ] as const
-
-    const reputationRegistry = getContract({
-      address: '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
-      abi: reputationRegistryAbi,
-      client: publicClient,
-    })
-
-    // Send A2A request
-    const a2aRequest = {
-      jsonrpc: '2.0',
-      id: 3,
-      method: 'message/send',
-      params: {
-        message: {
-          role: 'user',
-          parts: [
-            {
-              kind: 'data',
-              data: {
-                skillId: 'embeddings',
-                text: 'Test embedding request',
-                agentId: '1', // Assume agent 1 exists
-              },
-            },
+      const publicClient = createPublicClient({
+        transport: http('http://localhost:6546'),
+      })
+      const reputationRegistryAbi = [
+        {
+          name: 'getSummary',
+          type: 'function',
+          stateMutability: 'view',
+          inputs: [
+            { name: 'agentId', type: 'uint256' },
+            { name: 'clientAddresses', type: 'address[]' },
+            { name: 'tag1', type: 'bytes32' },
+            { name: 'tag2', type: 'bytes32' },
           ],
-          messageId: `reputation-test-${Date.now()}`,
-          kind: 'message',
+          outputs: [
+            { name: 'count', type: 'uint64' },
+            { name: 'averageScore', type: 'uint8' },
+          ],
         },
-      },
-    }
+      ] as const
 
-    await fetch(`http://localhost:${serverPort}/a2a`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(a2aRequest),
-    })
+      const reputationRegistry = getContract({
+        address: '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
+        abi: reputationRegistryAbi,
+        client: publicClient,
+      })
 
-    // Check if reputation was updated (may take a moment)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    try {
-      const [count, score] = await reputationRegistry.read.getSummary([
-        1n, // agent ID
-        [],
-        zeroHash,
-        zeroHash,
-      ])
-
-      if (count > 0n) {
-        logger.success(`✓ Reputation updated: ${score}/100 (${count} reviews)`)
-      } else {
-        logger.info('  No reputation data yet (may need setup)')
+      // Send A2A request
+      const a2aRequest = {
+        jsonrpc: '2.0',
+        id: 3,
+        method: 'message/send',
+        params: {
+          message: {
+            role: 'user',
+            parts: [
+              {
+                kind: 'data',
+                data: {
+                  skillId: 'embeddings',
+                  text: 'Test embedding request',
+                  agentId: '1', // Assume agent 1 exists
+                },
+              },
+            ],
+            messageId: `reputation-test-${Date.now()}`,
+            kind: 'message',
+          },
+        },
       }
-    } catch {
-      logger.info('  Reputation check skipped (contract not ready)')
-    }
-  })
-})
+
+      await fetch(`http://localhost:${serverPort}/a2a`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(a2aRequest),
+      })
+
+      // Check if reputation was updated (may take a moment)
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+
+      try {
+        const [count, score] = await reputationRegistry.read.getSummary([
+          1n, // agent ID
+          [],
+          zeroHash,
+          zeroHash,
+        ])
+
+        if (count > 0n) {
+          logger.success(
+            `✓ Reputation updated: ${score}/100 (${count} reviews)`,
+          )
+        } else {
+          logger.info('  No reputation data yet (may need setup)')
+        }
+      } catch {
+        logger.info('  Reputation check skipped (contract not ready)')
+      }
+    })
+  },
+)
 
 // A2A request handler
 async function handleA2ARequest(req: Request): Promise<Response> {

@@ -7,12 +7,29 @@
   "description": "AI-powered autonomous governance with futarchy, deep research, and multi-agent decision making",
   "maintainer": "jeju-network",
   "repository": "https://github.com/jejunetwork/jeju",
+  "architecture": {
+    "type": "hybrid",
+    "runtime": "workerd",
+    "frontend": {
+      "type": "spa",
+      "builder": "bun",
+      "entrypoint": "index.html",
+      "outputDir": "dist/static"
+    },
+    "backend": {
+      "type": "elysia",
+      "entrypoint": "api/worker.ts",
+      "outputDir": "dist/worker"
+    }
+  },
   "commands": {
-    "dev": "bun run dev",
-    "build": "bun build index.html --outdir dist --minify && bun build api/server.ts --outdir dist/api --target bun",
-    "build:frontend": "bun build index.html --outdir dist --minify",
-    "start": "bun run dist/api/server.js",
-    "test": "SKIP_TEE_TESTS=true bun test tests/unit/"
+    "dev": "bun run scripts/dev.ts",
+    "dev:api": "bun --watch api/worker.ts",
+    "build": "bun run scripts/build.ts",
+    "build:worker": "bun run scripts/build.ts",
+    "start": "bun run scripts/serve.ts",
+    "test": "SKIP_TEE_TESTS=true bun test tests/unit/",
+    "deploy": "bun run scripts/deploy.ts"
   },
   "ports": {
     "main": 4040,
@@ -35,7 +52,8 @@
     "futarchy",
     "proposals",
     "voting",
-    "research"
+    "research",
+    "serverless"
   ],
   "endpoints": {
     "a2a": "/a2a",
@@ -49,8 +67,14 @@
     "url": "https://autocrat.jejunetwork.org"
   },
   "healthCheck": {
-    "url": "http://localhost:4040/health",
-    "interval": 30000
+    "frontend": {
+      "url": "http://localhost:4042",
+      "interval": 30000
+    },
+    "api": {
+      "url": "http://localhost:4040/health",
+      "interval": 30000
+    }
   },
   "agent": {
     "enabled": true,
@@ -174,57 +198,44 @@
     "ProposalRegistry": "0x0000000000000000000000000000000000000000",
     "AgentRegistry": "0x0000000000000000000000000000000000000000"
   },
-  "decentralization": {
+  "dws": {
+    "worker": {
+      "name": "autocrat-api",
+      "entrypoint": "api/worker.ts",
+      "compatibilityDate": "2025-06-01",
+      "tee": {
+        "required": true,
+        "preferred": true,
+        "platforms": ["dstack", "phala"]
+      },
+      "bindings": {
+        "kv": {
+          "AUTOCRAT_CACHE": "autocrat-cache-kv"
+        },
+        "secrets": ["OPERATOR_KEY", "ASSESSOR_KEY", "SQLIT_PRIVATE_KEY"]
+      },
+      "routes": [
+        { "pattern": "/api/*", "zone": "autocrat-api" },
+        { "pattern": "/a2a/*", "zone": "autocrat-api" },
+        { "pattern": "/mcp/*", "zone": "autocrat-api" },
+        { "pattern": "/health", "zone": "autocrat-api" }
+      ]
+    },
+    "database": {
+      "type": "sqlit",
+      "name": "autocrat-db",
+      "consistency": "strong",
+      "tables": ["proposals", "dao_configs", "agent_state"]
+    },
     "cdn": {
       "enabled": true,
-      "regions": [
-        "global"
-      ],
+      "regions": ["global"],
+      "staticDir": "dist/static",
       "cacheRules": [
-        {
-          "pattern": "/static/**",
-          "ttl": 31536000,
-          "immutable": true
-        },
-        {
-          "pattern": "/api/**",
-          "ttl": 0
-        },
-        {
-          "pattern": "/**/*.html",
-          "ttl": 300,
-          "staleWhileRevalidate": 86400
-        }
-      ],
-      "serviceWorker": true
-    },
-    "frontend": {
-      "ipfs": true,
-      "arweave": true,
-      "jnsName": "autocrat.jeju",
-      "buildDir": "dist",
-      "spa": true,
-      "generator": "bun"
-    },
-    "robustness": {
-      "multiOrigin": true,
-      "offlineSupport": true,
-      "p2pFallback": true,
-      "contentAddressed": true
-    }
-  },
-  "dws": {
-    "backend": {
-      "enabled": true,
-      "runtime": "bun",
-      "entrypoint": "api/server.ts",
-      "memory": 512,
-      "timeout": 30000,
-      "minInstances": 1,
-      "maxInstances": 10,
-      "teeRequired": true,
-      "regions": [
-        "global"
+        { "pattern": "/assets/**", "ttl": 31536000, "immutable": true },
+        { "pattern": "/*.js", "ttl": 86400 },
+        { "pattern": "/*.css", "ttl": 86400 },
+        { "pattern": "/**/*.html", "ttl": 60, "staleWhileRevalidate": 3600 }
       ]
     },
     "triggers": [
@@ -251,6 +262,51 @@
       ]
     }
   },
+  "decentralization": {
+    "worker": {
+      "name": "autocrat-api",
+      "entrypoint": "api/worker.ts",
+      "runtime": "workerd",
+      "memory": 512,
+      "timeout": 60000,
+      "compatibilityDate": "2025-06-01",
+      "bindings": {
+        "AUTOCRAT_CACHE": { "type": "kv", "name": "autocrat-cache-kv" }
+      },
+      "secrets": ["OPERATOR_KEY", "ASSESSOR_KEY", "SQLIT_PRIVATE_KEY"],
+      "routes": [
+        { "pattern": "/api/*" },
+        { "pattern": "/a2a/*" },
+        { "pattern": "/mcp/*" },
+        { "pattern": "/health" }
+      ],
+      "tee": {
+        "required": true,
+        "preferred": true,
+        "platforms": ["dstack", "phala"]
+      }
+    },
+    "frontend": {
+      "buildDir": "dist/static",
+      "buildCommand": "bun run build",
+      "spa": true,
+      "jnsName": "autocrat.jeju",
+      "ipfs": true,
+      "arweave": true,
+      "cacheRules": [
+        { "pattern": "/assets/**", "ttl": 31536000, "immutable": true },
+        { "pattern": "/*.js", "ttl": 86400 },
+        { "pattern": "/*.css", "ttl": 86400 },
+        { "pattern": "/**/*.html", "ttl": 60, "staleWhileRevalidate": 3600 }
+      ]
+    },
+    "robustness": {
+      "multiOrigin": true,
+      "offlineSupport": true,
+      "p2pFallback": true,
+      "contentAddressed": true
+    }
+  },
   "testing": {
     "unit": {
       "command": "SKIP_TEE_TESTS=true bun test tests/*.test.ts tests/integration/",
@@ -260,15 +316,7 @@
       "command": "bunx playwright test tests/synpress",
       "timeout": 300000,
       "requiresChain": true
-    }
-  },
-  "architecture": {
-    "type": "hybrid",
-    "frontend": {
-      "type": "spa",
-      "builder": "bun",
-      "entrypoint": "index.html",
-      "outputDir": "dist"
-    }
+    },
+    "services": ["contracts", "indexer", "dws"]
   }
 }

@@ -1,12 +1,10 @@
 import { hasArrayProperty } from '@jejunetwork/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Job, JobSalary, JobStats } from '../../lib/types'
+import { API_BASE } from '../lib/api'
 import { api, extractDataSafe } from '../lib/client'
 
 export type { Job, JobSalary, JobStats }
-
-// Browser-only hook - API is same origin
-const API_BASE = ''
 
 async function fetchApi<T>(
   path: string,

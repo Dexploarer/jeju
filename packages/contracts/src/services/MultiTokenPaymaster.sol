@@ -159,7 +159,9 @@ contract MultiTokenPaymaster is BasePaymaster {
             revert InsufficientLiquidity();
         }
 
-        bytes calldata data = userOp.paymasterAndData[20:];
+        // v0.7 format: [paymaster(20)][verificationGas(16)][postOpGas(16)][data...]
+        // Data starts at byte 52, not 20
+        bytes calldata data = userOp.paymasterAndData[52:];
         if (data.length < 2) revert InvalidPaymasterData();
 
         uint8 serviceNameLength = uint8(data[0]);

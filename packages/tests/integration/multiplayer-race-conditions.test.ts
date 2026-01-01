@@ -130,10 +130,10 @@ describe('Multiplayer Race Condition Tests', () => {
       success: boolean
       reason?: string
     }> => {
-      const lockKey = 'item:' + itemInstanceId
+      const lockKey = `item:${itemInstanceId}`
       const lockResult = await lock.acquire(lockKey, 'player1', 5000)
       if (!lockResult.success) {
-        return { success: false, reason: 'Lock held by ' + lockResult.holder }
+        return { success: false, reason: `Lock held by ${lockResult.holder}` }
       }
 
       const item = gameState.getItem(itemInstanceId)
@@ -151,10 +151,10 @@ describe('Multiplayer Race Condition Tests', () => {
       success: boolean
       reason?: string
     }> => {
-      const lockKey = 'item:' + itemInstanceId
+      const lockKey = `item:${itemInstanceId}`
       const lockResult = await lock.acquire(lockKey, 'player2', 5000)
       if (!lockResult.success) {
-        return { success: false, reason: 'Lock held by ' + lockResult.holder }
+        return { success: false, reason: `Lock held by ${lockResult.holder}` }
       }
 
       const item = gameState.getItem(itemInstanceId)
@@ -193,12 +193,12 @@ describe('Multiplayer Race Condition Tests', () => {
         return { success: false, reason: 'Instance already minted' }
       }
 
-      const lockKey = 'mint:' + instanceId
+      const lockKey = `mint:${instanceId}`
       const lockResult = await lock.acquire(lockKey, playerId)
       if (!lockResult.success) {
         return {
           success: false,
-          reason: 'Mint in progress by ' + lockResult.holder,
+          reason: `Mint in progress by ${lockResult.holder}`,
         }
       }
 
@@ -225,11 +225,11 @@ describe('Multiplayer Race Condition Tests', () => {
     const itemId = 'rare_item_001'
     gameState.spawnItem(itemId, 'ground')
 
-    const players = Array.from({ length: 10 }, (_, i) => 'Player' + (i + 1))
+    const players = Array.from({ length: 10 }, (_, i) => `Player${i + 1}`)
     const results: { player: string; success: boolean }[] = []
 
     for (const player of players) {
-      const lockKey = 'item:' + itemId
+      const lockKey = `item:${itemId}`
       const lockResult = await lock.acquire(lockKey, player, 5000)
 
       if (lockResult.success) {
@@ -300,7 +300,7 @@ describe('Multiplayer Race Condition Tests', () => {
         return { success: false, reason: 'NFT already in escrow' }
       }
 
-      const lockKey = 'nft:' + nftId
+      const lockKey = `nft:${nftId}`
       const lockResult = await lock.acquire(lockKey, tradeId)
       if (!lockResult.success) {
         return { success: false, reason: 'NFT locked by another trade' }
@@ -324,7 +324,7 @@ describe('Multiplayer Race Condition Tests', () => {
   })
 
   test('Load test: 100 concurrent nonce operations', async () => {
-    const players = Array.from({ length: 100 }, (_, i) => 'player' + i)
+    const players = Array.from({ length: 100 }, (_, i) => `player${i}`)
 
     const results = await Promise.all(
       players.map(async (player) => {

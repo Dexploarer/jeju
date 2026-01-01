@@ -1,5 +1,6 @@
 import { isRecord } from '@jejunetwork/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { API_BASE } from '../lib/api'
 import { api, extractDataSafe } from '../lib/client'
 
 export type ContainerStatus = 'running' | 'stopped' | 'building' | 'failed'
@@ -60,9 +61,6 @@ interface InstancesResponse {
   instances: ContainerInstance[]
   total: number
 }
-
-// Browser-only hook - API is same origin
-const API_BASE = ''
 
 async function fetchApi<T>(
   path: string,

@@ -1,0 +1,170 @@
+load("//:build/kj_test.bzl", "kj_test")
+load("//:build/wd_cc_benchmark.bzl", "wd_cc_benchmark")
+load("//:build/wd_cc_library.bzl", "wd_cc_library")
+load("//:build/wd_test.bzl", "wd_test")
+
+wd_cc_library(
+    name = "bench-tools",
+    hdrs = ["bench-tools.h"],
+    tags = ["workerd-benchmark"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@capnp-cpp//src/kj:kj-test",
+        "@google_benchmark//:benchmark",
+    ],
+)
+
+wd_cc_library(
+    name = "test-fixture",
+    srcs = ["test-fixture.c++"],
+    hdrs = ["test-fixture.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//src/workerd/io",
+        "//src/workerd/jsg",
+        "//src/workerd/server:workerd-api",
+        "//src/workerd/util:autogate",
+    ],
+)
+
+kj_test(
+    src = "test-fixture-test.c++",
+    deps = [":test-fixture"],
+)
+
+# Use `bazel run //src/workerd/tests:bench-json` to benchmark
+wd_cc_benchmark(
+    name = "bench-json",
+    srcs = ["bench-json.c++"],
+    deps = [
+        "//src/workerd/api:r2-api_capnp",
+        "@capnp-cpp//src/kj",
+    ],
+)
+
+wd_cc_benchmark(
+    name = "bench-mimetype",
+    srcs = ["bench-mimetype.c++"],
+    deps = [
+        "//src/workerd/util:mimetype",
+    ],
+)
+
+wd_cc_benchmark(
+    name = "bench-kj-headers",
+    srcs = ["bench-kj-headers.c++"],
+    deps = [
+        "@capnp-cpp//src/kj/compat:kj-http",
+    ],
+)
+
+wd_cc_benchmark(
+    name = "bench-api-headers",
+    srcs = ["bench-api-headers.c++"],
+    deps = [
+        ":test-fixture",
+    ],
+)
+
+wd_cc_benchmark(
+    name = "bench-global-scope",
+    srcs = ["bench-global-scope.c++"],
+    deps = [":test-fixture"],
+)
+
+wd_cc_benchmark(
+    name = "bench-regex",
+    srcs = ["bench-regex.c++"],
+    deps = [
+        ":test-fixture",
+        "//src/workerd/util",
+    ],
+)
+
+wd_cc_benchmark(
+    name = "bench-util",
+    srcs = ["bench-util.c++"],
+    deps = [
+        ":test-fixture",
+        "//src/workerd/jsg",
+    ],
+)
+
+wd_cc_benchmark(
+    name = "bench-text-encoder",
+    srcs = ["bench-text-encoder.c++"],
+    deps = [":test-fixture"],
+)
+
+wd_cc_benchmark(
+    name = "bench-response",
+    srcs = ["bench-response.c++"],
+    deps = [":test-fixture"],
+)
+
+wd_cc_benchmark(
+    name = "bench-jsstring",
+    srcs = ["bench-jsstring.c++"],
+    deps = [
+        ":test-fixture",
+        "//src/workerd/jsg",
+    ],
+)
+
+# Benchmark for comparing stream piping implementations
+# Tagged manual because it takes too long for CI - run explicitly with:
+#   bazel run //src/workerd/tests:bench-stream-piping
+wd_cc_benchmark(
+    name = "bench-stream-piping",
+    srcs = ["bench-stream-piping.c++"],
+    tags = ["manual"],
+    deps = [
+        ":test-fixture",
+        "//src/workerd/io",
+        "//src/workerd/jsg",
+    ],
+)
+
+wd_test(
+    src = "unknown-import-assertions-test.wd-test",
+    args = ["--experimental"],
+    data = ["unknown-import-assertions-test.js"],
+)
+
+wd_test(
+    src = "module-imports-test.wd-test",
+    args = ["--experimental"],
+    data = [
+        "module-imports-test.js",
+        "test.wasm",
+    ],
+)
+
+wd_test(
+    src = "performance-test.wd-test",
+    data = ["performance-test.js"],
+)
+
+# REPRL tests using KJ test framework
+wd_cc_library(
+    name = "libreprl",
+    srcs = ["libreprl/libreprl.c"],
+    hdrs = ["libreprl/libreprl.h"],
+    copts = [
+        "-std=c23",
+    ],
+)
+
+kj_test(
+    src = "test-reprl.c++",
+    data = [
+        "//fuzzilli:config.capnp",
+        "//fuzzilli:worker.js",
+        "//src/workerd/server:workerd",
+    ],
+    tags = ["requires-fuzzilli"],
+    deps = [
+        ":libreprl",
+        "@bazel_tools//tools/cpp/runfiles",
+    ],
+)

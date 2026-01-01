@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * Deploy OAuth3 to testnet
- * 
+ *
  * This script:
  * 1. Builds the frontend
  * 2. Creates a ConfigMap with the embedded frontend
@@ -24,7 +24,10 @@ async function deploy() {
 
   // Read built files
   console.log('\n[2/4] Reading built files...')
-  const indexHtml = readFileSync(resolve(APP_DIR, 'dist/web/index.html'), 'utf-8')
+  const indexHtml = readFileSync(
+    resolve(APP_DIR, 'dist/web/index.html'),
+    'utf-8',
+  )
   const appJs = readFileSync(resolve(APP_DIR, 'dist/web/app.js'), 'utf-8')
 
   console.log(`  index.html: ${indexHtml.length} bytes`)
@@ -42,33 +45,39 @@ metadata:
   namespace: oauth3
 data:
   server.js: |
-${serverCode.split('\n').map(line => '    ' + line).join('\n')}
+${serverCode
+  .split('\n')
+  .map((line) => `    ${line}`)
+  .join('\n')}
 `
 
   // Write temp file and apply
   const tmpPath = '/tmp/oauth3-configmap.yaml'
   await Bun.write(tmpPath, configMapYaml)
-  
+
   console.log('  Applying ConfigMap...')
   execSync(`kubectl apply -f ${tmpPath}`, { stdio: 'inherit' })
 
   // Restart deployment
   console.log('\n[4/4] Restarting deployment...')
-  execSync('kubectl rollout restart deployment/oauth3 -n oauth3', { stdio: 'inherit' })
-  execSync('kubectl rollout status deployment/oauth3 -n oauth3 --timeout=60s', { stdio: 'inherit' })
+  execSync('kubectl rollout restart deployment/oauth3 -n oauth3', {
+    stdio: 'inherit',
+  })
+  execSync('kubectl rollout status deployment/oauth3 -n oauth3 --timeout=60s', {
+    stdio: 'inherit',
+  })
 
-  console.log('\n' + '='.repeat(50))
+  console.log(`\n${'='.repeat(50)}`)
   console.log('Deployment complete.')
-  console.log('OAuth3 should now be available at: https://oauth3.testnet.jejunetwork.org')
+  console.log(
+    'OAuth3 should now be available at: https://oauth3.testnet.jejunetwork.org',
+  )
 }
 
 function createServerCode(indexHtml: string, appJs: string): string {
   // Escape the strings for embedding in JavaScript
   const escapeForJs = (str: string) => {
-    return str
-      .replace(/\\/g, '\\\\')
-      .replace(/`/g, '\\`')
-      .replace(/\$/g, '\\$')
+    return str.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$')
   }
 
   return `const http = require('http');
@@ -191,7 +200,7 @@ server.listen(PORT, '0.0.0.0', () => {
 });`
 }
 
-deploy().catch(err => {
+deploy().catch((err) => {
   console.error('Deployment failed:', err)
   process.exit(1)
 })

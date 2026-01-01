@@ -450,6 +450,9 @@ async function executeSkill(
         | undefined
 
       const v4Contracts = getV4Contracts(JEJU_CHAIN_ID)
+      if (!v4Contracts) {
+        throw new Error(`V4 contracts not deployed on chain ${JEJU_CHAIN_ID}`)
+      }
       const swapRouter = expect(
         v4Contracts.swapRouter,
         'Swap router not deployed',

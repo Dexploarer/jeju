@@ -346,6 +346,9 @@ export async function callMCPTool(
       expect(amount, 'amount is required')
 
       const contracts = getV4Contracts(JEJU_CHAIN_ID)
+      if (!contracts) {
+        throw new Error(`V4 contracts not deployed on chain ${JEJU_CHAIN_ID}`)
+      }
       const swapRouter = expect(
         contracts.swapRouter,
         'Swap router not deployed on this chain',

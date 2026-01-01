@@ -423,7 +423,12 @@ describe('Health Check Standard', () => {
           }
         }
         // Also catch the bun-specific error format
-        if (e && typeof e === 'object' && 'code' in e && (e as { code: string }).code === 'ConnectionRefused') {
+        if (
+          e &&
+          typeof e === 'object' &&
+          'code' in e &&
+          (e as { code: string }).code === 'ConnectionRefused'
+        ) {
           console.log(`Gateway endpoint ${endpoint} not available - skipping`)
           continue
         }

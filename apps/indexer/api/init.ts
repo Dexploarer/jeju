@@ -105,24 +105,24 @@ export function initializeIndexer(): void {
     )
   }
 
-  // Validate critical contracts are configured - fail fast
+  // Log which optional contracts are configured
   const c = config.contracts
-  const missingContracts: string[] = []
+  const missingOptional: string[] = []
 
-  // Check moderation contracts
-  if (!c.banManager) missingContracts.push('moderation.banManager')
-  if (!c.reportingSystem) missingContracts.push('moderation.reportingSystem')
+  // Check moderation contracts (optional - may not be deployed on all networks)
+  if (!c.banManager) missingOptional.push('moderation.banManager')
+  if (!c.reportingSystem) missingOptional.push('moderation.reportingSystem')
   if (!c.reputationLabelManager)
-    missingContracts.push('moderation.reputationLabelManager')
+    missingOptional.push('moderation.reputationLabelManager')
 
-  if (missingContracts.length > 0) {
-    throw new Error(
-      `Required contracts not configured for ${config.network}: ${missingContracts.join(', ')}. ` +
-        `Add them to packages/config/contracts.json`,
+  if (missingOptional.length > 0) {
+    console.log(
+      `Optional contracts not configured for ${config.network}: ${missingOptional.join(', ')}. ` +
+        `Some features may be unavailable.`,
     )
+  } else {
+    console.log('All contracts configured')
   }
-
-  console.log('All required contracts configured')
   initialized = true
 }
 

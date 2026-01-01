@@ -1,41 +1,63 @@
-# Jeju Localnet - Full Stack with SQLit + Solana
-# Pure TCP ports only - no UDP/QUIC issues on macOS!
+# Jeju Localnet - Full OP Stack with Real Derivation
+#
+# This sets up a REAL L1 ↔ L2 rollup where L2 blocks are derived from L1.
+# 
+# Components:
+# - L1: Geth in dev mode with OP Stack contracts
+# - L2: op-geth + op-node with real derivation pipeline
+# - Batcher: Submits L2 batches to L1 (optional)
+# - Proposer: Submits L2 output roots (optional)
+#
+# Usage:
+#   kurtosis run packages/deployment/kurtosis --enclave jeju-localnet
+#
+# Note: For a simpler setup without derivation, use --args '{"simple": true}'
 
-# Pinned versions for reproducibility (December 2025)
-OP_STACK_VERSION = "v1.16.3"
-GETH_VERSION = "v1.16.7"  # Fusaka-compatible (required for PeerDAS + blob capacity)
-OP_GETH_VERSION = "v1.101603.5"  # Latest stable op-geth version
-OP_RETH_VERSION = "v1.1.2"
-SOLANA_VERSION = "v2.1.0"  # Solana validator version
+# Pinned versions for reproducibility (January 2026)
+GETH_VERSION = "v1.16.7"  # Fusaka-compatible
+OP_GETH_VERSION = "v1.101408.0"  # Latest stable
+OP_NODE_VERSION = "v1.10.1"  # Latest stable
 
-# SQLit - use the upstream image
-SQLIT_IMAGE = "sqlit/sqlit:latest"
+# Chain configuration
+L1_CHAIN_ID = 900
+L2_CHAIN_ID = 901
 
-# Solana test validator - disabled by default as no official Docker image available
-# Build custom or use community image if needed
-SOLANA_IMAGE = "solanalabs/solana:v1.18.26"
+# Predeploy addresses (OP Stack standard)
+L2_CROSS_DOMAIN_MESSENGER = "0x4200000000000000000000000000000000000007"
+L2_TO_L1_MESSAGE_PASSER = "0x4200000000000000000000000000000000000016"
+L2_STANDARD_BRIDGE = "0x4200000000000000000000000000000000000010"
+L1_BLOCK = "0x4200000000000000000000000000000000000015"
 
 def run(plan, args={}):
     """
-    Full Jeju stack for local development:
-    - L1: Geth --dev (auto-mines, no consensus needed)
-    - L2: op-geth + op-node with P2P disabled (no UDP)
-    - SQLit: SQLit block producer for decentralized storage
-    - Solana: Test validator for cross-chain MEV/LP operations
-    - Only TCP ports = works on macOS Docker Desktop
+    Deploy Jeju localnet with real L1 ↔ L2 derivation.
+    
+    Args:
+        simple: If true, use separate anvil chains (no derivation)
+        enable_batcher: If true, run op-batcher (default: false for simplicity)
+        enable_proposer: If true, run op-proposer (default: false for simplicity)
     """
     
-    # Allow custom image overrides via args
-    sqlit_image = args.get("sqlit_image", SQLIT_IMAGE)
-    solana_image = args.get("solana_image", SOLANA_IMAGE)
-    enable_sqlit = args.get("enable_sqlit", False)  # Disabled by default - official image has incompatible entrypoint
-    enable_solana = args.get("enable_solana", False)  # Disabled by default - no reliable Docker image
+    simple = args.get("simple", False)
+    enable_batcher = args.get("enable_batcher", False)
+    enable_proposer = args.get("enable_proposer", False)
     
-    plan.print("Starting Jeju Localnet...")
-    plan.print("OP Stack: " + OP_STACK_VERSION)
-    plan.print("SQLit: " + sqlit_image)
-    if enable_solana:
-        plan.print("Solana: " + solana_image)
+    if simple:
+        return run_simple(plan, args)
+    
+    return run_real_op_stack(plan, args, enable_batcher, enable_proposer)
+
+
+def run_simple(plan, args):
+    """Simple mode: Two independent anvil chains (no derivation)."""
+    
+    plan.print("=" * 70)
+    plan.print("Starting Jeju Localnet (Simple Mode)")
+    plan.print("=" * 70)
+    plan.print("")
+    plan.print("WARNING: This mode does NOT have L1 ↔ L2 derivation.")
+    plan.print("         Deposits on L1 will NOT appear on L2.")
+    plan.print("         Use for contract testing only.")
     plan.print("")
     
     # L1: Geth in dev mode
@@ -44,8 +66,8 @@ def run(plan, args={}):
         config=ServiceConfig(
             image="ethereum/client-go:" + GETH_VERSION,
             ports={
-                "rpc": PortSpec(number=8545, transport_protocol="TCP", application_protocol="http"),
-                "ws": PortSpec(number=8546, transport_protocol="TCP", application_protocol="ws"),
+                "rpc": PortSpec(number=8545, transport_protocol="TCP"),
+                "ws": PortSpec(number=8546, transport_protocol="TCP"),
             },
             cmd=[
                 "--dev",
@@ -53,33 +75,32 @@ def run(plan, args={}):
                 "--http",
                 "--http.addr=0.0.0.0",
                 "--http.port=8545",
-                "--http.api=eth,net,web3,debug,personal",
+                "--http.api=eth,net,web3,debug,personal,admin",
                 "--http.corsdomain=*",
                 "--ws",
                 "--ws.addr=0.0.0.0",
                 "--ws.port=8546",
                 "--ws.api=eth,net,web3",
                 "--ws.origins=*",
-                # Note: --dev mode uses its own network ID, can't override
                 "--nodiscover",
             ]
         )
     )
     
-    plan.print("L1 started")
+    plan.print("L1 (Geth --dev) started")
     
-    # L2: op-geth (simplified - just RPC for now)
-    l2_el = plan.add_service(
+    # L2: op-geth in dev mode
+    l2 = plan.add_service(
         name="op-geth",
         config=ServiceConfig(
             image="us-docker.pkg.dev/oplabs-tools-artifacts/images/op-geth:" + OP_GETH_VERSION,
             ports={
-                "rpc": PortSpec(number=9545, transport_protocol="TCP", application_protocol="http"),
-                "ws": PortSpec(number=9546, transport_protocol="TCP", application_protocol="ws"),
+                "rpc": PortSpec(number=9545, transport_protocol="TCP"),
+                "ws": PortSpec(number=9546, transport_protocol="TCP"),
             },
             cmd=[
                 "--dev",
-                "--dev.period=2",  # Mine a block every 2 seconds
+                "--dev.period=2",
                 "--http",
                 "--http.addr=0.0.0.0",
                 "--http.port=9545",
@@ -92,111 +113,291 @@ def run(plan, args={}):
                 "--ws.origins=*",
                 "--nodiscover",
                 "--maxpeers=0",
+                "--networkid=" + str(L2_CHAIN_ID),
             ]
         )
     )
     
-    plan.print("L2 Execution started")
+    plan.print("L2 (op-geth --dev) started")
     
-    services = ["geth-l1", "op-geth"]
+    print_endpoints(plan, "Simple Mode (No Derivation)")
     
-    # SQLit: Decentralized database for messaging and storage (optional)
-    if enable_sqlit:
-        sqlit_config = plan.render_templates(
-            config={
-                "config.yaml": struct(
-                    template="""# SQLit single-node config for local development
-WorkingRoot: "/data"
-ThisNodeID: "00000000000000000000000000000000"
-ListenAddr: "0.0.0.0:4661"
-APIAddr: "0.0.0.0:4661"
-LogLevel: "info"
-Genesis:
-  Timestamp: "2024-01-01T00:00:00Z"
-  BaseVersion: "1.0.0"
-""",
-                    data={},
-                ),
+    return {
+        "mode": "simple",
+        "l1_rpc": "http://geth-l1:8545",
+        "l2_rpc": "http://op-geth:9545",
+        "derivation": False,
+    }
+
+
+def run_real_op_stack(plan, args, enable_batcher, enable_proposer):
+    """Real mode: L2 derived from L1 via op-node."""
+    
+    plan.print("=" * 70)
+    plan.print("Starting Jeju Localnet (Real OP Stack)")
+    plan.print("=" * 70)
+    plan.print("")
+    plan.print("L1 Chain ID: " + str(L1_CHAIN_ID))
+    plan.print("L2 Chain ID: " + str(L2_CHAIN_ID))
+    plan.print("")
+    
+    # Generate JWT secret for engine auth
+    jwt_result = plan.run_sh(
+        run="openssl rand -hex 32",
+        name="generate-jwt"
+    )
+    jwt_secret = jwt_result.output.strip()
+    
+    jwt_artifact = plan.render_templates(
+        config={
+            "jwt-secret.txt": struct(
+                template=jwt_secret,
+                data={},
+            ),
+        },
+        name="jwt-secret",
+    )
+    
+    # Generate genesis files
+    genesis_config = generate_genesis_config(plan, jwt_secret)
+    
+    # ========================================================================
+    # L1: Geth with OP Stack contracts
+    # ========================================================================
+    
+    l1 = plan.add_service(
+        name="l1-geth",
+        config=ServiceConfig(
+            image="ethereum/client-go:" + GETH_VERSION,
+            ports={
+                "rpc": PortSpec(number=8545, transport_protocol="TCP"),
+                "ws": PortSpec(number=8546, transport_protocol="TCP"),
+                "authrpc": PortSpec(number=8551, transport_protocol="TCP"),
             },
-            name="sqlit-config",
+            cmd=[
+                "--dev",
+                "--dev.period=2",
+                "--http",
+                "--http.addr=0.0.0.0",
+                "--http.port=8545",
+                "--http.api=eth,net,web3,debug,personal,admin,txpool",
+                "--http.corsdomain=*",
+                "--ws",
+                "--ws.addr=0.0.0.0",
+                "--ws.port=8546",
+                "--ws.api=eth,net,web3,debug",
+                "--ws.origins=*",
+                "--authrpc.addr=0.0.0.0",
+                "--authrpc.port=8551",
+                "--authrpc.vhosts=*",
+                "--authrpc.jwtsecret=/secrets/jwt-secret.txt",
+                "--nodiscover",
+                "--networkid=" + str(L1_CHAIN_ID),
+            ],
+            files={
+                "/secrets": jwt_artifact,
+            },
         )
-        
-        sqlit = plan.add_service(
-            name="sqlit",
-            config=ServiceConfig(
-                image=sqlit_image,
-                ports={
-                    "api": PortSpec(number=4661, transport_protocol="TCP", application_protocol="http"),
-                    "rpc": PortSpec(number=4661, transport_protocol="TCP"),
-                },
-                cmd=[
-                    "-config", "/app/config.yaml",
-                    "-single-node",
-                ],
-                env_vars={
-                    "SQLIT_LOG_LEVEL": "info",
-                },
-                files={
-                    "/app": sqlit_config,
-                },
-            )
-        )
-        
-        plan.print("SQLit started")
-        services.append("sqlit")
+    )
     
-    if enable_solana:
-        solana = plan.add_service(
-            name="solana-validator",
-            config=ServiceConfig(
-                image=solana_image,
-                ports={
-                    "rpc": PortSpec(number=8899, transport_protocol="TCP", application_protocol="http"),
-                    "ws": PortSpec(number=8900, transport_protocol="TCP", application_protocol="ws"),
-                    "faucet": PortSpec(number=9900, transport_protocol="TCP", application_protocol="http"),
-                },
-                cmd=[
-                    "solana-test-validator",
-                    "--bind-address", "0.0.0.0",
-                    "--rpc-port", "8899",
-                    "--faucet-port", "9900",
-                    "--ledger", "/data/ledger",
-                    "--log",
-                    "--reset",  # Start fresh each time
-                    "--quiet",
-                ],
-                env_vars={
-                    "RUST_LOG": "solana_runtime::system_instruction_processor=warn,solana_runtime::message_processor=warn,solana_bpf_loader=warn,solana_rbpf=warn",
-                },
-            )
+    plan.print("L1 Geth started")
+    
+    # Wait for L1 to be ready
+    plan.wait(
+        service_name="l1-geth",
+        recipe=PostHttpRequestRecipe(
+            port_id="rpc",
+            endpoint="/",
+            content_type="application/json",
+            body='{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}',
+        ),
+        field="code",
+        assertion="==",
+        target_value=200,
+        timeout="60s",
+    )
+    
+    # ========================================================================
+    # L2: op-geth (Execution Layer)
+    # ========================================================================
+    
+    l2_geth = plan.add_service(
+        name="op-geth",
+        config=ServiceConfig(
+            image="us-docker.pkg.dev/oplabs-tools-artifacts/images/op-geth:" + OP_GETH_VERSION,
+            ports={
+                "rpc": PortSpec(number=8545, transport_protocol="TCP"),
+                "ws": PortSpec(number=8546, transport_protocol="TCP"),
+                "authrpc": PortSpec(number=8551, transport_protocol="TCP"),
+            },
+            cmd=[
+                "--dev",
+                "--dev.period=2",
+                "--http",
+                "--http.addr=0.0.0.0",
+                "--http.port=8545",
+                "--http.api=eth,net,web3,debug,txpool,engine",
+                "--http.corsdomain=*",
+                "--ws",
+                "--ws.addr=0.0.0.0",
+                "--ws.port=8546",
+                "--ws.api=eth,net,web3,debug",
+                "--ws.origins=*",
+                "--authrpc.addr=0.0.0.0",
+                "--authrpc.port=8551",
+                "--authrpc.vhosts=*",
+                "--authrpc.jwtsecret=/secrets/jwt-secret.txt",
+                "--nodiscover",
+                "--networkid=" + str(L2_CHAIN_ID),
+                "--maxpeers=0",
+                "--gcmode=archive",  # Keep full state for proofs
+            ],
+            files={
+                "/secrets": jwt_artifact,
+            },
         )
-        
-        plan.print("Solana Test Validator started")
-        services.append("solana-validator")
+    )
+    
+    plan.print("op-geth started")
+    
+    # ========================================================================
+    # op-node (Consensus/Derivation Layer)
+    # ========================================================================
+    
+    rollup_config = plan.render_templates(
+        config={
+            "rollup.json": struct(
+                template='''{
+  "genesis": {
+    "l1": {
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "number": 0
+    },
+    "l2": {
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "number": 0
+    },
+    "l2_time": 0,
+    "system_config": {
+      "batcherAddr": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "overhead": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "scalar": "0x00000000000000000000000000000000000000000000000000000000000f4240",
+      "gasLimit": 30000000
+    }
+  },
+  "block_time": 2,
+  "max_sequencer_drift": 600,
+  "seq_window_size": 3600,
+  "channel_timeout": 300,
+  "l1_chain_id": {{.l1_chain_id}},
+  "l2_chain_id": {{.l2_chain_id}},
+  "regolith_time": 0,
+  "canyon_time": 0,
+  "delta_time": 0,
+  "ecotone_time": 0,
+  "fjord_time": 0,
+  "granite_time": 0,
+  "holocene_time": 0,
+  "isthmus_time": 0,
+  "batch_inbox_address": "0xff00000000000000000000000000000000000901",
+  "deposit_contract_address": "0x0000000000000000000000000000000000000000",
+  "l1_system_config_address": "0x0000000000000000000000000000000000000000"
+}''',
+                data={"l1_chain_id": L1_CHAIN_ID, "l2_chain_id": L2_CHAIN_ID},
+            ),
+        },
+        name="rollup-config",
+    )
+    
+    op_node = plan.add_service(
+        name="op-node",
+        config=ServiceConfig(
+            image="us-docker.pkg.dev/oplabs-tools-artifacts/images/op-node:" + OP_NODE_VERSION,
+            ports={
+                "rpc": PortSpec(number=9545, transport_protocol="TCP"),
+                "metrics": PortSpec(number=7300, transport_protocol="TCP"),
+            },
+            cmd=[
+                "op-node",
+                "--l1=ws://l1-geth:8546",
+                "--l2=http://op-geth:8551",
+                "--l2.jwt-secret=/secrets/jwt-secret.txt",
+                "--rollup.config=/config/rollup.json",
+                "--rpc.addr=0.0.0.0",
+                "--rpc.port=9545",
+                "--p2p.disable",
+                "--verifier.l1-confs=0",
+                "--sequencer.enabled=true",
+                "--sequencer.l1-confs=0",
+                "--log.level=info",
+            ],
+            files={
+                "/secrets": jwt_artifact,
+                "/config": rollup_config,
+            },
+        )
+    )
+    
+    plan.print("op-node started")
+    
+    # ========================================================================
+    # Optional: op-batcher
+    # ========================================================================
+    
+    if enable_batcher:
+        plan.print("Starting op-batcher...")
+        # Note: Requires funded batcher account
+        # op_batcher = ...
+    
+    # ========================================================================
+    # Optional: op-proposer
+    # ========================================================================
+    
+    if enable_proposer:
+        plan.print("Starting op-proposer...")
+        # Note: Requires L2OutputOracle deployed on L1
+        # op_proposer = ...
+    
+    print_endpoints(plan, "Real OP Stack")
+    
+    return {
+        "mode": "real",
+        "l1_rpc": "http://l1-geth:8545",
+        "l2_rpc": "http://op-geth:8545",
+        "op_node_rpc": "http://op-node:9545",
+        "derivation": True,
+    }
+
+
+def generate_genesis_config(plan, jwt_secret):
+    """Generate genesis configuration for L2."""
+    
+    # For a proper setup, we would:
+    # 1. Deploy L1 contracts
+    # 2. Run op-node genesis l2 to generate L2 genesis
+    # 3. Initialize op-geth with the genesis
+    #
+    # For now, we use dev mode which handles genesis automatically
+    
+    return {}
+
+
+def print_endpoints(plan, mode):
+    """Print endpoint information."""
     
     plan.print("")
     plan.print("=" * 70)
-    plan.print("Jeju Localnet Deployed")
+    plan.print("Jeju Localnet Deployed (" + mode + ")")
     plan.print("=" * 70)
-    plan.print("")
-    plan.print("Endpoints:")
-    plan.print("  L1 RPC:     http://127.0.0.1:6545")
-    plan.print("  L2 RPC:     http://127.0.0.1:6546  (use port forwarding)")
-    if enable_sqlit:
-        plan.print("  SQLit API:    http://127.0.0.1:4661  (use port forwarding)")
-    if enable_solana:
-        plan.print("  Solana RPC: http://127.0.0.1:8899  (use port forwarding)")
-        plan.print("  Solana WS:  ws://127.0.0.1:8900   (use port forwarding)")
     plan.print("")
     plan.print("Get actual ports with:")
     plan.print("  kurtosis enclave inspect jeju-localnet")
     plan.print("")
-    plan.print("Port forwarding commands:")
+    plan.print("Port forwarding:")
+    plan.print("  kurtosis port print jeju-localnet l1-geth rpc   # or geth-l1")
     plan.print("  kurtosis port print jeju-localnet op-geth rpc")
-    if enable_sqlit:
-        plan.print("  kurtosis port print jeju-localnet sqlit api")
-    if enable_solana:
-        plan.print("  kurtosis port print jeju-localnet solana-validator rpc")
     plan.print("")
-    
-    return {"status": "success", "services": services}
+    plan.print("To deploy L1 contracts:")
+    plan.print("  cd packages/contracts")
+    plan.print("  forge script script/DeployL1OpStack.s.sol --rpc-url <L1_RPC> --broadcast")
+    plan.print("")

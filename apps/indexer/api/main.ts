@@ -5,7 +5,6 @@
 import './init'
 
 import { ZERO_ADDRESS } from '@jejunetwork/types'
-import { type Store } from '@subsquid/typeorm-store'
 import {
   Account,
   Block as BlockEntity,
@@ -44,7 +43,7 @@ import { processOIFEvents } from './oif-processor'
 import { processOracleEvents } from './oracle-processor'
 import { type ProcessorContext, processor } from './processor'
 import { processRegistryEvents } from './registry-game-processor'
-import { SQLitDatabase } from './sqlit-database'
+import { SQLitDatabase, type SQLitStoreInterface } from './sqlit-database'
 import { processStorageEvents } from './storage-processor'
 
 const SQLIT_DATABASE_ID = config.sqlitDatabaseId || 'indexer-testnet'
