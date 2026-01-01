@@ -76,9 +76,13 @@ packages/contracts/deployments/*-31337.json
 **/.terraform/
 **/.terraform.lock.hcl
 *.tfplan
+**/tfplan
 *.tfstate
 *.tfstate.*
 .terraform.tfstate.lock.info
+# tfvars can contain secrets - use .example files instead
+terraform.tfvars
+*.auto.tfvars
 
 # Misc
 .cache/
