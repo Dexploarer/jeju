@@ -412,10 +412,19 @@ export function createDNSRouter() {
           const ownerHeader = request.headers.get('x-jeju-address')
           if (!ownerHeader) {
             set.status = 401
-            return { error: 'x-jeju-address header required for JNS registration' }
+            return {
+              error: 'x-jeju-address header required for JNS registration',
+            }
           }
 
-          const { name, target, type, contentCid, metadata } = body
+          const {
+            name,
+            target,
+            type,
+            contentCid,
+            metadata: _jnsMetadata,
+          } = body
+          // TODO: Store jnsMetadata in the app registration when supported
 
           // For now, we register in the app router's deployed apps
           // In production, this would be an on-chain transaction to the JNS registry
@@ -461,7 +470,11 @@ export function createDNSRouter() {
           body: t.Object({
             name: t.String(),
             target: t.String(),
-            type: t.Union([t.Literal('A'), t.Literal('CNAME'), t.Literal('TXT')]),
+            type: t.Union([
+              t.Literal('A'),
+              t.Literal('CNAME'),
+              t.Literal('TXT'),
+            ]),
             contentCid: t.Optional(t.String()),
             metadata: t.Optional(
               t.Object({

@@ -1,21 +1,26 @@
+/**
+ * REST API Server for Indexer
+ * SQLit-based implementation
+ */
+
 import { cors } from '@elysiajs/cors'
 import { getLocalhostHost } from '@jejunetwork/config'
 import { type Context, Elysia } from 'elysia'
 import { z } from 'zod'
-import { RegisteredAgent } from '../src/model'
 import { config } from './config'
+import {
+  count,
+  find,
+  type Block,
+  type RegisteredAgent,
+  type Transaction,
+} from './db'
 import { getAccountByAddress } from './utils/account-utils'
 import { getAgentsByTag } from './utils/agent-utils'
 import { getBlockByIdentifier } from './utils/block-detail-utils'
 import { getBlocks } from './utils/block-query-utils'
 import { mapContainerListResponse } from './utils/container-utils'
-import {
-  type DataSource,
-  getDataSource,
-  getIndexerMode,
-  isPostgresAvailable,
-  isSchemaReady,
-} from './utils/db'
+import { getIndexerMode, isSchemaReady } from './utils/db'
 import {
   mapAgentSummary,
   mapBlockDetail,
@@ -132,7 +137,6 @@ const app = new Elysia()
     service: 'indexer-rest',
     port: REST_PORT,
     mode: getIndexerMode(),
-    postgresAvailable: isPostgresAvailable(),
     schemaReady: isSchemaReady(),
   }))
   .get('/', () => ({
@@ -164,7 +168,6 @@ const app = new Elysia()
     rateLimits: RATE_LIMITS,
   }))
   .get('/api/search', async (ctx: Context) => {
-    const ds = await requireDataSource()
     const validated = validateQuery(
       restSearchParamsSchema,
       ctx.query,
@@ -183,16 +186,14 @@ const app = new Elysia()
       offset: validated.offset,
     }
 
-    return await search(ds, params)
+    return await search(params)
   })
   .get('/api/tags', async (ctx: Context) => {
-    const ds = await requireDataSource()
     validateQuery(z.object({}).passthrough(), ctx.query, 'GET /api/tags')
-    const tags = await getPopularTags(ds, 100)
+    const tags = await getPopularTags(100)
     return { tags, total: tags.length }
   })
   .get('/api/agents', async (ctx: Context) => {
-    const ds = await requireDataSource()
     const validated = validateQuery(
       agentsQuerySchema,
       ctx.query,
@@ -204,35 +205,29 @@ const app = new Elysia()
       where.active = validated.active
     }
 
-    const [agents, total] = await ds
-      .getRepository(RegisteredAgent)
-      .findAndCount({
-        where,
-        order: { registeredAt: 'DESC' },
-        take: validated.limit,
-        skip: validated.offset,
-        relations: ['owner'],
-      })
+    const agents = await find<RegisteredAgent>('RegisteredAgent', {
+      where,
+      order: { registeredAt: 'DESC' },
+      take: validated.limit,
+      skip: validated.offset,
+    })
+    const total = await count('RegisteredAgent', where)
 
     return {
-      agents: agents.map((a) => ({
-        ...mapAgentSummary(a),
-        owner: a.owner.address,
-      })),
+      agents: agents.map((a) => mapAgentSummary(a)),
       total,
       limit: validated.limit,
       offset: validated.offset,
     }
   })
   .get('/api/agents/:id', async (ctx: Context) => {
-    const ds = await requireDataSource()
     const { id } = validateParams(
       agentIdParamSchema,
       ctx.params,
       'GET /api/agents/:id',
     )
 
-    const agent = await getAgentById(ds, id)
+    const agent = await getAgentById(id)
     if (!agent) {
       ctx.set.status = 404
       return { error: `Agent not found: ${id}` }
@@ -241,7 +236,6 @@ const app = new Elysia()
     return agent
   })
   .get('/api/agents/tag/:tag', async (ctx: Context) => {
-    const ds = await requireDataSource()
     const { tag } = validateParams(
       agentTagParamSchema,
       ctx.params,
@@ -253,7 +247,7 @@ const app = new Elysia()
       'GET /api/agents/tag/:tag',
     )
 
-    const result = await getAgentsByTag(ds, tag, validated.limit)
+    const result = await getAgentsByTag(tag, validated.limit)
 
     return {
       tag: result.tag,
@@ -262,14 +256,13 @@ const app = new Elysia()
     }
   })
   .get('/api/blocks', async (ctx: Context) => {
-    const ds = await requireDataSource()
     const validated = validateQuery(
       blocksQuerySchema,
       ctx.query,
       'GET /api/blocks',
     )
 
-    const blocks = await getBlocks(ds, {
+    const blocks = await getBlocks({
       limit: validated.limit,
       offset: validated.offset,
     })
@@ -279,14 +272,13 @@ const app = new Elysia()
     }
   })
   .get('/api/blocks/:numberOrHash', async (ctx: Context) => {
-    const ds = await requireDataSource()
     const { numberOrHash } = validateParams(
       blockNumberOrHashParamSchema,
       ctx.params,
       'GET /api/blocks/:numberOrHash',
     )
 
-    const block = await getBlockByIdentifier(ds, numberOrHash)
+    const block = await getBlockByIdentifier(numberOrHash)
     if (!block) {
       ctx.set.status = 404
       return { error: `Block not found: ${numberOrHash}` }
@@ -294,19 +286,18 @@ const app = new Elysia()
 
     return {
       ...mapBlockDetail(block),
-      baseFeePerGas: block.baseFeePerGas?.toString() || null,
+      baseFeePerGas: block.baseFeePerGas ?? null,
       size: block.size,
     }
   })
   .get('/api/transactions', async (ctx: Context) => {
-    const ds = await requireDataSource()
     const validated = validateQuery(
       transactionsQuerySchema,
       ctx.query,
       'GET /api/transactions',
     )
 
-    const txs = await getTransactions(ds, {
+    const txs = await getTransactions({
       limit: validated.limit,
       offset: validated.offset,
     })
@@ -316,14 +307,13 @@ const app = new Elysia()
     }
   })
   .get('/api/transactions/:hash', async (ctx: Context) => {
-    const ds = await requireDataSource()
     const { hash } = validateParams(
       transactionHashParamSchema,
       ctx.params,
       'GET /api/transactions/:hash',
     )
 
-    const tx = await getTransactionByHash(ds, hash)
+    const tx = await getTransactionByHash(hash)
 
     if (!tx) {
       ctx.set.status = 404
@@ -332,20 +322,19 @@ const app = new Elysia()
 
     return {
       ...mapTransactionDetail(tx),
-      gasLimit: tx.gasLimit.toString(),
+      gasLimit: tx.gasLimit,
       input: tx.input,
       nonce: tx.nonce,
     }
   })
   .get('/api/accounts/:address', async (ctx: Context) => {
-    const ds = await requireDataSource()
     const { address } = validateParams(
       accountAddressParamSchema,
       ctx.params,
       'GET /api/accounts/:address',
     )
 
-    const account = await getAccountByAddress(ds, address)
+    const account = await getAccountByAddress(address)
 
     if (!account) {
       ctx.set.status = 404
@@ -355,52 +344,53 @@ const app = new Elysia()
     return mapAccountResponse(account)
   })
   .get('/api/contracts', async (ctx: Context) => {
-    const ds = await requireDataSource()
     const validated = validateQuery(
       contractsQuerySchema,
       ctx.query,
       'GET /api/contracts',
     )
 
-    const contractsQuery = buildContractsQuery(ds, {
+    const { contracts, total } = await buildContractsQuery({
       type: validated.type,
+      name: validated.name,
       limit: validated.limit,
+      offset: validated.offset ?? 0,
     })
-
-    const contracts = await contractsQuery.getMany()
 
     return {
       contracts: contracts.map(mapContractResponse),
+      total,
     }
   })
   .get('/api/tokens/transfers', async (ctx: Context) => {
-    const ds = await requireDataSource()
     const validated = validateQuery(
       tokenTransfersQuerySchema,
       ctx.query,
       'GET /api/tokens/transfers',
     )
 
-    const transfersQuery = buildTokenTransfersQuery(ds, {
+    const { transfers, total } = await buildTokenTransfersQuery({
       token: validated.token,
+      from: validated.from,
+      to: validated.to,
+      transactionHash: validated.transactionHash,
       limit: validated.limit,
+      offset: validated.offset ?? 0,
     })
-
-    const transfers = await transfersQuery.getMany()
 
     return {
       transfers: transfers.map(mapTokenTransferResponse),
+      total,
     }
   })
   .get('/api/nodes', async (ctx: Context) => {
-    const ds = await requireDataSource()
     const validated = validateQuery(
       nodesQuerySchema,
       ctx.query,
       'GET /api/nodes',
     )
 
-    const nodes = await getNodes(ds, {
+    const nodes = await getNodes({
       active: validated.active,
       limit: validated.limit,
     })
@@ -411,14 +401,13 @@ const app = new Elysia()
     }
   })
   .get('/api/providers', async (ctx: Context) => {
-    const ds = await requireDataSource()
     const validated = validateQuery(
       providersQuerySchema,
       ctx.query,
       'GET /api/providers',
     )
 
-    const result = await getProviders(ds, {
+    const result = await getProviders({
       type: validated.type,
       limit: validated.limit,
     })
@@ -426,22 +415,19 @@ const app = new Elysia()
     return result
   })
   .get('/api/containers', async (ctx: Context) => {
-    const ds = await requireDataSource()
     const validated = validateQuery(
       containersQuerySchema,
       ctx.query,
       'GET /api/containers',
     )
 
-    const containersQuery = buildContainersQuery(ds, {
+    const { containers, total } = await buildContainersQuery({
       verified: validated.verified,
       gpu: validated.gpu,
       tee: validated.tee,
       limit: validated.limit,
       offset: validated.offset,
     })
-
-    const [containers, total] = await containersQuery.getManyAndCount()
 
     return {
       containers: containers.map(mapContainerListResponse),
@@ -451,30 +437,32 @@ const app = new Elysia()
     }
   })
   .get('/api/containers/:cid', async (ctx: Context) => {
-    const ds = await requireDataSource()
     const { cid } = validateParams(
       containerCidParamSchema,
       ctx.params,
       'GET /api/containers/:cid',
     )
-    return await getContainerDetail(ds, cid)
+    const container = await getContainerDetail(cid)
+    if (!container) {
+      ctx.set.status = 404
+      return { error: `Container not found: ${cid}` }
+    }
+    return mapContainerListResponse(container)
   })
   .get('/api/cross-service/requests', async (ctx: Context) => {
-    const ds = await requireDataSource()
     const validated = validateQuery(
       crossServiceRequestsQuerySchema,
       ctx.query,
       'GET /api/cross-service/requests',
     )
 
-    const requestsQuery = buildCrossServiceRequestsQuery(ds, {
+    const { requests, total } = await buildCrossServiceRequestsQuery({
       status: validated.status,
       type: validated.type,
+      agentId: validated.agentId,
       limit: validated.limit,
       offset: validated.offset,
     })
-
-    const [requests, total] = await requestsQuery.getManyAndCount()
 
     return {
       requests: requests.map(mapCrossServiceRequestResponse),
@@ -484,16 +472,14 @@ const app = new Elysia()
     }
   })
   .get('/api/marketplace/stats', async (ctx: Context) => {
-    const ds = await requireDataSource()
     validateQuery(
       z.object({}).passthrough(),
       ctx.query,
       'GET /api/marketplace/stats',
     )
-    return await getMarketplaceStats(ds)
+    return await getMarketplaceStats()
   })
   .get('/api/full-stack', async (ctx: Context) => {
-    const ds = await requireDataSource()
     const validated = validateQuery(
       paginationSchema.extend({
         limit: z.coerce.number().int().min(1).max(50).default(20),
@@ -501,24 +487,21 @@ const app = new Elysia()
       ctx.query,
       'GET /api/full-stack',
     )
-    return await getFullStackProviders(ds, validated.limit)
+    return await getFullStackProviders(validated.limit, validated.offset)
   })
   .get('/api/oracle/feeds', async (ctx: Context) => {
-    const ds = await requireDataSource()
     const validated = validateQuery(
       oracleFeedsQuerySchema,
       ctx.query,
       'GET /api/oracle/feeds',
     )
 
-    const feedsQuery = buildOracleFeedsQuery(ds, {
-      active: validated.active,
+    const { feeds, total } = await buildOracleFeedsQuery({
+      isActive: validated.active,
       category: validated.category,
       limit: validated.limit,
       offset: validated.offset,
     })
-
-    const [feeds, total] = await feedsQuery.getManyAndCount()
 
     return {
       feeds: feeds.map(mapOracleFeedResponse),
@@ -528,30 +511,26 @@ const app = new Elysia()
     }
   })
   .get('/api/oracle/feeds/:feedId', async (ctx: Context) => {
-    const ds = await requireDataSource()
     const { feedId } = validateParams(
       oracleFeedIdParamSchema,
       ctx.params,
       'GET /api/oracle/feeds/:feedId',
     )
-    return await getOracleFeedDetail(ds, feedId)
+    return await getOracleFeedDetail(feedId)
   })
   .get('/api/oracle/operators', async (ctx: Context) => {
-    const ds = await requireDataSource()
     const validated = validateQuery(
       oracleOperatorsQuerySchema,
       ctx.query,
       'GET /api/oracle/operators',
     )
 
-    const operatorsQuery = buildOracleOperatorsQuery(ds, {
-      active: validated.active,
-      jailed: validated.jailed,
+    const { operators, total } = await buildOracleOperatorsQuery({
+      isActive: validated.active,
+      isJailed: validated.jailed,
       limit: validated.limit,
       offset: validated.offset,
     })
-
-    const [operators, total] = await operatorsQuery.getManyAndCount()
 
     return {
       operators: operators.map(mapOracleOperatorResponse),
@@ -561,14 +540,13 @@ const app = new Elysia()
     }
   })
   .get('/api/oracle/operators/:address', async (ctx: Context) => {
-    const ds = await requireDataSource()
     const { address } = validateParams(
       oracleOperatorAddressParamSchema,
       ctx.params,
       'GET /api/oracle/operators/:address',
     )
 
-    const operator = await getOracleOperatorByAddress(ds, address)
+    const operator = await getOracleOperatorByAddress(address)
 
     if (!operator) {
       ctx.set.status = 404
@@ -580,21 +558,19 @@ const app = new Elysia()
     }
   })
   .get('/api/oracle/reports', async (ctx: Context) => {
-    const ds = await requireDataSource()
     const validated = validateQuery(
       oracleReportsQuerySchema,
       ctx.query,
       'GET /api/oracle/reports',
     )
 
-    const reportsQuery = buildOracleReportsQuery(ds, {
+    const { reports, total } = await buildOracleReportsQuery({
       feedId: validated.feedId,
-      disputed: validated.disputed,
+      operatorAddress: validated.operatorAddress,
+      isDisputed: validated.disputed,
       limit: validated.limit,
       offset: validated.offset,
     })
-
-    const [reports, total] = await reportsQuery.getManyAndCount()
 
     return {
       reports: reports.map(mapOracleReportResponse),
@@ -604,20 +580,20 @@ const app = new Elysia()
     }
   })
   .get('/api/oracle/disputes', async (ctx: Context) => {
-    const ds = await requireDataSource()
     const validated = validateQuery(
       oracleDisputesQuerySchema,
       ctx.query,
       'GET /api/oracle/disputes',
     )
 
-    const disputesQuery = buildOracleDisputesQuery(ds, {
+    const { disputes, total } = await buildOracleDisputesQuery({
       status: validated.status,
+      feedId: validated.feedId,
+      reporter: validated.reporter,
+      challenger: validated.challenger,
       limit: validated.limit,
       offset: validated.offset,
     })
-
-    const [disputes, total] = await disputesQuery.getManyAndCount()
 
     return {
       disputes: disputes.map(mapOracleDisputeResponse),
@@ -627,18 +603,16 @@ const app = new Elysia()
     }
   })
   .get('/api/oracle/stats', async (ctx: Context) => {
-    const ds = await requireDataSource()
     validateQuery(
       z.object({}).passthrough(),
       ctx.query,
       'GET /api/oracle/stats',
     )
-    return await getOracleStats(ds)
+    return await getOracleStats()
   })
   .get('/api/stats', async (ctx: Context) => {
-    const ds = await requireDataSource()
     validateQuery(z.object({}).passthrough(), ctx.query, 'GET /api/stats')
-    const stats = await getNetworkStats(ds)
+    const stats = await getNetworkStats()
     return {
       ...stats,
       rateLimitStats: getRateLimitStats(),
@@ -656,15 +630,6 @@ const app = new Elysia()
     note: 'Stake tokens to increase rate limits',
   }))
   .onError(({ error, set }) => {
-    if (error instanceof ServiceUnavailableError) {
-      set.status = 503
-      return {
-        error: 'Service Unavailable',
-        message: error.message,
-        mode: getIndexerMode(),
-      }
-    }
-
     if (error instanceof Error) {
       console.error('[REST] Unhandled error:', error.message, error.stack)
 
@@ -693,43 +658,20 @@ const app = new Elysia()
     return { error: 'Internal server error' }
   })
 
-/**
- * Get a data source, throwing a service unavailable error if not available
- */
-async function requireDataSource(): Promise<DataSource> {
-  const ds = await getDataSource()
-  if (!ds) {
-    throw new ServiceUnavailableError('Database not available')
-  }
-  if (!isSchemaReady()) {
-    throw new ServiceUnavailableError(
-      'Database schema not ready - run the processor to create tables',
-    )
-  }
-  return ds
-}
-
-class ServiceUnavailableError extends Error {
-  constructor(message: string) {
-    super(message)
-    this.name = 'ServiceUnavailableError'
-  }
-}
-
 export async function startRestServer(): Promise<void> {
   const mode = getIndexerMode()
   console.log(`📡 REST API starting in ${mode} mode`)
 
-  app.listen({
-    port: REST_PORT,
-    hostname: '0.0.0.0',
-  }, () => {
-    const status = isPostgresAvailable() ? 'full' : 'degraded'
-    const host = getLocalhostHost()
-    console.log(
-      `📡 REST API running on http://${host}:${REST_PORT} (${status})`,
-    )
-  })
+  app.listen(
+    {
+      port: REST_PORT,
+      hostname: '0.0.0.0',
+    },
+    () => {
+      const host = getLocalhostHost()
+      console.log(`📡 REST API running on http://${host}:${REST_PORT}`)
+    },
+  )
 }
 
 if (require.main === module) {
@@ -739,4 +681,4 @@ if (require.main === module) {
   })
 }
 
-export { app, requireDataSource }
+export { app }

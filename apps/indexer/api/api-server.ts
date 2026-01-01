@@ -1,90 +1,68 @@
 /**
  * Unified API server entry point
  *
- * Modes: postgres (full), sqlit-only (read), degraded (minimal)
+ * Uses SQLit (distributed SQLite) as the primary database
+ * No PostgreSQL dependency - fully decentralized
  */
 
 import { getLocalhostHost } from '@jejunetwork/config'
 import { startA2AServer } from './a2a-server'
 import { config } from './config'
+import { getDatabaseId } from './db'
 import { startMCPServer } from './mcp-server'
 import { startRestServer } from './rest-server'
 import {
   closeDataSource,
-  getDataSourceWithRetry,
-  getIndexerMode,
-  isPostgresAvailable,
+  initializeSQLitWithRetry,
+  isSchemaReady,
   setSchemaVerified,
-  verifyDatabaseSchema,
+  verifySQLitSchema,
 } from './utils/db'
-import { getSQLitSync } from './utils/sqlit-sync'
 
 async function main(): Promise<void> {
   console.log('🚀 Starting Indexer API servers...')
+  console.log(`[Indexer] Database: SQLit (${getDatabaseId()})`)
 
-  const mode = getIndexerMode()
-  console.log(`[Indexer] Mode: ${mode}`)
+  // Initialize SQLit database
+  const initialized = await initializeSQLitWithRetry(3, 2000)
 
-  let schemaReady = false
+  if (!initialized) {
+    console.error('[Indexer] SQLit initialization failed')
+    process.exit(1)
+  }
 
-  // Initialize PostgreSQL if not in SQLit-only mode
-  if (mode !== 'sqlit-only') {
-    const dataSource = await getDataSourceWithRetry(3, 2000)
+  // Verify schema exists
+  const schemaReady = await verifySQLitSchema()
+  setSchemaVerified(schemaReady)
 
-    if (dataSource) {
-      // Verify schema exists before proceeding
-      schemaReady = await verifyDatabaseSchema(dataSource)
-      setSchemaVerified(schemaReady)
-
-      if (!schemaReady) {
-        console.warn(
-          '[Indexer] Database schema not ready - REST API will return 503 for data queries',
-        )
-        console.warn(
-          '[Indexer] Run the processor (sqd process:dev) to create schema',
-        )
-      }
-
-      if (schemaReady && config.sqlitSyncEnabled) {
-        const sqlitSync = getSQLitSync()
-        await sqlitSync.initialize(dataSource)
-        await sqlitSync.start()
-        console.log('[Indexer] SQLit sync enabled')
-      }
-    }
+  if (!schemaReady) {
+    console.warn(
+      '[Indexer] Database schema not ready - REST API will return 503 for data queries',
+    )
+    console.warn('[Indexer] Run the processor to create schema and index data')
   }
 
   // Start all API servers
   await Promise.all([startRestServer(), startA2AServer(), startMCPServer()])
 
-  const currentMode = isPostgresAvailable()
-    ? schemaReady
-      ? 'postgres'
-      : 'postgres (no schema)'
-    : 'degraded'
   const host = getLocalhostHost()
+  const status = isSchemaReady() ? 'sqlit (ready)' : 'sqlit (no data)'
   console.log(`
 ┌──────────────────────────────────────────┐
-│   Indexer API Servers Running    │
+│   Indexer API Servers Running            │
 ├──────────────────────────────────────────┤
-│  Mode:    ${currentMode.padEnd(30)}│
+│  Mode:    ${status.padEnd(30)}│
 │  GraphQL: http://${host}:4350/graphql  │
 │  REST:    http://${host}:4352          │
 │  A2A:     http://${host}:4351          │
 │  MCP:     http://${host}:4353          │
+│  DB:      SQLit (decentralized)          │
 └──────────────────────────────────────────┘`)
 }
 
 async function shutdown(): Promise<void> {
   console.log('\n[Indexer] Shutting down...')
-
-  // Stop SQLit sync
-  const sqlitSync = getSQLitSync()
-  await sqlitSync.stop()
-
-  // Close PostgreSQL
   await closeDataSource()
-
   process.exit(0)
 }
 

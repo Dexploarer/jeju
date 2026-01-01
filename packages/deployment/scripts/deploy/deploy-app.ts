@@ -23,7 +23,7 @@ import {
   namehash,
 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
-import { base, baseSepolia } from 'viem/chains'
+import { base } from 'viem/chains'
 
 // Custom chain definition for Jeju Testnet
 const jejuTestnet = {
@@ -34,6 +34,7 @@ const jejuTestnet = {
     default: { http: ['https://testnet-rpc.jejunetwork.org'] },
   },
 } as const
+
 import type {
   DeployPublicClient,
   DeployWalletClient,
@@ -213,18 +214,21 @@ async function uploadToIPFS(dir: string, ipfsApiUrl: string): Promise<string> {
   }
 
   // Try DWS storage API first (for decentralized deployment)
-  const dwsStorageUrl = process.env.DWS_STORAGE_URL || 'https://dws.testnet.jejunetwork.org'
-  
+  const dwsStorageUrl =
+    process.env.DWS_STORAGE_URL || 'https://dws.testnet.jejunetwork.org'
+
   // Create tarball of the directory
   const { execSync } = await import('node:child_process')
   const tarPath = `/tmp/deploy-${Date.now()}.tar`
-  
+
   try {
     execSync(`tar -cf ${tarPath} -C ${dir} .`, { stdio: 'pipe' })
     const tarContent = readFileSync(tarPath)
-    
-    console.log(`📤 Uploading via DWS storage (${(tarContent.length / 1024 / 1024).toFixed(2)} MB)...`)
-    
+
+    console.log(
+      `📤 Uploading via DWS storage (${(tarContent.length / 1024 / 1024).toFixed(2)} MB)...`,
+    )
+
     const response = await fetch(`${dwsStorageUrl}/storage/upload/raw`, {
       method: 'POST',
       headers: {
@@ -235,13 +239,15 @@ async function uploadToIPFS(dir: string, ipfsApiUrl: string): Promise<string> {
     })
 
     if (response.ok) {
-      const result = await response.json() as { cid: string }
+      const result = (await response.json()) as { cid: string }
       console.log(`✅ Uploaded to IPFS via DWS: ${result.cid}`)
       return result.cid
     }
-    
-    console.log(`⚠️ DWS upload failed (${response.status}), falling back to IPFS API...`)
-  } catch (e) {
+
+    console.log(
+      `⚠️ DWS upload failed (${response.status}), falling back to IPFS API...`,
+    )
+  } catch (_e) {
     console.log(`⚠️ DWS upload error, falling back to IPFS API...`)
   }
 
@@ -590,7 +596,8 @@ async function main() {
     )
   }
 
-  const networkSubdomain = config.network === 'mainnet' ? '' : `.${config.network}`
+  const networkSubdomain =
+    config.network === 'mainnet' ? '' : `.${config.network}`
   const gatewayUrl = `https://${config.jnsName.replace('.jeju', '')}${networkSubdomain}.jejunetwork.org`
 
   console.log(`

@@ -322,7 +322,7 @@ Respond with JSON: { "actions": [...] }`
       const validTypes = ['trade', 'post', 'comment', 'respond', 'message']
       const actions: PlanStep[] = parsed.actions
         .filter((a) => validTypes.includes(a.type))
-        .map((a, i) => ({
+        .map((a, _i) => ({
           type: a.type as PlanStep['type'],
           priority: Math.min(10, Math.max(1, a.priority ?? 5)),
           description: a.description ?? a.type,

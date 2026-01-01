@@ -35,7 +35,7 @@ const deployerAddress = DEPLOYER_PRIVATE_KEY
   : '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' // Default dev address
 
 const UploadResponseSchema = z.object({ cid: z.string() })
-const DeployResponseSchema = z.object({ id: z.string(), status: z.string() })
+const _DeployResponseSchema = z.object({ id: z.string(), status: z.string() })
 
 function parseResponse<T>(
   schema: z.ZodType<T>,
@@ -112,7 +112,7 @@ async function deploy(): Promise<DeployResult> {
   const staticFiles: Record<string, string> = {}
 
   // Upload JS, CSS, and other assets
-  const { readdir, stat } = await import('node:fs/promises')
+  const { readdir } = await import('node:fs/promises')
   const { join, relative } = await import('node:path')
 
   async function uploadDir(dir: string): Promise<void> {
@@ -136,7 +136,11 @@ async function deploy(): Promise<DeployResult> {
 
         if (resp.ok) {
           const json: unknown = await resp.json()
-          const { cid } = parseResponse(UploadResponseSchema, json, `upload ${relPath}`)
+          const { cid } = parseResponse(
+            UploadResponseSchema,
+            json,
+            `upload ${relPath}`,
+          )
           staticFiles[relPath] = cid
           console.log(`  Uploaded ${relPath}: ${cid.slice(0, 12)}...`)
         }
@@ -186,9 +190,12 @@ async function deploy(): Promise<DeployResult> {
 
   // For large bundles, we need to use a reference deployment approach
   // First, verify the code is accessible from storage
-  const verifyResponse = await fetch(`${DWS_URL}/storage/download/${workerCid}`, {
-    method: 'HEAD',
-  })
+  const verifyResponse = await fetch(
+    `${DWS_URL}/storage/download/${workerCid}`,
+    {
+      method: 'HEAD',
+    },
+  )
 
   if (!verifyResponse.ok) {
     throw new Error(
@@ -197,10 +204,8 @@ async function deploy(): Promise<DeployResult> {
   }
   console.log('  Worker code verified in storage')
 
-  // Since the workers API doesn't support deploying from CID directly,
-  // and the bundle is too large for the WAF, we need to use the deploy API
-  // which supports CID-based deployment
-  const deployResponse = await fetch(`${DWS_URL}/deploy/worker`, {
+  // Deploy worker using the workers API with pre-uploaded CID
+  const deployResponse = await fetch(`${DWS_URL}/workers/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -213,12 +218,13 @@ async function deploy(): Promise<DeployResult> {
       handler: 'server.js',
       memory: 512,
       timeout: 30000,
-      routes: ['/api/*'],
     }),
   })
 
   // Handle deploy response or fall back to app registration
-  let deployResult: { functionId: string; codeCid: string; status: string }
+  let deployResult:
+    | { functionId: string; codeCid: string; status: string }
+    | undefined
 
   if (!deployResponse.ok) {
     const errorText = await deployResponse.text()
@@ -247,6 +253,13 @@ async function deploy(): Promise<DeployResult> {
     console.log(`  Status: ${deployResult.status}`)
   }
 
+  // Determine backend endpoint based on deployment result
+  // If worker deployment succeeded, use the worker URL
+  // Otherwise, the backend will need to be deployed separately
+  const backendEndpoint = deployResult
+    ? `${DWS_URL}/workers/${deployResult.functionId}`
+    : null
+
   // Always register the app with the DWS app router
   console.log('\nRegistering app with DWS...')
   const appRegistrationResponse = await fetch(`${DWS_URL}/apps/deployed`, {
@@ -260,17 +273,19 @@ async function deploy(): Promise<DeployResult> {
       jnsName: 'factory.jeju',
       frontendCid: frontendCid,
       staticFiles: Object.keys(staticFiles).length > 0 ? staticFiles : null,
-      backendWorkerId: null,
-      backendEndpoint: null, // Backend not running yet, will be deployed when workerd is ready
-      apiPaths: ['/api', '/health', '/a2a'],
+      backendWorkerId: deployResult?.functionId ?? null,
+      backendEndpoint: backendEndpoint,
+      apiPaths: ['/api', '/health', '/a2a', '/mcp', '/swagger'],
       spa: true,
       enabled: true,
     }),
   })
 
   if (!appRegistrationResponse.ok) {
-    console.log(`  App registration failed: ${await appRegistrationResponse.text()}`)
-    deployResult = {
+    console.log(
+      `  App registration failed: ${await appRegistrationResponse.text()}`,
+    )
+    deployResult = deployResult ?? {
       functionId: 'registration-failed',
       codeCid: workerCid,
       status: 'failed',
@@ -285,18 +300,36 @@ async function deploy(): Promise<DeployResult> {
     }
   }
 
+  // Ensure deployResult is defined for the final result
+  const finalResult = deployResult ?? {
+    functionId: 'not-deployed',
+    codeCid: workerCid,
+    status: 'frontend-only',
+  }
 
   const result: DeployResult = {
     frontend: { cid: frontendCid, url: `${DWS_URL}/ipfs/${frontendCid}` },
     backend: {
-      workerId: deployResult.functionId,
-      url: `${DWS_URL}/workers/${deployResult.functionId}`,
+      workerId: finalResult.functionId,
+      url:
+        finalResult.functionId !== 'not-deployed'
+          ? `${DWS_URL}/workers/${finalResult.functionId}`
+          : 'Backend not deployed - API requests will fail',
     },
   }
 
   console.log('\nDeployment complete.')
   console.log(`  Frontend: ${result.frontend.url}`)
   console.log(`  Backend: ${result.backend.url}`)
+  if (finalResult.status === 'frontend-only') {
+    console.log('\n  WARNING: Backend worker was not deployed.')
+    console.log(
+      '  The Factory API will not be available until the backend is deployed.',
+    )
+    console.log(
+      '  To fix this, ensure DWS workers support Bun runtime or deploy as a container.',
+    )
+  }
 
   return result
 }

@@ -11,10 +11,7 @@
 import { existsSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
-import {
-  getCurrentNetwork,
-  type NetworkType,
-} from '@jejunetwork/config'
+import { getCurrentNetwork, type NetworkType } from '@jejunetwork/config'
 import { $ } from 'bun'
 import { z } from 'zod'
 
@@ -156,7 +153,7 @@ async function uploadDirectory(
 async function registerApp(
   config: DeployConfig,
   staticFiles: Map<string, string>,
-  apiCid: string,
+  _apiCid: string,
 ): Promise<void> {
   const indexCid = staticFiles.get('index.html')
   if (!indexCid) {
@@ -170,7 +167,15 @@ async function registerApp(
     staticFiles: Object.fromEntries(staticFiles),
     backendWorkerId: null,
     backendEndpoint: 'https://oauth3.testnet.jejunetwork.org', // K8s backend
-    apiPaths: ['/api/', '/oauth/', '/session', '/health', '/callback', '/wallet/', '/farcaster/'],
+    apiPaths: [
+      '/api/',
+      '/oauth/',
+      '/session',
+      '/health',
+      '/callback',
+      '/wallet/',
+      '/farcaster/',
+    ],
     spa: true,
     enabled: true,
   }
@@ -233,7 +238,7 @@ async function deploy(): Promise<void> {
   // Summary
   const indexCid = staticResult.files.get('index.html')
   const appJsCid = staticResult.files.get('app.js')
-  
+
   console.log('\n================================')
   console.log('Deployment Complete')
   console.log('================================')

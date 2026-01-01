@@ -5,31 +5,32 @@ import { getContractAddresses } from '@jejunetwork/contracts'
 import type { ChainConfig } from '@jejunetwork/types'
 import { createPublicClient, http } from 'viem'
 
-const CONFIG_PATH = join(process.cwd(), 'packages', 'config', 'chain', 'localnet.json')
+const CONFIG_PATH = join(
+  process.cwd(),
+  'packages',
+  'config',
+  'chain',
+  'localnet.json',
+)
+
+// Initialize deployment at module level so describe.skipIf works
+const addresses = getContractAddresses(31337)
+const deployment = {
+  uniswapV4: {
+    PoolManager: addresses?.uniswapV4?.PoolManager,
+    SwapRouter: addresses?.uniswapV4?.SwapRouter,
+  },
+  synthetixV3: addresses?.synthetixV3 ?? {},
+  compoundV3: addresses?.compoundV3 ?? {},
+  chainlink: addresses?.chainlink ?? {},
+  compound: addresses?.compound,
+}
 
 describe('DeFi E2E Tests', () => {
   let publicClient: ReturnType<typeof createPublicClient>
-  let deployment: {
-    uniswapV4: { PoolManager?: string; SwapRouter?: string }
-    synthetixV3: Record<string, string>
-    compoundV3: Record<string, string>
-    chainlink: Record<string, string>
-  }
   let config: ChainConfig
 
   beforeAll(() => {
-    // Load from @jejunetwork/contracts
-    const addresses = getContractAddresses(31337)
-    deployment = {
-      uniswapV4: {
-        PoolManager: addresses.poolManager,
-        SwapRouter: addresses.swapRouter,
-      },
-      synthetixV3: {},
-      compoundV3: {},
-      chainlink: {},
-    }
-
     if (!existsSync(CONFIG_PATH)) {
       throw new Error('Config file not found')
     }

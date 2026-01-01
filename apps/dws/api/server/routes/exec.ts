@@ -64,14 +64,14 @@ async function executeCommand(
 
   // Handle stdin if provided
   if (stdin && proc.stdin) {
-    const writer = proc.stdin.getWriter()
     // If stdin looks like base64, try to decode it
     const isBase64 = /^[A-Za-z0-9+/]+=*$/.test(stdin) && stdin.length > 50
     const data = isBase64
       ? Buffer.from(stdin, 'base64')
       : new TextEncoder().encode(stdin)
-    await writer.write(data)
-    await writer.close()
+    // Bun's FileSink has write() and end() methods directly
+    proc.stdin.write(data)
+    proc.stdin.end()
   }
 
   // For background processes, return immediately
@@ -132,7 +132,7 @@ async function executeCommand(
       return {
         exitCode: 124, // Standard timeout exit code
         stdout,
-        stderr: stderr + '\n[TIMEOUT]',
+        stderr: `${stderr}\n[TIMEOUT]`,
       }
     }
 

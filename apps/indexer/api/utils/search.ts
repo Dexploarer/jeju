@@ -1,27 +1,24 @@
+/**
+ * Search utilities for indexer
+ * SQLit-based search implementation
+ */
+
 import { type CacheClient, getCacheClient } from '@jejunetwork/shared'
-import { type DataSource, IsNull, Not } from 'typeorm'
 import {
-  ComputeProvider,
-  RegisteredAgent,
-  StorageProvider,
-  TagIndex,
-} from '../model'
+  type ComputeProvider,
+  count,
+  find,
+  query,
+  type RegisteredAgent,
+  type StorageProvider,
+} from '../db'
 import type { AgentSearchResult, ProviderResult, SearchResult } from './types'
 import { type SearchParams, searchParamsSchema } from './validation'
 
 export type { AgentSearchResult, ProviderResult, SearchResult }
 
-/**
- * Escape special characters in SQL LIKE patterns to prevent injection
- * Escapes %, _, and \ which have special meaning in LIKE patterns
- */
-function escapeLikePattern(input: string): string {
-  return input.replace(/[%_\\]/g, (char) => `\\${char}`)
-}
-
 const CACHE_TTL_SECONDS = 30
 
-// Distributed cache for search results
 let searchCache: CacheClient | null = null
 
 function getSearchCache(): CacheClient {
@@ -39,11 +36,45 @@ function mapAgentToResult(
   agent: RegisteredAgent,
   score: number,
 ): AgentSearchResult {
+  // Parse JSON tags if stored as string
+  let tags: string[] = []
+  if (typeof agent.tags === 'string') {
+    try {
+      tags = JSON.parse(agent.tags)
+    } catch {
+      tags = []
+    }
+  } else if (Array.isArray(agent.tags)) {
+    tags = agent.tags
+  }
+
+  // Parse JSON skills if stored as string
+  let mcpTools: string[] = []
+  let a2aSkills: string[] = []
+  if (typeof agent.mcpTools === 'string') {
+    try {
+      mcpTools = JSON.parse(agent.mcpTools)
+    } catch {
+      mcpTools = []
+    }
+  } else if (Array.isArray(agent.mcpTools)) {
+    mcpTools = agent.mcpTools
+  }
+  if (typeof agent.a2aSkills === 'string') {
+    try {
+      a2aSkills = JSON.parse(agent.a2aSkills)
+    } catch {
+      a2aSkills = []
+    }
+  } else if (Array.isArray(agent.a2aSkills)) {
+    a2aSkills = agent.a2aSkills
+  }
+
   return {
     agentId: agent.agentId.toString(),
     name: agent.name ?? 'Unnamed Agent',
     description: agent.description ?? null,
-    tags: agent.tags ?? [],
+    tags,
     serviceType: agent.serviceType ?? null,
     category: agent.category ?? null,
     endpoints: {
@@ -51,30 +82,28 @@ function mapAgentToResult(
       mcp: agent.mcpEndpoint ?? null,
     },
     tools: {
-      mcpTools: agent.mcpTools ?? [],
-      a2aSkills: agent.a2aSkills ?? [],
+      mcpTools,
+      a2aSkills,
     },
     stakeTier: agent.stakeTier,
-    stakeAmount: agent.stakeAmount.toString(),
+    stakeAmount: agent.stakeAmount,
     x402Support: agent.x402Support,
     active: agent.active,
     isBanned: agent.isBanned,
-    registeredAt: agent.registeredAt.toISOString(),
+    registeredAt: agent.registeredAt ?? new Date().toISOString(),
     score,
   }
 }
 
+/**
+ * Search for agents and providers
+ */
 export async function search(
-  dataSource: DataSource,
   params: Partial<SearchParams> = {},
 ): Promise<SearchResult> {
-  if (!dataSource) {
-    throw new Error('DataSource is required')
-  }
-
   const validated = searchParamsSchema.parse(params)
   const startTime = Date.now()
-  const query = validated.query
+  const searchQuery = validated.query
   const endpointType = validated.endpointType ?? 'all'
   const tags = validated.tags
   const category = validated.category
@@ -92,121 +121,112 @@ export async function search(
     return { ...data, took: Date.now() - startTime }
   }
 
-  const agentRepo = dataSource.getRepository(RegisteredAgent)
-  const computeRepo = dataSource.getRepository(ComputeProvider)
-  const storageRepo = dataSource.getRepository(StorageProvider)
-  const tagRepo = dataSource.getRepository(TagIndex)
-
-  let agentQuery = agentRepo
-    .createQueryBuilder('a')
-    .leftJoinAndSelect('a.owner', 'owner')
-
-  if (active !== undefined)
-    agentQuery = agentQuery.andWhere('a.active = :active', { active })
-  if (endpointType === 'a2a')
-    agentQuery = agentQuery.andWhere('a.a2aEndpoint IS NOT NULL')
-  else if (endpointType === 'mcp')
-    agentQuery = agentQuery.andWhere('a.mcpEndpoint IS NOT NULL')
-  else if (endpointType === 'rest')
-    agentQuery = agentQuery.andWhere("a.serviceType = 'rest'")
-  if (category && category !== 'all')
-    agentQuery = agentQuery.andWhere('a.category = :category', { category })
-  if (minStakeTier > 0)
-    agentQuery = agentQuery.andWhere('a.stakeTier >= :minTier', {
-      minTier: minStakeTier,
-    })
-  if (verified) agentQuery = agentQuery.andWhere('a.stakeAmount > 0')
-  if (tags && tags.length > 0)
-    agentQuery = agentQuery.andWhere('a.tags && :tags', { tags })
+  // Build where clause for agents
+  const where: Record<string, string | number | boolean | null> = {}
+  if (active !== undefined) where.active = active
+  if (category && category !== 'all') where.category = category
 
   let agents: RegisteredAgent[]
   const scores = new Map<string, number>()
 
-  if (query?.trim()) {
-    // Escape LIKE special chars to prevent SQL injection via pattern manipulation
-    const escapedQuery = escapeLikePattern(query)
-    const rawQuery = `
-      SELECT a.*,
-        ts_rank_cd(
-          to_tsvector('english', COALESCE(a.name, '') || ' ' || COALESCE(a.description, '') || ' ' ||
-            COALESCE(array_to_string(a.tags, ' '), '') || ' ' || COALESCE(array_to_string(a.mcp_tools, ' '), '') || ' ' ||
-            COALESCE(array_to_string(a.a2a_skills, ' '), '')),
-          plainto_tsquery('english', $1), 32
-        ) * (1 + (a.stake_tier::float / 4)) as rank
-      FROM registered_agent a
-      WHERE a.active = $2 AND (
-        to_tsvector('english', COALESCE(a.name, '') || ' ' || COALESCE(a.description, '') || ' ' ||
-          COALESCE(array_to_string(a.tags, ' '), '')) @@ plainto_tsquery('english', $1)
-        OR LOWER(a.name) LIKE LOWER($3) ESCAPE '\\' OR LOWER(a.description) LIKE LOWER($3) ESCAPE '\\'
-        OR EXISTS (SELECT 1 FROM unnest(a.tags) t WHERE LOWER(t) LIKE LOWER($3) ESCAPE '\\'))
-      ORDER BY rank DESC, a.stake_tier DESC LIMIT $4 OFFSET $5`
-
-    const results = (await dataSource.query(rawQuery, [
-      query,
-      active,
-      `%${escapedQuery}%`,
-      limit,
-      offset,
-    ])) as Array<RegisteredAgent & { rank: number }>
-    agents = results.map((r) => {
-      scores.set(r.id, r.rank)
-      return r
-    })
-  } else {
-    agents = await agentQuery
-      .orderBy('a.stakeTier', 'DESC')
-      .addOrderBy('a.registeredAt', 'DESC')
-      .take(limit)
-      .skip(offset)
-      .getMany()
+  if (searchQuery?.trim()) {
+    // Search by name, description, or tags using LIKE
+    const searchPattern = `%${searchQuery}%`
+    const result = await query<RegisteredAgent>(
+      `SELECT * FROM registered_agent 
+       WHERE active = ? AND (
+         name LIKE ? OR 
+         description LIKE ? OR 
+         tags LIKE ?
+       )
+       ORDER BY stake_amount DESC
+       LIMIT ? OFFSET ?`,
+      [
+        active ? 1 : 0,
+        searchPattern,
+        searchPattern,
+        searchPattern,
+        limit,
+        offset,
+      ],
+    )
+    agents = result.rows
     for (const a of agents) {
       scores.set(a.id, a.stakeTier / 4)
     }
+  } else {
+    agents = await find<RegisteredAgent>('RegisteredAgent', {
+      where,
+      order: { stakeAmount: 'DESC' },
+      take: limit,
+      skip: offset,
+    })
+    for (const a of agents) {
+      scores.set(a.id, a.stakeTier / 4)
+    }
+  }
+
+  // Filter by endpoint type
+  if (endpointType === 'a2a') {
+    agents = agents.filter((a) => a.a2aEndpoint)
+  } else if (endpointType === 'mcp') {
+    agents = agents.filter((a) => a.mcpEndpoint)
+  } else if (endpointType === 'rest') {
+    agents = agents.filter((a) => a.serviceType === 'rest')
+  }
+
+  // Filter by min stake tier
+  if (minStakeTier > 0) {
+    agents = agents.filter((a) => a.stakeTier >= minStakeTier)
+  }
+
+  // Filter by verified (has stake)
+  if (verified) {
+    agents = agents.filter((a) => BigInt(a.stakeAmount) > 0n)
+  }
+
+  // Filter by tags
+  if (tags && tags.length > 0) {
+    agents = agents.filter((a) => {
+      let agentTags: string[] = []
+      if (typeof a.tags === 'string') {
+        try {
+          agentTags = JSON.parse(a.tags)
+        } catch {
+          agentTags = []
+        }
+      } else if (Array.isArray(a.tags)) {
+        agentTags = a.tags
+      }
+      return tags.some((t) => agentTags.includes(t))
+    })
   }
 
   const providers: ProviderResult[] = []
 
   if (endpointType === 'all' || endpointType === 'rest') {
     const providerLimit = Math.max(10, Math.floor(limit / 4))
-    // Escape LIKE special chars for provider search
-    const searchPattern = query ? `%${escapeLikePattern(query)}%` : null
 
-    const buildQuery = (alias: string) => {
-      const conditions = [`${alias}.isActive = :active`]
-      const params: { active: boolean; q?: string } = { active }
-      if (searchPattern) {
-        conditions.push(
-          `(LOWER(${alias}.name) LIKE LOWER(:q) ESCAPE '\\' OR LOWER(${alias}.endpoint) LIKE LOWER(:q) ESCAPE '\\')`,
-        )
-        params.q = searchPattern
-      }
-      return { where: conditions.join(' AND '), params }
-    }
-
-    const { where, params } = buildQuery('p')
     const [computeProviders, storageProviders] = await Promise.all([
-      computeRepo
-        .createQueryBuilder('p')
-        .where(where, params)
-        .take(providerLimit)
-        .getMany(),
-      storageRepo
-        .createQueryBuilder('p')
-        .where(where, params)
-        .take(providerLimit)
-        .getMany(),
+      find<ComputeProvider>('ComputeProvider', {
+        where: { isActive: true },
+        take: providerLimit,
+      }),
+      find<StorageProvider>('StorageProvider', {
+        where: { isActive: true },
+        take: providerLimit,
+      }),
     ])
 
     const mapProvider = (
       p: ComputeProvider | StorageProvider,
       type: 'compute' | 'storage',
     ): ProviderResult => ({
-      providerId: `${type}:${p.address}`,
+      providerId: `${type}:${p.providerAddress}`,
       type,
-      name:
-        p.name || `${type.charAt(0).toUpperCase() + type.slice(1)} Provider`,
-      endpoint: p.endpoint,
-      agentId: p.agentId || null,
+      name: `${type.charAt(0).toUpperCase() + type.slice(1)} Provider`,
+      endpoint: '',
+      agentId: p.agentId ?? null,
       isActive: p.isActive,
       isVerified: (p.agentId ?? 0) > 0,
       score: p.agentId ? 0.8 : 0.5,
@@ -218,65 +238,62 @@ export async function search(
     )
   }
 
-  const tagFacets = await tagRepo.find({
-    order: { agentCount: 'DESC' },
-    take: 20,
-  })
-
-  const serviceTypeCounts = (await agentRepo
-    .createQueryBuilder('a')
-    .select('a.serviceType', 'type')
-    .addSelect('COUNT(*)', 'count')
-    .where('a.active = true')
-    .andWhere('a.serviceType IS NOT NULL')
-    .groupBy('a.serviceType')
-    .getRawMany()) as Array<{ type: string; count: string }>
-
-  const [a2aCount, mcpCount, restCount] = await Promise.all([
-    agentRepo.count({ where: { active: true, a2aEndpoint: Not(IsNull()) } }),
-    agentRepo.count({ where: { active: true, mcpEndpoint: Not(IsNull()) } }),
-    agentRepo.count({ where: { active: true, serviceType: 'rest' } }),
-  ])
+  // Get service type counts
+  const totalAgents = await count('RegisteredAgent', { active: true })
+  const a2aCount =
+    (
+      await query<{ count: number }>(
+        'SELECT COUNT(*) as count FROM registered_agent WHERE active = 1 AND a2a_endpoint IS NOT NULL',
+        [],
+      )
+    ).rows[0]?.count ?? 0
+  const mcpCount =
+    (
+      await query<{ count: number }>(
+        'SELECT COUNT(*) as count FROM registered_agent WHERE active = 1 AND mcp_endpoint IS NOT NULL',
+        [],
+      )
+    ).rows[0]?.count ?? 0
+  const restCount =
+    (
+      await query<{ count: number }>(
+        "SELECT COUNT(*) as count FROM registered_agent WHERE active = 1 AND service_type = 'rest'",
+        [],
+      )
+    ).rows[0]?.count ?? 0
 
   const agentResults = agents
     .map((a) => mapAgentToResult(a, scores.get(a.id) ?? 0))
     .sort((a, b) => b.score - a.score)
   providers.sort((a, b) => b.score - a.score)
 
-  const totalAgents = await agentRepo.count({ where: { active: true } })
-
   const result: SearchResult = {
     agents: agentResults,
     providers,
     total: totalAgents + providers.length,
     facets: {
-      tags: tagFacets.map((t) => ({ tag: t.tag, count: t.agentCount })),
-      serviceTypes: serviceTypeCounts.map((s) => ({
-        type: s.type,
-        count: parseInt(s.count, 10),
-      })),
+      tags: [], // Would need separate tag index table for this
+      serviceTypes: [],
       endpointTypes: [
         { type: 'a2a', count: a2aCount },
         { type: 'mcp', count: mcpCount },
         { type: 'rest', count: restCount },
       ],
     },
-    query: query ?? null,
+    query: searchQuery ?? null,
     took: Date.now() - startTime,
   }
 
-  // Store in distributed cache with TTL (no need for manual eviction - TTL handles it)
   await cache.set(cacheKey, JSON.stringify(result), CACHE_TTL_SECONDS)
   return result
 }
 
+/**
+ * Get agent by ID
+ */
 export async function getAgentById(
-  dataSource: DataSource,
   agentId: string,
 ): Promise<AgentSearchResult | null> {
-  if (!dataSource) {
-    throw new Error('DataSource is required')
-  }
   if (!agentId) {
     throw new Error('agentId must be a non-empty string')
   }
@@ -286,35 +303,58 @@ export async function getAgentById(
     )
   }
 
-  const agentRepo = dataSource.getRepository(RegisteredAgent)
-  const agent = await agentRepo.findOne({
-    where: { agentId: BigInt(agentId) },
-    relations: ['owner'],
+  const agents = await find<RegisteredAgent>('RegisteredAgent', {
+    where: { agentId: parseInt(agentId, 10) },
+    take: 1,
   })
 
+  const agent = agents[0]
   return agent ? mapAgentToResult(agent, 1) : null
 }
 
+/**
+ * Get popular tags
+ */
 export async function getPopularTags(
-  dataSource: DataSource,
   limit = 50,
 ): Promise<Array<{ tag: string; count: number }>> {
-  if (!dataSource) {
-    throw new Error('DataSource is required')
-  }
   if (typeof limit !== 'number' || limit <= 0 || limit > 1000) {
     throw new Error(`Invalid limit: ${limit}. Must be between 1 and 1000.`)
   }
 
-  const tagRepo = dataSource.getRepository(TagIndex)
-  const tags = await tagRepo.find({
-    order: { agentCount: 'DESC' },
-    take: limit,
+  // Query all agents and aggregate tags
+  const agents = await find<RegisteredAgent>('RegisteredAgent', {
+    where: { active: true },
   })
 
-  return tags.map((t) => ({ tag: t.tag, count: t.agentCount }))
+  const tagCounts = new Map<string, number>()
+  for (const agent of agents) {
+    let tags: string[] = []
+    if (typeof agent.tags === 'string') {
+      try {
+        tags = JSON.parse(agent.tags)
+      } catch {
+        tags = []
+      }
+    } else if (Array.isArray(agent.tags)) {
+      tags = agent.tags
+    }
+    for (const tag of tags) {
+      tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1)
+    }
+  }
+
+  const sortedTags = [...tagCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([tag, count]) => ({ tag, count }))
+
+  return sortedTags
 }
 
+/**
+ * Invalidate search cache
+ */
 export async function invalidateSearchCache(): Promise<void> {
   const cache = getSearchCache()
   await cache.clear()

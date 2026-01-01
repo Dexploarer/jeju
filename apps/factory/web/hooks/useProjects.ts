@@ -2,12 +2,10 @@ import { hasArrayProperty } from '@jejunetwork/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Address } from 'viem'
 import type { Project, ProjectTask } from '../../lib/types'
+import { API_BASE } from '../lib/api'
 import { api, extractDataSafe } from '../lib/client'
 
 export type { Project, ProjectTask }
-
-// Browser-only hook - API is same origin
-const API_BASE = ''
 
 async function fetchApi<T>(
   path: string,

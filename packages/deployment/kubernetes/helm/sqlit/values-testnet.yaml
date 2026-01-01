@@ -1,8 +1,21 @@
 # SQLit Testnet Configuration
 # Decentralized SQL Database for DWS
 
-# Single-node mode for stability - multi-node requires pre-generated keys
+# Multi-node cluster with on-chain identity registry
 replicaCount: 1
+
+# On-chain Identity Registry (SQLitIdentityRegistry contract)
+# When enabled, nodes discover peers from the registry instead of static helm values
+registry:
+  enabled: false  # Enable after deploying SQLitIdentityRegistry
+  # SQLitIdentityRegistry contract address on Jeju L2
+  address: ""
+  # Jeju L2 RPC URL for querying the registry
+  rpcUrl: "https://rpc.testnet.jejunetwork.org"
+  # How often to sync peer list from registry (seconds)
+  syncInterval: 60
+  # Use static clusterNodes if registry is disabled
+  useStaticNodes: true
 
 image:
   # Use the ECR SQLit image for testnet

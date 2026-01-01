@@ -107,6 +107,7 @@ import { createComputeRouter } from './routes/compute'
 import { createContainerRouter } from './routes/containers'
 import { createDARouter, shutdownDA } from './routes/da'
 import { createEdgeRouter, handleEdgeWebSocket } from './routes/edge'
+import { createExecRouter } from './routes/exec'
 import { createFaucetRouter } from './routes/faucet'
 import { createFundingRouter } from './routes/funding'
 import { createGitRouter } from './routes/git'
@@ -133,10 +134,10 @@ import { createS3Router } from './routes/s3'
 import { createScrapingRouter } from './routes/scraping'
 import { createStakingRouter } from './routes/staking'
 import { createStorageRouter } from './routes/storage'
+import { createSQLitProxyRouter } from './routes/sqlit'
 import { createVPNRouter } from './routes/vpn'
 import { createDefaultWorkerdRouter } from './routes/workerd'
 import { createWorkersRouter } from './routes/workers'
-import { createExecRouter } from './routes/exec'
 
 // Config injection for workerd compatibility
 export interface DWSServerConfig {
@@ -307,6 +308,7 @@ const app = new Elysia()
     cors({
       // Reflect requesting origin to support credentials
       // When credentials: 'include' is used, Access-Control-Allow-Origin cannot be '*'
+      // Use a function that returns true to allow, which echoes the requesting origin
       origin: (request) => {
         const origin = request.headers.get('origin')
         // Allow any *.jejunetwork.org origin and localhost for dev
@@ -316,11 +318,11 @@ const app = new Elysia()
             origin.includes('localhost') ||
             origin.includes('127.0.0.1')
           ) {
-            return origin
+            return true // Allow origin - CORS will reflect the Origin header
           }
         }
-        // Fallback for non-credentialed requests
-        return '*'
+        // For requests without origin, allow
+        return true
       },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
@@ -497,6 +499,29 @@ app
   .get('/health/detailed', async () => {
     const backends = backendManager.listBackends()
     const backendHealth = await backendManager.healthCheck()
+
+    // Helper to check HTTP endpoint health
+    async function checkEndpoint(
+      url: string,
+      timeout = 2000,
+    ): Promise<{ status: 'healthy' | 'unhealthy' | 'not-running'; latencyMs?: number }> {
+      const start = Date.now()
+      try {
+        const response = await fetch(url, {
+          signal: AbortSignal.timeout(timeout),
+        })
+        const latencyMs = Date.now() - start
+        if (response.ok) {
+          return { status: 'healthy', latencyMs }
+        }
+        return { status: 'unhealthy', latencyMs }
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error)
+        console.warn(`[DWS Health] Endpoint check failed for ${url}: ${errorMsg}`)
+        return { status: 'not-running' }
+      }
+    }
+
     // These may fail if contracts aren't deployed (dev mode)
     let nodeCount = 0
     let frontendCid: string | null = null
@@ -511,8 +536,28 @@ app
     }
     const peerCount = p2pCoordinator?.getPeers().length ?? 0
 
+    // Check SQLit status
+    const sqlitStatus = getSQLitStatus()
+    const sqlitHealthy = sqlitStatus.running && sqlitStatus.healthStatus === 'healthy'
+
+    // Check cache engine
+    const cacheEngine = getSharedEngine()
+    const cacheHealthy = cacheEngine !== null
+
+    // Check KMS
+    const kmsUrl = serverConfig.kmsUrl ?? getKMSUrl()
+    const kmsHealth = kmsUrl
+      ? await checkEndpoint(`${kmsUrl}/health`)
+      : { status: 'not-running' as const }
+
+    // Check all storage backends are healthy
+    const storageHealthy = Object.values(backendHealth).some((h) => h === true)
+
+    // Determine overall health
+    const overallHealthy = storageHealthy && sqlitHealthy
+
     const health: ServiceHealth = {
-      status: 'healthy',
+      status: overallHealthy ? 'healthy' : 'degraded',
       service: 'dws',
       version: '1.0.0',
       uptime: process.uptime() * 1000,
@@ -528,15 +573,19 @@ app
         p2pEnabled: p2pCoordinator !== null,
       },
       services: {
-        storage: { status: 'healthy', backends },
-        compute: { status: 'healthy' },
+        storage: {
+          status: storageHealthy ? 'healthy' : 'degraded',
+          backends,
+          health: backendHealth,
+        },
+        compute: { status: 'available', description: 'Compute scheduling available' },
         cdn: {
-          status: 'healthy',
+          status: getLocalCDNServer() ? 'healthy' : 'available',
           description: 'Decentralized CDN with edge caching',
         },
-        git: { status: 'healthy' },
-        pkg: { status: 'healthy' },
-        ci: { status: 'healthy' },
+        git: { status: 'available', description: 'Git repository hosting' },
+        pkg: { status: 'available', description: 'Package registry' },
+        ci: { status: 'available', description: 'CI/CD pipelines' },
         oauth3: await (async () => {
           const oauth3Url =
             serverConfig.oauth3AgentUrl ??
@@ -544,58 +593,53 @@ app
               ? process.env.OAUTH3_AGENT_URL
               : undefined) ??
             getOAuth3Url(NETWORK)
-          try {
-            const response = await fetch(`${oauth3Url}/health`, {
-              signal: AbortSignal.timeout(2000),
-            })
-            if (response.ok) {
-              return { status: 'healthy', endpoint: oauth3Url }
-            }
-            return { status: 'unhealthy', endpoint: oauth3Url }
-          } catch {
-            return {
-              status: 'not-running',
-              endpoint: oauth3Url,
-              hint: 'Start OAuth3: cd apps/oauth3 && bun run dev',
-            }
+          const result = await checkEndpoint(`${oauth3Url}/health`)
+          return {
+            ...result,
+            endpoint: oauth3Url,
+            hint:
+              result.status === 'not-running'
+                ? 'Start OAuth3: cd apps/oauth3 && bun run dev'
+                : undefined,
           }
         })(),
-        s3: { status: 'healthy' },
-        workers: { status: 'healthy' },
-        workerd: { status: 'healthy', runtime: 'V8 isolates' },
-        agents: { status: 'healthy', description: 'ElizaOS agent runtime' },
-        kms: { status: 'healthy' },
-        vpn: { status: 'healthy' },
-        scraping: { status: 'healthy' },
-        rpc: { status: 'healthy' },
-        da: { status: 'healthy', description: 'Data Availability layer' },
+        s3: { status: 'available', description: 'S3-compatible storage API' },
+        workers: { status: 'available', description: 'Serverless functions' },
+        workerd: { status: 'available', runtime: 'V8 isolates' },
+        agents: { status: 'available', description: 'ElizaOS agent runtime' },
+        kms: { ...kmsHealth, endpoint: kmsUrl ?? 'not-configured' },
+        vpn: { status: 'available', description: 'VPN gateway' },
+        scraping: { status: 'available', description: 'Web scraping service' },
+        rpc: { status: 'available', description: 'JSON-RPC proxy' },
+        da: { status: 'available', description: 'Data Availability layer' },
         cache: {
-          status: 'healthy',
+          status: cacheHealthy ? 'healthy' : 'not-initialized',
           description: 'Decentralized serverless cache',
         },
         email: {
-          status: 'healthy',
+          status: 'available',
           description: 'Decentralized email with SMTP/IMAP',
         },
-        lb: { status: 'healthy', description: 'Scale-to-zero load balancer' },
+        lb: { status: 'available', description: 'Scale-to-zero load balancer' },
         indexer: {
-          status: 'healthy',
+          status: 'available',
           description: 'Decentralized indexer proxy',
         },
         faucet: {
-          status: NETWORK !== 'mainnet' ? 'healthy' : 'disabled',
+          status: NETWORK !== 'mainnet' ? 'available' : 'disabled',
           description: 'Testnet-only JEJU token faucet',
         },
         database: {
-          status: 'healthy',
+          status: sqlitHealthy ? 'healthy' : 'degraded',
+          sqlit: sqlitStatus,
           description: 'Managed SQLit and PostgreSQL',
         },
         security: {
-          status: 'healthy',
+          status: 'available',
           description: 'WAF, access control, secrets, audit',
         },
         observability: {
-          status: 'healthy',
+          status: 'available',
           description: 'Logs, metrics, traces, alerts',
         },
       },
@@ -757,6 +801,7 @@ app.use(createLoadBalancerRouter())
 // Secure database provisioning and access
 app.use(createDatabaseRouter())
 app.use(createSecureSQLitRouter())
+app.use(createSQLitProxyRouter())
 app.use(createKeepaliveRouter())
 
 // Infrastructure services (postgres, redis, etc.)
@@ -1417,7 +1462,9 @@ if (import.meta.main) {
             })
           }
           // Serve frontend from IPFS/storage if configured
-          console.log(`[Bun.serve] App ${appName}: frontendCid=${deployedApp.frontendCid}, staticFiles=${deployedApp.staticFiles ? Object.keys(deployedApp.staticFiles).length : 0}`)
+          console.log(
+            `[Bun.serve] App ${appName}: frontendCid=${deployedApp.frontendCid}, staticFiles=${deployedApp.staticFiles ? Object.keys(deployedApp.staticFiles).length : 0}`,
+          )
           if (deployedApp.frontendCid || deployedApp.staticFiles) {
             const gateway = getIpfsGatewayUrl(NETWORK)
             let assetPath = url.pathname === '/' ? '/index.html' : url.pathname
@@ -1426,28 +1473,39 @@ if (import.meta.main) {
               assetPath = '/index.html'
             }
             console.log(`[Bun.serve] Looking for assetPath: ${assetPath}`)
-            
+
             // Check staticFiles map first for individual file CIDs
             if (deployedApp.staticFiles) {
-              const filePathWithSlash = assetPath.startsWith('/') ? assetPath : `/${assetPath}`
+              const filePathWithSlash = assetPath.startsWith('/')
+                ? assetPath
+                : `/${assetPath}`
               const filePathWithoutSlash = assetPath.replace(/^\//, '')
-              console.log(`[Bun.serve] Checking staticFiles for: ${filePathWithSlash} or ${filePathWithoutSlash}`)
+              console.log(
+                `[Bun.serve] Checking staticFiles for: ${filePathWithSlash} or ${filePathWithoutSlash}`,
+              )
               // Try both with and without leading slash since deploy scripts vary
-              const fileCid = deployedApp.staticFiles[filePathWithSlash] 
-                ?? deployedApp.staticFiles[filePathWithoutSlash]
+              const fileCid =
+                deployedApp.staticFiles[filePathWithSlash] ??
+                deployedApp.staticFiles[filePathWithoutSlash]
               console.log(`[Bun.serve] Found CID: ${fileCid}`)
               if (fileCid) {
                 // Fetch from DWS storage
-                const storageUrl = NETWORK === 'localnet'
-                  ? `http://127.0.0.1:4030/storage/download/${fileCid}`
-                  : `https://dws.${NETWORK === 'testnet' ? 'testnet.' : ''}jejunetwork.org/storage/download/${fileCid}`
-                console.log(`[Bun.serve] Serving from staticFiles: ${storageUrl}`)
+                const storageUrl =
+                  NETWORK === 'localnet'
+                    ? `http://127.0.0.1:4030/storage/download/${fileCid}`
+                    : `https://dws.${NETWORK === 'testnet' ? 'testnet.' : ''}jejunetwork.org/storage/download/${fileCid}`
+                console.log(
+                  `[Bun.serve] Serving from staticFiles: ${storageUrl}`,
+                )
                 const resp = await fetch(storageUrl).catch(() => null)
                 if (resp?.ok) {
-                  const contentType = filePathWithoutSlash.endsWith('.js') ? 'application/javascript'
-                    : filePathWithoutSlash.endsWith('.css') ? 'text/css'
-                    : filePathWithoutSlash.endsWith('.html') ? 'text/html'
-                    : 'application/octet-stream'
+                  const contentType = filePathWithoutSlash.endsWith('.js')
+                    ? 'application/javascript'
+                    : filePathWithoutSlash.endsWith('.css')
+                      ? 'text/css'
+                      : filePathWithoutSlash.endsWith('.html')
+                        ? 'text/html'
+                        : 'application/octet-stream'
                   return new Response(resp.body, {
                     headers: {
                       'Content-Type': contentType,
@@ -1458,7 +1516,7 @@ if (import.meta.main) {
                 }
               }
             }
-            
+
             // Fallback: try directory-style CID if frontendCid is set
             if (deployedApp.frontendCid) {
               const ipfsUrl = `${gateway}/ipfs/${deployedApp.frontendCid}${assetPath}`
@@ -1475,7 +1533,7 @@ if (import.meta.main) {
                 return fetch(directUrl)
               }
             }
-            
+
             // Return 404 if no CID found
             return new Response('Not Found', { status: 404 })
           }

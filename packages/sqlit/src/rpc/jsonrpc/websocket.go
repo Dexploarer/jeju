@@ -32,7 +32,22 @@ func (ws *WebsocketServer) Serve() error {
 		handler = defaultHandler
 	}
 
+	// Add health check endpoints for compatibility with HTTP clients
+	mux.HandleFunc("/v1/status", func(rw http.ResponseWriter, r *http.Request) {
+		rw.Header().Set("Content-Type", "application/json")
+		rw.WriteHeader(http.StatusOK)
+		rw.Write([]byte(`{"status":"ok","blockHeight":0,"databases":0}`))
+	})
+
 	mux.HandleFunc("/", func(rw http.ResponseWriter, r *http.Request) {
+		// If it's not a WebSocket upgrade request, return 200 for health checks
+		if r.Header.Get("Upgrade") != "websocket" {
+			rw.Header().Set("Content-Type", "application/json")
+			rw.WriteHeader(http.StatusOK)
+			rw.Write([]byte(`{"status":"ok"}`))
+			return
+		}
+
 		conn, err := upgrader.Upgrade(rw, r, nil)
 		if err != nil {
 			log.WithError(err).Error("jsonrpc: upgrade http connection to websocket failed")

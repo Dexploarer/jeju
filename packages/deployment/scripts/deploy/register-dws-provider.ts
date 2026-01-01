@@ -10,19 +10,21 @@
  */
 
 import {
+  getContract,
   getCurrentNetwork,
   getDWSUrl,
   getRpcUrl,
-  getContract,
 } from '@jejunetwork/config'
-import { createWalletClient, http, parseEther, type Address } from 'viem'
+import { type Address, createWalletClient, http, parseEther } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
-import { baseSepolia, base } from 'viem/chains'
+import { base, baseSepolia } from 'viem/chains'
 
 // Provider registration parameters
 interface ProviderRegistration {
   endpoint: string
-  capabilities: Array<'compute' | 'storage' | 'cdn' | 'database' | 'gpu' | 'tee'>
+  capabilities: Array<
+    'compute' | 'storage' | 'cdn' | 'database' | 'gpu' | 'tee'
+  >
   stake: bigint
   specs: {
     cpuCores: number
@@ -48,20 +50,28 @@ const DWS_PROVIDER_REGISTRY_ABI = [
     inputs: [
       { name: 'endpoint', type: 'string' },
       { name: 'capabilities', type: 'uint8[]' },
-      { name: 'specs', type: 'tuple', components: [
-        { name: 'cpuCores', type: 'uint32' },
-        { name: 'memoryMb', type: 'uint32' },
-        { name: 'storageMb', type: 'uint64' },
-        { name: 'bandwidthMbps', type: 'uint32' },
-        { name: 'gpuType', type: 'string' },
-        { name: 'gpuCount', type: 'uint8' },
-        { name: 'teePlatform', type: 'uint8' },
-      ]},
-      { name: 'pricing', type: 'tuple', components: [
-        { name: 'pricePerHour', type: 'uint256' },
-        { name: 'pricePerGb', type: 'uint256' },
-        { name: 'pricePerRequest', type: 'uint256' },
-      ]},
+      {
+        name: 'specs',
+        type: 'tuple',
+        components: [
+          { name: 'cpuCores', type: 'uint32' },
+          { name: 'memoryMb', type: 'uint32' },
+          { name: 'storageMb', type: 'uint64' },
+          { name: 'bandwidthMbps', type: 'uint32' },
+          { name: 'gpuType', type: 'string' },
+          { name: 'gpuCount', type: 'uint8' },
+          { name: 'teePlatform', type: 'uint8' },
+        ],
+      },
+      {
+        name: 'pricing',
+        type: 'tuple',
+        components: [
+          { name: 'pricePerHour', type: 'uint256' },
+          { name: 'pricePerGb', type: 'uint256' },
+          { name: 'pricePerRequest', type: 'uint256' },
+        ],
+      },
       { name: 'region', type: 'string' },
     ],
     outputs: [{ name: 'providerId', type: 'uint256' }],
@@ -71,13 +81,19 @@ const DWS_PROVIDER_REGISTRY_ABI = [
     name: 'getProvider',
     type: 'function',
     inputs: [{ name: 'providerId', type: 'uint256' }],
-    outputs: [{ name: '', type: 'tuple', components: [
-      { name: 'owner', type: 'address' },
-      { name: 'endpoint', type: 'string' },
-      { name: 'stake', type: 'uint256' },
-      { name: 'reputation', type: 'uint256' },
-      { name: 'isActive', type: 'bool' },
-    ]}],
+    outputs: [
+      {
+        name: '',
+        type: 'tuple',
+        components: [
+          { name: 'owner', type: 'address' },
+          { name: 'endpoint', type: 'string' },
+          { name: 'stake', type: 'uint256' },
+          { name: 'reputation', type: 'uint256' },
+          { name: 'isActive', type: 'bool' },
+        ],
+      },
+    ],
     stateMutability: 'view',
   },
   {
@@ -109,10 +125,11 @@ const TEE_PLATFORM_MAP = {
 
 async function main() {
   const args = process.argv.slice(2)
-  const networkArg = args.find(a => a.startsWith('--network='))?.split('=')[1]
-    || args[args.indexOf('--network') + 1]
-    || process.env.NETWORK
-    || 'testnet'
+  const networkArg =
+    args.find((a) => a.startsWith('--network='))?.split('=')[1] ||
+    args[args.indexOf('--network') + 1] ||
+    process.env.NETWORK ||
+    'testnet'
 
   process.env.NETWORK = networkArg
   const network = getCurrentNetwork()
@@ -127,7 +144,10 @@ async function main() {
 
   // Get contract address
   const registryAddress = getContract('DWSProviderRegistry') as Address
-  if (!registryAddress || registryAddress === '0x0000000000000000000000000000000000000000') {
+  if (
+    !registryAddress ||
+    registryAddress === '0x0000000000000000000000000000000000000000'
+  ) {
     console.error('ERROR: DWSProviderRegistry contract not deployed')
     console.log('Deploy contracts first: bun run scripts/deploy/contracts.ts')
     process.exit(1)
@@ -174,13 +194,13 @@ async function main() {
 
   // Check if already registered
   try {
-    const { publicClient } = await import('viem').then(async m => {
+    const { publicClient } = await import('viem').then(async (m) => {
       const { createPublicClient } = m
       return {
         publicClient: createPublicClient({
           chain,
           transport: http(rpcUrl),
-        })
+        }),
       }
     })
 
@@ -192,8 +212,10 @@ async function main() {
     })
 
     if (existingProviderId > 0n) {
-      console.log(`[Provider Registration] Already registered as provider ${existingProviderId}`)
-      
+      console.log(
+        `[Provider Registration] Already registered as provider ${existingProviderId}`,
+      )
+
       // Get provider details
       const provider = await publicClient.readContract({
         address: registryAddress,
@@ -201,25 +223,26 @@ async function main() {
         functionName: 'getProvider',
         args: [existingProviderId],
       })
-      
+
       console.log('[Provider Registration] Current registration:')
       console.log(`  Endpoint: ${provider.endpoint}`)
       console.log(`  Stake: ${provider.stake} wei`)
       console.log(`  Reputation: ${provider.reputation}`)
       console.log(`  Active: ${provider.isActive}`)
-      
+
       return
     }
-  } catch (error) {
+  } catch (_error) {
     // Not registered, continue with registration
     console.log('[Provider Registration] Not registered yet, proceeding...')
   }
 
   // Convert capabilities to uint8 array
-  const capabilityIds = registration.capabilities.map(c => CAPABILITY_MAP[c])
+  const capabilityIds = registration.capabilities.map((c) => CAPABILITY_MAP[c])
 
   // Convert TEE platform to uint8
-  const teePlatformId = TEE_PLATFORM_MAP[registration.specs.teePlatform || 'none']
+  const teePlatformId =
+    TEE_PLATFORM_MAP[registration.specs.teePlatform || 'none']
 
   console.log('[Provider Registration] Registering provider...')
   console.log(`  Capabilities: ${registration.capabilities.join(', ')}`)
@@ -264,16 +287,20 @@ async function main() {
     })
 
     const receipt = await publicClient.waitForTransactionReceipt({ hash })
-    
+
     if (receipt.status === 'success') {
-      console.log('[Provider Registration] ✅ Provider registered successfully!')
+      console.log(
+        '[Provider Registration] ✅ Provider registered successfully!',
+      )
       console.log(`  Block: ${receipt.blockNumber}`)
       console.log(`  Gas used: ${receipt.gasUsed}`)
-      
+
       // Get the provider ID from logs
       // (In a real implementation, parse the ProviderRegistered event)
       console.log('\n[Provider Registration] Next steps:')
-      console.log('1. Enable P2P: kubectl patch deployment dws -n dws -p \'{"spec":{"template":{"spec":{"containers":[{"name":"dws","env":[{"name":"DWS_P2P_ENABLED","value":"true"}]}]}}}}\'')
+      console.log(
+        '1. Enable P2P: kubectl patch deployment dws -n dws -p \'{"spec":{"template":{"spec":{"containers":[{"name":"dws","env":[{"name":"DWS_P2P_ENABLED","value":"true"}]}]}}}}\'',
+      )
       console.log('2. Update DWS to provider mode: DWS_PROVIDER_ENABLED=true')
       console.log('3. Monitor provider health at /provider/health')
     } else {
@@ -282,15 +309,19 @@ async function main() {
     }
   } catch (error) {
     console.error('[Provider Registration] Error:', error)
-    
+
     // If contract doesn't exist or ABI mismatch, provide helpful message
     if (String(error).includes('contract') || String(error).includes('ABI')) {
       console.log('\n[Provider Registration] Contract may not be deployed.')
       console.log('To deploy contracts: bun run scripts/deploy/contracts.ts')
-      console.log('\nFor now, DWS can run in standalone mode without on-chain registration.')
-      console.log('Apps will be served via the app router without provider network.')
+      console.log(
+        '\nFor now, DWS can run in standalone mode without on-chain registration.',
+      )
+      console.log(
+        'Apps will be served via the app router without provider network.',
+      )
     }
-    
+
     process.exit(1)
   }
 }

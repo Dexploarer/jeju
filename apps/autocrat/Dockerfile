@@ -1,88 +1,103 @@
 # Autocrat - AI-Powered Autonomous Governance
-FROM oven/bun:1.3 AS builder
+# Build from repo root: docker build -f apps/autocrat/Dockerfile .
 
-# Install Python and setuptools for native deps
-RUN apt-get update && apt-get install -y python3 python3-setuptools && rm -rf /var/lib/apt/lists/*
+FROM oven/bun:latest AS base
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy workspace root files
+# Copy all source files needed for workspace install
 COPY package.json bun.lockb ./
-COPY patches/ ./patches/
-
-# Copy all workspace package.json files for dependency resolution
-COPY packages/api/package.json ./packages/api/
-COPY packages/auth/package.json ./packages/auth/
+COPY apps/autocrat/package.json ./apps/autocrat/
 COPY packages/config/package.json ./packages/config/
+COPY packages/types/package.json ./packages/types/
+COPY packages/shared/package.json ./packages/shared/
 COPY packages/contracts/package.json ./packages/contracts/
 COPY packages/db/package.json ./packages/db/
-COPY packages/kms/package.json ./packages/kms/
-COPY packages/messaging/package.json ./packages/messaging/
 COPY packages/sdk/package.json ./packages/sdk/
-COPY packages/shared/package.json ./packages/shared/
-COPY packages/tests/package.json ./packages/tests/
-COPY packages/training/package.json ./packages/training/
-COPY packages/types/package.json ./packages/types/
-COPY packages/ui/package.json ./packages/ui/
-COPY packages/token/package.json ./packages/token/
-COPY packages/sqlit/package.json ./packages/sqlit/
+COPY packages/messaging/package.json ./packages/messaging/
 COPY packages/agents/package.json ./packages/agents/
 COPY packages/a2a/package.json ./packages/a2a/
 COPY packages/mcp/package.json ./packages/mcp/
+COPY packages/auth/package.json ./packages/auth/
+COPY packages/kms/package.json ./packages/kms/
+COPY packages/api/package.json ./packages/api/
+COPY packages/ui/package.json ./packages/ui/
 COPY packages/bots/package.json ./packages/bots/
-COPY apps/autocrat/package.json ./apps/autocrat/
+COPY packages/sqlit/package.json ./packages/sqlit/
+COPY packages/token/package.json ./packages/token/
+COPY packages/workerd/package.json ./packages/workerd/
+COPY packages/tests/package.json ./packages/tests/
+COPY packages/eliza-plugin/package.json ./packages/eliza-plugin/
+COPY packages/training/package.json ./packages/training/
+COPY packages/bridge/package.json ./packages/bridge/
+COPY packages/cache/package.json ./packages/cache/
+COPY packages/deployment/package.json ./packages/deployment/
+COPY packages/solana/package.json ./packages/solana/
+
+# Copy all apps package.json for workspace
 COPY apps/dws/package.json ./apps/dws/
+COPY apps/gateway/package.json ./apps/gateway/
+COPY apps/bazaar/package.json ./apps/bazaar/
+COPY apps/crucible/package.json ./apps/crucible/
+COPY apps/factory/package.json ./apps/factory/
+COPY apps/indexer/package.json ./apps/indexer/
+COPY apps/monitoring/package.json ./apps/monitoring/
+COPY apps/node/package.json ./apps/node/
+COPY apps/wallet/package.json ./apps/wallet/
+COPY apps/oauth3/package.json ./apps/oauth3/
+COPY apps/otto/package.json ./apps/otto/
+COPY apps/vpn/package.json ./apps/vpn/
+COPY apps/example/package.json ./apps/example/
+COPY apps/documentation/package.json ./apps/documentation/
 
-# Copy full source files (needed for bun install to resolve workspaces)
-COPY packages/ ./packages/
-COPY apps/autocrat/ ./apps/autocrat/
-COPY apps/dws/ ./apps/dws/
-COPY tsconfig.json tsconfig.base.json ./
-
-# Install all dependencies
+# Install all dependencies (ignore scripts that require native builds)
 RUN bun install --ignore-scripts
 
-# Build types package (needed by config)
-RUN cd packages/types && bun run build
+# Copy source code
+COPY apps/autocrat/ ./apps/autocrat/
+COPY packages/config/ ./packages/config/
+COPY packages/types/ ./packages/types/
+COPY packages/shared/ ./packages/shared/
+COPY packages/contracts/ ./packages/contracts/
+COPY packages/db/ ./packages/db/
+COPY packages/sdk/ ./packages/sdk/
+COPY packages/messaging/ ./packages/messaging/
+COPY packages/agents/ ./packages/agents/
+COPY packages/a2a/ ./packages/a2a/
+COPY packages/mcp/ ./packages/mcp/
+COPY packages/auth/ ./packages/auth/
+COPY packages/kms/ ./packages/kms/
+COPY packages/api/ ./packages/api/
+COPY packages/ui/ ./packages/ui/
+COPY packages/bots/ ./packages/bots/
+COPY tsconfig.json tsconfig.base.json ./
 
-# Build frontend for production
-WORKDIR /app/apps/autocrat
-RUN bun run scripts/build.ts
+# Create non-root user
+RUN groupadd --gid 1001 autocrat && \
+    useradd --uid 1001 --gid autocrat --create-home autocrat
 
-# Production stage - slim image
-FROM oven/bun:1.3-slim
+# Fix permissions
+RUN chown -R autocrat:autocrat /app
 
-WORKDIR /app
+USER autocrat
 
-# Copy only what's needed for runtime
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/packages/config ./packages/config
-COPY --from=builder /app/packages/types ./packages/types
-COPY --from=builder /app/packages/shared ./packages/shared
-COPY --from=builder /app/packages/contracts ./packages/contracts
-COPY --from=builder /app/packages/db ./packages/db
-COPY --from=builder /app/packages/sdk ./packages/sdk
-COPY --from=builder /app/packages/messaging ./packages/messaging
-COPY --from=builder /app/packages/agents ./packages/agents
-COPY --from=builder /app/packages/a2a ./packages/a2a
-COPY --from=builder /app/packages/mcp ./packages/mcp
-COPY --from=builder /app/packages/auth ./packages/auth
-COPY --from=builder /app/packages/kms ./packages/kms
-COPY --from=builder /app/apps/autocrat ./apps/autocrat
-COPY --from=builder /app/tsconfig.json ./
-
-WORKDIR /app/apps/autocrat
-
-# Expose ports (API: 4040)
 EXPOSE 4040
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-  CMD wget -q -O- http://localhost:4040/health || exit 1
-
-# Set environment
 ENV NODE_ENV=production
 ENV PORT=4040
+ENV HOSTNAME="0.0.0.0"
+ENV JEJU_NETWORK=testnet
 
-# Run the server (serves both API and static frontend)
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
+  CMD curl -f http://localhost:4040/health || exit 1
+
+WORKDIR /app/apps/autocrat
+
+# Run the server directly with Bun
 CMD ["bun", "run", "api/server.ts"]

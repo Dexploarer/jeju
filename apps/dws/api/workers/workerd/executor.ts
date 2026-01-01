@@ -261,6 +261,7 @@ export class WorkerdExecutor implements IWorkerdExecutor {
       `http://${getLocalhostHost()}:${CORE_PORTS.DWS_API.get()}/exec`
 
     // Write config file via DWS exec API
+    console.log(`[WorkerdExecutor] Writing config to ${configPath}`)
     const writeConfigResult = await fetch(execUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -274,6 +275,7 @@ export class WorkerdExecutor implements IWorkerdExecutor {
         `Failed to write workerd config: ${writeConfigResult.status}`,
       )
     }
+    console.log(`[WorkerdExecutor] Config written successfully`)
 
     // Start workerd process via DWS exec API
     if (!this.workerdPath) {
@@ -304,6 +306,10 @@ export class WorkerdExecutor implements IWorkerdExecutor {
       pid: number
       exitCode?: number
     }
+
+    console.log(
+      `[WorkerdExecutor] Spawned workerd process: PID=${spawnData.pid}, port=${port}`,
+    )
 
     // Create process tracking object (workerd-compatible - no actual process object)
     const processId = crypto.randomUUID()
@@ -351,7 +357,9 @@ export class WorkerdExecutor implements IWorkerdExecutor {
     this.instances.set(worker.id, instance)
 
     // Wait for ready (no early exit detection needed - DWS exec API handles process lifecycle)
+    console.log(`[WorkerdExecutor] Waiting for workerd on port ${port} to become ready...`)
     const ready = await this.waitForReady(port)
+    console.log(`[WorkerdExecutor] waitForReady result: ${ready}`)
 
     if (ready) {
       workerdProcess.status = 'ready'
@@ -560,13 +568,17 @@ export class WorkerdExecutor implements IWorkerdExecutor {
     timeoutMs = 30000,
   ): Promise<boolean> {
     const deadline = Date.now() + timeoutMs
+    const host = getLocalhostHost()
 
     while (Date.now() < deadline) {
-      const host = getLocalhostHost()
-      const response = await fetch(`http://${host}:${port}/health`)
-      const healthy = response.ok || response.status === 404 // 404 is ok, means server is up
+      try {
+        const response = await fetch(`http://${host}:${port}/health`)
+        const healthy = response.ok || response.status === 404 // 404 is ok, means server is up
 
-      if (healthy) return true
+        if (healthy) return true
+      } catch {
+        // Connection refused or other error - process not ready yet, keep trying
+      }
       await new Promise((r) => setTimeout(r, 200))
     }
 

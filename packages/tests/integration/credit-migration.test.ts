@@ -39,7 +39,8 @@ const jejuTokenAddress = (process.env.JEJU_TOKEN_ADDRESS ||
 // Skip these tests - they require a specific JEJU token deployment with
 // mint permissions, which is not present in the standard localnet setup.
 // Enable by setting ENABLE_CREDIT_MIGRATION_TESTS=true in your environment.
-const enableCreditMigrationTests = process.env.ENABLE_CREDIT_MIGRATION_TESTS === 'true'
+const enableCreditMigrationTests =
+  process.env.ENABLE_CREDIT_MIGRATION_TESTS === 'true'
 let localnetAvailable = false
 
 if (enableCreditMigrationTests) {
@@ -71,7 +72,9 @@ if (enableCreditMigrationTests) {
           localnetAvailable = true
         }
       } catch {
-        console.log(`⏭️  JEJU token not properly deployed at ${jejuTokenAddress}, skipping credit migration tests`)
+        console.log(
+          `⏭️  JEJU token not properly deployed at ${jejuTokenAddress}, skipping credit migration tests`,
+        )
       }
     }
   } catch {
@@ -80,7 +83,9 @@ if (enableCreditMigrationTests) {
     )
   }
 } else {
-  console.log('⏭️  Credit migration tests disabled (set ENABLE_CREDIT_MIGRATION_TESTS=true to enable)')
+  console.log(
+    '⏭️  Credit migration tests disabled (set ENABLE_CREDIT_MIGRATION_TESTS=true to enable)',
+  )
 }
 
 const TEST_CONFIG = {

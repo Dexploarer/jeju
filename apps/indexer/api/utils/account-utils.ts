@@ -3,23 +3,24 @@
  * Shared business logic for account-related operations
  */
 
-import type { DataSource } from 'typeorm'
-import { Account } from '../model'
+import { type Account, find } from '../db'
 
+/**
+ * Get account by address from SQLit
+ */
 export async function getAccountByAddress(
-  dataSource: DataSource,
   address: string,
 ): Promise<Account | null> {
-  if (!dataSource) {
-    throw new Error('DataSource is required')
-  }
   if (!address || address.trim().length === 0) {
     throw new Error('address is required and must be a non-empty string')
   }
 
   const normalizedAddress = address.toLowerCase()
 
-  return await dataSource.getRepository(Account).findOne({
+  const results = await find<Account>('Account', {
     where: { address: normalizedAddress },
+    take: 1,
   })
+
+  return results[0] ?? null
 }

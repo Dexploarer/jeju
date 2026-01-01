@@ -546,8 +546,13 @@ export class OnChainSignalsService {
             break
         }
         processed++
-      } catch {
-        // Re-queue failed signal
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error)
+        logger.warn('[OnChainSignals] Failed to process signal, re-queuing', {
+          signalType: signal.type,
+          target: signal.target,
+          error: errorMsg,
+        })
         signalQueue.push(signal)
       }
     }

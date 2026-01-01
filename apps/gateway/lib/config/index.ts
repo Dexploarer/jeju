@@ -80,111 +80,76 @@ function addr(value: string | undefined, name: string): Address {
   return getAddress(value)
 }
 
+/** Helper to get optional address - returns ZERO_ADDRESS if not configured */
+function optionalAddr(value: string | undefined): Address {
+  if (!value) return ZERO_ADDRESS
+  return getAddress(value)
+}
+
 export const CONTRACTS = {
-  // Tokens
-  jeju: addr(contracts.tokens.jeju, 'tokens.jeju'),
-  usdc: addr(contracts.tokens.usdc, 'tokens.usdc'),
+  // Tokens - some may not be deployed on all networks
+  jeju: optionalAddr(contracts.tokens?.jeju),
+  usdc: optionalAddr(contracts.tokens?.usdc),
   weth: getAddress('0x4200000000000000000000000000000000000006'),
 
-  // Registry
-  identityRegistry: addr(contracts.registry.identity, 'registry.identity'),
-  tokenRegistry: addr(contracts.registry.token, 'registry.token'),
-  reputationRegistry: addr(
-    contracts.registry.reputation,
-    'registry.reputation',
-  ),
-  validationRegistry: addr(
-    contracts.registry.validation,
-    'registry.validation',
-  ),
+  // Registry - some may not be deployed on all networks
+  identityRegistry: optionalAddr(contracts.registry?.identity),
+  tokenRegistry: optionalAddr(contracts.registry?.token),
+  reputationRegistry: optionalAddr(contracts.registry?.reputation),
+  validationRegistry: optionalAddr(contracts.registry?.validation),
 
-  // Moderation
-  banManager: addr(contracts.moderation.banManager, 'moderation.banManager'),
-  reportingSystem: addr(
-    contracts.moderation.reportingSystem,
-    'moderation.reportingSystem',
+  // Moderation (optional - may not be deployed on all networks)
+  banManager: optionalAddr(contracts.moderation?.banManager),
+  reportingSystem: optionalAddr(contracts.moderation?.reportingSystem),
+  reputationLabelManager: optionalAddr(
+    contracts.moderation?.reputationLabelManager,
   ),
-  reputationLabelManager: addr(
-    contracts.moderation.reputationLabelManager,
-    'moderation.reputationLabelManager',
-  ),
-  registryGovernance: addr(
-    contracts.governance.registryGovernance,
-    'governance.registryGovernance',
-  ),
+  registryGovernance: optionalAddr(contracts.governance?.registryGovernance),
 
-  // Bazaar (Prediction Markets)
-  predictionMarket: addr(
-    contracts.bazaar?.predictionMarket,
-    'bazaar.predictionMarket',
-  ),
+  // Bazaar (Prediction Markets) - optional
+  predictionMarket: optionalAddr(contracts.bazaar?.predictionMarket),
 
-  // Node Staking
-  nodeStakingManager: addr(
-    contracts.nodeStaking.manager,
-    'nodeStaking.manager',
-  ),
-  nodePerformanceOracle: addr(
-    contracts.nodeStaking.performanceOracle,
-    'nodeStaking.performanceOracle',
-  ),
-  rpcStaking: addr(contracts.rpc?.staking, 'rpc.staking'),
+  // Node Staking - optional (may not be deployed on all networks)
+  nodeStakingManager: optionalAddr(contracts.nodeStaking?.manager),
+  nodePerformanceOracle: optionalAddr(contracts.nodeStaking?.performanceOracle),
+  rpcStaking: optionalAddr(contracts.rpc?.staking),
 
-  // JNS
-  jnsRegistry: addr(contracts.jns.registry, 'jns.registry'),
-  jnsResolver: addr(contracts.jns.resolver, 'jns.resolver'),
-  jnsRegistrar: addr(contracts.jns.registrar, 'jns.registrar'),
-  jnsReverseRegistrar: addr(
-    contracts.jns.reverseRegistrar,
-    'jns.reverseRegistrar',
-  ),
+  // JNS - optional
+  jnsRegistry: optionalAddr(contracts.jns?.registry),
+  jnsResolver: optionalAddr(contracts.jns?.resolver),
+  jnsRegistrar: optionalAddr(contracts.jns?.registrar),
+  jnsReverseRegistrar: optionalAddr(contracts.jns?.reverseRegistrar),
 
-  // Payments
-  paymasterFactory: addr(
-    contracts.payments.paymasterFactory,
-    'payments.paymasterFactory',
-  ),
-  priceOracle: addr(contracts.payments.priceOracle, 'payments.priceOracle'),
+  // Payments - optional
+  paymasterFactory: optionalAddr(contracts.payments?.paymasterFactory),
+  priceOracle: optionalAddr(contracts.payments?.priceOracle),
   entryPoint: getAddress('0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789'),
-  x402Facilitator: addr(
-    contracts.payments.x402Facilitator,
-    'payments.x402Facilitator',
-  ),
+  x402Facilitator: optionalAddr(contracts.payments?.x402Facilitator),
 
-  // Compute
-  computeRegistry: addr(contracts.compute.registry, 'compute.registry'),
-  ledgerManager: addr(contracts.compute.ledgerManager, 'compute.ledgerManager'),
-  inferenceServing: addr(
-    contracts.compute.inferenceServing,
-    'compute.inferenceServing',
-  ),
-  computeStaking: addr(contracts.compute.staking, 'compute.staking'),
+  // Compute - optional
+  computeRegistry: optionalAddr(contracts.compute?.registry),
+  ledgerManager: optionalAddr(contracts.compute?.ledgerManager),
+  inferenceServing: optionalAddr(contracts.compute?.inferenceServing),
+  computeStaking: optionalAddr(contracts.compute?.staking),
 
-  // OIF
-  solverRegistry: addr(contracts.oif.solverRegistry, 'oif.solverRegistry'),
+  // OIF - optional
+  solverRegistry: optionalAddr(contracts.oif?.solverRegistry),
   inputSettler: {
-    jeju: addr(contracts.oif.inputSettler, 'oif.inputSettler'),
+    jeju: optionalAddr(contracts.oif?.inputSettler),
     ethereum: ZERO_ADDRESS,
     sepolia: ZERO_ADDRESS,
     arbitrum: ZERO_ADDRESS,
     optimism: ZERO_ADDRESS,
   },
 
-  // EIL
-  crossChainPaymaster: addr(
-    contracts.eil.crossChainPaymaster,
-    'eil.crossChainPaymaster',
+  // EIL - optional
+  crossChainPaymaster: optionalAddr(contracts.eil?.crossChainPaymaster),
+
+  // GitHub Reputation - optional
+  githubReputationProvider: optionalAddr(
+    contracts.registry?.githubReputationProvider,
   ),
 
-  // GitHub Reputation
-  githubReputationProvider: addr(
-    contracts.registry.githubReputationProvider,
-    'registry.githubReputationProvider',
-  ),
-
-  // Oracle Network
-  oracleNetworkConnector: addr(
-    contracts.oracle?.oracleNetworkConnector,
-    'oracle.oracleNetworkConnector',
-  ),
+  // Oracle Network - optional
+  oracleNetworkConnector: optionalAddr(contracts.oracle?.oracleNetworkConnector),
 } as const

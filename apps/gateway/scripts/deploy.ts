@@ -118,7 +118,8 @@ async function uploadToIPFS(
   })
 
   if (!response.ok) {
-    throw new Error(`Upload failed: ${await response.text()}`)
+    const errorText = await response.text()
+    throw new Error(`Upload failed for ${name}: ${errorText}`)
   }
 
   const rawJson: unknown = await response.json()
@@ -387,8 +388,12 @@ async function deploy(): Promise<void> {
     )
     if (gatewayApp) {
       console.log(`   App registered: ${gatewayApp.name}`)
-      console.log(`   Frontend CID: ${gatewayApp.frontendCid || 'null (using staticFiles)'}`)
-      console.log(`   Static Files: ${gatewayApp.staticFiles ? Object.keys(gatewayApp.staticFiles).length : 0} files`)
+      console.log(
+        `   Frontend CID: ${gatewayApp.frontendCid || 'null (using staticFiles)'}`,
+      )
+      console.log(
+        `   Static Files: ${gatewayApp.staticFiles ? Object.keys(gatewayApp.staticFiles).length : 0} files`,
+      )
       console.log(`   Enabled: ${gatewayApp.enabled}`)
     }
   }

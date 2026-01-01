@@ -16,14 +16,22 @@ const browserPlugin: BunPlugin = {
   setup(build) {
     // Stub server-side packages for browser builds
     const serverOnlyStub = resolve('./web/stubs/empty.ts')
-    
-    build.onResolve({ filter: /^@jejunetwork\/kms/ }, () => ({ path: serverOnlyStub }))
-    build.onResolve({ filter: /^@jejunetwork\/db/ }, () => ({ path: serverOnlyStub }))
-    build.onResolve({ filter: /^@jejunetwork\/deployment/ }, () => ({ path: serverOnlyStub }))
+
+    build.onResolve({ filter: /^@jejunetwork\/kms/ }, () => ({
+      path: serverOnlyStub,
+    }))
+    build.onResolve({ filter: /^@jejunetwork\/db/ }, () => ({
+      path: serverOnlyStub,
+    }))
+    build.onResolve({ filter: /^@jejunetwork\/deployment/ }, () => ({
+      path: serverOnlyStub,
+    }))
     build.onResolve({ filter: /^ioredis/ }, () => ({ path: serverOnlyStub }))
     build.onResolve({ filter: /^elysia/ }, () => ({ path: serverOnlyStub }))
-    build.onResolve({ filter: /^@elysiajs\// }, () => ({ path: serverOnlyStub }))
-    
+    build.onResolve({ filter: /^@elysiajs\// }, () => ({
+      path: serverOnlyStub,
+    }))
+
     // Shim pino
     build.onResolve({ filter: /^pino(-pretty)?$/ }, () => ({
       path: resolve('./scripts/shims/pino.ts'),
@@ -169,8 +177,13 @@ async function buildFrontend(): Promise<void> {
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./globals.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
   <script>
-    if (typeof process === 'undefined') window.process = { env: { NODE_ENV: 'production' }, browser: true };
+    window.__JEJU_CONFIG__ = { network: '${network}' };
+    if (typeof process === 'undefined') window.process = { env: { NODE_ENV: 'production', JEJU_NETWORK: '${network}' }, browser: true };
+    if (typeof globalThis !== 'undefined' && !globalThis.import) {
+      globalThis.import = { meta: { env: { VITE_NETWORK: '${network}', MODE: 'production', DEV: false, PROD: true } } };
+    }
     (function() {
       try {
         const savedTheme = localStorage.getItem('crucible-theme');

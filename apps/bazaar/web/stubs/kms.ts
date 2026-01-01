@@ -1,6 +1,6 @@
 /**
  * @jejunetwork/kms browser stub
- * 
+ *
  * KMS functionality is not available in browser.
  * All signing/key operations happen server-side or via wallet.
  */

@@ -79,10 +79,13 @@ function getMimeType(path: string): string {
 
 function createApp() {
   const baseApp = new Elysia()
+    // Root health check for DWS worker runtime
+    .get('/health', () => 'OK')
     .onRequest(async ({ request, set }): Promise<Response | undefined> => {
       const url = new URL(request.url)
       // Skip rate limiting for health and docs
       if (
+        url.pathname === '/health' ||
         url.pathname === '/api/health' ||
         url.pathname.startsWith('/swagger')
       ) {

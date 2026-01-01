@@ -263,8 +263,21 @@ export const getRateLimitStats = async (): Promise<{
   totalTracked: number
   byTier: Record<RateTier, number>
 }> => {
-  // With distributed cache, per-tier stats would need separate tracking
-  // For now, return placeholder values
+  // Rate limit stats are tracked in distributed cache
+  // Note: Accurate per-tier stats require iterating cache keys or using atomic counters
+  // This is a limitation of the current distributed cache implementation
+  const cache = getRateCache()
+  
+  // Try to get stats counters if they exist
+  const statsKey = 'rpc-rl:__stats__'
+  const cached = await cache.get(statsKey)
+  if (cached) {
+    const stats = JSON.parse(cached) as { totalTracked: number; byTier: Record<RateTier, number> }
+    return stats
+  }
+  
+  // Stats not tracked - return zeros with a warning
+  console.warn('[RateLimiter] getRateLimitStats called but stats tracking is not enabled. Stats are only accurate when rate-limit-stats tracking is configured.')
   return {
     totalTracked: 0,
     byTier: { FREE: 0, BASIC: 0, PRO: 0, UNLIMITED: 0 },

@@ -156,8 +156,9 @@ async function removePersistedService(serviceId: string): Promise<void> {
       [serviceId],
       SERVICES_DATABASE_ID,
     )
-  } catch {
-    // Ignore SQLit errors
+  } catch (error) {
+    // Log SQLit errors instead of ignoring them
+    console.warn(`[Services] Failed to delete persisted service ${serviceId}: ${error instanceof Error ? error.message : String(error)}`)
   }
 }
 

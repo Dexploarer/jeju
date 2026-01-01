@@ -7,7 +7,7 @@
  * - Encryption/decryption
  * - Circuit breaker behavior
  * - Cluster failover
- * 
+ *
  * NOTE: These tests require the redis-cluster module which is not yet implemented.
  * They will be skipped until the module is available.
  */
@@ -16,19 +16,22 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
 
 // Try to import the module, skip tests if not available
 let RedisClusterClient: unknown = null
-let RedisClusterConfig: unknown = null
+let _RedisClusterConfig: unknown = null
 let moduleAvailable = false
 try {
   const mod = await import('../../shared/src/cache/redis-cluster')
   RedisClusterClient = mod.RedisClusterClient
-  RedisClusterConfig = mod.RedisClusterConfig
+  _RedisClusterConfig = mod.RedisClusterConfig
   moduleAvailable = true
 } catch {
-  console.log('⏭️  redis-cluster module not available, skipping redis cluster tests')
+  console.log(
+    '⏭️  redis-cluster module not available, skipping redis cluster tests',
+  )
 }
 
 // Skip if no Redis available or module not available
-const REDIS_AVAILABLE = moduleAvailable && (process.env.REDIS_NODES || process.env.TEST_REDIS)
+const REDIS_AVAILABLE =
+  moduleAvailable && (process.env.REDIS_NODES || process.env.TEST_REDIS)
 
 describe.skipIf(!REDIS_AVAILABLE)('RedisClusterClient', () => {
   let client: RedisClusterClient

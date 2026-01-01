@@ -7,12 +7,12 @@
  * - Proposal workflows
  */
 
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page, test } from '@playwright/test'
 
 const BASE_URL = process.env.TEST_BASE_URL ?? 'http://localhost:5173'
 
 // Helper to navigate to DAO page with Safe tab
-async function navigateToSafeTab(page: Page, daoId = 'jeju') {
+async function _navigateToSafeTab(page: Page, daoId = 'jeju') {
   await page.goto(`${BASE_URL}/dao/${daoId}`)
   await page.waitForLoadState('networkidle')
 
@@ -39,7 +39,7 @@ test.describe('Safe Integration UI', () => {
     const treasurySection = page.locator('text=Treasury')
 
     // At least one should be visible
-    const hasSafeContent =
+    const _hasSafeContent =
       (await safeCard.isVisible().catch(() => false)) ||
       (await treasurySection.isVisible().catch(() => false))
 
@@ -59,8 +59,12 @@ test.describe('Safe Integration UI', () => {
       await page.waitForLoadState('networkidle')
 
       // Check for treasury content
-      const treasuryContent = page.locator('[class*="treasury"], [data-tab-content="treasury"]')
-      await treasuryContent.waitFor({ state: 'visible', timeout: 5000 }).catch(() => null)
+      const treasuryContent = page.locator(
+        '[class*="treasury"], [data-tab-content="treasury"]',
+      )
+      await treasuryContent
+        .waitFor({ state: 'visible', timeout: 5000 })
+        .catch(() => null)
     }
 
     // Verify no console errors
@@ -130,8 +134,16 @@ test.describe('Safe Integration UI', () => {
 
     // Check for stats or info sections
     const hasContent =
-      (await page.locator('[class*="stat"]').first().isVisible().catch(() => false)) ||
-      (await page.locator('[class*="card"]').first().isVisible().catch(() => false))
+      (await page
+        .locator('[class*="stat"]')
+        .first()
+        .isVisible()
+        .catch(() => false)) ||
+      (await page
+        .locator('[class*="card"]')
+        .first()
+        .isVisible()
+        .catch(() => false))
 
     expect(hasContent).toBe(true)
   })
@@ -143,11 +155,13 @@ test.describe('Safe Transaction List', () => {
     await page.waitForLoadState('networkidle')
 
     // Look for empty state or transaction list
-    const emptyState = page.locator('text=No pending transactions, text=No transactions')
+    const emptyState = page.locator(
+      'text=No pending transactions, text=No transactions',
+    )
     const transactionList = page.locator('[class*="transaction"]')
 
     // Either should be present (empty state or transactions)
-    const hasTransactionSection =
+    const _hasTransactionSection =
       (await emptyState.isVisible().catch(() => false)) ||
       (await transactionList.isVisible().catch(() => false))
 
@@ -239,12 +253,14 @@ test.describe('Responsive Design', () => {
     expect(body).toBeDefined()
 
     // Check for mobile navigation
-    const mobileNav = page.locator('[class*="mobile"], [class*="hamburger"], button[aria-label*="menu"]')
+    const mobileNav = page.locator(
+      '[class*="mobile"], [class*="hamburger"], button[aria-label*="menu"]',
+    )
     const hasMobileNav = (await mobileNav.count()) > 0
 
     // Either has mobile nav or content is visible
     const mainContent = page.locator('main, [role="main"], [class*="content"]')
-    expect(await mainContent.isVisible() || hasMobileNav).toBe(true)
+    expect((await mainContent.isVisible()) || hasMobileNav).toBe(true)
   })
 
   test('should display correctly on tablet', async ({ page }) => {

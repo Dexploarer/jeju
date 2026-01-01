@@ -3,21 +3,17 @@
  * Shared utilities for querying blocks
  */
 
-import type { DataSource } from 'typeorm'
-import { Block } from '../model'
+import { type Block, find } from '../db'
 
 export interface BlocksQueryOptions {
   limit: number
   offset: number
 }
 
-export async function getBlocks(
-  dataSource: DataSource,
-  options: BlocksQueryOptions,
-): Promise<Block[]> {
-  if (!dataSource) {
-    throw new Error('DataSource is required')
-  }
+/**
+ * Get blocks with pagination, ordered by block number descending
+ */
+export async function getBlocks(options: BlocksQueryOptions): Promise<Block[]> {
   if (typeof options.limit !== 'number' || options.limit <= 0) {
     throw new Error(
       `Invalid limit: ${options.limit}. Must be a positive number.`,
@@ -29,7 +25,7 @@ export async function getBlocks(
     )
   }
 
-  return await dataSource.getRepository(Block).find({
+  return find<Block>('Block', {
     order: { number: 'DESC' },
     take: options.limit,
     skip: options.offset,

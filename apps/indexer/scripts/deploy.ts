@@ -43,12 +43,12 @@ function getConfig(): DeployConfig {
     },
     testnet: {
       dwsUrl: 'https://dws.testnet.jejunetwork.org',
-      // Kubernetes service endpoint for indexer backend
-      backendEndpoint: 'http://indexer-api.indexer.svc.cluster.local:4352',
+      // Kubernetes service endpoint for indexer backend (subsquid-api service in indexer namespace)
+      backendEndpoint: 'http://subsquid-api.indexer.svc.cluster.local:4352',
     },
     mainnet: {
       dwsUrl: 'https://dws.jejunetwork.org',
-      backendEndpoint: 'http://indexer-api.indexer.svc.cluster.local:4352',
+      backendEndpoint: 'http://subsquid-api.indexer.svc.cluster.local:4352',
     },
   }
 
@@ -166,7 +166,7 @@ async function uploadDirectory(
 async function registerApp(
   config: DeployConfig,
   staticFiles: Map<string, string>,
-  rootCid: string,
+  _rootCid: string,
 ): Promise<void> {
   // Find index.html CID - this is the entry point
   const indexCid = staticFiles.get('index.html')
@@ -230,7 +230,10 @@ async function deploy(): Promise<void> {
 
   // Upload static assets from dist directory
   console.log('\nUploading static assets...')
-  const staticResult = await uploadDirectory(config.dwsUrl, join(APP_DIR, 'dist'))
+  const staticResult = await uploadDirectory(
+    config.dwsUrl,
+    join(APP_DIR, 'dist'),
+  )
   console.log(`   Total: ${(staticResult.totalSize / 1024).toFixed(1)} KB`)
   console.log(`   Files: ${staticResult.files.size}`)
 
@@ -251,9 +254,11 @@ async function deploy(): Promise<void> {
         : 'http://indexer.localhost:4030'
 
   console.log(`║  Frontend: ${domain.padEnd(44)}║`)
-  console.log(`║  API:      ${domain}/api`.padEnd(61) + '║')
-  console.log(`║  GraphQL:  ${domain}/graphql`.padEnd(61) + '║')
-  console.log(`║  IPFS:     ipfs://${staticResult.rootCid.slice(0, 20)}...`.padEnd(61) + '║')
+  console.log(`${`║  API:      ${domain}/api`.padEnd(61)}║`)
+  console.log(`${`║  GraphQL:  ${domain}/graphql`.padEnd(61)}║`)
+  console.log(
+    `${`║  IPFS:     ipfs://${staticResult.rootCid.slice(0, 20)}...`.padEnd(61)}║`,
+  )
   console.log('╚════════════════════════════════════════════════════════════╝')
 }
 

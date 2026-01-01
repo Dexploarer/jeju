@@ -78,6 +78,7 @@ function extractAppName(hostname: string): string | null {
   const testnetMatch = hostname.match(/^([^.]+)\.testnet\./)
   if (testnetMatch?.[1]) {
     // Skip system subdomains (these are core infrastructure, not JNS apps)
+    // NOTE: Apps that are deployed via DWS (like indexer) should NOT be in this list
     const systemSubdomains = [
       'dws',
       'api',
@@ -95,7 +96,6 @@ function extractAppName(hostname: string): string | null {
       'hub',
       'registry',
       'jns',
-      'indexer',
       'bundler',
       'relay',
       'kms',
@@ -303,12 +303,12 @@ async function serveFrontendFromStorage(
     const gateway = getIpfsGatewayUrl(NETWORK)
     const url = `${gateway}/ipfs/${app.frontendCid}/${path}`
     console.log(`[AppRouter] Trying IPFS directory: ${url}`)
-    
+
     const response = await fetch(url, {
       headers: { Accept: '*/*' },
       signal: AbortSignal.timeout(5000),
     }).catch(() => null)
-    
+
     if (response?.ok) {
       const contentType = getContentType(path)
       return new Response(response.body, {
@@ -319,7 +319,7 @@ async function serveFrontendFromStorage(
         },
       })
     }
-    
+
     // If IPFS gateway fails, use frontendCid directly as the index.html CID
     if (path === 'index.html') {
       fileCid = app.frontendCid
@@ -333,10 +333,11 @@ async function serveFrontendFromStorage(
 
   // Fetch from DWS storage using the file's CID
   const host = getLocalhostHost()
-  const storageUrl = NETWORK === 'localnet' 
-    ? `http://${host}:4030/storage/download/${fileCid}`
-    : `https://dws.${NETWORK === 'testnet' ? 'testnet.' : ''}jejunetwork.org/storage/download/${fileCid}`
-  
+  const storageUrl =
+    NETWORK === 'localnet'
+      ? `http://${host}:4030/storage/download/${fileCid}`
+      : `https://dws.${NETWORK === 'testnet' ? 'testnet.' : ''}jejunetwork.org/storage/download/${fileCid}`
+
   console.log(`[AppRouter] Fetching from storage: ${storageUrl}`)
 
   const response = await fetch(storageUrl, {
@@ -347,7 +348,9 @@ async function serveFrontendFromStorage(
   })
 
   if (!response?.ok) {
-    console.log(`[AppRouter] Storage fetch failed: ${response?.status ?? 'timeout'} for ${fileCid}`)
+    console.log(
+      `[AppRouter] Storage fetch failed: ${response?.status ?? 'timeout'} for ${fileCid}`,
+    )
     return new Response('Not Found', { status: 404 })
   }
 
@@ -357,15 +360,15 @@ async function serveFrontendFromStorage(
   return new Response(response.body, {
     headers: {
       'Content-Type': contentType,
-      'Cache-Control': path.includes('.') && !path.endsWith('.html') 
-        ? 'public, max-age=31536000, immutable' 
-        : 'public, max-age=300',
+      'Cache-Control':
+        path.includes('.') && !path.endsWith('.html')
+          ? 'public, max-age=31536000, immutable'
+          : 'public, max-age=300',
       'X-DWS-Source': 'storage',
       'X-DWS-CID': fileCid,
     },
   })
 }
-
 
 /**
  * Get content type from file path

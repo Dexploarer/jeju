@@ -211,22 +211,13 @@ interface ModerationContracts {
   reputationLabelManager: Address
 }
 
-function getContracts(): ModerationContracts {
+function getContracts(): ModerationContracts | null {
   const config = getNetworkConfig()
   const c = config.contracts
 
   if (!c.banManager || !c.reportingSystem || !c.reputationLabelManager) {
-    throw new Error(
-      `Moderation contracts not configured for ${config.network}. ` +
-        `Missing: ${[
-          !c.banManager && 'banManager',
-          !c.reportingSystem && 'reportingSystem',
-          !c.reputationLabelManager && 'reputationLabelManager',
-        ]
-          .filter(Boolean)
-          .join(', ')}. ` +
-        `Add them to packages/config/contracts.json`,
-    )
+    // Moderation contracts not configured - return null to skip processing
+    return null
   }
 
   return {
@@ -443,6 +434,12 @@ export async function processModerationEvent(
   txHash: string,
 ): Promise<void> {
   const contracts = getContracts()
+  
+  // Skip moderation processing if contracts not configured
+  if (!contracts) {
+    return
+  }
+  
   const address = log.address.toLowerCase()
 
   // Route to appropriate handler based on contract address

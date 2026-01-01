@@ -17,8 +17,7 @@
     "api": 4352,
     "graphql": 4350,
     "a2a": 4351,
-    "mcp": 4353,
-    "database": 5432
+    "mcp": 4353
   },
   "dependencies": ["contracts"],
   "optional": false,
@@ -61,8 +60,8 @@
       "regions": ["global"]
     },
     "database": {
-      "type": "postgres",
-      "name": "indexer-db"
+      "type": "sqlit",
+      "name": "indexer-testnet"
     }
   },
   "decentralization": {
@@ -127,6 +126,6 @@
       "timeout": 300000,
       "requiresChain": true
     },
-    "services": ["postgres", "chain"]
+    "services": ["sqlit", "chain"]
   }
 }

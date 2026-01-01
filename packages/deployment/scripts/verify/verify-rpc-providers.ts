@@ -1,19 +1,19 @@
 #!/usr/bin/env bun
 /**
  * Verify RPC Provider Health
- * 
+ *
  * Tests all registered RPC providers in the DWS marketplace and
  * verifies they are responding correctly.
- * 
+ *
  * Usage:
  *   bun run packages/deployment/scripts/verify/verify-rpc-providers.ts --network testnet
  *   bun run packages/deployment/scripts/verify/verify-rpc-providers.ts --network testnet --verbose
  */
 
-import { RPC_CHAINS, type NetworkType } from '@jejunetwork/config'
+import type { NetworkType } from '@jejunetwork/config'
 import { z } from 'zod'
 
-const RPCProviderSchema = z.object({
+const _RPCProviderSchema = z.object({
   id: z.string(),
   chainId: z.number(),
   region: z.string(),
@@ -58,7 +58,9 @@ function getDwsEndpoint(network: NetworkType): string {
   return endpoints[network]
 }
 
-async function testEvmRpc(endpoint: string): Promise<Omit<TestResult, 'chainId' | 'chainName' | 'endpoint'>> {
+async function testEvmRpc(
+  endpoint: string,
+): Promise<Omit<TestResult, 'chainId' | 'chainName' | 'endpoint'>> {
   const start = Date.now()
   try {
     const controller = new AbortController()
@@ -78,13 +80,20 @@ async function testEvmRpc(endpoint: string): Promise<Omit<TestResult, 'chainId' 
     clearTimeout(timeout)
 
     const latencyMs = Date.now() - start
-    const data = (await response.json()) as { result?: string; error?: { message: string } }
+    const data = (await response.json()) as {
+      result?: string
+      error?: { message: string }
+    }
 
     if (data.result) {
       const blockNumber = parseInt(data.result, 16).toString()
       return { status: 'ok', blockNumber, latencyMs }
     }
-    return { status: 'error', latencyMs, error: data.error?.message ?? 'No result' }
+    return {
+      status: 'error',
+      latencyMs,
+      error: data.error?.message ?? 'No result',
+    }
   } catch (err) {
     const latencyMs = Date.now() - start
     const error = err instanceof Error ? err.message : String(err)
@@ -95,7 +104,9 @@ async function testEvmRpc(endpoint: string): Promise<Omit<TestResult, 'chainId' 
   }
 }
 
-async function testSolanaRpc(endpoint: string): Promise<Omit<TestResult, 'chainId' | 'chainName' | 'endpoint'>> {
+async function testSolanaRpc(
+  endpoint: string,
+): Promise<Omit<TestResult, 'chainId' | 'chainName' | 'endpoint'>> {
   const start = Date.now()
   try {
     const controller = new AbortController()
@@ -115,12 +126,19 @@ async function testSolanaRpc(endpoint: string): Promise<Omit<TestResult, 'chainI
     clearTimeout(timeout)
 
     const latencyMs = Date.now() - start
-    const data = (await response.json()) as { result?: number; error?: { message: string } }
+    const data = (await response.json()) as {
+      result?: number
+      error?: { message: string }
+    }
 
     if (data.result !== undefined) {
       return { status: 'ok', blockNumber: data.result.toString(), latencyMs }
     }
-    return { status: 'error', latencyMs, error: data.error?.message ?? 'No result' }
+    return {
+      status: 'error',
+      latencyMs,
+      error: data.error?.message ?? 'No result',
+    }
   } catch (err) {
     const latencyMs = Date.now() - start
     const error = err instanceof Error ? err.message : String(err)
@@ -146,34 +164,37 @@ async function getDwsMarketplaceHealth(dwsEndpoint: string) {
 
 async function main() {
   const args = process.argv.slice(2)
-  const networkArg = args.find(a => a.startsWith('--network='))?.split('=')[1] 
-    ?? args[args.indexOf('--network') + 1] 
-    ?? 'testnet'
-  const verbose = args.includes('--verbose') || args.includes('-v')
-  
+  const networkArg =
+    args.find((a) => a.startsWith('--network='))?.split('=')[1] ??
+    args[args.indexOf('--network') + 1] ??
+    'testnet'
+  const _verbose = args.includes('--verbose') || args.includes('-v')
+
   const network = networkArg as NetworkType
   console.log(`\n${'='.repeat(80)}`)
   console.log(`RPC PROVIDER VERIFICATION - ${network.toUpperCase()}`)
   console.log(`${'='.repeat(80)}\n`)
-  
+
   const dwsEndpoint = getDwsEndpoint(network)
   console.log(`DWS Endpoint: ${dwsEndpoint}\n`)
-  
+
   // Get DWS marketplace status
   const marketplaceHealth = await getDwsMarketplaceHealth(dwsEndpoint)
-  
+
   if (marketplaceHealth) {
     console.log('--- DWS MARKETPLACE STATUS ---')
     console.log(`Status: ${marketplaceHealth.status}`)
     console.log(`Total Providers: ${marketplaceHealth.totalProviders}`)
     console.log(`Active Sessions: ${marketplaceHealth.activeSessions}`)
-    console.log(`Chains with providers: ${marketplaceHealth.chains.filter(c => c.providers > 0).length}`)
+    console.log(
+      `Chains with providers: ${marketplaceHealth.chains.filter((c) => c.providers > 0).length}`,
+    )
     console.log('')
   }
-  
+
   // Define all endpoints to test based on network
   const isTestnet = network === 'testnet'
-  
+
   interface EndpointToTest {
     name: string
     chainId: number
@@ -181,9 +202,9 @@ async function main() {
     type: 'evm' | 'solana'
     source: 'jeju-node' | 'dws-proxy' | 'external'
   }
-  
+
   const endpoints: EndpointToTest[] = []
-  
+
   // 1. Jeju Network RPC (direct)
   if (isTestnet) {
     endpoints.push({
@@ -194,7 +215,7 @@ async function main() {
       source: 'jeju-node',
     })
   }
-  
+
   // 2. DWS Proxy endpoints (if marketplace has providers)
   if (marketplaceHealth && marketplaceHealth.totalProviders > 0) {
     for (const chain of marketplaceHealth.chains) {
@@ -203,15 +224,18 @@ async function main() {
           name: `${chain.name} (DWS proxy)`,
           chainId: chain.chainId,
           endpoint: `${dwsEndpoint}/rpc/${chain.chainId}`,
-          type: chain.chainId === 101 || chain.chainId === 103 ? 'solana' : 'evm',
+          type:
+            chain.chainId === 101 || chain.chainId === 103 ? 'solana' : 'evm',
           source: 'dws-proxy',
         })
       }
     }
   }
-  
+
   // 3. RPC Gateway routes
-  const rpcGatewayBase = isTestnet ? 'https://rpc.jejunetwork.org' : 'https://rpc.jejunetwork.org'
+  const rpcGatewayBase = isTestnet
+    ? 'https://rpc.jejunetwork.org'
+    : 'https://rpc.jejunetwork.org'
   const gatewayChains = isTestnet
     ? [
         { name: 'jeju-testnet', chainId: 420690 },
@@ -229,7 +253,7 @@ async function main() {
         { name: 'arbitrum', chainId: 42161 },
         { name: 'bsc', chainId: 56 },
       ]
-  
+
   for (const chain of gatewayChains) {
     endpoints.push({
       name: `RPC Gateway - ${chain.name}`,
@@ -239,26 +263,76 @@ async function main() {
       source: 'jeju-node',
     })
   }
-  
+
   // 4. External fallback RPCs (for comparison)
   const externalRpcs = isTestnet
     ? [
-        { name: 'Ethereum Sepolia (publicnode)', chainId: 11155111, endpoint: 'https://ethereum-sepolia-rpc.publicnode.com' },
-        { name: 'Base Sepolia (base.org)', chainId: 84532, endpoint: 'https://sepolia.base.org' },
-        { name: 'Arbitrum Sepolia (arbitrum.io)', chainId: 421614, endpoint: 'https://sepolia-rollup.arbitrum.io/rpc' },
-        { name: 'Optimism Sepolia (optimism.io)', chainId: 11155420, endpoint: 'https://sepolia.optimism.io' },
-        { name: 'BSC Testnet (bnbchain)', chainId: 97, endpoint: 'https://data-seed-prebsc-1-s1.bnbchain.org:8545' },
-        { name: 'Solana Devnet (solana.com)', chainId: 103, endpoint: 'https://api.devnet.solana.com', type: 'solana' as const },
+        {
+          name: 'Ethereum Sepolia (publicnode)',
+          chainId: 11155111,
+          endpoint: 'https://ethereum-sepolia-rpc.publicnode.com',
+        },
+        {
+          name: 'Base Sepolia (base.org)',
+          chainId: 84532,
+          endpoint: 'https://sepolia.base.org',
+        },
+        {
+          name: 'Arbitrum Sepolia (arbitrum.io)',
+          chainId: 421614,
+          endpoint: 'https://sepolia-rollup.arbitrum.io/rpc',
+        },
+        {
+          name: 'Optimism Sepolia (optimism.io)',
+          chainId: 11155420,
+          endpoint: 'https://sepolia.optimism.io',
+        },
+        {
+          name: 'BSC Testnet (bnbchain)',
+          chainId: 97,
+          endpoint: 'https://data-seed-prebsc-1-s1.bnbchain.org:8545',
+        },
+        {
+          name: 'Solana Devnet (solana.com)',
+          chainId: 103,
+          endpoint: 'https://api.devnet.solana.com',
+          type: 'solana' as const,
+        },
       ]
     : [
-        { name: 'Ethereum (llamarpc)', chainId: 1, endpoint: 'https://eth.llamarpc.com' },
-        { name: 'Base (base.org)', chainId: 8453, endpoint: 'https://mainnet.base.org' },
-        { name: 'Arbitrum (arbitrum.io)', chainId: 42161, endpoint: 'https://arb1.arbitrum.io/rpc' },
-        { name: 'Optimism (optimism.io)', chainId: 10, endpoint: 'https://mainnet.optimism.io' },
-        { name: 'BSC (bnbchain)', chainId: 56, endpoint: 'https://bsc-dataseed.bnbchain.org' },
-        { name: 'Solana (solana.com)', chainId: 101, endpoint: 'https://api.mainnet-beta.solana.com', type: 'solana' as const },
+        {
+          name: 'Ethereum (llamarpc)',
+          chainId: 1,
+          endpoint: 'https://eth.llamarpc.com',
+        },
+        {
+          name: 'Base (base.org)',
+          chainId: 8453,
+          endpoint: 'https://mainnet.base.org',
+        },
+        {
+          name: 'Arbitrum (arbitrum.io)',
+          chainId: 42161,
+          endpoint: 'https://arb1.arbitrum.io/rpc',
+        },
+        {
+          name: 'Optimism (optimism.io)',
+          chainId: 10,
+          endpoint: 'https://mainnet.optimism.io',
+        },
+        {
+          name: 'BSC (bnbchain)',
+          chainId: 56,
+          endpoint: 'https://bsc-dataseed.bnbchain.org',
+        },
+        {
+          name: 'Solana (solana.com)',
+          chainId: 101,
+          endpoint: 'https://api.mainnet-beta.solana.com',
+          type: 'solana' as const,
+        },
       ]
-  
+
   for (const rpc of externalRpcs) {
     endpoints.push({
       name: rpc.name,
@@ -268,77 +342,95 @@ async function main() {
       source: 'external',
     })
   }
-  
+
   // Run all tests
   console.log('--- TESTING ENDPOINTS ---\n')
-  
+
   const results: TestResult[] = []
-  
+
   for (const ep of endpoints) {
     process.stdout.write(`Testing ${ep.name}...`)
-    
-    const testResult = ep.type === 'solana'
-      ? await testSolanaRpc(ep.endpoint)
-      : await testEvmRpc(ep.endpoint)
-    
+
+    const testResult =
+      ep.type === 'solana'
+        ? await testSolanaRpc(ep.endpoint)
+        : await testEvmRpc(ep.endpoint)
+
     const result: TestResult = {
       chainId: ep.chainId,
       chainName: ep.name,
       endpoint: ep.endpoint,
       ...testResult,
     }
-    
+
     results.push(result)
-    
+
     if (result.status === 'ok') {
       console.log(` OK (${result.latencyMs}ms, block ${result.blockNumber})`)
     } else {
       console.log(` FAILED (${result.error})`)
     }
   }
-  
+
   // Print summary
-  console.log('\n' + '='.repeat(80))
+  console.log(`\n${'='.repeat(80)}`)
   console.log('VERIFICATION SUMMARY')
   console.log('='.repeat(80))
-  
+
   // Group by source
-  const jejuNodes = results.filter(r => endpoints.find(e => e.name === r.chainName)?.source === 'jeju-node')
-  const dwsProxy = results.filter(r => endpoints.find(e => e.name === r.chainName)?.source === 'dws-proxy')
-  const external = results.filter(r => endpoints.find(e => e.name === r.chainName)?.source === 'external')
-  
-  const statusIcon = (status: string) => status === 'ok' ? '✅' : status === 'timeout' ? '⏱️ ' : '❌'
-  
+  const jejuNodes = results.filter(
+    (r) =>
+      endpoints.find((e) => e.name === r.chainName)?.source === 'jeju-node',
+  )
+  const dwsProxy = results.filter(
+    (r) =>
+      endpoints.find((e) => e.name === r.chainName)?.source === 'dws-proxy',
+  )
+  const external = results.filter(
+    (r) => endpoints.find((e) => e.name === r.chainName)?.source === 'external',
+  )
+
+  const statusIcon = (status: string) =>
+    status === 'ok' ? '✅' : status === 'timeout' ? '⏱️ ' : '❌'
+
   console.log('\n--- JEJU NETWORK NODES ---')
   for (const r of jejuNodes) {
-    console.log(`${statusIcon(r.status)} ${r.chainName.padEnd(35)} ${r.status === 'ok' ? `Block ${r.blockNumber?.padStart(12)} (${r.latencyMs}ms)` : r.error?.substring(0, 40)}`)
+    console.log(
+      `${statusIcon(r.status)} ${r.chainName.padEnd(35)} ${r.status === 'ok' ? `Block ${r.blockNumber?.padStart(12)} (${r.latencyMs}ms)` : r.error?.substring(0, 40)}`,
+    )
   }
-  
+
   if (dwsProxy.length > 0) {
     console.log('\n--- DWS MARKETPLACE PROXY ---')
     for (const r of dwsProxy) {
-      console.log(`${statusIcon(r.status)} ${r.chainName.padEnd(35)} ${r.status === 'ok' ? `Block ${r.blockNumber?.padStart(12)} (${r.latencyMs}ms)` : r.error?.substring(0, 40)}`)
+      console.log(
+        `${statusIcon(r.status)} ${r.chainName.padEnd(35)} ${r.status === 'ok' ? `Block ${r.blockNumber?.padStart(12)} (${r.latencyMs}ms)` : r.error?.substring(0, 40)}`,
+      )
     }
   }
-  
+
   console.log('\n--- EXTERNAL FALLBACKS ---')
   for (const r of external) {
-    console.log(`${statusIcon(r.status)} ${r.chainName.padEnd(35)} ${r.status === 'ok' ? `Block ${r.blockNumber?.padStart(12)} (${r.latencyMs}ms)` : r.error?.substring(0, 40)}`)
+    console.log(
+      `${statusIcon(r.status)} ${r.chainName.padEnd(35)} ${r.status === 'ok' ? `Block ${r.blockNumber?.padStart(12)} (${r.latencyMs}ms)` : r.error?.substring(0, 40)}`,
+    )
   }
-  
+
   // Final tally
-  const ok = results.filter(r => r.status === 'ok').length
-  const errors = results.filter(r => r.status === 'error').length
-  const timeouts = results.filter(r => r.status === 'timeout').length
-  
-  console.log('\n' + '='.repeat(80))
-  console.log(`TOTAL: ${ok} OK, ${errors} ERRORS, ${timeouts} TIMEOUTS (of ${results.length})`)
+  const ok = results.filter((r) => r.status === 'ok').length
+  const errors = results.filter((r) => r.status === 'error').length
+  const timeouts = results.filter((r) => r.status === 'timeout').length
+
+  console.log(`\n${'='.repeat(80)}`)
+  console.log(
+    `TOTAL: ${ok} OK, ${errors} ERRORS, ${timeouts} TIMEOUTS (of ${results.length})`,
+  )
   console.log('='.repeat(80))
-  
+
   // Recommendations
   console.log('\n--- RECOMMENDATIONS ---')
-  
-  const jejuNodesFailing = jejuNodes.filter(r => r.status !== 'ok')
+
+  const jejuNodesFailing = jejuNodes.filter((r) => r.status !== 'ok')
   if (jejuNodesFailing.length > 0) {
     console.log('❌ CRITICAL: Jeju-hosted nodes are failing:')
     for (const r of jejuNodesFailing) {
@@ -346,17 +438,17 @@ async function main() {
     }
     console.log('   Fix: Check K8s deployments and pod health')
   }
-  
-  const externalOk = external.filter(r => r.status === 'ok').length
+
+  const externalOk = external.filter((r) => r.status === 'ok').length
   if (externalOk === external.length) {
     console.log('✅ All external fallback RPCs are healthy')
   }
-  
+
   if (dwsProxy.length === 0) {
     console.log('⚠️  No DWS marketplace providers registered')
     console.log('   Fix: Run register-rpc-providers.ts to register nodes')
   }
-  
+
   // Exit with error if critical issues
   if (jejuNodesFailing.length > 0) {
     process.exit(1)

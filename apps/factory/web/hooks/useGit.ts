@@ -92,8 +92,7 @@ interface ApiFile {
   sha: string
 }
 
-// Browser-only hook - API is same origin
-const API_BASE = ''
+import { API_BASE } from '../lib/api'
 
 async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {

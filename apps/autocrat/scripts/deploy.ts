@@ -3,9 +3,9 @@
  * Autocrat Deployment Script
  *
  * Deploys Autocrat to DWS infrastructure:
- * 1. Builds frontend and API
+ * 1. Builds frontend and worker
  * 2. Uploads static assets to IPFS/CDN
- * 3. Registers backend worker with DWS
+ * 3. Registers worker with DWS network
  * 4. Updates JNS contenthash
  */
 
@@ -17,27 +17,34 @@ import {
   getCurrentNetwork,
   getL2RpcUrl,
 } from '@jejunetwork/config'
-import { keccak256 } from 'viem'
+import { $ } from 'bun'
+import { type Address, keccak256 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { z } from 'zod'
 
 const APP_DIR = resolve(import.meta.dir, '..')
 
+// Inline schemas for deploy script
 const IPFSUploadResponseSchema = z.object({
   cid: z.string(),
   size: z.number().optional(),
 })
 
 const DWSWorkerDeployResponseSchema = z.object({
-  workerId: z.string(),
-  status: z.string().optional(),
+  functionId: z.string(),
+  name: z.string(),
+  codeCid: z.string(),
+  status: z.enum(['active', 'inactive', 'error']),
 })
+
+// Configuration
 
 interface DeployConfig {
   network: 'localnet' | 'testnet' | 'mainnet'
   dwsUrl: string
   rpcUrl: string
   privateKey: `0x${string}`
+  workerRegistryAddress: Address
   cdnEnabled: boolean
 }
 
@@ -48,14 +55,20 @@ function getConfig(): DeployConfig {
     localnet: {
       dwsUrl: getCoreAppUrl('DWS_API'),
       rpcUrl: getL2RpcUrl(),
+      workerRegistryAddress:
+        '0x5FbDB2315678afecb367f032d93F642f64180aa3' as Address,
     },
     testnet: {
       dwsUrl: 'https://dws.testnet.jejunetwork.org',
       rpcUrl: 'https://sepolia.base.org',
+      workerRegistryAddress:
+        '0x0000000000000000000000000000000000000000' as Address,
     },
     mainnet: {
       dwsUrl: 'https://dws.jejunetwork.org',
       rpcUrl: 'https://mainnet.base.org',
+      workerRegistryAddress:
+        '0x0000000000000000000000000000000000000000' as Address,
     },
   }
 
@@ -74,24 +87,27 @@ function getConfig(): DeployConfig {
   } as DeployConfig
 }
 
-async function ensureBuild(): Promise<void> {
-  const requiredFiles = ['./dist/api/server.js', './dist/index.html']
+// Build Check
+
+async function checkBuild(): Promise<void> {
+  const requiredFiles = [
+    './dist/static/index.html',
+    './dist/worker/worker.js',
+    './dist/deployment.json',
+  ]
 
   for (const file of requiredFiles) {
     if (!existsSync(resolve(APP_DIR, file))) {
       console.log('[Autocrat] Build not found, running build first...')
-      const proc = Bun.spawn(['bun', 'run', 'scripts/build.ts'], {
-        cwd: APP_DIR,
-        stdout: 'inherit',
-        stderr: 'inherit',
-      })
-      await proc.exited
+      await $`bun run scripts/build.ts`.cwd(APP_DIR)
       return
     }
   }
 
   console.log('[Autocrat] Build found')
 }
+
+// IPFS Upload
 
 interface UploadResult {
   cid: string
@@ -162,23 +178,23 @@ async function uploadDirectory(
   return results
 }
 
+// Worker Deployment
+
 async function deployWorker(
   config: DeployConfig,
-  apiBundle: UploadResult,
+  workerBundle: UploadResult,
 ): Promise<string> {
-  const account = privateKeyToAccount(config.privateKey)
-
   const deployRequest = {
     name: 'autocrat-api',
-    owner: account.address,
-    codeCid: apiBundle.cid,
-    codeHash: apiBundle.hash,
-    entrypoint: 'server.js',
-    runtime: 'bun',
+    owner: privateKeyToAccount(config.privateKey).address,
+    codeCid: workerBundle.cid,
+    codeHash: workerBundle.hash,
+    entrypoint: 'worker.js',
+    runtime: 'workerd',
     resources: {
       memoryMb: 512,
       cpuMillis: 2000,
-      timeoutMs: 30000,
+      timeoutMs: 60000,
       maxConcurrency: 50,
     },
     scaling: {
@@ -205,13 +221,28 @@ async function deployWorker(
       RPC_URL: config.rpcUrl,
       DWS_URL: config.dwsUrl,
     },
-    secrets: ['OPERATOR_KEY', 'ASSESSOR_KEY'],
+    secrets: ['OPERATOR_KEY', 'ASSESSOR_KEY', 'SQLIT_PRIVATE_KEY'],
+    database: {
+      type: 'sqlit',
+      name: 'autocrat-db',
+    },
   }
 
-  const response = await fetch(`${config.dwsUrl}/workers/deploy`, {
+  const response = await fetch(`${config.dwsUrl}/workers`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(deployRequest),
+    headers: {
+      'Content-Type': 'application/json',
+      'x-jeju-address': privateKeyToAccount(config.privateKey).address,
+    },
+    body: JSON.stringify({
+      name: 'autocrat-api',
+      codeCid: workerBundle.cid,
+      runtime: 'bun',
+      handler: 'worker.js:default',
+      memory: deployRequest.resources.memoryMb,
+      timeout: deployRequest.resources.timeoutMs,
+      env: deployRequest.env,
+    }),
   })
 
   if (!response.ok) {
@@ -223,18 +254,10 @@ async function deployWorker(
   if (!parsed.success) {
     throw new Error(`Invalid deploy response: ${parsed.error.message}`)
   }
-  return parsed.data.workerId
+  return parsed.data.functionId
 }
 
-function getContentType(path: string): string {
-  if (path.endsWith('.js')) return 'application/javascript'
-  if (path.endsWith('.css')) return 'text/css'
-  if (path.endsWith('.html')) return 'text/html'
-  if (path.endsWith('.json')) return 'application/json'
-  if (path.endsWith('.svg')) return 'image/svg+xml'
-  if (path.endsWith('.png')) return 'image/png'
-  return 'application/octet-stream'
-}
+// CDN Setup
 
 async function setupCDN(
   config: DeployConfig,
@@ -263,8 +286,10 @@ async function setupCDN(
     },
     assets,
     cacheRules: [
-      { pattern: '/web/**', ttl: 31536000, immutable: true },
-      { pattern: '/index.html', ttl: 300, staleWhileRevalidate: 86400 },
+      { pattern: '/assets/**', ttl: 31536000, immutable: true },
+      { pattern: '/*.js', ttl: 86400 },
+      { pattern: '/*.css', ttl: 86400 },
+      { pattern: '/index.html', ttl: 60, staleWhileRevalidate: 3600 },
     ],
   }
 
@@ -281,64 +306,65 @@ async function setupCDN(
   }
 }
 
+function getContentType(path: string): string {
+  if (path.endsWith('.js')) return 'application/javascript'
+  if (path.endsWith('.css')) return 'text/css'
+  if (path.endsWith('.html')) return 'text/html'
+  if (path.endsWith('.json')) return 'application/json'
+  if (path.endsWith('.svg')) return 'image/svg+xml'
+  if (path.endsWith('.png')) return 'image/png'
+  if (path.endsWith('.jpg') || path.endsWith('.jpeg')) return 'image/jpeg'
+  if (path.endsWith('.woff2')) return 'font/woff2'
+  return 'application/octet-stream'
+}
+
+// Main Deploy Function
+
 async function deploy(): Promise<void> {
-  console.log('╔════════════════════════════════════════════════════════════╗')
-  console.log('║              Autocrat Deployment to DWS                     ║')
-  console.log('╚════════════════════════════════════════════════════════════╝')
-  console.log('')
+  console.log('[Autocrat] Deploying to DWS...\n')
 
   const config = getConfig()
-  console.log(`Network:  ${config.network}`)
-  console.log(`DWS:      ${config.dwsUrl}`)
-  console.log('')
+  console.log(`Network: ${config.network}`)
+  console.log(`DWS: ${config.dwsUrl}\n`)
 
-  await ensureBuild()
+  // Check build exists
+  await checkBuild()
 
-  // Upload static assets (index.html + web/)
+  // Upload static assets
   console.log('\nUploading static assets...')
-  const webAssets = await uploadDirectory(config.dwsUrl, './dist/web', 'web')
+  const staticAssets = await uploadDirectory(config.dwsUrl, './dist/static')
+  console.log(`   Total: ${staticAssets.size} files\n`)
 
-  // Upload index.html separately
-  const indexResult = await uploadToIPFS(
+  // Upload worker bundle
+  console.log('Uploading worker bundle...')
+  const workerBundle = await uploadToIPFS(
     config.dwsUrl,
-    './dist/index.html',
-    'index.html',
+    './dist/worker/worker.js',
+    'autocrat-api-worker.js',
   )
-  webAssets.set('index.html', indexResult)
-  console.log(`   index.html -> ${indexResult.cid}`)
-  console.log(`   Total: ${webAssets.size} files\n`)
-
-  // Upload API bundle
-  console.log('Uploading API bundle...')
-  const apiBundle = await uploadToIPFS(
-    config.dwsUrl,
-    './dist/api/server.js',
-    'autocrat-api.js',
-  )
-  console.log(`   API CID: ${apiBundle.cid}\n`)
+  console.log(`   Worker CID: ${workerBundle.cid}\n`)
 
   // Deploy worker
   console.log('Deploying worker to DWS...')
-  const workerId = await deployWorker(config, apiBundle)
+  const workerId = await deployWorker(config, workerBundle)
   console.log(`   Worker ID: ${workerId}\n`)
 
   // Setup CDN
   console.log('Configuring CDN...')
-  await setupCDN(config, webAssets)
+  await setupCDN(config, staticAssets)
 
-  console.log('')
-  console.log('╔════════════════════════════════════════════════════════════╗')
-  console.log('║                  Deployment Complete                        ║')
-  console.log('╠════════════════════════════════════════════════════════════╣')
-  console.log(`║  Frontend: https://autocrat.jejunetwork.org                 ║`)
-  console.log(
-    `║  IPFS:     ipfs://${indexResult.cid.slice(0, 20)}...                  ║`,
-  )
-  console.log(`║  Worker:   ${workerId.slice(0, 36)}...  ║`)
-  console.log('╚════════════════════════════════════════════════════════════╝')
+  // Print summary
+  const indexCid = staticAssets.get('index.html')?.cid
+  console.log('\n[Autocrat] Deployment complete.')
+  console.log('\nEndpoints:')
+  console.log(`   Frontend: https://autocrat.jejunetwork.org`)
+  console.log(`   IPFS: ipfs://${indexCid}`)
+  console.log(`   API: ${config.dwsUrl}/workers/${workerId}`)
+  console.log(`   Health: ${config.dwsUrl}/workers/${workerId}/health`)
 }
 
+// Run deployment
 deploy().catch((error) => {
-  console.error('Deployment failed:', error)
+  console.error('[Autocrat] Deployment failed:', error)
   process.exit(1)
 })

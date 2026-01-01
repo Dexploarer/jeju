@@ -433,7 +433,9 @@ describe('Cross-Chain Route Validation', () => {
 
   test('OIF deployment has cross-chain routes defined', () => {
     if (!fileExists) {
-      console.log('⏭️  Skipping cross-chain route test - OIF deployment file does not exist')
+      console.log(
+        '⏭️  Skipping cross-chain route test - OIF deployment file does not exist',
+      )
       return
     }
     const content = JSON.parse(readFileSync(path, 'utf-8'))
@@ -445,7 +447,9 @@ describe('Cross-Chain Route Validation', () => {
 
   test('all routes have valid from/to chain IDs', () => {
     if (!fileExists) {
-      console.log('⏭️  Skipping route validation test - OIF deployment file does not exist')
+      console.log(
+        '⏭️  Skipping route validation test - OIF deployment file does not exist',
+      )
       return
     }
     const content = JSON.parse(readFileSync(path, 'utf-8'))
@@ -462,7 +466,9 @@ describe('Cross-Chain Route Validation', () => {
 
   test('routes form a connected graph (bidirectional)', () => {
     if (!fileExists) {
-      console.log('⏭️  Skipping route graph test - OIF deployment file does not exist')
+      console.log(
+        '⏭️  Skipping route graph test - OIF deployment file does not exist',
+      )
       return
     }
     const content = JSON.parse(readFileSync(path, 'utf-8'))

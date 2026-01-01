@@ -1,10 +1,10 @@
 /**
  * @jejunetwork/shared browser stub
- * 
+ *
  * Provides browser-safe stubs and re-exports for shared utilities.
  */
 
-import { type Address, formatEther, parseEther } from 'viem'
+import { type Address, parseEther } from 'viem'
 
 // Environment utilities
 export function getEnv(key: string, defaultValue?: string): string {

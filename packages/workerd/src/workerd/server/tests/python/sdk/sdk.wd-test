@@ -1,0 +1,49 @@
+using Workerd = import "/workerd/workerd.capnp";
+
+const python :Workerd.Worker = (
+  modules = [
+    (name = "worker.py", pythonModule = embed "worker.py")
+  ],
+  bindings = [
+    ( name = "SELF", service = "python-sdk" ),
+  ],
+  compatibilityFlags = [%PYTHON_FEATURE_FLAGS, "service_binding_extra_handlers", "rpc", "python_no_global_handlers", "fetch_standard_url", "formdata_parser_supports_files"],
+);
+
+const server :Workerd.Worker = (
+  modules = [
+    (name = "server.py", pythonModule = embed "server.py")
+  ],
+  compatibilityFlags = [%PYTHON_FEATURE_FLAGS, "rpc", "python_no_global_handlers", "fetch_standard_url", "formdata_parser_supports_files"],
+);
+
+# We need this proxy so that internal requests made to fetch packages for Python Workers are sent
+# out to the open internet and not to the python-server worker.
+const jsChooserProxy :Workerd.Worker = (
+  modules = [
+    (name = "proxy.js", esModule = embed "proxy.js")
+  ],
+  bindings = [
+    ( name = "PYTHON", service = "python-server" ),
+    ( name = "INTERNET", service = "external" ),
+  ],
+);
+
+const unitTests :Workerd.Config = (
+  services = [
+    ( name = "external",
+      network = (
+        tlsOptions = (trustBrowserCas = true)
+      )
+    ),
+    ( name = "internet",
+      worker = .jsChooserProxy
+    ),
+    ( name = "python-server",
+      worker = .server
+    ),
+    ( name = "python-sdk",
+      worker = .python
+    ),
+  ],
+);

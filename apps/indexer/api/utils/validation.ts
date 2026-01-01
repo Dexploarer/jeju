@@ -133,11 +133,15 @@ export const contractTypeSchema = z.enum([
 
 export const contractsQuerySchema = paginationSchema.extend({
   type: contractTypeSchema.optional(),
+  name: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 })
 
 export const tokenTransfersQuerySchema = paginationSchema.extend({
   token: AddressSchema.optional(),
+  from: AddressSchema.optional(),
+  to: AddressSchema.optional(),
+  transactionHash: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 })
 
@@ -177,6 +181,7 @@ export const crossServiceRequestTypeSchema = z.enum([
 export const crossServiceRequestsQuerySchema = paginationSchema.extend({
   status: crossServiceRequestStatusSchema.optional(),
   type: crossServiceRequestTypeSchema.optional(),
+  agentId: z.string().optional(),
 })
 
 export const oracleFeedCategorySchema = z.enum([
@@ -207,6 +212,7 @@ export const oracleOperatorAddressParamSchema = z.object({
 
 export const oracleReportsQuerySchema = paginationSchema.extend({
   feedId: z.string().optional(),
+  operatorAddress: AddressSchema.optional(),
   disputed: z.coerce.boolean().optional(),
 })
 
@@ -219,6 +225,9 @@ export const oracleDisputeStatusSchema = z.enum([
 
 export const oracleDisputesQuerySchema = paginationSchema.extend({
   status: oracleDisputeStatusSchema.optional(),
+  feedId: z.string().optional(),
+  reporter: AddressSchema.optional(),
+  challenger: AddressSchema.optional(),
 })
 
 // A2A message part data can contain JSON-serializable values from external protocols

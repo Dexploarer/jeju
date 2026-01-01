@@ -33,7 +33,8 @@ import { keccak256, toBytes, verifyMessage } from 'viem'
 // NOTE: These tests use a fictional interface (nodes, getHealth()) that doesn't match
 // the actual SQLitClient implementation. Skipping until the tests are rewritten to
 // match the actual API (blockProducerEndpoint, minerEndpoint, query(), exec(), etc.)
-const TEST_PRIVATE_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'
+const TEST_PRIVATE_KEY =
+  '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'
 
 describe.skip('SQLit Client - Boundary Conditions', () => {
   beforeEach(() => {

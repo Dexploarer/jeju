@@ -37,7 +37,6 @@ import {
   http,
   keccak256,
   type PublicClient,
-  parseAbi,
   parseEther,
   stringToBytes,
   type WalletClient,
@@ -266,7 +265,10 @@ describe.skipIf(!localnetAvailable)('Localnet Full System Integration', () => {
   describe('1. RPC Connectivity', () => {
     it('should connect to L1 RPC and fetch block number', async () => {
       // Try to connect to L1, skip if unavailable
-      const l1Available = await l1PublicClient.getBlockNumber().then(() => true).catch(() => false)
+      const l1Available = await l1PublicClient
+        .getBlockNumber()
+        .then(() => true)
+        .catch(() => false)
       if (!l1Available) {
         console.log('   ⏭️  L1 RPC not available, skipping')
         return
@@ -458,7 +460,9 @@ describe.skipIf(!localnetAvailable)('Localnet Full System Integration', () => {
         expect(deployReceipt.status).toBe('success')
         expect(deployReceipt.contractAddress).toBeTruthy()
 
-        console.log(`   ✅ Contract deployed at ${deployReceipt.contractAddress}`)
+        console.log(
+          `   ✅ Contract deployed at ${deployReceipt.contractAddress}`,
+        )
       },
       { timeout: 60000 },
     )
@@ -575,7 +579,9 @@ describe.skipIf(!localnetAvailable)('Localnet Full System Integration', () => {
       })
 
       if (logs.length === 0) {
-        console.log('   ⚠️  No Transfer events found for user1 (may be due to test order)')
+        console.log(
+          '   ⚠️  No Transfer events found for user1 (may be due to test order)',
+        )
         return
       }
 
@@ -716,7 +722,7 @@ describe.skipIf(!localnetAvailable)('Localnet Full System Integration', () => {
         expect(response.ok).toBe(true)
         console.log(`   ✅ ${name} responding`)
       }
-      
+
       for (const [name, url] of Object.entries(optionalServices)) {
         try {
           const response = await fetch(url, {
@@ -742,8 +748,13 @@ describe.skipIf(!localnetAvailable)('Localnet Full System Integration', () => {
     })
 
     it('should print system summary', async () => {
-      const l1Available = await l1PublicClient.getBlockNumber().then(() => true).catch(() => false)
-      const l1Block = l1Available ? await getBlockNumber(l1PublicClient) : 'unavailable'
+      const l1Available = await l1PublicClient
+        .getBlockNumber()
+        .then(() => true)
+        .catch(() => false)
+      const l1Block = l1Available
+        ? await getBlockNumber(l1PublicClient)
+        : 'unavailable'
       const l2Block = await getBlockNumber(l2PublicClient)
       const l2ChainId = await getChainId(l2PublicClient)
 
@@ -794,23 +805,25 @@ describe.skipIf(!localnetAvailable)('Service Interaction Tests', () => {
 
         // Step 1: Send a transaction on L2
         const hash = await deployerWalletClient.sendTransaction({
-        to: user1Account.address,
-        value: parseEther('0.01'),
-      })
-      const receipt = await waitForTransactionReceipt(l2PublicClient, { hash })
-      expect(receipt.status).toBe('success')
-      console.log(`   📝 Transaction sent: ${hash}`)
+          to: user1Account.address,
+          value: parseEther('0.01'),
+        })
+        const receipt = await waitForTransactionReceipt(l2PublicClient, {
+          hash,
+        })
+        expect(receipt.status).toBe('success')
+        console.log(`   📝 Transaction sent: ${hash}`)
 
-      // Step 2: Wait for indexer to process (give it a moment)
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+        // Step 2: Wait for indexer to process (give it a moment)
+        await new Promise((resolve) => setTimeout(resolve, 2000))
 
-      // Step 3: Query GraphQL to verify it's indexed (if indexer is running)
-      try {
-        const response = await fetch(TEST_CONFIG.indexerGraphQL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            query: `{
+        // Step 3: Query GraphQL to verify it's indexed (if indexer is running)
+        try {
+          const response = await fetch(TEST_CONFIG.indexerGraphQL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              query: `{
               transactions(where: { hash_eq: "${hash}" }) {
                 hash
                 from { address }
@@ -819,36 +832,36 @@ describe.skipIf(!localnetAvailable)('Service Interaction Tests', () => {
                 status
               }
             }`,
-          }),
-        })
+            }),
+          })
 
-        if (response.ok) {
-          const data = await response.json()
-          if (data.data?.transactions?.length > 0) {
-            const indexedTx = data.data.transactions[0]
-            console.log(`   ✅ Transaction indexed: ${indexedTx.hash}`)
-            expect(indexedTx.hash.toLowerCase()).toBe(hash.toLowerCase())
-            expect(indexedTx.from.address.toLowerCase()).toBe(
-              deployerAddress.toLowerCase(),
-            )
-            expect(indexedTx.to.address.toLowerCase()).toBe(
-              user1Account.address.toLowerCase(),
-            )
+          if (response.ok) {
+            const data = await response.json()
+            if (data.data?.transactions?.length > 0) {
+              const indexedTx = data.data.transactions[0]
+              console.log(`   ✅ Transaction indexed: ${indexedTx.hash}`)
+              expect(indexedTx.hash.toLowerCase()).toBe(hash.toLowerCase())
+              expect(indexedTx.from.address.toLowerCase()).toBe(
+                deployerAddress.toLowerCase(),
+              )
+              expect(indexedTx.to.address.toLowerCase()).toBe(
+                user1Account.address.toLowerCase(),
+              )
+            } else {
+              console.log(
+                '   ⏳ Transaction not yet indexed (indexer may need more time)',
+              )
+            }
           } else {
             console.log(
-              '   ⏳ Transaction not yet indexed (indexer may need more time)',
+              '   ⚠️  Indexer not responding - start with: cd apps/indexer && bun run dev',
             )
           }
-        } else {
+        } catch {
           console.log(
-            '   ⚠️  Indexer not responding - start with: cd apps/indexer && bun run dev',
+            '   ⚠️  Indexer not available - start with: cd apps/indexer && bun run dev',
           )
         }
-      } catch {
-        console.log(
-          '   ⚠️  Indexer not available - start with: cd apps/indexer && bun run dev',
-        )
-      }
       },
       { timeout: 15000 },
     )
@@ -858,49 +871,49 @@ describe.skipIf(!localnetAvailable)('Service Interaction Tests', () => {
     it(
       'should index ERC20 transfer events',
       async () => {
-      // Deploy a token and transfer
-      const deployHash = await deployContract(deployerWalletClient, {
-        abi: MockERC20Artifact.abi,
-        bytecode: MockERC20Artifact.bytecode as `0x${string}`,
-        args: ['TestToken', 'TEST', 18, parseEther('10000')],
-      })
-      const deployReceipt = await waitForTransactionReceipt(l2PublicClient, {
-        hash: deployHash,
-      })
-      if (!deployReceipt.contractAddress)
-        throw new Error('Token deployment failed')
-      const tokenAddress = deployReceipt.contractAddress
-      console.log(`   🪙 Deployed test token at ${tokenAddress}`)
+        // Deploy a token and transfer
+        const deployHash = await deployContract(deployerWalletClient, {
+          abi: MockERC20Artifact.abi,
+          bytecode: MockERC20Artifact.bytecode as `0x${string}`,
+          args: ['TestToken', 'TEST', 18, parseEther('10000')],
+        })
+        const deployReceipt = await waitForTransactionReceipt(l2PublicClient, {
+          hash: deployHash,
+        })
+        if (!deployReceipt.contractAddress)
+          throw new Error('Token deployment failed')
+        const tokenAddress = deployReceipt.contractAddress
+        console.log(`   🪙 Deployed test token at ${tokenAddress}`)
 
-      // Transfer tokens
-      const transferHash = await deployerWalletClient.writeContract({
-        address: tokenAddress,
-        abi: MockERC20Artifact.abi,
-        functionName: 'transfer',
-        args: [user1Account.address, parseEther('100')],
-      })
-      const receipt = await waitForTransactionReceipt(l2PublicClient, {
-        hash: transferHash,
-      })
-      expect(receipt.status).toBe('success')
+        // Transfer tokens
+        const transferHash = await deployerWalletClient.writeContract({
+          address: tokenAddress,
+          abi: MockERC20Artifact.abi,
+          functionName: 'transfer',
+          args: [user1Account.address, parseEther('100')],
+        })
+        const receipt = await waitForTransactionReceipt(l2PublicClient, {
+          hash: transferHash,
+        })
+        expect(receipt.status).toBe('success')
 
-      // Verify Transfer event was emitted
-      const transferEventTopic = keccak256(
-        stringToBytes('Transfer(address,address,uint256)'),
-      )
-      const transferEvent = receipt.logs.find(
-        (log) => log.topics[0] === transferEventTopic,
-      )
-      expect(transferEvent).toBeDefined()
-      console.log(`   ✅ Transfer event emitted in tx ${transferHash}`)
+        // Verify Transfer event was emitted
+        const transferEventTopic = keccak256(
+          stringToBytes('Transfer(address,address,uint256)'),
+        )
+        const transferEvent = receipt.logs.find(
+          (log) => log.topics[0] === transferEventTopic,
+        )
+        expect(transferEvent).toBeDefined()
+        console.log(`   ✅ Transfer event emitted in tx ${transferHash}`)
 
-      // Query indexer for transfer events (if running)
-      try {
-        const response = await fetch(TEST_CONFIG.indexerGraphQL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            query: `{
+        // Query indexer for transfer events (if running)
+        try {
+          const response = await fetch(TEST_CONFIG.indexerGraphQL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              query: `{
               transfers(where: { token_eq: "${tokenAddress}" }, limit: 5) {
                 from { address }
                 to { address }
@@ -908,22 +921,24 @@ describe.skipIf(!localnetAvailable)('Service Interaction Tests', () => {
                 transactionHash
               }
             }`,
-          }),
-        })
+            }),
+          })
 
-        if (response.ok) {
-          const data = await response.json()
-          if (data.data?.transfers?.length > 0) {
-            console.log(`   ✅ ${data.data.transfers.length} transfers indexed`)
+          if (response.ok) {
+            const data = await response.json()
+            if (data.data?.transfers?.length > 0) {
+              console.log(
+                `   ✅ ${data.data.transfers.length} transfers indexed`,
+              )
+            } else {
+              console.log('   ⏳ Transfers not yet indexed')
+            }
           } else {
-            console.log('   ⏳ Transfers not yet indexed')
+            console.log('   ⚠️  Indexer not available for transfer query')
           }
-        } else {
-          console.log('   ⚠️  Indexer not available for transfer query')
+        } catch {
+          console.log('   ⚠️  Indexer not available')
         }
-      } catch {
-        console.log('   ⚠️  Indexer not available')
-      }
       },
       { timeout: 15000 },
     )

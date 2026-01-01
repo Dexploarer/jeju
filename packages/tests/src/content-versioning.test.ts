@@ -93,12 +93,16 @@ describe('Content Versioning', () => {
       process.env.DEV_MODE = 'true'
       expect(isDevMode()).toBe(true)
       // Host can be localhost or 127.0.0.1 based on env
-      expect(getDevProxyUrl('bazaar')).toMatch(/^http:\/\/(localhost|127\.0\.0\.1):4006$/)
+      expect(getDevProxyUrl('bazaar')).toMatch(
+        /^http:\/\/(localhost|127\.0\.0\.1):4006$/,
+      )
     })
 
     it('should strip .jeju suffix', () => {
       process.env.DEV_MODE = 'true'
-      expect(getDevProxyUrl('bazaar.jeju')).toMatch(/^http:\/\/(localhost|127\.0\.0\.1):4006$/)
+      expect(getDevProxyUrl('bazaar.jeju')).toMatch(
+        /^http:\/\/(localhost|127\.0\.0\.1):4006$/,
+      )
     })
 
     it('should use environment variable override', () => {
@@ -110,7 +114,9 @@ describe('Content Versioning', () => {
     it('should use port override', () => {
       process.env.DEV_MODE = 'true'
       process.env.DEV_PROXY_BAZAAR_PORT = '8888'
-      expect(getDevProxyUrl('bazaar')).toMatch(/^http:\/\/(localhost|127\.0\.0\.1):8888$/)
+      expect(getDevProxyUrl('bazaar')).toMatch(
+        /^http:\/\/(localhost|127\.0\.0\.1):8888$/,
+      )
     })
 
     it('should return null for unknown apps', () => {
@@ -122,8 +128,12 @@ describe('Content Versioning', () => {
       process.env.DEV_MODE = 'true'
       const mappings = getAllDevProxyMappings()
       expect(Object.keys(mappings).length).toBeGreaterThan(5)
-      expect(mappings.bazaar).toMatch(/^http:\/\/(localhost|127\.0\.0\.1):4006$/)
-      expect(mappings.gateway).toMatch(/^http:\/\/(localhost|127\.0\.0\.1):4013$/)
+      expect(mappings.bazaar).toMatch(
+        /^http:\/\/(localhost|127\.0\.0\.1):4006$/,
+      )
+      expect(mappings.gateway).toMatch(
+        /^http:\/\/(localhost|127\.0\.0\.1):4013$/,
+      )
     })
 
     it('should include custom env mappings', () => {
@@ -348,10 +358,18 @@ describe('Integration Scenarios', () => {
       expect(isDevMode()).toBe(true)
 
       // Check proxy URLs for all major apps
-      expect(getDevProxyUrl('gateway')).toMatch(/^http:\/\/(localhost|127\.0\.0\.1):4013$/)
-      expect(getDevProxyUrl('bazaar')).toMatch(/^http:\/\/(localhost|127\.0\.0\.1):4006$/)
-      expect(getDevProxyUrl('dws')).toMatch(/^http:\/\/(localhost|127\.0\.0\.1):4030$/)
-      expect(getDevProxyUrl('autocrat')).toMatch(/^http:\/\/(localhost|127\.0\.0\.1):4040$/)
+      expect(getDevProxyUrl('gateway')).toMatch(
+        /^http:\/\/(localhost|127\.0\.0\.1):4013$/,
+      )
+      expect(getDevProxyUrl('bazaar')).toMatch(
+        /^http:\/\/(localhost|127\.0\.0\.1):4006$/,
+      )
+      expect(getDevProxyUrl('dws')).toMatch(
+        /^http:\/\/(localhost|127\.0\.0\.1):4030$/,
+      )
+      expect(getDevProxyUrl('autocrat')).toMatch(
+        /^http:\/\/(localhost|127\.0\.0\.1):4040$/,
+      )
     })
 
     it('should allow port overrides for specific apps', () => {
@@ -359,10 +377,14 @@ describe('Integration Scenarios', () => {
       process.env.DEV_PROXY_BAZAAR_PORT = '5555'
       process.env.DEV_PROXY_GATEWAY_URL = 'http://custom-gateway:8080'
 
-      expect(getDevProxyUrl('bazaar')).toMatch(/^http:\/\/(localhost|127\.0\.0\.1):5555$/)
+      expect(getDevProxyUrl('bazaar')).toMatch(
+        /^http:\/\/(localhost|127\.0\.0\.1):5555$/,
+      )
       expect(getDevProxyUrl('gateway')).toBe('http://custom-gateway:8080')
       // Others unchanged
-      expect(getDevProxyUrl('dws')).toMatch(/^http:\/\/(localhost|127\.0\.0\.1):4030$/)
+      expect(getDevProxyUrl('dws')).toMatch(
+        /^http:\/\/(localhost|127\.0\.0\.1):4030$/,
+      )
     })
   })
 
@@ -550,4 +572,3 @@ describe('Mode Comparison Matrix', () => {
 })
 
 // Test suite summary removed - was causing parse issues with bun test
-

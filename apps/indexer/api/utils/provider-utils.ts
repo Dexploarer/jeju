@@ -3,8 +3,12 @@
  * Shared business logic for provider-related operations
  */
 
-import type { DataSource } from 'typeorm'
-import { ComputeProvider, ContainerImage, StorageProvider } from '../model'
+import {
+  type ComputeProvider,
+  type ContainerImage,
+  find,
+  type StorageProvider,
+} from '../db'
 import { NotFoundError } from './types'
 
 export interface FullStackProvider {
@@ -18,25 +22,22 @@ export interface FullStackProvider {
   }>
 }
 
+/**
+ * Get providers that have both compute and storage capabilities
+ */
 export async function getFullStackProviders(
-  dataSource: DataSource,
-  limit: number = 20,
-): Promise<{ fullStackProviders: FullStackProvider[]; total: number }> {
-  if (!dataSource) {
-    throw new Error('DataSource is required')
-  }
+  limit = 20,
+  offset = 0,
+): Promise<{ providers: FullStackProvider[]; total: number }> {
   if (typeof limit !== 'number' || limit <= 0 || limit > 100) {
     throw new Error(`Invalid limit: ${limit}. Must be between 1 and 100.`)
   }
 
   // Find agents that are linked to both compute and storage providers
-  const computeRepo = dataSource.getRepository(ComputeProvider)
-  const storageRepo = dataSource.getRepository(StorageProvider)
-
-  const computeWithAgent = await computeRepo.find({
+  const computeWithAgent = await find<ComputeProvider>('ComputeProvider', {
     where: { isActive: true },
   })
-  const storageWithAgent = await storageRepo.find({
+  const storageWithAgent = await find<StorageProvider>('StorageProvider', {
     where: { isActive: true },
   })
 
@@ -64,9 +65,9 @@ export async function getFullStackProviders(
         existing = {
           agentId: storage.agentId,
           compute: computeProviders.map((c) => ({
-            address: c.address,
-            name: c.name ?? 'Compute Provider',
-            endpoint: c.endpoint,
+            address: c.providerAddress,
+            name: 'Compute Provider',
+            endpoint: '',
           })),
           storage: [],
         }
@@ -74,16 +75,16 @@ export async function getFullStackProviders(
       }
 
       existing.storage.push({
-        address: storage.address,
-        name: storage.name,
-        endpoint: storage.endpoint,
-        providerType: storage.providerType,
+        address: storage.providerAddress,
+        name: 'Storage Provider',
+        endpoint: '',
+        providerType: 'standard',
       })
     }
   }
 
   return {
-    fullStackProviders: fullStackProviders.slice(0, limit),
+    providers: fullStackProviders.slice(offset, offset + limit),
     total: fullStackProviders.length,
   }
 }
@@ -121,72 +122,25 @@ export interface CompatibleProvider {
   isActive: boolean
 }
 
+/**
+ * Get container details by CID
+ */
 export async function getContainerDetail(
-  dataSource: DataSource,
   cid: string,
-): Promise<{
-  container: ContainerDetail
-  compatibleProviders: CompatibleProvider[]
-}> {
-  if (!dataSource) {
-    throw new Error('DataSource is required')
-  }
+): Promise<ContainerImage | null> {
   if (!cid || cid.trim().length === 0) {
     throw new Error('cid is required and must be a non-empty string')
   }
 
-  const repo = dataSource.getRepository(ContainerImage)
-  const container = await repo.findOne({
+  const containers = await find<ContainerImage>('ContainerImage', {
     where: { cid },
-    relations: ['storageProvider', 'uploadedBy', 'verifiedBy'],
+    take: 1,
   })
 
+  const container = containers[0]
   if (!container) {
     throw new NotFoundError('Container', cid)
   }
 
-  const computeRepo = dataSource.getRepository(ComputeProvider)
-  const compatibleProviders = await computeRepo.find({
-    where: { isActive: true },
-    order: { totalEarnings: 'DESC' },
-    take: 10,
-  })
-
-  return {
-    container: {
-      cid: container.cid,
-      name: container.name,
-      tag: container.tag,
-      sizeBytes: container.sizeBytes.toString(),
-      uploadedAt: container.uploadedAt.toISOString(),
-      uploadedBy: container.uploadedBy.address ?? null,
-      storageProvider: container.storageProvider
-        ? {
-            address: container.storageProvider.address,
-            name: container.storageProvider.name,
-            endpoint: container.storageProvider.endpoint,
-          }
-        : null,
-      tier: container.tier,
-      expiresAt: container.expiresAt?.toISOString() || null,
-      architecture: container.architecture,
-      gpuRequired: container.gpuRequired,
-      minGpuVram: container.minGpuVram,
-      teeRequired: container.teeRequired,
-      contentHash: container.contentHash,
-      verified: container.verified,
-      verifiedBy: container.verifiedBy?.agentId
-        ? container.verifiedBy.agentId.toString()
-        : null,
-      pullCount: container.pullCount,
-      lastPulledAt: container.lastPulledAt?.toISOString() || null,
-    },
-    compatibleProviders: compatibleProviders.map((p) => ({
-      address: p.address,
-      name: p.name ?? 'Compute Provider',
-      endpoint: p.endpoint,
-      agentId: p.agentId ?? null,
-      isActive: p.isActive,
-    })),
-  }
+  return container
 }

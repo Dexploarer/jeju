@@ -18,10 +18,7 @@ import {
 } from '@jejunetwork/config'
 
 import { createSQLitClient, MigrationManager } from '@jejunetwork/db'
-import {
-  getHSMClient,
-  resetHSMClient,
-} from '@jejunetwork/shared'
+import { getHSMClient, resetHSMClient } from '@jejunetwork/shared'
 
 // These functions are not exported from @jejunetwork/shared, provide stubs
 const resetMPCCustodyManager = () => {}
@@ -40,14 +37,20 @@ interface MockKeyShare {
   value: string
 }
 
-function getMPCCustodyManager(config: { totalShares: number; threshold: number; verbose: boolean }) {
+function getMPCCustodyManager(config: {
+  totalShares: number
+  threshold: number
+  verbose: boolean
+}) {
   const keys = new Map<string, MockMPCKey>()
   const shares = new Map<string, Map<string, MockKeyShare>>()
 
   return {
     async generateKey(keyId: string, holders: string[]): Promise<MockMPCKey> {
       // Generate a valid 40-character hex address
-      const randomHex = Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join('')
+      const randomHex = Array.from({ length: 40 }, () =>
+        Math.floor(Math.random() * 16).toString(16),
+      ).join('')
       const key: MockMPCKey = {
         keyId,
         address: `0x${randomHex}`,
@@ -82,9 +85,15 @@ function getMPCCustodyManager(config: { totalShares: number; threshold: number; 
 const host = getLocalhostHost()
 
 // Safely get service URLs with fallbacks (some services may not be configured)
-function safeGetServiceUrl(service: string, subservice?: string): string | null {
+function safeGetServiceUrl(
+  service: string,
+  subservice?: string,
+): string | null {
   try {
-    return getServiceUrl(service as 'storage' | 'bazaar' | 'indexer' | 'council', subservice as 'graphql')
+    return getServiceUrl(
+      service as 'storage' | 'bazaar' | 'indexer' | 'council',
+      subservice as 'graphql',
+    )
   } catch {
     return null
   }
@@ -104,7 +113,8 @@ describe('SQLit Integration', () => {
     const client = createSQLitClient({
       blockProducerEndpoint: getSQLitBlockProducerUrl(),
       databaseId: 'test-db',
-      privateKey: '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
+      privateKey:
+        '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
     })
 
     // Test connection (will fail gracefully if no server)
@@ -117,7 +127,8 @@ describe('SQLit Integration', () => {
     const client = createSQLitClient({
       blockProducerEndpoint: getSQLitBlockProducerUrl(),
       databaseId: 'test-db',
-      privateKey: '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
+      privateKey:
+        '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
     })
 
     // Verify client was created with correct interface
@@ -129,7 +140,8 @@ describe('SQLit Integration', () => {
     const client = createSQLitClient({
       blockProducerEndpoint: getSQLitBlockProducerUrl(),
       databaseId: 'test-db',
-      privateKey: '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
+      privateKey:
+        '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
     })
 
     const manager = new MigrationManager(client)
@@ -252,7 +264,8 @@ describe('MPC Key Management', () => {
 describe('HSM Integration', () => {
   // HSM tests require a running HSM service - skip if not available
   const hsmEndpoint = getTeeEndpoint() || `http://${host}:8080`
-  const isValidUrl = hsmEndpoint.startsWith('http://') || hsmEndpoint.startsWith('https://')
+  const isValidUrl =
+    hsmEndpoint.startsWith('http://') || hsmEndpoint.startsWith('https://')
 
   it('should connect to HSM (simulated)', async () => {
     if (!isValidUrl) {
@@ -271,7 +284,7 @@ describe('HSM Integration', () => {
       expect(client).toBeDefined()
       expect(typeof client.generateKey).toBe('function')
       expect(typeof client.sign).toBe('function')
-    } catch (error) {
+    } catch (_error) {
       // HSM service not available
       console.log('⏭️  Skipping HSM test - service not available')
     }
@@ -298,7 +311,7 @@ describe('HSM Integration', () => {
       expect(key.label).toBe('test-signing-key')
       expect(key.attributes.canSign).toBe(true)
       expect(key.attributes.extractable).toBe(false)
-    } catch (error) {
+    } catch (_error) {
       console.log('⏭️  Skipping HSM key generation test - service not available')
     }
   })
@@ -328,7 +341,7 @@ describe('HSM Integration', () => {
 
       expect(signature.signature).toMatch(/^0x[a-fA-F0-9]+$/)
       expect(signature.v).toBeGreaterThanOrEqual(27)
-    } catch (error) {
+    } catch (_error) {
       console.log('⏭️  Skipping HSM signing test - service not available')
     }
   })

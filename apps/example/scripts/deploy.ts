@@ -18,9 +18,7 @@ import {
   type NetworkType,
 } from '@jejunetwork/config'
 import { $ } from 'bun'
-import { createPublicClient, createWalletClient, http, keccak256 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
-import { baseSepolia, localhost } from 'viem/chains'
 import { z } from 'zod'
 
 const APP_DIR = resolve(import.meta.dir, '..')
@@ -41,15 +39,17 @@ const WorkerDeployResponseSchema = z.object({
 
 const AppDeployResponseSchema = z.object({
   success: z.boolean(),
-  app: z.object({
-    name: z.string(),
-    jnsName: z.string(),
-    frontendCid: z.string().nullable(),
-    staticFiles: z.record(z.string(), z.string()).nullable(),
-    backendWorkerId: z.string().nullable(),
-    backendEndpoint: z.string().nullable(),
-    enabled: z.boolean(),
-  }).optional(),
+  app: z
+    .object({
+      name: z.string(),
+      jnsName: z.string(),
+      frontendCid: z.string().nullable(),
+      staticFiles: z.record(z.string(), z.string()).nullable(),
+      backendWorkerId: z.string().nullable(),
+      backendEndpoint: z.string().nullable(),
+      enabled: z.boolean(),
+    })
+    .optional(),
 })
 
 // Configuration
@@ -241,7 +241,9 @@ async function deployWorker(
     const result = WorkerDeployResponseSchema.parse(await response.json())
     return result.workerId
   } catch (err) {
-    console.warn(`[Deploy] Worker deployment failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    console.warn(
+      `[Deploy] Worker deployment failed: ${err instanceof Error ? err.message : 'Unknown error'}`,
+    )
     console.log('[Deploy] Continuing with frontend-only deployment...')
     return null
   }
@@ -253,10 +255,10 @@ async function registerApp(
   staticFiles: Map<string, string>,
   backendWorkerId: string | null,
 ): Promise<void> {
-  // Convert Map to Record with leading slashes for paths
+  // Convert Map to Record without leading slashes (app router strips slashes when looking up)
   const staticFilesRecord: Record<string, string> = {}
   for (const [path, cid] of staticFiles) {
-    const normalizedPath = path.startsWith('/') ? path : `/${path}`
+    const normalizedPath = path.startsWith('/') ? path.slice(1) : path
     staticFilesRecord[normalizedPath] = cid
   }
 
@@ -272,7 +274,15 @@ async function registerApp(
       staticFiles: staticFilesRecord,
       backendWorkerId,
       backendEndpoint: null,
-      apiPaths: ['/api', '/health', '/a2a', '/mcp', '/x402', '/auth', '/webhooks'],
+      apiPaths: [
+        '/api',
+        '/health',
+        '/a2a',
+        '/mcp',
+        '/x402',
+        '/auth',
+        '/webhooks',
+      ],
       spa: true,
       enabled: true,
     }),
@@ -305,9 +315,13 @@ async function checkDWSHealth(dwsUrl: string): Promise<boolean> {
 // Main deploy function
 async function deploy(): Promise<void> {
   console.log('')
-  console.log('==================================================================')
+  console.log(
+    '==================================================================',
+  )
   console.log('           Example Decentralized Deployment to DWS')
-  console.log('==================================================================')
+  console.log(
+    '==================================================================',
+  )
   console.log('')
 
   const config = getConfig()
@@ -337,7 +351,9 @@ async function deploy(): Promise<void> {
     join(APP_DIR, 'dist'),
     ['api'], // Exclude API directory
   )
-  console.log(`[Deploy] Frontend: ${frontendResult.files.size} files, ${(frontendResult.totalSize / 1024).toFixed(1)} KB`)
+  console.log(
+    `[Deploy] Frontend: ${frontendResult.files.size} files, ${(frontendResult.totalSize / 1024).toFixed(1)} KB`,
+  )
   console.log(`[Deploy] Frontend CID: ${frontendResult.rootCid}`)
 
   // Upload and deploy API worker
@@ -368,9 +384,13 @@ async function deploy(): Promise<void> {
   // Summary
   const indexCid = frontendResult.files.get('index.html')
   console.log('')
-  console.log('==================================================================')
+  console.log(
+    '==================================================================',
+  )
   console.log('                    Deployment Complete')
-  console.log('==================================================================')
+  console.log(
+    '==================================================================',
+  )
   console.log('')
   console.log('Endpoints:')
   console.log(`  Frontend: https://${config.domain}`)

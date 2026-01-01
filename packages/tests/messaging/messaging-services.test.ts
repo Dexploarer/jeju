@@ -26,13 +26,17 @@ describe.skipIf(!gatewayMessagingExists)('Gateway Messaging Service', () => {
     expect(gatewayMessaging).toBeInstanceOf(GatewayMessagingService)
   })
   test('getChannelFeed returns proper structure', async () => {
-    const { gatewayMessaging } = await import('../../../apps/gateway/api/messaging')
+    const { gatewayMessaging } = await import(
+      '../../../apps/gateway/api/messaging'
+    )
     const result = await gatewayMessaging.getChannelFeed({ limit: 5 })
     expect(result).toBeDefined()
     expect(result.casts).toBeDefined()
   })
   test('bridgeCompleteNotification generates correct payload', async () => {
-    const { gatewayMessaging } = await import('../../../apps/gateway/api/messaging')
+    const { gatewayMessaging } = await import(
+      '../../../apps/gateway/api/messaging'
+    )
     const notification = gatewayMessaging.bridgeCompleteNotification({
       amount: '1 ETH',
       from: 'Base',
@@ -41,28 +45,51 @@ describe.skipIf(!gatewayMessagingExists)('Gateway Messaging Service', () => {
     expect(notification.type).toBe('bridge_complete')
   })
   test('intentFilledNotification generates correct payload', async () => {
-    const { gatewayMessaging } = await import('../../../apps/gateway/api/messaging')
-    const notification = gatewayMessaging.intentFilledNotification({ intentId: '0x123' })
+    const { gatewayMessaging } = await import(
+      '../../../apps/gateway/api/messaging'
+    )
+    const notification = gatewayMessaging.intentFilledNotification({
+      intentId: '0x123',
+    })
     expect(notification.type).toBe('intent_filled')
   })
   test('nodeRewardNotification generates correct payload', async () => {
-    const { gatewayMessaging } = await import('../../../apps/gateway/api/messaging')
-    const notification = gatewayMessaging.nodeRewardNotification({ reward: '10 JEJU' })
+    const { gatewayMessaging } = await import(
+      '../../../apps/gateway/api/messaging'
+    )
+    const notification = gatewayMessaging.nodeRewardNotification({
+      reward: '10 JEJU',
+    })
     expect(notification.type).toBe('node_reward')
   })
   test('liquidityUpdateNotification - add action', async () => {
-    const { gatewayMessaging } = await import('../../../apps/gateway/api/messaging')
-    const notification = gatewayMessaging.liquidityUpdateNotification({ action: 'add', amount: '5 ETH' })
+    const { gatewayMessaging } = await import(
+      '../../../apps/gateway/api/messaging'
+    )
+    const notification = gatewayMessaging.liquidityUpdateNotification({
+      action: 'add',
+      amount: '5 ETH',
+    })
     expect(notification.type).toBe('liquidity_update')
   })
   test('liquidityUpdateNotification - remove action with fees', async () => {
-    const { gatewayMessaging } = await import('../../../apps/gateway/api/messaging')
-    const notification = gatewayMessaging.liquidityUpdateNotification({ action: 'remove', amount: '2 ETH', fees: '0.1 ETH' })
+    const { gatewayMessaging } = await import(
+      '../../../apps/gateway/api/messaging'
+    )
+    const notification = gatewayMessaging.liquidityUpdateNotification({
+      action: 'remove',
+      amount: '2 ETH',
+      fees: '0.1 ETH',
+    })
     expect(notification.type).toBe('liquidity_update')
   })
   test('createNotification wraps payload with channel', async () => {
-    const { gatewayMessaging } = await import('../../../apps/gateway/api/messaging')
-    const notification = gatewayMessaging.createNotification('test', { message: 'Hello' })
+    const { gatewayMessaging } = await import(
+      '../../../apps/gateway/api/messaging'
+    )
+    const notification = gatewayMessaging.createNotification('test', {
+      message: 'Hello',
+    })
     expect(notification.channel).toBeDefined()
   })
 })

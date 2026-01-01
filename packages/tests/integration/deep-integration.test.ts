@@ -28,7 +28,10 @@ const registryFromEnv = ((typeof process !== 'undefined'
   : undefined) ?? '0x0000000000000000000000000000000000000000') as `0x${string}`
 
 let servicesAvailable = false
-if (PRIVATE_KEY.startsWith('0x') && registryFromEnv !== '0x0000000000000000000000000000000000000000') {
+if (
+  PRIVATE_KEY.startsWith('0x') &&
+  registryFromEnv !== '0x0000000000000000000000000000000000000000'
+) {
   try {
     const res = await fetch(RPC_URL, {
       method: 'POST',
@@ -43,9 +46,12 @@ if (PRIVATE_KEY.startsWith('0x') && registryFromEnv !== '0x000000000000000000000
     })
     if (res.ok) {
       // Also check if Bazaar is running
-      const bazaarRes = await fetch(`${APP_URLS.bazaar}/.well-known/agent-card.json`, {
-        signal: AbortSignal.timeout(2000),
-      }).catch(() => null)
+      const bazaarRes = await fetch(
+        `${APP_URLS.bazaar}/.well-known/agent-card.json`,
+        {
+          signal: AbortSignal.timeout(2000),
+        },
+      ).catch(() => null)
       servicesAvailable = !!bazaarRes?.ok
     }
   } catch {

@@ -296,7 +296,14 @@ export function createWorkerdRouter(options: WorkerdRouterOptions) {
         }
 
         // Deploy worker
-        await executor.deployWorker(worker)
+        console.log(`[Workerd] Starting deployment for worker: ${worker.name}`)
+        try {
+          await executor.deployWorker(worker)
+          console.log(`[Workerd] Deployment completed for worker: ${worker.name}`)
+        } catch (deployError) {
+          console.error(`[Workerd] Deployment failed:`, deployError)
+          throw deployError
+        }
 
         // Register on-chain if decentralized
         if (registry && enableDecentralized) {

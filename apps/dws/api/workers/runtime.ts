@@ -246,11 +246,12 @@ export class WorkerRuntime {
       memoryUsedMb: 0,
     }
 
-    // Get code path
-    const codePath = this.codeCache.get(fn.codeCid)
+    // Get code path - download on-demand if not cached
+    let codePath = this.codeCache.get(fn.codeCid)
     if (!codePath) {
-      console.error(`[WorkerRuntime] Code not cached for ${fn.id}`)
-      return null
+      console.log(`[WorkerRuntime] Code not cached for ${fn.id}, downloading...`)
+      codePath = await this.downloadCode(fn.codeCid)
+      this.codeCache.set(fn.codeCid, codePath)
     }
 
     try {

@@ -42,13 +42,17 @@ const STAKING_ADDRESS =
 let stakingAvailable = false
 try {
   const client = createPublicClient({ transport: http(RPC_URL) })
-  const code = await client.getCode({ address: STAKING_ADDRESS as `0x${string}` })
+  const code = await client.getCode({
+    address: STAKING_ADDRESS as `0x${string}`,
+  })
   if (!code || code === '0x' || code.length <= 2) {
     console.log('⏭️  Skipping - no contract at staking address')
     stakingAvailable = false
   } else {
     // Try to call a view function to verify contract interface
-    const testAbi = parseAbi(['function totalETHStaked() view returns (uint256)'])
+    const testAbi = parseAbi([
+      'function totalETHStaked() view returns (uint256)',
+    ])
     try {
       await client.readContract({
         address: STAKING_ADDRESS as Address,
@@ -58,13 +62,15 @@ try {
       stakingAvailable = true
     } catch {
       // Contract exists but doesn't have expected interface
-      console.log('⏭️  Skipping - contract at address does not match staking interface')
+      console.log(
+        '⏭️  Skipping - contract at address does not match staking interface',
+      )
       stakingAvailable = false
     }
   }
 } catch (error) {
   const msg = error instanceof Error ? error.message : String(error)
-  console.log(`⏭️  Staking check failed: ${msg.slice(0,60)}...`)
+  console.log(`⏭️  Staking check failed: ${msg.slice(0, 60)}...`)
   stakingAvailable = false
 }
 if (!stakingAvailable) {
@@ -457,59 +463,62 @@ describe.skipIf(!stakingAvailable)('Staking - Fee Distribution', () => {
   })
 })
 
-describe.skipIf(!stakingAvailable)('Staking - Multiple Fee Distributions', () => {
-  test('should accumulate fees correctly over multiple distributions', async () => {
-    console.log('\n📈 Testing multiple fee distributions...\n')
+describe.skipIf(!stakingAvailable)(
+  'Staking - Multiple Fee Distributions',
+  () => {
+    test('should accumulate fees correctly over multiple distributions', async () => {
+      console.log('\n📈 Testing multiple fee distributions...\n')
 
-    // Distribute fees 3 times
-    const feeAmount = parseEther('10')
+      // Distribute fees 3 times
+      const feeAmount = parseEther('10')
 
-    const stakingAbi = parseAbi(STAKING_ABI)
-    const stakingTokenAbi = parseAbi(STAKING_TOKEN_ABI)
+      const stakingAbi = parseAbi(STAKING_ABI)
+      const stakingTokenAbi = parseAbi(STAKING_TOKEN_ABI)
 
-    for (let i = 0; i < 3; i++) {
-      const approveHash = await deployerWalletClient.writeContract({
-        address: STAKING_TOKEN_ADDRESS as Address,
-        abi: stakingTokenAbi,
-        functionName: 'approve',
-        args: [STAKING_ADDRESS as Address, feeAmount * 2n],
-      })
-      await waitForTransactionReceipt(publicClient, { hash: approveHash })
+      for (let i = 0; i < 3; i++) {
+        const approveHash = await deployerWalletClient.writeContract({
+          address: STAKING_TOKEN_ADDRESS as Address,
+          abi: stakingTokenAbi,
+          functionName: 'approve',
+          args: [STAKING_ADDRESS as Address, feeAmount * 2n],
+        })
+        await waitForTransactionReceipt(publicClient, { hash: approveHash })
 
-      const distributeHash = await deployerWalletClient.writeContract({
+        const distributeHash = await deployerWalletClient.writeContract({
+          address: STAKING_ADDRESS as Address,
+          abi: stakingAbi,
+          functionName: 'distributeFees',
+          args: [feeAmount, feeAmount],
+        })
+        await waitForTransactionReceipt(publicClient, { hash: distributeHash })
+      }
+
+      const position1 = (await readContract(publicClient, {
         address: STAKING_ADDRESS as Address,
         abi: stakingAbi,
-        functionName: 'distributeFees',
-        args: [feeAmount, feeAmount],
-      })
-      await waitForTransactionReceipt(publicClient, { hash: distributeHash })
-    }
+        functionName: 'getPosition',
+        args: [staker1Account.address],
+      })) as { pendingFees: bigint }
 
-    const position1 = (await readContract(publicClient, {
-      address: STAKING_ADDRESS as Address,
-      abi: stakingAbi,
-      functionName: 'getPosition',
-      args: [staker1Account.address],
-    })) as { pendingFees: bigint }
+      const position2 = (await readContract(publicClient, {
+        address: STAKING_ADDRESS as Address,
+        abi: stakingAbi,
+        functionName: 'getPosition',
+        args: [staker2Account.address],
+      })) as { pendingFees: bigint }
 
-    const position2 = (await readContract(publicClient, {
-      address: STAKING_ADDRESS as Address,
-      abi: stakingAbi,
-      functionName: 'getPosition',
-      args: [staker2Account.address],
-    })) as { pendingFees: bigint }
+      console.log('Accumulated Fees (3 distributions):')
+      console.log(`  Staker1: ${formatEther(position1.pendingFees)} tokens`)
+      console.log(`  Staker2: ${formatEther(position2.pendingFees)} tokens`)
 
-    console.log('Accumulated Fees (3 distributions):')
-    console.log(`  Staker1: ${formatEther(position1.pendingFees)} tokens`)
-    console.log(`  Staker2: ${formatEther(position2.pendingFees)} tokens`)
+      // Should have accumulated ~60 tokens total (3 * 20)
+      const totalPending = position1.pendingFees + position2.pendingFees
+      const expectedMinimum = parseEther('59') // Allow for rounding
 
-    // Should have accumulated ~60 tokens total (3 * 20)
-    const totalPending = position1.pendingFees + position2.pendingFees
-    const expectedMinimum = parseEther('59') // Allow for rounding
-
-    expect(totalPending).toBeGreaterThan(expectedMinimum)
-  })
-})
+      expect(totalPending).toBeGreaterThan(expectedMinimum)
+    })
+  },
+)
 
 describe.skipIf(!stakingAvailable)('Staking - Unbonding Flow', () => {
   test('should allow starting unbonding', async () => {
@@ -609,83 +618,86 @@ describe.skipIf(!stakingAvailable)('Staking - Unbonding Flow', () => {
   })
 })
 
-describe.skipIf(!stakingAvailable)('Staking - Fee Share Calculation Verification', () => {
-  test('should verify fee per share calculations', async () => {
-    console.log('\n🔢 Verifying fee per share calculations...\n')
+describe.skipIf(!stakingAvailable)(
+  'Staking - Fee Share Calculation Verification',
+  () => {
+    test('should verify fee per share calculations', async () => {
+      console.log('\n🔢 Verifying fee per share calculations...\n')
 
-    const stakingAbi = parseAbi(STAKING_ABI)
-    const ethFeesPerShare = (await readContract(publicClient, {
-      address: STAKING_ADDRESS as Address,
-      abi: stakingAbi,
-      functionName: 'ethFeesPerShare',
-    })) as bigint
+      const stakingAbi = parseAbi(STAKING_ABI)
+      const ethFeesPerShare = (await readContract(publicClient, {
+        address: STAKING_ADDRESS as Address,
+        abi: stakingAbi,
+        functionName: 'ethFeesPerShare',
+      })) as bigint
 
-    const tokenFeesPerShare = (await readContract(publicClient, {
-      address: STAKING_ADDRESS as Address,
-      abi: stakingAbi,
-      functionName: 'tokenFeesPerShare',
-    })) as bigint
+      const tokenFeesPerShare = (await readContract(publicClient, {
+        address: STAKING_ADDRESS as Address,
+        abi: stakingAbi,
+        functionName: 'tokenFeesPerShare',
+      })) as bigint
 
-    console.log('Per-Share Accumulators:')
-    console.log(`  ETH Fees Per Share: ${formatEther(ethFeesPerShare)}`)
-    console.log(`  Token Fees Per Share: ${formatEther(tokenFeesPerShare)}`)
+      console.log('Per-Share Accumulators:')
+      console.log(`  ETH Fees Per Share: ${formatEther(ethFeesPerShare)}`)
+      console.log(`  Token Fees Per Share: ${formatEther(tokenFeesPerShare)}`)
 
-    // These should be non-zero after distributions
-    expect(ethFeesPerShare).toBeGreaterThan(0n)
-    expect(tokenFeesPerShare).toBeGreaterThan(0n)
-  })
+      // These should be non-zero after distributions
+      expect(ethFeesPerShare).toBeGreaterThan(0n)
+      expect(tokenFeesPerShare).toBeGreaterThan(0n)
+    })
 
-  test('should verify proportional distribution formula', async () => {
-    // Formula: userFees = userShares * (currentFeesPerShare - lastPaidFeesPerShare) / PRECISION
-    // This is verified by checking the actual fee accumulation matches expected
+    test('should verify proportional distribution formula', async () => {
+      // Formula: userFees = userShares * (currentFeesPerShare - lastPaidFeesPerShare) / PRECISION
+      // This is verified by checking the actual fee accumulation matches expected
 
-    const stakingAbi = parseAbi(STAKING_ABI)
-    const totalETH = (await readContract(publicClient, {
-      address: STAKING_ADDRESS as Address,
-      abi: stakingAbi,
-      functionName: 'totalETHStaked',
-    })) as bigint
+      const stakingAbi = parseAbi(STAKING_ABI)
+      const totalETH = (await readContract(publicClient, {
+        address: STAKING_ADDRESS as Address,
+        abi: stakingAbi,
+        functionName: 'totalETHStaked',
+      })) as bigint
 
-    const totalTokens = (await readContract(publicClient, {
-      address: STAKING_ADDRESS as Address,
-      abi: stakingAbi,
-      functionName: 'totalTokensStaked',
-    })) as bigint
+      const totalTokens = (await readContract(publicClient, {
+        address: STAKING_ADDRESS as Address,
+        abi: stakingAbi,
+        functionName: 'totalTokensStaked',
+      })) as bigint
 
-    console.log('\nTotal Stakes for Verification:')
-    console.log(`  Total ETH: ${formatEther(totalETH)} ETH`)
-    console.log(`  Total Tokens: ${formatEther(totalTokens)} tokens`)
+      console.log('\nTotal Stakes for Verification:')
+      console.log(`  Total ETH: ${formatEther(totalETH)} ETH`)
+      console.log(`  Total Tokens: ${formatEther(totalTokens)} tokens`)
 
-    // The fee distribution should be:
-    // - For ETH stakers: proportional to ethStaked / totalETHStaked
-    // - For Token stakers: proportional to tokensStaked / totalTokensStaked
+      // The fee distribution should be:
+      // - For ETH stakers: proportional to ethStaked / totalETHStaked
+      // - For Token stakers: proportional to tokensStaked / totalTokensStaked
 
-    const position1 = (await readContract(publicClient, {
-      address: STAKING_ADDRESS as Address,
-      abi: stakingAbi,
-      functionName: 'getPosition',
-      args: [staker1Account.address],
-    })) as { ethStaked: bigint }
+      const position1 = (await readContract(publicClient, {
+        address: STAKING_ADDRESS as Address,
+        abi: stakingAbi,
+        functionName: 'getPosition',
+        args: [staker1Account.address],
+      })) as { ethStaked: bigint }
 
-    const position2 = (await readContract(publicClient, {
-      address: STAKING_ADDRESS as Address,
-      abi: stakingAbi,
-      functionName: 'getPosition',
-      args: [staker2Account.address],
-    })) as { ethStaked: bigint }
+      const position2 = (await readContract(publicClient, {
+        address: STAKING_ADDRESS as Address,
+        abi: stakingAbi,
+        functionName: 'getPosition',
+        args: [staker2Account.address],
+      })) as { ethStaked: bigint }
 
-    // Calculate expected ratios
-    const staker1EthRatio = Number(position1.ethStaked) / Number(totalETH)
-    const staker2EthRatio = Number(position2.ethStaked) / Number(totalETH)
+      // Calculate expected ratios
+      const staker1EthRatio = Number(position1.ethStaked) / Number(totalETH)
+      const staker2EthRatio = Number(position2.ethStaked) / Number(totalETH)
 
-    console.log('\nStake Ratios:')
-    console.log(`  Staker1 ETH: ${(staker1EthRatio * 100).toFixed(2)}%`)
-    console.log(`  Staker2 ETH: ${(staker2EthRatio * 100).toFixed(2)}%`)
+      console.log('\nStake Ratios:')
+      console.log(`  Staker1 ETH: ${(staker1EthRatio * 100).toFixed(2)}%`)
+      console.log(`  Staker2 ETH: ${(staker2EthRatio * 100).toFixed(2)}%`)
 
-    // Verify ratios sum to ~100%
-    expect(staker1EthRatio + staker2EthRatio).toBeCloseTo(1.0, 2)
-  })
-})
+      // Verify ratios sum to ~100%
+      expect(staker1EthRatio + staker2EthRatio).toBeCloseTo(1.0, 2)
+    })
+  },
+)
 
 describe.skipIf(!stakingAvailable)('Staking - Edge Cases', () => {
   test('should handle zero fee distribution gracefully', async () => {

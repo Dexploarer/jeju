@@ -3,21 +3,19 @@
  * Shared business logic for transaction-related operations
  */
 
-import type { DataSource } from 'typeorm'
-import { Transaction } from '../model'
+import { find, type Transaction } from '../db'
 
 export interface TransactionsQueryOptions {
   limit: number
   offset: number
 }
 
+/**
+ * Get transactions from SQLit with pagination
+ */
 export async function getTransactions(
-  dataSource: DataSource,
   options: TransactionsQueryOptions,
 ): Promise<Transaction[]> {
-  if (!dataSource) {
-    throw new Error('DataSource is required')
-  }
   if (typeof options.limit !== 'number' || options.limit <= 0) {
     throw new Error(
       `Invalid limit: ${options.limit}. Must be a positive number.`,
@@ -29,27 +27,27 @@ export async function getTransactions(
     )
   }
 
-  return await dataSource.getRepository(Transaction).find({
+  return find<Transaction>('Transaction', {
     order: { blockNumber: 'DESC' },
     take: options.limit,
     skip: options.offset,
-    relations: ['from', 'to'],
   })
 }
 
+/**
+ * Get a single transaction by hash
+ */
 export async function getTransactionByHash(
-  dataSource: DataSource,
   hash: string,
 ): Promise<Transaction | null> {
-  if (!dataSource) {
-    throw new Error('DataSource is required')
-  }
   if (!hash || hash.trim().length === 0) {
     throw new Error('hash is required and must be a non-empty string')
   }
 
-  return await dataSource.getRepository(Transaction).findOne({
+  const results = await find<Transaction>('Transaction', {
     where: { hash },
-    relations: ['from', 'to', 'block'],
+    take: 1,
   })
+
+  return results[0] ?? null
 }

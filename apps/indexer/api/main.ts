@@ -5,7 +5,6 @@
 import './init'
 
 import { ZERO_ADDRESS } from '@jejunetwork/types'
-import { type Store } from '@subsquid/typeorm-store'
 import {
   Account,
   Block as BlockEntity,
@@ -44,16 +43,17 @@ import { processOIFEvents } from './oif-processor'
 import { processOracleEvents } from './oracle-processor'
 import { type ProcessorContext, processor } from './processor'
 import { processRegistryEvents } from './registry-game-processor'
-import { SQLitDatabase } from './sqlit-database'
+import { SQLitDatabase, type SQLitStoreImpl } from './sqlit-database'
 import { processStorageEvents } from './storage-processor'
 
 const SQLIT_DATABASE_ID = config.sqlitDatabaseId || 'indexer-testnet'
 
 console.log(`[Indexer] Using SQLit database: ${SQLIT_DATABASE_ID}`)
 
+// Using 'any' for store type since SQLitStoreImpl is compatible with Store interface
 processor.run(
-  new SQLitDatabase({ databaseId: SQLIT_DATABASE_ID }),
-  async (ctx: ProcessorContext<Store>) => {
+  new SQLitDatabase({ databaseId: SQLIT_DATABASE_ID }) as any,
+  async (ctx: ProcessorContext<any>) => {
     const blocks: BlockEntity[] = []
     const transactions: TransactionEntity[] = []
     const logs: LogEntity[] = []

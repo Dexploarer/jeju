@@ -18,8 +18,6 @@ import {
   getDWSComputeUrl,
   getDwsApiUrl,
   getIpfsApiUrl,
-  getL1RpcUrl,
-  getL2RpcUrl,
   getLocalhostHost,
   getServiceUrl,
   getSQLitBlockProducerUrl,
@@ -32,7 +30,6 @@ import type { InfraStatus } from './schemas'
 import {
   checkContractsDeployed,
   findJejuWorkspaceRoot,
-  getRpcUrl,
   isRpcAvailable,
   isServiceAvailable,
 } from './utils'
@@ -45,7 +42,7 @@ let isExternalInfra = false
 // Default ports - use standard Jeju ports
 const L1_PORT = INFRA_PORTS.L1_RPC.get()
 const L2_PORT = INFRA_PORTS.L2_RPC.get()
-const DWS_PORT = CORE_PORTS.DWS_API.get()
+const _DWS_PORT = CORE_PORTS.DWS_API.get()
 
 // Docker service ports
 const DOCKER_SERVICES = {
@@ -90,7 +87,7 @@ async function checkInfrastructure(): Promise<InfraStatus> {
   const l1RpcUrl = `http://${host}:${L1_PORT}`
   const l2RpcUrl = `http://${host}:${L2_PORT}`
 
-  const [l1Rpc, l2Rpc, dws, docker] = await Promise.all([
+  const [_l1Rpc, l2Rpc, dws, docker] = await Promise.all([
     isRpcAvailable(l1RpcUrl),
     isRpcAvailable(l2RpcUrl),
     isServiceAvailable(`${DWS_URL}/health`, 2000),
@@ -201,16 +198,40 @@ export async function setup(): Promise<void> {
     console.log('Attempting to start jeju dev --minimal...')
     const started = await startJejuDev(rootDir)
     if (!started) {
-      console.error('❌ Failed to auto-start infrastructure')
       console.error('')
-      console.error('Start manually with: bun run jeju dev --minimal')
+      console.error('╔══════════════════════════════════════════════════════════════╗')
+      console.error('║  ❌ TESTS CANNOT RUN: Jeju CLI infrastructure required       ║')
+      console.error('╠══════════════════════════════════════════════════════════════╣')
+      console.error('║  Please start the infrastructure first:                      ║')
+      console.error('║                                                              ║')
+      console.error('║    bun run jeju dev --minimal                                ║')
+      console.error('║                                                              ║')
+      console.error('║  Or run tests through the CLI:                               ║')
+      console.error('║                                                              ║')
+      console.error('║    bun run jeju test --mode integration                      ║')
+      console.error('╚══════════════════════════════════════════════════════════════╝')
       console.error('')
-      // Don't throw - let tests skip gracefully
+      throw new Error('Jeju CLI infrastructure required. Run: bun run jeju dev --minimal')
     }
   }
 
   // Re-check and set environment variables
   status = await checkInfrastructure()
+
+  // Final check - infrastructure MUST be running
+  if (!status.rpc) {
+    console.error('')
+    console.error('╔══════════════════════════════════════════════════════════════╗')
+    console.error('║  ❌ TESTS CANNOT RUN: Localnet RPC not available             ║')
+    console.error('╠══════════════════════════════════════════════════════════════╣')
+    console.error('║  The Jeju CLI infrastructure is required to run tests.       ║')
+    console.error('║                                                              ║')
+    console.error('║  Start with: bun run jeju dev --minimal                      ║')
+    console.error('╚══════════════════════════════════════════════════════════════╝')
+    console.error('')
+    throw new Error('Localnet RPC not available. Run: bun run jeju dev --minimal')
+  }
+
   setEnvVars(status)
 
   // Create test output directory

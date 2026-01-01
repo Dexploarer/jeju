@@ -9,31 +9,29 @@
  * - MultiSend encoding validation
  */
 
-import { describe, it, expect, beforeEach, mock, afterEach } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import type { Address, Hex } from 'viem'
-import {
-  AutocratSafeService,
-  createSafeService,
-} from '../../api/safe-service'
-import {
-  SafeOperation,
-  SafeErrorCode,
-  SafeError,
-} from '../../lib/safe-types'
+import { AutocratSafeService, createSafeService } from '../../api/safe-service'
+import { SafeError, SafeErrorCode, SafeOperation } from '../../lib/safe-types'
 
 // Test addresses
-const MOCK_SAFE_ADDRESS = '0x1234567890123456789012345678901234567890' as Address
+const MOCK_SAFE_ADDRESS =
+  '0x1234567890123456789012345678901234567890' as Address
 const MOCK_OWNER_1 = '0xaaaa567890123456789012345678901234567890' as Address
 const MOCK_OWNER_2 = '0xbbbb567890123456789012345678901234567890' as Address
 const MOCK_OWNER_3 = '0xcccc567890123456789012345678901234567890' as Address
-const MOCK_TX_HASH = '0x1111111111111111111111111111111111111111111111111111111111111111' as Hex
+const MOCK_TX_HASH =
+  '0x1111111111111111111111111111111111111111111111111111111111111111' as Hex
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as Address
 
 // Mock fetch for API calls
 const originalFetch = globalThis.fetch
 let mockFetchResponses: Map<string, Response>
 
-function mockFetch(url: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+function mockFetch(
+  url: RequestInfo | URL,
+  _init?: RequestInit,
+): Promise<Response> {
   const urlStr = url.toString()
 
   // Check for matching mock
@@ -123,7 +121,8 @@ describe('AutocratSafeService', () => {
         new Response(JSON.stringify(mockResponse), { status: 200 }),
       )
 
-      const transactions = await service.getPendingTransactions(MOCK_SAFE_ADDRESS)
+      const transactions =
+        await service.getPendingTransactions(MOCK_SAFE_ADDRESS)
 
       expect(transactions).toHaveLength(1)
       expect(transactions[0].nonce).toBe(5)
@@ -145,7 +144,11 @@ describe('AutocratSafeService', () => {
   })
 
   describe('getTransactionStatus', () => {
-    const createMockTxResponse = (confirmations: number, required: number, isExecuted: boolean) => ({
+    const createMockTxResponse = (
+      confirmations: number,
+      required: number,
+      isExecuted: boolean,
+    ) => ({
       safe: MOCK_SAFE_ADDRESS,
       to: MOCK_OWNER_1,
       value: '0',
@@ -174,7 +177,9 @@ describe('AutocratSafeService', () => {
     it('should return pending status for 0 confirmations', async () => {
       mockFetchResponses.set(
         MOCK_TX_HASH,
-        new Response(JSON.stringify(createMockTxResponse(0, 2, false)), { status: 200 }),
+        new Response(JSON.stringify(createMockTxResponse(0, 2, false)), {
+          status: 200,
+        }),
       )
 
       const status = await service.getTransactionStatus(MOCK_TX_HASH)
@@ -188,7 +193,9 @@ describe('AutocratSafeService', () => {
     it('should return awaiting_confirmations status', async () => {
       mockFetchResponses.set(
         MOCK_TX_HASH,
-        new Response(JSON.stringify(createMockTxResponse(1, 2, false)), { status: 200 }),
+        new Response(JSON.stringify(createMockTxResponse(1, 2, false)), {
+          status: 200,
+        }),
       )
 
       const status = await service.getTransactionStatus(MOCK_TX_HASH)
@@ -201,7 +208,9 @@ describe('AutocratSafeService', () => {
     it('should return ready_to_execute status', async () => {
       mockFetchResponses.set(
         MOCK_TX_HASH,
-        new Response(JSON.stringify(createMockTxResponse(2, 2, false)), { status: 200 }),
+        new Response(JSON.stringify(createMockTxResponse(2, 2, false)), {
+          status: 200,
+        }),
       )
 
       const status = await service.getTransactionStatus(MOCK_TX_HASH)
@@ -214,7 +223,9 @@ describe('AutocratSafeService', () => {
     it('should return executed status', async () => {
       mockFetchResponses.set(
         MOCK_TX_HASH,
-        new Response(JSON.stringify(createMockTxResponse(2, 2, true)), { status: 200 }),
+        new Response(JSON.stringify(createMockTxResponse(2, 2, true)), {
+          status: 200,
+        }),
       )
 
       const status = await service.getTransactionStatus(MOCK_TX_HASH)
@@ -229,21 +240,40 @@ describe('AutocratSafeService', () => {
         new Response('Not found', { status: 404 }),
       )
 
-      await expect(
-        service.getTransactionStatus(MOCK_TX_HASH),
-      ).rejects.toThrow('Transaction not found')
+      await expect(service.getTransactionStatus(MOCK_TX_HASH)).rejects.toThrow(
+        'Transaction not found',
+      )
     })
   })
 
   describe('buildSignatures', () => {
     it('should sort signatures by owner address', () => {
       // Access private method via any cast for testing
-      const serviceAny = service as { buildSignatures: (confirmations: Array<{ owner: Address; signature: Hex }>) => Hex }
+      const serviceAny = service as {
+        buildSignatures: (
+          confirmations: Array<{ owner: Address; signature: Hex }>,
+        ) => Hex
+      }
 
       const confirmations = [
-        { owner: MOCK_OWNER_3, signature: '0xcccc1234' as Hex, submissionDate: '', signatureType: 'EOA' as const },
-        { owner: MOCK_OWNER_1, signature: '0xaaaa1234' as Hex, submissionDate: '', signatureType: 'EOA' as const },
-        { owner: MOCK_OWNER_2, signature: '0xbbbb1234' as Hex, submissionDate: '', signatureType: 'EOA' as const },
+        {
+          owner: MOCK_OWNER_3,
+          signature: '0xcccc1234' as Hex,
+          submissionDate: '',
+          signatureType: 'EOA' as const,
+        },
+        {
+          owner: MOCK_OWNER_1,
+          signature: '0xaaaa1234' as Hex,
+          submissionDate: '',
+          signatureType: 'EOA' as const,
+        },
+        {
+          owner: MOCK_OWNER_2,
+          signature: '0xbbbb1234' as Hex,
+          submissionDate: '',
+          signatureType: 'EOA' as const,
+        },
       ]
 
       const packed = serviceAny.buildSignatures(confirmations)
@@ -253,10 +283,19 @@ describe('AutocratSafeService', () => {
     })
 
     it('should handle single signature', () => {
-      const serviceAny = service as { buildSignatures: (confirmations: Array<{ owner: Address; signature: Hex }>) => Hex }
+      const serviceAny = service as {
+        buildSignatures: (
+          confirmations: Array<{ owner: Address; signature: Hex }>,
+        ) => Hex
+      }
 
       const confirmations = [
-        { owner: MOCK_OWNER_1, signature: '0xabcdef' as Hex, submissionDate: '', signatureType: 'EOA' as const },
+        {
+          owner: MOCK_OWNER_1,
+          signature: '0xabcdef' as Hex,
+          submissionDate: '',
+          signatureType: 'EOA' as const,
+        },
       ]
 
       const packed = serviceAny.buildSignatures(confirmations)
@@ -266,7 +305,16 @@ describe('AutocratSafeService', () => {
 
   describe('encodeMultiSend', () => {
     it('should encode single ETH transfer correctly', () => {
-      const serviceAny = service as { encodeMultiSend: (txs: Array<{ to: Address; value: bigint; data: Hex; operation: number }>) => Hex }
+      const serviceAny = service as {
+        encodeMultiSend: (
+          txs: Array<{
+            to: Address
+            value: bigint
+            data: Hex
+            operation: number
+          }>,
+        ) => Hex
+      }
 
       const transactions = [
         {
@@ -286,10 +334,20 @@ describe('AutocratSafeService', () => {
     })
 
     it('should encode ERC20 transfer correctly', () => {
-      const serviceAny = service as { encodeMultiSend: (txs: Array<{ to: Address; value: bigint; data: Hex; operation: number }>) => Hex }
+      const serviceAny = service as {
+        encodeMultiSend: (
+          txs: Array<{
+            to: Address
+            value: bigint
+            data: Hex
+            operation: number
+          }>,
+        ) => Hex
+      }
 
       // ERC20 transfer(to, amount) calldata
-      const transferData = '0xa9059cbb000000000000000000000000bbbb56789012345678901234567890123456789000000000000000000000000000000000000000000000000000000000000003e8' as Hex
+      const transferData =
+        '0xa9059cbb000000000000000000000000bbbb56789012345678901234567890123456789000000000000000000000000000000000000000000000000000000000000003e8' as Hex
 
       const transactions = [
         {
@@ -308,7 +366,16 @@ describe('AutocratSafeService', () => {
     })
 
     it('should encode multiple transactions', () => {
-      const serviceAny = service as { encodeMultiSend: (txs: Array<{ to: Address; value: bigint; data: Hex; operation: number }>) => Hex }
+      const serviceAny = service as {
+        encodeMultiSend: (
+          txs: Array<{
+            to: Address
+            value: bigint
+            data: Hex
+            operation: number
+          }>,
+        ) => Hex
+      }
 
       const transactions = [
         {
@@ -334,7 +401,16 @@ describe('AutocratSafeService', () => {
 
     // Known-good encoding test from Safe documentation
     it('should match known-good MultiSend encoding format', () => {
-      const serviceAny = service as { encodeMultiSend: (txs: Array<{ to: Address; value: bigint; data: Hex; operation: number }>) => Hex }
+      const serviceAny = service as {
+        encodeMultiSend: (
+          txs: Array<{
+            to: Address
+            value: bigint
+            data: Hex
+            operation: number
+          }>,
+        ) => Hex
+      }
 
       // Simple ETH transfer
       const transactions = [
@@ -360,7 +436,7 @@ describe('AutocratSafeService', () => {
       const dataWithoutSelector = encoded.slice(10)
       // Offset (32 bytes = 64 hex chars) should point to data
       const offset = dataWithoutSelector.slice(0, 64)
-      expect(offset).toBe('0'.repeat(62) + '20') // offset = 32 = 0x20
+      expect(offset).toBe(`${'0'.repeat(62)}20`) // offset = 32 = 0x20
     })
   })
 
@@ -374,7 +450,10 @@ describe('AutocratSafeService', () => {
 
       expect(error.message).toBe('Signer is not an owner')
       expect(error.code).toBe('NOT_AN_OWNER')
-      expect(error.details).toEqual({ signer: MOCK_OWNER_1, safe: MOCK_SAFE_ADDRESS })
+      expect(error.details).toEqual({
+        signer: MOCK_OWNER_1,
+        safe: MOCK_SAFE_ADDRESS,
+      })
       expect(error.name).toBe('SafeError')
     })
 
@@ -439,12 +518,12 @@ describe('AutocratSafeService', () => {
       const tx = await service.getTransaction(MOCK_TX_HASH)
 
       expect(tx).not.toBeNull()
-      expect(tx!.value).toBe(123456789n)
-      expect(tx!.safeTxGas).toBe(21000n)
-      expect(tx!.gasPrice).toBe(1000000000n)
-      expect(tx!.operation).toBe(1)
-      expect(tx!.nonce).toBe(42)
-      expect(tx!.data).toBe('0xabcdef')
+      expect(tx?.value).toBe(123456789n)
+      expect(tx?.safeTxGas).toBe(21000n)
+      expect(tx?.gasPrice).toBe(1000000000n)
+      expect(tx?.operation).toBe(1)
+      expect(tx?.nonce).toBe(42)
+      expect(tx?.data).toBe('0xabcdef')
     })
 
     it('should handle null data as 0x', async () => {
@@ -474,7 +553,7 @@ describe('AutocratSafeService', () => {
 
       const tx = await service.getTransaction(MOCK_TX_HASH)
 
-      expect(tx!.data).toBe('0x')
+      expect(tx?.data).toBe('0x')
     })
   })
 })
