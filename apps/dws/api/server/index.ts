@@ -101,6 +101,7 @@ import {
   getDeployedApp,
   getDeployedApps,
   initializeAppRouter,
+  proxyToBackend,
 } from './routes/app-router'
 import { createCDNRouter } from './routes/cdn'
 import { createCIRouter } from './routes/ci'
@@ -1458,13 +1459,13 @@ if (import.meta.main) {
           console.log(`[Bun.serve] Routing to deployed app: ${appName}`)
           // Route to backend for API paths
           const apiPaths = deployedApp.apiPaths ?? []
+          console.log(`[Bun.serve] apiPaths: ${JSON.stringify(apiPaths)}, pathname: ${url.pathname}, backendEndpoint: ${deployedApp.backendEndpoint}, backendWorkerId: ${deployedApp.backendWorkerId}`)
           const isApiRequest = apiPaths.length > 0 && apiPaths.some(
             (path) =>
               url.pathname === path || url.pathname.startsWith(`${path}/`),
           )
+          console.log(`[Bun.serve] isApiRequest: ${isApiRequest}`)
           if (isApiRequest && (deployedApp.backendEndpoint || deployedApp.backendWorkerId)) {
-            // Use the app-router's proxyToBackend which handles worker deployment from CID
-            const { proxyToBackend } = await import('./routes/app-router.js')
             console.log(`[Bun.serve] Proxying API to backend via app-router: ${url.pathname}`)
             return proxyToBackend(req, deployedApp, url.pathname)
           }

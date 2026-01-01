@@ -513,7 +513,7 @@ export function createComputeRouter() {
       )
 
       // Training runs
-      .get('/training/runs', async ({ query, set }) => {
+      .get('/training/runs', async ({ query }) => {
         const status = query.status as
           | 'active'
           | 'completed'
