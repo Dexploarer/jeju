@@ -606,7 +606,9 @@ export async function ensureWorkerDeployed(
 
   // Deploy the worker from CID
   const host = getLocalhostHost()
-  console.log(`[AppRouter] Deploying worker for ${appName} from CID: ${workerId}`)
+  console.log(
+    `[AppRouter] Deploying worker for ${appName} from CID: ${workerId}`,
+  )
 
   const response = await fetch(`http://${host}:4030/workers`, {
     method: 'POST',

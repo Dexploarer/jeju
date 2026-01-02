@@ -13,7 +13,6 @@ import {
   type Address,
   createPublicClient,
   createWalletClient,
-  decodeEventLog,
   type Hex,
   http,
   parseAbiItem,
@@ -199,13 +198,14 @@ class MessageRelayer {
 
             this.processedMessages.add(messageKey)
 
-            const { target, sender, message, messageNonce, gasLimit } = log.args as {
-              target: Address
-              sender: Address
-              message: Hex
-              messageNonce: bigint
-              gasLimit: bigint
-            }
+            const { target, sender, message, messageNonce, gasLimit } =
+              log.args as {
+                target: Address
+                sender: Address
+                message: Hex
+                messageNonce: bigint
+                gasLimit: bigint
+              }
 
             console.log(`\n[${config.name}] Message detected:`)
             console.log(`  From: ${sender}`)
@@ -223,7 +223,9 @@ class MessageRelayer {
                 gas: gasLimit > 0n ? gasLimit : 500000n,
               })
 
-              const receipt = await targetClient.waitForTransactionReceipt({ hash })
+              const receipt = await targetClient.waitForTransactionReceipt({
+                hash,
+              })
               console.log(
                 `  ✅ Relayed: ${hash} (${receipt.status === 'success' ? 'success' : 'failed'})`,
               )
@@ -265,5 +267,3 @@ relayer.start().catch((error) => {
   console.error('Relay service failed:', error)
   process.exit(1)
 })
-
-

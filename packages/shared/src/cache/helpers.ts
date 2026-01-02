@@ -9,8 +9,8 @@
  * - Token price caching (cachedTokenPrice)
  */
 
-import { getCacheClient, type CacheClient } from '@jejunetwork/cache'
-import { createHash } from 'crypto'
+import { createHash } from 'node:crypto'
+import { type CacheClient, getCacheClient } from '@jejunetwork/cache'
 
 /**
  * Cache configuration for different data types
@@ -297,7 +297,9 @@ export async function getCachedTokenPrices(
 
   // Check cache for each symbol
   for (const symbol of symbols) {
-    const cached = await cache.get(`price:${symbol.toUpperCase()}`).catch(() => null)
+    const cached = await cache
+      .get(`price:${symbol.toUpperCase()}`)
+      .catch(() => null)
     if (cached !== null) {
       result.set(symbol, parseFloat(cached))
     } else {
@@ -310,7 +312,13 @@ export async function getCachedTokenPrices(
     const fetched = await fetcher(missingSymbols)
     for (const [symbol, price] of fetched) {
       result.set(symbol, price)
-      cache.set(`price:${symbol.toUpperCase()}`, price.toString(), CacheTTL.TOKEN_PRICE).catch(() => {})
+      cache
+        .set(
+          `price:${symbol.toUpperCase()}`,
+          price.toString(),
+          CacheTTL.TOKEN_PRICE,
+        )
+        .catch(() => {})
     }
   }
 
@@ -445,5 +453,3 @@ export function resetSharedCaches(): void {
   priceCache = null
   tokenInfoCache = null
 }
-
-

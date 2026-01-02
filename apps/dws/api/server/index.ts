@@ -1168,16 +1168,17 @@ app.get('/*', async ({ path, set }) => {
     '/_internal/',
     '/.well-known/',
   ]
-  
-  if (apiPrefixes.some(prefix => path.startsWith(prefix))) {
+
+  if (apiPrefixes.some((prefix) => path.startsWith(prefix))) {
     set.status = 404
     return { error: 'NOT_FOUND' }
   }
-  
+
   // Serve index.html for frontend routes (SPA fallback)
-  const decentralizedResponse = await decentralized.frontend.serveAsset('index.html')
+  const decentralizedResponse =
+    await decentralized.frontend.serveAsset('index.html')
   if (decentralizedResponse) return decentralizedResponse
-  
+
   const file = Bun.file('./dist/index.html')
   if (await file.exists()) {
     const html = await file.text()
@@ -1188,7 +1189,7 @@ app.get('/*', async ({ path, set }) => {
       },
     })
   }
-  
+
   set.status = 404
   return { error: 'Frontend not available' }
 })

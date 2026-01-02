@@ -54,9 +54,9 @@ const DEV_MODE = isDevelopmentEnv()
 
 // Cache TTLs in seconds
 const CACHE_TTL = {
-  TOKEN_INFO: 60,   // 1 minute
-  TOKEN_PRICE: 30,  // 30 seconds
-  BALANCES: 15,     // 15 seconds
+  TOKEN_INFO: 60, // 1 minute
+  TOKEN_PRICE: 30, // 30 seconds
+  BALANCES: 15, // 15 seconds
 } as const
 
 // Cache client for Otto trading data
@@ -176,8 +176,10 @@ export class TradingService {
 
     // Validate and cache token data
     const validatedToken = expectValid(TokenInfoSchema, token, 'token info')
-    cache.set(cacheKey, JSON.stringify(validatedToken), CACHE_TTL.TOKEN_INFO).catch(() => {})
-    
+    cache
+      .set(cacheKey, JSON.stringify(validatedToken), CACHE_TTL.TOKEN_INFO)
+      .catch(() => {})
+
     return validatedToken
   }
 
@@ -219,11 +221,13 @@ export class TradingService {
 
     const token = await this.getTokenInfo(addressOrSymbol, chainId)
     const price = token?.price ?? null
-    
+
     if (price !== null) {
-      cache.set(cacheKey, price.toString(), CACHE_TTL.TOKEN_PRICE).catch(() => {})
+      cache
+        .set(cacheKey, price.toString(), CACHE_TTL.TOKEN_PRICE)
+        .catch(() => {})
     }
-    
+
     return price
   }
 
@@ -304,7 +308,9 @@ export class TradingService {
 
     // Cache the balances
     if (balances.length > 0) {
-      cache.set(cacheKey, JSON.stringify(balances), CACHE_TTL.BALANCES).catch(() => {})
+      cache
+        .set(cacheKey, JSON.stringify(balances), CACHE_TTL.BALANCES)
+        .catch(() => {})
     }
 
     return balances

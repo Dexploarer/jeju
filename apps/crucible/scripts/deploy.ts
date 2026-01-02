@@ -128,14 +128,18 @@ async function uploadToIPFS(
     })
 
     if (!response) {
-      console.log(`   Retry ${attempt}/${MAX_UPLOAD_RETRIES} for ${name}: Network error`)
+      console.log(
+        `   Retry ${attempt}/${MAX_UPLOAD_RETRIES} for ${name}: Network error`,
+      )
       await new Promise((r) => setTimeout(r, RETRY_DELAY_MS))
       continue
     }
 
     if (!response.ok) {
       lastError = new Error(await response.text())
-      console.log(`   Retry ${attempt}/${MAX_UPLOAD_RETRIES} for ${name}: ${lastError.message}`)
+      console.log(
+        `   Retry ${attempt}/${MAX_UPLOAD_RETRIES} for ${name}: ${lastError.message}`,
+      )
       await new Promise((r) => setTimeout(r, RETRY_DELAY_MS))
       continue
     }
@@ -153,7 +157,9 @@ async function uploadToIPFS(
     }
   }
 
-  throw new Error(`Upload failed after ${MAX_UPLOAD_RETRIES} attempts: ${lastError?.message}`)
+  throw new Error(
+    `Upload failed after ${MAX_UPLOAD_RETRIES} attempts: ${lastError?.message}`,
+  )
 }
 
 async function uploadDirectory(
@@ -327,7 +333,7 @@ async function setupCDN(
 
 /**
  * Register app with DWS app router
- * 
+ *
  * This is the key step for decentralized routing - registers the app's
  * staticFiles map with the app router so SPA routing works correctly.
  */
@@ -362,7 +368,9 @@ async function registerWithAppRouter(
     enabled: true,
   }
 
-  console.log(`   Registering with staticFiles: ${Object.keys(staticFiles).length} paths`)
+  console.log(
+    `   Registering with staticFiles: ${Object.keys(staticFiles).length} paths`,
+  )
 
   const response = await fetch(`${config.dwsUrl}/apps/deployed`, {
     method: 'POST',
@@ -376,10 +384,12 @@ async function registerWithAppRouter(
   }
 
   const rawJson: unknown = await response.json()
-  const result = z.object({
-    success: z.boolean(),
-    warning: z.string().optional(),
-  }).safeParse(rawJson)
+  const result = z
+    .object({
+      success: z.boolean(),
+      warning: z.string().optional(),
+    })
+    .safeParse(rawJson)
 
   if (!result.success) {
     throw new Error(`Invalid registration response: ${result.error.message}`)
