@@ -25,7 +25,9 @@ jobs:
       - name: Install dependencies
         run: |
           # Remove vendor from workspaces (private repos not available in CI)
+          cat package.json | jq '.workspaces'
           jq '.workspaces = [.workspaces[] | select(. != "vendor/*")]' package.json > package.tmp && mv package.tmp package.json
+          cat package.json | jq '.workspaces'
           bun install
 
       - name: Run security checks
