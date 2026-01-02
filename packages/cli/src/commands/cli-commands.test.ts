@@ -63,17 +63,28 @@ async function runCLI(
     },
   })
 
+  // Start consuming streams immediately (before waiting for exit)
+  const stdoutPromise = proc.stdout
+    ? new Response(proc.stdout).text()
+    : Promise.resolve('')
+  const stderrPromise = proc.stderr
+    ? new Response(proc.stderr).text()
+    : Promise.resolve('')
+
   // Set up timeout
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => {
+  let timeoutId: ReturnType<typeof setTimeout>
+  const timeoutPromise = new Promise<number>((_, reject) => {
+    timeoutId = setTimeout(() => {
       proc.kill()
       reject(new Error(`CLI timed out after ${timeout}ms`))
     }, timeout)
   })
 
   const exitCode = await Promise.race([proc.exited, timeoutPromise])
-  const stdout = proc.stdout ? await new Response(proc.stdout).text() : ''
-  const stderr = proc.stderr ? await new Response(proc.stderr).text() : ''
+  clearTimeout(timeoutId)
+
+  const stdout = await stdoutPromise
+  const stderr = await stderrPromise
 
   return { stdout, stderr, exitCode }
 }

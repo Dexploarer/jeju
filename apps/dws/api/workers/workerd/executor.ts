@@ -607,45 +607,6 @@ echo $!
     return data.length >= 2 && data[0] === 0x1f && data[1] === 0x8b
   }
 
-  private async extractTarball(data: Buffer, destDir: string): Promise<void> {
-    const tarPath = `${destDir}/code.tar.gz`
-    const execUrl =
-      this.config.execUrl ??
-      `http://${getLocalhostHost()}:${CORE_PORTS.DWS_API.get()}/exec`
-
-    // Write tarball via DWS exec API
-    const writeResult = await fetch(execUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        command: ['sh', '-c', `cat > "${tarPath}"`],
-        stdin: Buffer.from(data).toString('base64'),
-      }),
-    })
-    if (!writeResult.ok) {
-      throw new Error(`Failed to write tarball: ${writeResult.status}`)
-    }
-
-    // Extract via DWS exec API
-    const extractResult = await fetch(execUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        command: ['tar', '-xzf', tarPath, '-C', destDir],
-        cwd: destDir,
-      }),
-    })
-    if (!extractResult.ok) {
-      throw new Error(`Failed to extract tarball: ${extractResult.status}`)
-    }
-    const extractData = (await extractResult.json()) as { exitCode: number }
-    if (extractData.exitCode !== 0) {
-      throw new Error(
-        `tar extraction failed with exit code ${extractData.exitCode}`,
-      )
-    }
-  }
-
   private recordMetric(
     workerId: string,
     durationMs: number,

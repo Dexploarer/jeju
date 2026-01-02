@@ -7,7 +7,7 @@
     "skipLibCheck": true,
     "types": ["bun"]
   },
-  "include": ["api/**/*", "web/**/*", "lib/**/*", "src/**/*"],
+  "include": ["api/**/*", "lib/**/*", "src/**/*"],
   "exclude": [
     "node_modules",
     "dist",
@@ -20,6 +20,7 @@
     "src/email",
     "src/email/**",
     "api/dns/**",
-    "api/workers/workerd/**"
+    "api/workers/workerd/**",
+    "web/**/*"
   ]
 }

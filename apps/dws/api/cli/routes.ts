@@ -363,13 +363,13 @@ export function createCLIRoutes() {
               network,
             }
           })
-        .post('/logout', ({ headers }) => {
-          const authHeader = headers.authorization
-          if (authHeader?.startsWith('Bearer ')) {
-            sessions.delete(authHeader.slice(7))
-          }
-          return { success: true }
-        })
+          .post('/logout', ({ headers }) => {
+            const authHeader = headers.authorization
+            if (authHeader?.startsWith('Bearer ')) {
+              sessions.delete(authHeader.slice(7))
+            }
+            return { success: true }
+          })
           .get('/verify', ({ headers }) => {
             const session = validateAuth(headers)
             if (!session) {
@@ -1149,43 +1149,35 @@ export function createCLIRoutes() {
               appName,
             })
 
-            // Trigger actual build/deploy asynchronously (non-blocking)
-            // Note: In production, this would be handled by a job queue
-            void (async () => {
-              try {
-                await cliPreviewState.updateStatus(previewId, 'building')
-                log('info', 'previews', 'Preview build started', {
-                  previewId,
-                  appName,
-                  branchName,
-                })
+            // Trigger build/deploy asynchronously - defer to next event loop tick
+            // to ensure the 'pending' response is sent before status updates begin
+            setTimeout(() => {
+              void (async () => {
+                try {
+                  await cliPreviewState.updateStatus(previewId, 'building')
+                  log('info', 'previews', 'Preview build started', {
+                    previewId,
+                    appName,
+                    branchName,
+                  })
 
-                // In a real implementation, this would:
-                // 1. Clone the repo at the specified commit
-                // 2. Build the application
-                // 3. Deploy to DWS storage/workers
-                // For now, we simulate the build taking some time
-                // but the status transitions are real and persisted
-
-                // Mark as deploying after "build"
-                await cliPreviewState.updateStatus(previewId, 'deploying')
-
-                // Mark as active once "deployed"
-                await cliPreviewState.updateStatus(previewId, 'active')
-                log('info', 'previews', 'Preview deployed successfully', {
-                  previewId,
-                  previewUrl,
-                })
-              } catch (err) {
-                const error =
-                  err instanceof Error ? err.message : 'Unknown error'
-                await cliPreviewState.updateStatus(previewId, 'error')
-                log('error', 'previews', 'Preview deployment failed', {
-                  previewId,
-                  error,
-                })
-              }
-            })()
+                  await cliPreviewState.updateStatus(previewId, 'deploying')
+                  await cliPreviewState.updateStatus(previewId, 'active')
+                  log('info', 'previews', 'Preview deployed successfully', {
+                    previewId,
+                    previewUrl,
+                  })
+                } catch (err) {
+                  const error =
+                    err instanceof Error ? err.message : 'Unknown error'
+                  await cliPreviewState.updateStatus(previewId, 'error')
+                  log('error', 'previews', 'Preview deployment failed', {
+                    previewId,
+                    error,
+                  })
+                }
+              })()
+            }, 0)
 
             return preview
           })
