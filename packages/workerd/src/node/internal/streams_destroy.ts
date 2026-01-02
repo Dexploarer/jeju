@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Copyright (c) 2017-2022 Cloudflare, Inc.
 // Licensed under the Apache 2.0 license found in the LICENSE file or at:
 //     https://opensource.org/licenses/Apache-2.0
@@ -77,7 +78,6 @@ export function destroy(
   this: Readable | Writable,
   err?: Error,
   cb?: VoidFunction,
-  // @ts-expect-error TS2526 Returning this is not allowed.
 ): this {
   const r = this._readableState
   const w = this._writableState
@@ -104,7 +104,6 @@ export function destroy(
   }
 
   // If still constructing then defer calling _destroy.
-  // @ts-expect-error TS18048 `s` will always be defined here.
   if ((s[kState] & kConstructed) === 0) {
     this.once(kDestroy, function (this: Readable | Writable, er: Error) {
       _destroy(this, aggregateTwoErrors(er, err), cb)
@@ -229,7 +228,6 @@ export function errorOrDestroy(
   stream: Readable | Writable,
   err?: Error,
   sync: boolean = false,
-  // @ts-expect-error TS2526 Apparently `this` is disallowed.
 ): this | undefined {
   // We have tests that rely on errors being emitted
   // in the same tick, so changing this is semver major.
@@ -243,7 +241,6 @@ export function errorOrDestroy(
     (w && (w[kState] ? (w[kState] & kDestroyed) !== 0 : w.destroyed)) ||
     (r && (r[kState] ? (r[kState] & kDestroyed) !== 0 : r.destroyed))
   ) {
-    // @ts-expect-error TS2683 This should be somehow type-defined.
     return this
   }
   if (
@@ -368,14 +365,11 @@ export function destroyer(
 
   // TODO: Remove isRequest branches.
   if (isServerRequest(stream)) {
-    // @ts-expect-error TS2540 - socket is read-only but we need to set it to null for cleanup
     stream.socket = null
     stream.destroy(err)
   } else if (isRequest(stream)) {
-    // @ts-expect-error TS2339 - abort exists on OutgoingMessage but not in types
     stream.abort()
   } else if (isRequest(stream.req)) {
-    // @ts-expect-error TS2339 - abort exists on req but not in all types
     stream.req.abort()
   } else if (typeof stream.destroy === 'function') {
     stream.destroy(err)

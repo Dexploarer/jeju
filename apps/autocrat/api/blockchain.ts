@@ -6,17 +6,8 @@ import {
   type PublicClient,
   isAddress as viemIsAddress,
 } from 'viem'
-import { base, baseSepolia, localhost } from 'viem/chains'
 
-function inferChainFromRpcUrl(rpcUrl: string) {
-  if (rpcUrl.includes('base-sepolia') || rpcUrl.includes('84532')) {
-    return baseSepolia
-  }
-  if (rpcUrl.includes('base') && !rpcUrl.includes('localhost')) {
-    return base
-  }
-  return localhost
-}
+import { inferChainFromRpcUrl } from './chains'
 
 import {
   asTuple,

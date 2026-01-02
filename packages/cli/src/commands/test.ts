@@ -354,6 +354,7 @@ testCommand
     for (const pkg of pkgs) {
       console.log(`  ${pkg.padEnd(14)} @jejunetwork/${pkg}`)
     }
+    process.exit(0)
   })
 
 testCommand

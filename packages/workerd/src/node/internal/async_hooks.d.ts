@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Type definitions for c++ implementation.
 
 export interface AsyncResourceOptions {

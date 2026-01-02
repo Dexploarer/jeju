@@ -347,6 +347,8 @@ export function createIndexerRouter() {
 
   return (
     new Elysia({ prefix: '/indexer' })
+      // Root - redirect to GraphQL playground
+      .get('/', () => Response.redirect('/indexer/graphql', 302))
       // Health check
       .get('/health', () => {
         const endpoints = Array.from(indexerEndpoints.entries()).map(
@@ -442,6 +444,46 @@ export function createIndexerRouter() {
             healthy: endpoint.healthy,
           },
         }
+      })
+
+      // GraphQL playground - serve HTML interface
+      .get('/graphql', async () => {
+        // Serve embedded GraphiQL playground
+        const playgroundHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Indexer GraphQL Playground</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/graphiql@3/graphiql.min.js" crossorigin></script>
+  <link href="https://unpkg.com/graphiql@3/graphiql.min.css" rel="stylesheet" />
+  <style>
+    body { margin: 0; height: 100vh; }
+    #graphiql { height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="graphiql"></div>
+  <script>
+    const fetcher = GraphiQL.createFetcher({ url: '/indexer/graphql' });
+    const defaultQuery = \`query {
+  blocks(limit: 5, orderBy: number_DESC) {
+    number
+    hash
+    timestamp
+  }
+}\`;
+    ReactDOM.createRoot(document.getElementById('graphiql')).render(
+      React.createElement(GraphiQL, { fetcher, defaultQuery })
+    );
+  </script>
+</body>
+</html>`
+        return new Response(playgroundHtml, {
+          headers: { 'Content-Type': 'text/html' },
+        })
       })
 
       // GraphQL proxy endpoint

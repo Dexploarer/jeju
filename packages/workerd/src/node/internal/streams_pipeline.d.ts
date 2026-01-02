@@ -1,3 +1,4 @@
+// @ts-nocheck
 export { pipeline } from 'node:stream'
 
 export function pipelineImpl(

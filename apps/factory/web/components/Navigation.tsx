@@ -12,7 +12,6 @@ import {
   Home,
   LayoutDashboard,
   Mail,
-  MessageSquare,
   Package,
   Play,
   Search,
@@ -40,7 +39,6 @@ type NavEntry = NavItem | NavSection
 
 const navigation: NavEntry[] = [
   { name: 'Home', href: '/', icon: Home },
-  { name: 'Feed', href: '/feed', icon: MessageSquare },
   { name: 'Messages', href: '/messages', icon: Mail },
   {
     name: 'Work',

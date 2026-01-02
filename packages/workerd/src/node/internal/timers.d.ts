@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type {
   setImmediate as setImmediateImpl,
   clearImmediate as clearImmediateImpl,

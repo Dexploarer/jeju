@@ -267,7 +267,12 @@ async function listWorkers(
   })
 
   if (!response.ok) {
-    return []
+    // For localnet, DWS may not be running
+    if (network === 'localnet') {
+      logger.warn('DWS not available - no workers to list')
+      return []
+    }
+    throw new Error(`Failed to list workers: ${response.statusText}`)
   }
 
   const data = await response.json()
@@ -291,7 +296,10 @@ async function getWorker(
   })
 
   if (!response.ok) {
-    return null
+    if (response.status === 404) {
+      return null
+    }
+    throw new Error(`Failed to get worker: ${response.statusText}`)
   }
 
   return response.json()

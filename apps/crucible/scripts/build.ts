@@ -26,10 +26,25 @@ const browserPlugin: BunPlugin = {
     build.onResolve({ filter: /^@jejunetwork\/deployment/ }, () => ({
       path: serverOnlyStub,
     }))
+    build.onResolve({ filter: /^@jejunetwork\/messaging/ }, () => ({
+      path: serverOnlyStub,
+    }))
     build.onResolve({ filter: /^ioredis/ }, () => ({ path: serverOnlyStub }))
     build.onResolve({ filter: /^elysia/ }, () => ({ path: serverOnlyStub }))
     build.onResolve({ filter: /^@elysiajs\// }, () => ({
       path: serverOnlyStub,
+    }))
+
+    // Stub auth providers that use server-side modules
+    const authProvidersStub = resolve('./web/stubs/auth-providers.ts')
+    build.onResolve({ filter: /providers\/farcaster/ }, () => ({
+      path: authProvidersStub,
+    }))
+    build.onResolve({ filter: /providers\/email/ }, () => ({
+      path: authProvidersStub,
+    }))
+    build.onResolve({ filter: /providers\/phone/ }, () => ({
+      path: authProvidersStub,
     }))
 
     // Shim pino
@@ -64,6 +79,12 @@ const browserPlugin: BunPlugin = {
     }))
     build.onResolve({ filter: /^@jejunetwork\/config$/ }, () => ({
       path: resolve('../../packages/config/index.ts'),
+    }))
+    build.onResolve({ filter: /^@jejunetwork\/auth\/react$/ }, () => ({
+      path: resolve('../../packages/auth/src/react/index.ts'),
+    }))
+    build.onResolve({ filter: /^@jejunetwork\/auth$/ }, () => ({
+      path: resolve('../../packages/auth/src/index.ts'),
     }))
   },
 }
@@ -122,7 +143,8 @@ async function buildFrontend(): Promise<void> {
     entrypoints: ['./web/client.tsx'],
     outdir: WEB_DIR,
     target: 'browser',
-    splitting: true,
+    // Disabled splitting due to Bun bundler bug with @noble/curves creating duplicate exports
+    splitting: false,
     packages: 'bundle',
     minify: true,
     sourcemap: 'external',
@@ -216,8 +238,9 @@ async function buildApi(): Promise<void> {
 
   await mkdir(API_DIR, { recursive: true })
 
+  // Build the worker.ts which has the fetch handler for workerd/DWS deployment
   const result = await Bun.build({
-    entrypoints: ['./api/index.ts'],
+    entrypoints: ['./api/worker.ts'],
     outdir: API_DIR,
     target: 'bun',
     minify: true,
@@ -230,7 +253,13 @@ async function buildApi(): Promise<void> {
       'node:path',
       'node:crypto',
     ],
-    define: { 'process.env.NODE_ENV': JSON.stringify('production') },
+    define: {
+      'process.env.NODE_ENV': JSON.stringify('production'),
+      'process.env.JEJU_NETWORK': JSON.stringify(network),
+    },
+    naming: {
+      entry: 'index.js', // Deploy script expects index.js
+    },
   })
 
   if (!result.success) {

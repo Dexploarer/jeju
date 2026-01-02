@@ -30,11 +30,9 @@ const IPFSUploadResponseSchema = z.object({
 })
 
 const WorkerDeployResponseSchema = z.object({
-  workerId: z.string(),
-  name: z.string(),
-  codeCid: z.string(),
-  status: z.string(),
-  runtime: z.string(),
+  functionId: z.string(),
+  version: z.number().optional(),
+  status: z.string().optional(),
 })
 
 const AppDeployResponseSchema = z.object({
@@ -227,7 +225,7 @@ async function uploadDirectory(
   return { files, totalSize, rootCid: indexCid }
 }
 
-// Deploy worker to DWS (returns null if workerd not available)
+// Deploy worker to DWS via /workers endpoint
 async function deployWorker(
   config: DeployConfig,
   codeCid: string,
@@ -235,7 +233,7 @@ async function deployWorker(
   const account = privateKeyToAccount(config.privateKey)
 
   try {
-    const response = await fetch(`${config.dwsUrl}/workerd/`, {
+    const response = await fetch(`${config.dwsUrl}/workers`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -244,14 +242,14 @@ async function deployWorker(
       body: JSON.stringify({
         name: 'example-api',
         codeCid,
-        memoryMb: 256,
-        timeoutMs: 30000,
-        cpuTimeMs: 1000,
-        compatibilityDate: new Date().toISOString().split('T')[0],
-        bindings: [
-          { name: 'APP_NAME', type: 'text', value: 'Example' },
-          { name: 'NETWORK', type: 'text', value: config.network },
-        ],
+        runtime: 'bun',
+        handler: 'worker.js:default',
+        memory: 256,
+        timeout: 30000,
+        env: {
+          APP_NAME: 'Example',
+          NETWORK: config.network,
+        },
       }),
     })
 
@@ -263,7 +261,7 @@ async function deployWorker(
     }
 
     const result = WorkerDeployResponseSchema.parse(await response.json())
-    return result.workerId
+    return result.functionId
   } catch (err) {
     console.warn(
       `[Deploy] Worker deployment failed: ${err instanceof Error ? err.message : 'Unknown error'}`,

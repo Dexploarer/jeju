@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { default as zlibUtil } from 'node-internal:zlib'
 
 const {

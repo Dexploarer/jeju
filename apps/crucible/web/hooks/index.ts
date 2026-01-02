@@ -1,3 +1,4 @@
+export { useMyAgents } from './useAgents'
 export * from './useAgents'
 export * from './useApi'
 export * from './useCharacters'

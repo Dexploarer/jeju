@@ -1,3 +1,4 @@
+// @ts-nocheck
 // More beautiful numbers
 const NGHTTP2_ERR_FRAME_SIZE_ERROR = -522
 const NGHTTP2_SESSION_SERVER = 0

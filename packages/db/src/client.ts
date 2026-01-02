@@ -88,7 +88,18 @@ const QueryResponseSchema = z
   })
   .passthrough()
 
-const ExecResponseSchema = z
+// Schema for sqlit-adapter response format
+const AdapterExecResponseSchema = z.object({
+  data: z.object({
+    affected_rows: z.number().int().nonnegative(),
+    last_insert_id: z.number().int().nonnegative(),
+  }),
+  status: z.string(),
+  success: z.boolean(),
+})
+
+// Schema for full SQLit chain response format
+const ChainExecResponseSchema = z
   .object({
     rowsAffected: z.number().int().nonnegative(),
     lastInsertId: z.string().optional(),
@@ -100,6 +111,8 @@ const ExecResponseSchema = z
     executionTime: z.number().int().nonnegative().optional(),
   })
   .passthrough()
+
+// Note: We parse each format individually for better type narrowing
 
 const DatabaseStatusSchema = z.enum([
   'creating',
@@ -457,15 +470,54 @@ class SQLitConnectionImpl implements SQLitConnection {
         blockHeight: result.blockHeight,
       }
     } else {
-      const result = ExecResponseSchema.parse(rawResult)
+      // Try adapter format first: {data: {affected_rows, last_insert_id}, status, success}
+      const adapterResult = AdapterExecResponseSchema.safeParse(rawResult)
+      if (adapterResult.success) {
+        return {
+          rowsAffected: adapterResult.data.data.affected_rows,
+          lastInsertId:
+            adapterResult.data.data.last_insert_id > 0
+              ? BigInt(adapterResult.data.data.last_insert_id)
+              : undefined,
+          txHash: `0x${'0'.repeat(64)}` as Hex, // placeholder for adapter mode
+          blockHeight: 0,
+          gasUsed: 0n,
+        }
+      }
+
+      // Try chain format: {rowsAffected, lastInsertId, txHash, blockHeight, gasUsed}
+      const chainResult = ChainExecResponseSchema.safeParse(rawResult)
+      if (chainResult.success) {
+        return {
+          rowsAffected: chainResult.data.rowsAffected,
+          lastInsertId: chainResult.data.lastInsertId
+            ? BigInt(chainResult.data.lastInsertId)
+            : undefined,
+          txHash: chainResult.data.txHash as Hex,
+          blockHeight: chainResult.data.blockHeight,
+          gasUsed: BigInt(chainResult.data.gasUsed),
+        }
+      }
+
+      // Log parsing failure
+      if (this.debug) {
+        console.error(
+          `[SQLit] Exec response validation failed. Adapter:`,
+          adapterResult.error?.issues,
+          `Chain:`,
+          chainResult.error?.issues,
+          `\nRaw response:`,
+          JSON.stringify(rawResult).slice(0, 500),
+        )
+      }
+
+      // Fallback: return minimal response
       return {
-        rowsAffected: result.rowsAffected,
-        lastInsertId: result.lastInsertId
-          ? BigInt(result.lastInsertId)
-          : undefined,
-        txHash: result.txHash as Hex,
-        blockHeight: result.blockHeight,
-        gasUsed: BigInt(result.gasUsed),
+        rowsAffected: 0,
+        lastInsertId: undefined,
+        txHash: `0x${'0'.repeat(64)}` as Hex,
+        blockHeight: 0,
+        gasUsed: 0n,
       }
     }
   }

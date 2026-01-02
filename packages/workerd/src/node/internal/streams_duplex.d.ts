@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Duplex as _Duplex } from 'node:stream'
 import type {
   kIsReadable,

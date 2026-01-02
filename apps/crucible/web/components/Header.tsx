@@ -1,7 +1,13 @@
+import { useJejuAuth } from '@jejunetwork/auth/react'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useHealth } from '../hooks'
 import { NAV_ITEMS } from '../lib/constants'
+
+function truncateAddress(address: string): string {
+  if (address.length <= 10) return address
+  return `${address.slice(0, 6)}...${address.slice(-4)}`
+}
 
 export function Header() {
   const { pathname } = useLocation()
@@ -15,6 +21,15 @@ export function Header() {
     ).matches
     return savedTheme ? savedTheme === 'dark' : prefersDark
   })
+
+  // Auth state
+  const {
+    authenticated,
+    loading: authLoading,
+    walletAddress,
+    loginWithWallet,
+    logout,
+  } = useJejuAuth()
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark)
@@ -47,6 +62,14 @@ export function Header() {
   const toggleMobileMenu = useCallback(() => {
     setShowMobileMenu((prev) => !prev)
   }, [])
+
+  const handleConnect = useCallback(async () => {
+    await loginWithWallet()
+  }, [loginWithWallet])
+
+  const handleDisconnect = useCallback(async () => {
+    await logout()
+  }, [logout])
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/'
@@ -100,6 +123,7 @@ export function Header() {
             </nav>
 
             <div className="flex items-center gap-2 md:gap-3">
+              {/* Network Status */}
               <output
                 className="hidden md:flex items-center gap-2 px-3 py-2 rounded-xl"
                 style={{ backgroundColor: 'var(--bg-secondary)' }}
@@ -116,6 +140,52 @@ export function Header() {
                 </span>
               </output>
 
+              {/* Wallet Connection */}
+              {authenticated && walletAddress ? (
+                <div className="relative group">
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl transition-all hover:bg-[var(--bg-secondary)]"
+                    style={{ backgroundColor: 'var(--bg-tertiary)' }}
+                  >
+                    <span
+                      className="w-2 h-2 rounded-full bg-green-500"
+                      aria-hidden="true"
+                    />
+                    <span
+                      className="text-sm font-mono"
+                      style={{ color: 'var(--text-primary)' }}
+                    >
+                      {truncateAddress(walletAddress)}
+                    </span>
+                  </button>
+                  <div className="absolute right-0 top-full mt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+                    <button
+                      type="button"
+                      onClick={handleDisconnect}
+                      className="px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap"
+                      style={{
+                        backgroundColor: 'var(--surface)',
+                        color: 'var(--color-error)',
+                        border: '1px solid var(--border)',
+                      }}
+                    >
+                      Disconnect
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleConnect}
+                  disabled={authLoading}
+                  className="btn-primary btn-sm hidden sm:flex"
+                >
+                  {authLoading ? 'Connecting...' : 'Connect Wallet'}
+                </button>
+              )}
+
+              {/* Theme Toggle */}
               <button
                 type="button"
                 onClick={toggleTheme}
@@ -128,6 +198,7 @@ export function Header() {
                 </span>
               </button>
 
+              {/* Mobile Menu Toggle */}
               <button
                 type="button"
                 onClick={toggleMobileMenu}
@@ -165,6 +236,7 @@ export function Header() {
         </div>
       </header>
 
+      {/* Mobile Menu Backdrop */}
       {showMobileMenu && (
         <div
           className="fixed inset-0 z-40 lg:hidden bg-black/50 backdrop-blur-sm animate-fade-in"
@@ -173,6 +245,7 @@ export function Header() {
         />
       )}
 
+      {/* Mobile Menu */}
       <nav
         className={`fixed top-0 right-0 bottom-0 w-[280px] z-50 lg:hidden transition-transform duration-300 ease-out ${
           showMobileMenu ? 'translate-x-0' : 'translate-x-full'
@@ -229,6 +302,49 @@ export function Header() {
                 {item.label}
               </Link>
             ))}
+
+            {/* Mobile Wallet Button */}
+            <div className="px-6 py-4">
+              {authenticated && walletAddress ? (
+                <div className="space-y-3">
+                  <div
+                    className="flex items-center gap-2 p-3 rounded-xl"
+                    style={{ backgroundColor: 'var(--bg-secondary)' }}
+                  >
+                    <span
+                      className="w-2 h-2 rounded-full bg-green-500"
+                      aria-hidden="true"
+                    />
+                    <span
+                      className="text-sm font-mono"
+                      style={{ color: 'var(--text-primary)' }}
+                    >
+                      {truncateAddress(walletAddress)}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleDisconnect}
+                    className="w-full px-4 py-2 rounded-xl text-sm font-medium"
+                    style={{
+                      backgroundColor: 'rgba(244, 63, 94, 0.1)',
+                      color: 'var(--color-error)',
+                    }}
+                  >
+                    Disconnect Wallet
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleConnect}
+                  disabled={authLoading}
+                  className="btn-primary w-full"
+                >
+                  {authLoading ? 'Connecting...' : 'Connect Wallet'}
+                </button>
+              )}
+            </div>
           </div>
 
           <div

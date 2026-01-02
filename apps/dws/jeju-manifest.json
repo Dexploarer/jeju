@@ -185,6 +185,26 @@
     "kms": "/kms/*"
   },
   "decentralization": {
+    "worker": {
+      "name": "dws-api",
+      "entrypoint": "api/worker.ts",
+      "runtime": "workerd",
+      "memory": 512,
+      "timeout": 30000,
+      "compatibilityDate": "2025-06-01",
+      "routes": [
+        { "pattern": "/api/*" },
+        { "pattern": "/storage/*" },
+        { "pattern": "/workers/*" },
+        { "pattern": "/workerd/*" },
+        { "pattern": "/sqlit/*" },
+        { "pattern": "/cdn/*" },
+        { "pattern": "/apps/*" },
+        { "pattern": "/a2a/*" },
+        { "pattern": "/mcp/*" },
+        { "pattern": "/health" }
+      ]
+    },
     "frontend": {
       "buildDir": "dist",
       "buildCommand": "bun run build",

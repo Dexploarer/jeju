@@ -158,7 +158,7 @@ export default function PerpsPage() {
               className="text-sm mb-4"
               style={{ color: 'var(--text-secondary)' }}
             >
-              Perpetual markets need to be deployed. Run the bootstrap script:
+              Perpetual markets will be available once deployed on this network.
             </p>
             <code
               className="block p-3 rounded-lg text-sm"
@@ -167,7 +167,7 @@ export default function PerpsPage() {
                 color: 'var(--text-primary)',
               }}
             >
-              cd apps/bazaar && bun run scripts/bootstrap-perps.ts
+              PRIVATE_KEY=... bun run apps/bazaar/scripts/deploy-testnet.ts
             </code>
           </div>
         </div>

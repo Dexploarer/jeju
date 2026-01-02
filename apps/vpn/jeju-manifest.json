@@ -70,10 +70,48 @@
       "features": ["wireguard", "socks5-proxy", "cdn-serving", "bandwidth-sharing"]
     },
     "trustModels": ["staked"],
-    "x402Support": false,
+    "x402Support": true,
     "jnsName": "vpn.jeju"
   },
+  "dws": {
+    "backend": {
+      "enabled": true,
+      "runtime": "workerd",
+      "entrypoint": "api/worker.ts",
+      "memory": 256,
+      "timeout": 30000,
+      "minInstances": 2,
+      "maxInstances": 20,
+      "teeRequired": false,
+      "regions": ["global"]
+    },
+    "cdn": {
+      "enabled": true,
+      "regions": ["global"],
+      "staticDir": "dist/web",
+      "cacheRules": [
+        { "pattern": "/assets/**", "ttl": 31536000, "immutable": true },
+        { "pattern": "/*.js", "ttl": 86400 },
+        { "pattern": "/*.css", "ttl": 86400 },
+        { "pattern": "/**/*.html", "ttl": 60, "staleWhileRevalidate": 3600 }
+      ]
+    }
+  },
   "decentralization": {
+    "worker": {
+      "name": "vpn-api",
+      "entrypoint": "api/worker.ts",
+      "runtime": "workerd",
+      "memory": 256,
+      "timeout": 30000,
+      "compatibilityDate": "2025-06-01",
+      "routes": [
+        { "pattern": "/api/*" },
+        { "pattern": "/a2a/*" },
+        { "pattern": "/mcp/*" },
+        { "pattern": "/health" }
+      ]
+    },
     "cdn": {
       "enabled": true,
       "regions": ["global"],

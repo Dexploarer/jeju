@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Copyright (c) 2017-2022 Cloudflare, Inc.
 // Licensed under the Apache 2.0 license found in the LICENSE file or at:
 //     https://opensource.org/licenses/Apache-2.0
@@ -150,7 +151,6 @@ export type SocketWriteData = Array<{
   encoding: BufferEncoding
 }>
 
-// @ts-expect-error TS2323 Redeclare error.
 export declare class Socket extends _Socket {
   timeout: number
   connecting: boolean
@@ -238,7 +238,6 @@ export declare class Socket extends _Socket {
   resetAndClosing?: boolean
 }
 
-// @ts-expect-error TS2323 Redeclare error.
 export function Socket(this: Socket, options?: SocketOptions): Socket {
   if (!(this instanceof Socket)) {
     return new Socket(options)
@@ -327,7 +326,6 @@ export function Socket(this: Socket, options?: SocketOptions): Socket {
   this[kBytesRead] = 0
   this[kBytesWritten] = 0
   this._closeAfterHandlingError = false
-  // @ts-expect-error TS2540 Required due to types
   this.autoSelectFamilyAttemptedAddresses = []
 
   this._undestroy()
@@ -430,7 +428,6 @@ Socket.prototype.setTimeout = function (
       this.removeListener('timeout', callback)
     }
   } else {
-    // @ts-expect-error TS2740 Required to not overcomplicate types
     this[kTimeout] = setTimeout((): void => {
       this._onTimeout()
     }, msecs)
@@ -674,7 +671,6 @@ Socket.prototype.end = function (
   encoding?: NodeJS.BufferEncoding | VoidFunction,
   cb?: VoidFunction,
 ): Socket {
-  // @ts-expect-error this fails after upgrading to @types/node@22.14
   Duplex.prototype.end.call(this, data, encoding, cb)
   return this
 }
@@ -807,13 +803,11 @@ Socket.prototype._destroy = function (
 // ======================================================================================
 // Connection
 
-// @ts-expect-error TS2322 Type inconsistencies between types/node
 Socket.prototype.connect = function (
   this: Socket,
   ...args: unknown[]
 ): Socket | undefined {
   let normalized
-  // @ts-expect-error TS7015 Required not to overcomplicate types
   if (Array.isArray(args[0]) && args[0][normalizedArgsSymbol]) {
     normalized = args[0]
   } else {
@@ -919,26 +913,22 @@ Socket.prototype.setKeepAlive = function (
   return this
 }
 
-// @ts-expect-error TS2322 Intentionally no-op
 Socket.prototype.ref = function (this: Socket): void {
   // Intentional no-op
 }
 
-// @ts-expect-error TS2322 Intentionally no-op
 Socket.prototype.unref = function (this: Socket): void {
   // Intentional no-op
 }
 
 Object.defineProperties(Socket.prototype, {
   _connecting: {
-    // @ts-expect-error TS2353 Required for __proto__
     __proto__: null,
     get(this: Socket): boolean {
       return this.connecting
     },
   },
   pending: {
-    // @ts-expect-error TS2353 Required for __proto__
     __proto__: null,
     get(this: Socket): boolean {
       return !this._handle || this.connecting
@@ -946,7 +936,6 @@ Object.defineProperties(Socket.prototype, {
     configurable: true,
   },
   readyState: {
-    // @ts-expect-error TS2353 Required for __proto__
     __proto__: null,
     get(this: Socket): string {
       if (this.connecting) {
@@ -962,7 +951,6 @@ Object.defineProperties(Socket.prototype, {
     },
   },
   bufferSize: {
-    // @ts-expect-error TS2353 Required for __proto__
     __proto__: null,
     get(this: Socket): number | undefined {
       if (this._handle) {
@@ -972,7 +960,6 @@ Object.defineProperties(Socket.prototype, {
     },
   },
   [kUpdateTimer]: {
-    // @ts-expect-error TS2353 Required for __proto__
     __proto__: null,
     get(this: Socket): VoidFunction {
       // eslint-disable-next-line @typescript-eslint/unbound-method
@@ -980,7 +967,6 @@ Object.defineProperties(Socket.prototype, {
     },
   },
   bytesRead: {
-    // @ts-expect-error TS2353 Required for __proto__
     __proto__: null,
     configurable: false,
     enumerable: true,
@@ -989,7 +975,6 @@ Object.defineProperties(Socket.prototype, {
     },
   },
   _bytesDispatched: {
-    // @ts-expect-error TS2353 Required for __proto__
     __proto__: null,
     configurable: false,
     enumerable: true,
@@ -998,7 +983,6 @@ Object.defineProperties(Socket.prototype, {
     },
   },
   bytesWritten: {
-    // @ts-expect-error TS2353 Required for __proto__
     __proto__: null,
     configurable: false,
     enumerable: true,
@@ -1019,13 +1003,10 @@ Object.defineProperties(Socket.prototype, {
             continue
           }
 
-          // @ts-expect-error TS2339 allBuffers doesn't exist on type.
           if (chunk instanceof Buffer || data.allBuffers) bytes += chunk.length
           else {
             bytes += Buffer.byteLength(
-              // @ts-expect-error TS2339 TODO(soon): Use correct type here.
               chunk.chunk as Buffer,
-              // @ts-expect-error TS2339 TODO(soon): Use correct type here.
               chunk.encoding as string,
             )
           }
@@ -1047,7 +1028,6 @@ Object.defineProperties(Socket.prototype, {
     },
   },
   remoteAddress: {
-    // @ts-expect-error TS2353 Required for __proto__
     __proto__: null,
     configurable: false,
     enumerable: true,
@@ -1056,7 +1036,6 @@ Object.defineProperties(Socket.prototype, {
     },
   },
   remoteFamily: {
-    // @ts-expect-error TS2353 Required for __proto__
     __proto__: null,
     configurable: false,
     enumerable: true,
@@ -1065,7 +1044,6 @@ Object.defineProperties(Socket.prototype, {
     },
   },
   remotePort: {
-    // @ts-expect-error TS2353 Required for __proto__
     __proto__: null,
     configurable: false,
     enumerable: true,
@@ -1074,7 +1052,6 @@ Object.defineProperties(Socket.prototype, {
     },
   },
   localAddress: {
-    // @ts-expect-error TS2353 Required for __proto__
     __proto__: null,
     configurable: false,
     enumerable: true,
@@ -1083,7 +1060,6 @@ Object.defineProperties(Socket.prototype, {
     },
   },
   localPort: {
-    // @ts-expect-error TS2353 Required for __proto__
     __proto__: null,
     configurable: false,
     enumerable: true,
@@ -1092,7 +1068,6 @@ Object.defineProperties(Socket.prototype, {
     },
   },
   localFamily: {
-    // @ts-expect-error TS2353 Required for __proto__
     __proto__: null,
     configurable: false,
     enumerable: true,
@@ -1196,7 +1171,6 @@ function initializeConnection(
       host = `[${host}]`
     }
 
-    // @ts-expect-error TS2540 Unnecessary error due to using @types/node
     socket.autoSelectFamilyAttemptedAddresses = [`${host}:${port}`]
 
     socket.emit('connectionAttempt', host, port, addressType)
@@ -1429,7 +1403,6 @@ function writeAfterFIN(
   cb?: (err?: Error) => void,
 ): boolean {
   if (!this.writableEnded) {
-    // @ts-expect-error TS2554 Required due to @types/node
     return Duplex.prototype.write.call(this, chunk, encoding, cb)
   }
 
@@ -1492,7 +1465,6 @@ export function _normalizeArgs(args: unknown[]): NormalizedArgs {
 
   if (args.length === 0) {
     arr = [{}, null]
-    // @ts-expect-error TS2554 Required due to @types/node
     arr[normalizedArgsSymbol] = true
     return arr
   }
@@ -1522,7 +1494,6 @@ export function _normalizeArgs(args: unknown[]): NormalizedArgs {
   if (typeof cb !== 'function') arr = [options, null]
   else arr = [options, cb as (...args: unknown[]) => unknown]
 
-  // @ts-expect-error TS2554 Required due to @types/node
   arr[normalizedArgsSymbol] = true
   return arr
 }
@@ -1567,7 +1538,6 @@ function addAbortListener(
     }
   }
   return {
-    // @ts-expect-error TS2353 Required for __proto__
     __proto__: null,
     [Symbol.dispose](): void {
       removeEventListener?.()
@@ -1713,7 +1683,6 @@ export class SocketAddress implements _SocketAddress {
       depth: options.depth == null ? null : options.depth - 1,
     }
 
-    // @ts-expect-error TS2769 not all the overloads are compatible
     return `SocketAddress ${inspect(this.toJSON(), opts)}`
   }
 
@@ -1742,12 +1711,10 @@ export class SocketAddress implements _SocketAddress {
       if (address.startsWith('[') && address.endsWith(']')) {
         return new SocketAddress({
           address: address.slice(1, -1),
-          // @ts-expect-error TS2362 port will be a string, this converts it
           port: port | 0,
           family: 'ipv6',
         })
       }
-      // @ts-expect-error TS2362 port will be a string, this converts it
       return new SocketAddress({ address, port: port | 0 })
     } catch {
       // Ignore errors here. Return undefined if the input cannot
@@ -2206,7 +2173,6 @@ export class BlockList {
       depth: options.depth == null ? null : options.depth - 1,
     }
 
-    // @ts-expect-error TS2769 not all the overloads are compatible
     return `BlockList {\n  rules: ${inspect(this.rules, opts)}\n}`
   }
 

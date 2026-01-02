@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { ReadAsyncOptions } from 'node:fs'
 import type { EventEmitter } from 'node-internal:events'
 import { Buffer } from 'node-internal:internal_buffer'

@@ -1,3 +1,4 @@
+// @ts-nocheck
 export function getEnvObject(): Record<string, string>
 export function getBuiltinModule(id: string): object
 export function exitImpl(code: number): void

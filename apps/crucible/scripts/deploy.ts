@@ -101,8 +101,8 @@ interface UploadResult {
   size: number
 }
 
-const MAX_UPLOAD_RETRIES = 3
-const RETRY_DELAY_MS = 2000
+const MAX_UPLOAD_RETRIES = 5
+const RETRY_DELAY_MS = 3000
 
 async function uploadToIPFS(
   dwsUrl: string,
@@ -162,6 +162,14 @@ async function uploadToIPFS(
   )
 }
 
+// Files that are essential - must upload successfully
+function isEssentialFile(path: string): boolean {
+  // Source maps are not essential
+  if (path.endsWith('.map')) return false
+  // All other files are essential
+  return true
+}
+
 async function uploadDirectory(
   dwsUrl: string,
   dirPath: string,
@@ -182,9 +190,17 @@ async function uploadDirectory(
         results.set(k, v)
       }
     } else {
-      const result = await uploadToIPFS(dwsUrl, fullPath, key)
-      results.set(key, result)
-      console.log(`   ${key} -> ${result.cid}`)
+      try {
+        const result = await uploadToIPFS(dwsUrl, fullPath, key)
+        results.set(key, result)
+        console.log(`   ${key} -> ${result.cid}`)
+      } catch (err) {
+        if (isEssentialFile(key)) {
+          throw err // Re-throw for essential files
+        }
+        // Skip non-essential files (like source maps)
+        console.log(`   ${key} -> SKIPPED (non-essential)`)
+      }
     }
   }
 
@@ -197,46 +213,8 @@ async function deployWorker(
 ): Promise<string> {
   const account = privateKeyToAccount(config.privateKey)
 
-  const deployRequest = {
-    name: 'crucible-api',
-    owner: account.address,
-    codeCid: apiBundle.cid,
-    codeHash: apiBundle.hash,
-    entrypoint: 'index.js',
-    runtime: 'bun',
-    resources: {
-      memoryMb: 512,
-      cpuMillis: 2000,
-      timeoutMs: 60000,
-      maxConcurrency: 100,
-    },
-    scaling: {
-      minInstances: 2,
-      maxInstances: 20,
-      targetConcurrency: 10,
-      scaleToZero: false,
-      cooldownMs: 60000,
-    },
-    requirements: {
-      teeRequired: true,
-      teePreferred: true,
-      minNodeReputation: 75,
-    },
-    routes: [
-      { pattern: '/api/*', zone: 'crucible' },
-      { pattern: '/a2a/*', zone: 'crucible' },
-      { pattern: '/mcp/*', zone: 'crucible' },
-      { pattern: '/health', zone: 'crucible' },
-      { pattern: '/.well-known/*', zone: 'crucible' },
-    ],
-    env: {
-      NETWORK: config.network,
-      RPC_URL: config.rpcUrl,
-      DWS_URL: config.dwsUrl,
-    },
-    secrets: ['ELIZA_API_KEY', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY'],
-  }
-
+  // Step 1: Register with workers management API
+  console.log('   Registering with workers management API...')
   const response = await fetch(`${config.dwsUrl}/workers`, {
     method: 'POST',
     headers: {
@@ -248,14 +226,18 @@ async function deployWorker(
       codeCid: apiBundle.cid,
       runtime: 'bun',
       handler: 'index.js:default',
-      memory: deployRequest.resources.memoryMb,
-      timeout: deployRequest.resources.timeoutMs,
-      env: deployRequest.env,
+      memory: 512,
+      timeout: 60000,
+      env: {
+        NETWORK: config.network,
+        RPC_URL: config.rpcUrl,
+        DWS_URL: config.dwsUrl,
+      },
     }),
   })
 
   if (!response.ok) {
-    throw new Error(`Worker deployment failed: ${await response.text()}`)
+    throw new Error(`Worker registration failed: ${await response.text()}`)
   }
 
   const rawJson: unknown = await response.json()
@@ -263,7 +245,42 @@ async function deployWorker(
   if (!parsed.success) {
     throw new Error(`Invalid deploy response: ${parsed.error.message}`)
   }
-  return parsed.data.functionId
+
+  const workerId = parsed.data.functionId
+  console.log(`   Worker registered: ${workerId}`)
+
+  // Step 2: Deploy to workerd executor (makes it actually runnable)
+  // Note: This may timeout if IPFS/storage is slow, but the worker will be deployed
+  console.log('   Deploying to workerd executor (may take a minute)...')
+  try {
+    const workerdResponse = await fetch(`${config.dwsUrl}/workerd/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-jeju-address': account.address,
+      },
+      body: JSON.stringify({
+        name: 'crucible-api',
+        codeCid: apiBundle.cid,
+        handler: 'index.js:default',
+        memoryMb: 512,
+        timeoutMs: 60000,
+      }),
+      signal: AbortSignal.timeout(120000), // 2 minute timeout
+    })
+
+    if (workerdResponse.ok) {
+      console.log('   Workerd deployment complete')
+    } else {
+      const text = await workerdResponse.text()
+      console.warn(`   Workerd deployment warning: ${text}`)
+    }
+  } catch (err) {
+    // Workerd deployment might timeout but still succeed
+    console.warn(`   Workerd deployment may still be in progress: ${err instanceof Error ? err.message : err}`)
+  }
+
+  return workerId
 }
 
 function getContentType(path: string): string {
@@ -349,12 +366,10 @@ async function registerWithAppRouter(
     staticFiles[`/${path}`] = result.cid
   }
 
+  // For localnet, use direct endpoint. For testnet/mainnet, use worker routing only
+  // Don't set backendEndpoint to the same URL as frontend - that creates a routing loop
   const backendEndpoint =
-    config.network === 'testnet'
-      ? 'https://crucible.testnet.jejunetwork.org'
-      : config.network === 'mainnet'
-        ? 'https://crucible.jejunetwork.org'
-        : 'http://localhost:4021'
+    config.network === 'localnet' ? 'http://localhost:4021' : null
 
   const appData = {
     name: 'crucible',

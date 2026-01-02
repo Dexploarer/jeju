@@ -9,7 +9,6 @@ import { AgentsPage } from './pages/Agents'
 import { BountiesPage } from './pages/Bounties'
 import { CIPage } from './pages/CI'
 import { ContainersPage } from './pages/Containers'
-import { FeedPage } from './pages/Feed'
 import { GitPage } from './pages/Git'
 import { HomePage } from './pages/Home'
 import { JobsPage } from './pages/Jobs'
@@ -44,7 +43,6 @@ export function App() {
               <Route path="/projects/*" element={<ProjectsPage />} />
               <Route path="/ci/*" element={<CIPage />} />
               <Route path="/agents/*" element={<AgentsPage />} />
-              <Route path="/feed/*" element={<FeedPage />} />
               <Route path="/messages/*" element={<MessagesPage />} />
             </Routes>
           </Layout>

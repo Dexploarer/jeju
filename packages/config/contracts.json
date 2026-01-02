@@ -12,7 +12,7 @@
   "localnet": {
     "chainId": 31337,
     "tokens": {
-      "jeju": "0x7a2088a1bFc9d81c55368AE168C2C02570cB814F",
+      "jeju": "0xa82ff9afd8f496c3d6ac40e2a0f282e47488cfc9",
       "usdc": "0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82",
       "weth": "0x4200000000000000000000000000000000000006"
     },
@@ -36,16 +36,17 @@
     },
     "bazaar": {
       "marketplace": "0x0355B7B8cb128fA5692729Ab3AAa199C1753f726",
-      "simpleCollectible": "0x172076E0166D1F9Cc711C77Adf8488051744980C",
-      "predictionMarket": "",
+      "simpleCollectible": "0xcd8a1c3ba11cf5ecfa6267617243239504a98d90",
+      "predictionMarket": "0x851356ae760d987e095750cceb3bc6014560891c",
       "tokenFactory": "",
-      "featuredToken": ""
+      "featuredToken": "",
+      "predictionOracle": "0x1613beb3b2c4f22ee086b2b38c1476a3ce7f78e8"
     },
     "perps": {
-      "market": "",
-      "marginManager": "",
-      "insuranceFund": "",
-      "priceOracle": ""
+      "market": "0x36c02da8a0983159322a80ffe9f24b1acff8b570",
+      "marginManager": "0x9d4454b023096f34b160d6b654540c56a1f81688",
+      "insuranceFund": "0x5eb3bc0a489c5a8288765d2336659ebca68fcd00",
+      "priceOracle": "0x8f86403a4de0bb5791fa46b8e795c547942fe4cf"
     },
     "security": {
       "bountyRegistry": "0x0B36Ef2cb78859C20c8C1380CeAdB75043aA92b3"
@@ -201,7 +202,15 @@
     "bazaar": {
       "marketplace": "",
       "predictionMarket": "",
-      "simpleCollectible": ""
+      "predictionOracle": "",
+      "simpleCollectible": "",
+      "tokenFactory": ""
+    },
+    "perps": {
+      "market": "",
+      "marginManager": "",
+      "insuranceFund": "",
+      "priceOracle": ""
     },
     "security": {
       "bountyRegistry": ""

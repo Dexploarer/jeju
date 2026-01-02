@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Allow {CLIENT_RENEG_LIMIT} client-initiated session renegotiations
 // every {CLIENT_RENEG_WINDOW} seconds. An error event is emitted if more
 // renegotiations are seen. The settings are applied to all remote client

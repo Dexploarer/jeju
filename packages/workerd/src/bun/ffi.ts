@@ -6,7 +6,39 @@
  * bun:ffi Module
  *
  * Foreign Function Interface for calling native code.
- * Not available in workerd - all functions throw.
+ *
+ * ⚠️  NOT AVAILABLE IN WORKERD
+ *
+ * FFI requires direct native code execution which is fundamentally incompatible
+ * with workerd's V8 isolate sandbox model. This is a security feature, not a bug.
+ *
+ * ALTERNATIVES:
+ *
+ * 1. WebAssembly (WASM) - Recommended
+ *    Most native libraries have WASM builds. Use them instead:
+ *    ```ts
+ *    // Instead of: const lib = dlopen('libcrypto.so', {...})
+ *    // Use: import init from '@aspect/crypto-wasm'
+ *    const crypto = await init()
+ *    ```
+ *
+ * 2. HTTP Services
+ *    For heavy computation, call an external service:
+ *    ```ts
+ *    const result = await fetch('https://compute.example.com/process', {
+ *      method: 'POST',
+ *      body: data
+ *    })
+ *    ```
+ *
+ * 3. Workers AI (Cloudflare)
+ *    For ML/AI workloads, use Workers AI bindings.
+ *
+ * Common WASM alternatives:
+ * - bcryptjs (pure JS bcrypt) - already included in this bundle
+ * - argon2-browser (WASM argon2)
+ * - @aspect/crypto-wasm (general crypto)
+ * - @aspect/sqlite-wasm (SQLite) - or use SQLit HTTP client
  */
 
 export type FFIType =

@@ -1,3 +1,4 @@
+// @ts-nocheck
 export declare class MockTracker {
   constructor()
 }

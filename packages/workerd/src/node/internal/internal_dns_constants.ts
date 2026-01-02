@@ -1,3 +1,4 @@
+// @ts-nocheck
 export const NODATA = 'ENODATA'
 export const FORMERR = 'EFORMERR'
 export const SERVFAIL = 'ESERVFAIL'

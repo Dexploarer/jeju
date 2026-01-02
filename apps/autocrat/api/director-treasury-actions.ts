@@ -20,13 +20,13 @@ import {
 import type { Address, Chain, Hash } from 'viem'
 import { createPublicClient, createWalletClient, formatEther, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
-import { localhost, mainnet, sepolia } from 'viem/chains'
 import { z } from 'zod'
+import { inferChainFromRpcUrl, jejuMainnet, jejuTestnet, localhost } from './chains'
 
 function getViemChain(): Chain {
   const network = getCurrentNetwork()
-  if (network === 'mainnet') return mainnet
-  if (network === 'testnet') return sepolia
+  if (network === 'mainnet') return jejuMainnet
+  if (network === 'testnet') return jejuTestnet
   return localhost
 }
 

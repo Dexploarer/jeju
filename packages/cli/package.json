@@ -31,7 +31,7 @@
     "@vue/compiler-sfc": "3.5.26",
     "chalk": "5.4.1",
     "commander": "12.1.0",
-    "elysia": "^1.4.19",
+    "elysia": "1.4.19",
     "execa": "9.5.3",
     "madge": "8.0.0",
     "prompts": "2.4.2",

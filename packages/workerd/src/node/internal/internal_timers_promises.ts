@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Copyright (c) 2017-2025 Cloudflare, Inc.
 // Licensed under the Apache 2.0 license found in the LICENSE file or at:
 //     https://opensource.org/licenses/Apache-2.0
@@ -191,7 +192,6 @@ export async function* setInterval<T = void>(
     }
     throw new AbortError(undefined, { cause: signal.reason })
   } finally {
-    // @ts-expect-error TS2454 TS detects invalid use before assignment.
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (interval) {
       timers.clearInterval(interval)

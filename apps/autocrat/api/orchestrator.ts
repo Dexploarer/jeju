@@ -18,7 +18,7 @@ import {
   waitForTransactionReceipt,
   writeContract,
 } from 'viem/actions'
-import { base, baseSepolia, localhost } from 'viem/chains'
+import { inferChainFromRpcUrl } from './chains'
 import { type CEOPersona, toHex } from '../lib'
 import type { DAOFull, FundingProject } from '../lib/types'
 import type { AutocratBlockchain } from './blockchain'
@@ -43,9 +43,7 @@ export interface AutocratConfig {
 }
 
 function inferChain(rpcUrl: string) {
-  if (rpcUrl.includes('mainnet') || rpcUrl.includes('base.org')) return base
-  if (rpcUrl.includes('sepolia')) return baseSepolia
-  return localhost
+  return inferChainFromRpcUrl(rpcUrl)
 }
 
 import type { AutocratVoteFromContract, ProposalFromContract } from '../lib'

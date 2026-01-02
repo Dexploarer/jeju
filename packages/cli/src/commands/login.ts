@@ -186,9 +186,11 @@ export const loginCommand = new Command('login')
 
     // Determine authentication method
     if (options.hardware) {
-      logger.info('Hardware wallet authentication not yet implemented')
-      logger.info('Use --external flag to sign manually')
-      return
+      logger.error('Hardware wallet authentication is not supported.')
+      logger.info('Alternatives:')
+      logger.info('  - Use --external to sign with your hardware wallet manually')
+      logger.info('  - Export private key and use --private-key (not recommended)')
+      process.exit(1)
     }
 
     if (options.external) {

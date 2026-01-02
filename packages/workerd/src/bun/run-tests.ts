@@ -1,257 +1,194 @@
-#!/usr/bin/env bun
-
 // Copyright (c) 2024 Jeju Network
-// Test runner that starts workerd, verifies it's working, then runs tests
-// Licensed under the Apache 2.0 license
+// Test runner for Bun compatibility layer
+// Runs unit tests and integration tests with workerd
 
-import { dirname, join } from 'node:path'
-import { type Subprocess, spawn } from 'bun'
+import { spawn, type Subprocess } from 'bun'
+import path from 'path'
 
-const WORKERD_URL = 'http://localhost:9123'
-const STARTUP_TIMEOUT = 30000 // 30 seconds
-const HEALTH_CHECK_INTERVAL = 500 // 500ms
+const __dirname = path.dirname(new URL(import.meta.url).pathname)
+const WORKERD_URL = 'http://127.0.0.1:9124'
+const WORKERD_CONFIG = path.resolve(__dirname, '../../samples/bun-bundle/config.capnp')
+const STARTUP_TIMEOUT = 10000
 
-// Get the path to the samples directory
-const scriptDir = dirname(import.meta.path)
-const workerdRoot = join(scriptDir, '..', '..')
-const bunHelloDir = join(workerdRoot, 'samples', 'bun-hello')
-
-interface TestResult {
-  name: string
-  passed: boolean
-  duration: number
-  error?: string
-}
-
-async function findWorkerd(): Promise<string> {
-  // Try common locations for workerd binary
-  const locations = [
-    'workerd', // PATH
-    join(workerdRoot, 'bazel-bin', 'src', 'workerd', 'server', 'workerd'),
-    '/usr/local/bin/workerd',
-    '/opt/homebrew/bin/workerd',
-  ]
-
-  for (const loc of locations) {
-    try {
-      const proc = spawn(['which', loc], { stdout: 'pipe', stderr: 'pipe' })
-      await proc.exited
-      if (proc.exitCode === 0) {
-        const output = await new Response(proc.stdout).text()
-        return output.trim() || loc
-      }
-    } catch {
-      // Try the path directly
-      try {
-        const proc = spawn([loc, '--version'], {
-          stdout: 'pipe',
-          stderr: 'pipe',
-        })
-        await proc.exited
-        if (proc.exitCode === 0) {
-          return loc
-        }
-      } catch {}
-    }
-  }
-
-  // Default to 'workerd' and let it fail with a clear error
-  return 'workerd'
-}
-
-async function waitForWorkerd(timeoutMs: number): Promise<boolean> {
-  const start = Date.now()
-
-  while (Date.now() - start < timeoutMs) {
-    try {
-      const response = await fetch(`${WORKERD_URL}/health`, {
-        signal: AbortSignal.timeout(2000),
-      })
-      if (response.ok) {
-        return true
-      }
-    } catch {
-      // Not ready yet
-    }
-    await Bun.sleep(HEALTH_CHECK_INTERVAL)
-  }
-
-  return false
-}
-
-async function runNodeHelloWorld(): Promise<TestResult> {
-  const start = Date.now()
-  const name = 'Node.js Hello World (basic fetch)'
-
+async function checkWorkerdRunning(): Promise<boolean> {
   try {
-    // Simple test: fetch the root endpoint and verify response
-    const response = await fetch(`${WORKERD_URL}/`, {
-      signal: AbortSignal.timeout(5000),
+    const response = await fetch(`${WORKERD_URL}/health`, {
+      signal: AbortSignal.timeout(1000)
     })
-
-    if (!response.ok) {
-      return {
-        name,
-        passed: false,
-        duration: Date.now() - start,
-        error: `HTTP ${response.status}: ${response.statusText}`,
-      }
-    }
-
-    const data = (await response.json()) as {
-      message?: string
-      runtime?: string
-    }
-
-    if (data.message !== 'Hello from Bun worker!') {
-      return {
-        name,
-        passed: false,
-        duration: Date.now() - start,
-        error: `Unexpected message: ${data.message}`,
-      }
-    }
-
-    if (data.runtime !== 'workerd') {
-      return {
-        name,
-        passed: false,
-        duration: Date.now() - start,
-        error: `Unexpected runtime: ${data.runtime}`,
-      }
-    }
-
-    return {
-      name,
-      passed: true,
-      duration: Date.now() - start,
-    }
-  } catch (err) {
-    return {
-      name,
-      passed: false,
-      duration: Date.now() - start,
-      error: err instanceof Error ? err.message : String(err),
-    }
+    return response.ok
+  } catch {
+    return false
   }
 }
 
-async function runBunTests(): Promise<{ exitCode: number; output: string }> {
-  console.log('\n📋 Running Bun worker tests...\n')
+async function waitForWorkerd(timeoutMs: number): Promise<void> {
+  const startTime = Date.now()
+  while (Date.now() - startTime < timeoutMs) {
+    if (await checkWorkerdRunning()) {
+      return
+    }
+    await new Promise(resolve => setTimeout(resolve, 200))
+  }
+  throw new Error(`Workerd did not become ready within ${timeoutMs}ms`)
+}
 
-  const proc = spawn(['bun', 'test', 'src/bun/'], {
-    cwd: workerdRoot,
-    stdout: 'pipe',
-    stderr: 'pipe',
-    env: {
-      ...process.env,
-      WORKERD_RUNNING: '1',
-    },
+async function runUnitTests(): Promise<number> {
+  console.log('📋 Running unit tests...')
+  console.log('')
+
+  const proc = spawn({
+    cmd: ['bun', 'test', path.join(__dirname, 'bun.test.ts'), path.join(__dirname, 'sqlite.test.ts')],
+    stdio: ['inherit', 'inherit', 'inherit'],
   })
 
-  const stdout = await new Response(proc.stdout).text()
-  const stderr = await new Response(proc.stderr).text()
-  await proc.exited
-
-  return {
-    exitCode: proc.exitCode ?? 1,
-    output: stdout + stderr,
-  }
+  return proc.exited
 }
 
-async function main(): Promise<void> {
-  console.log('🚀 Workerd Test Runner')
-  console.log('='.repeat(60))
+async function runIntegrationTests(workerdRunning: boolean): Promise<number> {
+  console.log('📋 Running integration tests...')
+  console.log('')
 
-  // Step 1: Find workerd binary
-  console.log('\n🔍 Finding workerd binary...')
-  const workerdBin = await findWorkerd()
-  console.log(`   Using: ${workerdBin}`)
+  const env = { ...process.env }
+  if (workerdRunning) {
+    env.WORKERD_RUNNING = '1'
+  }
 
-  // Step 2: Start workerd
-  console.log('\n🏃 Starting workerd...')
-  console.log(`   Config: ${bunHelloDir}/config.capnp`)
+  const proc = spawn({
+    cmd: ['bun', 'test', path.join(__dirname, 'bun-worker.test.ts')],
+    env,
+    stdio: ['inherit', 'inherit', 'inherit'],
+  })
 
-  let workerdProc: Subprocess | null = null
+  return proc.exited
+}
+
+async function main() {
+  console.log('🚀 Bun Compatibility Layer Test Runner')
+  console.log('============================================================')
+  console.log('')
+
+  let workerdProcess: Subprocess | null = null
+  let exitCode = 0
 
   try {
-    workerdProc = spawn([workerdBin, 'serve', 'config.capnp'], {
-      cwd: bunHelloDir,
-      stdout: 'pipe',
-      stderr: 'pipe',
-    })
+    // Check if build is complete
+    const bundlePath = path.resolve(__dirname, '../../dist/bun/bun-bundle.js')
+    const bundleExists = await Bun.file(bundlePath).exists()
 
-    // Give it a moment to start
-    await Bun.sleep(1000)
-
-    // Check if it crashed immediately
-    if (workerdProc.exitCode !== null) {
-      const stderrStream = workerdProc.stderr
-      const stderr =
-        stderrStream instanceof ReadableStream
-          ? await new Response(stderrStream).text()
-          : 'Unable to read stderr'
-      console.error('❌ Workerd failed to start:')
-      console.error(stderr)
-      process.exit(1)
+    if (!bundleExists) {
+      console.log('⚠️  Bundle not found. Building...')
+      const buildProc = spawn({
+        cmd: ['bun', 'run', 'build:bun'],
+        cwd: path.resolve(__dirname, '../..'),
+        stdio: ['inherit', 'inherit', 'inherit'],
+      })
+      const buildExit = await buildProc.exited
+      if (buildExit !== 0) {
+        console.error('❌ Build failed')
+        process.exit(1)
+      }
+      console.log('')
     }
 
-    console.log(`   PID: ${workerdProc.pid}`)
-    console.log(`   URL: ${WORKERD_URL}`)
+    // Run unit tests first
+    console.log('============================================================')
+    console.log('PHASE 1: Unit Tests')
+    console.log('============================================================')
+    console.log('')
 
-    // Step 3: Wait for workerd to be ready
-    console.log('\n⏳ Waiting for workerd to be ready...')
-    const ready = await waitForWorkerd(STARTUP_TIMEOUT)
-
-    if (!ready) {
-      console.error('❌ Workerd failed to start within timeout')
-      workerdProc.kill()
-      process.exit(1)
-    }
-
-    console.log('   ✅ Workerd is ready')
-
-    // Step 4: Run Node.js hello world test
-    console.log('\n📦 Running basic connectivity test...')
-    const nodeResult = await runNodeHelloWorld()
-
-    if (nodeResult.passed) {
-      console.log(`   ✅ ${nodeResult.name} (${nodeResult.duration}ms)`)
+    const unitExit = await runUnitTests()
+    if (unitExit !== 0) {
+      console.error('')
+      console.error('❌ Unit tests failed')
+      exitCode = 1
     } else {
-      console.log(`   ❌ ${nodeResult.name}`)
-      console.log(`      Error: ${nodeResult.error}`)
-      workerdProc.kill()
-      process.exit(1)
+      console.log('')
+      console.log('✅ Unit tests passed')
     }
 
-    // Step 5: Run Bun worker tests
-    const testResult = await runBunTests()
-    console.log(testResult.output)
+    console.log('')
+    console.log('============================================================')
+    console.log('PHASE 2: Integration Tests')
+    console.log('============================================================')
+    console.log('')
 
-    // Step 6: Cleanup
-    console.log('\n🧹 Cleaning up...')
-    workerdProc.kill()
-    await workerdProc.exited
-    console.log('   ✅ Workerd stopped')
+    // Check if workerd is already running
+    const alreadyRunning = await checkWorkerdRunning()
 
-    // Exit with test result
-    if (testResult.exitCode !== 0) {
-      console.log('\n❌ Tests failed')
-      process.exit(testResult.exitCode)
+    if (alreadyRunning) {
+      console.log('ℹ️  Workerd already running at', WORKERD_URL)
+    } else {
+      // Start workerd
+      console.log('🏃 Starting workerd...')
+      console.log(`   Config: ${WORKERD_CONFIG}`)
+
+      workerdProcess = spawn({
+        cmd: ['workerd', 'serve', WORKERD_CONFIG],
+        stdout: 'pipe',
+        stderr: 'pipe',
+      })
+
+      console.log(`   PID: ${workerdProcess.pid}`)
+
+      // Wait for workerd to be ready
+      console.log('⏳ Waiting for workerd to be ready...')
+      await waitForWorkerd(STARTUP_TIMEOUT)
+      console.log('   ✅ Workerd is ready')
     }
 
-    console.log('\n✅ All tests passed')
-    process.exit(0)
-  } catch (err) {
-    console.error('\n❌ Error:', err instanceof Error ? err.message : err)
+    console.log('')
 
-    if (workerdProc) {
-      workerdProc.kill()
+    // Test basic connectivity
+    console.log('📦 Testing basic connectivity...')
+    const start = Date.now()
+    const response = await fetch(`${WORKERD_URL}/`)
+    const data = await response.json() as { message: string; bunVersion: string }
+
+    if (response.status === 200 && data.message.includes('Bun')) {
+      console.log(`   ✅ Basic connectivity test passed (${Date.now() - start}ms)`)
+      console.log(`   Bun version: ${data.bunVersion}`)
+    } else {
+      throw new Error('Basic connectivity test failed')
     }
 
-    process.exit(1)
+    console.log('')
+
+    // Run integration tests
+    const intExit = await runIntegrationTests(true)
+    if (intExit !== 0) {
+      console.error('')
+      console.error('❌ Integration tests failed')
+      exitCode = 1
+    } else {
+      console.log('')
+      console.log('✅ Integration tests passed')
+    }
+
+  } catch (error) {
+    console.error('')
+    console.error('❌ Test run failed:', error)
+    exitCode = 1
+  } finally {
+    // Cleanup
+    if (workerdProcess) {
+      console.log('')
+      console.log('🧹 Cleaning up...')
+      workerdProcess.kill()
+      await workerdProcess.exited
+      console.log('   ✅ Workerd stopped')
+    }
   }
+
+  console.log('')
+  console.log('============================================================')
+  if (exitCode === 0) {
+    console.log('✅ All tests passed')
+  } else {
+    console.log('❌ Some tests failed')
+  }
+  console.log('============================================================')
+
+  process.exit(exitCode)
 }
 
-// Run
 main()

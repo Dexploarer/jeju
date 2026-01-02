@@ -301,12 +301,17 @@ export default function PoolsPage() {
         </div>
       ) : filteredPools.length === 0 ? (
         <EmptyState
-          icon="🔍"
-          title="No Pools Found"
+          icon="💧"
+          title={searchQuery ? 'No Pools Found' : 'No Pools Available'}
           description={
             searchQuery
               ? 'Try adjusting your search criteria'
-              : 'No pools available at this time'
+              : 'TFMM pools will be available once deployed. Create the first pool to start earning trading fees.'
+          }
+          action={
+            !searchQuery
+              ? { label: 'Add Liquidity', href: '/liquidity' }
+              : undefined
           }
         />
       ) : (

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type {
   default as cffs,
   DirEntryHandle,

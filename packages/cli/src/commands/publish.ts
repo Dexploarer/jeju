@@ -230,9 +230,17 @@ async function registerJNS(
   })
 
   if (!response.ok) {
-    // JNS registration is optional, don't fail
-    logger.warn(`JNS registration failed: ${response.statusText}`)
-    return jnsName
+    // JNS registration failure is important - throw error for non-localnet
+    const errorText = await response.text()
+    logger.error(`JNS registration failed: ${errorText || response.statusText}`)
+
+    // For localnet without JNS running, warn and continue
+    if (network === 'localnet') {
+      logger.warn('Continuing without JNS registration (localnet)')
+      return jnsName
+    }
+
+    throw new Error(`JNS registration failed for ${jnsName}: ${response.statusText}`)
   }
 
   return jnsName

@@ -8,7 +8,7 @@
  * - Manage billing tier
  */
 
-import { getDWSUrl, getL2RpcUrl, getLocalhostHost } from '@jejunetwork/config'
+import { getDWSUrl, getL2RpcUrl, getLocalhostHost, getChainId } from '@jejunetwork/config'
 import { Command } from 'commander'
 import {
   type Address,
@@ -96,24 +96,19 @@ function getRpcUrlForNetwork(network: NetworkType): string {
  * Get chain config for network
  */
 function getChainForNetwork(network: NetworkType) {
-  switch (network) {
-    case 'mainnet':
-      return {
-        id: 1001, // Jeju mainnet chain ID
-        name: 'Jeju Network',
-        nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-        rpcUrls: { default: { http: [getRpcUrlForNetwork(network)] } },
-      } as const
-    case 'testnet':
-      return {
-        id: 1002, // Jeju testnet chain ID
-        name: 'Jeju Testnet',
-        nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-        rpcUrls: { default: { http: [getRpcUrlForNetwork(network)] } },
-      } as const
-    default:
-      return foundry
+  const chainId = getChainId(network)
+  const rpcUrl = getRpcUrlForNetwork(network)
+
+  if (network === 'localnet') {
+    return foundry
   }
+
+  return {
+    id: chainId,
+    name: network === 'mainnet' ? 'Jeju Network' : 'Jeju Testnet',
+    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+    rpcUrls: { default: { http: [rpcUrl] } },
+  } as const
 }
 
 /**
@@ -134,8 +129,9 @@ async function getAccountInfo(
   })
 
   if (!response.ok) {
-    // Return default values if DWS is not available
-    if (response.status === 404 || !response.ok) {
+    // For local development, DWS may not be running
+    if (network === 'localnet') {
+      logger.warn('DWS not available - showing local defaults')
       return {
         address,
         credits: 0n,
@@ -219,8 +215,11 @@ async function getCredits(
   const response = await fetch(`${dwsUrl}/funding/balance/${address}`)
 
   if (!response.ok) {
-    // Return 0 if endpoint not available
-    return 0n
+    // For local development, DWS may not be running
+    if (network === 'localnet') {
+      return 0n
+    }
+    throw new Error(`Failed to fetch credits: ${response.statusText}`)
   }
 
   const data = await response.json()
@@ -254,14 +253,16 @@ async function topupAccount(
 
   // Get payment recipient from DWS
   const paymentInfoResponse = await fetch(`${dwsUrl}/funding/info`)
-  let paymentRecipient: Address
 
-  if (paymentInfoResponse.ok) {
-    const paymentInfo = await paymentInfoResponse.json()
-    paymentRecipient = paymentInfo.paymentAddress
-  } else {
-    // Default payment recipient for testnet/localnet
-    paymentRecipient = '0x4242424242424242424242424242424242424242'
+  if (!paymentInfoResponse.ok) {
+    throw new Error(`Failed to get payment info: ${paymentInfoResponse.statusText}. Is DWS running?`)
+  }
+
+  const paymentInfo = await paymentInfoResponse.json()
+  const paymentRecipient: Address = paymentInfo.paymentAddress
+
+  if (!paymentRecipient) {
+    throw new Error('Payment recipient address not configured in DWS')
   }
 
   // Send ETH to payment recipient

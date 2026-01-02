@@ -101,14 +101,24 @@ function getSQLitConfigFromEnv(): SQLitConfig {
 // SQLit HTTP Client
 // =============================================================================
 
+// Real SQLit API response format
 interface SQLitQueryResponse {
-  data?: {
-    rows: Record<string, unknown>[] | null
-  }
-  status: string
-  error?: string
+  success: boolean
+  // Query response
+  rows?: Record<string, unknown>[]
+  rowCount?: number
+  columns?: string[]
+  // Exec response
   rowsAffected?: number
-  lastInsertId?: string | number
+  lastInsertId?: string  // SQLit returns string, not number
+  txHash?: string
+  gasUsed?: string
+  // Common
+  executionTime?: number
+  blockHeight?: number
+  // Error case
+  error?: string
+  message?: string
 }
 
 class SQLitHttpClient {
@@ -134,13 +144,7 @@ class SQLitHttpClient {
     params: SQLiteValue[] = [],
   ): Promise<{ rowsAffected: number; lastInsertId: number | bigint }> {
     const formattedSql = this.formatSQL(sql, params)
-    const rows = await this.fetch('exec', formattedSql)
-
-    // For exec, we return affected rows info from the response
-    return {
-      rowsAffected: rows.length > 0 ? 1 : 0,
-      lastInsertId: 0,
-    }
+    return this.fetchExec(formattedSql)
   }
 
   async execRaw(sql: string): Promise<void> {
@@ -180,12 +184,11 @@ class SQLitHttpClient {
 
     const response = await fetch(uri, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        assoc: true,
-        database: this.dbid,
-        query: sql,
-      }),
+      headers: {
+        'content-type': 'application/json',
+        'x-sqlit-database': this.dbid,
+      },
+      body: JSON.stringify({ sql }),
       signal: AbortSignal.timeout(this.timeout),
     })
 
@@ -195,11 +198,47 @@ class SQLitHttpClient {
 
     const result: SQLitQueryResponse = await response.json()
 
-    if (result.error) {
-      throw new ERR_SQLITE_ERROR(result.error)
+    if (!result.success) {
+      throw new ERR_SQLITE_ERROR(result.error ?? result.message ?? 'Unknown SQLit error')
     }
 
-    return (result.data?.rows as SQLiteRow[]) ?? []
+    return (result.rows as SQLiteRow[]) ?? []
+  }
+
+  private async fetchExec(
+    sql: string,
+  ): Promise<{ rowsAffected: number; lastInsertId: number | bigint }> {
+    const uri = `${this.endpoint}/v1/exec`
+
+    if (this.debug) {
+      console.log(`[bun:sqlite] exec: ${sql}`)
+    }
+
+    const response = await fetch(uri, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-sqlit-database': this.dbid,
+      },
+      body: JSON.stringify({ sql }),
+      signal: AbortSignal.timeout(this.timeout),
+    })
+
+    if (!response.ok) {
+      throw new ERR_SQLITE_ERROR(`SQLit request failed: ${response.status}`)
+    }
+
+    const result: SQLitQueryResponse = await response.json()
+
+    if (!result.success) {
+      throw new ERR_SQLITE_ERROR(result.error ?? result.message ?? 'Unknown SQLit error')
+    }
+
+    // Real SQLit returns: { success, rowsAffected, lastInsertId (string), txHash, ... }
+    const rowsAffected = result.rowsAffected ?? 0
+    const lastInsertId = result.lastInsertId ? BigInt(result.lastInsertId) : 0n
+
+    return { rowsAffected, lastInsertId }
   }
 }
 
@@ -798,6 +837,7 @@ function parseLiteral(value: string): SQLiteValue {
 export class Database {
   private readonly filename: string
   private readonly isSQLit: boolean
+  private readonly isReadonly: boolean
   private readonly sqlitClient: SQLitHttpClient | null
   private readonly storage: InMemoryStorage
   private statements = new Map<string, Statement<SQLiteRow>>()
@@ -817,8 +857,17 @@ export class Database {
       let config: SQLitConfig
 
       if (filename.startsWith('sqlit://')) {
-        const dbid = filename.slice(8) // Remove 'sqlit://'
-        config = { ...getSQLitConfigFromEnv(), dbid }
+        // Parse sqlit://dbid or sqlit://dbid?endpoint=http://...
+        const urlPart = filename.slice(8) // Remove 'sqlit://'
+        const [dbidPart, queryString] = urlPart.split('?')
+        const params = new URLSearchParams(queryString ?? '')
+        const endpointOverride = params.get('endpoint')
+
+        config = {
+          ...getSQLitConfigFromEnv(),
+          dbid: dbidPart,
+          ...(endpointOverride && { endpoint: endpointOverride }),
+        }
       } else {
         // Direct HTTP URL
         const url = new URL(filename)
@@ -832,15 +881,14 @@ export class Database {
 
       this.sqlitClient = new SQLitHttpClient(config)
       this.storage = new InMemoryStorage() // Not used for SQLit
-    } else {
+    } else if (filename === ':memory:') {
       this.sqlitClient = null
       this.storage = new InMemoryStorage()
-
-      if (filename !== ':memory:') {
-        console.warn(
-          `[bun:sqlite] File-based SQLite (${filename}) not available in workerd, using in-memory database`,
-        )
-      }
+    } else {
+      // File-based SQLite is not available in workerd - fail fast
+      throw new ERR_SQLITE_ERROR(
+        `File-based SQLite (${filename}) is not available in workerd. Use ':memory:' for in-memory database or 'sqlit://<database-id>' to connect to SQLit.`,
+      )
     }
   }
 
@@ -1062,14 +1110,12 @@ export class Statement<T = SQLiteRow> implements SQLiteStatement<T> {
   }
 
   run(...params: SQLiteValue[]): SQLiteRunResult {
-    if (this.finalized)
-      throw new ERR_SQLITE_ERROR('Statement has been finalized')
+    if (this.finalized) throw new ERR_SQLITE_ERROR('Statement has been finalized')
     return this.db.executeSync(this.sql, params)
   }
 
   all(...params: SQLiteValue[]): T[] {
-    if (this.finalized)
-      throw new ERR_SQLITE_ERROR('Statement has been finalized')
+    if (this.finalized) throw new ERR_SQLITE_ERROR('Statement has been finalized')
     return this.db.selectSync(this.sql, params) as T[]
   }
 

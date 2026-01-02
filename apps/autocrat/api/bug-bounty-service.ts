@@ -18,7 +18,7 @@ import {
   keccak256,
   stringToHex,
 } from 'viem'
-import { base, baseSepolia, localhost } from 'viem/chains'
+import { jejuMainnet, jejuTestnet, localhost } from './chains'
 import {
   type BountyAssessment,
   type BountyGuardianVote,
@@ -72,9 +72,9 @@ function getChain() {
   const network = getCurrentNetwork()
   switch (network) {
     case 'mainnet':
-      return base
+      return jejuMainnet
     case 'testnet':
-      return baseSepolia
+      return jejuTestnet
     default:
       return localhost
   }

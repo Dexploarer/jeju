@@ -189,6 +189,57 @@ const WORKER_EXTERNALS = [
   'node:crypto',
 ]
 
+// Plugin to replace viem/chains imports with custom chain definitions
+// This prevents bundling issues where viem/chains uses process.env at runtime
+const viemChainsPlugin: BunPlugin = {
+  name: 'viem-chains-replace',
+  setup(build) {
+    build.onResolve({ filter: /^viem\/chains$/ }, () => ({
+      path: 'viem-chains-stub',
+      namespace: 'viem-chains-stub',
+    }))
+    build.onLoad({ filter: /.*/, namespace: 'viem-chains-stub' }, () => ({
+      contents: `
+        // Custom chain definitions to avoid viem/chains bundling issues
+        export const base = {
+          id: 8453,
+          name: 'Base',
+          nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+          rpcUrls: { default: { http: ['https://mainnet.base.org'] } },
+        };
+        export const baseSepolia = {
+          id: 84532,
+          name: 'Base Sepolia',
+          nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+          rpcUrls: { default: { http: ['https://sepolia.base.org'] } },
+          testnet: true,
+        };
+        export const localhost = {
+          id: 31337,
+          name: 'Localhost',
+          nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+          rpcUrls: { default: { http: ['http://localhost:8545'] } },
+        };
+        export const mainnet = {
+          id: 1,
+          name: 'Ethereum',
+          nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+          rpcUrls: { default: { http: ['https://eth.llamarpc.com'] } },
+        };
+        export const sepolia = {
+          id: 11155111,
+          name: 'Sepolia',
+          nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+          rpcUrls: { default: { http: ['https://rpc.sepolia.org'] } },
+          testnet: true,
+        };
+        export const foundry = localhost;
+      `,
+      loader: 'js',
+    }))
+  },
+}
+
 async function buildFrontend(): Promise<void> {
   console.log('[Autocrat] Building frontend...')
 
@@ -308,6 +359,7 @@ async function buildWorker(): Promise<void> {
     minify: true,
     sourcemap: 'external',
     external: WORKER_EXTERNALS,
+    plugins: [viemChainsPlugin],
     define: { 'process.env.NODE_ENV': JSON.stringify('production') },
   })
 

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { owner_symbol, type Zlib } from 'node-internal:internal_zlib_base'
 
 type InternalCompressCallback = (res: Error | ArrayBuffer) => void

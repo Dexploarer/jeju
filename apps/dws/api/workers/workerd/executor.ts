@@ -181,141 +181,115 @@ export class WorkerdExecutor implements IWorkerdExecutor {
     worker.status = 'deploying'
     this.workers.set(worker.id, worker)
 
-    // Download code from IPFS
     const codeDir = `${this.config.workDir}/${worker.id}`
     const execUrl =
       this.config.execUrl ??
       `http://${getLocalhostHost()}:${CORE_PORTS.DWS_API.get()}/exec`
 
-    // Create directory via DWS exec API
-    const mkdirResult = await fetch(execUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ command: ['mkdir', '-p', codeDir] }),
-    })
-    if (!mkdirResult.ok) {
-      throw new Error(`Failed to create code directory: ${mkdirResult.status}`)
-    }
-
-    // Fetch and extract worker code
+    // Download code from IPFS first (this happens in DWS API process, not via exec)
     const result = await this.backend.download(worker.codeCid)
 
-    // Handle different code formats
+    // Prepare worker code
+    const mainFile = worker.mainModule ?? 'worker.js'
+    let code: string
+
     if (this.isGzip(result.content)) {
-      await this.extractTarball(result.content, codeDir)
+      // For tarballs, we need a different approach - extract in the exec call
+      throw new Error('Tarball extraction not yet supported in bundled deployment')
     } else {
-      // Single file, write as main module via DWS exec API
-      const mainFile = worker.mainModule ?? 'worker.js'
-      let code = Buffer.from(result.content).toString('utf-8')
-
-      // Wrap if needed
+      code = Buffer.from(result.content).toString('utf-8')
       code = wrapHandlerAsWorker(code, 'handler')
-
-      // Write file via DWS exec API
-      const writeResult = await fetch(execUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          command: ['sh', '-c', `cat > "${codeDir}/${mainFile}"`],
-          stdin: code,
-        }),
-      })
-      if (!writeResult.ok) {
-        throw new Error(`Failed to write worker file: ${writeResult.status}`)
-      }
-
-      // Update modules list
-      worker.modules = [
-        {
-          name: mainFile,
-          type: 'esModule',
-          content: code,
-        },
-      ]
     }
 
-    // Deploy with workerd
-    await this.deployWithWorkerd(worker, codeDir)
+    // Update modules list
+    worker.modules = [
+      {
+        name: mainFile,
+        type: 'esModule',
+        content: code,
+      },
+    ]
 
-    worker.status = 'active'
-    worker.updatedAt = Date.now()
-
-    this.emit({
-      type: 'worker:deployed',
-      workerId: worker.id,
-      version: worker.version,
-    })
-  }
-
-  private async deployWithWorkerd(
-    worker: WorkerdWorkerDefinition,
-    codeDir: string,
-  ): Promise<void> {
+    // Allocate port before the bundled exec call
     const port = await this.allocatePort()
     const configPath = `${codeDir}/config.capnp`
 
     // Generate workerd config
     const configContent = generateWorkerConfig(worker, port)
-    const execUrl =
-      this.config.execUrl ??
-      `http://${getLocalhostHost()}:${CORE_PORTS.DWS_API.get()}/exec`
 
-    // Write config file via DWS exec API
-    console.log(`[WorkerdExecutor] Writing config to ${configPath}`)
-    const writeConfigResult = await fetch(execUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        command: ['sh', '-c', `cat > "${configPath}"`],
-        stdin: configContent,
-      }),
-    })
-    if (!writeConfigResult.ok) {
-      throw new Error(
-        `Failed to write workerd config: ${writeConfigResult.status}`,
-      )
-    }
-    console.log(`[WorkerdExecutor] Config written successfully`)
-
-    // Start workerd process via DWS exec API
     if (!this.workerdPath) {
       throw new Error('Workerd not initialized. Call initialize() first.')
     }
 
-    // SECURITY: Only pass minimal required environment variables to workers
-    // Do NOT spread process.env - that would leak server secrets
-    const spawnResult = await fetch(execUrl, {
+    // Bundle ALL operations into a single exec call to ensure they run on the same pod
+    // This is critical for load-balanced environments where exec requests may hit different pods
+    console.log(`[WorkerdExecutor] Deploying worker ${worker.id} to port ${port} (bundled)`)
+
+    // Create a shell script that does everything atomically
+    const deployScript = `
+set -e
+# Create directory
+mkdir -p "${codeDir}"
+# Write worker code
+cat > "${codeDir}/${mainFile}" << 'WORKER_CODE_EOF'
+${code}
+WORKER_CODE_EOF
+# Write config
+cat > "${configPath}" << 'CONFIG_EOF'
+${configContent}
+CONFIG_EOF
+# Start workerd in background and echo PID
+cd "${codeDir}"
+nohup ${this.workerdPath} serve "${configPath}" --verbose > /tmp/workerd-${worker.id}.log 2>&1 &
+echo $!
+`
+
+    const deployResult = await fetch(execUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        command: [this.workerdPath, 'serve', configPath, '--verbose'],
+        command: ['sh', '-c', deployScript],
         env: {
-          PATH: process.env.PATH,
-          HOME: process.env.HOME,
-          TMPDIR: process.env.TMPDIR,
+          PATH: process.env.PATH ?? '/usr/local/bin:/usr/bin:/bin',
+          HOME: process.env.HOME ?? '/tmp',
+          TMPDIR: process.env.TMPDIR ?? '/tmp',
           WORKERD_LOG_LEVEL: 'info',
         },
-        background: true,
-        cwd: codeDir,
+        timeout: 30000,
       }),
     })
-    if (!spawnResult.ok) {
-      throw new Error(`Failed to spawn workerd process: ${spawnResult.status}`)
-    }
-    const spawnData = (await spawnResult.json()) as {
-      pid: number
-      exitCode?: number
+
+    if (!deployResult.ok) {
+      this.releasePort(port)
+      throw new Error(`Failed to deploy worker: ${deployResult.status}`)
     }
 
-    console.log(
-      `[WorkerdExecutor] Spawned workerd process: PID=${spawnData.pid}, port=${port}`,
-    )
+    const deployData = (await deployResult.json()) as {
+      exitCode: number
+      stdout: string
+      stderr: string
+    }
 
-    // Create process tracking object (workerd-compatible - no actual process object)
+    if (deployData.exitCode !== 0) {
+      this.releasePort(port)
+      console.error(`[WorkerdExecutor] Deploy script failed:`, deployData.stderr)
+      throw new Error(`Deploy script failed: ${deployData.stderr}`)
+    }
+
+    // Parse PID from stdout
+    const pid = parseInt(deployData.stdout.trim(), 10)
+    if (isNaN(pid)) {
+      this.releasePort(port)
+      throw new Error(`Failed to parse workerd PID from: ${deployData.stdout}`)
+    }
+
+    console.log(`[WorkerdExecutor] Spawned workerd process: PID=${pid}, port=${port}`)
+
+    // Create process tracking object
     const processId = crypto.randomUUID()
     const workerdProcess: WorkerdProcess = {
       id: processId,
-      pid: spawnData.pid,
+      pid,
       port,
       status: 'starting',
       workers: new Set([worker.id]),
@@ -329,12 +303,12 @@ export class WorkerdExecutor implements IWorkerdExecutor {
           fetch(execUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ command: ['kill', String(spawnData.pid)] }),
+            body: JSON.stringify({ command: ['kill', String(pid)] }),
           }).catch(() => {
             // Ignore errors
           })
         },
-        exited: Promise.resolve(0), // DWS exec API handles process lifecycle
+        exited: Promise.resolve(0),
       },
     }
 
@@ -356,7 +330,7 @@ export class WorkerdExecutor implements IWorkerdExecutor {
     }
     this.instances.set(worker.id, instance)
 
-    // Wait for ready (no early exit detection needed - DWS exec API handles process lifecycle)
+    // Wait for ready
     console.log(
       `[WorkerdExecutor] Waiting for workerd on port ${port} to become ready...`,
     )
@@ -366,19 +340,35 @@ export class WorkerdExecutor implements IWorkerdExecutor {
     if (ready) {
       workerdProcess.status = 'ready'
       instance.status = 'ready'
+      worker.status = 'active'
+      worker.updatedAt = Date.now()
       this.emit({ type: 'process:started', processId, port })
+      this.emit({
+        type: 'worker:deployed',
+        workerId: worker.id,
+        version: worker.version,
+      })
     } else {
+      // Try to get logs for debugging
+      const logResult = await fetch(execUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command: ['cat', `/tmp/workerd-${worker.id}.log`] }),
+      }).catch(() => null)
+
+      let logs = ''
+      if (logResult?.ok) {
+        const logData = (await logResult.json()) as { stdout: string }
+        logs = logData.stdout
+      }
+
       workerdProcess.status = 'error'
       instance.status = 'error'
       worker.status = 'error'
-      worker.error =
-        'Failed to start workerd process: timeout waiting for ready'
-      console.error(`[WorkerdExecutor] Failed to start: timeout`)
+      worker.error = `Failed to start workerd process: timeout waiting for ready. Logs: ${logs}`
+      console.error(`[WorkerdExecutor] Failed to start: timeout. Logs:`, logs)
       throw new Error(`Workerd process failed to start: timeout`)
     }
-
-    // Note: Process exit handling is done via DWS exec API monitoring
-    // The exec API will notify us if the process exits
   }
 
   async undeployWorker(workerId: string): Promise<void> {

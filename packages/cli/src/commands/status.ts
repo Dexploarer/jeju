@@ -29,6 +29,7 @@ export const statusCommand = new Command('status')
     } else {
       await quickStatus(network)
     }
+    process.exit(0)
   })
 
 async function quickStatus(network: NetworkType): Promise<void> {

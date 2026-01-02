@@ -17,7 +17,7 @@ import {
   http,
 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
-import { base, baseSepolia, localhost } from 'viem/chains'
+import { getChainById } from './chains'
 import {
   type BoardMemberConfig,
   type DAOStatus,
@@ -1081,16 +1081,7 @@ export class DAOService {
   }
 
   private getChain(chainId: number) {
-    switch (chainId) {
-      case 8453:
-        return base
-      case 84532:
-        return baseSepolia
-      case 31337:
-        return localhost
-      default:
-        return localhost
-    }
+    return getChainById(chainId)
   }
   async getDAO(daoId: string): Promise<DAO> {
     expectDefined(daoId, 'DAO ID is required')

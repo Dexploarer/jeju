@@ -706,31 +706,38 @@ function decodeSnapshot(
     snapshotReader: reader,
   }
   if (!meta?.version) {
+    // meta is OldSnapshotMeta (DsoHandles with settings mixed in)
+    // Extract settings and treat the rest as DsoHandles
+    const oldMeta = meta as OldSnapshotMeta
+    const { settings: oldSettings, version: _, ...dsoHandlesOnly } = oldMeta as OldSnapshotMeta & { [key: string]: { handles: number[] } }
     return {
       version: 1,
       importedModulesList: undefined,
-      dsoHandles: meta,
+      dsoHandles: dsoHandlesOnly as DsoHandles,
       hiwire: undefined,
       loadOrder: [],
       soMemoryBases: {},
       settings: {
-        snapshotType: meta.settings?.baselineSnapshot ? 'baseline' : 'package',
+        snapshotType: oldSettings?.baselineSnapshot ? 'baseline' : 'package',
         compatFlags: {},
-        ...meta.settings,
+        ...oldSettings,
       },
       jsModuleNames: [],
       ...extras,
     }
   }
+  // meta is SnapshotMeta (new format)
+  const newMeta = meta as SnapshotMeta
+  const newSettings = newMeta.settings as SnapshotSettings
   return {
-    ...meta,
+    ...newMeta,
     ...extras,
     settings: {
-      ...meta.settings,
+      ...newSettings,
       snapshotType:
-        meta.settings.snapshotType ??
-        (meta.settings.baselineSnapshot ? 'baseline' : 'package'),
-      compatFlags: meta.settings.compatFlags ?? {},
+        (newSettings as LoadedSnapshotSettings).snapshotType ??
+        (newSettings.baselineSnapshot ? 'baseline' : 'package'),
+      compatFlags: (newSettings as LoadedSnapshotSettings).compatFlags ?? {},
     },
   }
 }

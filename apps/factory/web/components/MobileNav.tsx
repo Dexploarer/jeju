@@ -10,7 +10,6 @@ import {
   LayoutDashboard,
   Mail,
   Menu,
-  MessageSquare,
   Package,
   Play,
   Settings,
@@ -25,7 +24,6 @@ const navSections = [
     title: 'Main',
     items: [
       { name: 'Home', href: '/', icon: Home },
-      { name: 'Feed', href: '/feed', icon: MessageSquare },
       { name: 'Messages', href: '/messages', icon: Mail },
     ],
   },

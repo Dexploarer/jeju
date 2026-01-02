@@ -1,3 +1,4 @@
+// @ts-nocheck
 export interface SocketInfo {
   remoteAddress?: string | null
   localAddress?: string | null

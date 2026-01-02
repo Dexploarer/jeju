@@ -15,6 +15,7 @@ import {
 } from '@jejunetwork/config'
 import { Elysia } from 'elysia'
 import { z } from 'zod'
+import { characters, getCharacter, listCharacters } from './characters'
 
 /**
  * Worker Environment Types
@@ -97,30 +98,88 @@ export function createCrucibleApp(env?: Partial<CrucibleEnv>) {
           'X-API-Key',
           'X-Jeju-Address',
           'X-Jeju-Signature',
+          'X-Jeju-Timestamp',
         ],
         credentials: true,
       }),
     )
 
-    // Health check
-    .get('/health', () => ({
-      status: 'ok',
-      service: 'crucible-api',
-      version: '2.0.0',
-      network,
-      runtime: 'workerd',
+    // Root info endpoint
+    .get('/', () => ({
+      service: 'crucible',
+      version: '1.0.0',
+      description: 'Decentralized agent orchestration platform',
+      docs: '/api/v1',
       endpoints: {
-        a2a: '/a2a',
-        mcp: '/mcp',
-        agents: '/api/agents',
-        rooms: '/api/rooms',
+        health: '/health',
+        info: '/info',
+        characters: '/api/v1/characters',
+        chat: '/api/v1/chat/:characterId',
+        agents: '/api/v1/agents',
+        rooms: '/api/v1/rooms',
       },
     }))
+
+    // Health check - matches server.ts format for frontend compatibility
+    .get('/health', () => ({
+      status: 'healthy',
+      service: 'crucible',
+      network,
+      timestamp: new Date().toISOString(),
+    }))
+
+    // Info endpoint
+    .get('/info', () => ({
+      service: 'crucible',
+      version: '1.0.0',
+      network,
+      hasSigner: false,
+      dwsAvailable: true,
+      runtimes: Object.keys(characters).length,
+    }))
+
+    // ============================================
+    // Character Templates API
+    // ============================================
+    .get('/api/v1/characters', () => {
+      const characterList = listCharacters()
+        .map((id) => {
+          const char = getCharacter(id)
+          return char
+            ? { id: char.id, name: char.name, description: char.description }
+            : null
+        })
+        .filter(Boolean)
+      return { characters: characterList }
+    })
+
+    .get('/api/v1/characters/:id', ({ params }) => {
+      const id = params.id
+      const character = getCharacter(id)
+      if (!character) {
+        return { error: `Character not found: ${id}` }
+      }
+      return { character }
+    })
+
+    // Chat characters (with runtime status)
+    .get('/api/v1/chat/characters', () => {
+      const characterList = listCharacters().map((id) => {
+        const char = getCharacter(id)
+        return {
+          id,
+          name: char?.name ?? id,
+          description: char?.description ?? '',
+          hasRuntime: true, // In worker mode, all characters are available
+        }
+      })
+      return { characters: characterList }
+    })
 
     // ============================================
     // Agent Routes
     // ============================================
-    .group('/api/agents', (agents) =>
+    .group('/api/v1/agents', (agents) =>
       agents
         .get('/', () => ({ agents: [], message: 'List registered agents' }))
         .get('/:agentId', ({ params }) => ({
@@ -130,9 +189,23 @@ export function createCrucibleApp(env?: Partial<CrucibleEnv>) {
         .post('/', async ({ body }) => {
           const parsed = z
             .object({
-              name: z.string(),
-              description: z.string().optional(),
-              characterUri: z.string().optional(),
+              name: z.string().optional(),
+              character: z.object({
+                id: z.string(),
+                name: z.string(),
+                description: z.string(),
+                system: z.string(),
+                bio: z.array(z.string()),
+                messageExamples: z.array(z.array(z.unknown())),
+                topics: z.array(z.string()),
+                adjectives: z.array(z.string()),
+                style: z.object({
+                  all: z.array(z.string()),
+                  chat: z.array(z.string()),
+                  post: z.array(z.string()),
+                }),
+              }),
+              initialFunding: z.string().optional(),
             })
             .safeParse(body)
 
@@ -140,34 +213,39 @@ export function createCrucibleApp(env?: Partial<CrucibleEnv>) {
             return { error: 'Invalid agent data', details: parsed.error.issues }
           }
 
-          return { success: true, agentId: crypto.randomUUID() }
-        })
-        .post('/:agentId/start', ({ params }) => ({
-          agentId: params.agentId,
-          status: 'started',
-        }))
-        .post('/:agentId/stop', ({ params }) => ({
-          agentId: params.agentId,
-          status: 'stopped',
-        }))
-        .post('/:agentId/chat', async ({ params, body }) => {
-          const parsed = z.object({ message: z.string() }).safeParse(body)
-
-          if (!parsed.success) {
-            return { error: 'Invalid chat request' }
-          }
-
+          // In worker mode, we return a simulated response
+          // Full registration requires the main server with KMS
           return {
-            agentId: params.agentId,
-            response: 'Agent response placeholder',
+            agentId: crypto.randomUUID(),
+            vaultAddress: '0x0000000000000000000000000000000000000000',
+            characterCid: 'pending',
+            stateCid: 'pending',
           }
-        }),
+        })
+        .get('/:agentId/balance', () => ({
+          balance: '0',
+        }))
+        .post('/:agentId/fund', () => ({
+          txHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
+        })),
     )
+
+    // ============================================
+    // Search API
+    // ============================================
+    .get('/api/v1/search/agents', () => {
+      // Return empty results in worker mode
+      return {
+        agents: [],
+        total: 0,
+        hasMore: false,
+      }
+    })
 
     // ============================================
     // Room Routes
     // ============================================
-    .group('/api/rooms', (rooms) =>
+    .group('/api/v1/rooms', (rooms) =>
       rooms
         .get('/', () => ({ rooms: [], message: 'List agent rooms' }))
         .get('/:roomId', ({ params }) => ({
@@ -179,7 +257,12 @@ export function createCrucibleApp(env?: Partial<CrucibleEnv>) {
             .object({
               name: z.string(),
               description: z.string().optional(),
-              agents: z.array(z.string()).optional(),
+              roomType: z.enum(['collaboration', 'adversarial', 'debate', 'council']),
+              config: z.object({
+                maxMembers: z.number().optional(),
+                turnBased: z.boolean().optional(),
+                turnTimeout: z.number().optional(),
+              }).optional(),
             })
             .safeParse(body)
 
@@ -187,7 +270,7 @@ export function createCrucibleApp(env?: Partial<CrucibleEnv>) {
             return { error: 'Invalid room data', details: parsed.error.issues }
           }
 
-          return { success: true, roomId: crypto.randomUUID() }
+          return { success: true, roomId: crypto.randomUUID(), stateCid: 'pending' }
         })
         .post('/:roomId/message', async ({ params, body }) => {
           const parsed = z.object({ content: z.string() }).safeParse(body)
@@ -201,30 +284,40 @@ export function createCrucibleApp(env?: Partial<CrucibleEnv>) {
     )
 
     // ============================================
-    // Trigger Routes
+    // Chat API (simple echo in worker mode)
     // ============================================
-    .group('/api/triggers', (triggers) =>
-      triggers
-        .get('/', () => ({ triggers: [], message: 'List triggers' }))
-        .post('/', async ({ body }) => {
-          const parsed = z
-            .object({
-              type: z.enum(['cron', 'webhook', 'event']),
-              agentId: z.string(),
-              config: z.record(z.string(), z.unknown()),
-            })
-            .safeParse(body)
+    .post('/api/v1/chat/:characterId', async ({ params, body }) => {
+      const characterId = params.characterId
+      const character = getCharacter(characterId)
 
-          if (!parsed.success) {
-            return {
-              error: 'Invalid trigger data',
-              details: parsed.error.issues,
-            }
-          }
+      if (!character) {
+        return { error: `Character not found: ${characterId}` }
+      }
 
-          return { success: true, triggerId: crypto.randomUUID() }
-        }),
-    )
+      const parsed = z
+        .object({
+          text: z.string().optional(),
+          message: z.string().optional(),
+          userId: z.string().optional(),
+          roomId: z.string().optional(),
+        })
+        .safeParse(body)
+
+      if (!parsed.success) {
+        return { error: 'Invalid chat request' }
+      }
+
+      const messageText = parsed.data.text ?? parsed.data.message ?? ''
+
+      // In worker mode, return a placeholder response
+      // Full chat requires the ElizaOS runtime from server.ts
+      return {
+        text: `[${character.name}] I'm running in worker mode. Full AI responses require the main server.`,
+        action: null,
+        actions: [],
+        character: characterId,
+      }
+    })
 
     // ============================================
     // A2A Protocol
@@ -234,7 +327,7 @@ export function createCrucibleApp(env?: Partial<CrucibleEnv>) {
         .get('/', () => ({
           name: 'Crucible',
           description: 'Agent Orchestration Platform',
-          version: '2.0.0',
+          version: '1.0.0',
           protocol: 'a2a',
           capabilities: ['agents', 'rooms', 'triggers', 'execution'],
         }))
@@ -267,15 +360,20 @@ export function createCrucibleApp(env?: Partial<CrucibleEnv>) {
           version: '1.0.0',
           tools: [
             {
+              name: 'crucible_list_characters',
+              description: 'List available character templates',
+              parameters: { type: 'object', properties: {} },
+            },
+            {
               name: 'crucible_create_agent',
               description: 'Create a new agent',
               parameters: {
                 type: 'object',
                 properties: {
                   name: { type: 'string' },
-                  description: { type: 'string' },
+                  characterId: { type: 'string' },
                 },
-                required: ['name'],
+                required: ['characterId'],
               },
             },
             {
@@ -284,10 +382,10 @@ export function createCrucibleApp(env?: Partial<CrucibleEnv>) {
               parameters: {
                 type: 'object',
                 properties: {
-                  agentId: { type: 'string' },
+                  characterId: { type: 'string' },
                   message: { type: 'string' },
                 },
-                required: ['agentId', 'message'],
+                required: ['characterId', 'message'],
               },
             },
           ],
@@ -319,14 +417,17 @@ export function createCrucibleApp(env?: Partial<CrucibleEnv>) {
         .post('/agent-tick', () => ({
           status: 'executed',
           message: 'Agent tick processed',
+          timestamp: new Date().toISOString(),
         }))
         .post('/flush-trajectories', () => ({
           status: 'executed',
           message: 'Trajectories flushed',
+          timestamp: new Date().toISOString(),
         }))
         .post('/health-check', () => ({
           status: 'executed',
           message: 'Health check completed',
+          timestamp: new Date().toISOString(),
         })),
     )
 

@@ -25,7 +25,8 @@ const IPFSUploadResponseSchema = z.object({
 })
 
 const DWSWorkerDeployResponseSchema = z.object({
-  workerId: z.string(),
+  functionId: z.string(),
+  version: z.number().optional(),
   status: z.string().optional(),
 })
 
@@ -71,7 +72,7 @@ function getConfig(): DeployConfig {
 }
 
 async function ensureBuild(): Promise<void> {
-  if (!existsSync(resolve(APP_DIR, 'dist/api/index.js'))) {
+  if (!existsSync(resolve(APP_DIR, 'dist/worker.js'))) {
     console.log('[VPN] Build not found, running build first...')
     const proc = Bun.spawn(['bun', 'run', 'scripts/build.ts'], {
       cwd: APP_DIR,
@@ -158,47 +159,26 @@ async function deployWorker(
 ): Promise<string> {
   const account = privateKeyToAccount(config.privateKey)
 
-  const deployRequest = {
-    name: 'vpn-api',
-    owner: account.address,
-    codeCid: apiBundle.cid,
-    codeHash: apiBundle.hash,
-    entrypoint: 'index.js',
-    runtime: 'bun',
-    resources: {
-      memoryMb: 256,
-      cpuMillis: 1000,
-      timeoutMs: 30000,
-      maxConcurrency: 100,
-    },
-    scaling: {
-      minInstances: 2,
-      maxInstances: 20,
-      targetConcurrency: 10,
-      scaleToZero: false,
-      cooldownMs: 60000,
-    },
-    requirements: {
-      teeRequired: false,
-      teePreferred: true,
-      minNodeReputation: 50,
-    },
-    routes: [
-      { pattern: '/api/*', zone: 'vpn' },
-      { pattern: '/health', zone: 'vpn' },
-    ],
-    env: {
-      NETWORK: config.network,
-      RPC_URL: config.rpcUrl,
-      DWS_URL: config.dwsUrl,
-    },
-    secrets: [],
-  }
-
-  const response = await fetch(`${config.dwsUrl}/workers/deploy`, {
+  // Deploy via DWS /workers endpoint (standard API)
+  const response = await fetch(`${config.dwsUrl}/workers`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(deployRequest),
+    headers: {
+      'Content-Type': 'application/json',
+      'x-jeju-address': account.address,
+    },
+    body: JSON.stringify({
+      name: 'vpn-api',
+      codeCid: apiBundle.cid,
+      runtime: 'bun',
+      handler: 'worker.js:default',
+      memory: 256,
+      timeout: 30000,
+      env: {
+        NETWORK: config.network,
+        RPC_URL: config.rpcUrl,
+        DWS_URL: config.dwsUrl,
+      },
+    }),
   })
 
   if (!response.ok) {
@@ -210,7 +190,7 @@ async function deployWorker(
   if (!parsed.success) {
     throw new Error(`Invalid deploy response: ${parsed.error.message}`)
   }
-  return parsed.data.workerId
+  return parsed.data.functionId
 }
 
 function getContentType(path: string): string {
@@ -293,14 +273,14 @@ async function deploy(): Promise<void> {
   console.log(`   index.html -> ${indexResult.cid}`)
   console.log(`   Total: ${webAssets.size} files\n`)
 
-  // Upload API bundle
-  console.log('Uploading API bundle...')
+  // Upload worker bundle
+  console.log('Uploading worker bundle...')
   const apiBundle = await uploadToIPFS(
     config.dwsUrl,
-    './dist/api/index.js',
-    'vpn-api.js',
+    './dist/worker.js',
+    'vpn-worker.js',
   )
-  console.log(`   API CID: ${apiBundle.cid}\n`)
+  console.log(`   Worker CID: ${apiBundle.cid}\n`)
 
   // Deploy worker
   console.log('Deploying worker to DWS...')

@@ -1,0 +1,14 @@
+load("@workerd//:build/wd_cc_library.bzl", "wd_cc_library")
+
+wd_cc_library(
+    name = "sqlit",
+    srcs = ["sqlit.c++"],
+    hdrs = ["sqlit.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//src/workerd/io:io-context",
+        "//src/workerd/jsg",
+        "@capnp-cpp//src/kj:kj-async",
+        "@capnp-cpp//src/kj/compat:kj-http",
+    ],
+)

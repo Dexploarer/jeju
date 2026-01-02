@@ -328,8 +328,10 @@ const app = new Elysia()
         'Authorization',
         'X-Request-ID',
         'X-Babylon-Api-Key',
-        'X-IPFS-Gateway', // For IPFS gateway headers
-        'X-JNS-Name', // For JNS name resolution
+        'X-Jeju-Address',
+        'x-jeju-address',
+        'X-IPFS-Gateway',
+        'X-JNS-Name',
       ],
       exposeHeaders: ['X-Request-ID', 'X-Rate-Limit-Remaining', 'X-DWS-Node'],
       maxAge: 86400,
@@ -1502,6 +1504,33 @@ if (import.meta.main) {
       const hostname = req.headers.get('host') ?? url.hostname
       console.log(`[Bun.serve] Request: ${hostname}${url.pathname}`)
 
+      // Special handling for core services with internal routing
+      // These services have their own /service/* routes and should be routed there directly
+      const coreServiceSubdomains = ['indexer']
+      const appName = hostname.split('.')[0]
+      if (coreServiceSubdomains.includes(appName)) {
+        // Rewrite the request to the internal service path
+        // e.g., indexer.testnet.jejunetwork.org/graphql → /indexer/graphql
+        const internalPath = `/${appName}${url.pathname}`
+        console.log(
+          `[Bun.serve] Routing core service: ${appName} → ${internalPath}`,
+        )
+
+        const internalUrl = new URL(internalPath, `http://127.0.0.1:${PORT}`)
+        internalUrl.search = url.search
+
+        const internalRequest = new Request(internalUrl.toString(), {
+          method: req.method,
+          headers: req.headers,
+          body:
+            req.method !== 'GET' && req.method !== 'HEAD'
+              ? req.body
+              : undefined,
+        })
+
+        return app.handle(internalRequest)
+      }
+
       // Check if this is a deployed app (not dws itself)
       if (
         !hostname.startsWith('dws.') &&
@@ -1604,18 +1633,39 @@ if (import.meta.main) {
             return new Response('Not Found', { status: 404 })
           }
           // No frontend CID or staticFiles - proxy all requests to backend
-          if (deployedApp.backendEndpoint) {
-            const targetUrl = `${deployedApp.backendEndpoint}${url.pathname}${url.search}`
-            return fetch(targetUrl, {
-              method: req.method,
-              headers: req.headers,
-              body:
-                req.method !== 'GET' && req.method !== 'HEAD'
-                  ? req.body
-                  : undefined,
-            })
+          if (deployedApp.backendEndpoint || deployedApp.backendWorkerId) {
+            console.log(
+              `[Bun.serve] No frontend configured, proxying all to backend: ${url.pathname}`,
+            )
+            return proxyToBackend(req, deployedApp, url.pathname)
           }
+          // App is registered but has no frontend or backend - return 503
+          console.log(
+            `[Bun.serve] App ${appName} has no frontend or backend configured`,
+          )
+          return new Response(
+            JSON.stringify({
+              error: 'Service unavailable',
+              message: `App ${appName} is registered but has no frontend or backend configured`,
+            }),
+            {
+              status: 503,
+              headers: { 'Content-Type': 'application/json' },
+            },
+          )
         }
+        // App not found in registry - return 404 instead of falling through to DWS
+        console.log(`[Bun.serve] App not found or disabled: ${appName}`)
+        return new Response(
+          JSON.stringify({
+            error: 'Not Found',
+            message: `App ${appName} is not deployed on this network`,
+          }),
+          {
+            status: 404,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        )
       }
 
       return app.handle(req)

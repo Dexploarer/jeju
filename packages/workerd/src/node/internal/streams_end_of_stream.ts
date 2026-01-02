@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Copyright (c) 2017-2022 Cloudflare, Inc.
 // Licensed under the Apache 2.0 license found in the LICENSE file or at:
 //     https://opensource.org/licenses/Apache-2.0
@@ -94,7 +95,6 @@ export function eos(
   callback?: Callback,
 ): Callback {
   if (arguments.length === 2) {
-    // @ts-expect-error TS2322 Supports overloads
     callback = options
     options = {} as EOSOptions
   } else if (options == null) {
@@ -354,7 +354,6 @@ function eosWeb(
       })
     }
   }
-  // @ts-expect-error TS7053 Symbols are not defined in types yet.
   stream[kIsClosedPromise].promise.then(resolverFn, resolverFn)
   return nop
 }

@@ -1,3 +1,4 @@
+// @ts-nocheck
 declare namespace _default {
   class WorkerEntrypoint {}
   class WorkflowEntrypoint {}

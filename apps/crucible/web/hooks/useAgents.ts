@@ -1,9 +1,11 @@
+import { useOAuth3 } from '@jejunetwork/auth/react'
 import {
   useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
+import { useCallback } from 'react'
 import { API_URL } from '../config'
 
 interface Agent {
@@ -78,6 +80,30 @@ interface FundVaultResponse {
 
 const PAGE_SIZE = 20
 
+/**
+ * Hook to build auth headers for API calls
+ */
+function useAuthHeaders() {
+  const { session, isAuthenticated, smartAccountAddress } = useOAuth3()
+
+  const getHeaders = useCallback((): Record<string, string> => {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    }
+
+    if (isAuthenticated && smartAccountAddress) {
+      headers['X-Jeju-Address'] = smartAccountAddress
+      if (session?.sessionId) {
+        headers['Authorization'] = `Bearer ${session.sessionId}`
+      }
+    }
+
+    return headers
+  }, [isAuthenticated, smartAccountAddress, session])
+
+  return { getHeaders, isAuthenticated }
+}
+
 export function useAgents(filters?: {
   name?: string
   owner?: string
@@ -116,6 +142,17 @@ export function useAgents(filters?: {
   })
 }
 
+/**
+ * Get agents owned by the current user
+ */
+export function useMyAgents() {
+  const { smartAccountAddress, isAuthenticated } = useOAuth3()
+
+  return useAgents({
+    owner: isAuthenticated && smartAccountAddress ? smartAccountAddress : undefined,
+  })
+}
+
 export function useAgent(agentId: string) {
   return useQuery({
     queryKey: ['agent', agentId],
@@ -147,14 +184,19 @@ export function useAgentBalance(agentId: string) {
 
 export function useRegisterAgent() {
   const queryClient = useQueryClient()
+  const { getHeaders, isAuthenticated } = useAuthHeaders()
 
   return useMutation({
     mutationFn: async (
       request: RegisterAgentRequest,
     ): Promise<RegisterAgentResponse> => {
+      if (!isAuthenticated) {
+        throw new Error('Please connect your wallet to deploy an agent')
+      }
+
       const response = await fetch(`${API_URL}/api/v1/agents`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify(request),
       })
       if (!response.ok) {
@@ -171,14 +213,19 @@ export function useRegisterAgent() {
 
 export function useExecuteAgent() {
   const queryClient = useQueryClient()
+  const { getHeaders, isAuthenticated } = useAuthHeaders()
 
   return useMutation({
     mutationFn: async (
       request: ExecuteAgentRequest,
     ): Promise<ExecuteAgentResponse> => {
+      if (!isAuthenticated) {
+        throw new Error('Please connect your wallet to execute agents')
+      }
+
       const response = await fetch(`${API_URL}/api/v1/execute`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify({
           agentId: request.agentId,
           input: request.input ?? {},
@@ -199,16 +246,21 @@ export function useExecuteAgent() {
 
 export function useFundVault() {
   const queryClient = useQueryClient()
+  const { getHeaders, isAuthenticated } = useAuthHeaders()
 
   return useMutation({
     mutationFn: async (
       request: FundVaultRequest,
     ): Promise<FundVaultResponse> => {
+      if (!isAuthenticated) {
+        throw new Error('Please connect your wallet to fund an agent')
+      }
+
       const response = await fetch(
         `${API_URL}/api/v1/agents/${request.agentId}/fund`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getHeaders(),
           body: JSON.stringify({ amount: request.amount }),
         },
       )

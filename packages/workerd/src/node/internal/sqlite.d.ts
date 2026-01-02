@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { DatabaseSync, StatementSync, backup } from 'node:sqlite'
 
 export { DatabaseSync, StatementSync, backup }

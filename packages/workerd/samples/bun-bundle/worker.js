@@ -166,6 +166,106 @@ export default {
           headers: { 'content-type': 'text/plain' }
         })
       
+      case '/password-hash': {
+        const body = await request.json()
+        const password = body.password || 'default'
+        const cost = body.cost || 10
+        
+        const hash = await Bun.password.hash(password, { cost })
+        
+        return new Response(JSON.stringify({
+          password: password.substring(0, 3) + '***',
+          hash,
+          algorithm: 'bcrypt',
+          cost
+        }), {
+          headers: { 'content-type': 'application/json' }
+        })
+      }
+      
+      case '/password-verify': {
+        const body = await request.json()
+        const password = body.password
+        const hash = body.hash
+        
+        if (!password || !hash) {
+          return new Response(JSON.stringify({
+            error: 'Missing password or hash'
+          }), {
+            status: 400,
+            headers: { 'content-type': 'application/json' }
+          })
+        }
+        
+        const valid = await Bun.password.verify(password, hash)
+        
+        return new Response(JSON.stringify({
+          valid
+        }), {
+          headers: { 'content-type': 'application/json' }
+        })
+      }
+      
+      case '/dns-lookup': {
+        const hostname = url.searchParams.get('hostname') || 'google.com'
+        
+        try {
+          const address = await Bun.dns.lookup(hostname)
+          return new Response(JSON.stringify({
+            hostname,
+            address,
+            provider: Bun.dns.getProvider()
+          }), {
+            headers: { 'content-type': 'application/json' }
+          })
+        } catch (err) {
+          return new Response(JSON.stringify({
+            error: err.message,
+            hostname
+          }), {
+            status: 500,
+            headers: { 'content-type': 'application/json' }
+          })
+        }
+      }
+      
+      case '/dns-resolve': {
+        const hostname = url.searchParams.get('hostname') || 'google.com'
+        const type = url.searchParams.get('type') || 'A'
+        
+        try {
+          let records
+          if (type === 'MX') {
+            records = await Bun.dns.resolveMx(hostname)
+          } else if (type === 'TXT') {
+            records = await Bun.dns.resolveTxt(hostname)
+          } else if (type === 'NS') {
+            records = await Bun.dns.resolveNs(hostname)
+          } else if (type === 'AAAA') {
+            records = await Bun.dns.resolve6(hostname)
+          } else {
+            records = await Bun.dns.resolve4(hostname)
+          }
+          
+          return new Response(JSON.stringify({
+            hostname,
+            type,
+            records
+          }), {
+            headers: { 'content-type': 'application/json' }
+          })
+        } catch (err) {
+          return new Response(JSON.stringify({
+            error: err.message,
+            hostname,
+            type
+          }), {
+            status: 500,
+            headers: { 'content-type': 'application/json' }
+          })
+        }
+      }
+      
       default:
         return new Response(JSON.stringify({
           error: 'Not Found',
@@ -183,7 +283,11 @@ export default {
             '/array-buffer-sink',
             '/stream-utils',
             '/sleep',
-            '/health'
+            '/health',
+            '/password-hash',
+            '/password-verify',
+            '/dns-lookup',
+            '/dns-resolve'
           ]
         }), {
           status: 404,

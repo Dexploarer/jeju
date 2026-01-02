@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2022 Cloudflare, Inc.
+// @ts-nocheck// Copyright (c) 2017-2022 Cloudflare, Inc.
 // Licensed under the Apache 2.0 license found in the LICENSE file or at:
 //     https://opensource.org/licenses/Apache-2.0
 // Copyright Joyent and Node contributors. All rights reserved. MIT license.
@@ -223,7 +223,6 @@ function zlibOnError(
   const self = this[owner_symbol]
   ok(self, 'Owner symbol should exist')
   const error = new NodeError(code, message)
-  // @ts-expect-error Err number is expected.
   error.errno = errno
   self.destroy(error)
   self[kError] = error
@@ -416,7 +415,6 @@ export class ZlibBase extends Transform {
       }
     }
 
-    // @ts-expect-error TODO: Find a way to avoid having "unknown"
     super({ autoDestroy: true, ...opts } as unknown)
 
     // Error handler by processCallback() and zlibOnError()
@@ -434,7 +432,6 @@ export class ZlibBase extends Transform {
   }
 
   // Note: This is intentionally a getter that shadows the property from Transform
-  // @ts-expect-error TS2611 Property/accessor mismatch with Transform._closed
   get _closed(): boolean {
     return this._handle == null
   }

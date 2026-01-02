@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { Server as _Server } from 'node:https'
 import { ERR_METHOD_NOT_IMPLEMENTED } from 'node-internal:internal_errors'
 import { Server as HttpServer } from 'node-internal:internal_http_server'

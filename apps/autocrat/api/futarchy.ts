@@ -17,19 +17,9 @@ import {
 } from 'viem'
 import { type LocalAccount, privateKeyToAccount } from 'viem/accounts'
 import { readContract, waitForTransactionReceipt } from 'viem/actions'
-import { base, baseSepolia, localhost } from 'viem/chains'
 import { toAddress, toHex } from '../lib'
+import { inferChainFromRpcUrl } from './chains'
 import { createKMSHttpWalletClient } from './kms-signer'
-
-function inferChainFromRpcUrl(rpcUrl: string) {
-  if (rpcUrl.includes('base-sepolia') || rpcUrl.includes('84532')) {
-    return baseSepolia
-  }
-  if (rpcUrl.includes('base') && !rpcUrl.includes('localhost')) {
-    return base
-  }
-  return localhost
-}
 
 const ZERO = zeroAddress
 const ZERO32 = zeroHash

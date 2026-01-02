@@ -1,4 +1,4 @@
-import type { URLFormatOptions } from 'node:url'
+// @ts-nocheckimport type { URLFormatOptions } from 'node:url'
 import {
   CHAR_AT,
   CHAR_BACKWARD_SLASH,
@@ -887,7 +887,6 @@ Url.prototype.resolveObject = function resolveObject(
     const relativeWithoutProtocol = Object.keys(relative).reduce((acc, key) => {
       if (key !== 'protocol') {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-expect-error
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         acc[key] = relative[key]
       }

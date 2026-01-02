@@ -98,53 +98,49 @@ export interface TFMMPool {
   userBalance: bigint
 }
 
-// Default pools for development (will be replaced by on-chain registry)
-const DEFAULT_POOLS: Omit<TFMMPool, 'state' | 'userBalance'>[] = [
+// Pool registry ABI for fetching pools from on-chain registry
+const POOL_REGISTRY_ABI = [
   {
-    address: '0x0000000000000000000000000000000000000001' as Address,
-    name: 'ETH-USDC Momentum',
-    strategy: 'momentum',
-    tvl: '$1.2M',
-    apy: '12.5%',
-    volume24h: '$450K',
-    metrics: { tvlUsd: 1_200_000, apyPercent: 12.5, volume24hUsd: 450_000 },
+    name: 'getAllPools',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ name: 'pools', type: 'address[]' }],
   },
   {
-    address: '0x0000000000000000000000000000000000000002' as Address,
-    name: 'BTC-ETH Mean Reversion',
-    strategy: 'mean-reversion',
-    tvl: '$890K',
-    apy: '8.3%',
-    volume24h: '$320K',
-    metrics: { tvlUsd: 890_000, apyPercent: 8.3, volume24hUsd: 320_000 },
+    name: 'getPoolInfo',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'pool', type: 'address' }],
+    outputs: [
+      { name: 'name', type: 'string' },
+      { name: 'strategy', type: 'string' },
+      { name: 'tvlUsd', type: 'uint256' },
+      { name: 'apyBps', type: 'uint256' },
+      { name: 'volume24hUsd', type: 'uint256' },
+    ],
   },
-  {
-    address: '0x0000000000000000000000000000000000000003' as Address,
-    name: 'Volatility Harvest',
-    strategy: 'volatility',
-    tvl: '$2.1M',
-    apy: '15.2%',
-    volume24h: '$780K',
-    metrics: { tvlUsd: 2_100_000, apyPercent: 15.2, volume24hUsd: 780_000 },
-  },
-]
+] as const
 
 export function useTFMMPools() {
   useAccount()
   const [selectedPool, setSelectedPool] = useState<Address | null>(null)
+  const [pools, setPools] = useState<TFMMPool[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  // In production, this would query a registry contract
-  const pools: TFMMPool[] = DEFAULT_POOLS.map((pool) => ({
-    ...pool,
-    state: null,
-    userBalance: 0n,
-  }))
+  // TODO: Replace with actual pool registry address from config when deployed
+  // For now, return empty array - pools will be populated when TFMM contracts are deployed
+
+  // Simulating async load for proper loading state
+  useState(() => {
+    setIsLoading(false)
+  })
 
   return {
     pools,
     selectedPool,
     setSelectedPool,
-    isLoading: false,
+    isLoading,
   }
 }
 

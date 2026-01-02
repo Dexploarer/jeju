@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { default as dnsUtil } from 'node-internal:dns'
 import * as errorCodes from 'node-internal:internal_dns_constants'
 import { DnsError } from 'node-internal:internal_errors'

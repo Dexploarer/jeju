@@ -25,7 +25,7 @@ export const appsCommand = new Command('apps')
       logger.info('  1. Create apps/<app-name>')
       logger.info('  2. Create apps/<app-name>/jeju-manifest.json')
       logger.info('  3. Add "type": "core" to the manifest')
-      return
+      process.exit(0)
     }
 
     logger.subheader('Details')
@@ -85,4 +85,5 @@ export const appsCommand = new Command('apps')
     logger.newline()
     logger.info('Start all apps: jeju dev')
     logger.info('Start only vendor apps: bun run dev:vendor')
+    process.exit(0)
   })

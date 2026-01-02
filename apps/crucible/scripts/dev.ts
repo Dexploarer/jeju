@@ -20,7 +20,8 @@ async function buildFrontend(): Promise<void> {
     entrypoints: ['./web/client.tsx'],
     outdir: './dist/dev',
     target: 'browser',
-    splitting: true,
+    // Disabled splitting due to Bun bundler bug with @noble/curves creating duplicate exports
+    splitting: false,
     minify: false,
     sourcemap: 'inline',
     external: DEFAULT_BROWSER_EXTERNALS,
@@ -85,6 +86,42 @@ async function buildFrontend(): Promise<void> {
           }))
           build.onResolve({ filter: /^@jejunetwork\/types$/ }, () => ({
             path: resolve(process.cwd(), '../../packages/types/src/index.ts'),
+          }))
+          build.onResolve({ filter: /^@jejunetwork\/config$/ }, () => ({
+            path: resolve(process.cwd(), '../../packages/config/index.ts'),
+          }))
+          build.onResolve({ filter: /^@jejunetwork\/auth\/react$/ }, () => ({
+            path: resolve(process.cwd(), '../../packages/auth/src/react/index.ts'),
+          }))
+          build.onResolve({ filter: /^@jejunetwork\/auth$/ }, () => ({
+            path: resolve(process.cwd(), '../../packages/auth/src/index.ts'),
+          }))
+
+          // Server-only stubs
+          const serverOnlyStub = resolve(process.cwd(), './web/stubs/empty.ts')
+          const authProvidersStub = resolve(process.cwd(), './web/stubs/auth-providers.ts')
+          
+          build.onResolve({ filter: /^@jejunetwork\/kms/ }, () => ({
+            path: serverOnlyStub,
+          }))
+          build.onResolve({ filter: /^@jejunetwork\/db/ }, () => ({
+            path: serverOnlyStub,
+          }))
+          build.onResolve({ filter: /^@jejunetwork\/messaging/ }, () => ({
+            path: serverOnlyStub,
+          }))
+          build.onResolve({ filter: /^elysia/ }, () => ({ path: serverOnlyStub }))
+          build.onResolve({ filter: /^@elysiajs\// }, () => ({
+            path: serverOnlyStub,
+          }))
+          build.onResolve({ filter: /providers\/farcaster/ }, () => ({
+            path: authProvidersStub,
+          }))
+          build.onResolve({ filter: /providers\/email/ }, () => ({
+            path: authProvidersStub,
+          }))
+          build.onResolve({ filter: /providers\/phone/ }, () => ({
+            path: authProvidersStub,
           }))
         },
       },

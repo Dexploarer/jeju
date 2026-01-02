@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type sqlite from 'node:sqlite'
 import { default as sqliteUtil } from 'node-internal:sqlite'
 

@@ -1,9 +1,11 @@
+import { OAuth3Provider } from '@jejunetwork/auth/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { lazy, Suspense, useMemo } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { Header } from './components/Header'
 import { LoadingSpinner } from './components/LoadingSpinner'
+import { getOAuth3Config } from './config'
 
 // Lazy load pages for better performance
 const HomePage = lazy(() => import('./pages/Home'))
@@ -36,8 +38,12 @@ function Providers({ children }: { children: React.ReactNode }) {
     [],
   )
 
+  const oauth3Config = useMemo(() => getOAuth3Config(), [])
+
   return (
+    <OAuth3Provider config={oauth3Config}>
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    </OAuth3Provider>
   )
 }
 

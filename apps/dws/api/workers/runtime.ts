@@ -32,19 +32,35 @@ function createWorkerBootstrap(port: number, _handler: string): string {
 const PORT = ${port};
 
 // Provide default environment for workers
+// These are the standard environment variables expected by Jeju workers
+// Note: Chain config should match packages/config/chain/*.json
 const workerEnv = {
   ...process.env,
   PORT: String(PORT),
+  NODE_ENV: process.env.NODE_ENV || 'production',
   NETWORK: process.env.NETWORK || process.env.JEJU_NETWORK || 'testnet',
+  JEJU_NETWORK: process.env.NETWORK || process.env.JEJU_NETWORK || 'testnet',
   TEE_MODE: process.env.TEE_MODE || 'simulated',
   TEE_PLATFORM: process.env.TEE_PLATFORM || 'dws',
   TEE_REGION: process.env.TEE_REGION || 'global',
-  RPC_URL: process.env.RPC_URL || process.env.L2_RPC_URL || 'https://sepolia.base.org',
+  // Chain configuration - must match chain/*.json
+  RPC_URL: process.env.RPC_URL || process.env.L2_RPC_URL || 'https://testnet-rpc.jejunetwork.org',
+  L2_RPC_URL: process.env.L2_RPC_URL || process.env.RPC_URL || 'https://testnet-rpc.jejunetwork.org',
+  L1_RPC_URL: process.env.L1_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com',
+  CHAIN_ID: process.env.CHAIN_ID || '420690',
+  L1_CHAIN_ID: process.env.L1_CHAIN_ID || '11155111',
+  // Service URLs
   DWS_URL: process.env.DWS_URL || 'https://dws.testnet.jejunetwork.org',
+  GATEWAY_URL: process.env.GATEWAY_URL || 'https://gateway.testnet.jejunetwork.org',
   INDEXER_URL: process.env.INDEXER_URL || 'https://indexer.testnet.jejunetwork.org/graphql',
+  KMS_URL: process.env.KMS_URL || 'https://kms.testnet.jejunetwork.org',
+  OAUTH3_URL: process.env.OAUTH3_URL || 'https://oauth3.testnet.jejunetwork.org',
+  // SQLit
   SQLIT_NODES: process.env.SQLIT_NODES || process.env.SQLIT_URL || '',
+  SQLIT_URL: process.env.SQLIT_URL || process.env.SQLIT_NODES || '',
   SQLIT_DATABASE_ID: process.env.SQLIT_DATABASE_ID || '',
   SQLIT_PRIVATE_KEY: process.env.SQLIT_PRIVATE_KEY || '',
+  SQLIT_MINER_ENDPOINT: process.env.SQLIT_MINER_ENDPOINT || '',
 };
 
 // ExecutionContext stub for Cloudflare Workers compatibility
@@ -54,9 +70,19 @@ const execCtx = {
 };
 
 async function startWorker() {
+  console.log('[Bootstrap] Setting up environment...');
+  
+  // IMPORTANT: Set process.env BEFORE importing the module
+  // Many libraries (like @jejunetwork/config, viem) read from process.env at import time
+  for (const [key, value] of Object.entries(workerEnv)) {
+    if (value !== undefined && value !== '') {
+      process.env[key] = value;
+    }
+  }
+  
   console.log('[Bootstrap] Loading worker module...');
   
-  // Import the worker module
+  // Import the worker module (AFTER setting env vars)
   let mod;
   try {
     mod = await import('./main.js');

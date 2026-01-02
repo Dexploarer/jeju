@@ -37,15 +37,80 @@ let initPromise: Promise<void> | null = null
 
 // SQLit is always required - no in-memory fallback for serverless compatibility
 
+// In-memory storage for test mode
+const memoryTables = new Map<string, Map<string, Record<string, unknown>>>()
+
+// In-memory SQLit mock for test mode
+function createMemorySQLitClient(): MinimalSQLitClient {
+  return {
+    async isHealthy() { return true },
+    async query<T>(sql: string, params: QueryParam[], _dbId: string): Promise<QueryResult<T>> {
+      // Parse simple SELECT queries for test mode
+      const table = sql.match(/FROM\s+(\w+)/i)?.[1]
+      if (!table) return { rows: [] }
+
+      const tableData = memoryTables.get(table) ?? new Map()
+      const rows = Array.from(tableData.values())
+
+      // Basic WHERE clause support
+      const whereMatch = sql.match(/WHERE\s+(LOWER\()?(\w+)\)?\s*=\s*\?/i)
+      if (whereMatch && params.length > 0) {
+        const field = whereMatch[2]
+        const value = String(params[0]).toLowerCase()
+        const filtered = rows.filter((r) => String(r[field]).toLowerCase() === value)
+        return { rows: filtered as T[] }
+      }
+
+      return { rows: rows as T[] }
+    },
+    async exec(sql: string, params: QueryParam[], _dbId: string): Promise<ExecResult> {
+      // Parse INSERT/REPLACE/UPDATE/DELETE for test mode
+      const insertMatch = sql.match(/INSERT\s+(?:OR\s+REPLACE\s+)?INTO\s+(\w+)/i)
+      if (insertMatch) {
+        const table = insertMatch[1]
+        if (!memoryTables.has(table)) memoryTables.set(table, new Map())
+        const tableData = memoryTables.get(table)
+        // Use first param as ID
+        const id = String(params[0])
+        const record: Record<string, unknown> = {}
+        // Extract columns from SQL
+        const colsMatch = sql.match(/\(([^)]+)\)\s*VALUES/i)
+        if (colsMatch) {
+          const cols = colsMatch[1].split(',').map(c => c.trim())
+          cols.forEach((col, i) => { record[col] = params[i] })
+        }
+        tableData?.set(id, record)
+        return { rowsAffected: 1 }
+      }
+
+      const deleteMatch = sql.match(/DELETE\s+FROM\s+(\w+)\s+WHERE\s+(\w+)\s*=\s*\?/i)
+      if (deleteMatch && params.length > 0) {
+        const table = deleteMatch[1]
+        const tableData = memoryTables.get(table)
+        if (tableData) {
+          const id = String(params[0])
+          tableData.delete(id)
+        }
+        return { rowsAffected: 1 }
+      }
+
+      return { rowsAffected: 0 }
+    },
+  }
+}
+
 async function getSQLitClient(): Promise<MinimalSQLitClient> {
   // Wait for initialization if in progress
   if (initPromise) {
     await initPromise
   }
 
-  // If already in memory-only mode, throw immediately
+  // If in memory-only mode (test mode), return a mock client
   if (memoryOnlyMode) {
-    throw new Error('SQLit unavailable (memory-only mode)')
+    if (!sqlitClient) {
+      sqlitClient = createMemorySQLitClient()
+    }
+    return sqlitClient
   }
 
   if (!sqlitClient) {
@@ -273,6 +338,63 @@ async function ensureTablesExist(): Promise<void> {
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     )`,
+    `CREATE TABLE IF NOT EXISTS dws_worker_versions (
+      id TEXT PRIMARY KEY,
+      worker_id TEXT NOT NULL,
+      version INTEGER NOT NULL,
+      code_cid TEXT NOT NULL,
+      runtime TEXT NOT NULL,
+      handler TEXT NOT NULL,
+      memory INTEGER NOT NULL,
+      timeout INTEGER NOT NULL,
+      env TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      UNIQUE(worker_id, version),
+      FOREIGN KEY (worker_id) REFERENCES dws_workers(id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS cli_secrets (
+      id TEXT PRIMARY KEY,
+      app_name TEXT NOT NULL,
+      key TEXT NOT NULL,
+      value TEXT NOT NULL,
+      scope TEXT NOT NULL DEFAULT 'all',
+      owner TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      UNIQUE(app_name, key)
+    )`,
+    `CREATE TABLE IF NOT EXISTS cli_previews (
+      preview_id TEXT PRIMARY KEY,
+      app_name TEXT NOT NULL,
+      branch_name TEXT NOT NULL,
+      commit_sha TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      preview_url TEXT NOT NULL,
+      api_url TEXT,
+      owner TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      expires_at INTEGER NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS jns_domains (
+      name TEXT PRIMARY KEY,
+      owner TEXT NOT NULL,
+      content_cid TEXT,
+      worker_id TEXT,
+      registered_at INTEGER NOT NULL,
+      expires_at INTEGER NOT NULL,
+      ttl INTEGER NOT NULL DEFAULT 300
+    )`,
+    `CREATE TABLE IF NOT EXISTS credit_transactions (
+      id TEXT PRIMARY KEY,
+      owner TEXT NOT NULL,
+      type TEXT NOT NULL,
+      amount TEXT NOT NULL,
+      balance_after TEXT NOT NULL,
+      tx_hash TEXT,
+      description TEXT,
+      created_at INTEGER NOT NULL
+    )`,
   ]
 
   const indexes = [
@@ -296,6 +418,15 @@ async function ensureTablesExist(): Promise<void> {
     'CREATE INDEX IF NOT EXISTS idx_dws_workers_owner ON dws_workers(owner)',
     'CREATE INDEX IF NOT EXISTS idx_dws_workers_name ON dws_workers(name)',
     'CREATE INDEX IF NOT EXISTS idx_dws_workers_status ON dws_workers(status)',
+    'CREATE INDEX IF NOT EXISTS idx_dws_worker_versions_worker ON dws_worker_versions(worker_id)',
+    'CREATE INDEX IF NOT EXISTS idx_cli_secrets_app ON cli_secrets(app_name)',
+    'CREATE INDEX IF NOT EXISTS idx_cli_secrets_owner ON cli_secrets(owner)',
+    'CREATE INDEX IF NOT EXISTS idx_cli_previews_owner ON cli_previews(owner)',
+    'CREATE INDEX IF NOT EXISTS idx_cli_previews_app ON cli_previews(app_name)',
+    'CREATE INDEX IF NOT EXISTS idx_cli_previews_status ON cli_previews(status)',
+    'CREATE INDEX IF NOT EXISTS idx_jns_domains_owner ON jns_domains(owner)',
+    'CREATE INDEX IF NOT EXISTS idx_credit_txns_owner ON credit_transactions(owner)',
+    'CREATE INDEX IF NOT EXISTS idx_credit_txns_created ON credit_transactions(created_at)',
   ]
 
   for (const ddl of tables) {
@@ -2038,13 +2169,682 @@ export const dwsWorkerState = {
   },
 }
 
+// ============================================================================
+// Worker Version History State
+// ============================================================================
+
+export interface WorkerVersion {
+  id: string
+  workerId: string
+  version: number
+  codeCid: string
+  runtime: string
+  handler: string
+  memory: number
+  timeout: number
+  env: string
+  createdAt: number
+}
+
+interface WorkerVersionRow {
+  id: string
+  worker_id: string
+  version: number
+  code_cid: string
+  runtime: string
+  handler: string
+  memory: number
+  timeout: number
+  env: string
+  created_at: number
+}
+
+function rowToWorkerVersion(row: WorkerVersionRow): WorkerVersion {
+  return {
+    id: row.id,
+    workerId: row.worker_id,
+    version: row.version,
+    codeCid: row.code_cid,
+    runtime: row.runtime,
+    handler: row.handler,
+    memory: row.memory,
+    timeout: row.timeout,
+    env: row.env,
+    createdAt: row.created_at,
+  }
+}
+
+// In-memory store for worker versions (memory-only mode fallback)
+const workerVersionsMemory = new Map<string, WorkerVersion>()
+
+export const workerVersionState = {
+  async saveVersion(worker: DWSWorker): Promise<WorkerVersion> {
+    const now = Date.now()
+    const versionId = `${worker.id}:v${worker.version}`
+    const version: WorkerVersion = {
+      id: versionId,
+      workerId: worker.id,
+      version: worker.version,
+      codeCid: worker.codeCid,
+      runtime: worker.runtime,
+      handler: worker.handler,
+      memory: worker.memory,
+      timeout: worker.timeout,
+      env: JSON.stringify(worker.env),
+      createdAt: now,
+    }
+
+    if (memoryOnlyMode) {
+      workerVersionsMemory.set(versionId, version)
+      return version
+    }
+
+    const client = await getSQLitClient()
+    await client.exec(
+      `INSERT OR REPLACE INTO dws_worker_versions (
+        id, worker_id, version, code_cid, runtime, handler, memory, timeout, env, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        versionId,
+        worker.id,
+        worker.version,
+        worker.codeCid,
+        worker.runtime,
+        worker.handler,
+        worker.memory,
+        worker.timeout,
+        JSON.stringify(worker.env),
+        now,
+      ],
+      SQLIT_DATABASE_ID,
+    )
+
+    return version
+  },
+
+  async getVersion(workerId: string, version: number): Promise<WorkerVersion | null> {
+    const versionId = `${workerId}:v${version}`
+
+    if (memoryOnlyMode) {
+      return workerVersionsMemory.get(versionId) ?? null
+    }
+
+    const client = await getSQLitClient()
+    const result = await client.query<WorkerVersionRow>(
+      'SELECT * FROM dws_worker_versions WHERE worker_id = ? AND version = ?',
+      [workerId, version],
+      SQLIT_DATABASE_ID,
+    )
+    const row = result.rows[0]
+    return row ? rowToWorkerVersion(row) : null
+  },
+
+  async listVersions(workerId: string): Promise<WorkerVersion[]> {
+    if (memoryOnlyMode) {
+      return Array.from(workerVersionsMemory.values())
+        .filter((v) => v.workerId === workerId)
+        .sort((a, b) => b.version - a.version)
+    }
+
+    const client = await getSQLitClient()
+    const result = await client.query<WorkerVersionRow>(
+      'SELECT * FROM dws_worker_versions WHERE worker_id = ? ORDER BY version DESC',
+      [workerId],
+      SQLIT_DATABASE_ID,
+    )
+    return result.rows.map(rowToWorkerVersion)
+  },
+
+  async getLatestVersion(workerId: string): Promise<WorkerVersion | null> {
+    const versions = await this.listVersions(workerId)
+    return versions[0] ?? null
+  },
+}
+
+// ============================================================================
+// CLI Secrets State
+// ============================================================================
+
+export interface CLISecret {
+  id: string
+  appName: string
+  key: string
+  value: string
+  scope: 'production' | 'preview' | 'development' | 'all'
+  owner: string
+  createdAt: number
+  updatedAt: number
+}
+
+interface CLISecretRow {
+  id: string
+  app_name: string
+  key: string
+  value: string
+  scope: string
+  owner: string
+  created_at: number
+  updated_at: number
+}
+
+function rowToSecret(row: CLISecretRow): CLISecret {
+  return {
+    id: row.id,
+    appName: row.app_name,
+    key: row.key,
+    value: row.value,
+    scope: row.scope as CLISecret['scope'],
+    owner: row.owner,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+export const cliSecretState = {
+  async set(
+    appName: string,
+    key: string,
+    value: string,
+    scope: CLISecret['scope'],
+    owner: string,
+  ): Promise<CLISecret> {
+    const now = Date.now()
+    const id = `${appName}:${key}`
+    const secret: CLISecret = { id, appName, key, value, scope, owner, createdAt: now, updatedAt: now }
+
+    if (memoryOnlyMode) {
+      memoryStores.cliSecrets.set(id, secret)
+      return secret
+    }
+
+    const client = await getSQLitClient()
+    await client.exec(
+      `INSERT OR REPLACE INTO cli_secrets (id, app_name, key, value, scope, owner, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, appName, key, value, scope, owner, now, now],
+      SQLIT_DATABASE_ID,
+    )
+
+    return secret
+  },
+
+  async get(appName: string, key: string): Promise<CLISecret | null> {
+    const id = `${appName}:${key}`
+
+    if (memoryOnlyMode) {
+      return memoryStores.cliSecrets.get(id) ?? null
+    }
+
+    const client = await getSQLitClient()
+    const result = await client.query<CLISecretRow>(
+      'SELECT * FROM cli_secrets WHERE app_name = ? AND key = ?',
+      [appName, key],
+      SQLIT_DATABASE_ID,
+    )
+    const row = result.rows[0]
+    return row ? rowToSecret(row) : null
+  },
+
+  async listByApp(appName: string, owner: string): Promise<CLISecret[]> {
+    if (memoryOnlyMode) {
+      return Array.from(memoryStores.cliSecrets.values())
+        .filter((s) => s.appName === appName && s.owner.toLowerCase() === owner.toLowerCase())
+    }
+
+    const client = await getSQLitClient()
+    const result = await client.query<CLISecretRow>(
+      'SELECT * FROM cli_secrets WHERE app_name = ? AND owner = ? ORDER BY key',
+      [appName, owner],
+      SQLIT_DATABASE_ID,
+    )
+    return result.rows.map(rowToSecret)
+  },
+
+  async delete(appName: string, key: string): Promise<boolean> {
+    const id = `${appName}:${key}`
+
+    if (memoryOnlyMode) {
+      return memoryStores.cliSecrets.delete(id)
+    }
+
+    const client = await getSQLitClient()
+    const result = await client.exec(
+      'DELETE FROM cli_secrets WHERE app_name = ? AND key = ?',
+      [appName, key],
+      SQLIT_DATABASE_ID,
+    )
+    return result.rowsAffected > 0
+  },
+}
+
+// ============================================================================
+// CLI Preview Deployments State
+// ============================================================================
+
+export interface CLIPreview {
+  previewId: string
+  appName: string
+  branchName: string
+  commitSha: string
+  status: 'pending' | 'building' | 'deploying' | 'active' | 'sleeping' | 'error'
+  previewUrl: string
+  apiUrl: string | null
+  owner: string
+  createdAt: number
+  updatedAt: number
+  expiresAt: number
+}
+
+interface CLIPreviewRow {
+  preview_id: string
+  app_name: string
+  branch_name: string
+  commit_sha: string
+  status: string
+  preview_url: string
+  api_url: string | null
+  owner: string
+  created_at: number
+  updated_at: number
+  expires_at: number
+}
+
+function rowToPreview(row: CLIPreviewRow): CLIPreview {
+  return {
+    previewId: row.preview_id,
+    appName: row.app_name,
+    branchName: row.branch_name,
+    commitSha: row.commit_sha,
+    status: row.status as CLIPreview['status'],
+    previewUrl: row.preview_url,
+    apiUrl: row.api_url,
+    owner: row.owner,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    expiresAt: row.expires_at,
+  }
+}
+
+export const cliPreviewState = {
+  async create(preview: Omit<CLIPreview, 'createdAt' | 'updatedAt'>): Promise<CLIPreview> {
+    const now = Date.now()
+    const fullPreview: CLIPreview = { ...preview, createdAt: now, updatedAt: now }
+
+    if (memoryOnlyMode) {
+      memoryStores.cliPreviews.set(preview.previewId, fullPreview)
+      return fullPreview
+    }
+
+    const client = await getSQLitClient()
+    await client.exec(
+      `INSERT INTO cli_previews (
+        preview_id, app_name, branch_name, commit_sha, status, preview_url, api_url,
+        owner, created_at, updated_at, expires_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        preview.previewId,
+        preview.appName,
+        preview.branchName,
+        preview.commitSha,
+        preview.status,
+        preview.previewUrl,
+        preview.apiUrl,
+        preview.owner,
+        now,
+        now,
+        preview.expiresAt,
+      ],
+      SQLIT_DATABASE_ID,
+    )
+
+    return fullPreview
+  },
+
+  async get(previewId: string): Promise<CLIPreview | null> {
+    if (memoryOnlyMode) {
+      return memoryStores.cliPreviews.get(previewId) ?? null
+    }
+
+    const client = await getSQLitClient()
+    const result = await client.query<CLIPreviewRow>(
+      'SELECT * FROM cli_previews WHERE preview_id = ?',
+      [previewId],
+      SQLIT_DATABASE_ID,
+    )
+    const row = result.rows[0]
+    return row ? rowToPreview(row) : null
+  },
+
+  async listByOwner(owner: string): Promise<CLIPreview[]> {
+    if (memoryOnlyMode) {
+      return Array.from(memoryStores.cliPreviews.values())
+        .filter((p) => p.owner.toLowerCase() === owner.toLowerCase())
+        .sort((a, b) => b.createdAt - a.createdAt)
+    }
+
+    const client = await getSQLitClient()
+    const result = await client.query<CLIPreviewRow>(
+      'SELECT * FROM cli_previews WHERE owner = ? ORDER BY created_at DESC',
+      [owner],
+      SQLIT_DATABASE_ID,
+    )
+    return result.rows.map(rowToPreview)
+  },
+
+  async updateStatus(previewId: string, status: CLIPreview['status']): Promise<boolean> {
+    if (memoryOnlyMode) {
+      const preview = memoryStores.cliPreviews.get(previewId)
+      if (preview) {
+        preview.status = status
+        preview.updatedAt = Date.now()
+        return true
+      }
+      return false
+    }
+
+    const client = await getSQLitClient()
+    const result = await client.exec(
+      'UPDATE cli_previews SET status = ?, updated_at = ? WHERE preview_id = ?',
+      [status, Date.now(), previewId],
+      SQLIT_DATABASE_ID,
+    )
+    return result.rowsAffected > 0
+  },
+
+  async delete(previewId: string): Promise<boolean> {
+    if (memoryOnlyMode) {
+      return memoryStores.cliPreviews.delete(previewId)
+    }
+
+    const client = await getSQLitClient()
+    const result = await client.exec(
+      'DELETE FROM cli_previews WHERE preview_id = ?',
+      [previewId],
+      SQLIT_DATABASE_ID,
+    )
+    return result.rowsAffected > 0
+  },
+}
+
+// ============================================================================
+// JNS Domains State
+// ============================================================================
+
+export interface JNSDomain {
+  name: string
+  owner: string
+  contentCid: string | null
+  workerId: string | null
+  registeredAt: number
+  expiresAt: number
+  ttl: number
+}
+
+interface JNSDomainRow {
+  name: string
+  owner: string
+  content_cid: string | null
+  worker_id: string | null
+  registered_at: number
+  expires_at: number
+  ttl: number
+}
+
+function rowToDomain(row: JNSDomainRow): JNSDomain {
+  return {
+    name: row.name,
+    owner: row.owner,
+    contentCid: row.content_cid,
+    workerId: row.worker_id,
+    registeredAt: row.registered_at,
+    expiresAt: row.expires_at,
+    ttl: row.ttl,
+  }
+}
+
+export const jnsDomainState = {
+  async register(domain: Omit<JNSDomain, 'registeredAt'>): Promise<JNSDomain> {
+    const now = Date.now()
+    const fullDomain: JNSDomain = { ...domain, registeredAt: now }
+
+    if (memoryOnlyMode) {
+      memoryStores.jnsDomains.set(domain.name, fullDomain)
+      return fullDomain
+    }
+
+    const client = await getSQLitClient()
+    await client.exec(
+      `INSERT INTO jns_domains (name, owner, content_cid, worker_id, registered_at, expires_at, ttl)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [domain.name, domain.owner, domain.contentCid, domain.workerId, now, domain.expiresAt, domain.ttl],
+      SQLIT_DATABASE_ID,
+    )
+
+    return fullDomain
+  },
+
+  async get(name: string): Promise<JNSDomain | null> {
+    if (memoryOnlyMode) {
+      return memoryStores.jnsDomains.get(name) ?? null
+    }
+
+    const client = await getSQLitClient()
+    const result = await client.query<JNSDomainRow>(
+      'SELECT * FROM jns_domains WHERE name = ?',
+      [name],
+      SQLIT_DATABASE_ID,
+    )
+    const row = result.rows[0]
+    return row ? rowToDomain(row) : null
+  },
+
+  async listByOwner(owner: string): Promise<JNSDomain[]> {
+    if (memoryOnlyMode) {
+      return Array.from(memoryStores.jnsDomains.values())
+        .filter((d) => d.owner.toLowerCase() === owner.toLowerCase())
+        .sort((a, b) => a.name.localeCompare(b.name))
+    }
+
+    const client = await getSQLitClient()
+    const result = await client.query<JNSDomainRow>(
+      'SELECT * FROM jns_domains WHERE owner = ? ORDER BY name',
+      [owner],
+      SQLIT_DATABASE_ID,
+    )
+    return result.rows.map(rowToDomain)
+  },
+
+  async setContent(name: string, contentCid: string): Promise<boolean> {
+    if (memoryOnlyMode) {
+      const domain = memoryStores.jnsDomains.get(name)
+      if (domain) {
+        domain.contentCid = contentCid
+        return true
+      }
+      return false
+    }
+
+    const client = await getSQLitClient()
+    const result = await client.exec(
+      'UPDATE jns_domains SET content_cid = ? WHERE name = ?',
+      [contentCid, name],
+      SQLIT_DATABASE_ID,
+    )
+    return result.rowsAffected > 0
+  },
+
+  async linkWorker(name: string, workerId: string): Promise<boolean> {
+    if (memoryOnlyMode) {
+      const domain = memoryStores.jnsDomains.get(name)
+      if (domain) {
+        domain.workerId = workerId
+        return true
+      }
+      return false
+    }
+
+    const client = await getSQLitClient()
+    const result = await client.exec(
+      'UPDATE jns_domains SET worker_id = ? WHERE name = ?',
+      [workerId, name],
+      SQLIT_DATABASE_ID,
+    )
+    return result.rowsAffected > 0
+  },
+
+  async transfer(name: string, newOwner: string): Promise<boolean> {
+    if (memoryOnlyMode) {
+      const domain = memoryStores.jnsDomains.get(name)
+      if (domain) {
+        domain.owner = newOwner
+        return true
+      }
+      return false
+    }
+
+    const client = await getSQLitClient()
+    const result = await client.exec(
+      'UPDATE jns_domains SET owner = ? WHERE name = ?',
+      [newOwner, name],
+      SQLIT_DATABASE_ID,
+    )
+    return result.rowsAffected > 0
+  },
+
+  async isAvailable(name: string): Promise<boolean> {
+    const domain = await this.get(name)
+    if (!domain) return true
+    // Domain is available if expired
+    return domain.expiresAt < Date.now()
+  },
+}
+
+// ============================================================================
+// Credit Transaction State
+// ============================================================================
+
+export interface CreditTransaction {
+  id: string
+  owner: string
+  type: 'topup' | 'usage' | 'refund' | 'adjustment'
+  amount: string
+  balanceAfter: string
+  txHash: string | null
+  description: string | null
+  createdAt: number
+}
+
+interface CreditTransactionRow {
+  id: string
+  owner: string
+  type: string
+  amount: string
+  balance_after: string
+  tx_hash: string | null
+  description: string | null
+  created_at: number
+}
+
+function rowToCreditTransaction(row: CreditTransactionRow): CreditTransaction {
+  return {
+    id: row.id,
+    owner: row.owner,
+    type: row.type as CreditTransaction['type'],
+    amount: row.amount,
+    balanceAfter: row.balance_after,
+    txHash: row.tx_hash,
+    description: row.description,
+    createdAt: row.created_at,
+  }
+}
+
+// In-memory store for credit transactions (memory-only mode fallback)
+const creditTransactionsMemory = new Map<string, CreditTransaction>()
+
+export const creditTransactionState = {
+  async record(
+    owner: string,
+    type: CreditTransaction['type'],
+    amount: bigint,
+    balanceAfter: bigint,
+    txHash?: string,
+    description?: string,
+  ): Promise<CreditTransaction> {
+    const now = Date.now()
+    const id = `txn_${now}_${Math.random().toString(36).slice(2, 10)}`
+    const txn: CreditTransaction = {
+      id,
+      owner,
+      type,
+      amount: amount.toString(),
+      balanceAfter: balanceAfter.toString(),
+      txHash: txHash ?? null,
+      description: description ?? null,
+      createdAt: now,
+    }
+
+    if (memoryOnlyMode) {
+      creditTransactionsMemory.set(id, txn)
+      return txn
+    }
+
+    const client = await getSQLitClient()
+    await client.exec(
+      `INSERT INTO credit_transactions (id, owner, type, amount, balance_after, tx_hash, description, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, owner, type, txn.amount, txn.balanceAfter, txn.txHash, txn.description, now],
+      SQLIT_DATABASE_ID,
+    )
+
+    return txn
+  },
+
+  async listByOwner(owner: string, limit: number = 100): Promise<CreditTransaction[]> {
+    if (memoryOnlyMode) {
+      return Array.from(creditTransactionsMemory.values())
+        .filter((t) => t.owner.toLowerCase() === owner.toLowerCase())
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .slice(0, limit)
+    }
+
+    const client = await getSQLitClient()
+    const result = await client.query<CreditTransactionRow>(
+      'SELECT * FROM credit_transactions WHERE owner = ? ORDER BY created_at DESC LIMIT ?',
+      [owner, limit],
+      SQLIT_DATABASE_ID,
+    )
+    return result.rows.map(rowToCreditTransaction)
+  },
+
+  async getByTxHash(txHash: string): Promise<CreditTransaction | null> {
+    if (memoryOnlyMode) {
+      return (
+        Array.from(creditTransactionsMemory.values()).find((t) => t.txHash === txHash) ?? null
+      )
+    }
+
+    const client = await getSQLitClient()
+    const result = await client.query<CreditTransactionRow>(
+      'SELECT * FROM credit_transactions WHERE tx_hash = ?',
+      [txHash],
+      SQLIT_DATABASE_ID,
+    )
+    const row = result.rows[0]
+    return row ? rowToCreditTransaction(row) : null
+  },
+}
+
 // Track if we're in memory-only mode (no SQLit)
-const memoryOnlyMode = false
+// Allow memory-only mode when testing (DWS_TEST_MODE=1) or explicitly requested
+let memoryOnlyMode = process.env.DWS_TEST_MODE === '1'
 
 // In-memory stores for when SQLit is unavailable
 const memoryStores = {
   computeJobs: new Map<string, ComputeJobRow>(),
   apiUserAccounts: new Map<string, ApiUserAccountRow>(),
+  cliSecrets: new Map<string, CLISecret>(),
+  cliPreviews: new Map<string, CLIPreview>(),
+  jnsDomains: new Map<string, JNSDomain>(),
 }
 
 // Initialize state - uses promise to prevent race conditions
@@ -2059,6 +2859,13 @@ export async function initializeDWSState(): Promise<void> {
 
   // Start initialization and store the promise
   initPromise = (async () => {
+    // If test mode, use memory-only without trying SQLit
+    if (memoryOnlyMode) {
+      initialized = true
+      console.log('[DWS State] Running in test mode - memory-only persistence')
+      return
+    }
+
     try {
       await getSQLitClient()
       initialized = true

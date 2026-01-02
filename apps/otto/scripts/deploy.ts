@@ -25,7 +25,8 @@ const IPFSUploadResponseSchema = z.object({
 })
 
 const DWSWorkerDeployResponseSchema = z.object({
-  workerId: z.string(),
+  functionId: z.string(),
+  version: z.number().optional(),
   status: z.string().optional(),
 })
 
@@ -127,55 +128,26 @@ async function deployWorker(
 ): Promise<string> {
   const account = privateKeyToAccount(config.privateKey)
 
-  const deployRequest = {
-    name: 'otto-bot',
-    owner: account.address,
-    codeCid: serverBundle.cid,
-    codeHash: serverBundle.hash,
-    entrypoint: 'server.js',
-    runtime: 'bun',
-    resources: {
-      memoryMb: 512,
-      cpuMillis: 2000,
-      timeoutMs: 60000,
-      maxConcurrency: 50,
-    },
-    scaling: {
-      minInstances: 1,
-      maxInstances: 10,
-      targetConcurrency: 5,
-      scaleToZero: false,
-      cooldownMs: 60000,
-    },
-    requirements: {
-      teeRequired: false,
-      teePreferred: true,
-      minNodeReputation: 50,
-    },
-    routes: [
-      { pattern: '/api/*', zone: 'otto' },
-      { pattern: '/a2a/*', zone: 'otto' },
-      { pattern: '/mcp/*', zone: 'otto' },
-      { pattern: '/webhooks/*', zone: 'otto' },
-      { pattern: '/health', zone: 'otto' },
-    ],
-    env: {
-      NETWORK: config.network,
-      RPC_URL: config.rpcUrl,
-      DWS_URL: config.dwsUrl,
-    },
-    secrets: [
-      'DISCORD_BOT_TOKEN',
-      'TELEGRAM_BOT_TOKEN',
-      'TWITTER_BEARER_TOKEN',
-      'OPENAI_API_KEY',
-    ],
-  }
-
-  const response = await fetch(`${config.dwsUrl}/workers/deploy`, {
+  // Deploy via DWS /workers endpoint (standard API)
+  const response = await fetch(`${config.dwsUrl}/workers`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(deployRequest),
+    headers: {
+      'Content-Type': 'application/json',
+      'x-jeju-address': account.address,
+    },
+    body: JSON.stringify({
+      name: 'otto-api',
+      codeCid: serverBundle.cid,
+      runtime: 'bun',
+      handler: 'worker.js:default',
+      memory: 512,
+      timeout: 60000,
+      env: {
+        NETWORK: config.network,
+        RPC_URL: config.rpcUrl,
+        DWS_URL: config.dwsUrl,
+      },
+    }),
   })
 
   if (!response.ok) {
@@ -187,7 +159,7 @@ async function deployWorker(
   if (!parsed.success) {
     throw new Error(`Invalid deploy response: ${parsed.error.message}`)
   }
-  return parsed.data.workerId
+  return parsed.data.functionId
 }
 
 async function deploy(): Promise<void> {

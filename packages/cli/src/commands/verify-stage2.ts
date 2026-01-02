@@ -428,6 +428,7 @@ verifyStage2Command
     console.log('  • Base: Stage 0')
     console.log('  • zkSync Era: Stage 0')
     console.log()
+    process.exit(0)
   })
 
 export default verifyStage2Command

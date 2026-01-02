@@ -174,6 +174,26 @@
     "hasDownloads": false
   },
   "decentralization": {
+    "worker": {
+      "name": "otto-api",
+      "entrypoint": "api/worker.ts",
+      "runtime": "workerd",
+      "memory": 512,
+      "timeout": 60000,
+      "compatibilityDate": "2025-06-01",
+      "routes": [
+        { "pattern": "/api/*" },
+        { "pattern": "/a2a/*" },
+        { "pattern": "/mcp/*" },
+        { "pattern": "/webhooks/*" },
+        { "pattern": "/health" }
+      ],
+      "tee": {
+        "required": false,
+        "preferred": true,
+        "platforms": ["dstack", "phala"]
+      }
+    },
     "cdn": {
       "enabled": true,
       "regions": [

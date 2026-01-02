@@ -22,7 +22,7 @@ import {
   zeroHash,
 } from 'viem'
 import { type LocalAccount, privateKeyToAccount } from 'viem/accounts'
-import { base, baseSepolia, localhost } from 'viem/chains'
+import { inferChainFromRpcUrl } from './chains'
 import { z } from 'zod'
 import { toAddress, toHex } from '../lib'
 import { createKMSHttpWalletClient } from './kms-signer'
@@ -33,15 +33,7 @@ const TokenURIDataSchema = z.object({
   role: z.string().optional(),
 })
 
-function inferChainFromRpcUrl(rpcUrl: string) {
-  if (rpcUrl.includes('base-sepolia') || rpcUrl.includes('84532')) {
-    return baseSepolia
-  }
-  if (rpcUrl.includes('base') && !rpcUrl.includes('localhost')) {
-    return base
-  }
-  return localhost
-}
+// inferChainFromRpcUrl imported from ./chains
 
 const ZERO = zeroAddress
 const ZERO32 = zeroHash

@@ -73,6 +73,7 @@ export const keysCommand = new Command('keys')
     switch (action) {
       case 'show':
         await showKeys(network, options.private)
+        process.exit(0)
         break
       case 'genesis':
         await runGenesis(network)
@@ -82,6 +83,7 @@ export const keysCommand = new Command('keys')
         break
       default:
         await showKeys(network, options.private)
+        process.exit(0)
     }
   })
 

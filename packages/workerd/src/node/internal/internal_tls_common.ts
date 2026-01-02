@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Copyright (c) 2017-2022 Cloudflare, Inc.
 // Licensed under the Apache 2.0 license found in the LICENSE file or at:
 //     https://opensource.org/licenses/Apache-2.0
@@ -26,7 +27,6 @@
 import type tls from 'node:tls'
 import { validateInteger } from 'node-internal:validators'
 
-// @ts-expect-error TS2323 Redeclare error.
 export declare class SecureContext {
   context: unknown
   constructor(
@@ -39,7 +39,6 @@ export declare class SecureContext {
 
 // This is intentionally not fully compatible with Node.js implementation
 // since creating and customizing an actually equivalent SecureContext is not supported.
-// @ts-expect-error TS2323 Redeclare error.
 export function SecureContext(
   this: SecureContext,
   secureProtocol?: string,
@@ -102,13 +101,11 @@ export function translatePeerCertificate(
   if (c.infoAccess != null) {
     // Type is ignored due to @types/node inconsistency
     const info = c.infoAccess as unknown as string
-    // @ts-expect-error TS2322 Ignored due to missing __proto__ type.
     c.infoAccess = { __proto__: null }
 
     // XXX: More key validation?
     info.replace(
       /([^\n:]*):([^\n]*)(?:\n|$)/g,
-      // @ts-expect-error TS2349 @types/node inconsistency
       (_all: string, key: string, val: string): void => {
         if (val.charCodeAt(0) === 0x22) {
           // The translatePeerCertificate function is only

@@ -91,6 +91,7 @@ export function createAutocratApp(env?: Partial<AutocratEnv>) {
         ? true
         : [
             'https://autocrat.jejunetwork.org',
+            'https://autocrat.testnet.jejunetwork.org',
             'https://jejunetwork.org',
             getCoreAppUrl('AUTOCRAT_API'),
           ],

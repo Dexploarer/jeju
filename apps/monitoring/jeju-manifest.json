@@ -108,6 +108,20 @@
     }
   },
   "decentralization": {
+    "worker": {
+      "name": "monitoring-api",
+      "entrypoint": "api/worker.ts",
+      "runtime": "workerd",
+      "memory": 512,
+      "timeout": 30000,
+      "compatibilityDate": "2025-06-01",
+      "routes": [
+        { "pattern": "/api/*" },
+        { "pattern": "/a2a/*" },
+        { "pattern": "/mcp/*" },
+        { "pattern": "/health" }
+      ]
+    },
     "cdn": {
       "enabled": true,
       "regions": ["global"],

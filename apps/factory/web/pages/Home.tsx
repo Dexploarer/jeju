@@ -4,7 +4,6 @@ import {
   Briefcase,
   DollarSign,
   GitBranch,
-  MessageSquare,
   Package,
   Sparkles,
   TrendingUp,
@@ -289,39 +288,6 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* Community Feed CTA */}
-      <section className="mt-10" aria-labelledby="feed-heading">
-        <div className="flex items-center justify-between mb-5">
-          <h2
-            id="feed-heading"
-            className="text-xl font-semibold text-surface-50 flex items-center gap-2.5 font-display"
-          >
-            <div className="w-8 h-8 rounded-lg bg-accent-500/15 flex items-center justify-center">
-              <MessageSquare
-                className="w-4 h-4 text-accent-400"
-                aria-hidden="true"
-              />
-            </div>
-            Community Feed
-          </h2>
-          <Link
-            to="/feed"
-            className="text-factory-400 hover:text-factory-300 text-sm flex items-center gap-1.5 group transition-colors"
-          >
-            Open feed{' '}
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-          </Link>
-        </div>
-        <div className="card p-6 sm:p-8 text-center bg-gradient-to-br from-surface-800/50 to-surface-900/50">
-          <p className="text-surface-400 mb-4">
-            Connect with other builders on Farcaster
-          </p>
-          <Link to="/feed" className="btn btn-primary">
-            <MessageSquare className="w-4 h-4" />
-            Open Feed
-          </Link>
-        </div>
-      </section>
     </div>
   )
 }

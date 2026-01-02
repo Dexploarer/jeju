@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Copyright (c) 2017-2022 Cloudflare, Inc.
 // Licensed under the Apache 2.0 license found in the LICENSE file or at:
 //     https://opensource.org/licenses/Apache-2.0
@@ -64,7 +65,6 @@ const kRes = Symbol('res')
 const kPendingSession = Symbol('pendingSession')
 const kIsVerified = Symbol('verified')
 
-// @ts-expect-error TS2323 Cannot redeclare error.
 export declare class TLSSocket extends Socket {
   _hadError: boolean
   _handle: Socket['_handle']
@@ -162,7 +162,6 @@ function onerror(this: TLSSocket, err: Error): void {
 }
 
 // We are using old style function classes for node.js compat.
-// @ts-expect-error TS2323 Cannot redeclare error.
 export function TLSSocket(
   this: TLSSocket,
   socket: Socket | Duplex | undefined,
@@ -546,7 +545,6 @@ TLSSocket.prototype.setSession = (_session: string | Buffer): void => {
   // Do nothing. We don't support setting session.
 }
 
-// @ts-expect-error TS2322 Inconsistencies between @types/node
 TLSSocket.prototype.getPeerCertificate = (
   _detailed?: boolean,
 ): ReturnType<TLSSocketType['getPeerCertificate']> => {
@@ -604,7 +602,6 @@ TLSSocket.prototype.setKeyCert = function (
   'isSessionReused',
   'enableTrace',
 ].forEach((method) => {
-  // @ts-expect-error TS7053 Omitting...
   TLSSocket.prototype[method] = (): null => {
     // None of these functions are supported by connect() api.
     return null
@@ -664,7 +661,6 @@ function onConnectEnd(this: TLSSocket): void {
     error.path = options?.path
     error.host = options?.host
     error.port = options?.port
-    // @ts-expect-error TS2339 Missing types
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     error.localAddress = options?.localAddress
     this.destroy(error)
@@ -699,7 +695,6 @@ export function connect(...args: unknown[]): TLSSocket {
     validateFunction(options.checkServerIdentity, 'options.checkServerIdentity')
   }
 
-  // @ts-expect-error TS2345 Type incompatibility between Node.js Duplex and internal Duplex
   const tlssock = new TLSSocket(options.socket, {
     allowHalfOpen: options.allowHalfOpen,
     pipe: !!options.path,

@@ -13,6 +13,8 @@
     "test:e2e": "bunx playwright test tests/e2e/",
     "test:synpress": "bunx playwright test tests/synpress/ --config synpress.config.ts",
     "deploy": "bun run scripts/deploy.ts",
+    "deploy:testnet": "bun run scripts/deploy-testnet.ts",
+    "seed": "bun run scripts/seed.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
