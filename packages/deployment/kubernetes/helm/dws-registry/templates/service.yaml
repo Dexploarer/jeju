@@ -48,3 +48,4 @@ spec:
     {{- include "dws-registry.selectorLabels" . | nindent 4 }}
 {{- end }}
 
+

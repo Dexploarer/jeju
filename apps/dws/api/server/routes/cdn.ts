@@ -10,6 +10,7 @@
 import {
   createAppConfig,
   getContract,
+  getIpfsGatewayUrl,
   getLocalhostHost,
   getRpcUrl,
   getServiceUrl,
@@ -259,8 +260,8 @@ export function createCDNRouter() {
           return { error: 'Name not found' }
         }
 
-        // Use IPFS gateway directly for content serving
-        const ipfsGateway = 'http://127.0.0.1:8080'
+        // Use IPFS gateway for content serving (from config, not hardcoded)
+        const ipfsGateway = getIpfsGatewayUrl()
         const gatewayResponse = await fetch(
           `${ipfsGateway}/ipfs/${contentHash.hash}/index.html`,
         )
@@ -295,8 +296,8 @@ export function createCDNRouter() {
           return { error: 'Name not found' }
         }
 
-        // Use IPFS gateway directly
-        const ipfsGateway = 'http://127.0.0.1:8080'
+        // Use IPFS gateway (from config, not hardcoded)
+        const ipfsGateway = getIpfsGatewayUrl()
         const gatewayResponse = await fetch(
           `${ipfsGateway}/ipfs/${contentHash.hash}${jnsPath}`,
         )

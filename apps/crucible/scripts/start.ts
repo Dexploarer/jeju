@@ -276,20 +276,38 @@ async function deployWorker(
   }
 
   // Start local Bun process for the worker (ensures immediate availability)
+  // Use --no-install to skip package checks and speed up startup
   console.log('[Crucible] Starting worker process...')
-  _workerProcess = Bun.spawn(['bun', 'run', 'api/worker.ts'], {
-    cwd: APP_DIR,
-    env: {
-      ...process.env,
-      PORT: String(config.apiPort),
-      NETWORK: config.network,
-      SQLIT_URL: config.sqlitUrl,
-      DWS_URL: config.dwsUrl,
-      JEJU_NETWORK: config.network,
+  _workerProcess = Bun.spawn(
+    [
+      'bun',
+      '--no-install',
+      '-e',
+      `
+      const { createCrucibleApp } = await import('./api/worker.ts');
+      const app = createCrucibleApp();
+      Bun.serve({
+        port: ${config.apiPort},
+        hostname: '${host}',
+        fetch: app.fetch,
+      });
+      console.log('[Crucible Worker] Started on http://${host}:${config.apiPort}');
+      `,
+    ],
+    {
+      cwd: APP_DIR,
+      env: {
+        ...process.env,
+        PORT: String(config.apiPort),
+        NETWORK: config.network,
+        SQLIT_URL: config.sqlitUrl,
+        DWS_URL: config.dwsUrl,
+        JEJU_NETWORK: config.network,
+      },
+      stdout: 'inherit',
+      stderr: 'inherit',
     },
-    stdout: 'inherit',
-    stderr: 'inherit',
-  })
+  )
 
   // Wait for worker to be ready
   const workerReady = await waitForService(
@@ -455,7 +473,7 @@ function getContentType(path: string): string {
  * Proxies API requests to the DWS worker
  */
 async function startFrontendServer(config: StartConfig): Promise<void> {
-  // Serve frontend from DWS CDN/IPFS
+  // Serve frontend from DWS CDN/IPFS with local file fallback
   Bun.serve({
     port: config.frontendPort,
     async fetch(req) {
@@ -482,25 +500,41 @@ async function startFrontendServer(config: StartConfig): Promise<void> {
         return response
       }
 
-      // Fetch from DWS CDN (IPFS-backed)
+      // Try DWS CDN first (IPFS-backed)
       const cdnPath = path === '/' ? '/index.html' : path
-      const cdnUrl = `${config.dwsUrl}/cdn/crucible${cdnPath}`
-      const cdnResponse = await fetch(cdnUrl, {
-        signal: AbortSignal.timeout(10000),
-      })
+      try {
+        const cdnUrl = `${config.dwsUrl}/cdn/crucible${cdnPath}`
+        const cdnResponse = await fetch(cdnUrl, {
+          signal: AbortSignal.timeout(5000),
+        })
+        if (cdnResponse.ok) {
+          return cdnResponse
+        }
+      } catch {
+        // CDN not available, fall back to local files
+      }
 
-      if (cdnResponse.ok) {
-        return cdnResponse
+      // Fall back to local files
+      const localPath = path === '/' ? '/index.html' : path
+      const file = Bun.file(join(WEB_DIR, localPath))
+      if (await file.exists()) {
+        return new Response(await file.arrayBuffer(), {
+          headers: {
+            'Content-Type': getContentType(localPath),
+            'Cache-Control': localPath.endsWith('.html')
+              ? 'no-cache'
+              : 'public, max-age=3600',
+          },
+        })
       }
 
       // SPA fallback - serve index.html for client-side routing
       if (!path.includes('.')) {
-        const indexUrl = `${config.dwsUrl}/cdn/crucible/index.html`
-        const indexResponse = await fetch(indexUrl, {
-          signal: AbortSignal.timeout(10000),
-        })
-        if (indexResponse.ok) {
-          return indexResponse
+        const indexFile = Bun.file(join(WEB_DIR, 'index.html'))
+        if (await indexFile.exists()) {
+          return new Response(await indexFile.arrayBuffer(), {
+            headers: { 'Content-Type': 'text/html', 'Cache-Control': 'no-cache' },
+          })
         }
       }
 

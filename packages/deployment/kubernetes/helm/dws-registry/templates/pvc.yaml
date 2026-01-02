@@ -32,3 +32,4 @@ spec:
       storage: {{ .Values.ipfs.persistence.size }}
 {{- end }}
 
+

@@ -457,3 +457,25 @@ export function getCacheRentalClient(): CacheRentalClient {
 export function resetCacheRentalClient(): void {
   rentalClient = null
 }
+
+// Re-export cache helpers
+export {
+  CacheTTL,
+  hashKey,
+  hashRpcParams,
+  withCache,
+  withJsonCache,
+  isRpcMethodCacheable,
+  getRpcMethodTtl,
+  createRpcCacheKey,
+  cachedRpcCall,
+  getCachedProfile,
+  invalidateProfile,
+  getCachedTokenPrice,
+  getCachedTokenPrices,
+  getCachedTokenInfo,
+  createHybridCache,
+  resetSharedCaches,
+  type CachedFarcasterProfile,
+  type CachedTokenInfo,
+} from './helpers'

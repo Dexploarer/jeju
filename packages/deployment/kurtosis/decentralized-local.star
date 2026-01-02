@@ -376,6 +376,77 @@ def run(plan, args={}):
         plan.print("  " + node_name + " ready")
     
     # ========================================================================
+    # Step 8: Deploy op-batcher
+    # ========================================================================
+    
+    plan.print("")
+    plan.print("Starting op-batcher...")
+    
+    batcher = plan.add_service(
+        name="op-batcher",
+        config=ServiceConfig(
+            image=get_image("op-batcher", OP_BATCHER_VERSION),
+            ports={
+                "rpc": PortSpec(number=8548, transport_protocol="TCP"),
+                "metrics": PortSpec(number=7301, transport_protocol="TCP"),
+            },
+            cmd=[
+                "op-batcher",
+                "--l1-eth-rpc=http://l1-geth:8545",
+                "--l2-eth-rpc=http://" + sequencer_services[0] + ":8545",
+                "--rollup-rpc=http://" + node_services[0] + ":9545",
+                "--private-key=" + batcher_key,
+                "--max-channel-duration=1",
+                "--sub-safety-margin=4",
+                "--poll-interval=1s",
+                "--num-confirmations=1",
+                "--rpc.addr=0.0.0.0",
+                "--rpc.port=8548",
+                "--metrics.enabled=true",
+                "--metrics.addr=0.0.0.0",
+                "--metrics.port=7301",
+            ],
+        )
+    )
+    
+    plan.print("  op-batcher ready")
+    
+    # ========================================================================
+    # Step 9: Deploy op-proposer
+    # ========================================================================
+    
+    plan.print("")
+    plan.print("Starting op-proposer...")
+    
+    proposer = plan.add_service(
+        name="op-proposer",
+        config=ServiceConfig(
+            image=get_image("op-proposer", OP_PROPOSER_VERSION),
+            ports={
+                "rpc": PortSpec(number=8560, transport_protocol="TCP"),
+                "metrics": PortSpec(number=7302, transport_protocol="TCP"),
+            },
+            cmd=[
+                "op-proposer",
+                "--l1-eth-rpc=http://l1-geth:8545",
+                "--rollup-rpc=http://" + node_services[0] + ":9545",
+                "--private-key=" + proposer_key,
+                "--poll-interval=6s",
+                "--num-confirmations=1",
+                "--rpc.addr=0.0.0.0",
+                "--rpc.port=8560",
+                "--metrics.enabled=true",
+                "--metrics.addr=0.0.0.0",
+                "--metrics.port=7302",
+                # L2OutputOracle address - will be set after contract deployment
+                "--l2oo-address=0x0000000000000000000000000000000000000000",
+            ],
+        )
+    )
+    
+    plan.print("  op-proposer ready")
+    
+    # ========================================================================
     # Summary
     # ========================================================================
     
@@ -415,6 +486,8 @@ def run(plan, args={}):
     else:
         plan.print("  L2:          op-geth:8545")
         plan.print("  op-node:     op-node:9545")
+    plan.print("  Batcher:     op-batcher:8548")
+    plan.print("  Proposer:    op-proposer:8560")
     plan.print("")
     plan.print("Get actual ports with:")
     plan.print("  kurtosis enclave inspect jeju-decentralized")

@@ -5,10 +5,7 @@
  * This file is used when running in workerd environment.
  */
 
-import {
-  getCurrentNetwork,
-  getSQLitBlockProducerUrl,
-} from '@jejunetwork/config'
+import { getSQLitBlockProducerUrl } from '@jejunetwork/config'
 import { z } from 'zod'
 
 // =============================================================================
@@ -149,8 +146,7 @@ let client: SQLitHttpClient | null = null
 function getClient(): SQLitHttpClient {
   if (client) return client
 
-  const network = getCurrentNetwork()
-  const endpoint = getSQLitBlockProducerUrl(network)
+  const endpoint = getSQLitBlockProducerUrl()
   const dbid = process.env.SQLIT_DATABASE_ID ?? 'factory'
 
   client = new SQLitHttpClient({

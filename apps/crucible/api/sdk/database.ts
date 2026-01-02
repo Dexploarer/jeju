@@ -503,3 +503,4 @@ export function getDatabase(config?: DatabaseConfig): CrucibleDatabase {
 export function createDatabase(config?: DatabaseConfig): CrucibleDatabase {
   return new CrucibleDatabase(config)
 }
+
