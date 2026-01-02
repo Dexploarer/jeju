@@ -20,12 +20,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - uses: oven-sh/setup-bun@v1
 
       - name: Install dependencies
-        run: bun install
+        run: |
+          # Remove vendor from workspaces (private repos not available in CI)
+          sed -i 's/"vendor\/\*",//' package.json
+          bun install
 
       - name: Run security checks
         env:
@@ -38,8 +39,6 @@ jobs:
     needs: security-check
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - uses: oven-sh/setup-bun@v1
       - uses: hashicorp/setup-terraform@v3
         with:
@@ -66,8 +65,6 @@ jobs:
             dockerfile: apps/indexer/Dockerfile.k8s
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -98,8 +95,6 @@ jobs:
     needs: validate
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -136,8 +131,6 @@ jobs:
       eks-cluster: ${{ steps.output.outputs.eks_cluster_name }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - uses: oven-sh/setup-bun@v1
       - uses: hashicorp/setup-terraform@v3
         with:
@@ -170,8 +163,6 @@ jobs:
     environment: testnet
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - uses: oven-sh/setup-bun@v1
 
       - uses: aws-actions/configure-aws-credentials@v4
@@ -211,8 +202,6 @@ jobs:
     environment: testnet
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - uses: oven-sh/setup-bun@v1
       - uses: foundry-rs/foundry-toolchain@v1
 
@@ -252,8 +241,6 @@ jobs:
     environment: testnet
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - uses: oven-sh/setup-bun@v1
 
       - name: Install dependencies
@@ -273,8 +260,6 @@ jobs:
     needs: seed-providers
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - uses: oven-sh/setup-bun@v1
       - uses: foundry-rs/foundry-toolchain@v1
 
