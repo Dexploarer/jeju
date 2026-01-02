@@ -247,6 +247,8 @@
     }
   },
   "architecture": {
-    "type": "hybrid"
+    "type": "hybrid",
+    "frontend": { "outputDir": "dist/web" },
+    "backend": { "outputDir": "dist/worker" }
   }
 }

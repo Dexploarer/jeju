@@ -38,7 +38,6 @@ export const NETWORK: NetworkType = getCurrentNetwork()
 export function getServices() {
   return getServicesConfig(getCurrentNetwork())
 }
-
 // Chain configuration - these are safe as constants since chainId detection
 // uses hostname which is available synchronously
 export const CHAIN_ID = getChainId(NETWORK)

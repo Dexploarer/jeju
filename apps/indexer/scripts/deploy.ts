@@ -322,7 +322,7 @@ async function registerApp(
     staticFiles: staticFilesRecord, // Map of all file paths to CIDs
     backendWorkerId: workerInfo.functionId, // DWS worker ID
     backendEndpoint: backendEndpoint, // DWS worker endpoint
-    apiPaths: ['/api/', '/health', '/a2a/', '/mcp/', '/graphql'], // Include /graphql for the GraphQL API
+    apiPaths: ['/api', '/health', '/a2a', '/mcp', '/graphql'], // Note: no trailing slashes - isApiPath checks pathname.startsWith(prefix + '/')
     spa: true, // Single-page application
     enabled: true,
   }

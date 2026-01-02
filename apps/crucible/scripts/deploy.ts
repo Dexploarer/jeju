@@ -380,7 +380,7 @@ async function registerWithAppRouter(
     staticFiles,
     backendWorkerId: workerId,
     backendEndpoint,
-    apiPaths: ['/api/', '/a2a/', '/mcp/', '/health', '/.well-known/'],
+    apiPaths: ['/api', '/a2a', '/mcp', '/health', '/.well-known'],
     spa: true,
     enabled: true,
   }

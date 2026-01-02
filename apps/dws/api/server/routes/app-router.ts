@@ -54,7 +54,7 @@ const POD_ID = `pod-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 const NETWORK = getCurrentNetwork()
 
 // Default API paths to route to backend
-const DEFAULT_API_PATHS = [
+export const DEFAULT_API_PATHS = [
   '/api',
   '/health',
   '/a2a',
@@ -62,6 +62,7 @@ const DEFAULT_API_PATHS = [
   '/oauth',
   '/callback',
   '/webhook',
+  '/.well-known',
 ]
 
 /**
@@ -134,11 +135,19 @@ function extractAppName(hostname: string): string | null {
 
 /**
  * Check if a path should be routed to the backend
+ * Handles both with and without trailing slashes in apiPaths
  */
 function isApiPath(pathname: string, apiPaths: string[]): boolean {
-  return apiPaths.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  )
+  return apiPaths.some((prefix) => {
+    // Normalize prefix - remove trailing slash if present
+    const normalizedPrefix = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix
+    // Match exact path or path with additional segments
+    return (
+      pathname === normalizedPrefix ||
+      pathname === `${normalizedPrefix}/` ||
+      pathname.startsWith(`${normalizedPrefix}/`)
+    )
+  })
 }
 
 /**
