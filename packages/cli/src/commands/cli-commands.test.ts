@@ -13,6 +13,7 @@
  */
 
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
+import { execSync, spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -49,11 +50,9 @@ async function runCLI(
 ): Promise<CLIResult> {
   const { env = {}, cwd = ROOT_DIR, timeout = 30000 } = options
 
-  const proc = Bun.spawn(['bun', 'run', CLI_PATH, ...args], {
-    stdout: 'pipe',
-    stderr: 'pipe',
-    stdin: 'ignore',
+  const result = spawnSync('bun', [CLI_PATH, ...args], {
     cwd,
+    encoding: 'utf-8',
     env: {
       ...process.env,
       FORCE_COLOR: '0',
@@ -61,32 +60,13 @@ async function runCLI(
       TERM: 'dumb',
       ...env,
     },
+    timeout,
   })
 
-  // Start consuming streams immediately (before waiting for exit)
-  const stdoutPromise = proc.stdout
-    ? new Response(proc.stdout).text()
-    : Promise.resolve('')
-  const stderrPromise = proc.stderr
-    ? new Response(proc.stderr).text()
-    : Promise.resolve('')
+  const stdout = result.stdout ?? ''
+  const stderr = result.stderr ?? ''
 
-  // Set up timeout
-  let timeoutId: ReturnType<typeof setTimeout>
-  const timeoutPromise = new Promise<number>((_, reject) => {
-    timeoutId = setTimeout(() => {
-      proc.kill()
-      reject(new Error(`CLI timed out after ${timeout}ms`))
-    }, timeout)
-  })
-
-  const exitCode = await Promise.race([proc.exited, timeoutPromise])
-  clearTimeout(timeoutId)
-
-  const stdout = await stdoutPromise
-  const stderr = await stderrPromise
-
-  return { stdout, stderr, exitCode }
+  return { stdout, stderr, exitCode: result.status ?? 1 }
 }
 
 // ============================================================================
@@ -114,7 +94,13 @@ describe('CLI Command Tests', () => {
 
   describe('login command', () => {
     test('login --help shows usage', async () => {
-      const { stdout, exitCode } = await runCLI(['login', '--help'])
+      console.log('DEBUG CLI_PATH:', CLI_PATH)
+      console.log('DEBUG ROOT_DIR:', ROOT_DIR)
+      console.log('DEBUG exists:', existsSync(CLI_PATH))
+      const { stdout, stderr, exitCode } = await runCLI(['login', '--help'])
+      console.log('DEBUG: exitCode=', exitCode, 'stdout.len=', stdout.length, 'stderr.len=', stderr.length)
+      console.log('DEBUG stdout:', JSON.stringify(stdout.slice(0, 200)))
+      console.log('DEBUG stderr:', JSON.stringify(stderr.slice(0, 200)))
       expect(exitCode).toBe(0)
       expect(stdout).toContain('Authenticate with Jeju Network')
       expect(stdout).toContain('--private-key')

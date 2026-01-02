@@ -308,6 +308,7 @@
       "dependencies": {
         "@elysiajs/cors": "^1.4.0",
         "@jejunetwork/auth": "workspace:*",
+        "@jejunetwork/cache": "workspace:*",
         "@jejunetwork/config": "workspace:*",
         "@jejunetwork/contracts": "workspace:*",
         "@jejunetwork/db": "workspace:*",
@@ -1098,6 +1099,7 @@
       "version": "0.1.0",
       "devDependencies": {
         "typescript": "5.9.3",
+        "viem": "2.43.3",
       },
       "peerDependencies": {
         "zod": ">=4.0.0",
