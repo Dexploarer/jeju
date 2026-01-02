@@ -2039,7 +2039,7 @@ export const dwsWorkerState = {
 }
 
 // Track if we're in memory-only mode (no SQLit)
-let memoryOnlyMode = false
+const memoryOnlyMode = false
 
 // In-memory stores for when SQLit is unavailable
 const memoryStores = {
@@ -2080,44 +2080,50 @@ export async function initializeDWSState(): Promise<void> {
       console.error(
         '╠═══════════════════════════════════════════════════════════════╣',
       )
-      console.error(
-        `║  Network: ${network.padEnd(52)}║`,
-      )
+      console.error(`║  Network: ${network.padEnd(52)}║`)
       console.error(
         `║  SQLit URL: ${(sqlitUrl ?? 'not configured').slice(0, 49).padEnd(49)}║`,
       )
       console.error(
         `║  Miner URL: ${(sqlitMinerUrl ?? 'not configured').slice(0, 49).padEnd(49)}║`,
       )
+      console.error(`║  Error: ${errorMsg.slice(0, 52).padEnd(52)}║`)
       console.error(
-        `║  Error: ${errorMsg.slice(0, 52).padEnd(52)}║`,
+        '║                                                               ║',
       )
-      console.error('║                                                               ║')
       console.error(
         '║  SQLit is REQUIRED for decentralized state persistence.      ║',
       )
       console.error(
         '║  Memory-only mode is NOT allowed - no fallbacks, no LARP.    ║',
       )
-      console.error('║                                                               ║')
+      console.error(
+        '║                                                               ║',
+      )
       console.error(
         '║  TO FIX (choose one):                                        ║',
       )
-      console.error('║                                                               ║')
+      console.error(
+        '║                                                               ║',
+      )
       console.error(
         '║  1. Start SQLit with Docker:                                 ║',
       )
       console.error(
         '║     cd packages/sqlit && docker compose up -d sqlit_bp_0     ║',
       )
-      console.error('║                                                               ║')
+      console.error(
+        '║                                                               ║',
+      )
       console.error(
         '║  2. Start SQLit adapter (simpler):                           ║',
       )
       console.error(
         '║     cd packages/sqlit/adapter && bun run server.ts           ║',
       )
-      console.error('║                                                               ║')
+      console.error(
+        '║                                                               ║',
+      )
       console.error(
         '║  3. Build and run native SQLit:                              ║',
       )
@@ -2127,7 +2133,9 @@ export async function initializeDWSState(): Promise<void> {
       console.error(
         '║     ./bin/sqlitd -config config-minimal.yaml                 ║',
       )
-      console.error('║                                                               ║')
+      console.error(
+        '║                                                               ║',
+      )
       console.error(
         '║  4. Start full local stack (recommended):                    ║',
       )

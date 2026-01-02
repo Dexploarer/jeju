@@ -19,7 +19,7 @@ import { Elysia } from 'elysia'
 import { getAppRegistry } from '../../../src/cdn/app-registry'
 import { getLocalCDNServer } from '../../../src/cdn/local-server'
 import { getIngressController } from '../../infrastructure'
-import { deployedAppState } from '../../state'
+import { deployedAppState, isDegradedMode } from '../../state'
 import {
   isConfigMapAvailable,
   loadAppsFromConfigMap,

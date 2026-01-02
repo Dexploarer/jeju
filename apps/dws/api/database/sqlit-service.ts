@@ -191,7 +191,16 @@ export async function sqlitQuery(
     try {
       const db = getEmbeddedDatabase(database)
       const stmt = db.prepare(query)
-      const rows = stmt.all(...(args ?? [])) as Record<string, unknown>[]
+      // Cast args to SQLite bindings - at runtime, values are validated by bun:sqlite
+      const bindArgs = (args ?? []) as (
+        | string
+        | number
+        | bigint
+        | boolean
+        | null
+        | Uint8Array
+      )[]
+      const rows = stmt.all(...bindArgs) as Record<string, unknown>[]
       return {
         success: true,
         status: 'ok',
@@ -239,7 +248,15 @@ export async function sqlitExec(
   if (sqlitEndpoint === 'embedded') {
     try {
       const db = getEmbeddedDatabase(database)
-      const result = db.run(query, ...(args ?? []))
+      const bindings = (args ?? []) as (
+        | string
+        | bigint
+        | Uint8Array
+        | number
+        | boolean
+        | null
+      )[]
+      const result = db.run(query, ...bindings)
       return {
         success: true,
         status: 'ok',
@@ -399,7 +416,7 @@ export function getSQLitClientPort(): number {
 /**
  * Provision a new database for an app
  */
-export async function provisionAppDatabase(params: {
+export async function provisionAppDatabase(_params: {
   appName: string
   owner: Address
   schema?: string
@@ -409,9 +426,6 @@ export async function provisionAppDatabase(params: {
   clientPort: number
 }> {
   await ensureSQLitService()
-
-  // Generate unique database ID
-  const _databaseId = `${params.appName.toLowerCase()}-${crypto.randomUUID().slice(0, 8)}`
 
   // Create the database
   const result = await sqlitCreateDatabase()

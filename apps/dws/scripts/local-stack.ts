@@ -139,7 +139,14 @@ async function startSQLit(config: StackConfig): Promise<void> {
   await mkdir(SQLIT_DATA_DIR, { recursive: true })
 
   // Check if adapter exists
-  const adapterPath = join(process.cwd(), '..', '..', 'packages', 'sqlit', 'adapter')
+  const adapterPath = join(
+    process.cwd(),
+    '..',
+    '..',
+    'packages',
+    'sqlit',
+    'adapter',
+  )
   const serverPath = join(adapterPath, 'server.ts')
 
   if (!existsSync(serverPath)) {
@@ -176,9 +183,7 @@ async function startSQLit(config: StackConfig): Promise<void> {
     await new Promise((r) => setTimeout(r, 300))
   }
 
-  throw new Error(
-    'SQLit did not start within timeout. Check logs for errors.',
-  )
+  throw new Error('SQLit did not start within timeout. Check logs for errors.')
 }
 
 async function stopSQLit(): Promise<void> {
@@ -386,7 +391,9 @@ async function startStack(config: StackConfig): Promise<void> {
   console.log('╠════════════════════════════════════════════════════════╣')
 
   // Show SQLit status first
-  console.log(`║ [OK] sqlit        http://${host}:${SQLIT_PORT}`.padEnd(57) + '║')
+  console.log(
+    `${`║ [OK] sqlit        http://${host}:${SQLIT_PORT}`.padEnd(57)}║`,
+  )
 
   for (const [name, service] of services) {
     const status = service.ready ? '[OK]' : '[--]'
