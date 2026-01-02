@@ -478,6 +478,7 @@ export function resetCacheRentalClient(): void {
 export {
   type CachedFarcasterProfile,
   type CachedTokenInfo,
+  type HybridCache,
   CacheTTL,
   cachedRpcCall,
   createHybridCache,

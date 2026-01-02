@@ -17,6 +17,7 @@ import {
   createPublicClient,
   createWalletClient,
   encodeDeployData,
+  encodeFunctionData,
   type Hex,
   http,
 } from 'viem'
@@ -201,6 +202,36 @@ async function main() {
   })
   console.log('  Linked L1 and L2 messengers')
 
+  // Authorize the relayer on both messengers
+  const setRelayerAbi = [
+    {
+      name: 'setRelayer',
+      type: 'function',
+      inputs: [
+        { name: 'relayer', type: 'address' },
+        { name: 'authorized', type: 'bool' },
+      ],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+  ] as const
+
+  await l1Wallet.writeContract({
+    address: l1MessengerAddress,
+    abi: setRelayerAbi,
+    functionName: 'setRelayer',
+    args: [RELAYER_ADDRESS, true],
+  })
+  console.log(`  Authorized relayer ${RELAYER_ADDRESS} on L1`)
+
+  await l2Wallet.writeContract({
+    address: l2MessengerAddress,
+    abi: setRelayerAbi,
+    functionName: 'setRelayer',
+    args: [RELAYER_ADDRESS, true],
+  })
+  console.log(`  Authorized relayer ${RELAYER_ADDRESS} on L2`)
+
   // Deploy CrossChainPaymasterUpgradeable
   console.log('Deploying CrossChainPaymasterUpgradeable...')
   const paymasterImplAddress = await deployContract(
@@ -310,7 +341,6 @@ async function deployContract(
   publicClient: ReturnType<typeof createPublicClient>,
   contractName: string,
 ): Promise<Address> {
-  const { execSync } = await import('node:child_process')
   const { readFileSync } = await import('node:fs')
 
   // Get contract artifact path
@@ -382,14 +412,11 @@ async function deployProxy(
 }
 
 function encodeInitializeCall(
-  owner: string,
+  owner: Address,
   l1ChainId: number,
   l1StakeManager: Address,
   entryPoint: Address,
 ): Hex {
-  // CrossChainPaymasterUpgradeable.initialize(address,uint256,address,address)
-  const { encodeAbiParameters, encodeFunctionData } = require('viem')
-
   return encodeFunctionData({
     abi: [
       {
@@ -404,7 +431,7 @@ function encodeInitializeCall(
         outputs: [],
         stateMutability: 'nonpayable',
       },
-    ],
+    ] as const,
     functionName: 'initialize',
     args: [owner, BigInt(l1ChainId), l1StakeManager, entryPoint],
   })

@@ -123,11 +123,14 @@ async function deployFromCid(
  * Load a specific worker from SQLit by ID and deploy to runtime
  * Used for on-demand loading when a function is not found in memory
  */
-async function loadWorkerById(runtime: WorkerRuntime, functionId: string): Promise<WorkerFunction | null> {
+async function loadWorkerById(
+  runtime: WorkerRuntime,
+  functionId: string,
+): Promise<WorkerFunction | null> {
   try {
     const worker = await dwsWorkerState.get(functionId)
     if (!worker) return null
-    
+
     const fn: WorkerFunction = {
       id: worker.id,
       name: worker.name,
@@ -146,12 +149,16 @@ async function loadWorkerById(runtime: WorkerRuntime, functionId: string): Promi
       avgDurationMs: worker.avgDurationMs,
       errorCount: worker.errorCount,
     }
-    
+
     await runtime.deployFunction(fn)
-    console.log(`[Workers] On-demand loaded worker from SQLit: ${worker.name} (${worker.id})`)
+    console.log(
+      `[Workers] On-demand loaded worker from SQLit: ${worker.name} (${worker.id})`,
+    )
     return fn
   } catch (err) {
-    console.warn(`[Workers] Failed to load worker ${functionId} from SQLit: ${err instanceof Error ? err.message : String(err)}`)
+    console.warn(
+      `[Workers] Failed to load worker ${functionId} from SQLit: ${err instanceof Error ? err.message : String(err)}`,
+    )
     return null
   }
 }
@@ -758,12 +765,20 @@ export function createWorkersRouter(backend: BackendManager) {
           }
 
           if (!fn && isIPFSCid(params.functionId)) {
-            console.log(`[Workers] Function ${params.functionId} not found, attempting CID deployment`)
+            console.log(
+              `[Workers] Function ${params.functionId} not found, attempting CID deployment`,
+            )
             try {
-              const deployed = await deployFromCid(runtime, backend, params.functionId)
+              const deployed = await deployFromCid(
+                runtime,
+                backend,
+                params.functionId,
+              )
               fn = deployed
             } catch (err) {
-              console.error(`[Workers] Failed to deploy from CID: ${err instanceof Error ? err.message : String(err)}`)
+              console.error(
+                `[Workers] Failed to deploy from CID: ${err instanceof Error ? err.message : String(err)}`,
+              )
             }
           }
 
@@ -773,7 +788,9 @@ export function createWorkersRouter(backend: BackendManager) {
           }
 
           const url = new URL(request.url)
-          const path = url.pathname.replace(`/workers/${params.functionId}/http`, '') || '/'
+          const path =
+            url.pathname.replace(`/workers/${params.functionId}/http`, '') ||
+            '/'
 
           const requestHeaders: Record<string, string> = {}
           request.headers.forEach((value, key) => {
@@ -815,10 +832,16 @@ export function createWorkersRouter(backend: BackendManager) {
 
           if (!fn && isIPFSCid(params.functionId)) {
             try {
-              const deployed = await deployFromCid(runtime, backend, params.functionId)
+              const deployed = await deployFromCid(
+                runtime,
+                backend,
+                params.functionId,
+              )
               fn = deployed
             } catch (err) {
-              console.error(`[Workers] Failed to deploy from CID: ${err instanceof Error ? err.message : String(err)}`)
+              console.error(
+                `[Workers] Failed to deploy from CID: ${err instanceof Error ? err.message : String(err)}`,
+              )
             }
           }
 
@@ -828,7 +851,9 @@ export function createWorkersRouter(backend: BackendManager) {
           }
 
           const url = new URL(request.url)
-          const path = url.pathname.replace(`/workers/${params.functionId}/http`, '') || '/'
+          const path =
+            url.pathname.replace(`/workers/${params.functionId}/http`, '') ||
+            '/'
 
           const requestHeaders: Record<string, string> = {}
           request.headers.forEach((value, key) => {
@@ -870,10 +895,16 @@ export function createWorkersRouter(backend: BackendManager) {
 
           if (!fn && isIPFSCid(params.functionId)) {
             try {
-              const deployed = await deployFromCid(runtime, backend, params.functionId)
+              const deployed = await deployFromCid(
+                runtime,
+                backend,
+                params.functionId,
+              )
               fn = deployed
             } catch (err) {
-              console.error(`[Workers] Failed to deploy from CID: ${err instanceof Error ? err.message : String(err)}`)
+              console.error(
+                `[Workers] Failed to deploy from CID: ${err instanceof Error ? err.message : String(err)}`,
+              )
             }
           }
 
@@ -883,7 +914,9 @@ export function createWorkersRouter(backend: BackendManager) {
           }
 
           const url = new URL(request.url)
-          const path = url.pathname.replace(`/workers/${params.functionId}/http`, '') || '/'
+          const path =
+            url.pathname.replace(`/workers/${params.functionId}/http`, '') ||
+            '/'
 
           const requestHeaders: Record<string, string> = {}
           request.headers.forEach((value, key) => {
@@ -925,10 +958,16 @@ export function createWorkersRouter(backend: BackendManager) {
 
           if (!fn && isIPFSCid(params.functionId)) {
             try {
-              const deployed = await deployFromCid(runtime, backend, params.functionId)
+              const deployed = await deployFromCid(
+                runtime,
+                backend,
+                params.functionId,
+              )
               fn = deployed
             } catch (err) {
-              console.error(`[Workers] Failed to deploy from CID: ${err instanceof Error ? err.message : String(err)}`)
+              console.error(
+                `[Workers] Failed to deploy from CID: ${err instanceof Error ? err.message : String(err)}`,
+              )
             }
           }
 
@@ -938,7 +977,9 @@ export function createWorkersRouter(backend: BackendManager) {
           }
 
           const url = new URL(request.url)
-          const path = url.pathname.replace(`/workers/${params.functionId}/http`, '') || '/'
+          const path =
+            url.pathname.replace(`/workers/${params.functionId}/http`, '') ||
+            '/'
 
           const requestHeaders: Record<string, string> = {}
           request.headers.forEach((value, key) => {

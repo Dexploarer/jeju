@@ -277,7 +277,9 @@ async function deployWorker(
     }
   } catch (err) {
     // Workerd deployment might timeout but still succeed
-    console.warn(`   Workerd deployment may still be in progress: ${err instanceof Error ? err.message : err}`)
+    console.warn(
+      `   Workerd deployment may still be in progress: ${err instanceof Error ? err.message : err}`,
+    )
   }
 
   return workerId

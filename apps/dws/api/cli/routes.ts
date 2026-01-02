@@ -363,13 +363,13 @@ export function createCLIRoutes() {
               network,
             }
           })
-        .post('/logout', ({ headers }) => {
-          const authHeader = headers.authorization
-          if (authHeader?.startsWith('Bearer ')) {
-            sessions.delete(authHeader.slice(7))
-          }
-          return { success: true }
-        })
+          .post('/logout', ({ headers }) => {
+            const authHeader = headers.authorization
+            if (authHeader?.startsWith('Bearer ')) {
+              sessions.delete(authHeader.slice(7))
+            }
+            return { success: true }
+          })
           .get('/verify', ({ headers }) => {
             const session = validateAuth(headers)
             if (!session) {

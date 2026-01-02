@@ -195,7 +195,9 @@ export class WorkerdExecutor implements IWorkerdExecutor {
 
     if (this.isGzip(result.content)) {
       // For tarballs, we need a different approach - extract in the exec call
-      throw new Error('Tarball extraction not yet supported in bundled deployment')
+      throw new Error(
+        'Tarball extraction not yet supported in bundled deployment',
+      )
     } else {
       code = Buffer.from(result.content).toString('utf-8')
       code = wrapHandlerAsWorker(code, 'handler')
@@ -223,7 +225,9 @@ export class WorkerdExecutor implements IWorkerdExecutor {
 
     // Bundle ALL operations into a single exec call to ensure they run on the same pod
     // This is critical for load-balanced environments where exec requests may hit different pods
-    console.log(`[WorkerdExecutor] Deploying worker ${worker.id} to port ${port} (bundled)`)
+    console.log(
+      `[WorkerdExecutor] Deploying worker ${worker.id} to port ${port} (bundled)`,
+    )
 
     // Create a shell script that does everything atomically
     const deployScript = `
@@ -272,18 +276,23 @@ echo $!
 
     if (deployData.exitCode !== 0) {
       this.releasePort(port)
-      console.error(`[WorkerdExecutor] Deploy script failed:`, deployData.stderr)
+      console.error(
+        `[WorkerdExecutor] Deploy script failed:`,
+        deployData.stderr,
+      )
       throw new Error(`Deploy script failed: ${deployData.stderr}`)
     }
 
     // Parse PID from stdout
     const pid = parseInt(deployData.stdout.trim(), 10)
-    if (isNaN(pid)) {
+    if (Number.isNaN(pid)) {
       this.releasePort(port)
       throw new Error(`Failed to parse workerd PID from: ${deployData.stdout}`)
     }
 
-    console.log(`[WorkerdExecutor] Spawned workerd process: PID=${pid}, port=${port}`)
+    console.log(
+      `[WorkerdExecutor] Spawned workerd process: PID=${pid}, port=${port}`,
+    )
 
     // Create process tracking object
     const processId = crypto.randomUUID()
@@ -353,7 +362,9 @@ echo $!
       const logResult = await fetch(execUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ command: ['cat', `/tmp/workerd-${worker.id}.log`] }),
+        body: JSON.stringify({
+          command: ['cat', `/tmp/workerd-${worker.id}.log`],
+        }),
       }).catch(() => null)
 
       let logs = ''
@@ -605,45 +616,6 @@ echo $!
 
   private isGzip(data: Buffer): boolean {
     return data.length >= 2 && data[0] === 0x1f && data[1] === 0x8b
-  }
-
-  private async extractTarball(data: Buffer, destDir: string): Promise<void> {
-    const tarPath = `${destDir}/code.tar.gz`
-    const execUrl =
-      this.config.execUrl ??
-      `http://${getLocalhostHost()}:${CORE_PORTS.DWS_API.get()}/exec`
-
-    // Write tarball via DWS exec API
-    const writeResult = await fetch(execUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        command: ['sh', '-c', `cat > "${tarPath}"`],
-        stdin: Buffer.from(data).toString('base64'),
-      }),
-    })
-    if (!writeResult.ok) {
-      throw new Error(`Failed to write tarball: ${writeResult.status}`)
-    }
-
-    // Extract via DWS exec API
-    const extractResult = await fetch(execUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        command: ['tar', '-xzf', tarPath, '-C', destDir],
-        cwd: destDir,
-      }),
-    })
-    if (!extractResult.ok) {
-      throw new Error(`Failed to extract tarball: ${extractResult.status}`)
-    }
-    const extractData = (await extractResult.json()) as { exitCode: number }
-    if (extractData.exitCode !== 0) {
-      throw new Error(
-        `tar extraction failed with exit code ${extractData.exitCode}`,
-      )
-    }
   }
 
   private recordMetric(

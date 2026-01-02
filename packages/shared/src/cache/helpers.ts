@@ -374,22 +374,29 @@ export async function getCachedTokenInfo(
 }
 
 /**
+ * Hybrid cache interface with cleanup function
+ */
+export interface HybridCache {
+  get: (key: string) => Promise<string | null>
+  set: (key: string, value: string, ttl: number) => Promise<void>
+  delete: (key: string) => Promise<void>
+  /** Call this to stop the cleanup interval when cache is no longer needed */
+  destroy: () => void
+}
+
+/**
  * Create a hybrid cache that checks local memory first, then DWS
  */
 export function createHybridCache(
   namespace: string,
   localMaxSize = 1000,
   localTtlMs = 5000,
-): {
-  get: (key: string) => Promise<string | null>
-  set: (key: string, value: string, ttl: number) => Promise<void>
-  delete: (key: string) => Promise<void>
-} {
+): HybridCache {
   const localCache = new Map<string, { value: string; expiresAt: number }>()
   const dwsCache = getCacheClient(namespace)
 
   // Periodic cleanup of local cache
-  setInterval(() => {
+  const cleanupInterval = setInterval(() => {
     const now = Date.now()
     for (const [key, entry] of localCache) {
       if (entry.expiresAt < now) {
@@ -441,6 +448,11 @@ export function createHybridCache(
     async delete(key: string): Promise<void> {
       localCache.delete(key)
       await dwsCache.delete(key)
+    },
+
+    destroy(): void {
+      clearInterval(cleanupInterval)
+      localCache.clear()
     },
   }
 }

@@ -804,7 +804,9 @@ export function createAppRouter() {
 
         // If no frontend configured but backend exists, proxy all to backend
         if (app.backendEndpoint || app.backendWorkerId) {
-          console.log(`[AppRouter] No frontend configured for ${appName}, proxying to backend: ${pathname}`)
+          console.log(
+            `[AppRouter] No frontend configured for ${appName}, proxying to backend: ${pathname}`,
+          )
           return proxyToBackend(request, app, pathname)
         }
 
@@ -815,14 +817,19 @@ export function createAppRouter() {
         }
 
         // App is registered but has no frontend or backend - return 503
-        console.log(`[AppRouter] App ${appName} has no frontend or backend configured`)
-        return new Response(JSON.stringify({ 
-          error: 'Service unavailable', 
-          message: `App ${appName} is registered but has no frontend assets deployed` 
-        }), {
-          status: 503,
-          headers: { 'Content-Type': 'application/json' },
-        })
+        console.log(
+          `[AppRouter] App ${appName} has no frontend or backend configured`,
+        )
+        return new Response(
+          JSON.stringify({
+            error: 'Service unavailable',
+            message: `App ${appName} is registered but has no frontend assets deployed`,
+          }),
+          {
+            status: 503,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        )
       })
 
       // Management endpoints for app deployments
