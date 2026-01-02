@@ -74,6 +74,7 @@ interface PlanningContext {
     timestamp: Date
     success: boolean
   }>
+  lastActivity: number | null
 }
 
 /**
@@ -97,6 +98,7 @@ interface ExecutionResult {
  * Agent planning configuration
  */
 interface PlanningAgentConfig {
+  agentId: string
   displayName: string
   systemPrompt?: string
   maxActionsPerTick: number
@@ -105,6 +107,10 @@ interface PlanningAgentConfig {
   autonomousPosting: boolean
   autonomousCommenting: boolean
   autonomousDMs: boolean
+  schedule: {
+    activePeriods: Array<{ start: string; end: string }>
+    maxDailyActions: number
+  }
 }
 
 /**
@@ -119,6 +125,7 @@ export class AutonomousPlanningCoordinator {
 
     // In a full implementation, this would fetch from database
     return {
+      agentId,
       displayName: `Agent-${agentId.slice(0, 8)}`,
       systemPrompt: 'You are an AI agent on Jeju Network.',
       maxActionsPerTick: 3,
@@ -127,6 +134,10 @@ export class AutonomousPlanningCoordinator {
       autonomousPosting: true,
       autonomousCommenting: true,
       autonomousDMs: true,
+      schedule: {
+        activePeriods: [{ start: '09:00', end: '17:00' }],
+        maxDailyActions: 100,
+      },
     }
   }
 
@@ -162,6 +173,7 @@ export class AutonomousPlanningCoordinator {
       },
       pending: [],
       recentActions: [],
+      lastActivity: null,
     }
   }
 
@@ -244,13 +256,12 @@ export class AutonomousPlanningCoordinator {
     try {
       const prompt = this.buildPlanningPrompt(config, context)
 
-      const result = await runtime.generateText({
-        context: prompt,
-        modelClass: 'TEXT_SMALL',
+      const result = await runtime.generateText(prompt, {
+        modelType: 'TEXT_SMALL',
       })
 
       // Parse LLM response into plan
-      const plan = this.parseLLMPlan(result, config, context)
+      const plan = this.parseLLMPlan(result.text, config, context)
       if (plan) {
         logger.info(`LLM generated plan with ${plan.totalActions} actions`)
         return plan
@@ -322,20 +333,21 @@ Respond with JSON: { "actions": [...] }`
       const validTypes = ['trade', 'post', 'comment', 'respond', 'message']
       const actions: PlanStep[] = parsed.actions
         .filter((a) => validTypes.includes(a.type))
-        .map((a, _i) => ({
+        .map((a) => ({
           type: a.type as PlanStep['type'],
           priority: Math.min(10, Math.max(1, a.priority ?? 5)),
-          description: a.description ?? a.type,
-          estimatedDuration: a.estimatedDuration ?? 5,
-          goalId: context.goals.active[0]?.id,
+          reasoning: a.description ?? a.type,
+          estimatedImpact: (a.estimatedDuration ?? 5) / 60,
+          params: {},
         }))
 
       if (actions.length === 0) return null
 
       return {
-        agentId: config.agentId,
-        steps: actions,
+        actions,
         totalActions: actions.length,
+        reasoning: `LLM plan for agent ${config.agentId}`,
+        goalsAddressed: context.goals.active.map((g) => g.id),
         estimatedCost: actions.length,
       }
     } catch {

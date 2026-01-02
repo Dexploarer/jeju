@@ -213,7 +213,11 @@ To enable native imports (`import Bun from 'bun:bun'`), workerd must be built fr
 bazel build //src/workerd/server:workerd
 ```
 
-Note: Building from source requires Linux or macOS with Xcode 15. Xcode 16 has known compatibility issues with capnp-cpp.
+Note: Building from source requires:
+- **Linux**: Clang/LLVM 19+ with libc++ and LLD
+- **macOS**: Xcode 16.3+ OR Homebrew LLVM (`brew install llvm`) with `--config=macos_llvm`
+
+For macOS with Xcode < 16.3, run: `bazel build --config=macos_llvm //src/workerd/server:workerd`
 
 ## License
 
