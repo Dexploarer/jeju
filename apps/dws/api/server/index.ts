@@ -1504,7 +1504,9 @@ if (import.meta.main) {
       }
 
       // App routing - check if request is for a deployed app
-      const hostname = req.headers.get('host') ?? url.hostname
+      const rawHostname = req.headers.get('host') ?? url.hostname
+      // Strip port from hostname if present
+      const hostname = rawHostname.split(':')[0]
       console.log(`[Bun.serve] Request: ${hostname}${url.pathname}`)
 
       // Special handling for core services with internal routing

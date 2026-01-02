@@ -97,6 +97,27 @@ const ROUTES = [
     description:
       'Chat page with New Room button, agent selector sidebar, and chat interface area.',
   },
+  {
+    path: '/rooms',
+    name: 'Rooms',
+    expectedContent: 'Rooms',
+    description:
+      'Rooms list page with Create Room button, room type filters, and room cards grid.',
+  },
+  {
+    path: '/autonomous',
+    name: 'Autonomous',
+    expectedContent: 'Autonomous',
+    description:
+      'Autonomous agents dashboard showing runner status, registered agents, and configuration.',
+  },
+  {
+    path: '/bots',
+    name: 'Bots',
+    expectedContent: 'Trading',
+    description:
+      'Trading bots dashboard with bot metrics, profit/loss tracking, and bot controls.',
+  },
 ]
 
 test.beforeAll(async () => {

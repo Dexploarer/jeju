@@ -29,7 +29,7 @@ const HealthSchema = z.object({
 const AppInfoSchema = z.object({
   name: z.string(),
   version: z.string().optional(),
-  endpoints: z.record(z.string()).optional(),
+  endpoints: z.record(z.string(), z.string()).optional(),
 })
 
 const A2ACardSchema = z.object({
