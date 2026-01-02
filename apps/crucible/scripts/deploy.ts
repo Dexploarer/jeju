@@ -101,6 +101,9 @@ interface UploadResult {
   size: number
 }
 
+const MAX_UPLOAD_RETRIES = 3
+const RETRY_DELAY_MS = 2000
+
 async function uploadToIPFS(
   dwsUrl: string,
   filePath: string,
@@ -109,30 +112,48 @@ async function uploadToIPFS(
   const content = await readFile(resolve(APP_DIR, filePath))
   const hash = keccak256(content) as `0x${string}`
 
-  const formData = new FormData()
-  formData.append('file', new Blob([content]), name)
-  formData.append('name', name)
+  let lastError: Error | null = null
 
-  const response = await fetch(`${dwsUrl}/storage/upload`, {
-    method: 'POST',
-    body: formData,
-  })
+  for (let attempt = 1; attempt <= MAX_UPLOAD_RETRIES; attempt++) {
+    const formData = new FormData()
+    formData.append('file', new Blob([content]), name)
+    formData.append('name', name)
 
-  if (!response.ok) {
-    throw new Error(`Upload failed: ${await response.text()}`)
+    const response = await fetch(`${dwsUrl}/storage/upload`, {
+      method: 'POST',
+      body: formData,
+    }).catch((err: Error) => {
+      lastError = err
+      return null
+    })
+
+    if (!response) {
+      console.log(`   Retry ${attempt}/${MAX_UPLOAD_RETRIES} for ${name}: Network error`)
+      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS))
+      continue
+    }
+
+    if (!response.ok) {
+      lastError = new Error(await response.text())
+      console.log(`   Retry ${attempt}/${MAX_UPLOAD_RETRIES} for ${name}: ${lastError.message}`)
+      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS))
+      continue
+    }
+
+    const rawJson: unknown = await response.json()
+    const parsed = IPFSUploadResponseSchema.safeParse(rawJson)
+    if (!parsed.success) {
+      throw new Error(`Invalid upload response: ${parsed.error.message}`)
+    }
+
+    return {
+      cid: parsed.data.cid,
+      hash,
+      size: content.length,
+    }
   }
 
-  const rawJson: unknown = await response.json()
-  const parsed = IPFSUploadResponseSchema.safeParse(rawJson)
-  if (!parsed.success) {
-    throw new Error(`Invalid upload response: ${parsed.error.message}`)
-  }
-
-  return {
-    cid: parsed.data.cid,
-    hash,
-    size: content.length,
-  }
+  throw new Error(`Upload failed after ${MAX_UPLOAD_RETRIES} attempts: ${lastError?.message}`)
 }
 
 async function uploadDirectory(
@@ -304,6 +325,73 @@ async function setupCDN(
   }
 }
 
+/**
+ * Register app with DWS app router
+ * 
+ * This is the key step for decentralized routing - registers the app's
+ * staticFiles map with the app router so SPA routing works correctly.
+ */
+async function registerWithAppRouter(
+  config: DeployConfig,
+  staticAssets: Map<string, UploadResult>,
+  workerId: string,
+): Promise<void> {
+  // Build staticFiles map: path -> CID
+  const staticFiles: Record<string, string> = {}
+  for (const [path, result] of staticAssets) {
+    // Store with leading slash for consistency
+    staticFiles[`/${path}`] = result.cid
+  }
+
+  const backendEndpoint =
+    config.network === 'testnet'
+      ? 'https://crucible.testnet.jejunetwork.org'
+      : config.network === 'mainnet'
+        ? 'https://crucible.jejunetwork.org'
+        : 'http://localhost:4021'
+
+  const appData = {
+    name: 'crucible',
+    jnsName: 'crucible.jeju',
+    frontendCid: staticFiles['/index.html'],
+    staticFiles,
+    backendWorkerId: workerId,
+    backendEndpoint,
+    apiPaths: ['/api/', '/a2a/', '/mcp/', '/health', '/.well-known/'],
+    spa: true,
+    enabled: true,
+  }
+
+  console.log(`   Registering with staticFiles: ${Object.keys(staticFiles).length} paths`)
+
+  const response = await fetch(`${config.dwsUrl}/apps/deployed`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(appData),
+  })
+
+  if (!response.ok) {
+    const text = await response.text()
+    throw new Error(`App router registration failed: ${text}`)
+  }
+
+  const rawJson: unknown = await response.json()
+  const result = z.object({
+    success: z.boolean(),
+    warning: z.string().optional(),
+  }).safeParse(rawJson)
+
+  if (!result.success) {
+    throw new Error(`Invalid registration response: ${result.error.message}`)
+  }
+
+  if (result.data.warning) {
+    console.warn(`   Warning: ${result.data.warning}`)
+  }
+
+  console.log('   App router registration complete')
+}
+
 async function deploy(): Promise<void> {
   console.log('╔════════════════════════════════════════════════════════════╗')
   console.log('║              Crucible Deployment to DWS                     ║')
@@ -336,9 +424,13 @@ async function deploy(): Promise<void> {
   const workerId = await deployWorker(config, apiBundle)
   console.log(`   Worker ID: ${workerId}\n`)
 
-  // Setup CDN
+  // Setup CDN (optional, provides caching layer)
   console.log('Configuring CDN...')
   await setupCDN(config, webAssets)
+
+  // Register with app router (required for SPA routing)
+  console.log('\nRegistering with app router...')
+  await registerWithAppRouter(config, webAssets, workerId)
 
   const indexCid = webAssets.get('index.html')?.cid
   const frontendDomain =

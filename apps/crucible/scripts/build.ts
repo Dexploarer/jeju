@@ -164,6 +164,9 @@ async function buildFrontend(): Promise<void> {
 
   await buildCSS()
 
+  // IMPORTANT: Use absolute paths (leading /) for SPA routing
+  // Relative paths like ./globals.css break when navigating to /agents/new
+  // because the browser resolves them relative to /agents/ instead of root
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -176,7 +179,7 @@ async function buildFrontend(): Promise<void> {
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./globals.css">
+  <link rel="stylesheet" href="/globals.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
   <script>
     window.__JEJU_CONFIG__ = { network: '${network}' };
@@ -195,7 +198,7 @@ async function buildFrontend(): Promise<void> {
 </head>
 <body class="font-sans antialiased">
   <div id="root"></div>
-  <script type="module" src="./${mainFileName}"></script>
+  <script type="module" src="/${mainFileName}"></script>
 </body>
 </html>`
 
