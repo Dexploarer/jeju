@@ -18,7 +18,7 @@ import {
   type AgentCard,
   AgentCardSchema,
   AutocratVotesDataSchema,
-  CEOStatusDataSchema,
+  DirectorStatusDataSchema,
   extractA2AData,
   GovernanceStatsDataSchema,
   MCPToolsResponseSchema,
@@ -36,11 +36,11 @@ function getAutocratMCP(): string {
   return `${getAutocratUrl()}/mcp`
 }
 
-function getCEOA2A(): string {
+function getDirectorA2A(): string {
   return `${getCoreAppUrl('AUTOCRAT_AGENT')}/a2a`
 }
 
-function getCEOMCP(): string {
+function getDirectorMCP(): string {
   return `${getCoreAppUrl('AUTOCRAT_AGENT')}/mcp`
 }
 
@@ -54,12 +54,12 @@ function getServiceRegistry(): Record<
       url: getAutocratA2A(),
       description: 'Autocrat governance A2A server',
     },
-    ceo: { url: getCEOA2A(), description: 'AI CEO decision-making agent' },
+    director: { url: getDirectorA2A(), description: 'AI Director decision-making agent' },
     'autocrat-mcp': {
       url: getAutocratMCP(),
       description: 'Autocrat MCP tools and resources',
     },
-    'ceo-mcp': { url: getCEOMCP(), description: 'CEO MCP tools and resources' },
+    'director-mcp': { url: getDirectorMCP(), description: 'Director MCP tools and resources' },
   }
 }
 
@@ -169,7 +169,7 @@ const serviceDiscoveryProvider: Provider = {
     result += `
 💡 Use these services to:
 - Query governance data via autocrat A2A
-- Make decisions via CEO A2A
+- Make decisions via Director A2A
 - Access tools via MCP endpoints`
 
     return { text: result }
@@ -267,7 +267,7 @@ const activeProposalsProvider: Provider = {
       const statusEmoji =
         p.status === 'AUTOCRAT_REVIEW'
           ? '🗳️'
-          : p.status === 'CEO_QUEUE'
+          : p.status === 'DIRECTOR_QUEUE'
             ? '👤'
             : '📝'
       result += `${statusEmoji} [${p.id.slice(0, 10)}...]\n`
@@ -327,34 +327,34 @@ Use this information to inform your deliberation vote.`,
 }
 
 /**
- * Provider: CEO Status
- * Get current AI CEO status and recent decisions
+ * Provider: Director Status
+ * Get current AI Director status and recent decisions
  */
-const ceoStatusProvider: Provider = {
-  name: 'AUTOCRAT_CEO_STATUS',
-  description: 'Get AI CEO status and recent decision patterns',
+const directorStatusProvider: Provider = {
+  name: 'AUTOCRAT_DIRECTOR_STATUS',
+  description: 'Get AI Director status and recent decision patterns',
 
   get: async (
     _runtime: IAgentRuntime,
     _message: Memory,
     _state: State,
   ): Promise<ProviderResult> => {
-    const ceo = await callA2ATyped(
+    const director = await callA2ATyped(
       getAutocratA2A(),
-      'get-ceo-status',
-      CEOStatusDataSchema,
+      'get-director-status',
+      DirectorStatusDataSchema,
     )
 
     return {
-      text: `👤 CEO STATUS
+      text: `👤 Director STATUS
 
-Model: ${ceo.currentModel.name}
-Decisions This Period: ${ceo.decisionsThisPeriod}
-Approval Rate: ${ceo.approvalRate}%
+Model: ${director.currentModel.name}
+Decisions This Period: ${director.decisionsThisPeriod}
+Approval Rate: ${director.approvalRate}%
 
-${ceo.lastDecision ? `Last Decision: ${ceo.lastDecision.proposalId.slice(0, 12)}... - ${ceo.lastDecision.approved ? 'APPROVED' : 'REJECTED'}` : 'No recent decisions'}
+${director.lastDecision ? `Last Decision: ${director.lastDecision.proposalId.slice(0, 12)}... - ${director.lastDecision.approved ? 'APPROVED' : 'REJECTED'}` : 'No recent decisions'}
 
-💡 The CEO weighs autocrat votes heavily - your assessment matters.`,
+💡 The Director weighs autocrat votes heavily - your assessment matters.`,
     }
   },
 }
@@ -372,7 +372,7 @@ const mcpToolsProvider: Provider = {
     _message: Memory,
     _state: State,
   ): Promise<ProviderResult> => {
-    // Fetch tools from both council and CEO MCP servers
+    // Fetch tools from both council and Director MCP servers
     const tools: Array<{ source: string; name: string; description: string }> =
       []
 
@@ -389,16 +389,16 @@ const mcpToolsProvider: Provider = {
       }
     }
 
-    // CEO MCP tools
-    const ceoResponse = await fetch(`${getCEOMCP()}/tools`)
-    if (ceoResponse.ok) {
-      const ceoData = expectValid(
+    // Director MCP tools
+    const directorResponse = await fetch(`${getDirectorMCP()}/tools`)
+    if (directorResponse.ok) {
+      const directorData = expectValid(
         MCPToolsResponseSchema,
-        await ceoResponse.json(),
-        'CEO MCP tools',
+        await directorResponse.json(),
+        'Director MCP tools',
       )
-      for (const tool of ceoData.tools) {
-        tools.push({ source: 'ceo', ...tool })
+      for (const tool of directorData.tools) {
+        tools.push({ source: 'director', ...tool })
       }
     }
 
@@ -409,7 +409,7 @@ const mcpToolsProvider: Provider = {
     let result = `🔧 AVAILABLE MCP TOOLS\n\n`
 
     const autocratTools = tools.filter((t) => t.source === 'autocrat')
-    const ceoTools = tools.filter((t) => t.source === 'ceo')
+    const directorTools = tools.filter((t) => t.source === 'director')
 
     if (autocratTools.length > 0) {
       result += `📋 Autocrat Tools (${getAutocratMCP()}):\n`
@@ -419,9 +419,9 @@ const mcpToolsProvider: Provider = {
       result += '\n'
     }
 
-    if (ceoTools.length > 0) {
-      result += `👤 CEO Tools (${getCEOMCP()}):\n`
-      for (const tool of ceoTools) {
+    if (directorTools.length > 0) {
+      result += `👤 Director Tools (${getDirectorMCP()}):\n`
+      for (const tool of directorTools) {
         result += `  • ${tool.name}: ${tool.description}\n`
       }
     }
@@ -436,7 +436,7 @@ const mcpToolsProvider: Provider = {
  */
 const a2aSkillsProvider: Provider = {
   name: 'AUTOCRAT_A2A_SKILLS',
-  description: 'List available A2A skills across autocrat and CEO agents',
+  description: 'List available A2A skills across autocrat and Director agents',
 
   get: async (
     _runtime: IAgentRuntime,
@@ -458,11 +458,11 @@ const a2aSkillsProvider: Provider = {
       }
     }
 
-    // Fetch from CEO
-    const ceoCard = await fetchAgentCard(getCEOA2A())
-    if (ceoCard) {
-      for (const skill of ceoCard.skills) {
-        skills.push({ agent: 'ceo', ...skill })
+    // Fetch from Director
+    const directorCard = await fetchAgentCard(getDirectorA2A())
+    if (directorCard) {
+      for (const skill of directorCard.skills) {
+        skills.push({ agent: 'director', ...skill })
       }
     }
 
@@ -473,7 +473,7 @@ const a2aSkillsProvider: Provider = {
     let result = `📡 AVAILABLE A2A SKILLS\n\n`
 
     const autocratSkills = skills.filter((s) => s.agent === 'autocrat')
-    const ceoSkills = skills.filter((s) => s.agent === 'ceo')
+    const directorSkills = skills.filter((s) => s.agent === 'director')
 
     if (autocratSkills.length > 0) {
       result += `📋 Autocrat Skills:\n`
@@ -483,9 +483,9 @@ const a2aSkillsProvider: Provider = {
       result += '\n'
     }
 
-    if (ceoSkills.length > 0) {
-      result += `👤 CEO Skills:\n`
-      for (const skill of ceoSkills) {
+    if (directorSkills.length > 0) {
+      result += `👤 Director Skills:\n`
+      for (const skill of directorSkills) {
         result += `  • ${skill.id}: ${skill.description}\n`
       }
     }
@@ -586,7 +586,7 @@ export const autocratProviders: Provider[] = [
   otherAutocratVotesProvider,
   activeProposalsProvider,
   proposalDetailProvider,
-  ceoStatusProvider,
+  directorStatusProvider,
   mcpToolsProvider,
   a2aSkillsProvider,
   governanceStatsProvider,

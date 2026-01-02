@@ -1916,10 +1916,10 @@ export function getModelRegistryAddress(): string {
   )
 }
 
-/** Get AI CEO address */
-export function getAiCeoAddress(): string {
+/** Get AI Director address */
+export function getAiDirectorAddress(): string {
   return (
-    process.env.AI_CEO_ADDRESS ?? '0x0000000000000000000000000000000000000000'
+    process.env.AI_DIRECTOR_ADDRESS ?? '0x0000000000000000000000000000000000000000'
   )
 }
 

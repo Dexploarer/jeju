@@ -77,7 +77,7 @@ const PAYMENT_REQUEST_REGISTRY_ABI = parseAbi([
   'function getRequest(bytes32 requestId) external view returns (bytes32, bytes32, address, bytes32, uint8, string, string, string, address, uint256, uint256, uint8, bool, uint256, uint256, uint256, uint256, uint256, string, bytes32)',
   'function getPendingRequests(bytes32 daoId) external view returns (bytes32[])',
   'function getCouncilVotes(bytes32 requestId) external view returns (address[], uint8[], string[], uint256[])',
-  'function getCEODecision(bytes32 requestId) external view returns (bool, uint256, string, uint256)',
+  'function getDirectorDecision(bytes32 requestId) external view returns (bool, uint256, string, uint256)',
   'function submitRequest(bytes32 daoId, bytes32 contributorId, uint8 category, string title, string description, string evidenceUri, uint256 requestedAmount, bool isRetroactive, uint256 workStartDate, uint256 workEndDate) external returns (bytes32)',
   'function councilVote(bytes32 requestId, uint8 vote, string reason) external',
 ])
@@ -558,13 +558,13 @@ export function createFundingRouter() {
   })
 
   router.get(
-    '/payment-requests/:requestId/ceo-decision',
+    '/payment-requests/:requestId/director-decision',
     async ({ params }) => {
       const requestId = params.requestId as Hex
       const decision = await publicClient.readContract({
         address: config.contracts.paymentRequestRegistry,
         abi: PAYMENT_REQUEST_REGISTRY_ABI,
-        functionName: 'getCEODecision',
+        functionName: 'getDirectorDecision',
         args: [requestId],
       })
       return decision

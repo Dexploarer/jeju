@@ -96,12 +96,12 @@ test.describe('Council Status', () => {
     const data = getDataPart(result.result)
 
     expect(data?.totalProposals).toBeDefined()
-    expect(data?.ceo).toBeDefined()
+    expect(data?.director).toBeDefined()
     expect(data?.parameters).toBeDefined()
   })
 
-  test('get-ceo-status returns CEO info', async ({ request }) => {
-    const result = await sendA2AMessage(request, 'get-ceo-status')
+  test('get-director-status returns Director info', async ({ request }) => {
+    const result = await sendA2AMessage(request, 'get-director-status')
     const data = getDataPart(result.result)
 
     expect(data).toBeDefined()
@@ -180,7 +180,7 @@ test.describe('Council Voting', () => {
   })
 })
 
-test.describe('CEO Operations', () => {
+test.describe('Director Operations', () => {
   test('back-proposal skill returns transaction info', async ({ request }) => {
     const result = await sendA2AMessage(request, 'back-proposal', {
       proposalId: `0x${'5'.repeat(64)}`,

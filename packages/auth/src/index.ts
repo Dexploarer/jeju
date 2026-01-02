@@ -23,7 +23,7 @@ import './polyfills'
 
 // Multi-tenant Council
 export {
-  type CEOConfig,
+  type DirectorConfig,
   type CouncilAgentConfig,
   type CouncilDeployment,
   createMultiTenantCouncilManager,

@@ -592,7 +592,7 @@ describe('Schema Validation', () => {
         totalStaked: '1000000000000000000',
         backerCount: 5,
         hasResearch: true,
-        ceoApproved: false,
+        directorApproved: false,
       })
       expect(result.success).toBe(true)
     })

@@ -86,7 +86,7 @@ const ROUTES = [
     name: 'DAO List',
     expectedContent: 'DAO',
     description:
-      'List of DAOs with search input, status filter dropdown, network-only toggle, and Create DAO button. Shows DAO cards with avatars, status badges, CEO info, stats, and tags.',
+      'List of DAOs with search input, status filter dropdown, network-only toggle, and Create DAO button. Shows DAO cards with avatars, status badges, Director info, stats, and tags.',
   },
   {
     path: '/create',
@@ -123,11 +123,11 @@ const WIZARD_STEPS = [
       'DAO basics form with slug input, display name, description textarea, Farcaster channel, and tags input.',
   },
   {
-    id: 'ceo',
-    name: 'CEO',
-    expectedContent: 'CEO',
+    id: 'director',
+    name: 'Director',
+    expectedContent: 'Director',
     description:
-      'CEO agent configuration with name, bio, personality, model selection grid, decision style buttons, communication tone dropdown, core values inputs.',
+      'Director agent configuration with name, bio, personality, model selection grid, decision style buttons, communication tone dropdown, core values inputs.',
   },
   {
     id: 'board',
@@ -141,14 +141,14 @@ const WIZARD_STEPS = [
     name: 'Governance',
     expectedContent: 'Governance',
     description:
-      'Governance parameters with min quality score, min board approvals, voting period, min proposal stake, CEO veto toggle, community veto toggle.',
+      'Governance parameters with min quality score, min board approvals, voting period, min proposal stake, Director veto toggle, community veto toggle.',
   },
   {
     id: 'review',
     name: 'Review',
     expectedContent: 'Review',
     description:
-      'Review summary showing DAO info, CEO summary, board members list, governance parameters, and Create DAO button.',
+      'Review summary showing DAO info, Director summary, board members list, governance parameters, and Create DAO button.',
   },
 ]
 
@@ -396,12 +396,12 @@ test.describe('Autocrat - Create DAO Wizard', () => {
     const continueBtn = page.locator('button:has-text("Continue")')
     await continueBtn.click()
 
-    // Should navigate to CEO step - "CEO configuration"
+    // Should navigate to Director step - "Director configuration"
     await page.waitForTimeout(500)
-    await expect(page.locator('h2:has-text("CEO configuration")')).toBeVisible()
+    await expect(page.locator('h2:has-text("Director configuration")')).toBeVisible()
   })
 
-  test('Step 2: CEO configuration', async ({ page }) => {
+  test('Step 2: Director configuration', async ({ page }) => {
     await page.goto('/create')
     await page.waitForTimeout(500)
 
@@ -411,11 +411,11 @@ test.describe('Autocrat - Create DAO Wizard', () => {
     await page.click('button:has-text("Continue")')
     await page.waitForTimeout(500)
 
-    // Step 2: CEO configuration
-    await expect(page.locator('h2:has-text("CEO configuration")')).toBeVisible()
+    // Step 2: Director configuration
+    await expect(page.locator('h2:has-text("Director configuration")')).toBeVisible()
 
     // Agent Name input with placeholder "e.g., Eliza, Atlas"
-    await expect(page.locator('input#agent-name-ceo')).toBeVisible()
+    await expect(page.locator('input#agent-name-director')).toBeVisible()
 
     // AI Model section
     await expect(page.locator('text=AI Model')).toBeVisible()
@@ -439,8 +439,8 @@ test.describe('Autocrat - Create DAO Wizard', () => {
     await page.click('button:has-text("Continue")')
     await page.waitForTimeout(300)
 
-    // Fill CEO name (required for step 2 validation)
-    await page.fill('input#agent-name-ceo', 'Test CEO')
+    // Fill Director name (required for step 2 validation)
+    await page.fill('input#agent-name-director', 'Test Director')
     await page.click('button:has-text("Continue")')
     await page.waitForTimeout(500)
 
@@ -464,7 +464,7 @@ test.describe('Autocrat - Create DAO Wizard', () => {
     await page.click('button:has-text("Continue")')
     await page.waitForTimeout(300)
 
-    await page.fill('input#agent-name-ceo', 'Test CEO')
+    await page.fill('input#agent-name-director', 'Test Director')
     await page.click('button:has-text("Continue")')
     await page.waitForTimeout(300)
 
@@ -499,7 +499,7 @@ test.describe('Autocrat - Create DAO Wizard', () => {
     await page.click('button:has-text("Continue")')
     await page.waitForTimeout(300)
 
-    await expect(page.locator('h2:has-text("CEO configuration")')).toBeVisible()
+    await expect(page.locator('h2:has-text("Director configuration")')).toBeVisible()
 
     // Click Back
     await page.click('button:has-text("Back")')

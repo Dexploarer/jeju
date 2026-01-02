@@ -77,11 +77,11 @@ const ALTERNATE_PERSONAS: Record<string, DirectorPersona> = {
     isHuman: false,
     decisionFallbackDays: 7,
   },
-  'tech-ceo': {
+  'tech-director': {
     name: 'Nova',
     pfpCid: '',
     description:
-      'A cutting-edge AI CEO focused on rapid innovation and technical excellence.',
+      'A cutting-edge AI Director focused on rapid innovation and technical excellence.',
     personality:
       'Innovative, fast-paced, data-driven. Always looking for the next breakthrough.',
     traits: ['innovative', 'fast', 'data-driven', 'visionary', 'technical'],
@@ -363,3 +363,4 @@ seedAutocratAgents(config).catch((err) => {
   console.error('Seeding failed:', err)
   process.exit(1)
 })
+

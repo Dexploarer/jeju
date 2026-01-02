@@ -10,7 +10,7 @@ const STATUS_CONFIG: Record<
   AUTOCRAT_REVIEW: { badge: 'badge-accent', icon: Users },
   RESEARCH_PENDING: { badge: 'badge-warning', icon: Clock },
   AUTOCRAT_FINAL: { badge: 'badge-accent', icon: Users },
-  CEO_QUEUE: { badge: 'badge-primary', icon: Clock },
+  DIRECTOR_QUEUE: { badge: 'badge-primary', icon: Clock },
   APPROVED: { badge: 'badge-success', icon: CheckCircle },
   COMPLETED: { badge: 'badge-success', icon: CheckCircle },
   REJECTED: { badge: 'badge-error', icon: XCircle },

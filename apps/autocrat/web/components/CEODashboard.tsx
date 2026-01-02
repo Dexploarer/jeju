@@ -18,9 +18,9 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import {
-  type CEOStatus,
+  type DirectorStatus,
   type Decision,
-  fetchCEOStatus,
+  fetchDirectorStatus,
   fetchModelCandidates,
   fetchRecentDecisions,
   type ModelCandidate,
@@ -59,12 +59,12 @@ const INFERENCE_PROVIDERS = [
   { id: 'openrouter', name: 'OpenRouter', models: ['auto'] },
 ] as const
 
-interface CEODashboardProps {
+interface DirectorDashboardProps {
   compact?: boolean
 }
 
-export function CEODashboard({ compact = false }: CEODashboardProps) {
-  const [ceoStatus, setCeoStatus] = useState<CEOStatus | null>(null)
+export function DirectorDashboard({ compact = false }: DirectorDashboardProps) {
+  const [directorStatus, setDirectorStatus] = useState<DirectorStatus | null>(null)
   const [models, setModels] = useState<ModelCandidate[]>([])
   const [decisions, setDecisions] = useState<Decision[]>([])
   const [loading, setLoading] = useState(true)
@@ -79,16 +79,16 @@ export function CEODashboard({ compact = false }: CEODashboardProps) {
     setLoadError(null)
     try {
       const [status, modelCandidates, recentDecisions] = await Promise.all([
-        fetchCEOStatus(),
+        fetchDirectorStatus(),
         fetchModelCandidates(),
         fetchRecentDecisions(10),
       ])
-      setCeoStatus(status)
+      setDirectorStatus(status)
       setModels(modelCandidates)
       setDecisions(recentDecisions)
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Failed to load CEO data'
+        err instanceof Error ? err.message : 'Failed to load Director data'
       setLoadError(message)
     }
     setLoading(false)
@@ -127,7 +127,7 @@ export function CEODashboard({ compact = false }: CEODashboardProps) {
     return (
       <div className="card-static p-6">
         <div className="text-center">
-          <div className="text-red-500 mb-2">Failed to load CEO data</div>
+          <div className="text-red-500 mb-2">Failed to load Director data</div>
           <p className="text-sm text-gray-500 mb-4">{loadError}</p>
           <button
             type="button"
@@ -147,7 +147,7 @@ export function CEODashboard({ compact = false }: CEODashboardProps) {
         <div className="flex items-center justify-between">
           <h3 className="font-semibold flex items-center gap-2">
             <Crown className="text-yellow-500" size={18} />
-            AI CEO
+            AI Director
           </h3>
           <button
             type="button"
@@ -158,14 +158,14 @@ export function CEODashboard({ compact = false }: CEODashboardProps) {
           </button>
         </div>
 
-        {ceoStatus && (
+        {directorStatus && (
           <>
             <div className="flex items-center gap-3">
               <Brain size={32} className="text-accent" />
               <div>
-                <div className="font-medium">{ceoStatus.currentModel.name}</div>
+                <div className="font-medium">{directorStatus.currentModel.name}</div>
                 <div className="text-xs text-gray-500">
-                  {ceoStatus.currentModel.provider}
+                  {directorStatus.currentModel.provider}
                 </div>
               </div>
             </div>
@@ -173,13 +173,13 @@ export function CEODashboard({ compact = false }: CEODashboardProps) {
             <div className="grid grid-cols-2 gap-3 text-center">
               <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded">
                 <div className="text-lg font-bold text-green-500">
-                  {ceoStatus.stats.approvalRate}
+                  {directorStatus.stats.approvalRate}
                 </div>
                 <div className="text-xs text-gray-500">Approval Rate</div>
               </div>
               <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded">
                 <div className="text-lg font-bold">
-                  {ceoStatus.stats.totalDecisions}
+                  {directorStatus.stats.totalDecisions}
                 </div>
                 <div className="text-xs text-gray-500">Decisions</div>
               </div>
@@ -196,7 +196,7 @@ export function CEODashboard({ compact = false }: CEODashboardProps) {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold flex items-center gap-2">
           <Crown className="text-yellow-500" size={24} />
-          AI CEO Dashboard
+          AI Director Dashboard
         </h2>
         <button
           type="button"
@@ -208,11 +208,11 @@ export function CEODashboard({ compact = false }: CEODashboardProps) {
         </button>
       </div>
 
-      {/* Current CEO */}
-      {ceoStatus && (
+      {/* Current Director */}
+      {directorStatus && (
         <div className="card-static p-6">
           <h3 className="text-sm font-medium text-gray-500 mb-4">
-            Current AI CEO
+            Current AI Director
           </h3>
 
           <div className="flex items-center gap-4 mb-6">
@@ -221,11 +221,11 @@ export function CEODashboard({ compact = false }: CEODashboardProps) {
             </div>
             <div>
               <div className="text-xl font-bold">
-                {ceoStatus.currentModel.name}
+                {directorStatus.currentModel.name}
               </div>
               <div className="text-sm text-gray-500">
-                {ceoStatus.currentModel.provider} • Model ID:{' '}
-                {ceoStatus.currentModel.modelId.slice(0, 20)}...
+                {directorStatus.currentModel.provider} • Model ID:{' '}
+                {directorStatus.currentModel.modelId.slice(0, 20)}...
               </div>
             </div>
           </div>
@@ -235,18 +235,18 @@ export function CEODashboard({ compact = false }: CEODashboardProps) {
             <StatCard
               icon={<CheckCircle className="text-green-500" />}
               label="Approval Rate"
-              value={ceoStatus.stats.approvalRate}
+              value={directorStatus.stats.approvalRate}
               trend={+2.3}
             />
             <StatCard
               icon={<BarChart3 className="text-blue-500" />}
               label="Total Decisions"
-              value={ceoStatus.stats.totalDecisions}
+              value={directorStatus.stats.totalDecisions}
             />
             <StatCard
               icon={<AlertTriangle className="text-yellow-500" />}
               label="Override Rate"
-              value={ceoStatus.stats.overrideRate}
+              value={directorStatus.stats.overrideRate}
               trend={-1.5}
               trendGood="down"
             />
@@ -254,8 +254,8 @@ export function CEODashboard({ compact = false }: CEODashboardProps) {
               icon={<TrendingUp className="text-accent" />}
               label="Benchmark Score"
               value={
-                ceoStatus.currentModel.benchmarkScore
-                  ? `${ceoStatus.currentModel.benchmarkScore}%`
+                directorStatus.currentModel.benchmarkScore
+                  ? `${directorStatus.currentModel.benchmarkScore}%`
                   : 'N/A'
               }
             />
@@ -277,7 +277,7 @@ export function CEODashboard({ compact = false }: CEODashboardProps) {
             <Brain className="mx-auto mb-2 opacity-50" size={32} />
             <p className="text-sm">No model candidates registered yet</p>
             <p className="text-xs mt-1">
-              Nominate AI models to participate in CEO election
+              Nominate AI models to participate in Director election
             </p>
           </div>
         )}
@@ -310,7 +310,7 @@ export function CEODashboard({ compact = false }: CEODashboardProps) {
                       {model.modelName}
                       {index === 0 && (
                         <span className="text-xs bg-accent text-white px-2 py-0.5 rounded">
-                          Current CEO
+                          Current Director
                         </span>
                       )}
                     </div>
@@ -431,7 +431,7 @@ export function CEODashboard({ compact = false }: CEODashboardProps) {
             <BarChart3 className="mx-auto mb-2 opacity-50" size={32} />
             <p className="text-sm">No decisions recorded yet</p>
             <p className="text-xs mt-1">
-              Decisions will appear here after CEO review
+              Decisions will appear here after Director review
             </p>
           </div>
         )}
@@ -615,13 +615,13 @@ function NominateModelModal({
           {/* Provider Selection */}
           <div>
             <label
-              htmlFor="ceo-provider"
+              htmlFor="director-provider"
               className="block text-sm font-medium mb-2"
             >
               Provider
             </label>
             <select
-              id="ceo-provider"
+              id="director-provider"
               value={selectedProvider}
               onChange={(e) => {
                 setSelectedProvider(e.target.value)
@@ -642,13 +642,13 @@ function NominateModelModal({
           {selectedProvider && (
             <div>
               <label
-                htmlFor="ceo-model"
+                htmlFor="director-model"
                 className="block text-sm font-medium mb-2"
               >
                 Model
               </label>
               <select
-                id="ceo-model"
+                id="director-model"
                 value={selectedModel}
                 onChange={(e) => setSelectedModel(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
@@ -668,13 +668,13 @@ function NominateModelModal({
           {selectedModel === 'custom' && (
             <div>
               <label
-                htmlFor="ceo-custom-model"
+                htmlFor="director-custom-model"
                 className="block text-sm font-medium mb-2"
               >
                 Custom Model ID
               </label>
               <input
-                id="ceo-custom-model"
+                id="director-custom-model"
                 type="text"
                 value={customModel}
                 onChange={(e) => setCustomModel(e.target.value)}
@@ -687,13 +687,13 @@ function NominateModelModal({
           {/* Benchmark Score */}
           <div>
             <label
-              htmlFor="ceo-benchmark"
+              htmlFor="director-benchmark"
               className="block text-sm font-medium mb-2"
             >
               Estimated Benchmark Score: {benchmarkScore}%
             </label>
             <input
-              id="ceo-benchmark"
+              id="director-benchmark"
               type="range"
               min="50"
               max="100"
@@ -710,9 +710,9 @@ function NominateModelModal({
           {/* Info */}
           <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-sm">
             <p className="text-blue-700 dark:text-blue-300">
-              Nominated models participate in the CEO election. Token holders
+              Nominated models participate in the Director election. Token holders
               can stake on their preferred model. The model with the most stake
-              becomes the active CEO.
+              becomes the active Director.
             </p>
           </div>
         </div>
@@ -743,4 +743,4 @@ function NominateModelModal({
   )
 }
 
-export default CEODashboard
+export default DirectorDashboard

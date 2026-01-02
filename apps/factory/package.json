@@ -21,6 +21,7 @@
     "@elysiajs/openapi": "^1.4.12",
     "@elysiajs/static": "^1.4.7",
     "@headlessui/react": "2.2.4",
+    "@jejunetwork/cache": "workspace:*",
     "@jejunetwork/config": "workspace:*",
     "@jejunetwork/contracts": "workspace:*",
     "@jejunetwork/db": "workspace:*",

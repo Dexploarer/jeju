@@ -583,4 +583,4 @@ export const directorProviders: Provider[] = [
 ]
 
 // Legacy export for backwards compatibility
-export const ceoProviders = directorProviders
+export const directorProviders = directorProviders

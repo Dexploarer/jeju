@@ -356,7 +356,7 @@ export const ProposalInfoSchema = z.object({
   totalStaked: BigIntStringSchema,
   backerCount: z.number(),
   hasResearch: z.boolean(),
-  ceoApproved: z.boolean(),
+  directorApproved: z.boolean(),
 })
 
 export const DelegateInfoSchema = z.object({

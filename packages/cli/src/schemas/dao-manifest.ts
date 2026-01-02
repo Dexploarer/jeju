@@ -6,7 +6,7 @@ const AddressSchema = z
   .optional()
 const WeiAmountSchema = z.string().regex(/^\d+$/, 'Must be numeric string')
 
-export const DAOCEOConfigSchema = z.object({
+export const DAODirectorConfigSchema = z.object({
   name: z.string().min(1),
   description: z.string().min(1),
   personality: z.string().min(1),
@@ -34,7 +34,7 @@ export const DAOGovernanceParamsSchema = z.object({
 })
 
 export const DAOGovernanceConfigSchema = z.object({
-  ceo: DAOCEOConfigSchema,
+  director: DAODirectorConfigSchema,
   council: z.object({ members: z.array(DAOCouncilMemberSchema).min(1) }),
   parameters: DAOGovernanceParamsSchema,
 })
@@ -46,7 +46,7 @@ export const DAOFundingConfigSchema = z.object({
   cooldownPeriod: z.number().int().nonnegative(),
   matchingMultiplier: z.number().int().min(0).max(100000),
   quadraticEnabled: z.boolean(),
-  ceoWeightCap: z.number().int().min(0).max(10000),
+  directorWeightCap: z.number().int().min(0).max(10000),
 })
 
 export const DAOFeeCategorySchema = z.object({

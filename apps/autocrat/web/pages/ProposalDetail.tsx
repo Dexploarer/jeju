@@ -172,7 +172,7 @@ export default function ProposalDetailPage() {
             aria-hidden="true"
           />
         )
-      case 'CEO_QUEUE':
+      case 'DIRECTOR_QUEUE':
         return (
           <Clock
             className="text-[var(--color-warning)]"

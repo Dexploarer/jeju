@@ -38,8 +38,8 @@ test.describe('All Pages Load', () => {
     // Stats cards visible
     await expect(page.locator('.stat-label').first()).toBeVisible()
 
-    // CEO Status section
-    await expect(page.getByText('AI CEO')).toBeVisible()
+    // Director Status section
+    await expect(page.getByText('AI Director')).toBeVisible()
 
     // View all link
     await expect(page.getByText('View all →')).toBeVisible()
@@ -95,12 +95,12 @@ test.describe('All Pages Load', () => {
     await expect(page.getByLabel('Full Description')).toBeVisible()
   })
 
-  test('CEO page (/ceo) loads correctly', async ({ page }) => {
-    await page.goto(`${BASE_URL}/ceo`)
+  test('Director page (/director) loads correctly', async ({ page }) => {
+    await page.goto(`${BASE_URL}/director`)
 
     // Page header
     await expect(
-      page.getByRole('heading', { name: 'AI CEO Management' }),
+      page.getByRole('heading', { name: 'AI Director Management' }),
     ).toBeVisible()
 
     // Back button
@@ -175,14 +175,14 @@ test.describe('Navigation Works', () => {
     await page.getByRole('link', { name: '' }).first().click()
     await expect(page).toHaveURL(BASE_URL)
 
-    // Dashboard -> CEO
-    await page.locator('header').getByRole('link', { name: 'CEO' }).click()
-    await expect(page).toHaveURL(`${BASE_URL}/ceo`)
+    // Dashboard -> Director
+    await page.locator('header').getByRole('link', { name: 'Director' }).click()
+    await expect(page).toHaveURL(`${BASE_URL}/director`)
     await expect(
-      page.getByRole('heading', { name: 'AI CEO Management' }),
+      page.getByRole('heading', { name: 'AI Director Management' }),
     ).toBeVisible()
 
-    // CEO -> Dashboard
+    // Director -> Dashboard
     await page
       .locator('header')
       .getByRole('link', { name: 'Dashboard' })

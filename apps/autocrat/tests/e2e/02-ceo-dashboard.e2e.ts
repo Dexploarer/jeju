@@ -1,7 +1,7 @@
 /**
- * CEO Dashboard Flow Tests
+ * Director Dashboard Flow Tests
  *
- * Tests the AI CEO Management page:
+ * Tests the AI Director Management page:
  * - Dashboard display
  * - Model election section
  * - Recent decisions
@@ -12,49 +12,49 @@ import { CORE_PORTS } from '@jejunetwork/config'
 import { expect, test } from '@playwright/test'
 
 const BASE_URL = `http://localhost:${CORE_PORTS.AUTOCRAT_WEB.get()}`
-const CEO_URL = `${BASE_URL}/ceo`
+const DIRECTOR_URL = `${BASE_URL}/director`
 
-test.describe('CEO Dashboard Page', () => {
+test.describe('Director Dashboard Page', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(CEO_URL)
+    await page.goto(DIRECTOR_URL)
     await page.waitForLoadState('networkidle')
   })
 
   test('displays page header correctly', async ({ page }) => {
     // Page header
     await expect(
-      page.getByRole('heading', { name: 'AI CEO Management' }),
+      page.getByRole('heading', { name: 'AI Director Management' }),
     ).toBeVisible()
 
     // Back button
     await expect(page.getByRole('link', { name: '' }).first()).toBeVisible()
   })
 
-  test('shows CEO dashboard section', async ({ page }) => {
+  test('shows Director dashboard section', async ({ page }) => {
     // Wait for loading to complete
     await page.waitForTimeout(1000)
 
     // Dashboard title should appear
-    await expect(page.getByText('AI CEO Dashboard')).toBeVisible()
+    await expect(page.getByText('AI Director Dashboard')).toBeVisible()
 
     // Refresh button
     await expect(page.getByRole('button', { name: /Refresh/ })).toBeVisible()
   })
 
-  test('displays Current AI CEO or loading state', async ({ page }) => {
+  test('displays Current AI Director or loading state', async ({ page }) => {
     await page.waitForTimeout(1500)
 
-    // Either shows Current AI CEO or the dashboard is still loading/empty
-    const hasCEO = await page
-      .getByText('Current AI CEO')
+    // Either shows Current AI Director or the dashboard is still loading/empty
+    const hasDirector = await page
+      .getByText('Current AI Director')
       .isVisible({ timeout: 2000 })
       .catch(() => false)
     const hasDashboard = await page
-      .getByText('AI CEO Dashboard')
+      .getByText('AI Director Dashboard')
       .isVisible({ timeout: 2000 })
       .catch(() => false)
 
-    expect(hasCEO || hasDashboard).toBe(true)
+    expect(hasDirector || hasDashboard).toBe(true)
   })
 
   test('displays stats cards when data loaded', async ({ page }) => {
@@ -102,9 +102,9 @@ test.describe('CEO Dashboard Page', () => {
   })
 })
 
-test.describe('CEO Dashboard Interactions', () => {
+test.describe('Director Dashboard Interactions', () => {
   test('refresh button reloads data', async ({ page }) => {
-    await page.goto(CEO_URL)
+    await page.goto(DIRECTOR_URL)
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(1000)
 
@@ -117,11 +117,11 @@ test.describe('CEO Dashboard Interactions', () => {
     await page.waitForTimeout(500)
 
     // Page should still be functional
-    await expect(page.getByText('AI CEO Dashboard')).toBeVisible()
+    await expect(page.getByText('AI Director Dashboard')).toBeVisible()
   })
 
   test('back button navigates to dashboard', async ({ page }) => {
-    await page.goto(CEO_URL)
+    await page.goto(DIRECTOR_URL)
     await page.waitForLoadState('networkidle')
 
     // Click back
@@ -132,7 +132,7 @@ test.describe('CEO Dashboard Interactions', () => {
   })
 
   test('model candidate cards can expand', async ({ page }) => {
-    await page.goto(CEO_URL)
+    await page.goto(DIRECTOR_URL)
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(1500)
 
@@ -168,9 +168,9 @@ test.describe('CEO Dashboard Interactions', () => {
   })
 })
 
-test.describe('CEO Dashboard Empty States', () => {
+test.describe('Director Dashboard Empty States', () => {
   test('handles no model candidates gracefully', async ({ page }) => {
-    await page.goto(CEO_URL)
+    await page.goto(DIRECTOR_URL)
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(1500)
 
@@ -179,13 +179,13 @@ test.describe('CEO Dashboard Empty States', () => {
     if (await emptyState.isVisible({ timeout: 1000 })) {
       await expect(emptyState).toBeVisible()
       await expect(
-        page.getByText('CEOAgent contract may not be deployed'),
+        page.getByText('DirectorAgent contract may not be deployed'),
       ).toBeVisible()
     }
   })
 
   test('handles no decisions gracefully', async ({ page }) => {
-    await page.goto(CEO_URL)
+    await page.goto(DIRECTOR_URL)
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(1500)
 
@@ -194,57 +194,57 @@ test.describe('CEO Dashboard Empty States', () => {
     if (await emptyState.isVisible({ timeout: 1000 })) {
       await expect(emptyState).toBeVisible()
       await expect(
-        page.getByText('Decisions will appear here after CEO review'),
+        page.getByText('Decisions will appear here after Director review'),
       ).toBeVisible()
     }
   })
 })
 
-test.describe('CEO Dashboard Navigation', () => {
-  test('can navigate from dashboard to CEO page', async ({ page }) => {
+test.describe('Director Dashboard Navigation', () => {
+  test('can navigate from dashboard to Director page', async ({ page }) => {
     await page.goto(BASE_URL)
 
-    await page.getByRole('link', { name: 'CEO' }).click()
+    await page.getByRole('link', { name: 'Director' }).click()
 
-    await expect(page).toHaveURL(CEO_URL)
+    await expect(page).toHaveURL(DIRECTOR_URL)
     await expect(
-      page.getByRole('heading', { name: 'AI CEO Management' }),
+      page.getByRole('heading', { name: 'AI Director Management' }),
     ).toBeVisible()
   })
 
-  test('CEO status on dashboard links correctly', async ({ page }) => {
+  test('Director status on dashboard links correctly', async ({ page }) => {
     await page.goto(BASE_URL)
     await page.waitForLoadState('networkidle')
 
-    // Look for AI CEO section on dashboard
-    await expect(page.getByText('AI CEO')).toBeVisible()
+    // Look for AI Director section on dashboard
+    await expect(page.getByText('AI Director')).toBeVisible()
   })
 })
 
-test.describe('CEO Dashboard Responsive', () => {
+test.describe('Director Dashboard Responsive', () => {
   test('mobile layout displays correctly', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 })
-    await page.goto(CEO_URL)
+    await page.goto(DIRECTOR_URL)
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(1500)
 
     // Page should load
     await expect(
-      page.getByRole('heading', { name: 'AI CEO Management' }),
+      page.getByRole('heading', { name: 'AI Director Management' }),
     ).toBeVisible()
 
     // Dashboard section should be visible
-    await expect(page.getByText('AI CEO Dashboard')).toBeVisible()
+    await expect(page.getByText('AI Director Dashboard')).toBeVisible()
   })
 
   test('tablet layout shows full content', async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 1024 })
-    await page.goto(CEO_URL)
+    await page.goto(DIRECTOR_URL)
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(1500)
 
     // All sections visible
-    await expect(page.getByText('AI CEO Dashboard')).toBeVisible()
+    await expect(page.getByText('AI Director Dashboard')).toBeVisible()
     await expect(page.getByText('Model Election')).toBeVisible()
     await expect(page.getByText('Recent Decisions')).toBeVisible()
   })

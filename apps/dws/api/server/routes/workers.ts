@@ -83,7 +83,42 @@ async function deployFromCid(
     cidToFunctionId.delete(cid)
   }
 
-  console.log(`[Workers] Deploying worker from CID: ${cid}`)
+  // Try to load from SQLit by CID (for multi-pod recovery)
+  try {
+    const existingWorker = await dwsWorkerState.getByCid(cid)
+    if (existingWorker) {
+      const fn: WorkerFunction = {
+        id: existingWorker.id,
+        name: existingWorker.name,
+        owner: existingWorker.owner as Address,
+        runtime: existingWorker.runtime,
+        handler: existingWorker.handler,
+        codeCid: existingWorker.codeCid,
+        memory: existingWorker.memory,
+        timeout: existingWorker.timeout,
+        env: existingWorker.env,
+        status: existingWorker.status,
+        version: existingWorker.version,
+        createdAt: existingWorker.createdAt,
+        updatedAt: existingWorker.updatedAt,
+        invocationCount: existingWorker.invocationCount,
+        avgDurationMs: existingWorker.avgDurationMs,
+        errorCount: existingWorker.errorCount,
+      }
+      await runtime.deployFunction(fn)
+      cidToFunctionId.set(cid, fn.id)
+      console.log(
+        `[Workers] Loaded worker from SQLit by CID: ${fn.name} (${fn.id})`,
+      )
+      return fn
+    }
+  } catch (err) {
+    console.warn(
+      `[Workers] Failed to load worker by CID from SQLit: ${err instanceof Error ? err.message : String(err)}`,
+    )
+  }
+
+  console.log(`[Workers] Deploying new worker from CID: ${cid}`)
 
   // Verify code exists in storage
   const codeExists = await backend.exists(cid)
@@ -113,6 +148,34 @@ async function deployFromCid(
 
   await runtime.deployFunction(fn)
   cidToFunctionId.set(cid, functionId)
+
+  // Persist to SQLit for multi-pod recovery
+  try {
+    await dwsWorkerState.save({
+      id: fn.id,
+      name: fn.name,
+      owner: fn.owner,
+      runtime: fn.runtime as 'bun' | 'node' | 'deno',
+      handler: fn.handler,
+      codeCid: fn.codeCid,
+      memory: fn.memory,
+      timeout: fn.timeout,
+      env: fn.env,
+      status: fn.status as 'active' | 'inactive' | 'error',
+      version: fn.version,
+      invocationCount: fn.invocationCount,
+      avgDurationMs: fn.avgDurationMs,
+      errorCount: fn.errorCount,
+      createdAt: fn.createdAt,
+      updatedAt: fn.updatedAt,
+    })
+    console.log(`[Workers] Persisted CID-deployed worker to SQLit: ${fn.id}`)
+  } catch (persistError) {
+    console.warn(
+      `[Workers] Failed to persist CID worker to SQLit: ${persistError instanceof Error ? persistError.message : String(persistError)}`,
+    )
+  }
+
   console.log(`[Workers] Deployed worker ${functionId} from CID ${cid}`)
 
   return fn

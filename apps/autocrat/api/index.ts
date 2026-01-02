@@ -158,7 +158,7 @@ function getConfig(): CouncilConfig {
     daoId: autocratConfig.defaultDao,
     contracts: {
       board: getContractAddr('governance', 'council'),
-      directorAgent: getContractAddr('governance', 'ceoAgent'),
+      directorAgent: getContractAddr('governance', 'directorAgent'),
       treasury: getContractAddr('governance', 'treasury'),
       feeConfig: getContractAddr('payments', 'feeConfig'),
       daoRegistry: getContractAddr('governance', 'daoRegistry'),
@@ -385,15 +385,15 @@ const app = new Elysia()
     const result = await callA2AInternal('get-proposal', { proposalId })
     return result
   })
-  .get('/api/v1/ceo', async () => callA2AInternal('get-ceo-status'))
+  .get('/api/v1/director', async () => callA2AInternal('get-director-status'))
   .get('/api/v1/governance/stats', async () =>
     callA2AInternal('get-governance-stats'),
   )
-  .get('/api/v1/ceo/models', async () => {
+  .get('/api/v1/director/models', async () => {
     const models = await blockchain.getModelCandidates()
     return { models }
   })
-  .get('/api/v1/ceo/decisions', async ({ query }) => {
+  .get('/api/v1/director/decisions', async ({ query }) => {
     const limitSchema = z
       .string()
       .regex(/^\d+$/)
@@ -781,7 +781,7 @@ const app = new Elysia()
         set.status = 503
         return { error: 'DAO Registry not deployed' }
       }
-      const recommendations = await fundingOracle.generateCEORecommendations(
+      const recommendations = await fundingOracle.generateDirectorRecommendations(
         params.daoId,
       )
       return recommendations
@@ -1109,10 +1109,10 @@ const app = new Elysia()
   .get('/', () => ({
     name: `${getNetworkName()} Autocrat`,
     version: '3.0.0',
-    description: 'Multi-tenant DAO governance with AI CEOs and deep funding',
+    description: 'Multi-tenant DAO governance with AI Directors and deep funding',
     features: [
       'Multi-DAO support (Jeju DAO, custom DAOs)',
-      'CEO personas with unique personalities',
+      'Director personas with unique personalities',
       'Casual proposal flow (opinions, suggestions, applications)',
       'Deep funding with quadratic matching',
       'Package and repo funding integration',
@@ -1131,7 +1131,7 @@ const app = new Elysia()
       futarchy: '/api/v1/futarchy',
       moderation: '/api/v1/moderation',
       registry: '/api/v1/registry',
-      ceo: '/api/v1/ceo',
+      director: '/api/v1/director',
       health: '/health',
     },
   }))
@@ -1204,7 +1204,7 @@ export default { port, fetch: app.fetch }
 export { app, config }
 export type {
   CasualProposalCategory,
-  CEOPersona,
+  DirectorPersona,
   CouncilConfig,
   FundingConfig,
   GovernanceParams,
@@ -1220,7 +1220,7 @@ export { createAutocratA2AServer } from './a2a-server'
 export {
   type AgentVote,
   autocratAgentRuntime,
-  type CEODecisionRequest,
+  type DirectorDecisionRequest,
   type DeliberationRequest,
 } from './agents/runtime'
 export { autocratAgentTemplates, getAgentByRole } from './agents/templates'
@@ -1239,7 +1239,7 @@ export {
   getERC8004Client,
 } from './erc8004'
 export {
-  type CEOFundingRecommendation,
+  type DirectorFundingRecommendation,
   type EpochSummary,
   type FundingAnalysis,
   type FundingOracle,

@@ -477,3 +477,4 @@ function RoomCard({ room }: RoomCardProps) {
     </Link>
   )
 }
+

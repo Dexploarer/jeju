@@ -888,7 +888,7 @@ deployCommand
         return
       }
       for (const m of manifests) {
-        logger.keyValue(m.displayName ?? m.name, m.governance.ceo.name)
+        logger.keyValue(m.displayName ?? m.name, m.governance.director.name)
       }
       return
     }

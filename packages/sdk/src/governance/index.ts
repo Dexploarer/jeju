@@ -31,7 +31,7 @@ const ProposalStatusFromValue: Record<number, ProposalStatus> = {
   1: 'COUNCIL_REVIEW',
   2: 'RESEARCH_PENDING',
   3: 'COUNCIL_FINAL',
-  4: 'CEO_QUEUE',
+  4: 'DIRECTOR_QUEUE',
   5: 'APPROVED',
   6: 'EXECUTING',
   7: 'COMPLETED',
@@ -74,7 +74,7 @@ export interface ProposalInfo {
   totalStaked: bigint
   backerCount: number
   hasResearch: boolean
-  ceoApproved: boolean
+  directorApproved: boolean
 }
 
 export interface CreateProposalParams {
@@ -170,7 +170,7 @@ const COUNCIL_ABI = [
           { name: 'totalStaked', type: 'uint256' },
           { name: 'backerCount', type: 'uint256' },
           { name: 'hasResearch', type: 'bool' },
-          { name: 'ceoApproved', type: 'bool' },
+          { name: 'directorApproved', type: 'bool' },
         ],
       },
     ],

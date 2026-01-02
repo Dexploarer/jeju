@@ -116,8 +116,20 @@ export const proposalsRoutes = new Elysia({ prefix: '/api/v1/proposals' })
   )
   .get(
     '/:id',
-    async ({ params }) => {
-      return callA2AInternal('get-proposal', { proposalId: params.id })
+    async ({ params, set }) => {
+      try {
+        const result = await callA2AInternal('get-proposal', {
+          proposalId: params.id,
+        })
+        return result
+      } catch (error) {
+        set.status = 404
+        return {
+          error: 'Proposal not found',
+          proposalId: params.id,
+          details: error instanceof Error ? error.message : String(error),
+        }
+      }
     },
     {
       params: t.Object({ id: t.String() }),

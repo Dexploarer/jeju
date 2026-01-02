@@ -852,8 +852,8 @@ type CouncilProposal @entity {
   backerCount: Int!
   hasResearch: Boolean!
   researchHash: Bytes
-  ceoApproved: Boolean!
-  ceoDecisionHash: Bytes
+  directorApproved: Boolean!
+  directorDecisionHash: Bytes
   createdAt: DateTime! @index
   councilVoteEnd: DateTime
   gracePeriodEnd: DateTime
@@ -898,7 +898,7 @@ type VetoVote @entity {
   votedAt: DateTime! @index
 }
 
-type CEODecision @entity {
+type DirectorDecision @entity {
   id: ID! # decisionId
   proposal: CouncilProposal!
   modelId: String!

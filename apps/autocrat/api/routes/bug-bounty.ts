@@ -367,13 +367,13 @@ export const bugBountyRoutes = new Elysia({ prefix: '/api/v1/bug-bounty' })
       detail: { tags: ['bug-bounty'], summary: 'Get guardian votes' },
     },
   )
-  // CEO Decision
+  // Director Decision
   .post(
-    '/ceo-decision/:id',
+    '/director-decision/:id',
     async ({ params, body }) => {
       const service = getBugBountyService()
 
-      const submission = await service.ceoDecision(
+      const submission = await service.directorDecision(
         params.id,
         body.approved,
         BigInt(body.rewardAmount),
@@ -394,7 +394,7 @@ export const bugBountyRoutes = new Elysia({ prefix: '/api/v1/bug-bounty' })
         rewardAmount: t.String(),
         notes: t.Optional(t.String()),
       }),
-      detail: { tags: ['bug-bounty'], summary: 'CEO decision' },
+      detail: { tags: ['bug-bounty'], summary: 'Director decision' },
     },
   )
   // Payout

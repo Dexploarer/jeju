@@ -6,7 +6,7 @@
  * Deploys:
  * 1. DelegationRegistry - Vote delegation and security council
  * 2. CircuitBreaker - Emergency pause system
- * 3. CouncilSafeModule - AI CEO signing module
+ * 3. CouncilSafeModule - AI Director signing module
  * 4. Gnosis Safe - Multi-sig treasury
  *
  * Usage:

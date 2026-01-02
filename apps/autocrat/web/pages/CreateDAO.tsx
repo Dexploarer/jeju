@@ -38,11 +38,11 @@ import {
   DEFAULT_GOVERNANCE_PARAMS,
 } from '../types/dao'
 
-type WizardStep = 'basics' | 'ceo' | 'board' | 'governance' | 'review'
+type WizardStep = 'basics' | 'director' | 'board' | 'governance' | 'review'
 
 const STEPS: { id: WizardStep; label: string; icon: typeof Bot }[] = [
   { id: 'basics', label: 'Basics', icon: Settings },
-  { id: 'ceo', label: 'CEO', icon: Crown },
+  { id: 'director', label: 'Director', icon: Crown },
   { id: 'board', label: 'Board', icon: Users },
   { id: 'governance', label: 'Governance', icon: Shield },
   { id: 'review', label: 'Review', icon: Check },
@@ -57,9 +57,9 @@ const BOARD_ROLE_OPTIONS: AgentRole[] = [
   'CUSTOM',
 ]
 
-function createEmptyCEO(): CreateAgentDraft {
+function createEmptyDirector(): CreateAgentDraft {
   return {
-    role: 'CEO',
+    role: 'Director',
     persona: {
       name: '',
       avatarCid: '',
@@ -102,14 +102,14 @@ function createBoardMember(role: AgentRole): CreateAgentDraft {
 interface AgentFormProps {
   agent: CreateAgentDraft
   onChange: (agent: CreateAgentDraft) => void
-  isCEO?: boolean
+  isDirector?: boolean
   onRemove?: () => void
 }
 
 function AgentForm({
   agent,
   onChange,
-  isCEO = false,
+  isDirector = false,
   onRemove,
 }: AgentFormProps) {
   const [expanded, setExpanded] = useState(true)
@@ -162,12 +162,12 @@ function AgentForm({
           <div
             className="w-10 h-10 rounded-lg flex items-center justify-center"
             style={{
-              background: isCEO
+              background: isDirector
                 ? 'var(--gradient-accent)'
                 : 'var(--gradient-secondary)',
             }}
           >
-            {isCEO ? (
+            {isDirector ? (
               <Crown className="w-5 h-5 text-white" aria-hidden="true" />
             ) : (
               <Bot className="w-5 h-5 text-white" aria-hidden="true" />
@@ -178,15 +178,15 @@ function AgentForm({
               className="font-semibold"
               style={{ color: 'var(--text-primary)' }}
             >
-              {agent.persona.name || (isCEO ? 'CEO' : preset.name)}
+              {agent.persona.name || (isDirector ? 'Director' : preset.name)}
             </p>
             <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-              {isCEO ? 'Chief Executive Officer' : preset.description}
+              {isDirector ? 'Chief Executive Officer' : preset.description}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {!isCEO && onRemove && (
+          {!isDirector && onRemove && (
             <button
               type="button"
               onClick={(e) => {
@@ -220,8 +220,8 @@ function AgentForm({
           className="p-4 pt-0 space-y-4 border-t"
           style={{ borderColor: 'var(--border)' }}
         >
-          {/* Role Selection (for non-CEO) */}
-          {!isCEO && (
+          {/* Role Selection (for non-Director) */}
+          {!isDirector && (
             <div>
               <label
                 htmlFor={`role-${agent.persona.name}`}
@@ -271,19 +271,19 @@ function AgentForm({
           {/* Name */}
           <div>
             <label
-              htmlFor={`agent-name-${isCEO ? 'ceo' : 'board'}`}
+              htmlFor={`agent-name-${isDirector ? 'director' : 'board'}`}
               className="block text-sm font-medium mb-2"
               style={{ color: 'var(--text-primary)' }}
             >
               Agent Name
             </label>
             <input
-              id={`agent-name-${isCEO ? 'ceo' : 'board'}`}
+              id={`agent-name-${isDirector ? 'director' : 'board'}`}
               type="text"
               value={agent.persona.name}
               onChange={(e) => updatePersona({ name: e.target.value })}
               placeholder={
-                isCEO ? 'e.g., Eliza, Atlas' : `e.g., ${preset.name}`
+                isDirector ? 'e.g., Eliza, Atlas' : `e.g., ${preset.name}`
               }
               className="input"
             />
@@ -292,14 +292,14 @@ function AgentForm({
           {/* Bio */}
           <div>
             <label
-              htmlFor={`agent-bio-${isCEO ? 'ceo' : 'board'}`}
+              htmlFor={`agent-bio-${isDirector ? 'director' : 'board'}`}
               className="block text-sm font-medium mb-2"
               style={{ color: 'var(--text-primary)' }}
             >
               Bio
             </label>
             <textarea
-              id={`agent-bio-${isCEO ? 'ceo' : 'board'}`}
+              id={`agent-bio-${isDirector ? 'director' : 'board'}`}
               value={agent.persona.bio}
               onChange={(e) => updatePersona({ bio: e.target.value })}
               placeholder="What this agent focuses on and how they contribute"
@@ -311,14 +311,14 @@ function AgentForm({
           {/* Personality */}
           <div>
             <label
-              htmlFor={`agent-personality-${isCEO ? 'ceo' : 'board'}`}
+              htmlFor={`agent-personality-${isDirector ? 'director' : 'board'}`}
               className="block text-sm font-medium mb-2"
               style={{ color: 'var(--text-primary)' }}
             >
               Personality
             </label>
             <textarea
-              id={`agent-personality-${isCEO ? 'ceo' : 'board'}`}
+              id={`agent-personality-${isDirector ? 'director' : 'board'}`}
               value={agent.persona.personality}
               onChange={(e) => updatePersona({ personality: e.target.value })}
               placeholder="How this agent approaches decisions and communicates"
@@ -428,14 +428,14 @@ function AgentForm({
           {/* Communication Tone */}
           <div>
             <label
-              htmlFor={`comm-tone-${isCEO ? 'ceo' : 'board'}`}
+              htmlFor={`comm-tone-${isDirector ? 'director' : 'board'}`}
               className="block text-sm font-medium mb-2"
               style={{ color: 'var(--text-primary)' }}
             >
               Communication Tone
             </label>
             <select
-              id={`comm-tone-${isCEO ? 'ceo' : 'board'}`}
+              id={`comm-tone-${isDirector ? 'director' : 'board'}`}
               value={agent.persona.communicationTone}
               onChange={(e) =>
                 updatePersona({
@@ -499,8 +499,8 @@ function AgentForm({
             </div>
           </div>
 
-          {/* Weight (for non-CEO) */}
-          {!isCEO && (
+          {/* Weight (for non-Director) */}
+          {!isDirector && (
             <div>
               <label
                 htmlFor={`weight-${agent.persona.name}`}
@@ -560,7 +560,7 @@ export default function CreateDAOPage() {
   const [farcasterChannel, setFarcasterChannel] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState('')
-  const [ceo, setCeo] = useState<CreateAgentDraft>(createEmptyCEO())
+  const [director, setDirector] = useState<CreateAgentDraft>(createEmptyDirector())
   const [board, setBoard] = useState<CreateAgentDraft[]>([
     createBoardMember('TREASURY'),
     createBoardMember('CODE'),
@@ -647,7 +647,7 @@ export default function CreateDAOPage() {
       bannerCid: '',
       visibility: 'public',
       treasury: address, // Use connected wallet as initial treasury
-      ceo,
+      director,
       board,
       governanceParams,
       farcasterChannel: farcasterChannel || undefined,
@@ -672,7 +672,7 @@ export default function CreateDAOPage() {
     description,
     farcasterChannel,
     tags,
-    ceo,
+    director,
     board,
     governanceParams,
     isConnected,
@@ -691,8 +691,8 @@ export default function CreateDAOPage() {
     switch (step) {
       case 'basics':
         return name.trim().length >= 3 && displayName.trim().length >= 2
-      case 'ceo':
-        return ceo.persona.name.trim().length >= 2
+      case 'director':
+        return director.persona.name.trim().length >= 2
       case 'board':
         return (
           board.length >= 3 &&
@@ -706,7 +706,7 @@ export default function CreateDAOPage() {
       default:
         return false
     }
-  }, [step, name, displayName, ceo, board, totalBoardWeight])
+  }, [step, name, displayName, director, board, totalBoardWeight])
 
   return (
     <div
@@ -947,17 +947,17 @@ export default function CreateDAOPage() {
           </div>
         )}
 
-        {/* Step: CEO */}
-        {step === 'ceo' && (
+        {/* Step: Director */}
+        {step === 'director' && (
           <div className="space-y-6 animate-in">
             <h2
               className="text-2xl font-bold mb-6"
               style={{ color: 'var(--text-primary)' }}
             >
-              CEO configuration
+              Director configuration
             </h2>
 
-            <AgentForm agent={ceo} onChange={setCeo} isCEO />
+            <AgentForm agent={director} onChange={setDirector} isDirector />
           </div>
         )}
 
@@ -1141,17 +1141,17 @@ export default function CreateDAOPage() {
                 <label className="flex items-center gap-3 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={governanceParams.ceoVetoEnabled}
+                    checked={governanceParams.directorVetoEnabled}
                     onChange={(e) =>
                       setGovernanceParams({
                         ...governanceParams,
-                        ceoVetoEnabled: e.target.checked,
+                        directorVetoEnabled: e.target.checked,
                       })
                     }
                     className="w-5 h-5 rounded accent-[var(--color-primary)]"
                   />
                   <span style={{ color: 'var(--text-primary)' }}>
-                    Enable CEO Veto Power
+                    Enable Director Veto Power
                   </span>
                 </label>
                 <label className="flex items-center gap-3 cursor-pointer">
@@ -1236,7 +1236,7 @@ export default function CreateDAOPage() {
                 )}
               </div>
 
-              {/* CEO */}
+              {/* Director */}
               <div
                 className="p-5 border-b"
                 style={{ borderColor: 'var(--border)' }}
@@ -1245,7 +1245,7 @@ export default function CreateDAOPage() {
                   className="text-sm font-medium uppercase tracking-wider mb-3"
                   style={{ color: 'var(--text-tertiary)' }}
                 >
-                  CEO
+                  Director
                 </h4>
                 <div className="flex items-center gap-3">
                   <div
@@ -1259,14 +1259,14 @@ export default function CreateDAOPage() {
                       className="font-medium"
                       style={{ color: 'var(--text-primary)' }}
                     >
-                      {ceo.persona.name}
+                      {director.persona.name}
                     </p>
                     <p
                       className="text-xs"
                       style={{ color: 'var(--text-tertiary)' }}
                     >
-                      {MODEL_OPTIONS.find((m) => m.id === ceo.modelId)?.name} ·{' '}
-                      {ceo.decisionStyle}
+                      {MODEL_OPTIONS.find((m) => m.id === director.modelId)?.name} ·{' '}
+                      {director.decisionStyle}
                     </p>
                   </div>
                 </div>
@@ -1349,9 +1349,9 @@ export default function CreateDAOPage() {
                     </p>
                   </div>
                   <div>
-                    <p style={{ color: 'var(--text-tertiary)' }}>CEO Veto</p>
+                    <p style={{ color: 'var(--text-tertiary)' }}>Director Veto</p>
                     <p style={{ color: 'var(--text-primary)' }}>
-                      {governanceParams.ceoVetoEnabled ? 'Enabled' : 'Disabled'}
+                      {governanceParams.directorVetoEnabled ? 'Enabled' : 'Disabled'}
                     </p>
                   </div>
                 </div>

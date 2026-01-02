@@ -13,7 +13,7 @@ import {IDAORegistry} from "./interfaces/IDAORegistry.sol";
  * @dev Manages multiple DAOs with their own governance, treasury, and Director configurations
  *
  * Terminology:
- * - Director: The AI or human executive decision maker (formerly CEO)
+ * - Director: The AI or human executive decision maker (formerly Director)
  * - Board: The advisory/oversight body (formerly Council)
  *
  * Key Features:
@@ -195,7 +195,7 @@ contract DAORegistry is IDAORegistry, Ownable, Pausable, ReentrancyGuard {
         emit DAOCreated(daoId, name, treasury, msg.sender);
         emit DirectorPersonaUpdated(daoId, directorPersona.name, directorPersona.pfpCid, directorPersona.isHuman);
         // Legacy event for backwards compatibility
-        emit CEOPersonaUpdated(daoId, directorPersona.name, directorPersona.pfpCid);
+        emit DirectorPersonaUpdated(daoId, directorPersona.name, directorPersona.pfpCid);
     }
 
     /**
@@ -274,10 +274,10 @@ contract DAORegistry is IDAORegistry, Ownable, Pausable, ReentrancyGuard {
     }
 
     /**
-     * @notice Set DAO CEO agent contract address (legacy alias)
+     * @notice Set DAO Director agent contract address (legacy alias)
      */
-    function setDAOCEOAgent(bytes32 daoId, address ceoAgent) external onlyExistingDAO(daoId) onlyDAOAdmin(daoId) {
-        _daos[daoId].directorAgent = ceoAgent;
+    function setDAODirectorAgent(bytes32 daoId, address directorAgent) external onlyExistingDAO(daoId) onlyDAOAdmin(daoId) {
+        _daos[daoId].directorAgent = directorAgent;
         _daos[daoId].updatedAt = block.timestamp;
 
         emit DAOUpdated(daoId, "directorAgent", abi.encode(ceoAgent));
@@ -320,13 +320,13 @@ contract DAORegistry is IDAORegistry, Ownable, Pausable, ReentrancyGuard {
 
         emit DirectorPersonaUpdated(daoId, persona.name, persona.pfpCid, persona.isHuman);
         // Legacy event
-        emit CEOPersonaUpdated(daoId, persona.name, persona.pfpCid);
+        emit DirectorPersonaUpdated(daoId, persona.name, persona.pfpCid);
     }
 
     /**
-     * @notice Update CEO persona (legacy alias)
+     * @notice Update Director persona (legacy alias)
      */
-    function setCEOPersona(bytes32 daoId, DirectorPersona calldata persona)
+    function setDirectorPersona(bytes32 daoId, DirectorPersona calldata persona)
         external
         onlyExistingDAO(daoId)
         onlyDAOAdmin(daoId)
@@ -347,7 +347,7 @@ contract DAORegistry is IDAORegistry, Ownable, Pausable, ReentrancyGuard {
         _daos[daoId].updatedAt = block.timestamp;
 
         emit DirectorPersonaUpdated(daoId, persona.name, persona.pfpCid, persona.isHuman);
-        emit CEOPersonaUpdated(daoId, persona.name, persona.pfpCid);
+        emit DirectorPersonaUpdated(daoId, persona.name, persona.pfpCid);
     }
 
     /**
@@ -360,19 +360,19 @@ contract DAORegistry is IDAORegistry, Ownable, Pausable, ReentrancyGuard {
 
         emit DirectorModelChanged(daoId, oldModel, modelId);
         // Legacy event
-        emit CEOModelChanged(daoId, oldModel, modelId);
+        emit DirectorModelChanged(daoId, oldModel, modelId);
     }
 
     /**
-     * @notice Set CEO model (legacy alias)
+     * @notice Set Director model (legacy alias)
      */
-    function setCEOModel(bytes32 daoId, bytes32 modelId) external onlyExistingDAO(daoId) onlyDAOAdmin(daoId) {
+    function setDirectorModel(bytes32 daoId, bytes32 modelId) external onlyExistingDAO(daoId) onlyDAOAdmin(daoId) {
         bytes32 oldModel = _daos[daoId].directorModelId;
         _daos[daoId].directorModelId = modelId;
         _daos[daoId].updatedAt = block.timestamp;
 
         emit DirectorModelChanged(daoId, oldModel, modelId);
-        emit CEOModelChanged(daoId, oldModel, modelId);
+        emit DirectorModelChanged(daoId, oldModel, modelId);
     }
 
     // ============ Board Management ============
@@ -657,9 +657,9 @@ contract DAORegistry is IDAORegistry, Ownable, Pausable, ReentrancyGuard {
     }
 
     /**
-     * @notice Get CEO persona for a DAO (legacy alias)
+     * @notice Get Director persona for a DAO (legacy alias)
      */
-    function getCEOPersona(bytes32 daoId) external view returns (DirectorPersona memory) {
+    function getDirectorPersona(bytes32 daoId) external view returns (DirectorPersona memory) {
         return _directorPersonas[daoId];
     }
 

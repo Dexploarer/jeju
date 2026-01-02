@@ -135,10 +135,10 @@ const app = new Elysia()
     return {
       name: `${getNetworkName()} Autocrat`,
       version: '3.0.0',
-      description: 'Multi-tenant DAO governance with AI CEOs and deep funding',
+      description: 'Multi-tenant DAO governance with AI Directors and deep funding',
       features: [
         'Multi-DAO support (Jeju DAO, custom DAOs)',
-        'CEO personas with unique personalities',
+        'Director personas with unique personalities',
         'Casual proposal flow (opinions, suggestions, applications)',
         'Deep funding with quadratic matching',
         'Package and repo funding integration',
@@ -158,7 +158,7 @@ const app = new Elysia()
         futarchy: '/api/v1/futarchy',
         moderation: '/api/v1/moderation',
         registry: '/api/v1/registry',
-        ceo: '/api/v1/agents/ceo',
+        director: '/api/v1/agents/director',
         bugBounty: '/api/v1/bug-bounty',
         rlaif: '/rlaif',
         health: '/health',

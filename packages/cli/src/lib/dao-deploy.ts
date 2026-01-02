@@ -46,7 +46,7 @@ import {
 import {
   CHAIN_CONFIG,
   type DAODeploymentResult,
-  getDevCEOAddress,
+  getDevDirectorAddress,
   getDevCouncilAddresses,
   type NetworkType,
   WELL_KNOWN_KEYS,
@@ -217,7 +217,7 @@ export async function deployDAO(
 
   logger.success(`Loaded: ${manifest.displayName ?? manifest.name}`)
   if (verbose) {
-    logger.keyValue('CEO', manifest.governance.ceo.name)
+    logger.keyValue('Director', manifest.governance.director.name)
     logger.keyValue(
       'Council Members',
       String(manifest.governance.council.members.length),
@@ -300,11 +300,11 @@ export async function deployDAO(
         treasuryAddress,
         manifestCid,
         {
-          name: manifest.governance.ceo.name,
-          pfpCid: manifest.governance.ceo.pfpCid ?? '',
-          description: manifest.governance.ceo.description,
-          personality: manifest.governance.ceo.personality,
-          traits: manifest.governance.ceo.traits,
+          name: manifest.governance.director.name,
+          pfpCid: manifest.governance.director.pfpCid ?? '',
+          description: manifest.governance.director.description,
+          personality: manifest.governance.director.personality,
+          traits: manifest.governance.director.traits,
         },
         {
           minQualityScore: BigInt(
@@ -347,7 +347,7 @@ export async function deployDAO(
             cooldownPeriod: BigInt(manifest.funding.cooldownPeriod),
             matchingMultiplier: BigInt(manifest.funding.matchingMultiplier),
             quadraticEnabled: manifest.funding.quadraticEnabled,
-            ceoWeightCap: BigInt(manifest.funding.ceoWeightCap),
+            directorWeightCap: BigInt(manifest.funding.directorWeightCap),
             minStakePerParticipant: BigInt(manifest.funding.minStake),
           },
         ],
@@ -510,7 +510,7 @@ export async function deployDAO(
               const weightHash = await walletClient.writeContract({
                 address: contracts.DAOFunding,
                 abi: daoFundingAbi,
-                functionName: 'proposeCEOWeight',
+                functionName: 'proposeDirectorWeight',
                 args: [projectId, BigInt(pkg.fundingWeight)],
               })
               await publicClient.waitForTransactionReceipt({ hash: weightHash })
@@ -620,7 +620,7 @@ export async function deployDAO(
               const weightHash = await walletClient.writeContract({
                 address: contracts.DAOFunding,
                 abi: daoFundingAbi,
-                functionName: 'proposeCEOWeight',
+                functionName: 'proposeDirectorWeight',
                 args: [projectId, BigInt(repo.fundingWeight)],
               })
               await publicClient.waitForTransactionReceipt({ hash: weightHash })
@@ -686,7 +686,7 @@ export async function deployDAO(
       daoRegistry: contracts.DAORegistry,
       daoFunding: contracts.DAOFunding,
       council: null,
-      ceoAgent: network === 'localnet' ? getDevCEOAddress() : account.address,
+      directorAgent: network === 'localnet' ? getDevDirectorAddress() : account.address,
       treasury: treasuryAddress,
       feeConfig: contracts.FeeConfig,
     },
@@ -706,7 +706,7 @@ export async function deployDAO(
   logger.newline()
   logger.header('DEPLOYMENT COMPLETE')
   logger.keyValue('DAO', manifest.displayName ?? manifest.name)
-  logger.keyValue('CEO', manifest.governance.ceo.name)
+  logger.keyValue('Director', manifest.governance.director.name)
   logger.keyValue('DAO ID', daoId)
   logger.keyValue('Network', network)
   logger.keyValue('Council Members', String(councilResult.members.length))
@@ -797,7 +797,7 @@ export async function deployMultipleDAOs(
   logger.info(`Found ${manifests.length} DAO manifest(s)`)
   for (const m of manifests) {
     logger.info(
-      `  - ${m.displayName ?? m.name} (CEO: ${m.governance.ceo.name})`,
+      `  - ${m.displayName ?? m.name} (Director: ${m.governance.director.name})`,
     )
   }
   logger.newline()

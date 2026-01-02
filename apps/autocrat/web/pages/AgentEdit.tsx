@@ -370,7 +370,7 @@ export default function AgentEditPage() {
   const [linkedPackages, setLinkedPackages] = useState<string[]>([])
   const [packageInput, setPackageInput] = useState('')
 
-  const isCEO = agent?.role === 'CEO'
+  const isDirector = agent?.role === 'Director'
 
   // Populate form state when agent data loads
   useEffect(() => {
@@ -582,12 +582,12 @@ export default function AgentEditPage() {
               <div className="flex items-center gap-3">
                 <div
                   className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                    isCEO
+                    isDirector
                       ? 'bg-gradient-to-br from-violet-500 to-pink-500'
                       : 'bg-slate-700'
                   }`}
                 >
-                  {isCEO ? (
+                  {isDirector ? (
                     <Crown className="w-6 h-6 text-white" />
                   ) : (
                     <Bot className="w-6 h-6 text-slate-300" />
@@ -598,7 +598,7 @@ export default function AgentEditPage() {
                     {agent.persona.name}
                   </h1>
                   <p className="text-sm text-slate-500">
-                    {isCEO ? 'CEO' : BOARD_ROLE_PRESETS[agent.role].name}
+                    {isDirector ? 'Director' : BOARD_ROLE_PRESETS[agent.role].name}
                   </p>
                 </div>
               </div>
@@ -873,7 +873,7 @@ export default function AgentEditPage() {
                 })}
               </div>
             </div>
-            {!isCEO && (
+            {!isDirector && (
               <div>
                 <label
                   htmlFor="voting-weight"
@@ -1108,8 +1108,8 @@ export default function AgentEditPage() {
           </div>
         </Section>
 
-        {/* Danger Zone for non-CEO */}
-        {!isCEO && (
+        {/* Danger Zone for non-Director */}
+        {!isDirector && (
           <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-5">
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
@@ -1119,7 +1119,7 @@ export default function AgentEditPage() {
                 </h4>
                 <p className="text-sm text-red-200/70 mt-1">
                   Removing a board member will delete all their voting history
-                  and configuration. This action requires CEO approval.
+                  and configuration. This action requires Director approval.
                 </p>
                 <button
                   type="button"

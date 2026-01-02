@@ -482,7 +482,7 @@ class SQLitStore implements SQLitStoreInterface {
       agent_validation: ['agent', 'validator'],
       anomaly_detection: ['target'],
       block: ['miner'],
-      ceo_decision: ['proposal'],
+      director_decision: ['proposal'],
       compute_ledger_balance: ['account'],
       compute_rental: ['renter', 'provider', 'resource'],
       compute_resource: ['provider'],

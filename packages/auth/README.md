@@ -316,7 +316,7 @@ const manager = createMultiTenantCouncilManager(config);
 // Deploy a new OAuth3 app with its own council
 const { council, oauth3App } = await manager.deployCouncil({
   name: 'My App',
-  ceoAgentAddress: '0x...',
+  directorAgentAddress: '0x...',
   initialAgents: ['0x...', '0x...'],
 });
 

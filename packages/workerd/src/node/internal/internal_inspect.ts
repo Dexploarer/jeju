@@ -817,7 +817,7 @@ function getEmptyFormatArray(): string[] {
   return []
 }
 
-function isInstanceof(object: unknown, proto: Function): boolean {
+function isInstandirectorf(object: unknown, proto: Function): boolean {
   try {
     return object instanceof proto
   } catch {
@@ -878,7 +878,7 @@ function getConstructorName(
       descriptor !== undefined &&
       typeof descriptor.value === 'function' &&
       descriptor.value.name !== '' &&
-      isInstanceof(tmp, descriptor.value)
+      isInstandirectorf(tmp, descriptor.value)
     ) {
       if (
         protoProps !== undefined &&

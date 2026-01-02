@@ -65,7 +65,7 @@ const STATUS_CONFIG = [
   { label: 'Pending', color: 'bg-gray-500' },
   { label: 'Validating', color: 'bg-blue-500' },
   { label: 'Guardian Review', color: 'bg-purple-500' },
-  { label: 'CEO Review', color: 'bg-indigo-500' },
+  { label: 'Director Review', color: 'bg-indigo-500' },
   { label: 'Approved', color: 'bg-green-500' },
   { label: 'Paid', color: 'bg-emerald-500' },
   { label: 'Rejected', color: 'bg-red-500' },
@@ -467,7 +467,7 @@ export default function BugBountyPage() {
                   {
                     step: 4,
                     title: 'Payout',
-                    desc: 'CEO approves, reward paid on-chain',
+                    desc: 'Director approves, reward paid on-chain',
                   },
                 ].map((item) => (
                   <div

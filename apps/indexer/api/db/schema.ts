@@ -157,7 +157,7 @@ export const SCHEMA_DDL = [
     miner_id TEXT
   )`,
 
-  `CREATE TABLE IF NOT EXISTS ceo_decision (
+  `CREATE TABLE IF NOT EXISTS director_decision (
     id TEXT PRIMARY KEY,
     proposal_id TEXT,
     model_id TEXT NOT NULL,
@@ -322,8 +322,8 @@ export const SCHEMA_DDL = [
     backer_count INTEGER NOT NULL,
     has_research INTEGER NOT NULL,
     research_hash BLOB,
-    ceo_approved INTEGER NOT NULL,
-    ceo_decision_hash BLOB,
+    director_approved INTEGER NOT NULL,
+    director_decision_hash BLOB,
     created_at TEXT NOT NULL,
     council_vote_end TEXT,
     grace_period_end TEXT,
@@ -2359,8 +2359,8 @@ export const INDEX_DDL = [
   'CREATE INDEX IF NOT EXISTS idx_block_miner_id ON block(miner_id)',
   'CREATE INDEX IF NOT EXISTS idx_block_number ON block(number)',
   'CREATE INDEX IF NOT EXISTS idx_block_timestamp ON block(timestamp)',
-  'CREATE INDEX IF NOT EXISTS idx_ceo_decision_decided_at ON ceo_decision(decided_at)',
-  'CREATE INDEX IF NOT EXISTS idx_ceo_decision_proposal_id ON ceo_decision(proposal_id)',
+  'CREATE INDEX IF NOT EXISTS idx_director_decision_decided_at ON director_decision(decided_at)',
+  'CREATE INDEX IF NOT EXISTS idx_director_decision_proposal_id ON director_decision(proposal_id)',
   'CREATE INDEX IF NOT EXISTS idx_composite_score_calculation_agent_id ON composite_score_calculation(agent_id)',
   'CREATE INDEX IF NOT EXISTS idx_compute_ledger_balance_account_id ON compute_ledger_balance(account_id)',
   'CREATE INDEX IF NOT EXISTS idx_compute_ledger_balance_last_updated ON compute_ledger_balance(last_updated)',

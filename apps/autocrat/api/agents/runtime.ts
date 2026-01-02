@@ -101,8 +101,8 @@ interface DirectorPersonaConfig {
 }
 
 // Legacy type aliases for backwards compatibility
-export type CEODecisionRequest = DirectorDecisionRequest
-export type CEODecision = DirectorDecision
+export type DirectorDecisionRequest = DirectorDecisionRequest
+export type DirectorDecision = DirectorDecision
 
 // DWS URL is resolved from network config (handles env overrides)
 function getDWSEndpoint(): string {
@@ -565,7 +565,7 @@ Keep it concise (2-4 sentences) but impactful.`
   }
 
   // Legacy method alias
-  async ceoDecision(
+  async directorDecision(
     request: DirectorDecisionRequest,
   ): Promise<DirectorDecision> {
     return this.directorDecision(request)

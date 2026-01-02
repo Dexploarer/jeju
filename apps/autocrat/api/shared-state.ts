@@ -45,7 +45,7 @@ export function getConfig(): CouncilConfig {
     daoId: autocratConfigRaw.defaultDao,
     contracts: {
       board: getContractAddr('governance', 'council'),
-      directorAgent: getContractAddr('governance', 'ceoAgent'),
+      directorAgent: getContractAddr('governance', 'directorAgent'),
       treasury: getContractAddr('governance', 'treasury'),
       feeConfig: getContractAddr('payments', 'feeConfig'),
       daoRegistry: getContractAddr('governance', 'daoRegistry'),

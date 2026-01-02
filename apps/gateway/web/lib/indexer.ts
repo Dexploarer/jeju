@@ -5,7 +5,9 @@
  */
 
 import { z } from 'zod'
-import { INDEXER_URL } from '../../lib/config'
+import { getIndexerUrl } from '../../lib/config'
+
+const INDEXER_URL = getIndexerUrl()
 
 // ============================================================================
 // Common Schemas

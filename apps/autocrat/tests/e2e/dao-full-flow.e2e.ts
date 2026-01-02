@@ -147,8 +147,8 @@ test.describe('DAO Full Flow E2E', () => {
     await expect(continueBtn).toBeEnabled()
     await continueBtn.click()
 
-    // Verify we're on CEO step
-    await expect(page.locator('h2:has-text("CEO configuration")')).toBeVisible()
+    // Verify we're on Director step
+    await expect(page.locator('h2:has-text("Director configuration")')).toBeVisible()
   })
 
   test('Step 3: Configure Director (Step 2)', async ({
@@ -175,10 +175,10 @@ test.describe('DAO Full Flow E2E', () => {
     await page.waitForTimeout(300)
 
     // Now on Director step
-    await expect(page.locator('h2:has-text("CEO configuration")')).toBeVisible()
+    await expect(page.locator('h2:has-text("Director configuration")')).toBeVisible()
 
     // Fill Director name
-    await page.fill('input#agent-name-ceo', TEST_DAO.director.name)
+    await page.fill('input#agent-name-director', TEST_DAO.director.name)
 
     // Fill Bio if visible
     const bioInput = page.locator('textarea[placeholder*="Bio"]')
@@ -223,7 +223,7 @@ test.describe('DAO Full Flow E2E', () => {
     await page.click('button:has-text("Continue")')
     await page.waitForTimeout(300)
 
-    await page.fill('input#agent-name-ceo', TEST_DAO.director.name)
+    await page.fill('input#agent-name-director', TEST_DAO.director.name)
     await page.click('button:has-text("Continue")')
     await page.waitForTimeout(300)
 
@@ -269,7 +269,7 @@ test.describe('DAO Full Flow E2E', () => {
     await page.click('button:has-text("Continue")')
     await page.waitForTimeout(300)
 
-    await page.fill('input#agent-name-ceo', TEST_DAO.director.name)
+    await page.fill('input#agent-name-director', TEST_DAO.director.name)
     await page.click('button:has-text("Continue")')
     await page.waitForTimeout(300)
 
@@ -324,7 +324,7 @@ test.describe('DAO Full Flow E2E', () => {
     await page.click('button:has-text("Continue")')
     await page.waitForTimeout(300)
 
-    await page.fill('input#agent-name-ceo', TEST_DAO.director.name)
+    await page.fill('input#agent-name-director', TEST_DAO.director.name)
     await page.click('button:has-text("Continue")')
     await page.waitForTimeout(300)
 

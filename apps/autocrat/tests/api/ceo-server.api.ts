@@ -1,10 +1,10 @@
 /**
- * CEO Server Tests - Dedicated AI CEO server functionality
+ * Director Server Tests - Dedicated AI Director server functionality
  */
 
 import { expect, test } from '@playwright/test'
 
-const CEO_URL = 'http://localhost:8004'
+const DIRECTOR_URL = 'http://localhost:8004'
 
 interface Skill {
   id: string
@@ -23,39 +23,39 @@ interface A2APart {
   text?: string
 }
 
-test.describe('CEO Server', () => {
+test.describe('Director Server', () => {
   let serverAvailable = false
 
   test.beforeAll(async ({ request }) => {
     try {
-      const response = await request.get(`${CEO_URL}/health`)
+      const response = await request.get(`${DIRECTOR_URL}/health`)
       serverAvailable = response.ok()
     } catch {
       serverAvailable = false
     }
   })
 
-  test('health endpoint returns CEO status', async ({ request }) => {
-    test.skip(!serverAvailable, 'CEO server not running')
+  test('health endpoint returns Director status', async ({ request }) => {
+    test.skip(!serverAvailable, 'Director server not running')
 
-    const response = await request.get(`${CEO_URL}/health`)
+    const response = await request.get(`${DIRECTOR_URL}/health`)
 
     const data = await response.json()
     expect(data.status).toBe('ok')
-    expect(data.service).toBe('eliza-ceo')
+    expect(data.service).toBe('eliza-director')
     expect(data.tee).toBeDefined()
     expect(data.endpoints).toBeDefined()
     expect(data.endpoints.a2a).toBe('/a2a')
     expect(data.endpoints.mcp).toBe('/mcp')
   })
 
-  test('agent card returns CEO skills', async ({ request }) => {
-    test.skip(!serverAvailable, 'CEO server not running')
+  test('agent card returns Director skills', async ({ request }) => {
+    test.skip(!serverAvailable, 'Director server not running')
 
-    const response = await request.get(`${CEO_URL}/.well-known/agent-card.json`)
+    const response = await request.get(`${DIRECTOR_URL}/.well-known/agent-card.json`)
 
     const card = await response.json()
-    expect(card.name).toBe('Eliza - AI CEO')
+    expect(card.name).toBe('Eliza - AI Director')
     expect(card.protocolVersion).toBe('0.3.0')
     expect(card.skills).toBeDefined()
     expect(card.skills.length).toBeGreaterThan(0)
@@ -66,25 +66,25 @@ test.describe('CEO Server', () => {
     expect(skillIds).toContain('chat')
   })
 
-  test('MCP tools list returns CEO tools', async ({ request }) => {
-    test.skip(!serverAvailable, 'CEO server not running')
+  test('MCP tools list returns Director tools', async ({ request }) => {
+    test.skip(!serverAvailable, 'Director server not running')
 
-    const response = await request.get(`${CEO_URL}/mcp/tools`)
+    const response = await request.get(`${DIRECTOR_URL}/mcp/tools`)
 
     const data = await response.json()
     expect(data.tools).toBeDefined()
     expect(data.tools.length).toBeGreaterThan(0)
 
     const toolNames = data.tools.map((t: Tool) => t.name)
-    expect(toolNames).toContain('make_ceo_decision')
+    expect(toolNames).toContain('make_director_decision')
     expect(toolNames).toContain('get_governance_dashboard')
     expect(toolNames).toContain('get_active_proposals')
   })
 
   test('MCP resources list returns council resources', async ({ request }) => {
-    test.skip(!serverAvailable, 'CEO server not running')
+    test.skip(!serverAvailable, 'Director server not running')
 
-    const response = await request.get(`${CEO_URL}/mcp/resources`)
+    const response = await request.get(`${DIRECTOR_URL}/mcp/resources`)
 
     const data = await response.json()
     expect(data.resources).toBeDefined()
@@ -96,9 +96,9 @@ test.describe('CEO Server', () => {
   })
 
   test('A2A chat skill responds', async ({ request }) => {
-    test.skip(!serverAvailable, 'CEO server not running')
+    test.skip(!serverAvailable, 'Director server not running')
 
-    const response = await request.post(`${CEO_URL}/a2a`, {
+    const response = await request.post(`${DIRECTOR_URL}/a2a`, {
       data: {
         jsonrpc: '2.0',
         id: 1,
@@ -124,9 +124,9 @@ test.describe('CEO Server', () => {
   test('A2A get-dashboard skill returns governance data', async ({
     request,
   }) => {
-    test.skip(!serverAvailable, 'CEO server not running')
+    test.skip(!serverAvailable, 'Director server not running')
 
-    const response = await request.post(`${CEO_URL}/a2a`, {
+    const response = await request.post(`${DIRECTOR_URL}/a2a`, {
       data: {
         jsonrpc: '2.0',
         id: 1,
@@ -146,9 +146,9 @@ test.describe('CEO Server', () => {
   })
 
   test('MCP tool call works', async ({ request }) => {
-    test.skip(!serverAvailable, 'CEO server not running')
+    test.skip(!serverAvailable, 'Director server not running')
 
-    const response = await request.post(`${CEO_URL}/mcp/tools/call`, {
+    const response = await request.post(`${DIRECTOR_URL}/mcp/tools/call`, {
       data: {
         params: {
           name: 'get_governance_dashboard',

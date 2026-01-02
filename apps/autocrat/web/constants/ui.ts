@@ -84,8 +84,8 @@ export const PROPOSAL_STATUS_CONFIG: Record<
     color: 'var(--color-secondary)',
     bg: 'rgba(139, 92, 246, 0.12)',
   },
-  ceo_queue: {
-    label: 'CEO Queue',
+  director_queue: {
+    label: 'Director Queue',
     color: 'var(--color-accent)',
     bg: 'rgba(255, 107, 107, 0.12)',
   },
@@ -131,7 +131,7 @@ export const PROPOSAL_STATUS_CONFIG: Record<
 // =========================================================
 
 export const AGENT_ROLE_ICONS: Record<AgentRole, LucideIcon> = {
-  CEO: Crown,
+  Director: Crown,
   TREASURY: Shield,
   CODE: Bot,
   COMMUNITY: MessageSquare,
@@ -141,7 +141,7 @@ export const AGENT_ROLE_ICONS: Record<AgentRole, LucideIcon> = {
 }
 
 export const AGENT_ROLE_GRADIENTS: Record<AgentRole, string> = {
-  CEO: 'var(--gradient-accent)',
+  Director: 'var(--gradient-accent)',
   TREASURY: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
   CODE: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)',
   COMMUNITY: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
@@ -151,7 +151,7 @@ export const AGENT_ROLE_GRADIENTS: Record<AgentRole, string> = {
 }
 
 export const AGENT_ROLE_LABELS: Record<AgentRole, string> = {
-  CEO: 'Chief Executive Officer',
+  Director: 'Chief Executive Officer',
   TREASURY: 'Treasury Manager',
   CODE: 'Code Reviewer',
   COMMUNITY: 'Community Manager',

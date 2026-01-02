@@ -110,13 +110,13 @@ const discoverServicesAction: Action = {
     const services = [
       { name: 'Autocrat A2A', url: getA2AEndpoint(), type: 'a2a' },
       {
-        name: 'CEO A2A',
+        name: 'Director A2A',
         url: `${getCoreAppUrl('AUTOCRAT_AGENT')}/a2a`,
         type: 'a2a',
       },
       { name: 'Autocrat MCP', url: getMCPEndpoint(), type: 'mcp' },
       {
-        name: 'CEO MCP',
+        name: 'Director MCP',
         url: `${getCoreAppUrl('AUTOCRAT_AGENT')}/mcp`,
         type: 'mcp',
       },
@@ -342,8 +342,8 @@ Please ensure DWS compute is available and try again.`,
  */
 const queryA2AAction: Action = {
   name: 'QUERY_A2A',
-  description: 'Query an A2A skill on the autocrat or CEO agent',
-  similes: ['call skill', 'query agent', 'ask council', 'ask ceo'],
+  description: 'Query an A2A skill on the autocrat or Director agent',
+  similes: ['call skill', 'query agent', 'ask council', 'ask director'],
   examples: [],
 
   validate: async (
@@ -392,7 +392,7 @@ ${JSON.stringify(result, null, 2).slice(0, 500)}`,
  */
 const callMCPToolAction: Action = {
   name: 'CALL_MCP_TOOL',
-  description: 'Call an MCP tool on the autocrat or CEO server',
+  description: 'Call an MCP tool on the autocrat or Director server',
   similes: ['use tool', 'call tool', 'mcp'],
   examples: [],
 

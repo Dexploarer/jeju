@@ -316,7 +316,7 @@ export default function DAODetailPage() {
 
               <p className="text-white/80 mb-4 max-w-2xl">{dao.description}</p>
 
-              {/* CEO and Board Summary */}
+              {/* Director and Board Summary */}
               <div className="flex flex-wrap items-center gap-4 text-sm">
                 <div className="flex items-center gap-2">
                   <div
@@ -327,9 +327,9 @@ export default function DAODetailPage() {
                   </div>
                   <div>
                     <p className="text-white font-medium">
-                      {dao.ceo.persona.name}
+                      {dao.director.persona.name}
                     </p>
-                    <p className="text-xs text-white/60">CEO</p>
+                    <p className="text-xs text-white/60">Director</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -377,8 +377,8 @@ export default function DAODetailPage() {
             />
             <StatCard
               label="Approval Rate"
-              value={`${dao.stats.ceoApprovalRate}%`}
-              subtext="CEO decisions"
+              value={`${dao.stats.directorApprovalRate}%`}
+              subtext="Director decisions"
               color="var(--color-success)"
             />
             <StatCard

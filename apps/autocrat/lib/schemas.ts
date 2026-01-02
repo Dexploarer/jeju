@@ -32,7 +32,7 @@ export const ProposalStatusSchema = z.nativeEnum({
   COUNCIL_REVIEW: 3,
   RESEARCH: 4,
   COUNCIL_FINAL: 5,
-  CEO_QUEUE: 6,
+  DIRECTOR_QUEUE: 6,
   APPROVED: 7,
   EXECUTING: 8,
   COMPLETED: 9,
@@ -151,7 +151,7 @@ export const BountySubmissionStatusSchema = z.nativeEnum(BountySubmissionStatus)
 
 export const ValidationResultSchema = z.nativeEnum(ValidationResult)
 
-export const CEOPersonaSchema = z.object({
+export const DirectorPersonaSchema = z.object({
   name: z.string().min(1).max(100),
   pfpCid: z.string().min(1),
   description: z.string().min(10).max(500),
@@ -190,12 +190,12 @@ export const FundingConfigSchema = z.object({
   cooldownPeriod: z.number().int().positive(),
   matchingMultiplier: z.number().int().min(0).max(100000),
   quadraticEnabled: z.boolean(),
-  ceoWeightCap: z.number().int().min(0).max(10000),
+  directorWeightCap: z.number().int().min(0).max(10000),
 })
 
 export const DAOContractsSchema = z.object({
   council: AddressSchema,
-  ceoAgent: AddressSchema,
+  directorAgent: AddressSchema,
   treasury: AddressSchema,
   feeConfig: AddressSchema,
   daoRegistry: AddressSchema,
@@ -213,11 +213,11 @@ export const AgentConfigSchema = z.object({
   model: z.string().min(1).max(100),
   endpoint: z.string().url(),
   systemPrompt: z.string().min(10).max(5000),
-  persona: CEOPersonaSchema.optional(),
+  persona: DirectorPersonaSchema.optional(),
 })
 
 export const DAOAgentsSchema = z.object({
-  ceo: AgentConfigSchema,
+  director: AgentConfigSchema,
   council: z.array(AgentConfigSchema).min(1).max(20),
   proposalAgent: AgentConfigSchema,
   researchAgent: AgentConfigSchema,
@@ -231,9 +231,9 @@ export const DAOSchema = z.object({
   description: z.string().min(10).max(2000),
   treasury: AddressSchema,
   council: AddressSchema,
-  ceoAgent: AddressSchema,
+  directorAgent: AddressSchema,
   feeConfig: AddressSchema,
-  ceoModelId: z.string().min(1),
+  directorModelId: z.string().min(1),
   manifestCid: z.string().min(1),
   status: DAOStatusSchema,
   createdAt: z.number().int().positive(),
@@ -243,7 +243,7 @@ export const DAOSchema = z.object({
 
 export const DAOFullSchema = z.object({
   dao: DAOSchema,
-  ceoPersona: CEOPersonaSchema,
+  directorPersona: DirectorPersonaSchema,
   params: GovernanceParamsSchema,
   councilMembers: z.array(CouncilMemberConfigSchema),
   linkedPackages: z.array(z.string().min(1)),
@@ -342,7 +342,7 @@ export const ResearchReportSchema = z.object({
   ipfsHash: z.string().min(1),
 })
 
-export const CEODecisionSchema = z.object({
+export const DirectorDecisionSchema = z.object({
   proposalId: ProposalIdSchema,
   daoId: z.string().min(1).max(100),
   approved: z.boolean(),
@@ -569,7 +569,7 @@ export const BugBountyVoteRequestSchema = z.object({
   feedback: z.string().min(10).max(2000),
 })
 
-export const BugBountyCEODecisionRequestSchema = z.object({
+export const BugBountyDirectorDecisionRequestSchema = z.object({
   approved: z.boolean(),
   rewardAmount: z.string().min(1),
   notes: z.string().min(10).max(2000),
@@ -619,7 +619,7 @@ export const A2AMessageSchema = z.object({
 export const A2AChatParamsSchema = z.object({
   message: z.string().min(1).max(5000),
   agent: z
-    .enum(['ceo', 'treasury', 'code', 'community', 'security'])
+    .enum(['director', 'treasury', 'code', 'community', 'security'])
     .optional(),
 })
 
@@ -823,8 +823,8 @@ export const DirectorStatusDataSchema = z.object({
 export type DirectorStatusData = z.infer<typeof DirectorStatusDataSchema>
 
 // Legacy export for backwards compatibility
-export const CEOStatusDataSchema = DirectorStatusDataSchema
-export type CEOStatusData = DirectorStatusData
+export const DirectorStatusDataSchema = DirectorStatusDataSchema
+export type DirectorStatusData = DirectorStatusData
 
 export const AutocratStatusDataSchema = z.object({
   roles: z.array(

@@ -5,7 +5,7 @@
  *
  * Deploys the AI Council DAO contracts:
  * - Council.sol - Main governance contract
- * - CEOAgent.sol - AI CEO management
+ * - DirectorAgent.sol - AI Director management
  *
  * Usage:
  *   DEPLOYER_KEY=0x... bun scripts/deploy-council.ts [network]
@@ -267,12 +267,12 @@ async function main() {
     [governanceToken, identityRegistry, reputationRegistry, account.address],
   )
 
-  const ceoAgentAddress = await deployContract(
+  const directorAgentAddress = await deployContract(
     publicClient,
     walletClient,
     account,
     chain,
-    'CEOAgent',
+    'DirectorAgent',
     [
       governanceToken,
       councilAddress,
@@ -281,19 +281,19 @@ async function main() {
     ],
   )
 
-  log('Configuring Council with CEO agent...')
+  log('Configuring Council with Director agent...')
   const councilArtifact = loadContractArtifact('Council')
   const { abi } = councilArtifact
 
   const hash = await walletClient.writeContract({
     address: councilAddress,
     abi,
-    functionName: 'setCEOAgent',
-    args: [ceoAgentAddress, 1],
+    functionName: 'setDirectorAgent',
+    args: [directorAgentAddress, 1],
     account,
   })
   await waitForTransactionReceipt(publicClient, { hash })
-  success('CEO agent configured')
+  success('Director agent configured')
   const deployment = {
     network,
     chainId: config.chainId,
@@ -301,7 +301,7 @@ async function main() {
     deployer: account.address,
     contracts: {
       Council: councilAddress,
-      CEOAgent: ceoAgentAddress,
+      DirectorAgent: directorAgentAddress,
     },
     dependencies: {
       governanceToken,
@@ -323,7 +323,7 @@ async function main() {
 
   console.log('Deployed Contracts:')
   console.log(`  Council:   ${councilAddress}`)
-  console.log(`  CEOAgent:  ${ceoAgentAddress}`)
+  console.log(`  DirectorAgent:  ${directorAgentAddress}`)
 
   console.log('\nNext steps:')
   console.log('1. Set council agent addresses using council.setCouncilAgent()')
@@ -333,7 +333,7 @@ async function main() {
   console.log('3. Update apps/autocrat/.env with contract addresses')
   console.log(`\nEnvironment variables for apps/autocrat:
 COUNCIL_ADDRESS=${councilAddress}
-CEO_AGENT_ADDRESS=${ceoAgentAddress}
+DIRECTOR_AGENT_ADDRESS=${directorAgentAddress}
 `)
 }
 

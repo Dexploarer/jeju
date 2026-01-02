@@ -706,9 +706,9 @@ test.describe('Gateway - API Health', () => {
     request,
     baseURL,
   }) => {
-    // Status endpoint should fail without address
+    // Status endpoint should fail without address - 503 when backend unavailable
     const response = await request.get(`${baseURL}/api/faucet/status`)
-    expect([400, 404, 500]).toContain(response.status())
+    expect([400, 404, 500, 503]).toContain(response.status())
   })
 })
 

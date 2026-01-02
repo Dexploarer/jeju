@@ -72,9 +72,9 @@ export class AutocratMCPServer {
         mimeType: 'application/json',
       },
       {
-        uri: 'autocrat://ceo/status',
-        name: 'CEO Status',
-        description: 'CEO model and stats',
+        uri: 'autocrat://director/status',
+        name: 'Director Status',
+        description: 'Director model and stats',
         mimeType: 'application/json',
       },
       {
@@ -139,8 +139,8 @@ export class AutocratMCPServer {
         },
       },
       {
-        name: 'get_ceo_decision',
-        description: 'Get CEO decision',
+        name: 'get_director_decision',
+        description: 'Get Director decision',
         inputSchema: {
           type: 'object',
           properties: { proposalId: { type: 'string' } },
@@ -261,7 +261,7 @@ export class AutocratMCPServer {
       version: '1.0.0',
       contracts: {
         council: this.blockchain.councilDeployed,
-        ceoAgent: this.blockchain.ceoDeployed,
+        directorAgent: this.blockchain.directorDeployed,
       },
     }))
   }
@@ -274,8 +274,8 @@ export class AutocratMCPServer {
         return this.blockchain.listProposals(true, 50)
       case 'autocrat://proposals/all':
         return this.blockchain.listProposals(false, 100)
-      case 'autocrat://ceo/status':
-        return this.blockchain.getCEOStatus()
+      case 'autocrat://director/status':
+        return this.blockchain.getDirectorStatus()
       case 'autocrat://governance/stats':
         return this.blockchain.getGovernanceStats()
       case 'autocrat://autocrat/agents':
@@ -298,8 +298,8 @@ export class AutocratMCPServer {
         return this.listProposals(args)
       case 'get_council_votes':
         return this.getAutocratVotes(args.proposalId)
-      case 'get_ceo_decision':
-        return this.getCEODecision(args.proposalId)
+      case 'get_director_decision':
+        return this.getDirectorDecision(args.proposalId)
       case 'prepare_proposal_submission':
         return { result: this.prepareSubmission(args), isError: false }
       case 'request_deep_research':
@@ -415,7 +415,7 @@ export class AutocratMCPServer {
     }
   }
 
-  private async getCEODecision(
+  private async getDirectorDecision(
     proposalId: string,
   ): Promise<{ result: Record<string, unknown>; isError: boolean }> {
     const validated = validateOrThrow(

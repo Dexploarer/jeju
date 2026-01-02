@@ -272,7 +272,7 @@ export function SettingsTab({ dao }: SettingsTabProps) {
         >
           <InfoRow label="Treasury" value={dao.treasury} copyable />
           <InfoRow label="Council" value={dao.council} copyable />
-          <InfoRow label="CEO Agent" value={dao.ceoAgentContract} copyable />
+          <InfoRow label="Director Agent" value={dao.directorAgentContract} copyable />
           <InfoRow label="Fee Config" value={dao.feeConfig} copyable />
         </div>
       </Section>
@@ -452,16 +452,16 @@ export function SettingsTab({ dao }: SettingsTabProps) {
             <span
               className="px-3 py-1.5 rounded-lg text-sm"
               style={{
-                backgroundColor: dao.governanceParams.ceoVetoEnabled
+                backgroundColor: dao.governanceParams.directorVetoEnabled
                   ? 'rgba(16, 185, 129, 0.12)'
                   : 'var(--bg-secondary)',
-                color: dao.governanceParams.ceoVetoEnabled
+                color: dao.governanceParams.directorVetoEnabled
                   ? 'var(--color-success)'
                   : 'var(--text-tertiary)',
               }}
             >
-              CEO Veto:{' '}
-              {dao.governanceParams.ceoVetoEnabled ? 'Enabled' : 'Disabled'}
+              Director Veto:{' '}
+              {dao.governanceParams.directorVetoEnabled ? 'Enabled' : 'Disabled'}
             </span>
             <span
               className="px-3 py-1.5 rounded-lg text-sm"
@@ -697,7 +697,7 @@ export function SettingsTab({ dao }: SettingsTabProps) {
                 style={{ color: 'rgba(239, 68, 68, 0.8)' }}
               >
                 Archiving disables governance and freezes the treasury. Requires
-                CEO approval. Reversal requires a network-level proposal.
+                Director approval. Reversal requires a network-level proposal.
               </p>
               <button
                 type="button"

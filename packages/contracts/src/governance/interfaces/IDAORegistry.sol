@@ -7,7 +7,7 @@ pragma solidity ^0.8.33;
  * @notice Interface for multi-tenant DAO management
  *
  * Terminology:
- * - Director: The AI or human executive decision maker (formerly CEO)
+ * - Director: The AI or human executive decision maker (formerly Director)
  * - Board: The advisory/oversight body (formerly Council)
  */
 interface IDAORegistry {
@@ -71,9 +71,9 @@ interface IDAORegistry {
         string description;
         address treasury;
         address board; // Board governance contract (formerly council)
-        address directorAgent; // Director agent contract (formerly ceoAgent)
+        address directorAgent; // Director agent contract (formerly directorAgent)
         address feeConfig;
-        bytes32 directorModelId; // AI model ID (formerly ceoModelId)
+        bytes32 directorModelId; // AI model ID (formerly directorModelId)
         string manifestCid;
         DAOStatus status;
         uint256 createdAt;
@@ -107,8 +107,8 @@ interface IDAORegistry {
     event GovernanceParamsUpdated(bytes32 indexed daoId);
 
     // ============ Legacy Events (for backwards compatibility) ============
-    event CEOPersonaUpdated(bytes32 indexed daoId, string name, string pfpCid);
-    event CEOModelChanged(bytes32 indexed daoId, bytes32 oldModel, bytes32 newModel);
+    event DirectorPersonaUpdated(bytes32 indexed daoId, string name, string pfpCid);
+    event DirectorModelChanged(bytes32 indexed daoId, bytes32 oldModel, bytes32 newModel);
     event CouncilMemberAdded(bytes32 indexed daoId, address indexed member, string role, uint256 weight);
     event CouncilMemberRemoved(bytes32 indexed daoId, address indexed member);
     event CouncilMemberUpdated(bytes32 indexed daoId, address indexed member, uint256 newWeight);
@@ -213,7 +213,7 @@ interface IDAORegistry {
 
     // ============ Legacy View Functions (backwards compatibility) ============
 
-    function getCEOPersona(bytes32 daoId) external view returns (DirectorPersona memory);
+    function getDirectorPersona(bytes32 daoId) external view returns (DirectorPersona memory);
 
     function getCouncilMembers(bytes32 daoId) external view returns (BoardMember[] memory);
 

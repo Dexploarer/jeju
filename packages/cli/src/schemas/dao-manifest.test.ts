@@ -10,7 +10,7 @@
 
 import { describe, expect, test } from 'bun:test'
 import {
-  DAOCEOConfigSchema,
+  DAODirectorConfigSchema,
   DAOCouncilMemberSchema,
   DAOFundingConfigSchema,
   DAOGovernanceParamsSchema,
@@ -25,9 +25,9 @@ import {
 // Test Fixtures
 // ============================================================================
 
-const VALID_CEO = {
-  name: 'Test CEO',
-  description: 'A test CEO for the DAO',
+const VALID_Director = {
+  name: 'Test Director',
+  description: 'A test Director for the DAO',
   personality: 'Professional and decisive',
   traits: ['wise', 'fair'],
   voiceStyle: 'Formal',
@@ -57,7 +57,7 @@ const VALID_FUNDING = {
   cooldownPeriod: 604800,
   matchingMultiplier: 15000,
   quadraticEnabled: true,
-  ceoWeightCap: 5000,
+  directorWeightCap: 5000,
 }
 
 const VALID_PACKAGE = {
@@ -82,7 +82,7 @@ function createValidManifest() {
     description: 'A test DAO',
     type: 'dao' as const,
     governance: {
-      ceo: VALID_CEO,
+      director: VALID_Director,
       council: {
         members: [
           { ...VALID_COUNCIL_MEMBER, role: 'Treasury', weight: 2500 },
@@ -98,55 +98,55 @@ function createValidManifest() {
 }
 
 // ============================================================================
-// CEO Config Schema Tests
+// Director Config Schema Tests
 // ============================================================================
 
-describe('DAOCEOConfigSchema', () => {
-  test('validates minimal CEO config', () => {
-    const minimalCeo = {
-      name: 'CEO',
+describe('DAODirectorConfigSchema', () => {
+  test('validates minimal Director config', () => {
+    const minimalDirector = {
+      name: 'Director',
       description: 'Desc',
       personality: 'Pro',
       traits: ['wise'],
     }
-    const result = DAOCEOConfigSchema.parse(minimalCeo)
-    expect(result.name).toBe('CEO')
+    const result = DAODirectorConfigSchema.parse(minimalDirector)
+    expect(result.name).toBe('Director')
     expect(result.voiceStyle).toBeUndefined()
   })
 
-  test('validates full CEO config', () => {
-    const result = DAOCEOConfigSchema.parse(VALID_CEO)
-    expect(result.name).toBe('Test CEO')
+  test('validates full Director config', () => {
+    const result = DAODirectorConfigSchema.parse(VALID_Director)
+    expect(result.name).toBe('Test Director')
     expect(result.traits).toHaveLength(2)
     expect(result.specialties).toHaveLength(1)
   })
 
   test('rejects empty name', () => {
-    expect(() => DAOCEOConfigSchema.parse({ ...VALID_CEO, name: '' })).toThrow()
+    expect(() => DAODirectorConfigSchema.parse({ ...VALID_Director, name: '' })).toThrow()
   })
 
   test('rejects empty traits array', () => {
     expect(() =>
-      DAOCEOConfigSchema.parse({ ...VALID_CEO, traits: [] }),
+      DAODirectorConfigSchema.parse({ ...VALID_Director, traits: [] }),
     ).toThrow()
   })
 
   test('handles unicode in name and description', () => {
-    const unicodeCeo = {
-      ...VALID_CEO,
+    const unicodeDirector = {
+      ...VALID_Director,
       name: '孙悟空 🐵',
       description: 'القرد الملك',
     }
-    const result = DAOCEOConfigSchema.parse(unicodeCeo)
+    const result = DAODirectorConfigSchema.parse(unicodeDirector)
     expect(result.name).toBe('孙悟空 🐵')
   })
 
   test('handles very long description', () => {
-    const longCeo = {
-      ...VALID_CEO,
+    const longDirector = {
+      ...VALID_Director,
       description: 'x'.repeat(10000),
     }
-    const result = DAOCEOConfigSchema.parse(longCeo)
+    const result = DAODirectorConfigSchema.parse(longDirector)
     expect(result.description.length).toBe(10000)
   })
 })
@@ -301,16 +301,16 @@ describe('DAOFundingConfigSchema', () => {
     expect(() => DAOFundingConfigSchema.parse(funding)).toThrow()
   })
 
-  test('validates ceoWeightCap at 0 (no cap)', () => {
-    const funding = { ...VALID_FUNDING, ceoWeightCap: 0 }
+  test('validates directorWeightCap at 0 (no cap)', () => {
+    const funding = { ...VALID_FUNDING, directorWeightCap: 0 }
     const result = DAOFundingConfigSchema.parse(funding)
-    expect(result.ceoWeightCap).toBe(0)
+    expect(result.directorWeightCap).toBe(0)
   })
 
-  test('validates ceoWeightCap at 10000 (100%)', () => {
-    const funding = { ...VALID_FUNDING, ceoWeightCap: 10000 }
+  test('validates directorWeightCap at 10000 (100%)', () => {
+    const funding = { ...VALID_FUNDING, directorWeightCap: 10000 }
     const result = DAOFundingConfigSchema.parse(funding)
-    expect(result.ceoWeightCap).toBe(10000)
+    expect(result.directorWeightCap).toBe(10000)
   })
 
   test('rejects zero epoch duration', () => {
@@ -405,15 +405,15 @@ describe('DAOManifestSchema', () => {
     const manifest = createValidManifest()
     const result = DAOManifestSchema.parse(manifest)
     expect(result.name).toBe('test-dao')
-    expect(result.governance.ceo.name).toBe('Test CEO')
+    expect(result.governance.director.name).toBe('Test Director')
   })
 
   test('validates minimal manifest without optional fields', () => {
     const manifest = {
       name: 'minimal-dao',
       governance: {
-        ceo: {
-          name: 'CEO',
+        director: {
+          name: 'Director',
           description: 'Desc',
           personality: 'Pro',
           traits: ['wise'],

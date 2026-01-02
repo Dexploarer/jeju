@@ -13,7 +13,7 @@ import "../../governance/interfaces/ICouncilGovernance.sol";
  * Governance Flow:
  * 1. Proposer submits proposal to Council
  * 2. Autocrat agents (Treasury, Code, Community, Security) vote
- * 3. AI CEO makes final decision
+ * 3. AI Director makes final decision
  * 4. Grace period allows community veto
  * 5. If approved, proposal can be executed here
  */

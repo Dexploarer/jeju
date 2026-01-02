@@ -13,7 +13,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { type ComponentType, useEffect, useState } from 'react'
-import { INDEXER_URL } from '../../lib/config'
+import { getIndexerUrl } from '../../lib/config'
 
 const SearchIcon = Search as ComponentType<LucideProps>
 const RefreshCwIcon = RefreshCw as ComponentType<LucideProps>
@@ -159,7 +159,7 @@ async function fetchAgentsFromIndexer(
     }
   `
 
-  const response = await fetch(INDEXER_URL, {
+  const response = await fetch(getIndexerUrl(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ query }),

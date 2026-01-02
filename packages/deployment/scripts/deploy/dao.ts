@@ -3,7 +3,7 @@
 /**
  * Simple DAO Deployment Script
  *
- * Deploys Council + CEOAgent to local anvil.
+ * Deploys Council + DirectorAgent to local anvil.
  * Start anvil first: anvil --port 9545
  */
 
@@ -144,27 +144,27 @@ async function main() {
     [tokenAddr, identityAddr, reputationAddr, deployerAccount.address],
   )
 
-  const { address: ceoAddr } = await deploy(
+  const { address: directorAddr } = await deploy(
     walletClient,
     deployerAccount,
     client,
     chain,
-    'CEOAgent',
+    'DirectorAgent',
     [tokenAddr, councilAddr, 'claude-opus-4-5', deployerAccount.address],
   )
 
   console.log('\n--- Configuring ---\n')
 
-  // Set CEO
-  const setCEOHash = await walletClient.writeContract({
+  // Set Director
+  const setDirectorHash = await walletClient.writeContract({
     address: councilAddr,
     abi: councilAbi,
-    functionName: 'setCEOAgent',
-    args: [ceoAddr, 1],
+    functionName: 'setDirectorAgent',
+    args: [directorAddr, 1],
     account: deployerAccount,
   })
-  await waitForTransactionReceipt(client, { hash: setCEOHash })
-  console.log('✓ CEO agent configured')
+  await waitForTransactionReceipt(client, { hash: setDirectorHash })
+  console.log('✓ Director agent configured')
 
   // Set research operator
   const setOpHash = await walletClient.writeContract({
@@ -264,10 +264,10 @@ async function main() {
       IdentityRegistry: identityAddr,
       ReputationRegistry: reputationAddr,
       Council: councilAddr,
-      CEOAgent: ceoAddr,
+      DirectorAgent: directorAddr,
     },
     agents: {
-      ceo: { modelId: 'claude-opus-4-5', contractAddress: ceoAddr },
+      director: { modelId: 'claude-opus-4-5', contractAddress: directorAddr },
       council: agents,
     },
   }
@@ -281,7 +281,7 @@ async function main() {
   const env = `RPC_URL=http://127.0.0.1:6546
 CHAIN_ID=31337
 COUNCIL_ADDRESS=${councilAddr}
-CEO_AGENT_ADDRESS=${ceoAddr}
+DIRECTOR_AGENT_ADDRESS=${directorAddr}
 GOVERNANCE_TOKEN_ADDRESS=${tokenAddr}
 IDENTITY_REGISTRY_ADDRESS=${identityAddr}
 REPUTATION_REGISTRY_ADDRESS=${reputationAddr}
@@ -292,7 +292,7 @@ OPERATOR_KEY=${KEYS[0]}
 
   console.log('\n=== DONE ===\n')
   console.log('Council:', councilAddr)
-  console.log('CEOAgent:', ceoAddr)
+  console.log('DirectorAgent:', directorAddr)
   console.log('\nNext: cp apps/autocrat/.env.localnet apps/autocrat/.env')
 }
 

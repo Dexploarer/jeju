@@ -151,11 +151,23 @@ export const daoRoutes = new Elysia({ prefix: '/api/v1/dao' })
   // Get single DAO
   .get(
     '/:daoId',
-    async ({ params }) => {
-      const service = getService()
-      const exists = await service.daoExists(params.daoId)
-      if (!exists) throw new Error('DAO not found')
-      return service.getDAOFull(params.daoId)
+    async ({ params, set }) => {
+      try {
+        const service = getService()
+        const exists = await service.daoExists(params.daoId)
+        if (!exists) {
+          set.status = 404
+          return { error: 'DAO not found', daoId: params.daoId }
+        }
+        return service.getDAOFull(params.daoId)
+      } catch (error) {
+        set.status = 404
+        return {
+          error: 'DAO not found or registry unavailable',
+          daoId: params.daoId,
+          details: error instanceof Error ? error.message : String(error),
+        }
+      }
     },
     {
       params: t.Object({ daoId: t.String() }),
@@ -318,7 +330,7 @@ export const daoRoutes = new Elysia({ prefix: '/api/v1/dao' })
     },
   )
 
-  // Update agent (for CEO, use setDirectorPersona; for council, limited update)
+  // Update agent (for Director, use setDirectorPersona; for council, limited update)
   .patch(
     '/:daoId/agents/:agentId',
     async ({ params, body }) => {
@@ -346,7 +358,7 @@ export const daoRoutes = new Elysia({ prefix: '/api/v1/dao' })
           await service.setDirectorModel(params.daoId, body.model)
         }
         const persona = await service.getDirectorPersona(params.daoId)
-        return { agentId: '0', role: 'CEO', persona }
+        return { agentId: '0', role: 'Director', persona }
       }
 
       // For council members, would need contract support for weight updates
@@ -394,9 +406,9 @@ export const daoRoutes = new Elysia({ prefix: '/api/v1/dao' })
       )
       if (!member) throw new Error('Agent not found')
 
-      // Cannot remove CEO
-      if (member.role === 'CEO' || params.agentId === '0') {
-        throw new Error('Cannot remove CEO agent')
+      // Cannot remove Director
+      if (member.role === 'Director' || params.agentId === '0') {
+        throw new Error('Cannot remove Director agent')
       }
 
       const txHash = await service.removeCouncilMember(

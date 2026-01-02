@@ -27,12 +27,12 @@ const VALID_DAO_DRAFT = {
   avatarCid: '',
   bannerCid: '',
   visibility: 'public',
-  ceo: {
-    role: 'CEO',
+  director: {
+    role: 'Director',
     persona: {
-      name: 'Test CEO',
+      name: 'Test Director',
       avatarCid: '',
-      bio: 'AI CEO for testing',
+      bio: 'AI Director for testing',
       personality: 'Decisive and analytical',
       traits: ['analytical', 'fair'],
       voiceStyle: 'authoritative',
@@ -104,7 +104,7 @@ const VALID_DAO_DRAFT = {
     minProposalStake: '0.01',
     quorumBps: 5000,
     minBoardApprovals: 2,
-    ceoVetoEnabled: true,
+    directorVetoEnabled: true,
     communityVetoEnabled: true,
     vetoThreshold: 33,
   },
@@ -391,12 +391,12 @@ test.describe('Agent Endpoints within DAO', () => {
     if (listData.daos?.length > 0) {
       const daoId = listData.daos[0].daoId
 
-      // Try to get CEO agent
-      const response = await request.get(`${API_BASE}/dao/${daoId}/agents/ceo`)
+      // Try to get Director agent
+      const response = await request.get(`${API_BASE}/dao/${daoId}/agents/director`)
 
       if (response.ok()) {
         const data = await response.json()
-        expect(data.role).toBe('CEO')
+        expect(data.role).toBe('Director')
         expect(data.persona).toBeDefined()
       }
     }
@@ -412,10 +412,10 @@ test.describe('Agent Endpoints within DAO', () => {
     }
   })
 
-  test('DELETE /dao/:id/agents/ceo should fail', async ({ request }) => {
-    const response = await request.delete(`${API_BASE}/dao/test-dao/agents/ceo`)
+  test('DELETE /dao/:id/agents/director should fail', async ({ request }) => {
+    const response = await request.delete(`${API_BASE}/dao/test-dao/agents/director`)
 
-    // Should not allow deleting CEO
+    // Should not allow deleting Director
     if (!response.ok()) {
       const _data = await response.json()
       expect(

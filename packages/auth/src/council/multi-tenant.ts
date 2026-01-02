@@ -2,7 +2,7 @@
  * Multi-tenant Council Integration
  *
  * Enables multiple independent councils to each have their own OAuth3 apps,
- * CEOs, and governance while sharing the same infrastructure.
+ * Directors, and governance while sharing the same infrastructure.
  */
 
 import {
@@ -34,8 +34,8 @@ function loadCouncilAddress(councilType: CouncilType, role: string): Address {
  */
 function isCouncilConfigured(councilType: CouncilType): boolean {
   const treasury = loadCouncilAddress(councilType, 'TREASURY')
-  const ceo = loadCouncilAddress(councilType, 'CEO')
-  return treasury !== ZERO_ADDRESS || ceo !== ZERO_ADDRESS
+  const director = loadCouncilAddress(councilType, 'Director')
+  return treasury !== ZERO_ADDRESS || director !== ZERO_ADDRESS
 }
 
 export interface CouncilDeployment {
@@ -43,21 +43,21 @@ export interface CouncilDeployment {
   config: CouncilConfig
   oauth3App: OAuth3App
   treasury: Address
-  ceo: CEOConfig
+  director: DirectorConfig
   agents: CouncilAgentConfig[]
 }
 
 /**
- * CEO configuration
+ * Director configuration
  *
  * SECURITY: Uses keyId to reference MPC-managed keys instead of raw private keys.
  * Private keys are NEVER stored or reconstructed in memory.
  */
-export interface CEOConfig {
+export interface DirectorConfig {
   name: string
   address: Address
   /**
-   * Key ID for the CEO's signing key (managed by SecureSigningService)
+   * Key ID for the Director's signing key (managed by SecureSigningService)
    * SECURITY: References an MPC key - private key is NEVER reconstructed
    */
   signingKeyId?: string
@@ -82,7 +82,7 @@ export interface CouncilRegistry {
 /**
  * Load default councils - addresses from environment or ZERO_ADDRESS
  * Set environment variables to deploy:
- *   COUNCIL_JEJU_TREASURY_ADDRESS, COUNCIL_JEJU_CEO_ADDRESS, etc.
+ *   COUNCIL_JEJU_TREASURY_ADDRESS, COUNCIL_JEJU_DIRECTOR_ADDRESS, etc.
  */
 function getDefaultCouncils(): Record<CouncilType, Partial<CouncilDeployment>> {
   return {
@@ -92,7 +92,7 @@ function getDefaultCouncils(): Record<CouncilType, Partial<CouncilDeployment>> {
         councilId: keccak256(toBytes('jeju-council')),
         name: 'Jeju Network Council',
         treasury: loadCouncilAddress('jeju', 'TREASURY'),
-        ceoAgent: loadCouncilAddress('jeju', 'CEO'),
+        directorAgent: loadCouncilAddress('jeju', 'Director'),
         councilAgents: [
           loadCouncilAddress('jeju', 'TREASURY_AGENT'),
           loadCouncilAddress('jeju', 'CODE_AGENT'),
@@ -102,12 +102,12 @@ function getDefaultCouncils(): Record<CouncilType, Partial<CouncilDeployment>> {
         oauth3App: getCouncilJejuOauth3App() as Hex,
         jnsName: 'council.jeju',
       },
-      ceo: {
-        name: 'Jeju CEO',
-        address: loadCouncilAddress('jeju', 'CEO'),
+      director: {
+        name: 'Jeju Director',
+        address: loadCouncilAddress('jeju', 'Director'),
         modelProvider: 'anthropic',
         modelId: 'claude-opus-4-5',
-        systemPrompt: `You are the AI CEO of Jeju Network, a decentralized L2 blockchain.
+        systemPrompt: `You are the AI Director of Jeju Network, a decentralized L2 blockchain.
 Your role is to make strategic decisions for the network's growth and governance.
 Consider technical feasibility, community benefit, and economic sustainability.`,
       },
@@ -148,7 +148,7 @@ Consider technical feasibility, community benefit, and economic sustainability.`
         councilId: keccak256(toBytes('eliza-council')),
         name: 'ElizaOS Council',
         treasury: loadCouncilAddress('eliza', 'TREASURY'),
-        ceoAgent: loadCouncilAddress('eliza', 'CEO'),
+        directorAgent: loadCouncilAddress('eliza', 'Director'),
         councilAgents: [
           loadCouncilAddress('eliza', 'SAFETY_AGENT'),
           loadCouncilAddress('eliza', 'DEVELOPER_AGENT'),
@@ -158,12 +158,12 @@ Consider technical feasibility, community benefit, and economic sustainability.`
         oauth3App: getCouncilElizaOauth3App() as Hex,
         jnsName: 'council.eliza.jeju',
       },
-      ceo: {
-        name: 'Eliza CEO',
-        address: loadCouncilAddress('eliza', 'CEO'),
+      director: {
+        name: 'Eliza Director',
+        address: loadCouncilAddress('eliza', 'Director'),
         modelProvider: 'anthropic',
         modelId: 'claude-opus-4-5',
-        systemPrompt: `You are the AI CEO of ElizaOS, the AI agent framework on Jeju Network.
+        systemPrompt: `You are the AI Director of ElizaOS, the AI agent framework on Jeju Network.
 Your role is to guide the development of AI agents and ensure responsible AI deployment.
 Prioritize safety, capability advancement, and developer experience.`,
       },
@@ -232,7 +232,7 @@ export class MultiTenantCouncilManager {
     const defaults = getDefaultCouncils()
     const template = defaults[councilType]
 
-    if (!template.config || !template.ceo || !template.agents) {
+    if (!template.config || !template.director || !template.agents) {
       throw new Error(`Missing template data for council type: ${councilType}`)
     }
 
@@ -246,9 +246,9 @@ export class MultiTenantCouncilManager {
         config.oauth3App ??
         (await this.createCouncilOAuthApp(councilType, config)),
       treasury: config.treasury ?? template.config.treasury,
-      ceo: {
-        ...template.ceo,
-        ...config.ceo,
+      director: {
+        ...template.director,
+        ...config.director,
       },
       agents: config.agents ?? template.agents,
     }
@@ -322,16 +322,16 @@ export class MultiTenantCouncilManager {
     this.registry.defaultCouncil = councilType
   }
 
-  async updateCouncilCEO(
+  async updateCouncilDirector(
     councilType: CouncilType,
-    ceoConfig: Partial<CEOConfig>,
+    directorConfig: Partial<DirectorConfig>,
   ): Promise<void> {
     const council = this.registry.councils.get(councilType)
     if (!council) {
       throw new Error(`Council ${councilType} not found`)
     }
 
-    council.ceo = { ...council.ceo, ...ceoConfig }
+    council.director = { ...council.director, ...directorConfig }
   }
 
   async addCouncilAgent(
@@ -385,8 +385,8 @@ export class MultiTenantCouncilManager {
       roles.push('treasury')
     }
 
-    if (council.ceo.address.toLowerCase() === address.toLowerCase()) {
-      roles.push('ceo')
+    if (council.director.address.toLowerCase() === address.toLowerCase()) {
+      roles.push('director')
     }
 
     for (const agent of council.agents) {
@@ -435,7 +435,7 @@ export class MultiTenantCouncilManager {
           type,
           {
             ...council,
-            ceo: { ...council.ceo, privateKey: undefined },
+            director: { ...council.director, privateKey: undefined },
           },
         ]),
       ),

@@ -96,11 +96,11 @@ contract FeeConfig is Ownable, Pausable {
     mapping(address => TokenOverride) public tokenOverrides;
     address[] public tokensWithOverrides;
     address public board; // Board governance contract (formerly council)
-    address public director; // Director agent (formerly ceo)
+    address public director; // Director agent (formerly director)
     address public treasury;
     // Legacy aliases for backwards compatibility
     address public council;
-    address public ceo;
+    address public director;
 
     mapping(bytes32 => PendingFeeChange) public pendingChanges;
     mapping(bytes32 => uint256) public lastUpdated;
@@ -147,7 +147,7 @@ contract FeeConfig is Ownable, Pausable {
     event TreasuryUpdated(address indexed oldTreasury, address indexed newTreasury);
     // Legacy events for backwards compatibility
     event CouncilUpdated(address indexed oldCouncil, address indexed newCouncil);
-    event CEOUpdated(address indexed oldCeo, address indexed newCeo);
+    event DirectorUpdated(address indexed oldCeo, address indexed newCeo);
     // App-specific fee events
     event AppFeeOverrideSet(bytes32 indexed daoId, bytes32 indexed feeKey, uint256 newValue, address setBy);
     event AppFeeOverrideRemoved(bytes32 indexed daoId, bytes32 indexed feeKey);
@@ -186,7 +186,7 @@ contract FeeConfig is Ownable, Pausable {
         _;
     }
 
-    modifier onlyCEO() {
+    modifier onlyDirector() {
         if (msg.sender != director && msg.sender != owner()) revert NotAuthorized();
         _;
     }
@@ -199,7 +199,7 @@ contract FeeConfig is Ownable, Pausable {
         treasury = _treasury;
         // Legacy aliases
         council = _board;
-        ceo = _director;
+        director = _director;
 
         // Initialize with default fees
         _initializeDefaultFees();
@@ -768,8 +768,8 @@ contract FeeConfig is Ownable, Pausable {
         emit DirectorUpdated(director, newDirector);
         director = newDirector;
         // Update legacy alias
-        ceo = newDirector;
-        emit CEOUpdated(director, newDirector);
+        director = newDirector;
+        emit DirectorUpdated(director, newDirector);
     }
 
     // Legacy setters for backwards compatibility
@@ -780,11 +780,11 @@ contract FeeConfig is Ownable, Pausable {
         emit CouncilUpdated(board, newCouncil);
     }
 
-    function setCEO(address newCeo) external onlyOwner {
+    function setDirector(address newCeo) external onlyOwner {
         emit DirectorUpdated(director, newCeo);
         director = newCeo;
-        ceo = newCeo;
-        emit CEOUpdated(director, newCeo);
+        director = newCeo;
+        emit DirectorUpdated(director, newCeo);
     }
 
     function setTreasury(address newTreasury) external onlyOwner {

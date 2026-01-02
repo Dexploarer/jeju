@@ -301,7 +301,7 @@ export const ServicesNetworkConfigSchema = z.object({
     api: UrlString,
     a2a: UrlString,
     mcp: UrlString.optional(),
-    ceo: UrlString.optional(),
+    director: UrlString.optional(),
   }),
   kms: z.object({
     api: UrlString,

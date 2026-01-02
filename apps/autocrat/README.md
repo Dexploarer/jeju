@@ -1,6 +1,6 @@
 # Jeju AI Council
 
-AI-powered DAO governance with council deliberation, CEO decisions, and on-chain proposal submission.
+AI-powered DAO governance with council deliberation, Director decisions, and on-chain proposal submission.
 
 ## Quick Start
 
@@ -21,7 +21,7 @@ AI-powered DAO governance with council deliberation, CEO decisions, and on-chain
 │                 │  - Ollama       │     - Community         │
 │                 │                 │     - Security          │
 ├─────────────────┴─────────────────┴─────────────────────────┤
-│                    TEE Service (CEO Decisions)               │
+│                    TEE Service (Director Decisions)               │
 │                - Hardware TEE (Phala Cloud)                  │
 │                - Simulated TEE (local dev)                   │
 │                - Jeju KMS (encryption)                       │
@@ -30,7 +30,7 @@ AI-powered DAO governance with council deliberation, CEO decisions, and on-chain
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                    Smart Contracts (Anvil/Base)              │
-│  Council.sol  │  CEOAgent.sol  │  QualityOracle.sol         │
+│  Council.sol  │  DirectorAgent.sol  │  QualityOracle.sol         │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -44,7 +44,7 @@ AI-powered DAO governance with council deliberation, CEO decisions, and on-chain
 
 ### TEE (Trusted Execution Environment)
 
-For production CEO decision-making with hardware attestation:
+For production Director decision-making with hardware attestation:
 
 ```bash
 # Set environment variables for Phala Cloud TEE
@@ -75,7 +75,7 @@ export COMPUTE_MODEL=claude-3-opus
 |----------|----------|---------|-------------|
 | `RPC_URL` | Yes | `http://localhost:6546` | Blockchain RPC endpoint |
 | `COUNCIL_ADDRESS` | Yes | - | Deployed Council contract |
-| `CEO_AGENT_ADDRESS` | Yes | - | Deployed CEOAgent contract |
+| `DIRECTOR_AGENT_ADDRESS` | Yes | - | Deployed DirectorAgent contract |
 | `QUALITY_ORACLE_ADDRESS` | Yes | - | Deployed QualityOracle contract |
 | `OLLAMA_URL` | No | `http://localhost:11434` | Ollama API endpoint |
 | `OLLAMA_MODEL` | No | `llama3.2:3b` | Ollama model to use |
@@ -114,7 +114,7 @@ cd ../../packages/contracts && forge test --match-contract "Council|QualityOracl
 | `/health` | GET | Service health check |
 | `/api/v1/proposals/assess` | POST | Assess proposal quality |
 | `/api/v1/governance/stats` | GET | Get governance statistics |
-| `/api/v1/ceo` | GET | Get CEO status |
+| `/api/v1/ceo` | GET | Get Director status |
 | `/mcp/tools/list` | POST | List MCP tools |
 | `/mcp/tools/call` | POST | Call MCP tool |
 | `/a2a` | POST | Agent-to-agent messaging |

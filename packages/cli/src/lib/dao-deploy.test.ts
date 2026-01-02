@@ -21,7 +21,7 @@ import {
 } from '@jejunetwork/contracts'
 import {
   CHAIN_CONFIG,
-  getDevCEOAddress,
+  getDevDirectorAddress,
   getDevCouncilAddresses,
   WELL_KNOWN_KEYS,
 } from '../types'
@@ -38,9 +38,9 @@ function createTestManifest(name: string, displayName: string) {
     version: '1.0.0',
     type: 'dao',
     governance: {
-      ceo: {
-        name: 'Test CEO',
-        description: 'Test CEO description',
+      director: {
+        name: 'Test Director',
+        description: 'Test Director description',
         personality: 'Professional',
         traits: ['wise', 'fair'],
       },
@@ -65,7 +65,7 @@ function createTestManifest(name: string, displayName: string) {
       cooldownPeriod: 604800,
       matchingMultiplier: 15000,
       quadraticEnabled: true,
-      ceoWeightCap: 5000,
+      directorWeightCap: 5000,
     },
   }
 }
@@ -104,10 +104,10 @@ describe('WELL_KNOWN_KEYS', () => {
     expect(WELL_KNOWN_KEYS.dev[4].role).toBe('council-security')
   })
 
-  test('CEO agent is account 5', () => {
-    const ceo = WELL_KNOWN_KEYS.dev[5]
-    expect(ceo.role).toBe('ceo-agent')
-    expect(ceo.address).toBe('0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc')
+  test('Director agent is account 5', () => {
+    const director = WELL_KNOWN_KEYS.dev[5]
+    expect(director.role).toBe('director-agent')
+    expect(director.address).toBe('0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc')
   })
 
   test('user accounts are 6 and 7', () => {
@@ -155,22 +155,22 @@ describe('getDevCouncilAddresses', () => {
 })
 
 // ============================================================================
-// getDevCEOAddress Tests
+// getDevDirectorAddress Tests
 // ============================================================================
 
-describe('getDevCEOAddress', () => {
-  test('returns CEO address', () => {
-    const address = getDevCEOAddress()
+describe('getDevDirectorAddress', () => {
+  test('returns Director address', () => {
+    const address = getDevDirectorAddress()
     expect(address).toBe('0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc')
   })
 
   test('returns valid ethereum address', () => {
-    const address = getDevCEOAddress()
+    const address = getDevDirectorAddress()
     expect(address).toMatch(/^0x[a-fA-F0-9]{40}$/)
   })
 
-  test('matches WELL_KNOWN_KEYS ceo-agent', () => {
-    const address = getDevCEOAddress()
+  test('matches WELL_KNOWN_KEYS director-agent', () => {
+    const address = getDevDirectorAddress()
     expect(address).toBe(WELL_KNOWN_KEYS.dev[5].address)
   })
 })
@@ -583,7 +583,7 @@ describe('Data Integrity', () => {
       // Verify all fields are preserved
       expect(discovered.name).toBe(original.name)
       expect(discovered.displayName).toBe(original.displayName)
-      expect(discovered.governance.ceo.name).toBe(original.governance.ceo.name)
+      expect(discovered.governance.director.name).toBe(original.governance.director.name)
       expect(discovered.governance.council.members).toHaveLength(2)
       expect(discovered.funding.minStake).toBe(original.funding.minStake)
       expect(discovered.packages?.seeded).toHaveLength(1)
@@ -701,20 +701,20 @@ describe('Contract ABI Verification', () => {
     expect(acceptProject).toBeDefined()
   })
 
-  test('DAOFunding has proposeCEOWeight function (with timelock)', () => {
-    const proposeCEOWeight = daoFundingAbi.find(
-      (item) => item.type === 'function' && item.name === 'proposeCEOWeight',
+  test('DAOFunding has proposeDirectorWeight function (with timelock)', () => {
+    const proposeDirectorWeight = daoFundingAbi.find(
+      (item) => item.type === 'function' && item.name === 'proposeDirectorWeight',
     )
-    expect(proposeCEOWeight).toBeDefined()
-    expect(proposeCEOWeight?.inputs).toHaveLength(2)
+    expect(proposeDirectorWeight).toBeDefined()
+    expect(proposeDirectorWeight?.inputs).toHaveLength(2)
   })
 
-  test('DAOFunding does NOT have setCEOWeight function (uses timelock instead)', () => {
-    const setCEOWeight = daoFundingAbi.find(
-      (item) => item.type === 'function' && item.name === 'setCEOWeight',
+  test('DAOFunding does NOT have setDirectorWeight function (uses timelock instead)', () => {
+    const setDirectorWeight = daoFundingAbi.find(
+      (item) => item.type === 'function' && item.name === 'setDirectorWeight',
     )
-    // setCEOWeight was removed in favor of proposeCEOWeight + timelock
-    expect(setCEOWeight).toBeUndefined()
+    // setDirectorWeight was removed in favor of proposeDirectorWeight + timelock
+    expect(setDirectorWeight).toBeUndefined()
   })
 
   test('DAOFunding config struct includes minStakePerParticipant', () => {
@@ -910,7 +910,7 @@ describe('Deployment Prerequisites', () => {
     )
   })
 
-  test('CEO address is account 5 (index 5)', () => {
-    expect(getDevCEOAddress()).toBe(WELL_KNOWN_KEYS.dev[5].address)
+  test('Director address is account 5 (index 5)', () => {
+    expect(getDevDirectorAddress()).toBe(WELL_KNOWN_KEYS.dev[5].address)
   })
 })

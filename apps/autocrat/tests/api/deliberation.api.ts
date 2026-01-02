@@ -138,8 +138,8 @@ Timeline: 3 months`,
     expect(result.result).toBeDefined()
   })
 
-  test('CEO decision includes council consensus', async ({ request }) => {
-    const result = await sendA2AMessage(request, 'request-ceo-decision', {
+  test('Director decision includes council consensus', async ({ request }) => {
+    const result = await sendA2AMessage(request, 'request-director-decision', {
       proposalId: `0x${'c'.repeat(64)}`,
       autocratVotes: [
         {

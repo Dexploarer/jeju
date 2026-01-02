@@ -33,11 +33,11 @@ interface DAOCreateParams {
   displayName: string
   description: string
   treasuryAddress: Address
-  ceoName: string
-  ceoDescription: string
-  ceoPersonality: string
-  ceoTraits: string[]
-  ceoCommunicationTone: string
+  directorName: string
+  directorDescription: string
+  directorPersonality: string
+  directorTraits: string[]
+  directorCommunicationTone: string
 }
 
 /** DAO data returned by getDAO contract call */
@@ -48,12 +48,12 @@ interface DAOData {
   status: number
   treasury: Address
   council: Address
-  ceoAgent: Address
+  directorAgent: Address
   createdAt: bigint
 }
 
-/** CEO persona data returned by getCEOPersona contract call */
-interface CEOPersonaData {
+/** Director persona data returned by getDirectorPersona contract call */
+interface DirectorPersonaData {
   name: string
   description: string
   personality: string
@@ -70,7 +70,7 @@ const DAORegistryABI = [
       { name: 'treasury', type: 'address' },
       { name: 'manifestCid', type: 'string' },
       {
-        name: 'ceoPersona',
+        name: 'directorPersona',
         type: 'tuple',
         components: [
           { name: 'name', type: 'string' },
@@ -116,9 +116,9 @@ const DAORegistryABI = [
           { name: 'description', type: 'string' },
           { name: 'treasury', type: 'address' },
           { name: 'council', type: 'address' },
-          { name: 'ceoAgent', type: 'address' },
+          { name: 'directorAgent', type: 'address' },
           { name: 'feeConfig', type: 'address' },
-          { name: 'ceoModelId', type: 'bytes32' },
+          { name: 'directorModelId', type: 'bytes32' },
           { name: 'manifestCid', type: 'string' },
           { name: 'status', type: 'uint8' },
           { name: 'createdAt', type: 'uint256' },
@@ -131,7 +131,7 @@ const DAORegistryABI = [
   },
   {
     type: 'function',
-    name: 'getCEOPersona',
+    name: 'getDirectorPersona',
     inputs: [{ name: 'daoId', type: 'bytes32' }],
     outputs: [
       {
@@ -312,11 +312,11 @@ async function createDAO(
       params.treasuryAddress ?? account.address,
       '',
       {
-        name: params.ceoName ?? 'CEO',
+        name: params.directorName ?? 'Director',
         pfpCid: '',
-        description: params.ceoDescription ?? 'AI governance leader',
-        personality: params.ceoPersonality ?? 'Professional and analytical',
-        traits: params.ceoTraits ?? ['decisive', 'fair', 'strategic'],
+        description: params.directorDescription ?? 'AI governance leader',
+        personality: params.directorPersonality ?? 'Professional and analytical',
+        traits: params.directorTraits ?? ['decisive', 'fair', 'strategic'],
       },
       {
         minQualityScore: BigInt(70),
@@ -343,19 +343,19 @@ async function createJejuDAO(network: string): Promise<void> {
     displayName: 'Jeju DAO',
     description:
       'Jeju Network governance - controls chain-level fees, treasury, and overall protocol direction',
-    ceoName: 'Jeju CEO',
-    ceoDescription:
+    directorName: 'Jeju Director',
+    directorDescription:
       'The AI governance leader of Jeju Network, responsible for strategic decisions and protocol stewardship',
-    ceoPersonality:
+    directorPersonality:
       'Analytical, strategic, and community-focused. Makes decisions based on data and long-term network health.',
-    ceoTraits: [
+    directorTraits: [
       'strategic',
       'analytical',
       'fair',
       'transparent',
       'community-focused',
     ],
-    ceoCommunicationTone: 'professional',
+    directorCommunicationTone: 'professional',
   })
 }
 
@@ -392,14 +392,14 @@ async function listDAOs(network: string): Promise<void> {
     const persona = (await publicClient.readContract({
       address: deployment.contracts.DAORegistry as `0x${string}`,
       abi: DAORegistryABI,
-      functionName: 'getCEOPersona',
+      functionName: 'getDirectorPersona',
       args: [daoId],
-    })) as CEOPersonaData
+    })) as DirectorPersonaData
 
     const statusMap = ['Pending', 'Active', 'Paused', 'Archived']
     console.log(`  ${dao.displayName} (${dao.name})`)
     console.log(`    ID: ${daoId}`)
-    console.log(`    CEO: ${persona.name}`)
+    console.log(`    Director: ${persona.name}`)
     console.log(`    Status: ${statusMap[dao.status] ?? 'Unknown'}`)
     console.log(`    Treasury: ${dao.treasury}`)
     console.log('')
@@ -430,9 +430,9 @@ async function getDAOStatus(daoId: string, network: string): Promise<void> {
   const persona = (await publicClient.readContract({
     address: deployment.contracts.DAORegistry as `0x${string}`,
     abi: DAORegistryABI,
-    functionName: 'getCEOPersona',
+    functionName: 'getDirectorPersona',
     args: [daoId as `0x${string}`],
-  })) as CEOPersonaData
+  })) as DirectorPersonaData
 
   const packages = (await publicClient.readContract({
     address: deployment.contracts.DAORegistry as `0x${string}`,
@@ -461,7 +461,7 @@ Basic Info:
   Status: ${statusMap[dao.status] ?? 'Unknown'}
   Created: ${new Date(Number(dao.createdAt) * 1000).toISOString()}
 
-CEO Persona:
+Director Persona:
   Name: ${persona.name}
   Description: ${persona.description}
   Personality: ${persona.personality}
@@ -470,7 +470,7 @@ CEO Persona:
 Contracts:
   Treasury: ${dao.treasury}
   Council: ${dao.council}
-  CEO Agent: ${dao.ceoAgent}
+  Director Agent: ${dao.directorAgent}
 
 Linked Resources:
   Packages: ${packages.length}

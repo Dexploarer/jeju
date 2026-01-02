@@ -936,7 +936,7 @@ function SubmitStep({
         <ul className="mt-2 space-y-1 text-gray-600 dark:text-gray-400">
           <li>• Submitting requires a bond (returned if not spam)</li>
           <li>• Your proposal will enter Autocrat review</li>
-          <li>• The AI CEO will make the final decision</li>
+          <li>• The AI Director will make the final decision</li>
           <li>• Community can veto during grace period</li>
         </ul>
       </div>

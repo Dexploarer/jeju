@@ -173,7 +173,7 @@ function reset(): void {
 }
 
 /**
- * Create access control conditions for CEO decision
+ * Create access control conditions for Director decision
  * Decision can be decrypted if:
  * 1. Proposal status is COMPLETED (status = 7), or
  * 2. 30 days have passed since encryption
@@ -286,7 +286,7 @@ async function decrypt(
 }
 
 /**
- * Encrypt CEO decision data
+ * Encrypt Director decision data
  */
 export async function encryptDecision(
   decision: DecisionData,
@@ -314,7 +314,7 @@ export async function encryptDecision(
 }
 
 /**
- * Decrypt CEO decision data
+ * Decrypt Director decision data
  */
 export async function decryptDecision(
   encryptedData: EncryptedData,
@@ -351,7 +351,7 @@ export async function backupToDA(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       data: JSON.stringify({
-        type: 'ceo_decision',
+        type: 'director_decision',
         proposalId,
         encryptedData,
         timestamp: Date.now(),
@@ -368,7 +368,7 @@ export async function backupToDA(
         operator: 'or',
       },
       owner: getCouncilAddress(),
-      metadata: { type: 'ceo_decision', proposalId },
+      metadata: { type: 'director_decision', proposalId },
     }),
   })
 
@@ -392,7 +392,7 @@ export async function retrieveFromDA(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      metadata: { type: 'ceo_decision', proposalId },
+      metadata: { type: 'director_decision', proposalId },
       accessor: getCouncilAddress(),
     }),
   })

@@ -3,14 +3,13 @@
  * Provides on-chain bounty creation with escrow via the BountyRegistry contract
  */
 
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import type { Address, Hash } from 'viem'
 import { parseEther, zeroAddress } from 'viem'
 import {
   useAccount,
   useReadContract,
-  useSimulateContract,
   useWaitForTransactionReceipt,
   useWriteContract,
 } from 'wagmi'

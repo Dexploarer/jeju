@@ -284,13 +284,13 @@ describe('Multi-tenant Council', () => {
     }
   })
 
-  test('each council has CEO and agents', () => {
+  test('each council has Director and agents', () => {
     const councils = manager.getAllCouncils()
 
     for (const council of councils) {
-      expect(council.ceo).toBeDefined()
-      expect(council.ceo.name).toBeDefined()
-      expect(council.ceo.modelProvider).toBe('anthropic')
+      expect(council.director).toBeDefined()
+      expect(council.director.name).toBeDefined()
+      expect(council.director.modelProvider).toBe('anthropic')
 
       expect(council.agents.length).toBeGreaterThan(0)
 
@@ -306,13 +306,13 @@ describe('Multi-tenant Council', () => {
     const jeju = manager.getCouncil('jeju' as const)
     if (!jeju) throw new Error('Jeju council not found')
 
-    const ceoAccess = await manager.validateCouncilAccess(
+    const directorAccess = await manager.validateCouncilAccess(
       'jeju' as const,
-      jeju.ceo.address,
+      jeju.director.address,
     )
 
-    expect(ceoAccess.hasAccess).toBe(true)
-    expect(ceoAccess.roles).toContain('ceo')
+    expect(directorAccess.hasAccess).toBe(true)
+    expect(directorAccess.roles).toContain('director')
 
     const randomAccess = await manager.validateCouncilAccess(
       'jeju' as const,
@@ -323,14 +323,14 @@ describe('Multi-tenant Council', () => {
     expect(randomAccess.roles).toHaveLength(0)
   })
 
-  test('updates council CEO', async () => {
-    await manager.updateCouncilCEO('jeju' as const, {
+  test('updates council Director', async () => {
+    await manager.updateCouncilDirector('jeju' as const, {
       modelId: 'claude-opus-4-5',
     })
 
     const jeju = manager.getCouncil('jeju' as const)
     if (!jeju) throw new Error('Jeju council not found')
-    expect(jeju.ceo.modelId).toBe('claude-sonnet-4-20250514')
+    expect(jeju.director.modelId).toBe('claude-sonnet-4-20250514')
   })
 
   test('gets council stats', () => {

@@ -131,6 +131,6 @@ interface IFeeConfig {
     event FeeChangeExecuted(bytes32 indexed changeId);
     event FeeChangeCancelled(bytes32 indexed changeId);
     event CouncilUpdated(address indexed oldCouncil, address indexed newCouncil);
-    event CEOUpdated(address indexed oldCeo, address indexed newCeo);
+    event DirectorUpdated(address indexed oldCeo, address indexed newCeo);
     event TreasuryUpdated(address indexed oldTreasury, address indexed newTreasury);
 }

@@ -1,12 +1,12 @@
 import { Bot } from 'lucide-react'
-import type { CEOStatus as CEOStatusType } from '../config/api'
+import type { DirectorStatus as DirectorStatusType } from '../config/api'
 
-interface CEOStatusProps {
-  status: CEOStatusType | null
+interface DirectorStatusProps {
+  status: DirectorStatusType | null
   loading?: boolean
 }
 
-export function CEOStatus({ status, loading }: CEOStatusProps) {
+export function DirectorStatus({ status, loading }: DirectorStatusProps) {
   if (loading) {
     return (
       <div className="card-static p-3 sm:p-4 animate-pulse">
@@ -21,7 +21,7 @@ export function CEOStatus({ status, loading }: CEOStatusProps) {
       <div className="card-static p-3 sm:p-4">
         <div className="flex items-center gap-2 mb-2">
           <Bot size={16} style={{ color: 'var(--color-primary)' }} />
-          <span className="font-medium text-sm">AI CEO</span>
+          <span className="font-medium text-sm">AI Director</span>
         </div>
         <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
           Not available
@@ -34,7 +34,7 @@ export function CEOStatus({ status, loading }: CEOStatusProps) {
     <div className="card-static p-3 sm:p-4">
       <div className="flex items-center gap-2 mb-2 sm:mb-3">
         <Bot size={16} style={{ color: 'var(--color-primary)' }} />
-        <span className="font-medium text-sm">AI CEO</span>
+        <span className="font-medium text-sm">AI Director</span>
       </div>
 
       <div className="mb-2 sm:mb-3">

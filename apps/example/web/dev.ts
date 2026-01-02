@@ -92,6 +92,25 @@ const server = Bun.serve({
       })
     }
 
+    // Try to serve static file from public directory first (favicon, etc.)
+    const publicFile = Bun.file(`./public${path}`)
+    if (await publicFile.exists()) {
+      const contentType = getContentType(path)
+      return new Response(publicFile, {
+        headers: contentType ? { 'Content-Type': contentType } : undefined,
+      })
+    }
+
+    // Try favicon at root
+    if (path === '/favicon.ico' || path === '/favicon.svg') {
+      const faviconFile = Bun.file('./public/favicon.svg')
+      if (await faviconFile.exists()) {
+        return new Response(faviconFile, {
+          headers: { 'Content-Type': 'image/svg+xml' },
+        })
+      }
+    }
+
     // Try to serve static file from web directory
     const file = Bun.file(`./web${path}`)
     if (await file.exists()) {

@@ -164,7 +164,7 @@ test.describe('CreateDAO Wizard', () => {
     await page.goto(`${BASE_URL}/create`)
 
     await expect(page.getByText('Basics', { exact: true })).toBeVisible()
-    await expect(page.getByText('CEO', { exact: true })).toBeVisible()
+    await expect(page.getByText('Director', { exact: true })).toBeVisible()
     await expect(page.getByText('Board', { exact: true })).toBeVisible()
     await expect(page.getByText('Governance', { exact: true })).toBeVisible()
     await expect(page.getByText('Review', { exact: true })).toBeVisible()
@@ -206,23 +206,23 @@ test.describe('CreateDAO Wizard', () => {
     await expect(continueButton).toBeEnabled()
   })
 
-  test('CEO step shows agent configuration', async ({ page }) => {
+  test('Director step shows agent configuration', async ({ page }) => {
     await page.goto(`${BASE_URL}/create`)
 
     // Fill basics
     await page.getByLabel(/Slug/).fill('test-dao')
     await page.getByLabel(/Display Name/).fill('Test DAO')
 
-    // Go to CEO step
+    // Go to Director step
     await page.getByRole('button', { name: 'Continue' }).click()
 
     await expect(
-      page.getByRole('heading', { name: 'Configure CEO' }),
+      page.getByRole('heading', { name: 'Configure Director' }),
     ).toBeVisible()
     await expect(page.getByLabel('Agent Name')).toBeVisible()
   })
 
-  test('CEO step has model selection', async ({ page }) => {
+  test('Director step has model selection', async ({ page }) => {
     await page.goto(`${BASE_URL}/create`)
 
     await page.getByLabel(/Slug/).fill('test-dao')
@@ -234,7 +234,7 @@ test.describe('CreateDAO Wizard', () => {
     await expect(page.getByText('Claude Sonnet 4')).toBeVisible()
   })
 
-  test('CEO step has decision style options', async ({ page }) => {
+  test('Director step has decision style options', async ({ page }) => {
     await page.goto(`${BASE_URL}/create`)
 
     await page.getByLabel(/Slug/).fill('test-dao')
@@ -254,8 +254,8 @@ test.describe('CreateDAO Wizard', () => {
     await page.getByLabel(/Display Name/).fill('Test DAO')
     await page.getByRole('button', { name: 'Continue' }).click()
 
-    // Fill CEO
-    await page.getByLabel('Agent Name').fill('CEO Bot')
+    // Fill Director
+    await page.getByLabel('Agent Name').fill('Director Bot')
     await page.getByRole('button', { name: 'Continue' }).click()
 
     // Board step
@@ -272,7 +272,7 @@ test.describe('CreateDAO Wizard', () => {
     await page.getByLabel(/Slug/).fill('test-dao')
     await page.getByLabel(/Display Name/).fill('Test DAO')
     await page.getByRole('button', { name: 'Continue' }).click()
-    await page.getByLabel('Agent Name').fill('CEO Bot')
+    await page.getByLabel('Agent Name').fill('Director Bot')
     await page.getByRole('button', { name: 'Continue' }).click()
 
     // Should have 3 default board members
@@ -289,9 +289,9 @@ test.describe('CreateDAO Wizard', () => {
     await page.getByLabel(/Display Name/).fill('Test DAO')
     await page.getByRole('button', { name: 'Continue' }).click()
 
-    // Now on CEO step
+    // Now on Director step
     await expect(
-      page.getByRole('heading', { name: 'Configure CEO' }),
+      page.getByRole('heading', { name: 'Configure Director' }),
     ).toBeVisible()
 
     // Go back

@@ -11,11 +11,11 @@ interface AgentsTabProps {
 
 interface AgentCardProps {
   agent: DAOAgent
-  isCEO?: boolean
+  isDirector?: boolean
   onViewDetails: (agent: DAOAgent) => void
 }
 
-function AgentCard({ agent, isCEO = false, onViewDetails }: AgentCardProps) {
+function AgentCard({ agent, isDirector = false, onViewDetails }: AgentCardProps) {
   const Icon = AGENT_ROLE_ICONS[agent.role]
   const gradientBg = AGENT_ROLE_GRADIENTS[agent.role]
   const activeConnectors = agent.connectors.filter((c) => c.enabled).length
@@ -28,7 +28,7 @@ function AgentCard({ agent, isCEO = false, onViewDetails }: AgentCardProps) {
       className="group relative rounded-2xl p-5 transition-all duration-300"
       style={{
         backgroundColor: 'var(--surface)',
-        border: isCEO
+        border: isDirector
           ? '2px solid var(--color-accent)'
           : '1px solid var(--border)',
         boxShadow: 'var(--shadow-card)',
@@ -66,7 +66,7 @@ function AgentCard({ agent, isCEO = false, onViewDetails }: AgentCardProps) {
             >
               {agent.persona.name}
             </h3>
-            {isCEO && (
+            {isDirector && (
               <span
                 className="px-2 py-0.5 text-xs font-semibold rounded-full"
                 style={{
@@ -74,7 +74,7 @@ function AgentCard({ agent, isCEO = false, onViewDetails }: AgentCardProps) {
                   color: 'var(--color-accent)',
                 }}
               >
-                CEO
+                Director
               </span>
             )}
           </div>
@@ -200,15 +200,15 @@ function OrgChart({ dao }: { dao: DAODetail }) {
         Organization Structure
       </h3>
       <div className="relative">
-        {/* CEO at top */}
+        {/* Director at top */}
         <div className="flex justify-center mb-8">
           <div
             className="w-32 h-32 rounded-2xl flex flex-col items-center justify-center text-white shadow-xl"
             style={{ background: 'var(--gradient-accent)' }}
           >
             <Crown className="w-8 h-8 mb-2" aria-hidden="true" />
-            <span className="font-semibold">{dao.ceo.persona.name}</span>
-            <span className="text-xs opacity-75">CEO</span>
+            <span className="font-semibold">{dao.director.persona.name}</span>
+            <span className="text-xs opacity-75">Director</span>
           </div>
         </div>
 
@@ -263,7 +263,7 @@ export function AgentsTab({ dao }: AgentsTabProps) {
       {/* Org Chart */}
       <OrgChart dao={dao} />
 
-      {/* CEO Section */}
+      {/* Director Section */}
       <div className="mb-8">
         <h3
           className="text-sm font-medium uppercase tracking-wider mb-4"
@@ -271,7 +271,7 @@ export function AgentsTab({ dao }: AgentsTabProps) {
         >
           Chief Executive Officer
         </h3>
-        <AgentCard agent={dao.ceo} isCEO onViewDetails={handleViewDetails} />
+        <AgentCard agent={dao.director} isDirector onViewDetails={handleViewDetails} />
       </div>
 
       {/* Board Section */}

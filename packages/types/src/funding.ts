@@ -139,7 +139,7 @@ export const PAYMENT_CATEGORY_DISPLAY: Record<
 export type PaymentRequestStatus =
   | 'SUBMITTED'
   | 'COUNCIL_REVIEW'
-  | 'CEO_REVIEW'
+  | 'DIRECTOR_REVIEW'
   | 'APPROVED'
   | 'REJECTED'
   | 'PAID'
@@ -149,7 +149,7 @@ export type PaymentRequestStatus =
 export const PAYMENT_REQUEST_STATUSES: PaymentRequestStatus[] = [
   'SUBMITTED',
   'COUNCIL_REVIEW',
-  'CEO_REVIEW',
+  'DIRECTOR_REVIEW',
   'APPROVED',
   'REJECTED',
   'PAID',
@@ -171,8 +171,8 @@ export const PAYMENT_STATUS_DISPLAY: Record<
     bgClass: 'bg-amber-500/20',
     textClass: 'text-amber-400',
   },
-  CEO_REVIEW: {
-    label: 'CEO Review',
+  DIRECTOR_REVIEW: {
+    label: 'Director Review',
     bgClass: 'bg-purple-500/20',
     textClass: 'text-purple-400',
   },
@@ -240,7 +240,7 @@ export interface PaymentCouncilVote {
   votedAt: number
 }
 
-export interface CEODecision {
+export interface DirectorDecision {
   approved: boolean
   modifiedAmount: bigint
   reason: string
@@ -251,7 +251,7 @@ export interface DAOPaymentConfig {
   requiresCouncilApproval: boolean
   minCouncilVotes: number
   councilSupermajorityBps: number
-  ceoCanOverride: boolean
+  directorCanOverride: boolean
   maxAutoApproveAmount: bigint
   reviewPeriod: number
   disputePeriod: number

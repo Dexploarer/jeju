@@ -8,13 +8,13 @@ contract FeeConfigTest is Test {
     FeeConfig public feeConfig;
 
     address council = makeAddr("council");
-    address ceo = makeAddr("ceo");
+    address director = makeAddr("ceo");
     address treasury = makeAddr("treasury");
     address owner = makeAddr("owner");
 
     function setUp() public {
         vm.startPrank(owner);
-        feeConfig = new FeeConfig(council, ceo, treasury, owner);
+        feeConfig = new FeeConfig(council, director, treasury, owner);
         vm.stopPrank();
     }
 
@@ -228,10 +228,10 @@ contract FeeConfigTest is Test {
         assertEq(feeConfig.council(), newCouncil);
     }
 
-    function test_SetCEO() public {
+    function test_SetDirector() public {
         address newCeo = makeAddr("newCeo");
         vm.prank(owner);
-        feeConfig.setCEO(newCeo);
+        feeConfig.setDirector(newCeo);
         assertEq(feeConfig.ceo(), newCeo);
     }
 

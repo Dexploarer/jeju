@@ -93,7 +93,7 @@ export interface FeeConfigState {
   token: TokenFees
   treasury: Address
   council: Address
-  ceo: Address
+  director: Address
 }
 let feeConfigAddress: Address | null = null
 let publicClient: ReturnType<typeof createPublicClient> | null = null
@@ -150,7 +150,7 @@ export async function getFeeConfigState(): Promise<FeeConfigState> {
     token,
     treasury,
     council,
-    ceo,
+    director,
   ] = await Promise.all([
     client.readContract({
       address,
@@ -202,7 +202,7 @@ export async function getFeeConfigState(): Promise<FeeConfigState> {
       abi: feeConfigAbi,
       functionName: 'council',
     }),
-    client.readContract({ address, abi: feeConfigAbi, functionName: 'ceo' }),
+    client.readContract({ address, abi: feeConfigAbi, functionName: 'director' }),
   ])
 
   return {
@@ -257,14 +257,14 @@ export async function getFeeConfigState(): Promise<FeeConfigState> {
     },
     treasury,
     council,
-    ceo,
+    director,
   }
 }
 /**
- * Execute a pending fee change (CEO only)
+ * Execute a pending fee change (Director only)
  * The change must have been proposed by council and passed its timelock
  */
-export async function ceoExecuteFeeChange(changeId: Hex): Promise<Hash> {
+export async function directorExecuteFeeChange(changeId: Hex): Promise<Hash> {
   const { address, wallet } = ensureWrite()
 
   const hash = await wallet.writeContract({
@@ -276,14 +276,14 @@ export async function ceoExecuteFeeChange(changeId: Hex): Promise<Hash> {
     args: [changeId],
   })
 
-  console.log(`[CEO] Executed fee change: ${changeId}`)
+  console.log(`[Director] Executed fee change: ${changeId}`)
   return hash
 }
 
 /**
- * Cancel a pending fee change (CEO or Council)
+ * Cancel a pending fee change (Director or Council)
  */
-export async function ceoCancelFeeChange(changeId: Hex): Promise<Hash> {
+export async function directorCancelFeeChange(changeId: Hex): Promise<Hash> {
   const { address, wallet } = ensureWrite()
 
   const hash = await wallet.writeContract({
@@ -295,10 +295,10 @@ export async function ceoCancelFeeChange(changeId: Hex): Promise<Hash> {
     args: [changeId],
   })
 
-  console.log(`[CEO] Cancelled fee change: ${changeId}`)
+  console.log(`[Director] Cancelled fee change: ${changeId}`)
   return hash
 }
-export async function ceoSetDistributionFees(
+export async function directorSetDistributionFees(
   fees: DistributionFees,
 ): Promise<Hash> {
   const { address, wallet } = ensureWrite()
@@ -319,12 +319,12 @@ export async function ceoSetDistributionFees(
   })
 
   console.log(
-    `[CEO] Updated distribution fees: app=${fees.appShareBps}, lp=${fees.lpShareBps}, contrib=${fees.contributorShareBps}`,
+    `[Director] Updated distribution fees: app=${fees.appShareBps}, lp=${fees.lpShareBps}, contrib=${fees.contributorShareBps}`,
   )
   return hash
 }
 
-export async function ceoSetComputeFees(fees: ComputeFees): Promise<Hash> {
+export async function directorSetComputeFees(fees: ComputeFees): Promise<Hash> {
   const { address, wallet } = ensureWrite()
 
   const hash = await wallet.writeContract({
@@ -341,12 +341,12 @@ export async function ceoSetComputeFees(fees: ComputeFees): Promise<Hash> {
   })
 
   console.log(
-    `[CEO] Updated compute fees: inference=${fees.inferencePlatformFeeBps}, rental=${fees.rentalPlatformFeeBps}`,
+    `[Director] Updated compute fees: inference=${fees.inferencePlatformFeeBps}, rental=${fees.rentalPlatformFeeBps}`,
   )
   return hash
 }
 
-export async function ceoSetStorageFees(fees: StorageFees): Promise<Hash> {
+export async function directorSetStorageFees(fees: StorageFees): Promise<Hash> {
   const { address, wallet } = ensureWrite()
 
   const hash = await wallet.writeContract({
@@ -359,12 +359,12 @@ export async function ceoSetStorageFees(fees: StorageFees): Promise<Hash> {
   })
 
   console.log(
-    `[CEO] Updated storage fees: upload=${fees.uploadFeeBps}, retrieval=${fees.retrievalFeeBps}`,
+    `[Director] Updated storage fees: upload=${fees.uploadFeeBps}, retrieval=${fees.retrievalFeeBps}`,
   )
   return hash
 }
 
-export async function ceoSetDeFiFees(fees: DeFiFees): Promise<Hash> {
+export async function directorSetDeFiFees(fees: DeFiFees): Promise<Hash> {
   const { address, wallet } = ensureWrite()
 
   const hash = await wallet.writeContract({
@@ -381,12 +381,12 @@ export async function ceoSetDeFiFees(fees: DeFiFees): Promise<Hash> {
   })
 
   console.log(
-    `[CEO] Updated DeFi fees: swap=${fees.swapProtocolFeeBps}, bridge=${fees.bridgeFeeBps}`,
+    `[Director] Updated DeFi fees: swap=${fees.swapProtocolFeeBps}, bridge=${fees.bridgeFeeBps}`,
   )
   return hash
 }
 
-export async function ceoSetInfrastructureFees(
+export async function directorSetInfrastructureFees(
   fees: InfrastructureFees,
 ): Promise<Hash> {
   const { address, wallet } = ensureWrite()
@@ -406,12 +406,12 @@ export async function ceoSetInfrastructureFees(
   })
 
   console.log(
-    `[CEO] Updated infrastructure fees: sequencer=${fees.sequencerRevenueShareBps}, oracle=${fees.oracleTreasuryShareBps}`,
+    `[Director] Updated infrastructure fees: sequencer=${fees.sequencerRevenueShareBps}, oracle=${fees.oracleTreasuryShareBps}`,
   )
   return hash
 }
 
-export async function ceoSetMarketplaceFees(
+export async function directorSetMarketplaceFees(
   fees: MarketplaceFees,
 ): Promise<Hash> {
   const { address, wallet } = ensureWrite()
@@ -431,12 +431,12 @@ export async function ceoSetMarketplaceFees(
   })
 
   console.log(
-    `[CEO] Updated marketplace fees: bazaar=${fees.bazaarPlatformFeeBps}, x402=${fees.x402ProtocolFeeBps}`,
+    `[Director] Updated marketplace fees: bazaar=${fees.bazaarPlatformFeeBps}, x402=${fees.x402ProtocolFeeBps}`,
   )
   return hash
 }
 
-export async function ceoSetNamesFees(fees: NamesFees): Promise<Hash> {
+export async function directorSetNamesFees(fees: NamesFees): Promise<Hash> {
   const { address, wallet } = ensureWrite()
 
   const hash = await wallet.writeContract({
@@ -453,12 +453,12 @@ export async function ceoSetNamesFees(fees: NamesFees): Promise<Hash> {
   })
 
   console.log(
-    `[CEO] Updated names fees: base=${fees.baseRegistrationPrice}, discount=${fees.agentDiscountBps}`,
+    `[Director] Updated names fees: base=${fees.baseRegistrationPrice}, discount=${fees.agentDiscountBps}`,
   )
   return hash
 }
 
-export async function ceoSetTokenFees(fees: TokenFees): Promise<Hash> {
+export async function directorSetTokenFees(fees: TokenFees): Promise<Hash> {
   const { address, wallet } = ensureWrite()
 
   const hash = await wallet.writeContract({
@@ -480,12 +480,12 @@ export async function ceoSetTokenFees(fees: TokenFees): Promise<Hash> {
   })
 
   console.log(
-    `[CEO] Updated token fees: xlp=${fees.xlpRewardShareBps}, protocol=${fees.protocolShareBps}, burn=${fees.burnShareBps}`,
+    `[Director] Updated token fees: xlp=${fees.xlpRewardShareBps}, protocol=${fees.protocolShareBps}, burn=${fees.burnShareBps}`,
   )
   return hash
 }
 
-export async function ceoSetTokenOverride(
+export async function directorSetTokenOverride(
   token: Address,
   fees: TokenFees,
 ): Promise<Hash> {
@@ -511,12 +511,12 @@ export async function ceoSetTokenOverride(
   })
 
   console.log(
-    `[CEO] Set token override for ${token}: xlp=${fees.xlpRewardShareBps}`,
+    `[Director] Set token override for ${token}: xlp=${fees.xlpRewardShareBps}`,
   )
   return hash
 }
 
-export async function ceoRemoveTokenOverride(token: Address): Promise<Hash> {
+export async function directorRemoveTokenOverride(token: Address): Promise<Hash> {
   const { address, wallet } = ensureWrite()
 
   const hash = await wallet.writeContract({
@@ -528,10 +528,10 @@ export async function ceoRemoveTokenOverride(token: Address): Promise<Hash> {
     args: [token],
   })
 
-  console.log(`[CEO] Removed token override for ${token}`)
+  console.log(`[Director] Removed token override for ${token}`)
   return hash
 }
-export async function ceoSetTreasury(newTreasury: Address): Promise<Hash> {
+export async function directorSetTreasury(newTreasury: Address): Promise<Hash> {
   const { address, wallet } = ensureWrite()
 
   const hash = await wallet.writeContract({
@@ -543,10 +543,10 @@ export async function ceoSetTreasury(newTreasury: Address): Promise<Hash> {
     args: [newTreasury],
   })
 
-  console.log(`[CEO] Updated treasury to ${newTreasury}`)
+  console.log(`[Director] Updated treasury to ${newTreasury}`)
   return hash
 }
-export const ceoFeeSkills = [
+export const directorFeeSkills = [
   {
     id: 'get-fees',
     description: 'Get current fee configuration for all categories',
@@ -658,7 +658,7 @@ export const ceoFeeSkills = [
 ]
 
 /**
- * Execute a CEO fee skill
+ * Execute a Director fee skill
  */
 type SkillParams = {
   appShareBps?: number | string
@@ -715,7 +715,7 @@ export function isTxHashResult(
   return result !== null && 'txHash' in result
 }
 
-export async function executeCEOFeeSkill(
+export async function executeDirectorFeeSkill(
   skillId: string,
   params: SkillParams,
 ): Promise<SkillResult> {
@@ -730,7 +730,7 @@ export async function executeCEOFeeSkill(
       }
 
       case 'set-distribution-fees': {
-        const hash = await ceoSetDistributionFees({
+        const hash = await directorSetDistributionFees({
           appShareBps: Number(params.appShareBps),
           lpShareBps: Number(params.lpShareBps),
           contributorShareBps: Number(params.contributorShareBps),
@@ -741,7 +741,7 @@ export async function executeCEOFeeSkill(
       }
 
       case 'set-compute-fees': {
-        const hash = await ceoSetComputeFees({
+        const hash = await directorSetComputeFees({
           inferencePlatformFeeBps: Number(params.inferencePlatformFeeBps),
           rentalPlatformFeeBps: Number(params.rentalPlatformFeeBps),
           triggerPlatformFeeBps: Number(params.triggerPlatformFeeBps),
@@ -750,7 +750,7 @@ export async function executeCEOFeeSkill(
       }
 
       case 'set-storage-fees': {
-        const hash = await ceoSetStorageFees({
+        const hash = await directorSetStorageFees({
           uploadFeeBps: Number(params.uploadFeeBps),
           retrievalFeeBps: Number(params.retrievalFeeBps),
           pinningFeeBps: Number(params.pinningFeeBps),
@@ -759,7 +759,7 @@ export async function executeCEOFeeSkill(
       }
 
       case 'set-defi-fees': {
-        const hash = await ceoSetDeFiFees({
+        const hash = await directorSetDeFiFees({
           swapProtocolFeeBps: Number(params.swapProtocolFeeBps),
           bridgeFeeBps: Number(params.bridgeFeeBps),
           crossChainMarginBps: Number(params.crossChainMarginBps),
@@ -768,7 +768,7 @@ export async function executeCEOFeeSkill(
       }
 
       case 'set-infrastructure-fees': {
-        const hash = await ceoSetInfrastructureFees({
+        const hash = await directorSetInfrastructureFees({
           sequencerRevenueShareBps: Number(params.sequencerRevenueShareBps),
           oracleTreasuryShareBps: Number(params.oracleTreasuryShareBps),
           rpcPremiumFeeBps: Number(params.rpcPremiumFeeBps),
@@ -778,7 +778,7 @@ export async function executeCEOFeeSkill(
       }
 
       case 'set-marketplace-fees': {
-        const hash = await ceoSetMarketplaceFees({
+        const hash = await directorSetMarketplaceFees({
           bazaarPlatformFeeBps: Number(params.bazaarPlatformFeeBps),
           launchpadCreatorFeeBps: Number(params.launchpadCreatorFeeBps),
           launchpadCommunityFeeBps: Number(params.launchpadCommunityFeeBps),
@@ -791,7 +791,7 @@ export async function executeCEOFeeSkill(
         if (params.baseRegistrationPrice === undefined) {
           throw new Error('baseRegistrationPrice is required')
         }
-        const hash = await ceoSetNamesFees({
+        const hash = await directorSetNamesFees({
           baseRegistrationPrice: toBigInt(params.baseRegistrationPrice),
           agentDiscountBps: Number(params.agentDiscountBps),
           renewalDiscountBps: Number(params.renewalDiscountBps),
@@ -800,7 +800,7 @@ export async function executeCEOFeeSkill(
       }
 
       case 'set-token-fees': {
-        const hash = await ceoSetTokenFees({
+        const hash = await directorSetTokenFees({
           xlpRewardShareBps: Number(params.xlpRewardShareBps),
           protocolShareBps: Number(params.protocolShareBps),
           burnShareBps: Number(params.burnShareBps),
@@ -818,7 +818,7 @@ export async function executeCEOFeeSkill(
         if (!token) {
           throw new Error('token is required for set-token-override')
         }
-        const hash = await ceoSetTokenOverride(token, {
+        const hash = await directorSetTokenOverride(token, {
           xlpRewardShareBps: Number(params.xlpRewardShareBps),
           protocolShareBps: Number(params.protocolShareBps),
           burnShareBps: Number(params.burnShareBps),
@@ -833,13 +833,13 @@ export async function executeCEOFeeSkill(
 
       case 'execute-fee-change': {
         if (!params.changeId) throw new Error('changeId is required')
-        const hash = await ceoExecuteFeeChange(params.changeId)
+        const hash = await directorExecuteFeeChange(params.changeId)
         return { success: true, result: { txHash: hash } }
       }
 
       case 'cancel-fee-change': {
         if (!params.changeId) throw new Error('changeId is required')
-        const hash = await ceoCancelFeeChange(params.changeId)
+        const hash = await directorCancelFeeChange(params.changeId)
         return { success: true, result: { txHash: hash } }
       }
 

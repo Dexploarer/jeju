@@ -37,7 +37,7 @@ export const agentsRoutes = new Elysia({ prefix: '/api/v1/agents' })
             getById: 'GET /api/v1/agents/:id',
             register: 'POST /api/v1/agents/register',
             feedback: 'POST /api/v1/agents/:id/feedback',
-            ceo: 'GET /api/v1/agents/ceo',
+            director: 'GET /api/v1/agents/director',
             council: 'GET /api/v1/agents/council',
           },
         }
@@ -53,7 +53,7 @@ export const agentsRoutes = new Elysia({ prefix: '/api/v1/agents' })
             getById: 'GET /api/v1/agents/:id',
             register: 'POST /api/v1/agents/register',
             feedback: 'POST /api/v1/agents/:id/feedback',
-            ceo: 'GET /api/v1/agents/ceo',
+            director: 'GET /api/v1/agents/director',
             council: 'GET /api/v1/agents/council',
           },
           message: 'Agent registry not available',
@@ -88,13 +88,25 @@ export const agentsRoutes = new Elysia({ prefix: '/api/v1/agents' })
   )
   .get(
     '/:id',
-    async ({ params }) => {
-      const agentId = BigInt(params.id)
-      const identity = await erc8004.getAgentIdentity(agentId)
-      if (!identity) throw new Error('Agent not found')
-      const reputation = await erc8004.getAgentReputation(agentId)
-      const validation = await erc8004.getValidationSummary(agentId)
-      return { ...identity, reputation, validation }
+    async ({ params, set }) => {
+      try {
+        const agentId = BigInt(params.id)
+        const identity = await erc8004.getAgentIdentity(agentId)
+        if (!identity) {
+          set.status = 404
+          return { error: 'Agent not found', agentId: params.id }
+        }
+        const reputation = await erc8004.getAgentReputation(agentId)
+        const validation = await erc8004.getValidationSummary(agentId)
+        return { ...identity, reputation, validation }
+      } catch (error) {
+        set.status = 404
+        return {
+          error: 'Agent not found or registry unavailable',
+          agentId: params.id,
+          details: error instanceof Error ? error.message : String(error),
+        }
+      }
     },
     {
       params: t.Object({ id: t.String() }),
@@ -145,12 +157,12 @@ export const agentsRoutes = new Elysia({ prefix: '/api/v1/agents' })
       detail: { tags: ['agents'], summary: 'Submit feedback for agent' },
     },
   )
-  // CEO endpoints
+  // Director endpoints
   .get(
-    '/ceo',
+    '/director',
     async ({ set }) => {
       try {
-        // Get CEO status via internal call
+        // Get Director status via internal call
         const a2aServer = createAutocratA2AServer(config, blockchain)
         const response = await a2aServer.getRouter().fetch(
           new Request('http://localhost/a2a', {
@@ -164,7 +176,7 @@ export const agentsRoutes = new Elysia({ prefix: '/api/v1/agents' })
                 message: {
                   messageId: `rest-${Date.now()}`,
                   parts: [
-                    { kind: 'data', data: { skillId: 'get-ceo-status' } },
+                    { kind: 'data', data: { skillId: 'get-director-status' } },
                   ],
                 },
               },
@@ -174,37 +186,37 @@ export const agentsRoutes = new Elysia({ prefix: '/api/v1/agents' })
         const result = expectValid(
           A2AJsonRpcResponseSchema,
           await response.json(),
-          'CEO status A2A response',
+          'Director status A2A response',
         )
         return result
       } catch (error) {
         console.warn(
-          '[Agents] Error getting CEO status:',
+          '[Agents] Error getting Director status:',
           error instanceof Error ? error.message : String(error),
         )
         set.status = 200
         return {
           status: 'unavailable',
-          message: 'CEO status not available - contracts may not be deployed',
+          message: 'Director status not available - contracts may not be deployed',
         }
       }
     },
     {
-      detail: { tags: ['agents'], summary: 'Get CEO status' },
+      detail: { tags: ['agents'], summary: 'Get Director status' },
     },
   )
   .get(
-    '/ceo/models',
+    '/director/models',
     async () => {
       const models = await blockchain.getModelCandidates()
       return { models }
     },
     {
-      detail: { tags: ['agents'], summary: 'Get CEO model candidates' },
+      detail: { tags: ['agents'], summary: 'Get Director model candidates' },
     },
   )
   .get(
-    '/ceo/decisions',
+    '/director/decisions',
     async ({ query }) => {
       const limit = parseInt(query.limit ?? '10', 10)
       const decisions = await blockchain.getRecentDecisions(limit)
@@ -212,7 +224,7 @@ export const agentsRoutes = new Elysia({ prefix: '/api/v1/agents' })
     },
     {
       query: t.Object({ limit: t.Optional(t.String()) }),
-      detail: { tags: ['agents'], summary: 'Get recent CEO decisions' },
+      detail: { tags: ['agents'], summary: 'Get recent Director decisions' },
     },
   )
   .get(
@@ -263,7 +275,7 @@ export const agentsRoutes = new Elysia({ prefix: '/api/v1/agents' })
     },
   )
   .post(
-    '/ceo/nominate',
+    '/director/nominate',
     async ({ body }) => {
       // When contract is deployed, this would call the contract
       // For now, return success with the nominated model info
@@ -281,7 +293,7 @@ export const agentsRoutes = new Elysia({ prefix: '/api/v1/agents' })
           isActive: false,
           nominatedAt: Date.now(),
         },
-        message: `Model ${modelName} nominated for CEO election`,
+        message: `Model ${modelName} nominated for Director election`,
       }
     },
     {
@@ -293,7 +305,7 @@ export const agentsRoutes = new Elysia({ prefix: '/api/v1/agents' })
       }),
       detail: {
         tags: ['agents'],
-        summary: 'Nominate a model for CEO election',
+        summary: 'Nominate a model for Director election',
       },
     },
   )

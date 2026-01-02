@@ -112,9 +112,9 @@ export const COUNCIL_ABI = [
   'function gracePeriod() view returns (uint256)',
 ] as const
 
-export const CEO_AGENT_ABI = [
+export const DIRECTOR_AGENT_ABI = [
   'function getCurrentModel() view returns (tuple(string, string, string, address, uint256, uint256, uint256, bool, uint256, uint256, uint256))',
-  'function getCEOStats() view returns (string, uint256, uint256, uint256, uint256, uint256)',
+  'function getDirectorStats() view returns (string, uint256, uint256, uint256, uint256, uint256)',
   'function getDecision(bytes32) view returns (tuple(bytes32, string, bool, bytes32, bytes32, bytes32, uint256, uint256, uint256, bool, bool))',
   'function getAllModels() view returns (string[])',
   'function getModel(string) view returns (tuple(string, string, string, address, uint256, uint256, uint256, bool, uint256, uint256, uint256))',
@@ -126,7 +126,7 @@ export const PROPOSAL_STATUS = [
   'AUTOCRAT_REVIEW',
   'RESEARCH_PENDING',
   'AUTOCRAT_FINAL',
-  'CEO_QUEUE',
+  'DIRECTOR_QUEUE',
   'APPROVED',
   'EXECUTING',
   'COMPLETED',
@@ -206,8 +206,8 @@ export interface ProposalFromContract {
   backerCount: bigint
   hasResearch: boolean
   researchHash: `0x${string}`
-  ceoApproved: boolean
-  ceoDecisionHash: `0x${string}`
+  directorApproved: boolean
+  directorDecisionHash: `0x${string}`
 }
 
 export interface AutocratVoteFromContract {
@@ -248,7 +248,7 @@ export interface DecisionFromContract {
   overridden: boolean
 }
 
-export interface CEOStatsFromContract {
+export interface DirectorStatsFromContract {
   currentModelId: string
   totalDecisions: bigint
   approvedDecisions: bigint

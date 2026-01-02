@@ -163,17 +163,17 @@ function ProposalCard({ proposal, daoId }: ProposalCardProps) {
                 {proposal.boardApprovals}/{proposal.totalBoardMembers} board
               </span>
             </div>
-            {proposal.ceoApproved !== undefined && (
+            {proposal.directorApproved !== undefined && (
               <div className="flex items-center gap-1.5">
                 <Crown className="w-3.5 h-3.5" aria-hidden="true" />
                 <span
                   style={{
-                    color: proposal.ceoApproved
+                    color: proposal.directorApproved
                       ? 'var(--color-success)'
                       : 'var(--color-error)',
                   }}
                 >
-                  CEO {proposal.ceoApproved ? 'Approved' : 'Rejected'}
+                  Director {proposal.directorApproved ? 'Approved' : 'Rejected'}
                 </span>
               </div>
             )}

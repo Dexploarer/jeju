@@ -76,7 +76,7 @@ const STATUS_CONFIG: Record<ProposalStatus, { label: string; color: string }> =
     board_review: { label: 'Board Review', color: 'badge-primary' },
     research: { label: 'Research', color: 'badge-primary' },
     board_final: { label: 'Final Review', color: 'badge-primary' },
-    ceo_queue: { label: 'CEO Queue', color: 'badge-warning' },
+    director_queue: { label: 'Director Queue', color: 'badge-warning' },
     approved: { label: 'Approved', color: 'badge-success' },
     executing: { label: 'Executing', color: 'badge-primary' },
     completed: { label: 'Completed', color: 'badge-success' },
@@ -148,19 +148,19 @@ function VoteCard({
   confidence: number
   votedAt: number
 }) {
-  const isCEO = agentRole === 'CEO'
+  const isDirector = agentRole === 'Director'
 
   return (
     <div className="card">
       <div className="flex items-start gap-3">
         <div
           className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-            isCEO
+            isDirector
               ? 'bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)]'
               : 'bg-[var(--bg-secondary)]'
           }`}
         >
-          {isCEO ? (
+          {isDirector ? (
             <Crown className="w-5 h-5 text-white" aria-hidden="true" />
           ) : (
             <Bot
@@ -373,21 +373,21 @@ function ProposalView({
               <div className="mb-4">
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-[var(--text-secondary)]">
-                    CEO Decision
+                    Director Decision
                   </span>
                   <span className="text-[var(--text-primary)]">
-                    {proposal.ceoDecision
-                      ? proposal.ceoDecision.approved
+                    {proposal.directorDecision
+                      ? proposal.directorDecision.approved
                         ? 'Approved'
                         : 'Rejected'
                       : 'Pending'}
                   </span>
                 </div>
                 <div className="h-2 bg-[var(--bg-secondary)] rounded-full overflow-hidden">
-                  {proposal.ceoDecision && (
+                  {proposal.directorDecision && (
                     <div
                       className={`h-full rounded-full ${
-                        proposal.ceoDecision.approved
+                        proposal.directorDecision.approved
                           ? 'bg-[var(--color-success)]'
                           : 'bg-[var(--color-error)]'
                       }`}

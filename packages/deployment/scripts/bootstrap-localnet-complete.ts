@@ -1149,13 +1149,13 @@ class CompleteBootstrapper {
     contracts: Partial<BootstrapResult['contracts']>,
   ): Promise<string> {
     try {
-      // Constructor: (identityRegistry, treasury, ceoAgent, initialOwner)
+      // Constructor: (identityRegistry, treasury, directorAgent, initialOwner)
       const securityBountyRegistry = this.deployContractFromPackages(
         'src/security/SecurityBountyRegistry.sol:SecurityBountyRegistry',
         [
           contracts.identityRegistry || this.deployerAddress,
           this.deployerAddress, // treasury
-          this.deployerAddress, // ceoAgent (will be updated to AI CEO later)
+          this.deployerAddress, // directorAgent (will be updated to AI Director later)
           this.deployerAddress, // initialOwner
         ],
         'SecurityBountyRegistry (Bug Bounty)',

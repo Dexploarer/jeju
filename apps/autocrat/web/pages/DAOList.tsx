@@ -89,7 +89,7 @@ function DAOCard({ dao }: DAOCardProps) {
             {dao.description}
           </p>
 
-          {/* CEO Info */}
+          {/* Director Info */}
           <div className="mt-3 flex items-center gap-2 text-sm">
             <div
               className="w-6 h-6 rounded-full flex items-center justify-center"
@@ -97,7 +97,7 @@ function DAOCard({ dao }: DAOCardProps) {
             >
               <Crown className="w-3 h-3 text-white" aria-hidden="true" />
             </div>
-            <span style={{ color: 'var(--text-primary)' }}>{dao.ceoName}</span>
+            <span style={{ color: 'var(--text-primary)' }}>{dao.directorName}</span>
             <span style={{ color: 'var(--text-tertiary)' }}>·</span>
             <span style={{ color: 'var(--text-tertiary)' }}>
               {dao.boardMemberCount} board members
@@ -250,7 +250,7 @@ function DAOCardSkeleton() {
             className="skeleton h-10 rounded-lg"
             style={{ backgroundColor: 'var(--bg-tertiary)' }}
           />
-          {/* CEO skeleton */}
+          {/* Director skeleton */}
           <div className="flex items-center gap-2">
             <div
               className="skeleton w-6 h-6 rounded-full"

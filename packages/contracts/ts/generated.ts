@@ -6176,14 +6176,14 @@ export const daoFundingAbi = [
   {
     type: 'function',
     inputs: [],
-    name: 'CEO_WEIGHT_LARGE_CHANGE_THRESHOLD',
+    name: 'DIRECTOR_WEIGHT_LARGE_CHANGE_THRESHOLD',
     outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
     stateMutability: 'view',
   },
   {
     type: 'function',
     inputs: [],
-    name: 'CEO_WEIGHT_TIMELOCK',
+    name: 'DIRECTOR_WEIGHT_TIMELOCK',
     outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
     stateMutability: 'view',
   },
@@ -6204,14 +6204,14 @@ export const daoFundingAbi = [
   {
     type: 'function',
     inputs: [{ name: 'proposalId', internalType: 'bytes32', type: 'bytes32' }],
-    name: 'cancelCEOWeightProposal',
+    name: 'cancelDirectorWeightProposal',
     outputs: [],
     stateMutability: 'nonpayable',
   },
   {
     type: 'function',
     inputs: [{ name: '', internalType: 'bytes32', type: 'bytes32' }],
-    name: 'ceoWeightProposals',
+    name: 'directorWeightProposals',
     outputs: [
       { name: 'projectId', internalType: 'bytes32', type: 'bytes32' },
       { name: 'newWeight', internalType: 'uint256', type: 'uint256' },
@@ -6253,7 +6253,7 @@ export const daoFundingAbi = [
       { name: 'cooldownPeriod', internalType: 'uint256', type: 'uint256' },
       { name: 'matchingMultiplier', internalType: 'uint256', type: 'uint256' },
       { name: 'quadraticEnabled', internalType: 'bool', type: 'bool' },
-      { name: 'ceoWeightCap', internalType: 'uint256', type: 'uint256' },
+      { name: 'directorWeightCap', internalType: 'uint256', type: 'uint256' },
       {
         name: 'minStakePerParticipant',
         internalType: 'uint256',
@@ -6286,7 +6286,7 @@ export const daoFundingAbi = [
   {
     type: 'function',
     inputs: [{ name: 'proposalId', internalType: 'bytes32', type: 'bytes32' }],
-    name: 'executeCEOWeightProposal',
+    name: 'executeDirectorWeightProposal',
     outputs: [],
     stateMutability: 'nonpayable',
   },
@@ -6339,7 +6339,7 @@ export const daoFundingAbi = [
             internalType: 'uint256[]',
             type: 'uint256[]',
           },
-          { name: 'ceoWeight', internalType: 'uint256', type: 'uint256' },
+          { name: 'directorWeight', internalType: 'uint256', type: 'uint256' },
           { name: 'communityStake', internalType: 'uint256', type: 'uint256' },
           { name: 'totalFunded', internalType: 'uint256', type: 'uint256' },
           {
@@ -6398,7 +6398,7 @@ export const daoFundingAbi = [
             type: 'uint256',
           },
           { name: 'quadraticEnabled', internalType: 'bool', type: 'bool' },
-          { name: 'ceoWeightCap', internalType: 'uint256', type: 'uint256' },
+          { name: 'directorWeightCap', internalType: 'uint256', type: 'uint256' },
           {
             name: 'minStakePerParticipant',
             internalType: 'uint256',
@@ -6446,7 +6446,7 @@ export const daoFundingAbi = [
     outputs: [
       {
         name: '',
-        internalType: 'struct DAOFunding.CEOWeightProposal[]',
+        internalType: 'struct DAOFunding.DirectorWeightProposal[]',
         type: 'tuple[]',
         components: [
           { name: 'projectId', internalType: 'bytes32', type: 'bytes32' },
@@ -6495,7 +6495,7 @@ export const daoFundingAbi = [
             internalType: 'uint256[]',
             type: 'uint256[]',
           },
-          { name: 'ceoWeight', internalType: 'uint256', type: 'uint256' },
+          { name: 'directorWeight', internalType: 'uint256', type: 'uint256' },
           { name: 'communityStake', internalType: 'uint256', type: 'uint256' },
           { name: 'totalFunded', internalType: 'uint256', type: 'uint256' },
           {
@@ -6546,7 +6546,7 @@ export const daoFundingAbi = [
             internalType: 'uint256[]',
             type: 'uint256[]',
           },
-          { name: 'ceoWeight', internalType: 'uint256', type: 'uint256' },
+          { name: 'directorWeight', internalType: 'uint256', type: 'uint256' },
           { name: 'communityStake', internalType: 'uint256', type: 'uint256' },
           { name: 'totalFunded', internalType: 'uint256', type: 'uint256' },
           {
@@ -6639,7 +6639,7 @@ export const daoFundingAbi = [
       { name: 'projectId', internalType: 'bytes32', type: 'bytes32' },
       { name: 'weight', internalType: 'uint256', type: 'uint256' },
     ],
-    name: 'proposeCEOWeight',
+    name: 'proposeDirectorWeight',
     outputs: [],
     stateMutability: 'nonpayable',
   },
@@ -6696,7 +6696,7 @@ export const daoFundingAbi = [
             type: 'uint256',
           },
           { name: 'quadraticEnabled', internalType: 'bool', type: 'bool' },
-          { name: 'ceoWeightCap', internalType: 'uint256', type: 'uint256' },
+          { name: 'directorWeightCap', internalType: 'uint256', type: 'uint256' },
           {
             name: 'minStakePerParticipant',
             internalType: 'uint256',
@@ -6727,7 +6727,7 @@ export const daoFundingAbi = [
             type: 'uint256',
           },
           { name: 'quadraticEnabled', internalType: 'bool', type: 'bool' },
-          { name: 'ceoWeightCap', internalType: 'uint256', type: 'uint256' },
+          { name: 'directorWeightCap', internalType: 'uint256', type: 'uint256' },
           {
             name: 'minStakePerParticipant',
             internalType: 'uint256',
@@ -6799,7 +6799,7 @@ export const daoFundingAbi = [
         indexed: true,
       },
     ],
-    name: 'CEOWeightProposalCancelled',
+    name: 'DirectorWeightProposalCancelled',
   },
   {
     type: 'event',
@@ -6818,7 +6818,7 @@ export const daoFundingAbi = [
         indexed: false,
       },
     ],
-    name: 'CEOWeightProposalExecuted',
+    name: 'DirectorWeightProposalExecuted',
   },
   {
     type: 'event',
@@ -6849,7 +6849,7 @@ export const daoFundingAbi = [
         indexed: false,
       },
     ],
-    name: 'CEOWeightProposed',
+    name: 'DirectorWeightProposed',
   },
   {
     type: 'event',
@@ -6874,7 +6874,7 @@ export const daoFundingAbi = [
         indexed: false,
       },
     ],
-    name: 'CEOWeightSet',
+    name: 'DirectorWeightSet',
   },
   {
     type: 'event',
@@ -7231,8 +7231,8 @@ export const daoRegistryAbi = [
       { name: 'treasury', internalType: 'address', type: 'address' },
       { name: 'manifestCid', internalType: 'string', type: 'string' },
       {
-        name: 'ceoPersona',
-        internalType: 'struct IDAORegistry.CEOPersona',
+        name: 'directorPersona',
+        internalType: 'struct IDAORegistry.DirectorPersona',
         type: 'tuple',
         components: [
           { name: 'name', internalType: 'string', type: 'string' },
@@ -7304,11 +7304,11 @@ export const daoRegistryAbi = [
   {
     type: 'function',
     inputs: [{ name: 'daoId', internalType: 'bytes32', type: 'bytes32' }],
-    name: 'getCEOPersona',
+    name: 'getDirectorPersona',
     outputs: [
       {
         name: '',
-        internalType: 'struct IDAORegistry.CEOPersona',
+        internalType: 'struct IDAORegistry.DirectorPersona',
         type: 'tuple',
         components: [
           { name: 'name', internalType: 'string', type: 'string' },
@@ -7358,9 +7358,9 @@ export const daoRegistryAbi = [
           { name: 'description', internalType: 'string', type: 'string' },
           { name: 'treasury', internalType: 'address', type: 'address' },
           { name: 'council', internalType: 'address', type: 'address' },
-          { name: 'ceoAgent', internalType: 'address', type: 'address' },
+          { name: 'directorAgent', internalType: 'address', type: 'address' },
           { name: 'feeConfig', internalType: 'address', type: 'address' },
-          { name: 'ceoModelId', internalType: 'bytes32', type: 'bytes32' },
+          { name: 'directorModelId', internalType: 'bytes32', type: 'bytes32' },
           { name: 'manifestCid', internalType: 'string', type: 'string' },
           {
             name: 'status',
@@ -7391,9 +7391,9 @@ export const daoRegistryAbi = [
           { name: 'description', internalType: 'string', type: 'string' },
           { name: 'treasury', internalType: 'address', type: 'address' },
           { name: 'council', internalType: 'address', type: 'address' },
-          { name: 'ceoAgent', internalType: 'address', type: 'address' },
+          { name: 'directorAgent', internalType: 'address', type: 'address' },
           { name: 'feeConfig', internalType: 'address', type: 'address' },
-          { name: 'ceoModelId', internalType: 'bytes32', type: 'bytes32' },
+          { name: 'directorModelId', internalType: 'bytes32', type: 'bytes32' },
           { name: 'manifestCid', internalType: 'string', type: 'string' },
           {
             name: 'status',
@@ -7436,9 +7436,9 @@ export const daoRegistryAbi = [
               { name: 'description', internalType: 'string', type: 'string' },
               { name: 'treasury', internalType: 'address', type: 'address' },
               { name: 'council', internalType: 'address', type: 'address' },
-              { name: 'ceoAgent', internalType: 'address', type: 'address' },
+              { name: 'directorAgent', internalType: 'address', type: 'address' },
               { name: 'feeConfig', internalType: 'address', type: 'address' },
-              { name: 'ceoModelId', internalType: 'bytes32', type: 'bytes32' },
+              { name: 'directorModelId', internalType: 'bytes32', type: 'bytes32' },
               { name: 'manifestCid', internalType: 'string', type: 'string' },
               {
                 name: 'status',
@@ -7451,8 +7451,8 @@ export const daoRegistryAbi = [
             ],
           },
           {
-            name: 'ceoPersona',
-            internalType: 'struct IDAORegistry.CEOPersona',
+            name: 'directorPersona',
+            internalType: 'struct IDAORegistry.DirectorPersona',
             type: 'tuple',
             components: [
               { name: 'name', internalType: 'string', type: 'string' },
@@ -7660,7 +7660,7 @@ export const daoRegistryAbi = [
       { name: 'daoId', internalType: 'bytes32', type: 'bytes32' },
       { name: 'modelId', internalType: 'bytes32', type: 'bytes32' },
     ],
-    name: 'setCEOModel',
+    name: 'setDirectorModel',
     outputs: [],
     stateMutability: 'nonpayable',
   },
@@ -7670,7 +7670,7 @@ export const daoRegistryAbi = [
       { name: 'daoId', internalType: 'bytes32', type: 'bytes32' },
       {
         name: 'persona',
-        internalType: 'struct IDAORegistry.CEOPersona',
+        internalType: 'struct IDAORegistry.DirectorPersona',
         type: 'tuple',
         components: [
           { name: 'name', internalType: 'string', type: 'string' },
@@ -7681,7 +7681,7 @@ export const daoRegistryAbi = [
         ],
       },
     ],
-    name: 'setCEOPersona',
+    name: 'setDirectorPersona',
     outputs: [],
     stateMutability: 'nonpayable',
   },
@@ -7689,9 +7689,9 @@ export const daoRegistryAbi = [
     type: 'function',
     inputs: [
       { name: 'daoId', internalType: 'bytes32', type: 'bytes32' },
-      { name: 'ceoAgent', internalType: 'address', type: 'address' },
+      { name: 'directorAgent', internalType: 'address', type: 'address' },
     ],
-    name: 'setDAOCEOAgent',
+    name: 'setDAODirectorAgent',
     outputs: [],
     stateMutability: 'nonpayable',
   },
@@ -7883,7 +7883,7 @@ export const daoRegistryAbi = [
         indexed: false,
       },
     ],
-    name: 'CEOModelChanged',
+    name: 'DirectorModelChanged',
   },
   {
     type: 'event',
@@ -7903,7 +7903,7 @@ export const daoRegistryAbi = [
         indexed: false,
       },
     ],
-    name: 'CEOPersonaUpdated',
+    name: 'DirectorPersonaUpdated',
   },
   {
     type: 'event',
@@ -10787,7 +10787,7 @@ export const feeConfigAbi = [
     type: 'constructor',
     inputs: [
       { name: '_council', internalType: 'address', type: 'address' },
-      { name: '_ceo', internalType: 'address', type: 'address' },
+      { name: '_director', internalType: 'address', type: 'address' },
       { name: '_treasury', internalType: 'address', type: 'address' },
       { name: 'initialOwner', internalType: 'address', type: 'address' },
     ],
@@ -10824,7 +10824,7 @@ export const feeConfigAbi = [
   {
     type: 'function',
     inputs: [],
-    name: 'ceo',
+    name: 'director',
     outputs: [{ name: '', internalType: 'address', type: 'address' }],
     stateMutability: 'view',
   },
@@ -11339,8 +11339,8 @@ export const feeConfigAbi = [
   },
   {
     type: 'function',
-    inputs: [{ name: 'newCeo', internalType: 'address', type: 'address' }],
-    name: 'setCEO',
+    inputs: [{ name: 'newDirector', internalType: 'address', type: 'address' }],
+    name: 'setDirector',
     outputs: [],
     stateMutability: 'nonpayable',
   },
@@ -11592,19 +11592,19 @@ export const feeConfigAbi = [
     anonymous: false,
     inputs: [
       {
-        name: 'oldCeo',
+        name: 'oldDirector',
         internalType: 'address',
         type: 'address',
         indexed: true,
       },
       {
-        name: 'newCeo',
+        name: 'newDirector',
         internalType: 'address',
         type: 'address',
         indexed: true,
       },
     ],
-    name: 'CEOUpdated',
+    name: 'DirectorUpdated',
   },
   {
     type: 'event',
@@ -24463,7 +24463,7 @@ export const paymentRequestRegistryAbi = [
       { name: 'modifiedAmount', internalType: 'uint256', type: 'uint256' },
       { name: 'reason', internalType: 'string', type: 'string' },
     ],
-    name: 'ceoDecision',
+    name: 'directorDecision',
     outputs: [],
     stateMutability: 'nonpayable',
   },
@@ -24494,7 +24494,7 @@ export const paymentRequestRegistryAbi = [
   {
     type: 'function',
     inputs: [{ name: 'requestId', internalType: 'bytes32', type: 'bytes32' }],
-    name: 'escalateToCEO',
+    name: 'escalateToDirector',
     outputs: [],
     stateMutability: 'nonpayable',
   },
@@ -24525,11 +24525,11 @@ export const paymentRequestRegistryAbi = [
   {
     type: 'function',
     inputs: [{ name: 'requestId', internalType: 'bytes32', type: 'bytes32' }],
-    name: 'getCEODecision',
+    name: 'getDirectorDecision',
     outputs: [
       {
         name: '',
-        internalType: 'struct PaymentRequestRegistry.CEODecision',
+        internalType: 'struct PaymentRequestRegistry.DirectorDecision',
         type: 'tuple',
         components: [
           { name: 'approved', internalType: 'bool', type: 'bool' },
@@ -24594,7 +24594,7 @@ export const paymentRequestRegistryAbi = [
             internalType: 'uint256',
             type: 'uint256',
           },
-          { name: 'ceoCanOverride', internalType: 'bool', type: 'bool' },
+          { name: 'directorCanOverride', internalType: 'bool', type: 'bool' },
           {
             name: 'maxAutoApproveAmount',
             internalType: 'uint256',
@@ -24773,7 +24773,7 @@ export const paymentRequestRegistryAbi = [
             internalType: 'uint256',
             type: 'uint256',
           },
-          { name: 'ceoCanOverride', internalType: 'bool', type: 'bool' },
+          { name: 'directorCanOverride', internalType: 'bool', type: 'bool' },
           {
             name: 'maxAutoApproveAmount',
             internalType: 'uint256',
@@ -24884,7 +24884,7 @@ export const paymentRequestRegistryAbi = [
         indexed: false,
       },
     ],
-    name: 'CEODecisionMade',
+    name: 'DirectorDecisionMade',
   },
   {
     type: 'event',
@@ -25148,7 +25148,7 @@ export const paymentRequestRegistryAbi = [
   { type: 'error', inputs: [], name: 'InvalidAmount' },
   { type: 'error', inputs: [], name: 'InvalidEvidence' },
   { type: 'error', inputs: [], name: 'NotAuthorized' },
-  { type: 'error', inputs: [], name: 'NotCEO' },
+  { type: 'error', inputs: [], name: 'NotDirector' },
   { type: 'error', inputs: [], name: 'NotCouncilMember' },
   { type: 'error', inputs: [], name: 'NotRequester' },
   {

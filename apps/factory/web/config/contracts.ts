@@ -14,7 +14,13 @@ const CONTRACTS = {
       token: '0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44',
     },
     security: {
+      // SecurityBountyRegistry - for security/bug bounty reports (encrypted submissions)
       bountyRegistry: '0x0B36Ef2cb78859C20c8C1380CeAdB75043aA92b3',
+    },
+    work: {
+      // BountyRegistry - for general task bounties with escrow and milestones
+      // TODO: Deploy work/BountyRegistry.sol and add address here
+      workBountyRegistry: '',
     },
     dws: {
       storageManager: '0x610178da211fef7d417bc0e6fed39f05609ad788',
@@ -56,6 +62,9 @@ const CONTRACTS = {
     security: {
       bountyRegistry: '',
     },
+    work: {
+      workBountyRegistry: '',
+    },
     dws: {
       storageManager: '0xBEc49fA140aCaA83533fB00A2BB19bDdd0290f25',
       workerRegistry: '0xD84379CEae14AA33C123Af12424A37803F885889',
@@ -95,6 +104,9 @@ const CONTRACTS = {
     },
     security: {
       bountyRegistry: '',
+    },
+    work: {
+      workBountyRegistry: '',
     },
     dws: {
       storageManager: '',
@@ -171,6 +183,7 @@ function getNetwork(): NetworkType {
 type ContractCategory =
   | 'registry'
   | 'security'
+  | 'work'
   | 'dws'
   | 'nodeStaking'
   | 'payments'
@@ -193,9 +206,15 @@ const CONTRACT_KEY_MAP: Record<string, ContractMapping> = {
   validationRegistry: { category: 'registry', name: 'validation' },
   tokenRegistry: { category: 'registry', name: 'token' },
 
-  // Security contracts
-  BOUNTY_REGISTRY: { category: 'security', name: 'bountyRegistry' },
-  bountyRegistry: { category: 'security', name: 'bountyRegistry' },
+  // Security contracts (SecurityBountyRegistry - for bug bounties)
+  SECURITY_BOUNTY_REGISTRY: { category: 'security', name: 'bountyRegistry' },
+  securityBountyRegistry: { category: 'security', name: 'bountyRegistry' },
+
+  // Work contracts (BountyRegistry - for general task bounties with escrow)
+  BOUNTY_REGISTRY: { category: 'work', name: 'workBountyRegistry' },
+  WORK_BOUNTY_REGISTRY: { category: 'work', name: 'workBountyRegistry' },
+  bountyRegistry: { category: 'work', name: 'workBountyRegistry' },
+  workBountyRegistry: { category: 'work', name: 'workBountyRegistry' },
 
   // DWS contracts
   STORAGE_MANAGER: { category: 'dws', name: 'storageManager' },

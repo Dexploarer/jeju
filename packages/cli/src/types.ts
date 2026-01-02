@@ -140,8 +140,8 @@ export interface AppManifest {
 
 // ============ DAO Configuration Types ============
 
-/** CEO/Leader persona for DAO governance */
-export interface DAOCEOConfig {
+/** Director/Leader persona for DAO governance */
+export interface DAODirectorConfig {
   name: string
   description: string
   personality: string
@@ -180,7 +180,7 @@ export interface DAOFundingConfig {
   cooldownPeriod: number
   matchingMultiplier: number
   quadraticEnabled: boolean
-  ceoWeightCap: number
+  directorWeightCap: number
 }
 
 /** Fee category for DAO-controlled fees */
@@ -240,7 +240,7 @@ export interface DAONetworkDeployment {
 export interface DAOConfig {
   /** Governance configuration */
   governance: {
-    ceo: DAOCEOConfig
+    director: DAODirectorConfig
     council: {
       members: DAOCouncilMember[]
     }
@@ -276,7 +276,7 @@ export interface DAODeploymentResult {
     daoRegistry: string
     daoFunding: string
     council: string | null
-    ceoAgent: string
+    directorAgent: string
     treasury: string
     feeConfig?: string
   }
@@ -333,11 +333,11 @@ export const WELL_KNOWN_KEYS = {
       role: 'council-security',
     },
     {
-      name: 'Account #5 (CEO Agent)',
+      name: 'Account #5 (Director Agent)',
       address: '0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc',
       privateKey:
         '0x8b3a350cf5c34c9194ca85829a2df0ec3153be0318b5e2d3348e872092edffba',
-      role: 'ceo-agent',
+      role: 'director-agent',
     },
     {
       name: 'Account #6 (User)',
@@ -366,8 +366,8 @@ export function getDevCouncilAddresses(): Record<string, string> {
   }
 }
 
-/** Get CEO agent address for localnet */
-export function getDevCEOAddress(): string {
+/** Get Director agent address for localnet */
+export function getDevDirectorAddress(): string {
   return WELL_KNOWN_KEYS.dev[5].address
 }
 

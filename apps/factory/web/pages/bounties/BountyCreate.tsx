@@ -3,15 +3,25 @@ import {
   ArrowLeft,
   Calendar,
   DollarSign,
+  ExternalLink,
+  Link2,
+  Loader2,
   Plus,
+  Shield,
   Tag,
   Trash2,
 } from 'lucide-react'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { useAccount } from 'wagmi'
+import { useAccount, useBalance } from 'wagmi'
 import { Button, PageHeader } from '../../components/shared'
+import {
+  calculateRequiredStake,
+  calculateTotalRequired,
+  useBountyContractAvailable,
+  useCreateBountyOnChain,
+} from '../../hooks/useBountyContract'
 import { api, extractData } from '../../lib/client'
 
 interface Milestone {
@@ -23,6 +33,7 @@ interface Milestone {
 export function BountyCreatePage() {
   const navigate = useNavigate()
   const { address, isConnected } = useAccount()
+  const { data: balance } = useBalance({ address })
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -39,6 +50,34 @@ export function BountyCreatePage() {
     },
   ])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [useEscrow, setUseEscrow] = useState(true)
+  const [specUri, setSpecUri] = useState('')
+
+  // On-chain bounty creation
+  const contractAvailable = useBountyContractAvailable()
+  const {
+    createBounty: createOnChainBounty,
+    isPending: isOnChainPending,
+    isConfirming,
+    isSuccess: isOnChainSuccess,
+    txHash,
+    reset: resetOnChain,
+  } = useCreateBountyOnChain()
+
+  // Calculate escrow amounts
+  const stakeRequired = calculateRequiredStake(reward)
+  const totalRequired = calculateTotalRequired(reward)
+  const hasEnoughBalance =
+    balance && Number(balance.formatted) >= Number(totalRequired)
+
+  // Navigate on successful on-chain creation
+  useEffect(() => {
+    if (isOnChainSuccess && txHash) {
+      toast.success('Bounty created on-chain with escrow')
+      navigate('/bounties')
+      resetOnChain()
+    }
+  }, [isOnChainSuccess, txHash, navigate, resetOnChain])
 
   const addSkill = useCallback(() => {
     const skill = skillInput.trim()
@@ -88,9 +127,37 @@ export function BountyCreatePage() {
       return
     }
 
-    setIsSubmitting(true)
-
     const deadlineMs = new Date(deadline).getTime()
+    const deadlineSecs = Math.floor(deadlineMs / 1000)
+
+    // On-chain creation with escrow
+    if (useEscrow && contractAvailable && currency === 'ETH') {
+      if (!hasEnoughBalance) {
+        toast.error(`Insufficient balance. Need ${totalRequired} ETH`)
+        return
+      }
+
+      try {
+        await createOnChainBounty({
+          title,
+          description,
+          specUri: specUri || '',
+          deadline: deadlineSecs,
+          rewardAmount: reward,
+          milestoneTitles: milestones.map((m) => m.title),
+          milestoneDescriptions: milestones.map((m) => m.description),
+          milestonePercentages: milestones.map((m) => m.percentage * 100), // Convert to basis points
+          requiredSkills: skills,
+        })
+      } catch (error) {
+        console.error('On-chain bounty creation failed:', error)
+        toast.error('Failed to create on-chain bounty')
+      }
+      return
+    }
+
+    // Off-chain creation (database only)
+    setIsSubmitting(true)
 
     const response = await api.api.bounties.post({
       title,
@@ -135,6 +202,84 @@ export function BountyCreatePage() {
       />
 
       <form onSubmit={handleSubmit} className="space-y-6 max-w-3xl">
+        {/* Escrow Mode Selection */}
+        {contractAvailable && (
+          <div className="card p-6 animate-in">
+            <div className="flex items-start gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <Shield className="w-5 h-5 text-success-400" />
+                  <h3 className="font-semibold text-surface-100">
+                    On-Chain Escrow
+                  </h3>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={useEscrow}
+                      onChange={(e) => setUseEscrow(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-surface-700 peer-focus:ring-2 peer-focus:ring-success-400/50 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-success-500" />
+                  </label>
+                </div>
+                <p className="text-sm text-surface-400">
+                  {useEscrow
+                    ? 'Funds are locked in a smart contract. Released when work is approved. 10% stake required.'
+                    : 'Off-chain bounty without escrow. Payments handled manually.'}
+                </p>
+                {useEscrow && reward && (
+                  <div className="mt-3 p-3 bg-surface-800/50 rounded-lg text-sm">
+                    <div className="flex justify-between text-surface-300">
+                      <span>Reward:</span>
+                      <span>{reward} ETH</span>
+                    </div>
+                    <div className="flex justify-between text-surface-300">
+                      <span>Stake (10%):</span>
+                      <span>{stakeRequired} ETH</span>
+                    </div>
+                    <div className="flex justify-between font-medium text-surface-100 border-t border-surface-700 mt-2 pt-2">
+                      <span>Total Required:</span>
+                      <span>{totalRequired} ETH</span>
+                    </div>
+                    {!hasEnoughBalance && balance && (
+                      <p className="text-warning-400 text-xs mt-2">
+                        ⚠️ Insufficient balance ({balance.formatted} ETH)
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Transaction Status */}
+        {(isOnChainPending || isConfirming) && (
+          <div className="card p-6 animate-in bg-info-500/10 border-info-500/30">
+            <div className="flex items-center gap-3">
+              <Loader2 className="w-5 h-5 text-info-400 animate-spin" />
+              <div>
+                <h4 className="font-medium text-info-300">
+                  {isOnChainPending
+                    ? 'Waiting for wallet confirmation...'
+                    : 'Confirming transaction...'}
+                </h4>
+                {txHash && (
+                  <a
+                    href={`https://explorer.jejunetwork.org/tx/${txHash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-info-400 hover:text-info-300 flex items-center gap-1"
+                  >
+                    View on explorer
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Basic Info */}
         <div className="card p-6 space-y-4 animate-in">
           <h3 className="font-semibold text-surface-100 mb-4">
@@ -175,6 +320,29 @@ export function BountyCreatePage() {
               required
             />
           </div>
+
+          {useEscrow && (
+            <div>
+              <label
+                htmlFor="specUri"
+                className="block text-sm font-medium text-surface-300 mb-2"
+              >
+                <Link2 className="w-4 h-4 inline mr-1" />
+                Specification URI (optional)
+              </label>
+              <input
+                id="specUri"
+                type="text"
+                value={specUri}
+                onChange={(e) => setSpecUri(e.target.value)}
+                placeholder="ipfs://... or https://..."
+                className="input w-full"
+              />
+              <p className="text-xs text-surface-500 mt-1">
+                IPFS or HTTP link to detailed specifications document
+              </p>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -386,12 +554,46 @@ export function BountyCreatePage() {
           <Button
             type="submit"
             variant="primary"
-            loading={isSubmitting}
-            disabled={!isConnected || !isValidPercentage}
+            loading={isSubmitting || isOnChainPending || isConfirming}
+            disabled={
+              !isConnected ||
+              !isValidPercentage ||
+              (useEscrow && currency === 'ETH' && !hasEnoughBalance)
+            }
           >
-            {!isConnected ? 'Connect Wallet' : 'Create Bounty'}
+            {!isConnected
+              ? 'Connect Wallet'
+              : isOnChainPending
+                ? 'Confirm in Wallet...'
+                : isConfirming
+                  ? 'Confirming...'
+                  : useEscrow && contractAvailable
+                    ? `Create with ${totalRequired} ETH`
+                    : 'Create Bounty'}
           </Button>
         </div>
+
+        {/* Info about escrow */}
+        {useEscrow && contractAvailable && (
+          <div className="p-4 bg-surface-800/50 rounded-lg text-sm text-surface-400">
+            <div className="flex items-start gap-2">
+              <Info className="w-4 h-4 mt-0.5 text-info-400 shrink-0" />
+              <div>
+                <p className="font-medium text-surface-300 mb-1">
+                  How escrow works:
+                </p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>Your reward + 10% stake is locked in the smart contract</li>
+                  <li>Workers apply and you select the best candidate</li>
+                  <li>Worker submits deliverables for each milestone</li>
+                  <li>You approve milestones to release payments</li>
+                  <li>Your stake is returned when the bounty completes</li>
+                  <li>Disputes are resolved via guardian validators</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
       </form>
     </div>
   )

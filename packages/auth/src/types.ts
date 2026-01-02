@@ -309,7 +309,7 @@ export interface CouncilConfig {
   councilId: Hex
   name: string
   treasury: Address
-  ceoAgent: Address
+  directorAgent: Address
   councilAgents: Address[]
   oauth3App: Hex
   jnsName: string

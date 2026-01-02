@@ -84,14 +84,14 @@ export const fundingRoutes = new Elysia({
     async ({ params }) => {
       const { fundingOracle } = initServices()
       if (!fundingOracle) return { error: 'DAO Registry not deployed' }
-      const recommendations = await fundingOracle.generateCEORecommendations(
+      const recommendations = await fundingOracle.generateDirectorRecommendations(
         params.daoId,
       )
       return recommendations
     },
     {
       params: t.Object({ daoId: t.String() }),
-      detail: { tags: ['funding'], summary: 'Get CEO funding recommendations' },
+      detail: { tags: ['funding'], summary: 'Get Director funding recommendations' },
     },
   )
   .get(
