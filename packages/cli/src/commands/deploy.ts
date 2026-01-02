@@ -1569,6 +1569,49 @@ deployCommand
   })
 
 deployCommand
+  .command('landers')
+  .description('Deploy lander pages for otto, vpn, wallet, node to DWS')
+  .option(
+    '--network <network>',
+    'Network: localnet | testnet | mainnet',
+    'localnet',
+  )
+  .option('--app <name>', 'Deploy only a specific app (otto, vpn, wallet, node)')
+  .option('--skip-build', 'Skip building apps')
+  .option('--skip-jns', 'Skip JNS registration')
+  .option('--dry-run', 'Simulate without making changes')
+  .action(async (options) => {
+    const rootDir = findMonorepoRoot()
+    const scriptPath = join(
+      rootDir,
+      'packages/deployment/scripts/deploy/deploy-landers.ts',
+    )
+
+    if (!existsSync(scriptPath)) {
+      logger.error('Landers deploy script not found')
+      return
+    }
+
+    logger.header('LANDERS DEPLOYMENT')
+    logger.keyValue('Network', options.network)
+    if (options.app) {
+      logger.keyValue('App', options.app)
+    }
+    logger.newline()
+
+    const args: string[] = ['--network', options.network]
+    if (options.app) args.push('--app', options.app)
+    if (options.skipBuild) args.push('--skip-build')
+    if (options.skipJns) args.push('--skip-jns')
+    if (options.dryRun) args.push('--dry-run')
+
+    await execa('bun', ['run', scriptPath, ...args], {
+      cwd: rootDir,
+      stdio: 'inherit',
+    })
+  })
+
+deployCommand
   .command('dws-services')
   .description('Deploy decentralized services to DWS (OAuth3, KMS, Messaging)')
   .option(

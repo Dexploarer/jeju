@@ -31,14 +31,6 @@ export function getNetwork(): NetworkType {
 // For backwards compatibility, but prefer getNetwork() in new code
 export const NETWORK: NetworkType = getCurrentNetwork()
 
-/**
- * Get services config for current network.
- * Must be called at runtime for correct network detection.
- */
-function getServices() {
-  return getServicesConfig(getCurrentNetwork())
-}
-
 // Chain configuration - these are safe as constants since chainId detection
 // uses hostname which is available synchronously
 export const CHAIN_ID = getChainId(NETWORK)

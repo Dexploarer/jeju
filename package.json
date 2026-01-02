@@ -5,7 +5,9 @@
   "type": "module",
   "workspaces": [
     "packages/*",
-    "apps/*"
+    "apps/*",
+    "vendor/babylon",
+    "vendor/eliza-cloud-v2"
   ],
   "overrides": {
     "bigint-buffer": "file:./patches/bigint-buffer-safe",
@@ -114,6 +116,7 @@
     "@synthetixio/synpress": "4.1.1",
     "@types/bun": "latest",
     "@types/ws": "^8.18.1",
+    "abitype": "^1.2.3",
     "concurrently": "^9.2.1",
     "depcheck": "1.4.7",
     "knip": "5.74.0",
