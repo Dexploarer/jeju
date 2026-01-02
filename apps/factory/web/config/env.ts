@@ -36,13 +36,13 @@ export function getFactoryApiUrl(): string {
     return `http://${getLocalhostHost()}:4009`
   }
 
-  const { hostname, port, protocol } = window.location
+  const { hostname, port, protocol, origin } = window.location
 
   // Local development - frontend dev server proxies to API on port 4009
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
     // If we're on port 4009, we're running the combined server
     if (port === '4009') {
-      return ''
+      return origin
     }
     // Otherwise, frontend is on different port (e.g., 5173), point to API port
     return `http://${getLocalhostHost()}:4009`
@@ -55,8 +55,8 @@ export function getFactoryApiUrl(): string {
 
   // Production/testnet - use same origin
   // DWS app router proxies /api/* to the backend worker
-  // Using empty string for same-origin requests
-  return ''
+  // Eden treaty requires a full URL, not empty string
+  return origin
 }
 
 // Export the resolved API URL
