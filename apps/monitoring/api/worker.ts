@@ -330,17 +330,20 @@ export default {
 }
 
 /**
- * Bun server entry point (for local development)
+ * Bun server entry point - only runs when executed directly
+ * When imported as a module (by DWS bootstrap or test), this won't run
  */
-if (typeof Bun !== 'undefined') {
-  const port = process.env.PORT ?? process.env.MONITORING_PORT ?? 9091
+const isMainModule = typeof Bun !== 'undefined' && Bun.main === import.meta.path
+
+if (isMainModule) {
+  const port = Number(process.env.PORT ?? process.env.MONITORING_PORT ?? 9091)
   const host = getLocalhostHost()
 
   console.log(`[Monitoring Worker] Starting on http://${host}:${port}`)
   console.log(`[Monitoring Worker] Network: ${getCurrentNetwork()}`)
 
   Bun.serve({
-    port: Number(port),
+    port,
     hostname: host,
     fetch: app.fetch,
   })

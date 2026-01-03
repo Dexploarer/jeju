@@ -139,6 +139,23 @@ async function verifyContentRetrievable(
   return true
 }
 
+function getMimeType(filename: string): string {
+  const ext = filename.split('.').pop()?.toLowerCase()
+  const mimeTypes: Record<string, string> = {
+    html: 'text/html',
+    js: 'application/javascript',
+    css: 'text/css',
+    json: 'application/json',
+    svg: 'image/svg+xml',
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    ico: 'image/x-icon',
+    map: 'application/json',
+  }
+  return mimeTypes[ext ?? ''] ?? 'application/octet-stream'
+}
+
 async function uploadToIPFS(
   dwsUrl: string,
   filePath: string,
@@ -146,44 +163,63 @@ async function uploadToIPFS(
 ): Promise<UploadResult> {
   const content = await readFile(resolve(APP_DIR, filePath))
   const hash = keccak256(content) as `0x${string}`
+  const mimeType = getMimeType(name)
 
-  const formData = new FormData()
-  formData.append('file', new Blob([content]), name)
-  formData.append('name', name)
+  // Retry upload up to 3 times with exponential backoff
+  let lastError: Error | null = null
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const formData = new FormData()
+    formData.append('file', new Blob([content], { type: mimeType }), name)
+    formData.append('name', name)
 
-  const response = await fetch(`${dwsUrl}/storage/upload`, {
-    method: 'POST',
-    body: formData,
-  })
+    const response = await fetch(`${dwsUrl}/storage/upload`, {
+      method: 'POST',
+      body: formData,
+      signal: AbortSignal.timeout(90000), // 90 second timeout for large files
+    }).catch((err: Error) => {
+      lastError = err
+      return null
+    })
 
-  if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(`Upload failed for ${name}: ${errorText}`)
+    if (response?.ok) {
+      const rawJson: unknown = await response.json()
+      const parsed = IPFSUploadResponseSchema.safeParse(rawJson)
+      if (!parsed.success) {
+        throw new Error(`Invalid upload response: ${parsed.error.message}`)
+      }
+
+      // Verify the content is actually retrievable before claiming success
+      const verified = await verifyContentRetrievable(
+        dwsUrl,
+        parsed.data.cid,
+        content.length,
+      )
+      if (!verified) {
+        throw new Error(
+          `Upload verification failed for ${name} - content not retrievable from storage`,
+        )
+      }
+
+      return {
+        cid: parsed.data.cid,
+        hash,
+        size: content.length,
+      }
+    }
+
+    const errorText = response ? await response.text() : (lastError?.message ?? 'Unknown error')
+    console.log(`   Attempt ${attempt}/3 failed for ${name}: ${errorText}`)
+    
+    if (attempt < 3) {
+      const delay = attempt * 2000 // 2s, 4s
+      console.log(`   Retrying in ${delay / 1000}s...`)
+      await new Promise(resolve => setTimeout(resolve, delay))
+    } else {
+      throw new Error(`Upload failed for ${name} after 3 attempts: ${errorText}`)
+    }
   }
 
-  const rawJson: unknown = await response.json()
-  const parsed = IPFSUploadResponseSchema.safeParse(rawJson)
-  if (!parsed.success) {
-    throw new Error(`Invalid upload response: ${parsed.error.message}`)
-  }
-
-  // Verify the content is actually retrievable before claiming success
-  const verified = await verifyContentRetrievable(
-    dwsUrl,
-    parsed.data.cid,
-    content.length,
-  )
-  if (!verified) {
-    throw new Error(
-      `Upload verification failed for ${name} - content not retrievable from storage`,
-    )
-  }
-
-  return {
-    cid: parsed.data.cid,
-    hash,
-    size: content.length,
-  }
+  throw new Error(`Upload failed for ${name}: unexpected state`)
 }
 
 async function uploadDirectory(
@@ -387,13 +423,16 @@ async function deploy(): Promise<void> {
   // Upload static assets to IPFS via DWS
   console.log('\n[Step 1/4] Uploading static assets to IPFS...')
   const webAssets = await uploadDirectory(config.dwsUrl, './dist/web', 'web')
-  const indexResult = await uploadToIPFS(
-    config.dwsUrl,
-    './dist/index.html',
-    'index.html',
-  )
-  webAssets.set('index.html', indexResult)
-  console.log(`   index.html -> ${indexResult.cid}`)
+  
+  // Upload root-level files
+  const rootFiles = ['index.html', 'favicon.svg', 'agent-card.json', 'rpc-config.json']
+  for (const file of rootFiles) {
+    if (existsSync(resolve(APP_DIR, `./dist/${file}`))) {
+      const result = await uploadToIPFS(config.dwsUrl, `./dist/${file}`, file)
+      webAssets.set(file, result)
+      console.log(`   ${file} -> ${result.cid}`)
+    }
+  }
   console.log(`   Total: ${webAssets.size} files`)
 
   // Register with DWS app router (critical for hostname routing)
@@ -435,7 +474,7 @@ async function deploy(): Promise<void> {
   console.log('╠════════════════════════════════════════════════════════════╣')
   console.log(`║  Frontend: https://${domain}`)
   console.log(`║  Static Files: ${webAssets.size} files uploaded to IPFS`)
-  console.log(`║  Index CID: ${indexResult.cid}`)
+  console.log(`║  Index CID: ${webAssets.get('index.html')?.cid ?? 'N/A'}`)
   console.log('╠════════════════════════════════════════════════════════════╣')
   console.log('║  DNS NOTE: Ensure DNS points to DWS ALB, not CloudFront    ║')
   console.log('║  DNS should resolve same as dws.testnet.jejunetwork.org    ║')

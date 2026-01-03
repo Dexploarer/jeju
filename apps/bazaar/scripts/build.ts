@@ -14,6 +14,7 @@ import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { getCurrentNetwork } from '@jejunetwork/config'
+import { reportBundleSizes } from '@jejunetwork/shared'
 import type { BunPlugin } from 'bun'
 
 const DIST_DIR = './dist'
@@ -216,6 +217,7 @@ async function buildFrontend(): Promise<void> {
     sourcemap: 'external',
     external: BROWSER_EXTERNALS,
     plugins: [browserPlugin],
+    drop: ['debugger'],
     define: {
       'process.env.NODE_ENV': JSON.stringify('production'),
       'process.env.JEJU_NETWORK': JSON.stringify(network),
@@ -262,6 +264,8 @@ async function buildFrontend(): Promise<void> {
     throw new Error('Frontend build failed')
   }
 
+  reportBundleSizes(result, 'Bazaar Frontend')
+
   const mainEntry = result.outputs.find(
     (o) => o.kind === 'entry-point' && o.path.includes('client'),
   )
@@ -280,6 +284,7 @@ async function buildFrontend(): Promise<void> {
   <meta name="theme-color" content="#FFFBF7" media="(prefers-color-scheme: light)">
   <title>Bazaar - Agent Marketplace</title>
   <meta name="description" content="The marketplace for tokens, collectibles, prediction markets, and more.">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -305,6 +310,10 @@ async function buildFrontend(): Promise<void> {
 
   if (existsSync('./public')) {
     await cp('./public', `${STATIC_DIR}/public`, { recursive: true })
+    // Copy favicon to root for browser requests
+    if (existsSync('./public/favicon.svg')) {
+      await cp('./public/favicon.svg', `${STATIC_DIR}/favicon.svg`)
+    }
   }
 
   console.log(`  Frontend: ${STATIC_DIR}/`)
@@ -320,6 +329,7 @@ async function buildWorker(): Promise<void> {
     minify: true,
     sourcemap: 'external',
     external: WORKER_EXTERNALS,
+    drop: ['debugger'],
     define: { 'process.env.NODE_ENV': JSON.stringify('production') },
   })
 
@@ -328,6 +338,8 @@ async function buildWorker(): Promise<void> {
     for (const log of result.logs) console.error(log)
     throw new Error('Worker build failed')
   }
+
+  reportBundleSizes(result, 'Bazaar Worker')
 
   let gitCommit = 'unknown'
   let gitBranch = 'unknown'

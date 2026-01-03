@@ -1763,6 +1763,7 @@ deployCommand
       stdio: 'inherit',
       env: {
         ...process.env,
+        JEJU_NETWORK: options.network,
         NETWORK: options.network,
         CDN_ENABLED: options.cdn ? 'true' : 'false',
       },

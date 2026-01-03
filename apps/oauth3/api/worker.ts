@@ -158,3 +158,33 @@ export default {
     return app.fetch(request)
   },
 }
+
+/**
+ * Bun server entry point - only runs when executed directly
+ * When imported as a module (by DWS bootstrap or test), this won't run
+ */
+const isMainModule = typeof Bun !== 'undefined' && Bun.main === import.meta.path
+
+if (isMainModule) {
+  const port = Number(process.env.PORT ?? process.env.OAUTH3_PORT ?? 4200)
+  const host = getLocalhostHost()
+
+  const devEnv: Env = {
+    RPC_URL: process.env.RPC_URL ?? `http://${host}:8545`,
+    MPC_REGISTRY_ADDRESS: process.env.MPC_REGISTRY_ADDRESS ?? '',
+    IDENTITY_REGISTRY_ADDRESS: process.env.IDENTITY_REGISTRY_ADDRESS ?? '',
+    SERVICE_AGENT_ID: process.env.SERVICE_AGENT_ID ?? 'auth.jeju',
+    JWT_SECRET: process.env.JWT_SECRET ?? 'dev-secret-change-in-production',
+    ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS ?? '*',
+    SQLIT_DATABASE_ID: process.env.SQLIT_DATABASE_ID ?? '',
+  }
+
+  createApp(devEnv).then((appInstance) => {
+    console.log(`[OAuth3 Worker] Starting on http://${host}:${port}`)
+    Bun.serve({
+      port,
+      hostname: host,
+      fetch: appInstance.fetch,
+    })
+  })
+}

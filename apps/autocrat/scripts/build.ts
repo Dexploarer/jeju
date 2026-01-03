@@ -16,6 +16,7 @@ import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { getCurrentNetwork } from '@jejunetwork/config'
+import { reportBundleSizes } from '@jejunetwork/shared'
 import type { BunPlugin } from 'bun'
 
 const APP_DIR = resolve(import.meta.dir, '..')
@@ -253,6 +254,7 @@ async function buildFrontend(): Promise<void> {
     sourcemap: 'external',
     external: BROWSER_EXTERNALS,
     plugins: [browserPlugin],
+    drop: ['debugger'],
     define: {
       'process.env.NODE_ENV': JSON.stringify('production'),
       'process.env.JEJU_NETWORK': JSON.stringify(network),
@@ -298,6 +300,8 @@ async function buildFrontend(): Promise<void> {
     for (const log of result.logs) console.error(log)
     throw new Error('Frontend build failed')
   }
+
+  reportBundleSizes(result, 'Autocrat Frontend')
 
   const mainEntry = result.outputs.find(
     (o) => o.kind === 'entry-point' && o.path.includes('main'),
@@ -360,6 +364,7 @@ async function buildWorker(): Promise<void> {
     sourcemap: 'external',
     external: WORKER_EXTERNALS,
     plugins: [viemChainsPlugin],
+    drop: ['debugger'],
     define: { 'process.env.NODE_ENV': JSON.stringify('production') },
   })
 
@@ -368,6 +373,8 @@ async function buildWorker(): Promise<void> {
     for (const log of result.logs) console.error(log)
     throw new Error('Worker build failed')
   }
+
+  reportBundleSizes(result, 'Autocrat Worker')
 
   let gitCommit = 'unknown'
   let gitBranch = 'unknown'

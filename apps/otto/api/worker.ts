@@ -389,17 +389,20 @@ export default {
 }
 
 /**
- * Bun server entry point (for local development)
+ * Bun server entry point - only runs when executed directly
+ * When imported as a module (by DWS bootstrap or test), this won't run
  */
-if (typeof Bun !== 'undefined') {
-  const port = process.env.PORT ?? process.env.OTTO_PORT ?? 4050
+const isMainModule = typeof Bun !== 'undefined' && Bun.main === import.meta.path
+
+if (isMainModule) {
+  const port = Number(process.env.PORT ?? process.env.OTTO_PORT ?? 4050)
   const host = getLocalhostHost()
 
   console.log(`[Otto Worker] Starting on http://${host}:${port}`)
   console.log(`[Otto Worker] Network: ${getCurrentNetwork()}`)
 
   Bun.serve({
-    port: Number(port),
+    port,
     hostname: host,
     fetch: app.fetch,
   })

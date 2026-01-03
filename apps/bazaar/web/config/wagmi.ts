@@ -3,13 +3,54 @@ import {
   getLocalhostHost,
   getRpcUrl,
   getServicesConfig,
+  type NetworkType,
 } from '@jejunetwork/config'
 import { defineChain } from 'viem'
 import { createConfig, http } from 'wagmi'
 import { injected } from 'wagmi/connectors'
-import { NETWORK, NETWORK_NAME, RPC_URL } from './index'
+import { NETWORK_NAME } from './index'
 
-const services = getServicesConfig(NETWORK)
+/**
+ * Detect network from browser hostname at RUNTIME
+ * This is critical for deployed apps where the build might have wrong env vars
+ */
+function detectNetworkRuntime(): NetworkType {
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname
+
+    // Localhost or local IP → localnet
+    if (
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname.startsWith('192.168.') ||
+      hostname.startsWith('10.')
+    ) {
+      return 'localnet'
+    }
+
+    // Check for testnet subdomain
+    if (
+      hostname.includes('.testnet.jejunetwork.org') ||
+      hostname === 'testnet.jejunetwork.org'
+    ) {
+      return 'testnet'
+    }
+
+    // Production jejunetwork.org domains → mainnet
+    if (hostname.endsWith('.jejunetwork.org')) {
+      return 'mainnet'
+    }
+  }
+
+  // Fallback to localnet for SSR or unknown
+  return 'localnet'
+}
+
+// Detect network at RUNTIME, not build time
+const RUNTIME_NETWORK = detectNetworkRuntime()
+const RUNTIME_RPC_URL = getRpcUrl(RUNTIME_NETWORK)
+
+const services = getServicesConfig(RUNTIME_NETWORK)
 
 const localnet = defineChain({
   id: getChainId('localnet'),
@@ -81,13 +122,17 @@ const testnet = defineChain({
 })
 
 const activeChain =
-  NETWORK === 'mainnet' ? mainnet : NETWORK === 'testnet' ? testnet : localnet
+  RUNTIME_NETWORK === 'mainnet'
+    ? mainnet
+    : RUNTIME_NETWORK === 'testnet'
+      ? testnet
+      : localnet
 
 export const wagmiConfig = createConfig({
   chains: [activeChain],
   connectors: [injected()],
   transports: {
-    [activeChain.id]: http(RPC_URL, {
+    [activeChain.id]: http(RUNTIME_RPC_URL, {
       batch: true,
       retryCount: 3,
       retryDelay: 1000,
@@ -98,4 +143,4 @@ export const wagmiConfig = createConfig({
 
 // Export for OAuth3 provider
 export const chainId = activeChain.id
-export const rpcUrl = RPC_URL
+export const rpcUrl = RUNTIME_RPC_URL

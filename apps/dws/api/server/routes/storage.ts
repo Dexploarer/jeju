@@ -632,8 +632,16 @@ export function createStorageRouter(_backend?: BackendManager) {
       })
 
       // IPFS Compatibility - Add
-      .post('/api/v0/add', async ({ body, request, set }) => {
-        const formData = body as FormData
+      .post('/api/v0/add', async ({ request, set }) => {
+        // Parse multipart form data from request (same as /upload)
+        let formData: FormData
+        try {
+          formData = await request.formData()
+        } catch {
+          set.status = 400
+          return { error: 'Invalid multipart form data' }
+        }
+
         const file = formData.get('file') as File | null
 
         if (!file) {
