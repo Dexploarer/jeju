@@ -14,6 +14,7 @@ import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { reportBundleSizes } from '@jejunetwork/shared'
 
 const APP_DIR = resolve(import.meta.dir, '..')
 const outdir = resolve(APP_DIR, 'dist')
@@ -81,6 +82,7 @@ async function build() {
     target: 'bun',
     minify: true,
     sourcemap: 'external',
+    drop: ['debugger'],
   })
 
   if (!apiResult.success) {
@@ -90,6 +92,7 @@ async function build() {
     }
     process.exit(1)
   }
+  reportBundleSizes(apiResult, 'Example API')
   console.log('[Example] API built successfully')
 
   // Build frontend
@@ -103,6 +106,7 @@ async function build() {
     splitting: false,
     packages: 'bundle',
     naming: '[name].[hash].[ext]',
+    drop: ['debugger'],
     external: ['bun:sqlite', 'node:*', 'elysia', '@elysiajs/*'],
     define: {
       'process.env.NODE_ENV': JSON.stringify('production'),
@@ -117,6 +121,7 @@ async function build() {
     }
     process.exit(1)
   }
+  reportBundleSizes(frontendResult, 'Example Frontend')
   console.log('[Example] Frontend built successfully')
 
   // Find the main entry file with hash

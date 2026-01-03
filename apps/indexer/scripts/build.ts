@@ -7,6 +7,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { rm } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
+import { reportBundleSizes } from '@jejunetwork/shared'
 import { $ } from 'bun'
 
 const APP_DIR = resolve(import.meta.dir, '..')
@@ -49,6 +50,7 @@ async function build() {
     splitting: false,
     packages: 'bundle',
     naming: '[name].[hash].[ext]',
+    drop: ['debugger'],
     external: [
       '@google-cloud/*',
       '@grpc/*',
@@ -77,6 +79,8 @@ async function build() {
     }
     process.exit(1)
   }
+
+  reportBundleSizes(frontendResult, 'Indexer Frontend')
 
   // Find the main entry file with hash
   const mainEntry = frontendResult.outputs.find(

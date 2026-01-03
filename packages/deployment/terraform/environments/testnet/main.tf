@@ -346,7 +346,7 @@ module "alb" {
 #   4. DWS ingress routes requests to frontend or backend workers
 #
 # DO NOT add apps to this module - deploy via DWS instead:
-#   bun run packages/deployment/scripts/deploy/deploy-all-apps-to-dws.ts
+#   NETWORK=testnet bun run packages/deployment/scripts/deploy/dws-bootstrap.ts
 # ============================================================
 module "cdn" {
   count  = var.enable_cdn ? 1 : 0

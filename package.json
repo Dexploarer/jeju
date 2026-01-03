@@ -6,8 +6,7 @@
   "workspaces": [
     "packages/*",
     "apps/*",
-    "vendor/babylon",
-    "vendor/eliza-cloud-v2"
+    "vendor/*"
   ],
   "overrides": {
     "bigint-buffer": "file:./patches/bigint-buffer-safe",
@@ -71,7 +70,7 @@
     "@types/chai": "5.2.3"
   },
   "scripts": {
-    "preinstall": "test -f scripts/setup-tools.sh && bash scripts/setup-tools.sh || true",
+    "clean": "find apps packages vendor -type d -name node_modules -prune -exec rm -rf {} + && rm -rf node_modules .turbo && bun install",
     "postinstall": "bun run build:packages && bun run packages/deployment/scripts/setup-apps.ts && bun run link:cli",
     "build:packages": "bun run --cwd packages/types build && bun run --cwd packages/contracts build",
     "link:cli": "bun run --cwd packages/cli build && mkdir -p ~/.bun/bin && ln -sf $PWD/packages/cli/bin/jeju.js ~/.bun/bin/jeju",
@@ -94,6 +93,8 @@
     "ci": "biome check packages apps && bun run typecheck && bun run test"
   },
   "dependencies": {
+    "@farcaster/miniapp-sdk": "^0.2.1",
+    "@kitajs/html": "^4.2.11",
     "@noble/curves": "1.9.7",
     "@noble/hashes": "1.8.0",
     "@solana/web3.js": "^1.98.4",
@@ -101,12 +102,15 @@
     "agent0-sdk": "^0.31.0",
     "bigint-buffer": "",
     "framer-motion": "^12.23.26",
+    "html-to-image": "^1.11.13",
     "merkletreejs": "^0.6.0",
     "mime": "^3.0.0",
     "node-datachannel": "^0.31.0",
     "obscenity": "^0.4.5",
     "pino": "^10.1.0",
+    "posthog-js": "^1.313.0",
     "prom-client": "^15.1.3",
+    "tailwindcss-animate": "^1.0.7",
     "viem": "2.43.3",
     "zod": "4.2.1",
     "zustand": "^5.0.9"
@@ -127,6 +131,7 @@
     "prettier-plugin-solidity": "2.1.0",
     "pyright": "^1.1.407",
     "solhint": "6.0.1",
+    "tailwindcss": "^4.1.18",
     "turbo": "^2.7.2",
     "typedoc": "0.28.14",
     "typedoc-plugin-markdown": "4.9.0",

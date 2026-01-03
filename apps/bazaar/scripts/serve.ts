@@ -460,6 +460,8 @@ async function startStandaloneFallback(): Promise<void> {
 
       // Normalize path
       if (path === '/') path = '/index.html'
+      // Redirect favicon.ico to favicon.svg
+      if (path === '/favicon.ico') path = '/favicon.svg'
 
       // Serve static file
       const file = Bun.file(`${DIST_STATIC}${path}`)

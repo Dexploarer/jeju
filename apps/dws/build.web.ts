@@ -63,12 +63,13 @@ const result = await Bun.build({
   entrypoints: ['./web/main.tsx'],
   outdir: join(outdir, 'web'),
   target: 'browser',
-  minify: process.env.NODE_ENV === 'production',
+  minify: true,
   sourcemap: 'external',
   splitting: false,
   packages: 'bundle',
   plugins: [browserShimPlugin],
   naming: '[name].[hash].[ext]',
+  drop: ['debugger'],
   external: [
     // Node-only modules
     '@google-cloud/*',

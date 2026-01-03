@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@elysiajs/cors": "^1.4.0",
+    "@jejunetwork/cache": "workspace:*",
     "@jejunetwork/config": "workspace:*",
     "@jejunetwork/types": "workspace:*",
     "@tanstack/react-query": "^5.80.6",

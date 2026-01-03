@@ -1,12 +1,84 @@
 /** Infrastructure deployment and management commands */
 
-import { existsSync } from 'node:fs'
+import { existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { Command } from 'commander'
 import { execa } from 'execa'
 import { logger } from '../lib/logger'
 import { findMonorepoRoot } from '../lib/system'
 import { createInfrastructureService } from '../services/infrastructure'
+
+interface SyncConfig {
+  sourceDir: string
+  filePattern: string
+  configMapName: string
+  namespace: string
+  label: string
+}
+
+async function syncToConfigMap(config: SyncConfig): Promise<void> {
+  const { sourceDir, filePattern, configMapName, namespace, label } = config
+
+  logger.info(`${label}: Syncing to Kubernetes namespace: ${namespace}...`)
+
+  if (!existsSync(sourceDir)) {
+    logger.warn(`Source directory not found: ${sourceDir}`)
+    return
+  }
+
+  const files = readdirSync(sourceDir).filter((f) => f.endsWith(filePattern))
+
+  if (files.length === 0) {
+    logger.info('No files found. Nothing to sync.')
+    return
+  }
+
+  logger.info(`Found ${files.length} files:`)
+  for (const file of files) {
+    logger.info(`  - ${file}`)
+  }
+
+  const fromFileArgs = files.map(
+    (file) => `--from-file=${join(sourceDir, file)}`,
+  )
+
+  logger.info(
+    `Creating/updating ConfigMap '${configMapName}' in namespace '${namespace}'...`,
+  )
+
+  // Try to create, if exists delete and recreate
+  const createResult = await execa(
+    'kubectl',
+    ['create', 'configmap', configMapName, '-n', namespace, ...fromFileArgs],
+    { reject: false },
+  )
+
+  if (createResult.exitCode !== 0) {
+    logger.info('ConfigMap might already exist. Attempting to recreate...')
+
+    await execa(
+      'kubectl',
+      ['delete', 'configmap', configMapName, '-n', namespace, '--ignore-not-found'],
+      { reject: false },
+    )
+
+    const recreateResult = await execa(
+      'kubectl',
+      ['create', 'configmap', configMapName, '-n', namespace, ...fromFileArgs],
+      { reject: false },
+    )
+
+    if (recreateResult.exitCode !== 0) {
+      logger.error(`Failed to recreate ConfigMap: ${recreateResult.stderr}`)
+      return
+    }
+  }
+
+  logger.success(`${label} synced successfully.`)
+  logger.info(
+    `Verify with: kubectl get configmap ${configMapName} -n ${namespace} -o yaml`,
+  )
+}
 
 const infraCommand = new Command('infra')
   .description('Infrastructure deployment and management')
@@ -405,51 +477,37 @@ infraCommand
 infraCommand
   .command('sync-alerts')
   .description('Sync Prometheus alerts to Kubernetes ConfigMap')
-  .option('--namespace <ns>', 'Kubernetes namespace')
-  .action(async (options: { namespace?: string }) => {
+  .option('--namespace <ns>', 'Kubernetes namespace', 'monitoring')
+  .action(async (options: { namespace: string }) => {
     const rootDir = findMonorepoRoot()
-    const scriptPath = join(
-      rootDir,
-      'packages/deployment/scripts/monitoring/sync-alerts.ts',
-    )
-
-    if (!existsSync(scriptPath)) {
-      logger.error('Sync alerts script not found')
-      return
-    }
-
-    const args = ['run', scriptPath]
-    if (options.namespace) args.push('--namespace', options.namespace)
-
-    await execa('bun', args, {
-      cwd: rootDir,
-      stdio: 'inherit',
+    await syncToConfigMap({
+      sourceDir: join(rootDir, 'monitoring', 'prometheus', 'alerts'),
+      filePattern: '.yaml',
+      configMapName: 'prometheus-rules',
+      namespace: options.namespace,
+      label: 'Prometheus Alerts',
     })
+    logger.info(
+      'Note: Your Prometheus instance must be configured to load rules from this ConfigMap.',
+    )
   })
 
 infraCommand
   .command('sync-dashboards')
   .description('Sync Grafana dashboards to Kubernetes ConfigMap')
-  .option('--namespace <ns>', 'Kubernetes namespace')
-  .action(async (options: { namespace?: string }) => {
+  .option('--namespace <ns>', 'Kubernetes namespace', 'monitoring')
+  .action(async (options: { namespace: string }) => {
     const rootDir = findMonorepoRoot()
-    const scriptPath = join(
-      rootDir,
-      'packages/deployment/scripts/monitoring/sync-dashboards.ts',
-    )
-
-    if (!existsSync(scriptPath)) {
-      logger.error('Sync dashboards script not found')
-      return
-    }
-
-    const args = ['run', scriptPath]
-    if (options.namespace) args.push('--namespace', options.namespace)
-
-    await execa('bun', args, {
-      cwd: rootDir,
-      stdio: 'inherit',
+    await syncToConfigMap({
+      sourceDir: join(rootDir, 'monitoring', 'grafana', 'dashboards'),
+      filePattern: '.json',
+      configMapName: 'grafana-dashboards',
+      namespace: options.namespace,
+      label: 'Grafana Dashboards',
     })
+    logger.info(
+      'Note: Your Grafana instance must be configured to load dashboards from this ConfigMap.',
+    )
   })
 
 infraCommand

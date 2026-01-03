@@ -8,14 +8,17 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
+      "bun": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
     "./farcaster": {
+      "bun": "./src/farcaster/index.ts",
       "types": "./dist/farcaster/index.d.ts",
       "import": "./dist/farcaster/index.js"
     },
     "./sdk": {
+      "bun": "./src/sdk/index.ts",
       "types": "./dist/sdk/index.d.ts",
       "import": "./dist/sdk/index.js"
     }

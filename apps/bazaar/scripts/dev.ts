@@ -278,6 +278,16 @@ async function startFrontendServer(): Promise<void> {
         }
       }
 
+      // Handle favicon.ico -> favicon.svg redirect
+      if (path === '/favicon.ico' || path === '/favicon.svg') {
+        const faviconFile = Bun.file('./public/favicon.svg')
+        if (await faviconFile.exists()) {
+          return new Response(faviconFile, {
+            headers: { 'Content-Type': 'image/svg+xml' },
+          })
+        }
+      }
+
       // Serve public files
       const publicFile = Bun.file(`./public${path}`)
       if (path !== '/' && (await publicFile.exists())) {
@@ -315,6 +325,7 @@ function generateDevHtml(): string {
   <meta name="theme-color" content="#0D0B14" media="(prefers-color-scheme: dark)">
   <meta name="theme-color" content="#FFFBF7" media="(prefers-color-scheme: light)">
   <title>Bazaar - Dev</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">

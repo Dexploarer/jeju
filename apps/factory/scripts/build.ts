@@ -14,6 +14,7 @@ import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { getCurrentNetwork } from '@jejunetwork/config'
+import { reportBundleSizes } from '@jejunetwork/shared'
 import type { BunPlugin } from 'bun'
 
 const DIST_DIR = './dist'
@@ -181,6 +182,7 @@ async function buildFrontend(): Promise<void> {
     sourcemap: 'external',
     external: BROWSER_EXTERNALS,
     plugins: [browserPlugin],
+    drop: ['debugger'],
     naming: {
       entry: '[name]-[hash].js',
       chunk: 'chunks/[name]-[hash].js',
@@ -209,6 +211,8 @@ async function buildFrontend(): Promise<void> {
     for (const log of result.logs) console.error(log)
     throw new Error('Frontend build failed')
   }
+
+  reportBundleSizes(result, 'Factory Frontend')
 
   const mainEntry = result.outputs.find(
     (o) => o.kind === 'entry-point' && o.path.includes('main'),
@@ -266,6 +270,7 @@ async function buildApi(): Promise<void> {
     target: 'bun',
     minify: true,
     sourcemap: 'external',
+    drop: ['debugger'],
     external: [
       'bun:sqlite',
       'child_process',
@@ -283,6 +288,7 @@ async function buildApi(): Promise<void> {
     throw new Error('API build failed')
   }
 
+  reportBundleSizes(result, 'Factory API')
   console.log(`  API: ${API_DIR}/`)
 }
 

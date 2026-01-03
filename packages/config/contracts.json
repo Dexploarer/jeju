@@ -247,12 +247,7 @@
       "cronOrchestrator": ""
     },
     "payments": {
-      "paymasterFactory": "",
-      "priceOracle": "",
-      "creditManager": "",
-      "serviceRegistry": "",
-      "multiTokenPaymaster": "",
-      "x402Facilitator": ""
+      "feeConfig": "0x2a810409872AfC346F9B5b26571Fd6eC42EA4849"
     },
     "defi": {
       "poolManager": "",
@@ -279,7 +274,9 @@
       "timelock": "",
       "futarchyGovernor": "",
       "registryGovernance": "",
-      "autocrat": ""
+      "autocrat": "",
+      "daoRegistry": "0xb9bEECD1A582768711dE1EE7B0A1d582D9d72a6C",
+      "daoFunding": "0x8A93d247134d91e0de6f96547cB0204e5BE8e5D8"
     },
     "oif": {
       "solverRegistry": "",

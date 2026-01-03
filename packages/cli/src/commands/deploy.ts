@@ -765,13 +765,13 @@ deployCommand
 deployCommand
   .command('verify')
   .description('Verify contract deployments')
-  .argument('<type>', 'oif | contracts')
+  .argument('<type>', 'oif | testnet | contracts')
   .argument('[network]', 'testnet | mainnet', 'testnet')
   .action(async (type, networkArg) => {
     const network = networkArg as NetworkType
+    const rootDir = findMonorepoRoot()
 
     if (type === 'oif') {
-      const rootDir = findMonorepoRoot()
       const verifyScript = join(
         rootDir,
         'packages/deployment/scripts/verify/verify-oif-deployment.ts',
@@ -786,10 +786,187 @@ deployCommand
         cwd: rootDir,
         stdio: 'inherit',
       })
+    } else if (type === 'testnet') {
+      const verifyScript = join(
+        rootDir,
+        'packages/deployment/scripts/deploy/verify-testnet-babylon.ts',
+      )
+
+      if (!existsSync(verifyScript)) {
+        logger.error('Testnet verify script not found')
+        return
+      }
+
+      await execa('bun', ['run', verifyScript], {
+        cwd: rootDir,
+        stdio: 'inherit',
+        env: { ...process.env, NETWORK: 'testnet' },
+      })
     } else {
       logger.error(`Unknown verify type: ${type}`)
-      logger.info('Available: oif')
+      logger.info('Available: oif, testnet')
     }
+  })
+
+deployCommand
+  .command('dws')
+  .description('Deploy all apps via DWS (frontends to IPFS, workers on-chain)')
+  .option(
+    '--network <network>',
+    'Network: localnet | testnet | mainnet',
+    'localnet',
+  )
+  .option('--apps <list>', 'Deploy specific apps (comma-separated)')
+  .option('--skip-contracts', 'Skip DWS contract deployment')
+  .option('--skip-apps', 'Only deploy contracts, skip apps')
+  .action(async (options) => {
+    const rootDir = findMonorepoRoot()
+    const scriptPath = join(
+      rootDir,
+      'packages/deployment/scripts/deploy/dws-bootstrap.ts',
+    )
+
+    if (!existsSync(scriptPath)) {
+      logger.error('DWS bootstrap script not found')
+      return
+    }
+
+    logger.header('DWS DEPLOYMENT')
+    logger.keyValue('Network', options.network)
+    if (options.apps) {
+      logger.keyValue('Apps', options.apps)
+    }
+    logger.newline()
+
+    const args: string[] = []
+    if (options.apps) args.push('--apps', options.apps)
+    if (options.skipContracts) args.push('--skip-contracts')
+    if (options.skipApps) args.push('--skip-apps')
+
+    await execa('bun', ['run', scriptPath, ...args], {
+      cwd: rootDir,
+      stdio: 'inherit',
+      env: { ...process.env, NETWORK: options.network },
+    })
+  })
+
+deployCommand
+  .command('full')
+  .description('Full deployment (terraform, kubernetes, contracts, DWS apps)')
+  .option(
+    '--network <network>',
+    'Network: localnet | testnet | mainnet',
+    'testnet',
+  )
+  .option('--skip-terraform', 'Skip Terraform infrastructure')
+  .option('--skip-kubernetes', 'Skip Kubernetes deployment')
+  .option('--skip-contracts', 'Skip contract deployment')
+  .option('--skip-dws', 'Skip DWS app deployment')
+  .option('--dry-run', 'Simulate without making changes')
+  .action(async (options) => {
+    const rootDir = findMonorepoRoot()
+    const scriptPath = join(
+      rootDir,
+      'packages/deployment/scripts/deploy/full-deployment.ts',
+    )
+
+    if (!existsSync(scriptPath)) {
+      logger.error('Full deployment script not found')
+      return
+    }
+
+    logger.header('FULL DEPLOYMENT')
+    logger.keyValue('Network', options.network)
+    logger.newline()
+
+    const args: string[] = []
+    if (options.skipTerraform) args.push('--skip-terraform')
+    if (options.skipKubernetes) args.push('--skip-kubernetes')
+    if (options.skipContracts) args.push('--skip-contracts')
+    if (options.skipDws) args.push('--skip-dws')
+    if (options.dryRun) args.push('--dry-run')
+
+    await execa('bun', ['run', scriptPath, ...args], {
+      cwd: rootDir,
+      stdio: 'inherit',
+      env: { ...process.env, NETWORK: options.network },
+    })
+  })
+
+deployCommand
+  .command('testnet-babylon')
+  .description('Deploy core Jeju and Babylon contracts to testnet')
+  .option('--skip-core', 'Skip core Jeju contract deployment')
+  .option('--skip-babylon', 'Skip Babylon game contract deployment')
+  .option('--skip-apps', 'Skip app deployment')
+  .option('--dry-run', 'Simulate without making changes')
+  .action(async (options) => {
+    const rootDir = findMonorepoRoot()
+    const scriptPath = join(
+      rootDir,
+      'packages/deployment/scripts/deploy/testnet-babylon-full.ts',
+    )
+
+    if (!existsSync(scriptPath)) {
+      logger.error('Testnet Babylon script not found')
+      return
+    }
+
+    logger.header('TESTNET + BABYLON DEPLOYMENT')
+    logger.newline()
+
+    const args: string[] = []
+    if (options.skipCore) args.push('--skip-core')
+    if (options.skipBabylon) args.push('--skip-babylon')
+    if (options.skipApps) args.push('--skip-apps')
+    if (options.dryRun) args.push('--dry-run')
+
+    await execa('bun', ['run', scriptPath, ...args], {
+      cwd: rootDir,
+      stdio: 'inherit',
+      env: { ...process.env, NETWORK: 'testnet' },
+    })
+  })
+
+deployCommand
+  .command('transfer-ownership')
+  .description('Transfer contract ownership to multisig/DAO')
+  .option(
+    '--network <network>',
+    'Network: testnet | mainnet',
+    'testnet',
+  )
+  .option('--to <address>', 'New owner address (multisig)')
+  .option('--contracts <list>', 'Specific contracts to transfer (comma-separated)')
+  .option('--dry-run', 'Simulate without making changes')
+  .action(async (options) => {
+    const rootDir = findMonorepoRoot()
+    const scriptPath = join(
+      rootDir,
+      'packages/deployment/scripts/deploy/transfer-ownership.ts',
+    )
+
+    if (!existsSync(scriptPath)) {
+      logger.error('Transfer ownership script not found')
+      return
+    }
+
+    logger.header('OWNERSHIP TRANSFER')
+    logger.keyValue('Network', options.network)
+    if (options.to) {
+      logger.keyValue('New Owner', options.to)
+    }
+    logger.newline()
+
+    const args: string[] = ['--network', options.network]
+    if (options.to) args.push('--to', options.to)
+    if (options.contracts) args.push('--contracts', options.contracts)
+    if (options.dryRun) args.push('--dry-run')
+
+    await execa('bun', ['run', scriptPath, ...args], {
+      cwd: rootDir,
+      stdio: 'inherit',
+    })
   })
 
 deployCommand
@@ -850,11 +1027,7 @@ deployCommand
   .option('--configure', 'Configure oracle node', true)
   .option('--verify', 'Verify contracts')
   .action(async (options) => {
-    await runDeployScript(
-      'oracle/deploy-and-configure',
-      options.network,
-      options,
-    )
+    await runDeployScript('oracle', options.network, options)
   })
 
 deployCommand
@@ -947,14 +1120,30 @@ deployCommand
 
 deployCommand
   .command('governance')
-  .description('Deploy governance contracts')
+  .description('Deploy governance contracts (use deploy dao instead)')
   .option(
     '--network <network>',
     'Network: localnet | testnet | mainnet',
     'localnet',
   )
-  .action(async (options) => {
-    await runDeployScript('governance', options.network, options)
+  .action(async () => {
+    logger.error('Governance deployment has been consolidated into DAO deployment.')
+    logger.info('Use: jeju deploy dao --network <network>')
+    process.exit(1)
+  })
+
+deployCommand
+  .command('council')
+  .description('Deploy Council contracts (use deploy security-council instead)')
+  .option(
+    '--network <network>',
+    'Network: localnet | testnet | mainnet',
+    'localnet',
+  )
+  .action(async () => {
+    logger.error('Council deployment has been consolidated.')
+    logger.info('Use: jeju deploy security-council --network <network>')
+    process.exit(1)
   })
 
 deployCommand
@@ -971,26 +1160,30 @@ deployCommand
 
 deployCommand
   .command('launchpad')
-  .description('Deploy token launchpad')
+  .description('Deploy token launchpad (deprecated)')
   .option(
     '--network <network>',
     'Network: localnet | testnet | mainnet',
     'localnet',
   )
-  .action(async (options) => {
-    await runDeployScript('launchpad', options.network, options)
+  .action(async () => {
+    logger.error('Launchpad deployment has been deprecated.')
+    logger.info('Use: jeju deploy token --network <network>')
+    process.exit(1)
   })
 
 deployCommand
   .command('eil')
-  .description('Deploy Ethereum Intent Layer')
+  .description('Deploy Ethereum Intent Layer (use eil-paymaster instead)')
   .option(
     '--network <network>',
     'Network: localnet | testnet | mainnet',
     'localnet',
   )
-  .action(async (options) => {
-    await runDeployScript('eil', options.network, options)
+  .action(async () => {
+    logger.error('EIL deployment has been consolidated.')
+    logger.info('Use: jeju deploy eil-paymaster --network <network>')
+    process.exit(1)
   })
 
 deployCommand
@@ -1050,14 +1243,16 @@ deployCommand
 
 deployCommand
   .command('account-abstraction')
-  .description('Deploy account abstraction infrastructure')
+  .description('Deploy account abstraction infrastructure (deprecated)')
   .option(
     '--network <network>',
     'Network: localnet | testnet | mainnet',
     'localnet',
   )
-  .action(async (options) => {
-    await runDeployScript('account-abstraction', options.network, options)
+  .action(async () => {
+    logger.error('Account abstraction deployment has been consolidated.')
+    logger.info('Use: jeju deploy eil-paymaster --network <network>')
+    process.exit(1)
   })
 
 deployCommand
@@ -1277,7 +1472,7 @@ deployCommand
 
 deployCommand
   .command('frontend')
-  .description('Deploy frontend to IPFS and update JNS')
+  .description('Deploy frontend to IPFS and update JNS (alias for deploy app)')
   .argument('<app-name>', 'App name')
   .option(
     '--network <network>',
@@ -1285,7 +1480,31 @@ deployCommand
     'localnet',
   )
   .action(async (appName, options) => {
-    await runDeployScript('deploy-frontend', options.network, { app: appName })
+    // Use dws-bootstrap.ts - same as deploy app
+    const rootDir = findMonorepoRoot()
+    const scriptPath = join(
+      rootDir,
+      'packages/deployment/scripts/deploy/dws-bootstrap.ts',
+    )
+
+    if (!existsSync(scriptPath)) {
+      logger.error('DWS bootstrap script not found')
+      return
+    }
+
+    logger.header('FRONTEND DEPLOYMENT VIA DWS')
+    logger.keyValue('App', appName)
+    logger.keyValue('Network', options.network)
+    logger.newline()
+
+    await execa('bun', ['run', scriptPath, '--apps', appName, '--skip-contracts'], {
+      cwd: rootDir,
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+        NETWORK: options.network,
+      },
+    })
   })
 
 deployCommand
@@ -1293,7 +1512,35 @@ deployCommand
   .description('Deploy full DAO stack')
   .option('--network <network>', 'Network: localnet | testnet', 'localnet')
   .action(async (options) => {
-    await runDeployScript('deploy-dao-full', options.network, {})
+    // Use dao.ts for DAO deployment
+    const rootDir = findMonorepoRoot()
+    const scriptPath = join(
+      rootDir,
+      'packages/deployment/scripts/deploy/dao.ts',
+    )
+
+    if (!existsSync(scriptPath)) {
+      logger.error('DAO deploy script not found')
+      return
+    }
+
+    logger.header('DAO DEPLOYMENT')
+    logger.keyValue('Network', options.network)
+    logger.newline()
+
+    const args: string[] = []
+    if (options.network && options.network !== 'localnet') {
+      args.push('--network', options.network)
+    }
+
+    await execa('bun', ['run', scriptPath, ...args], {
+      cwd: rootDir,
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+        NETWORK: options.network,
+      },
+    })
   })
 
 deployCommand
@@ -1404,8 +1651,13 @@ deployCommand
     'Network: localnet | testnet | mainnet',
     'localnet',
   )
-  .action(async (options) => {
-    await runDeployScript('defi-protocols', options.network, options)
+  .action(async () => {
+    logger.error('DeFi deployment has been consolidated.')
+    logger.info('Use individual contract deploy commands:')
+    logger.info('  jeju deploy token --network <network>')
+    logger.info('  jeju deploy oif --network <network>')
+    logger.info('  jeju deploy otc --network <network>')
+    process.exit(1)
   })
 
 deployCommand
@@ -1523,6 +1775,7 @@ deployCommand
       stdio: 'inherit',
       env: {
         ...process.env,
+        JEJU_NETWORK: options.network,
         NETWORK: options.network,
         CDN_ENABLED: options.cdn ? 'true' : 'false',
       },

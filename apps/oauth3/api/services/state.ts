@@ -29,12 +29,23 @@ async function getSQLitClient(): Promise<SQLitClient> {
       debug: !isProductionEnv(),
     })
 
-    const healthy = await sqlitClient.isHealthy()
-    if (!healthy) {
-      throw new Error('SQLit client not available')
+    // In dev mode, don't fail immediately if SQLit isn't available
+    // This allows the health endpoint to work even when SQLit is down
+    if (!isProductionEnv()) {
+      const healthy = await sqlitClient.isHealthy().catch(() => false)
+      if (!healthy) {
+        console.warn('[OAuth3] SQLit not available - some features will not work')
+        // Don't throw in dev mode - allow app to start
+      } else {
+        await ensureTablesExist()
+      }
+    } else {
+      const healthy = await sqlitClient.isHealthy()
+      if (!healthy) {
+        throw new Error('SQLit client not available')
+      }
+      await ensureTablesExist()
     }
-
-    await ensureTablesExist()
   }
 
   if (!sqlitClient) {
@@ -51,10 +62,32 @@ function getCache(): CacheClient {
   return cacheClient
 }
 
+let useMemoryFallback = process.env.USE_MEMORY_STATE === 'true'
+
 async function ensureTablesExist(): Promise<void> {
   if (initialized) return
 
-  const client = await getSQLitClient()
+  // In dev mode, use memory fallback if SQLit isn't available
+  if (useMemoryFallback) {
+    initialized = true
+    console.log('[OAuth3] Using in-memory storage (USE_MEMORY_STATE=true)')
+    return
+  }
+
+  let client: SQLitClient | null = null
+  try {
+    client = await getSQLitClient()
+  } catch (err) {
+    // SQLit not available - fall back to memory in dev mode
+    if (!isProductionEnv()) {
+      useMemoryFallback = true
+      initialized = true
+      console.warn('[OAuth3] SQLit not available, using in-memory storage')
+      return
+    }
+    throw err
+  }
+
   if (!client) {
     initialized = true
     console.log('[OAuth3] Using in-memory storage')

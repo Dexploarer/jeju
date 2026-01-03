@@ -13,8 +13,8 @@ import { existsSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import {
-  getCoreAppUrl,
   getCurrentNetwork,
+  getDWSUrl,
   getL2RpcUrl,
 } from '@jejunetwork/config'
 import { $ } from 'bun'
@@ -53,19 +53,19 @@ function getConfig(): DeployConfig {
 
   const configs: Record<DeployConfig['network'], Partial<DeployConfig>> = {
     localnet: {
-      dwsUrl: getCoreAppUrl('DWS_API'),
+      dwsUrl: getDWSUrl('localnet'),
       rpcUrl: getL2RpcUrl(),
       workerRegistryAddress:
         '0x5FbDB2315678afecb367f032d93F642f64180aa3' as Address,
     },
     testnet: {
-      dwsUrl: getCoreAppUrl('DWS_API'),
+      dwsUrl: getDWSUrl('testnet'),
       rpcUrl: getL2RpcUrl(),
       workerRegistryAddress:
         '0x0000000000000000000000000000000000000000' as Address,
     },
     mainnet: {
-      dwsUrl: getCoreAppUrl('DWS_API'),
+      dwsUrl: getDWSUrl('mainnet'),
       rpcUrl: getL2RpcUrl(),
       workerRegistryAddress:
         '0x0000000000000000000000000000000000000000' as Address,

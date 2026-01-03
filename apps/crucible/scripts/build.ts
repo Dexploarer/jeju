@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs'
 import { cp, mkdir, rm } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { getCurrentNetwork } from '@jejunetwork/config'
+import { reportBundleSizes } from '@jejunetwork/shared'
 import type { BunPlugin } from 'bun'
 
 const DIST_DIR = './dist'
@@ -150,6 +151,7 @@ async function buildFrontend(): Promise<void> {
     sourcemap: 'external',
     external: BROWSER_EXTERNALS,
     plugins: [browserPlugin],
+    drop: ['debugger'],
     define: {
       'process.env.NODE_ENV': JSON.stringify('production'),
       'process.env.JEJU_NETWORK': JSON.stringify(network),
@@ -178,6 +180,8 @@ async function buildFrontend(): Promise<void> {
     for (const log of result.logs) console.error(log)
     throw new Error('Frontend build failed')
   }
+
+  reportBundleSizes(result, 'Crucible Frontend')
 
   const mainEntry = result.outputs.find(
     (o) => o.kind === 'entry-point' && o.path.includes('client'),
@@ -245,6 +249,7 @@ async function buildApi(): Promise<void> {
     target: 'bun',
     minify: true,
     sourcemap: 'external',
+    drop: ['debugger'],
     external: [
       'bun:sqlite',
       'child_process',
@@ -268,6 +273,7 @@ async function buildApi(): Promise<void> {
     throw new Error('API build failed')
   }
 
+  reportBundleSizes(result, 'Crucible API')
   console.log(`  API: ${API_DIR}/`)
 }
 

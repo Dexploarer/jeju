@@ -457,9 +457,11 @@ const app = createCrucibleApp()
 export const fetch = app.fetch
 
 /**
- * Default export - the Elysia app instance
+ * Default export for workerd
  */
-export default app
+export default {
+  fetch: app.fetch,
+}
 
 /**
  * Bun server entry point - only runs when executed directly

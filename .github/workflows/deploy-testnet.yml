@@ -23,7 +23,11 @@ jobs:
       - uses: oven-sh/setup-bun@v1
 
       - name: Install dependencies
-        run: bun install
+        run: |
+          # Remove vendor workspaces (private repos not available in CI)
+          jq '.workspaces = [.workspaces[] | select(startswith("vendor/") | not)]' package.json > package.tmp && mv package.tmp package.json
+          cat package.json | jq '.workspaces'
+          bun install
 
       - name: Run security checks
         env:
@@ -53,7 +57,13 @@ jobs:
     needs: validate
     strategy:
       matrix:
-        app: [bazaar, gateway, documentation, indexer, compute, monitoring, storage]
+        include:
+          - app: dws
+            context: .
+            dockerfile: apps/dws/Dockerfile
+          - app: indexer
+            context: apps/indexer
+            dockerfile: apps/indexer/Dockerfile.k8s
     steps:
       - uses: actions/checkout@v4
       
@@ -70,8 +80,8 @@ jobs:
       - name: Build and push ${{ matrix.app }}
         uses: docker/build-push-action@v5
         with:
-          context: ./apps/${{ matrix.app }}
-          file: ./apps/${{ matrix.app }}/Dockerfile
+          context: ./${{ matrix.context }}
+          file: ./${{ matrix.dockerfile }}
           push: true
           tags: |
             ${{ steps.login-ecr.outputs.registry }}/jeju/${{ matrix.app }}:testnet-${{ github.sha }}
