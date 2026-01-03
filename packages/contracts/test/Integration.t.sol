@@ -31,7 +31,7 @@ contract DecentralizationIntegrationTest is Test {
 
     address public owner = makeAddr("owner");
     address public governance = makeAddr("governance");
-    address public securityCouncil = makeAddr("securityCouncil");
+    address public securityBoard = makeAddr("securityBoard");
     address public treasury = makeAddr("treasury");
     address public sequencer1 = makeAddr("sequencer1");
     address public sequencer2 = makeAddr("sequencer2");
@@ -51,7 +51,7 @@ contract DecentralizationIntegrationTest is Test {
             address(jejuToken), address(identityRegistry), address(reputationRegistry), treasury, owner
         );
 
-        timelock = new GovernanceTimelock(governance, securityCouncil, owner, 2 hours);
+        timelock = new GovernanceTimelock(governance, securityBoard, owner, 2 hours);
 
         disputeFactory = new DisputeGameFactory(treasury, owner);
         disputeFactory.initializeProver(DisputeGameFactory.ProverType.CANNON, address(prover), true);
@@ -137,7 +137,7 @@ contract DecentralizationIntegrationTest is Test {
 
         assertFalse(disputeFactory.paused());
 
-        vm.prank(securityCouncil);
+        vm.prank(securityBoard);
         bytes32 proposalId = timelock.proposeEmergencyBugfix(address(disputeFactory), data, "Emergency pause", bugProof);
 
         uint256 emergencyDelay = timelock.EMERGENCY_MIN_DELAY();

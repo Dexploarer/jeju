@@ -6,7 +6,7 @@ import {
 } from '@tanstack/react-query'
 import { API_URL } from '../config'
 
-type RoomType = 'collaboration' | 'adversarial' | 'debate' | 'council'
+type RoomType = 'collaboration' | 'adversarial' | 'debate' | 'board'
 type AgentRole =
   | 'participant'
   | 'moderator'

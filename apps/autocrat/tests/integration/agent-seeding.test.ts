@@ -30,7 +30,7 @@ beforeAll(async () => {
 })
 
 describe('Autocrat Agent Templates', () => {
-  test('should have all required council agents', () => {
+  test('should have all required board agents', () => {
     const requiredRoles = ['TREASURY', 'CODE', 'COMMUNITY', 'SECURITY', 'LEGAL']
 
     for (const role of requiredRoles) {
@@ -74,7 +74,7 @@ describe('Autocrat Agent Templates', () => {
   })
 
   test('should have correct number of templates', () => {
-    // 5 council + 2 security (bounty, guardian) = 7
+    // 5 board + 2 security (bounty, guardian) = 7
     expect(autocratAgentTemplates.length).toBe(7)
   })
 })
@@ -91,7 +91,7 @@ describe('Autocrat Runtime Manager', () => {
     expect(autocratAgentRuntime.isDWSAvailable()).toBe(true)
   })
 
-  test('should get runtime for each council agent', async () => {
+  test('should get runtime for each board agent', async () => {
     if (!dwsAvailable || !autocratAgentRuntime.isInitialized()) {
       console.log('[Skipped] Requires DWS and initialized runtime')
       return
@@ -148,7 +148,7 @@ describe('Agent Deliberation', () => {
     expect(vote.confidence).toBeLessThanOrEqual(100)
   }, 60000)
 
-  test('should deliberate with all council agents (requires DWS)', async () => {
+  test('should deliberate with all board agents (requires DWS)', async () => {
     if (!dwsAvailable) {
       console.log('[Skipped] Requires DWS')
       return
@@ -161,16 +161,16 @@ describe('Agent Deliberation', () => {
     const request: DeliberationRequest = {
       proposalId: 'test-proposal-002',
       title: 'Multi-Agent Deliberation Test',
-      summary: 'Testing all council agents deliberate together',
+      summary: 'Testing all board agents deliberate together',
       description:
-        'A comprehensive test proposal that requires input from all council members. Includes technical, financial, community, security, and legal considerations.',
+        'A comprehensive test proposal that requires input from all board members. Includes technical, financial, community, security, and legal considerations.',
       proposalType: 'GENERAL',
       submitter: '0x1234567890abcdef1234567890abcdef12345678',
     }
 
     const votes = await autocratAgentRuntime.deliberateAll(request)
 
-    expect(votes.length).toBeGreaterThanOrEqual(5) // At least the 5 main council
+    expect(votes.length).toBeGreaterThanOrEqual(5) // At least the 5 main board
 
     for (const vote of votes) {
       expect(vote.agentId).toBeDefined()

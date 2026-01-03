@@ -188,7 +188,7 @@ export interface OAuth3App {
   name: string
   description: string
   owner: Address
-  council: Address
+  board: Address
   redirectUris: string[]
   allowedProviders: AuthProvider[]
   jnsName: string
@@ -305,21 +305,21 @@ export interface SessionPermission {
   rateLimit: number
 }
 
-export interface CouncilConfig {
-  councilId: Hex
+export interface BoardConfig {
+  boardId: Hex
   name: string
   treasury: Address
   directorAgent: Address
-  councilAgents: Address[]
+  boardAgents: Address[]
   oauth3App: Hex
   jnsName: string
 }
 
-export const CouncilType = {
+export const BoardType = {
   JEJU: 'jeju',
   ELIZA: 'eliza',
 } as const
-export type CouncilType = (typeof CouncilType)[keyof typeof CouncilType]
+export type BoardType = (typeof BoardType)[keyof typeof BoardType]
 
 export interface CrossChainIdentity {
   identityId: Hex

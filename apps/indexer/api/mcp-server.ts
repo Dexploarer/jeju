@@ -417,7 +417,7 @@ export function createIndexerMCPServer() {
           contents = {
             note: 'Query active proposals via GraphQL',
             query:
-              'query { councilProposals(where: { status_eq: "ACTIVE" }) { proposalId title votesFor votesAgainst } }',
+              'query { boardProposals(where: { status_eq: "ACTIVE" }) { proposalId title votesFor votesAgainst } }',
           }
           break
 

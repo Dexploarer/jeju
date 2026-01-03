@@ -96,7 +96,7 @@ const DAORegistryABI = [
           { name: 'displayName', type: 'string' },
           { name: 'description', type: 'string' },
           { name: 'treasury', type: 'address' },
-          { name: 'council', type: 'address' },
+          { name: 'board', type: 'address' },
           { name: 'directorAgent', type: 'address' },
           { name: 'feeConfig', type: 'address' },
           { name: 'directorModelId', type: 'bytes32' },
@@ -127,7 +127,7 @@ const DAORegistryABI = [
               { name: 'displayName', type: 'string' },
               { name: 'description', type: 'string' },
               { name: 'treasury', type: 'address' },
-              { name: 'council', type: 'address' },
+              { name: 'board', type: 'address' },
               { name: 'directorAgent', type: 'address' },
               { name: 'feeConfig', type: 'address' },
               { name: 'directorModelId', type: 'bytes32' },
@@ -161,7 +161,7 @@ const DAORegistryABI = [
             ],
           },
           {
-            name: 'councilMembers',
+            name: 'boardMembers',
             type: 'tuple[]',
             components: [
               { name: 'member', type: 'address' },
@@ -192,7 +192,7 @@ const DAORegistryABI = [
           { name: 'displayName', type: 'string' },
           { name: 'description', type: 'string' },
           { name: 'treasury', type: 'address' },
-          { name: 'council', type: 'address' },
+          { name: 'board', type: 'address' },
           { name: 'directorAgent', type: 'address' },
           { name: 'feeConfig', type: 'address' },
           { name: 'directorModelId', type: 'bytes32' },
@@ -315,7 +315,7 @@ const DAORegistryABI = [
   },
   {
     type: 'function',
-    name: 'isCouncilMember',
+    name: 'isBoardMember',
     inputs: [
       { name: 'daoId', type: 'bytes32' },
       { name: 'member', type: 'address' },
@@ -375,7 +375,7 @@ const DAORegistryABI = [
   },
   {
     type: 'function',
-    name: 'addCouncilMember',
+    name: 'addBoardMember',
     inputs: [
       { name: 'daoId', type: 'bytes32' },
       { name: 'member', type: 'address' },
@@ -388,7 +388,7 @@ const DAORegistryABI = [
   },
   {
     type: 'function',
-    name: 'removeCouncilMember',
+    name: 'removeBoardMember',
     inputs: [
       { name: 'daoId', type: 'bytes32' },
       { name: 'member', type: 'address' },
@@ -438,10 +438,10 @@ const DAORegistryABI = [
   },
   {
     type: 'function',
-    name: 'setDAOCouncilContract',
+    name: 'setDAOBoardContract',
     inputs: [
       { name: 'daoId', type: 'bytes32' },
-      { name: 'council', type: 'address' },
+      { name: 'board', type: 'address' },
     ],
     outputs: [],
     stateMutability: 'nonpayable',
@@ -751,7 +751,7 @@ interface RawDAOResult {
   displayName: string
   description: string
   treasury: Address
-  council: Address
+  board: Address
   directorAgent: Address
   feeConfig: Address
   directorModelId: `0x${string}`
@@ -794,7 +794,7 @@ interface RawDAOFullResult {
   dao: RawDAOResult
   directorPersona: RawPersonaResult
   params: RawParamsResult
-  councilMembers: readonly RawMemberResult[]
+  boardMembers: readonly RawMemberResult[]
   linkedPackages: readonly `0x${string}`[]
   linkedRepos: readonly `0x${string}`[]
 }
@@ -1303,11 +1303,11 @@ export class DAOService {
     })
   }
 
-  async isCouncilMember(daoId: string, member: Address): Promise<boolean> {
+  async isBoardMember(daoId: string, member: Address): Promise<boolean> {
     return this.publicClient.readContract({
       address: this.config.daoRegistryAddress,
       abi: DAORegistryABI,
-      functionName: 'isCouncilMember',
+      functionName: 'isBoardMember',
       args: [toHex(daoId), member],
     })
   }
@@ -1427,7 +1427,7 @@ export class DAOService {
     return hash
   }
 
-  async addCouncilMember(
+  async addBoardMember(
     daoId: string,
     member: Address,
     agentId: bigint,
@@ -1441,7 +1441,7 @@ export class DAOService {
     const hash = await this.walletClient.writeContract({
       address: this.config.daoRegistryAddress,
       abi: DAORegistryABI,
-      functionName: 'addCouncilMember',
+      functionName: 'addBoardMember',
       args: [toHex(daoId), member, agentId, role, BigInt(weight)],
     })
 
@@ -1449,7 +1449,7 @@ export class DAOService {
     return hash
   }
 
-  async removeCouncilMember(daoId: string, member: Address): Promise<Hash> {
+  async removeBoardMember(daoId: string, member: Address): Promise<Hash> {
     if (!this.walletClient) {
       throw new Error('Wallet client not initialized')
     }
@@ -1457,7 +1457,7 @@ export class DAOService {
     const hash = await this.walletClient.writeContract({
       address: this.config.daoRegistryAddress,
       abi: DAORegistryABI,
-      functionName: 'removeCouncilMember',
+      functionName: 'removeBoardMember',
       args: [toHex(daoId), member],
     })
 
@@ -1547,7 +1547,7 @@ export class DAOService {
       const hash = await this.walletClient.writeContract({
         address: this.config.daoRegistryAddress,
         abi: DAORegistryABI,
-        functionName: 'setDAOCouncilContract',
+        functionName: 'setDAOBoardContract',
         args: [toHex(daoId), contracts.board],
       })
       hashes.push(hash)
@@ -1936,7 +1936,7 @@ export class DAOService {
       displayName: raw.displayName,
       description: raw.description,
       treasury: raw.treasury,
-      board: raw.council, // Map from raw 'council' to typed 'board'
+      board: raw.board, // Map from raw 'board' to typed 'board'
       directorAgent: raw.directorAgent,
       feeConfig: raw.feeConfig,
       directorModelId: raw.directorModelId,
@@ -1970,7 +1970,7 @@ export class DAOService {
         minProposalStake: raw.params.minProposalStake,
         quorumBps: Number(raw.params.quorumBps),
       },
-      boardMembers: raw.councilMembers.map((m) => ({
+      boardMembers: raw.boardMembers.map((m) => ({
         member: m.member,
         agentId: m.agentId,
         role: m.role,

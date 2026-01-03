@@ -4,9 +4,9 @@
  * Deploy Governance Infrastructure
  *
  * Deploys:
- * 1. DelegationRegistry - Vote delegation and security council
+ * 1. DelegationRegistry - Vote delegation and security board
  * 2. CircuitBreaker - Emergency pause system
- * 3. CouncilSafeModule - AI Director signing module
+ * 3. BoardSafeModule - AI Director signing module
  * 4. Gnosis Safe - Multi-sig treasury
  *
  * Usage:
@@ -55,9 +55,9 @@ interface NetworkConfig {
 interface DeployedAddresses {
   delegationRegistry: string
   circuitBreaker: string
-  councilSafeModule: string
+  boardSafeModule: string
   safe: string
-  council: string
+  board: string
   identityRegistry: string
   reputationRegistry: string
   governanceToken: string
@@ -103,8 +103,8 @@ const CIRCUIT_BREAKER_ABI = parseAbi([
   'function registerContract(address target, string name, uint256 priority)',
 ])
 
-const COUNCIL_SAFE_MODULE_ABI = parseAbi([
-  'constructor(address safe, address council, address teeOperator, bytes32 trustedMeasurement, address initialOwner)',
+const BOARD_SAFE_MODULE_ABI = parseAbi([
+  'constructor(address safe, address board, address teeOperator, bytes32 trustedMeasurement, address initialOwner)',
   'function version() view returns (string)',
 ])
 
@@ -203,19 +203,19 @@ async function main() {
   const reputationRegistry =
     existingAddresses.reputationRegistry ??
     process.env.REPUTATION_REGISTRY_ADDRESS
-  const council = existingAddresses.council ?? process.env.COUNCIL_ADDRESS
+  const board = existingAddresses.board ?? process.env.BOARD_ADDRESS
 
   if (
     !governanceToken ||
     !identityRegistry ||
     !reputationRegistry ||
-    !council
+    !board
   ) {
     console.error('\nMissing required contract addresses:')
     if (!governanceToken) console.error('  - GOVERNANCE_TOKEN_ADDRESS')
     if (!identityRegistry) console.error('  - IDENTITY_REGISTRY_ADDRESS')
     if (!reputationRegistry) console.error('  - REPUTATION_REGISTRY_ADDRESS')
-    if (!council) console.error('  - COUNCIL_ADDRESS')
+    if (!board) console.error('  - BOARD_ADDRESS')
     console.error('\nSet these in environment or deploy base contracts first.')
     process.exit(1)
   }
@@ -224,10 +224,10 @@ async function main() {
     governanceToken,
     identityRegistry,
     reputationRegistry,
-    council,
+    board,
     delegationRegistry: '',
     circuitBreaker: '',
-    councilSafeModule: '',
+    boardSafeModule: '',
     safe: '',
   }
 
@@ -374,37 +374,37 @@ async function main() {
     deployedAddresses.circuitBreaker = address
     console.log(`  ✅ CircuitBreaker: ${deployedAddresses.circuitBreaker}`)
 
-    // Register Council contract for protection
+    // Register Board contract for protection
     const registerHash = await walletClient.writeContract({
       address: deployedAddresses.circuitBreaker as Address,
       abi: CIRCUIT_BREAKER_ABI,
       functionName: 'registerContract',
-      args: [council as Address, 'Council', 1n],
+      args: [board as Address, 'Board', 1n],
       account,
     })
     await waitForTransactionReceipt(publicClient, { hash: registerHash })
-    console.log('  ✅ Registered Council for circuit breaker protection')
+    console.log('  ✅ Registered Board for circuit breaker protection')
   } else {
     console.log('  [DRY RUN] Would deploy CircuitBreaker')
   }
 
-  // Step 4: Deploy CouncilSafeModule
-  console.log('\n📦 Step 4: Deploying CouncilSafeModule...')
+  // Step 4: Deploy BoardSafeModule
+  console.log('\n📦 Step 4: Deploying BoardSafeModule...')
 
   const teeOperator = (process.env.TEE_OPERATOR_ADDRESS ??
     account.address) as Address
   const trustedMeasurement = (process.env.TRUSTED_MEASUREMENT ??
     zeroHash) as `0x${string}`
 
-  const councilModuleBytecode = await loadBytecode('CouncilSafeModule')
+  const boardModuleBytecode = await loadBytecode('BoardSafeModule')
 
   if (!dryRun) {
     const deployData = encodeDeployData({
-      abi: COUNCIL_SAFE_MODULE_ABI,
-      bytecode: councilModuleBytecode as `0x${string}`,
+      abi: BOARD_SAFE_MODULE_ABI,
+      bytecode: boardModuleBytecode as `0x${string}`,
       args: [
         deployedAddresses.safe as Address,
-        council as Address,
+        board as Address,
         teeOperator,
         trustedMeasurement,
         account.address,
@@ -423,12 +423,12 @@ async function main() {
     const address =
       receipt.contractAddress ??
       getContractAddress({ from: account.address, nonce: BigInt(nonce) })
-    deployedAddresses.councilSafeModule = address
+    deployedAddresses.boardSafeModule = address
     console.log(
-      `  ✅ CouncilSafeModule: ${deployedAddresses.councilSafeModule}`,
+      `  ✅ BoardSafeModule: ${deployedAddresses.boardSafeModule}`,
     )
   } else {
-    console.log('  [DRY RUN] Would deploy CouncilSafeModule')
+    console.log('  [DRY RUN] Would deploy BoardSafeModule')
   }
 
   // Step 5: Enable module on Safe
@@ -436,7 +436,7 @@ async function main() {
     console.log('\n📦 Step 5: Enabling module on Safe...')
     console.log('  ⚠️  Manual step required: Call enableModule on Safe')
     console.log(`     Safe: ${deployedAddresses.safe}`)
-    console.log(`     Module: ${deployedAddresses.councilSafeModule}`)
+    console.log(`     Module: ${deployedAddresses.boardSafeModule}`)
     console.log('     Use Safe UI or CLI to add the module')
   }
 
@@ -460,7 +460,7 @@ async function main() {
   console.log(`  Safe:               ${deployedAddresses.safe}`)
   console.log(`  DelegationRegistry: ${deployedAddresses.delegationRegistry}`)
   console.log(`  CircuitBreaker:     ${deployedAddresses.circuitBreaker}`)
-  console.log(`  CouncilSafeModule:  ${deployedAddresses.councilSafeModule}`)
+  console.log(`  BoardSafeModule:  ${deployedAddresses.boardSafeModule}`)
 
   if (network.explorerUrl) {
     console.log('\nExplorer Links:')
@@ -476,9 +476,9 @@ async function main() {
       console.log(
         `  CircuitBreaker: ${network.explorerUrl}/address/${deployedAddresses.circuitBreaker}`,
       )
-    if (deployedAddresses.councilSafeModule)
+    if (deployedAddresses.boardSafeModule)
       console.log(
-        `  SafeModule: ${network.explorerUrl}/address/${deployedAddresses.councilSafeModule}`,
+        `  SafeModule: ${network.explorerUrl}/address/${deployedAddresses.boardSafeModule}`,
       )
   }
 
@@ -486,10 +486,10 @@ async function main() {
 
   if (!dryRun) {
     console.log('\n📌 NEXT STEPS:')
-    console.log('1. Enable CouncilSafeModule on Safe via Safe UI')
+    console.log('1. Enable BoardSafeModule on Safe via Safe UI')
     console.log('2. Add additional Safe signers if needed')
     console.log('3. Register delegates in DelegationRegistry')
-    console.log('4. Update security council via updateSecurityCouncil()')
+    console.log('4. Update security board via updateSecurityBoard()')
     console.log('5. Configure TEE operator and trusted measurement')
   }
 }

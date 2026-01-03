@@ -539,7 +539,7 @@ async function testGovernanceTimelock(): Promise<void> {
     'function EMERGENCY_MIN_DELAY() external view returns (uint256)',
     'function TIMELOCK_DELAY() external view returns (uint256)',
     'function governance() external view returns (address)',
-    'function securityCouncil() external view returns (address)',
+    'function securityBoard() external view returns (address)',
   ])
 
   const delay = await readContract(publicClient, {

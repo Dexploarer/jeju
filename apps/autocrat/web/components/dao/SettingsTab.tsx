@@ -271,7 +271,7 @@ export function SettingsTab({ dao }: SettingsTabProps) {
           }}
         >
           <InfoRow label="Treasury" value={dao.treasury} copyable />
-          <InfoRow label="Council" value={dao.council} copyable />
+          <InfoRow label="Board" value={dao.board} copyable />
           <InfoRow
             label="Director Agent"
             value={dao.directorAgentContract}
@@ -401,7 +401,7 @@ export function SettingsTab({ dao }: SettingsTabProps) {
                 className="text-lg font-semibold"
                 style={{ color: 'var(--text-primary)' }}
               >
-                {Math.floor(dao.governanceParams.councilVotingPeriod / 86400)}{' '}
+                {Math.floor(dao.governanceParams.boardVotingPeriod / 86400)}{' '}
                 days
               </p>
             </div>

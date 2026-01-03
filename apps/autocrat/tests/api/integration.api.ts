@@ -301,7 +301,7 @@ test.describe('Real Blockchain Integration', () => {
     expect(data.result).toBeDefined()
   })
 
-  test('council connects to live chain', async ({ request }) => {
+  test('board connects to live chain', async ({ request }) => {
     const response = await request.get(`${AUTOCRAT_URL}/health`)
     expect(response.ok()).toBeTruthy()
     const data = await response.json()

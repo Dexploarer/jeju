@@ -29,7 +29,7 @@ import {
   type KMSAccount,
 } from './kms-signer'
 
-// Config type for orchestrator - accepts CouncilConfig or minimal config
+// Config type for orchestrator - accepts BoardConfig or minimal config
 export interface AutocratConfig {
   rpcUrl: string
   chainId?: number
@@ -56,7 +56,7 @@ import { getResearchAgent, type ResearchRequest } from './research-agent'
 import { makeTEEDecision } from './tee'
 
 // Use JSON ABI format to avoid abitype parsing issues with complex tuples
-const COUNCIL_WRITE_ABI = [
+const BOARD_WRITE_ABI = [
   {
     name: 'getActiveProposals',
     type: 'function',
@@ -109,7 +109,7 @@ const COUNCIL_WRITE_ABI = [
         name: '',
         components: [
           { type: 'bytes32', name: 'proposalId' },
-          { type: 'address', name: 'councilAgent' },
+          { type: 'address', name: 'boardAgent' },
           { type: 'uint8', name: 'role' },
           { type: 'uint8', name: 'vote' },
           { type: 'bytes32', name: 'reasoningHash' },
@@ -180,7 +180,7 @@ const STATUS = {
 interface DAOState {
   daoId: string
   daoFull: DAOFull
-  councilAddress: Address
+  boardAddress: Address
   directorAgentAddress: Address
   lastProcessed: number
   processedCount: number
@@ -337,11 +337,11 @@ export class AutocratOrchestrator {
       if (this.daoStates.has(daoId)) continue
 
       const daoFull = await this.daoService.getDAOFull(daoId)
-      const councilAddr = daoFull.dao.board
+      const boardAddr = daoFull.dao.board
       const directorAgentAddr = daoFull.dao.directorAgent
       if (
-        !councilAddr ||
-        councilAddr === '0x0000000000000000000000000000000000000000' ||
+        !boardAddr ||
+        boardAddr === '0x0000000000000000000000000000000000000000' ||
         !directorAgentAddr ||
         directorAgentAddr === '0x0000000000000000000000000000000000000000'
       ) {
@@ -351,7 +351,7 @@ export class AutocratOrchestrator {
       this.daoStates.set(daoId, {
         daoId,
         daoFull,
-        councilAddress: councilAddr,
+        boardAddress: boardAddr,
         directorAgentAddress: directorAgentAddr,
         lastProcessed: 0,
         processedCount: 0,
@@ -369,12 +369,12 @@ export class AutocratOrchestrator {
   }
 
   private async processDAO(state: DAOState): Promise<void> {
-    const { councilAddress } = state
+    const { boardAddress } = state
 
     try {
       const activeIds = (await readContract(this.client, {
-        address: councilAddress,
-        abi: COUNCIL_WRITE_ABI,
+        address: boardAddress,
+        abi: BOARD_WRITE_ABI,
         functionName: 'getActiveProposals',
       })) as readonly `0x${string}`[]
 
@@ -382,8 +382,8 @@ export class AutocratOrchestrator {
 
       for (const proposalId of activeIds.slice(0, 5)) {
         const proposal = (await readContract(this.client, {
-          address: councilAddress,
-          abi: COUNCIL_WRITE_ABI,
+          address: boardAddress,
+          abi: BOARD_WRITE_ABI,
           functionName: 'getProposal',
           args: [proposalId],
         })) as ProposalFromContract
@@ -410,7 +410,7 @@ export class AutocratOrchestrator {
         break
 
       case STATUS.AUTOCRAT_REVIEW:
-        await this.processCouncilReview(state, proposalId, proposal)
+        await this.processBoardReview(state, proposalId, proposal)
         break
 
       case STATUS.RESEARCH_PENDING:
@@ -431,16 +431,16 @@ export class AutocratOrchestrator {
     }
   }
 
-  private async processCouncilReview(
+  private async processBoardReview(
     state: DAOState,
     proposalId: string,
     proposal: ProposalFromContract,
   ): Promise<void> {
-    const { councilAddress } = state
+    const { boardAddress } = state
 
     const votes = (await readContract(this.client, {
-      address: councilAddress,
-      abi: COUNCIL_WRITE_ABI,
+      address: boardAddress,
+      abi: BOARD_WRITE_ABI,
       functionName: 'getAutocratVotes',
       args: [toHex(proposalId)],
     })) as AutocratVoteFromContract[]
@@ -488,8 +488,8 @@ export class AutocratOrchestrator {
             { APPROVE: 0, REJECT: 1, ABSTAIN: 2 }[vote.vote] ?? 2
 
           const hash = await writeContract(this.walletClient, {
-            address: councilAddress,
-            abi: COUNCIL_WRITE_ABI,
+            address: boardAddress,
+            abi: BOARD_WRITE_ABI,
             functionName: 'castAutocratVote',
             args: [
               toHex(proposalId),
@@ -507,8 +507,8 @@ export class AutocratOrchestrator {
     const now = Math.floor(Date.now() / 1000)
     if (now >= Number(proposal.autocratVoteEnd) && this.account) {
       const hash = await writeContract(this.walletClient, {
-        address: councilAddress,
-        abi: COUNCIL_WRITE_ABI,
+        address: boardAddress,
+        abi: BOARD_WRITE_ABI,
         functionName: 'finalizeAutocratVote',
         args: [toHex(proposalId)],
         account: this.account as unknown as Account,
@@ -523,7 +523,7 @@ export class AutocratOrchestrator {
     proposalId: string,
     proposal: ProposalFromContract,
   ): Promise<void> {
-    const { councilAddress, daoFull } = state
+    const { boardAddress, daoFull } = state
 
     if (proposal.hasResearch) return
 
@@ -542,8 +542,8 @@ export class AutocratOrchestrator {
 
     if (this.account) {
       const hash = await writeContract(this.walletClient, {
-        address: councilAddress,
-        abi: COUNCIL_WRITE_ABI,
+        address: boardAddress,
+        abi: BOARD_WRITE_ABI,
         functionName: 'recordResearch',
         args: [toHex(proposalId), keccak256(stringToHex(report.requestHash))],
         account: this.account as unknown as Account,
@@ -558,15 +558,15 @@ export class AutocratOrchestrator {
     proposalId: string,
     proposal: ProposalFromContract,
   ): Promise<void> {
-    const { councilAddress } = state
+    const { boardAddress } = state
     const now = Math.floor(Date.now() / 1000)
 
     if (now < Number(proposal.autocratVoteEnd)) return
 
     if (this.account) {
       const hash = await writeContract(this.walletClient, {
-        address: councilAddress,
-        abi: COUNCIL_WRITE_ABI,
+        address: boardAddress,
+        abi: BOARD_WRITE_ABI,
         functionName: 'advanceToDirector',
         args: [toHex(proposalId)],
         account: this.account as unknown as Account,
@@ -581,15 +581,15 @@ export class AutocratOrchestrator {
     proposalId: string,
     proposal: ProposalFromContract,
   ): Promise<void> {
-    const { councilAddress, daoFull } = state
+    const { boardAddress, daoFull } = state
     const persona = daoFull.directorPersona
     if (!persona) {
       throw new Error(`DAO ${state.daoId} has no Director persona`)
     }
 
     const votes = (await readContract(this.client, {
-      address: councilAddress,
-      abi: COUNCIL_WRITE_ABI,
+      address: boardAddress,
+      abi: BOARD_WRITE_ABI,
       functionName: 'getAutocratVotes',
       args: [toHex(proposalId)],
     })) as AutocratVoteFromContract[]
@@ -696,7 +696,7 @@ export class AutocratOrchestrator {
     proposalId: string,
     proposal: ProposalFromContract,
   ): Promise<void> {
-    const { councilAddress } = state
+    const { boardAddress } = state
     const now = Math.floor(Date.now() / 1000)
     const gracePeriodEnd = Number(proposal.gracePeriodEnd)
 
@@ -706,8 +706,8 @@ export class AutocratOrchestrator {
 
     if (this.account) {
       const hash = await writeContract(this.walletClient, {
-        address: councilAddress,
-        abi: COUNCIL_WRITE_ABI,
+        address: boardAddress,
+        abi: BOARD_WRITE_ABI,
         functionName: 'executeProposal',
         args: [toHex(proposalId)],
         account: this.account as unknown as Account,
@@ -923,10 +923,10 @@ export class AutocratOrchestrator {
     if (!this.daoService) return
 
     const daoFull = await this.daoService.getDAOFull(daoId)
-    const councilAddr = daoFull.dao.board
+    const boardAddr = daoFull.dao.board
     const directorAgentAddr = daoFull.dao.directorAgent
 
-    if (!councilAddr || !directorAgentAddr) {
+    if (!boardAddr || !directorAgentAddr) {
       console.log(`[Orchestrator] DAO ${daoId} missing required addresses`)
       return
     }
@@ -935,13 +935,13 @@ export class AutocratOrchestrator {
 
     if (existing) {
       existing.daoFull = daoFull
-      existing.councilAddress = councilAddr
+      existing.boardAddress = boardAddr
       existing.directorAgentAddress = directorAgentAddr
     } else {
       this.daoStates.set(daoId, {
         daoId,
         daoFull,
-        councilAddress: councilAddr,
+        boardAddress: boardAddr,
         directorAgentAddress: directorAgentAddr,
         lastProcessed: 0,
         processedCount: 0,

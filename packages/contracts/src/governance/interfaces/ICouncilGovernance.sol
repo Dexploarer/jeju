@@ -2,11 +2,11 @@
 pragma solidity ^0.8.33;
 
 /**
- * @title ICouncilGovernance
- * @notice Interface for Jeju Autocrat Council governance
+ * @title IBoardGovernance
+ * @notice Interface for Jeju Autocrat Board governance
  * @dev Used by governed contracts to verify proposal approval
  */
-interface ICouncilGovernance {
+interface IBoardGovernance {
     enum ProposalStatus {
         SUBMITTED,
         AUTOCRAT_REVIEW,

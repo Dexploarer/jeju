@@ -360,8 +360,8 @@ program.action(() => {
   )
   console.log(
     '  ' +
-      chalk.cyan(`${cliName} deploy security-council`) +
-      ' Deploy Security Council\n',
+      chalk.cyan(`${cliName} deploy security-board`) +
+      ' Deploy Security Board\n',
   )
 
   console.log(chalk.bold('Utilities:\n'))

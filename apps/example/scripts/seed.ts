@@ -8,9 +8,9 @@ const DEV_DEPLOYER = expectAddress(
   '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
   'DEV_DEPLOYER',
 )
-const DEV_COUNCIL = expectAddress(
+const DEV_BOARD = expectAddress(
   '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
-  'DEV_COUNCIL',
+  'DEV_BOARD',
 )
 const DEV_TEE_OPERATOR = expectAddress(
   '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC',
@@ -39,7 +39,7 @@ async function seedOAuth3Registry() {
 
   const devWallets = {
     deployer: DEV_DEPLOYER,
-    council: DEV_COUNCIL,
+    board: DEV_BOARD,
     teeOperator: DEV_TEE_OPERATOR,
   }
 
@@ -63,7 +63,7 @@ async function seedOAuth3Registry() {
     description:
       'A template for building fully decentralized applications on Jeju Network',
     owner: devWallets.deployer,
-    council: devWallets.council,
+    board: devWallets.board,
     redirectUris: [`http://localhost:${frontendPort}/oauth3/callback`],
     allowedProviders: [
       AuthProvider.WALLET,

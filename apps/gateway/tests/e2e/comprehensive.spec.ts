@@ -249,6 +249,14 @@ test.describe('Gateway - Main Page Load', () => {
     await page.waitForTimeout(2000)
 
     await expect(page.locator('body')).toBeVisible({ timeout: 10000 })
+
+    // Dismiss onboarding modal if present (new users see this on first visit)
+    const skipButton = page.locator('button:has-text("Skip tour")')
+    if (await skipButton.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await skipButton.click()
+      await page.waitForTimeout(500)
+    }
+
     // Check for Gateway branding in header - use header-brand-link which contains the text
     const brandLink = page.locator('.header-brand-link')
     await expect(brandLink).toBeVisible({ timeout: 5000 })

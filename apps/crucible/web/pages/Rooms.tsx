@@ -161,7 +161,7 @@ export default function RoomsPage() {
                         'Shared goals, no scoring'}
                       {rt.type === 'adversarial' && 'Red vs Blue team battles'}
                       {rt.type === 'debate' && 'Turn-based argumentation'}
-                      {rt.type === 'council' && 'Proposals and voting'}
+                      {rt.type === 'board' && 'Proposals and voting'}
                     </p>
                   </button>
                 ))}

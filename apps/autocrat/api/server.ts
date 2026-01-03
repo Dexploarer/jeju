@@ -34,6 +34,7 @@ import { proposalsRoutes } from './routes/proposals'
 import { registryRoutes } from './routes/registry'
 import { researchRoutes } from './routes/research'
 import { rlaifRoutes } from './routes/rlaif'
+import { safeRoutes } from './routes/safe'
 import { triggersRoutes } from './routes/triggers'
 import { securityMiddleware } from './security'
 import {
@@ -210,10 +211,18 @@ const app = new Elysia()
     const message = error instanceof Error ? error.message : String(error)
     console.error(`[Error] ${path}:`, message)
 
-    // Return JSON error response with proper status
-    set.status = 500
-    set.headers['content-type'] = 'application/json'
-    return JSON.stringify({ error: message, path })
+    // Determine proper status code based on error type
+    if (code === 'NOT_FOUND') {
+      set.status = 404
+    } else if (code === 'VALIDATION') {
+      set.status = 422
+    } else if (code === 'PARSE') {
+      set.status = 400
+    } else {
+      set.status = 500
+    }
+
+    return { error: message, path, code }
   })
 
 async function start() {
@@ -233,11 +242,11 @@ async function start() {
   const host = getLocalhostHost()
   app.listen(PORT, () => {
     console.log(
-      `[Council] port=${PORT} tee=${getTEEMode()} trigger=${triggerMode}`,
+      `[Board] port=${PORT} tee=${getTEEMode()} trigger=${triggerMode}`,
     )
-    console.log(`[Council] API: http://${host}:${PORT}`)
+    console.log(`[Board] API: http://${host}:${PORT}`)
     if (hasStaticFiles) {
-      console.log(`[Council] Serving static files from ${STATIC_DIR}`)
+      console.log(`[Board] Serving static files from ${STATIC_DIR}`)
     }
   })
 
@@ -247,7 +256,7 @@ async function start() {
 
   // Only start orchestrator if services are available
   const servicesAvailable = true // Services checked elsewhere
-  if (servicesAvailable && blockchain.councilDeployed && hasDAOContracts) {
+  if (servicesAvailable && blockchain.boardDeployed && hasDAOContracts) {
     const orchestratorConfig = {
       rpcUrl: config.rpcUrl,
       daoRegistry: config.contracts.daoRegistry,

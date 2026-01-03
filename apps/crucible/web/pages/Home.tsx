@@ -186,9 +186,9 @@ export default function HomePage() {
           <FeatureCard
             icon="🏛️"
             title="DAO Governance"
-            description="Council rooms with proposal creation, quorum requirements, and stake-weighted voting."
+            description="Board rooms with proposal creation, quorum requirements, and stake-weighted voting."
             link="/rooms"
-            linkText="Start Council"
+            linkText="Start Board"
           />
         </div>
       </section>

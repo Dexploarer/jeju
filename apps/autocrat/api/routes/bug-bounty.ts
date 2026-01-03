@@ -29,6 +29,42 @@ const BountySubmissionDraftSchema = t.Object({
 })
 
 export const bugBountyRoutes = new Elysia({ prefix: '/api/v1/bug-bounty' })
+  // Root endpoint with service info
+  .get(
+    '/',
+    async ({ set }) => {
+      try {
+        const service = getBugBountyService()
+        const stats = await service.getPoolStats()
+        return {
+          service: 'bug-bounty',
+          status: 'available',
+          poolStats: {
+            totalPool: stats.totalPool.toString(),
+            activeSubmissions: stats.activeSubmissions,
+          },
+          endpoints: {
+            stats: 'GET /api/v1/bug-bounty/stats',
+            submissions: 'GET /api/v1/bug-bounty/submissions',
+            submit: 'POST /api/v1/bug-bounty/submit',
+            validate: 'POST /api/v1/bug-bounty/:id/validate',
+            review: 'POST /api/v1/bug-bounty/:id/review',
+          },
+        }
+      } catch (error) {
+        set.status = 200
+        return {
+          service: 'bug-bounty',
+          status: 'unavailable',
+          message: error instanceof Error ? error.message : 'Bug bounty service requires SQLit',
+          hint: 'Ensure SQLit is running: docker compose up -d sqlit or bun run packages/sqlit/adapter/server.ts',
+        }
+      }
+    },
+    {
+      detail: { tags: ['bug-bounty'], summary: 'Get bug bounty service info' },
+    },
+  )
   // Stats
   .get(
     '/stats',

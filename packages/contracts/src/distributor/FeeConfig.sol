@@ -95,11 +95,11 @@ contract FeeConfig is Ownable, Pausable {
     TokenFees public tokenFees;
     mapping(address => TokenOverride) public tokenOverrides;
     address[] public tokensWithOverrides;
-    address public board; // Board governance contract (formerly council)
+    address public board; // Board governance contract (formerly board)
     address public director; // Director agent (formerly director)
     address public treasury;
     // Legacy alias for backwards compatibility
-    address public council;
+    address public board;
 
     mapping(bytes32 => PendingFeeChange) public pendingChanges;
     mapping(bytes32 => uint256) public lastUpdated;
@@ -145,7 +145,7 @@ contract FeeConfig is Ownable, Pausable {
     event DirectorUpdated(address indexed oldDirector, address indexed newDirector);
     event TreasuryUpdated(address indexed oldTreasury, address indexed newTreasury);
     // Legacy event alias
-    event CouncilUpdated(address indexed oldCouncil, address indexed newCouncil);
+    event BoardUpdated(address indexed oldBoard, address indexed newBoard);
     // App-specific fee events
     event AppFeeOverrideSet(bytes32 indexed daoId, bytes32 indexed feeKey, uint256 newValue, address setBy);
     event AppFeeOverrideRemoved(bytes32 indexed daoId, bytes32 indexed feeKey);
@@ -179,7 +179,7 @@ contract FeeConfig is Ownable, Pausable {
     }
 
     // Legacy modifier for backwards compatibility
-    modifier onlyCouncil() {
+    modifier onlyBoard() {
         if (msg.sender != board && msg.sender != owner()) revert NotAuthorized();
         _;
     }
@@ -191,7 +191,7 @@ contract FeeConfig is Ownable, Pausable {
         director = _director;
         treasury = _treasury;
         // Legacy aliases
-        council = _board;
+        board = _board;
         director = _director;
 
         // Initialize with default fees
@@ -753,8 +753,8 @@ contract FeeConfig is Ownable, Pausable {
         emit BoardUpdated(board, newBoard);
         board = newBoard;
         // Update legacy alias
-        council = newBoard;
-        emit CouncilUpdated(board, newBoard);
+        board = newBoard;
+        emit BoardUpdated(board, newBoard);
     }
 
     function setDirector(address newDirector) external onlyOwner {
@@ -763,11 +763,11 @@ contract FeeConfig is Ownable, Pausable {
     }
 
     // Legacy setter for backwards compatibility
-    function setCouncil(address newCouncil) external onlyOwner {
-        emit BoardUpdated(board, newCouncil);
-        board = newCouncil;
-        council = newCouncil;
-        emit CouncilUpdated(board, newCouncil);
+    function setBoard(address newBoard) external onlyOwner {
+        emit BoardUpdated(board, newBoard);
+        board = newBoard;
+        board = newBoard;
+        emit BoardUpdated(board, newBoard);
     }
 
     function setTreasury(address newTreasury) external onlyOwner {

@@ -10,14 +10,14 @@
 
 import { describe, expect, test } from 'bun:test'
 import {
-  DAOCouncilMemberSchema,
+  DAOBoardMemberSchema,
   DAODirectorConfigSchema,
   DAOFundingConfigSchema,
   DAOGovernanceParamsSchema,
   DAOManifestSchema,
   DAOSeededPackageSchema,
   DAOSeededRepoSchema,
-  validateCouncilWeights,
+  validateBoardWeights,
   validateDAOManifest,
 } from './dao-manifest'
 
@@ -36,7 +36,7 @@ const VALID_Director = {
   pfpCid: 'QmTestCid',
 }
 
-const VALID_COUNCIL_MEMBER = {
+const VALID_BOARD_MEMBER = {
   role: 'Treasury Guardian',
   description: 'Manages treasury',
   weight: 2500,
@@ -44,7 +44,7 @@ const VALID_COUNCIL_MEMBER = {
 
 const VALID_GOVERNANCE_PARAMS = {
   minQualityScore: 60,
-  councilVotingPeriod: 172800,
+  boardVotingPeriod: 172800,
   gracePeriod: 86400,
   minProposalStake: '10000000000000000',
   quorumBps: 5000,
@@ -83,12 +83,12 @@ function createValidManifest() {
     type: 'dao' as const,
     governance: {
       director: VALID_Director,
-      council: {
+      board: {
         members: [
-          { ...VALID_COUNCIL_MEMBER, role: 'Treasury', weight: 2500 },
-          { ...VALID_COUNCIL_MEMBER, role: 'Code', weight: 2500 },
-          { ...VALID_COUNCIL_MEMBER, role: 'Community', weight: 2500 },
-          { ...VALID_COUNCIL_MEMBER, role: 'Security', weight: 2500 },
+          { ...VALID_BOARD_MEMBER, role: 'Treasury', weight: 2500 },
+          { ...VALID_BOARD_MEMBER, role: 'Code', weight: 2500 },
+          { ...VALID_BOARD_MEMBER, role: 'Community', weight: 2500 },
+          { ...VALID_BOARD_MEMBER, role: 'Security', weight: 2500 },
         ],
       },
       parameters: VALID_GOVERNANCE_PARAMS,
@@ -154,59 +154,59 @@ describe('DAODirectorConfigSchema', () => {
 })
 
 // ============================================================================
-// Council Member Schema Tests
+// Board Member Schema Tests
 // ============================================================================
 
-describe('DAOCouncilMemberSchema', () => {
-  test('validates council member with minimum weight', () => {
-    const member = { ...VALID_COUNCIL_MEMBER, weight: 1 }
-    const result = DAOCouncilMemberSchema.parse(member)
+describe('DAOBoardMemberSchema', () => {
+  test('validates board member with minimum weight', () => {
+    const member = { ...VALID_BOARD_MEMBER, weight: 1 }
+    const result = DAOBoardMemberSchema.parse(member)
     expect(result.weight).toBe(1)
   })
 
-  test('validates council member with maximum weight', () => {
-    const member = { ...VALID_COUNCIL_MEMBER, weight: 10000 }
-    const result = DAOCouncilMemberSchema.parse(member)
+  test('validates board member with maximum weight', () => {
+    const member = { ...VALID_BOARD_MEMBER, weight: 10000 }
+    const result = DAOBoardMemberSchema.parse(member)
     expect(result.weight).toBe(10000)
   })
 
   test('rejects weight below minimum (0)', () => {
-    const member = { ...VALID_COUNCIL_MEMBER, weight: 0 }
-    expect(() => DAOCouncilMemberSchema.parse(member)).toThrow()
+    const member = { ...VALID_BOARD_MEMBER, weight: 0 }
+    expect(() => DAOBoardMemberSchema.parse(member)).toThrow()
   })
 
   test('rejects weight above maximum (10001)', () => {
-    const member = { ...VALID_COUNCIL_MEMBER, weight: 10001 }
-    expect(() => DAOCouncilMemberSchema.parse(member)).toThrow()
+    const member = { ...VALID_BOARD_MEMBER, weight: 10001 }
+    expect(() => DAOBoardMemberSchema.parse(member)).toThrow()
   })
 
   test('rejects negative weight', () => {
-    const member = { ...VALID_COUNCIL_MEMBER, weight: -100 }
-    expect(() => DAOCouncilMemberSchema.parse(member)).toThrow()
+    const member = { ...VALID_BOARD_MEMBER, weight: -100 }
+    expect(() => DAOBoardMemberSchema.parse(member)).toThrow()
   })
 
   test('rejects non-integer weight', () => {
-    const member = { ...VALID_COUNCIL_MEMBER, weight: 2500.5 }
-    expect(() => DAOCouncilMemberSchema.parse(member)).toThrow()
+    const member = { ...VALID_BOARD_MEMBER, weight: 2500.5 }
+    expect(() => DAOBoardMemberSchema.parse(member)).toThrow()
   })
 
   test('accepts optional address field', () => {
     const member = {
-      ...VALID_COUNCIL_MEMBER,
+      ...VALID_BOARD_MEMBER,
       address: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
     }
-    const result = DAOCouncilMemberSchema.parse(member)
+    const result = DAOBoardMemberSchema.parse(member)
     expect(result.address).toBe('0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266')
   })
 
   test('rejects invalid address format', () => {
-    const member = { ...VALID_COUNCIL_MEMBER, address: 'not-an-address' }
-    expect(() => DAOCouncilMemberSchema.parse(member)).toThrow()
+    const member = { ...VALID_BOARD_MEMBER, address: 'not-an-address' }
+    expect(() => DAOBoardMemberSchema.parse(member)).toThrow()
   })
 
   test('accepts optional agentId', () => {
-    const member = { ...VALID_COUNCIL_MEMBER, agentId: 42 }
-    const result = DAOCouncilMemberSchema.parse(member)
+    const member = { ...VALID_BOARD_MEMBER, agentId: 42 }
+    const result = DAOBoardMemberSchema.parse(member)
     expect(result.agentId).toBe(42)
   })
 })
@@ -219,7 +219,7 @@ describe('DAOGovernanceParamsSchema', () => {
   test('validates governance params at boundaries', () => {
     const params = {
       minQualityScore: 0,
-      councilVotingPeriod: 1,
+      boardVotingPeriod: 1,
       gracePeriod: 0,
       minProposalStake: '0',
       quorumBps: 0,
@@ -245,7 +245,7 @@ describe('DAOGovernanceParamsSchema', () => {
   })
 
   test('rejects zero voting period', () => {
-    const params = { ...VALID_GOVERNANCE_PARAMS, councilVotingPeriod: 0 }
+    const params = { ...VALID_GOVERNANCE_PARAMS, boardVotingPeriod: 0 }
     expect(() => DAOGovernanceParamsSchema.parse(params)).toThrow()
   })
 
@@ -420,7 +420,7 @@ describe('DAOManifestSchema', () => {
           personality: 'Pro',
           traits: ['wise'],
         },
-        council: {
+        board: {
           members: [{ role: 'Guardian', description: 'Desc', weight: 10000 }],
         },
         parameters: VALID_GOVERNANCE_PARAMS,
@@ -479,9 +479,9 @@ describe('DAOManifestSchema', () => {
     expect(() => DAOManifestSchema.parse(manifest)).toThrow()
   })
 
-  test('rejects manifest with empty council', () => {
+  test('rejects manifest with empty board', () => {
     const manifest = createValidManifest()
-    manifest.governance.council.members = []
+    manifest.governance.board.members = []
     expect(() => DAOManifestSchema.parse(manifest)).toThrow()
   })
 })
@@ -521,10 +521,10 @@ describe('validateDAOManifest', () => {
 })
 
 // ============================================================================
-// validateCouncilWeights Function Tests
+// validateBoardWeights Function Tests
 // ============================================================================
 
-describe('validateCouncilWeights', () => {
+describe('validateBoardWeights', () => {
   test('validates weights summing to 10000', () => {
     const members = [
       { weight: 2500 },
@@ -532,20 +532,20 @@ describe('validateCouncilWeights', () => {
       { weight: 2500 },
       { weight: 2500 },
     ]
-    const result = validateCouncilWeights(members)
+    const result = validateBoardWeights(members)
     expect(result.valid).toBe(true)
     expect(result.total).toBe(10000)
   })
 
   test('validates single member with full weight', () => {
     const members = [{ weight: 10000 }]
-    const result = validateCouncilWeights(members)
+    const result = validateBoardWeights(members)
     expect(result.valid).toBe(true)
   })
 
   test('detects weights under 10000', () => {
     const members = [{ weight: 5000 }, { weight: 4000 }]
-    const result = validateCouncilWeights(members)
+    const result = validateBoardWeights(members)
     expect(result.valid).toBe(false)
     expect(result.total).toBe(9000)
     expect(result.message).toContain('9000')
@@ -554,27 +554,27 @@ describe('validateCouncilWeights', () => {
 
   test('detects weights over 10000', () => {
     const members = [{ weight: 6000 }, { weight: 6000 }]
-    const result = validateCouncilWeights(members)
+    const result = validateBoardWeights(members)
     expect(result.valid).toBe(false)
     expect(result.total).toBe(12000)
   })
 
   test('validates custom expected total', () => {
     const members = [{ weight: 500 }, { weight: 500 }]
-    const result = validateCouncilWeights(members, 1000)
+    const result = validateBoardWeights(members, 1000)
     expect(result.valid).toBe(true)
     expect(result.total).toBe(1000)
   })
 
   test('handles empty members array', () => {
-    const result = validateCouncilWeights([])
+    const result = validateBoardWeights([])
     expect(result.valid).toBe(false)
     expect(result.total).toBe(0)
   })
 
   test('handles many small weights', () => {
     const members = Array(100).fill({ weight: 100 })
-    const result = validateCouncilWeights(members)
+    const result = validateBoardWeights(members)
     expect(result.valid).toBe(true)
     expect(result.total).toBe(10000)
   })
@@ -626,7 +626,7 @@ describe('Edge Cases', () => {
       ...manifest,
       governance: {
         ...manifest.governance,
-        council: { members: 'not an array' },
+        board: { members: 'not an array' },
       },
     }
     expect(() => validateDAOManifest(invalidManifest)).toThrow()

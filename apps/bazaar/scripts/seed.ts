@@ -62,7 +62,11 @@ interface SeedResult {
   predictionMarkets: number
   perpMarkets: number
   seededAt: string
+  warnings: string[]
 }
+
+// Track seeding warnings globally
+const seedWarnings: string[] = []
 
 function exec(cmd: string, options?: { cwd?: string }): string {
   return execSync(cmd, {
@@ -221,7 +225,9 @@ async function createTestCoins(
       console.log(`      Address: ${tokenAddress}`)
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error)
-      console.log(`    Skipped ${token.symbol}: ${msg.slice(0, 50)}`)
+      const warning = `Token ${token.symbol} creation failed: ${msg.slice(0, 80)}`
+      console.log(`    WARNING: ${warning}`)
+      seedWarnings.push(warning)
     }
   }
 
@@ -234,11 +240,24 @@ async function mintTestNFTs(
   console.log('\n4. Minting test NFTs...')
 
   const nfts: SeedResult['nfts'] = []
+  // Test NFTs with valid data URIs for development
   const testNFTs = [
-    { uri: 'ipfs://QmTest1/metadata.json', name: 'Bazaar Genesis #1' },
-    { uri: 'ipfs://QmTest2/metadata.json', name: 'Bazaar Genesis #2' },
-    { uri: 'ipfs://QmTest3/metadata.json', name: 'Rare Collectible' },
-    { uri: 'https://api.example.com/nft/1', name: 'HTTP Metadata NFT' },
+    {
+      uri: 'data:application/json,{"name":"Bazaar Genesis 1","description":"Test NFT for development"}',
+      name: 'Bazaar Genesis #1',
+    },
+    {
+      uri: 'data:application/json,{"name":"Bazaar Genesis 2","description":"Test NFT for development"}',
+      name: 'Bazaar Genesis #2',
+    },
+    {
+      uri: 'data:application/json,{"name":"Rare Collectible","description":"Test rare NFT"}',
+      name: 'Rare Collectible',
+    },
+    {
+      uri: 'data:application/json,{"name":"HTTP NFT","description":"Test HTTP metadata NFT"}',
+      name: 'HTTP Metadata NFT',
+    },
   ]
 
   let mintFee = '0'
@@ -266,7 +285,9 @@ async function mintTestNFTs(
       console.log(`      Token ID: ${tokenId}`)
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error)
-      console.log(`    Skipped ${nft.name}: ${msg.slice(0, 50)}`)
+      const warning = `NFT ${nft.name} mint failed: ${msg.slice(0, 80)}`
+      console.log(`    WARNING: ${warning}`)
+      seedWarnings.push(warning)
     }
   }
 
@@ -377,12 +398,25 @@ function printSummary(result: SeedResult): void {
   console.log(`\nPrediction Markets: ${result.predictionMarkets}`)
   console.log(`Perp Markets: ${result.perpMarkets}`)
 
+  // Show warnings if any
+  if (result.warnings.length > 0) {
+    console.log('\nWarnings:')
+    for (const warning of result.warnings) {
+      console.log(`  - ${warning}`)
+    }
+  }
+
   const host = getLocalhostHost()
   console.log('\nNext Steps:')
   console.log(`  1. Open Bazaar: http://${host}:4006`)
   console.log('  2. Connect wallet (use Anvil dev account)')
   console.log('  3. Browse Coins, Items, and Prediction markets')
-  console.log('')
+
+  if (result.warnings.length > 0) {
+    console.log(`\nSeeding completed with ${result.warnings.length} warning(s).\n`)
+  } else {
+    console.log('\nSeeding completed successfully.\n')
+  }
 }
 
 async function main(): Promise<void> {
@@ -453,7 +487,9 @@ async function main(): Promise<void> {
     }
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
-    console.log(`  Prediction markets: ${msg.slice(0, 50)}`)
+    const warning = `Prediction markets bootstrap failed: ${msg.slice(0, 80)}`
+    console.log(`  WARNING: ${warning}`)
+    seedWarnings.push(warning)
   }
 
   // Step 5: Bootstrap perps
@@ -467,7 +503,9 @@ async function main(): Promise<void> {
     }
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
-    console.log(`  Perps: ${msg.slice(0, 50)}`)
+    const warning = `Perps bootstrap failed: ${msg.slice(0, 80)}`
+    console.log(`  WARNING: ${warning}`)
+    seedWarnings.push(warning)
   }
 
   const result: SeedResult = {
@@ -477,6 +515,7 @@ async function main(): Promise<void> {
     predictionMarkets: predictionMarketCount,
     perpMarkets: perpMarketCount,
     seededAt: new Date().toISOString(),
+    warnings: seedWarnings,
   }
 
   saveSeedState(result)

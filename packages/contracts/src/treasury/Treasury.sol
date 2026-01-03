@@ -34,7 +34,7 @@ contract Treasury is AccessControl, ReentrancyGuard, Pausable {
     bytes32 public constant BOARD_ROLE = keccak256("BOARD_ROLE");
     bytes32 public constant DIRECTOR_ROLE = keccak256("DIRECTOR_ROLE");
     // Legacy alias for backwards compatibility
-    bytes32 public constant COUNCIL_ROLE = BOARD_ROLE;
+    bytes32 public constant BOARD_ROLE = BOARD_ROLE;
     uint16 public constant BPS_DENOMINATOR = 10000;
 
     // =========================================================================
@@ -142,8 +142,8 @@ contract Treasury is AccessControl, ReentrancyGuard, Pausable {
     event BoardMemberAdded(address indexed member);
     event BoardMemberRemoved(address indexed member);
     // Legacy events for backwards compatibility
-    event CouncilMemberAdded(address indexed member);
-    event CouncilMemberRemoved(address indexed member);
+    event BoardMemberAdded(address indexed member);
+    event BoardMemberRemoved(address indexed member);
     event EmergencyWithdrawal(address indexed token, address indexed to, uint256 amount);
 
     // Events - TEE
@@ -673,28 +673,28 @@ contract Treasury is AccessControl, ReentrancyGuard, Pausable {
         _grantRole(BOARD_ROLE, member);
         emit BoardMemberAdded(member);
         // Legacy event
-        emit CouncilMemberAdded(member);
+        emit BoardMemberAdded(member);
     }
 
     function removeBoardMember(address member) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _revokeRole(BOARD_ROLE, member);
         emit BoardMemberRemoved(member);
         // Legacy event
-        emit CouncilMemberRemoved(member);
+        emit BoardMemberRemoved(member);
     }
 
     // Legacy aliases for backwards compatibility
-    function addCouncilMember(address member) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function addBoardMember(address member) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (member == address(0)) revert ZeroAddress();
         _grantRole(BOARD_ROLE, member);
         emit BoardMemberAdded(member);
-        emit CouncilMemberAdded(member);
+        emit BoardMemberAdded(member);
     }
 
-    function removeCouncilMember(address member) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function removeBoardMember(address member) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _revokeRole(BOARD_ROLE, member);
         emit BoardMemberRemoved(member);
-        emit CouncilMemberRemoved(member);
+        emit BoardMemberRemoved(member);
     }
 
     function emergencyWithdraw(address token, address to, uint256 amount)
@@ -830,7 +830,7 @@ contract Treasury is AccessControl, ReentrancyGuard, Pausable {
     }
 
     // Legacy alias for backwards compatibility
-    function isCouncilMember(address account) external view returns (bool) {
+    function isBoardMember(address account) external view returns (bool) {
         return hasRole(BOARD_ROLE, account);
     }
 

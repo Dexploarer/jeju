@@ -583,7 +583,7 @@ describe('Schema Validation', () => {
         status: 1,
         qualityScore: 85,
         createdAt: Date.now(),
-        councilVoteEnd: Date.now() + 86400000,
+        boardVoteEnd: Date.now() + 86400000,
         gracePeriodEnd: Date.now() + 172800000,
         contentHash: 'ipfs://Qm...',
         targetContract: `0x${'2'.repeat(40)}`,

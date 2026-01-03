@@ -3,13 +3,17 @@
  * Seed Agents Script for Autocrat
  *
  * Seeds default governance agents and creates a default Jeju DAO.
- * This script initializes the AI council and Director for governance.
+ * This script initializes the AI board and Director for governance.
  *
  * Usage:
  *   bun run scripts/seed-agents.ts [--network localnet|testnet|mainnet] [--dry-run] [--dao-name NAME]
  */
 
-import { getCurrentNetwork, getDWSComputeUrl } from '@jejunetwork/config'
+import {
+  getAutocratUrl,
+  getCurrentNetwork,
+  getDWSComputeUrl,
+} from '@jejunetwork/config'
 import {
   type AutocratAgentTemplate,
   autocratAgentTemplates,
@@ -145,11 +149,11 @@ async function checkDWSCompute(): Promise<{
   }
 }
 
-// Register a council agent
-async function registerCouncilAgent(
+// Register a board agent
+async function registerBoardAgent(
   template: AutocratAgentTemplate,
   daoId: string,
-  dwsEndpoint: string,
+  autocratEndpoint: string,
   dryRun: boolean,
 ): Promise<SeedResult> {
   const result: SeedResult = {
@@ -170,7 +174,7 @@ async function registerCouncilAgent(
   try {
     // Initialize agent via autocrat API
     const response = await fetch(
-      `${dwsEndpoint.replace('/compute', '')}/api/agents/initialize`,
+      `${autocratEndpoint}/api/agents/initialize`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -212,7 +216,7 @@ async function registerCouncilAgent(
 // Create or update the DAO configuration
 async function seedDAO(
   config: SeedConfig,
-  dwsEndpoint: string,
+  autocratEndpoint: string,
   persona: DirectorPersona,
 ): Promise<boolean> {
   if (config.dryRun) {
@@ -224,7 +228,7 @@ async function seedDAO(
   try {
     // Check if DAO exists
     const checkResponse = await fetch(
-      `${dwsEndpoint.replace('/compute', '')}/api/dao/${config.daoName}`,
+      `${autocratEndpoint}/api/dao/${config.daoName}`,
       { method: 'GET' },
     )
 
@@ -233,26 +237,22 @@ async function seedDAO(
     }
 
     // Create or update DAO
-    const response = await fetch(
-      `${dwsEndpoint.replace('/compute', '')}/api/dao`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: config.daoName,
-          name:
-            config.daoName.charAt(0).toUpperCase() + config.daoName.slice(1),
-          description: `${config.daoName} DAO - AI-powered autonomous governance`,
-          directorPersona: persona,
-          governanceParams: {
-            votingPeriod: 86400 * 3, // 3 days
-            quorum: 0.04, // 4%
-            proposalThreshold: 1000,
-            executionDelay: 86400, // 1 day
-          },
-        }),
-      },
-    )
+    const response = await fetch(`${autocratEndpoint}/api/dao`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: config.daoName,
+        name: config.daoName.charAt(0).toUpperCase() + config.daoName.slice(1),
+        description: `${config.daoName} DAO - AI-powered autonomous governance`,
+        directorPersona: persona,
+        governanceParams: {
+          votingPeriod: 86400 * 3, // 3 days
+          quorum: 0.04, // 4%
+          proposalThreshold: 1000,
+          executionDelay: 86400, // 1 day
+        },
+      }),
+    })
 
     if (!response.ok) {
       const errorText = await response.text()
@@ -279,14 +279,19 @@ async function seedAutocratAgents(config: SeedConfig): Promise<void> {
   console.log(`Dry run: ${config.dryRun}`)
   console.log('')
 
-  // Check DWS availability
+  // Check DWS availability (needed for compute)
   const dws = await checkDWSCompute()
   if (!dws.available && !config.dryRun) {
     console.error(`DWS compute not available at ${dws.endpoint}`)
     console.error('Start DWS first: cd apps/dws && bun run dev')
     process.exit(1)
   }
-  console.log(`DWS endpoint: ${dws.endpoint}`)
+
+  // Get Autocrat API URL (respects AUTOCRAT_URL env var)
+  const autocratEndpoint = getAutocratUrl(config.network)
+
+  console.log(`DWS compute: ${dws.endpoint}`)
+  console.log(`Autocrat API: ${autocratEndpoint}`)
   console.log('')
 
   // Select Director persona
@@ -297,33 +302,33 @@ async function seedAutocratAgents(config: SeedConfig): Promise<void> {
   // Seed DAO first
   console.log('Creating DAO...')
   console.log('-'.repeat(40))
-  const daoCreated = await seedDAO(config, dws.endpoint, persona)
+  const daoCreated = await seedDAO(config, autocratEndpoint, persona)
   if (!daoCreated && !config.dryRun) {
     console.warn('DAO creation failed, continuing with agent seeding...')
   }
   console.log('')
 
-  // Seed council agents
+  // Seed board agents
   console.log(`Seeding ${autocratAgentTemplates.length + 1} governance agents:`)
   console.log('-'.repeat(40))
 
   const results: SeedResult[] = []
 
   // Register Director first
-  const directorResult = await registerCouncilAgent(
+  const directorResult = await registerBoardAgent(
     directorAgent,
     config.daoName,
-    dws.endpoint,
+    autocratEndpoint,
     config.dryRun,
   )
   results.push(directorResult)
 
   // Register board agents
   for (const template of autocratAgentTemplates) {
-    const result = await registerCouncilAgent(
+    const result = await registerBoardAgent(
       template,
       config.daoName,
-      dws.endpoint,
+      autocratEndpoint,
       config.dryRun,
     )
     results.push(result)

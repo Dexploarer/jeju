@@ -1102,11 +1102,11 @@ export default function CreateDAOPage() {
                     type="number"
                     min="1"
                     max="30"
-                    value={governanceParams.councilVotingPeriod / 86400}
+                    value={governanceParams.boardVotingPeriod / 86400}
                     onChange={(e) =>
                       setGovernanceParams({
                         ...governanceParams,
-                        councilVotingPeriod:
+                        boardVotingPeriod:
                           Number.parseInt(e.target.value, 10) * 86400,
                       })
                     }
@@ -1350,7 +1350,7 @@ export default function CreateDAOPage() {
                       Voting Period
                     </p>
                     <p style={{ color: 'var(--text-primary)' }}>
-                      {governanceParams.councilVotingPeriod / 86400} days
+                      {governanceParams.boardVotingPeriod / 86400} days
                     </p>
                   </div>
                   <div>

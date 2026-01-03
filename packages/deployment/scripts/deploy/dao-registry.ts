@@ -47,7 +47,7 @@ interface DAOData {
   description: string
   status: number
   treasury: Address
-  council: Address
+  board: Address
   directorAgent: Address
   createdAt: bigint
 }
@@ -85,7 +85,7 @@ const DAORegistryABI = [
         type: 'tuple',
         components: [
           { name: 'minQualityScore', type: 'uint256' },
-          { name: 'councilVotingPeriod', type: 'uint256' },
+          { name: 'boardVotingPeriod', type: 'uint256' },
           { name: 'gracePeriod', type: 'uint256' },
           { name: 'minProposalStake', type: 'uint256' },
           { name: 'quorumBps', type: 'uint256' },
@@ -115,7 +115,7 @@ const DAORegistryABI = [
           { name: 'displayName', type: 'string' },
           { name: 'description', type: 'string' },
           { name: 'treasury', type: 'address' },
-          { name: 'council', type: 'address' },
+          { name: 'board', type: 'address' },
           { name: 'directorAgent', type: 'address' },
           { name: 'feeConfig', type: 'address' },
           { name: 'directorModelId', type: 'bytes32' },
@@ -321,7 +321,7 @@ async function createDAO(
       },
       {
         minQualityScore: BigInt(70),
-        councilVotingPeriod: BigInt(259200),
+        boardVotingPeriod: BigInt(259200),
         gracePeriod: BigInt(86400),
         minProposalStake: parseEther('0.01'),
         quorumBps: BigInt(5000),
@@ -470,7 +470,7 @@ Director Persona:
 
 Contracts:
   Treasury: ${dao.treasury}
-  Council: ${dao.council}
+  Board: ${dao.board}
   Director Agent: ${dao.directorAgent}
 
 Linked Resources:

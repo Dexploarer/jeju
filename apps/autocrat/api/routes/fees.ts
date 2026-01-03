@@ -178,7 +178,7 @@ export const feesRoutes = new Elysia({ prefix: '/fees' })
       },
       governance: {
         treasury: state.treasury,
-        council: state.board,
+        board: state.board,
         director: state.director,
       },
     }
@@ -192,7 +192,7 @@ export const feesRoutes = new Elysia({ prefix: '/fees' })
 
   /**
    * POST /fees/propose
-   * Propose a fee change (for council, Director can execute immediately or after timelock)
+   * Propose a fee change (for board, Director can execute immediately or after timelock)
    */
   .post(
     '/propose',

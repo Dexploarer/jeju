@@ -9,7 +9,11 @@
  *   bun run scripts/seed-agents.ts [--network localnet|testnet|mainnet] [--dry-run]
  */
 
-import { getCurrentNetwork } from '@jejunetwork/config'
+import {
+  getCrucibleUrl,
+  getCurrentNetwork,
+  getDWSUrl,
+} from '@jejunetwork/config'
 import { parseEther } from 'viem'
 import {
   BLUE_TEAM_CHARACTERS,
@@ -96,18 +100,10 @@ function getAgentsToSeed(network: string): AgentCharacter[] {
 
 // Check if DWS is available
 async function checkDWS(
-  network: string,
+  network: 'localnet' | 'testnet' | 'mainnet',
 ): Promise<{ available: boolean; endpoint: string }> {
-  // Check DWS_URL env var first, then fall back to defaults
-  const envDwsUrl = process.env.DWS_URL
-
-  const endpoints: Record<string, string> = {
-    localnet: envDwsUrl ?? 'http://127.0.0.1:4030',
-    testnet: 'https://dws.testnet.jejunetwork.org',
-    mainnet: 'https://dws.jejunetwork.org',
-  }
-
-  const endpoint = endpoints[network] ?? endpoints.localnet
+  // Use config-based URL (respects env vars like DWS_URL)
+  const endpoint = getDWSUrl(network)
 
   try {
     const response = await fetch(`${endpoint}/health`, {
@@ -123,6 +119,7 @@ async function checkDWS(
 async function registerAgent(
   char: AgentCharacter,
   dwsEndpoint: string,
+  crucibleEndpoint: string,
   dryRun: boolean,
 ): Promise<SeedResult> {
   const result: SeedResult = {
@@ -163,18 +160,19 @@ async function registerAgent(
     const storeResult = (await storeResponse.json()) as { cid: string }
     result.characterCid = storeResult.cid
 
-    // Register with Crucible API
-    const crucibleApiUrl =
-      process.env.CRUCIBLE_API_URL ?? 'http://127.0.0.1:4021'
-    const registerResponse = await fetch(`${crucibleApiUrl}/api/v1/agents`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        characterCid: result.characterCid,
-        initialFunding: parseEther('0.01').toString(),
-        botType: 'ai_agent',
-      }),
-    })
+    // Register with Crucible API (uses config-based URL)
+    const registerResponse = await fetch(
+      `${crucibleEndpoint}/api/v1/agents`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          characterCid: result.characterCid,
+          initialFunding: parseEther('0.01').toString(),
+          botType: 'ai_agent',
+        }),
+      },
+    )
 
     if (!registerResponse.ok) {
       const errorText = await registerResponse.text()
@@ -220,7 +218,12 @@ async function seedAgents(config: SeedConfig): Promise<void> {
     console.error('Start DWS first: cd apps/dws && bun run dev')
     process.exit(1)
   }
+
+  // Get Crucible API URL (respects CRUCIBLE_URL env var)
+  const crucibleEndpoint = getCrucibleUrl(config.network)
+
   console.log(`DWS endpoint: ${dws.endpoint}`)
+  console.log(`Crucible API: ${crucibleEndpoint}`)
   console.log('')
 
   // Get agents to seed
@@ -230,7 +233,12 @@ async function seedAgents(config: SeedConfig): Promise<void> {
 
   const results: SeedResult[] = []
   for (const agent of agents) {
-    const result = await registerAgent(agent, dws.endpoint, config.dryRun)
+    const result = await registerAgent(
+      agent,
+      dws.endpoint,
+      crucibleEndpoint,
+      config.dryRun,
+    )
     results.push(result)
   }
 

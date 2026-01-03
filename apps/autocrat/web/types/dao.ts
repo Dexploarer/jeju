@@ -168,7 +168,7 @@ export interface DAODetail {
   status: DAOStatus
   visibility: DAOVisibility
   treasury: Address
-  council: Address
+  board: Address
   directorAgentContract: Address
   feeConfig: Address
   manifestCid: string
@@ -193,7 +193,7 @@ export interface DAODetail {
 
 export interface GovernanceParams {
   minQualityScore: number
-  councilVotingPeriod: number
+  boardVotingPeriod: number
   gracePeriod: number
   minProposalStake: string
   quorumBps: number
@@ -421,7 +421,7 @@ export interface ModelOption {
 // Default governance params
 export const DEFAULT_GOVERNANCE_PARAMS: GovernanceParams = {
   minQualityScore: 70,
-  councilVotingPeriod: 86400 * 3, // 3 days
+  boardVotingPeriod: 86400 * 3, // 3 days
   gracePeriod: 86400, // 1 day
   minProposalStake: '0.01',
   quorumBps: 5000, // 50%

@@ -83,7 +83,7 @@ test.describe('Director Server', () => {
     expect(toolNames).toContain('get_active_proposals')
   })
 
-  test('MCP resources list returns council resources', async ({ request }) => {
+  test('MCP resources list returns board resources', async ({ request }) => {
     test.skip(!serverAvailable, 'Director server not running')
 
     const response = await request.get(`${DIRECTOR_URL}/mcp/resources`)

@@ -1082,7 +1082,7 @@ app.get('/api/v1/rooms', async ({ query }) => {
       | 'collaboration'
       | 'adversarial'
       | 'debate'
-      | 'council'
+      | 'board'
       | undefined,
     active:
       query.active === 'true'

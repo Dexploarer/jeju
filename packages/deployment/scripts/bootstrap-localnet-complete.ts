@@ -1487,7 +1487,7 @@ class CompleteBootstrapper {
       console.log(`  📋 Registering ${oauth3Apps.length} OAuth3 apps`)
       for (const appName of oauth3Apps) {
         // Register each app with default config
-        // Args: name, description, council, config tuple
+        // Args: name, description, board, config tuple
         // Config tuple: (redirectUris, allowedProviders, requireTEEAttestation, sessionDuration, maxSessionsPerUser)
         const host = getLocalhostHost()
         const configTuple = `(["http://${host}:3000/auth/callback","http://${host}:5173/auth/callback"],[0,1,2,3,4,5,6],false,86400,10)`

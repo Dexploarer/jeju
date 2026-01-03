@@ -343,7 +343,7 @@ Please ensure DWS compute is available and try again.`,
 const queryA2AAction: Action = {
   name: 'QUERY_A2A',
   description: 'Query an A2A skill on the autocrat or Director agent',
-  similes: ['call skill', 'query agent', 'ask council', 'ask director'],
+  similes: ['call skill', 'query agent', 'ask board', 'ask director'],
   examples: [],
 
   validate: async (

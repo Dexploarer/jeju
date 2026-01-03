@@ -190,13 +190,13 @@ export interface ReputationProviderProposal {
   timelockEnds: number
   status:
     | 'PENDING'
-    | 'COUNCIL_REVIEW'
+    | 'BOARD_REVIEW'
     | 'APPROVED'
     | 'REJECTED'
     | 'EXECUTED'
     | 'CANCELLED'
-  councilDecisionHash: string
-  councilReason: string
+  boardDecisionHash: string
+  boardReason: string
 }
 
 export interface AggregatedReputation {
@@ -1242,8 +1242,8 @@ export const REPUTATION_PROVIDER_REGISTRY_ABI = [
           { name: 'challengeEnds', type: 'uint256' },
           { name: 'timelockEnds', type: 'uint256' },
           { name: 'status', type: 'uint8' },
-          { name: 'councilDecisionHash', type: 'bytes32' },
-          { name: 'councilReason', type: 'string' },
+          { name: 'boardDecisionHash', type: 'bytes32' },
+          { name: 'boardReason', type: 'string' },
         ],
       },
     ],

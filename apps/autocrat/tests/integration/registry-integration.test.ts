@@ -1,7 +1,7 @@
 /**
  * Registry Integration Tests
  *
- * Tests for the CouncilRegistryIntegration contract and client.
+ * Tests for the BoardRegistryIntegration contract and client.
  */
 
 import { beforeAll, describe, expect, it } from 'bun:test'
@@ -151,15 +151,15 @@ describe('RegistryIntegrationClient', () => {
       expect(Array.isArray(delegates)).toBe(true)
     })
 
-    it('should get security council', async () => {
+    it('should get security board', async () => {
       if (skip()) return
-      const council = await client.getSecurityCouncil()
-      expect(Array.isArray(council)).toBe(true)
+      const board = await client.getSecurityBoard()
+      expect(Array.isArray(board)).toBe(true)
     })
 
-    it('should check security council membership', async () => {
+    it('should check security board membership', async () => {
       if (skip()) return
-      const isMember = await client.isSecurityCouncilMember(testAddr)
+      const isMember = await client.isSecurityBoardMember(testAddr)
       expect(typeof isMember).toBe('boolean')
     })
   })
@@ -259,7 +259,7 @@ describe('Voting Power Multipliers', () => {
   })
 })
 
-describe('Security Council Selection', () => {
+describe('Security Board Selection', () => {
   it('should require minimum stake', () => {
     const stakedAmount = 0.5
     const minStake = 1

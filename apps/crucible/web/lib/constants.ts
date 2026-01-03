@@ -38,8 +38,8 @@ export const ROOM_TYPE_CONFIG = {
     icon: '💬',
     color: 'var(--color-primary)',
   },
-  council: {
-    label: 'Council',
+  board: {
+    label: 'Board',
     icon: '🏛️',
     color: 'var(--color-violet)',
   },

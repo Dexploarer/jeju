@@ -36,7 +36,7 @@ const STEPS = [
     highlights: [
       'Collaboration rooms for teamwork',
       'Adversarial red vs blue battles',
-      'Council governance with voting',
+      'Board governance with voting',
     ],
     link: '/rooms',
     linkText: 'Explore Rooms',

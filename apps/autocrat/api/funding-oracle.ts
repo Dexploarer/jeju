@@ -405,16 +405,16 @@ Return JSON:
       return { approved: true, reason: 'Sufficient community stake' }
     }
 
-    // Check if proposer is council member
-    const councilMembers = await this.daoService.getBoardMembers(daoId)
-    const isCouncilProposal = councilMembers.some(
+    // Check if proposer is board member
+    const boardMembers = await this.daoService.getBoardMembers(daoId)
+    const isBoardProposal = boardMembers.some(
       (m) => m.member === project.proposer,
     )
-    if (isCouncilProposal) {
-      return { approved: true, reason: 'Proposed by council member' }
+    if (isBoardProposal) {
+      return { approved: true, reason: 'Proposed by board member' }
     }
 
-    return { approved: false, reason: 'Requires council/Director review' }
+    return { approved: false, reason: 'Requires board/Director review' }
   }
   async canFinalizeEpoch(
     daoId: string,

@@ -1,7 +1,7 @@
 import { getContract, getRpcUrl } from '@jejunetwork/config'
 import { ZERO_ADDRESS } from '@jejunetwork/types'
 import type { Address } from 'viem'
-import { type CouncilConfig, toAddress } from '../lib'
+import { type BoardConfig, toAddress } from '../lib'
 import { type AutocratBlockchain, getBlockchain } from './blockchain'
 import { type AutocratConfig, config as autocratConfigRaw } from './config'
 import { type AutocratOrchestrator, createOrchestrator } from './orchestrator'
@@ -39,12 +39,12 @@ const agent = (id: string, name: string, prompt: string) => ({
   systemPrompt: prompt,
 })
 
-export function getConfig(): CouncilConfig {
+export function getConfig(): BoardConfig {
   return {
     rpcUrl: getRpcUrl(),
     daoId: autocratConfigRaw.defaultDao,
     contracts: {
-      board: getContractAddr('governance', 'council'),
+      board: getContractAddr('governance', 'board'),
       directorAgent: getContractAddr('governance', 'directorAgent'),
       treasury: getContractAddr('governance', 'treasury'),
       feeConfig: getContractAddr('payments', 'feeConfig'),
@@ -112,8 +112,8 @@ export function getConfig(): CouncilConfig {
   }
 }
 
-const councilConfig = getConfig()
-export const config = councilConfig
+const boardConfig = getConfig()
+export const config = boardConfig
 export const autocratConfig: AutocratConfig = autocratConfigRaw
 export const blockchain: AutocratBlockchain = getBlockchain(config)
 
@@ -123,12 +123,12 @@ let _orchestrator: AutocratOrchestrator | null = null
  * Get shared state for use in routes and services
  */
 export function getSharedState(): {
-  config: CouncilConfig
+  config: BoardConfig
   autocratConfig: AutocratConfig
   contracts: {
     feeConfig: Address
     treasury: Address
-    council: Address
+    board: Address
     daoRegistry: Address
   }
   clients: {
@@ -142,7 +142,7 @@ export function getSharedState(): {
     contracts: {
       feeConfig: config.contracts.feeConfig ?? ZERO_ADDRESS,
       treasury: config.contracts.treasury ?? ZERO_ADDRESS,
-      council: config.contracts.board ?? ZERO_ADDRESS,
+      board: config.contracts.board ?? ZERO_ADDRESS,
       daoRegistry: config.contracts.daoRegistry ?? ZERO_ADDRESS,
     },
     clients: {

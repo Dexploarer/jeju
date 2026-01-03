@@ -38,7 +38,7 @@ export const agentsRoutes = new Elysia({ prefix: '/api/v1/agents' })
             register: 'POST /api/v1/agents/register',
             feedback: 'POST /api/v1/agents/:id/feedback',
             director: 'GET /api/v1/agents/director',
-            council: 'GET /api/v1/agents/council',
+            board: 'GET /api/v1/agents/board',
           },
         }
       } catch (error) {
@@ -54,7 +54,7 @@ export const agentsRoutes = new Elysia({ prefix: '/api/v1/agents' })
             register: 'POST /api/v1/agents/register',
             feedback: 'POST /api/v1/agents/:id/feedback',
             director: 'GET /api/v1/agents/director',
-            council: 'GET /api/v1/agents/council',
+            board: 'GET /api/v1/agents/board',
           },
           message: 'Agent registry not available',
         }
@@ -202,10 +202,10 @@ export const agentsRoutes = new Elysia({ prefix: '/api/v1/agents' })
     },
   )
   .get(
-    '/council',
+    '/board',
     async ({ set }) => {
       try {
-        // Get council/board members via A2A internal call
+        // Get board/board members via A2A internal call
         const a2aServer = createAutocratA2AServer(config, blockchain)
         const response = await a2aServer.getRouter().fetch(
           new Request('http://localhost/a2a', {
@@ -219,7 +219,7 @@ export const agentsRoutes = new Elysia({ prefix: '/api/v1/agents' })
                 message: {
                   messageId: `rest-${Date.now()}`,
                   parts: [
-                    { kind: 'data', data: { skillId: 'get-council-status' } },
+                    { kind: 'data', data: { skillId: 'get-board-status' } },
                   ],
                 },
               },
@@ -229,26 +229,26 @@ export const agentsRoutes = new Elysia({ prefix: '/api/v1/agents' })
         const result = expectValid(
           A2AJsonRpcResponseSchema,
           await response.json(),
-          'Council status A2A response',
+          'Board status A2A response',
         )
         return result
       } catch (error) {
         console.warn(
-          '[Agents] Error getting council status:',
+          '[Agents] Error getting board status:',
           error instanceof Error ? error.message : String(error),
         )
         set.status = 200
         return {
           members: [],
-          message: 'Council not available - contracts may not be deployed',
+          message: 'Board not available - contracts may not be deployed',
         }
       }
     },
     {
-      detail: { tags: ['agents'], summary: 'Get council/board members' },
+      detail: { tags: ['agents'], summary: 'Get board/board members' },
     },
   )
-  // Get agent by ID - must be after specific routes like /director, /council
+  // Get agent by ID - must be after specific routes like /director, /board
   .get(
     '/:id',
     async ({ params, set }) => {

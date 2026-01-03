@@ -871,7 +871,7 @@ deployCommand
   .option('--fund-treasury <amount>', 'Fund treasury with ETH (wei)')
   .option('--fund-matching <amount>', 'Fund matching pool with ETH (wei)')
   .option('--dry-run', 'Simulate without making changes')
-  .option('--skip-council', 'Skip council member setup')
+  .option('--skip-board', 'Skip board member setup')
   .option('--skip-funding-config', 'Skip funding configuration')
   .option('--list', 'List all discoverable DAOs')
   .option('-v, --verbose', 'Verbose output')
@@ -939,7 +939,7 @@ deployCommand
       fundTreasury: options.fundTreasury,
       fundMatching: options.fundMatching,
       dryRun: options.dryRun ?? false,
-      skipCouncil: options.skipCouncil ?? false,
+      skipBoard: options.skipBoard ?? false,
       skipFundingConfig: options.skipFundingConfig ?? false,
       verbose: options.verbose ?? false,
     })
@@ -958,15 +958,15 @@ deployCommand
   })
 
 deployCommand
-  .command('council')
-  .description('Deploy Council contracts')
+  .command('board')
+  .description('Deploy Board contracts')
   .option(
     '--network <network>',
     'Network: localnet | testnet | mainnet',
     'localnet',
   )
   .action(async (options) => {
-    await runDeployScript('council', options.network, options)
+    await runDeployScript('board', options.network, options)
   })
 
 deployCommand
@@ -1209,7 +1209,7 @@ deployCommand
       fundTreasury: undefined,
       fundMatching: undefined,
       dryRun: options.dryRun ?? false,
-      skipCouncil: false,
+      skipBoard: false,
       skipFundingConfig: false,
       verbose: options.verbose ?? false,
       all: true,
@@ -1434,8 +1434,8 @@ deployCommand
   })
 
 deployCommand
-  .command('security-council')
-  .description('Deploy Security Council multisig')
+  .command('security-board')
+  .description('Deploy Security Board multisig')
   .option(
     '--network <network>',
     'Network: localnet | testnet | mainnet',
@@ -1445,11 +1445,11 @@ deployCommand
     const rootDir = findMonorepoRoot()
     const scriptPath = join(
       rootDir,
-      'packages/deployment/scripts/deploy/deploy-security-council.ts',
+      'packages/deployment/scripts/deploy/deploy-security-board.ts',
     )
 
     if (!existsSync(scriptPath)) {
-      logger.error('Security council deploy script not found')
+      logger.error('Security board deploy script not found')
       return
     }
 

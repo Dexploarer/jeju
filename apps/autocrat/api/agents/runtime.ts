@@ -266,7 +266,7 @@ export class AutocratAgentRuntimeManager {
       )
     }
 
-    // Initialize default council agents with character definitions
+    // Initialize default board agents with character definitions
     for (const template of autocratAgentTemplates) {
       const runtime = await this.createRuntime(template)
       this.runtimes.set(template.id, runtime)

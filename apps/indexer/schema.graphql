@@ -833,15 +833,15 @@ type GovernanceEvent @entity {
   transactionHash: String!
 }
 
-# ============ AI Council Governance ============
+# ============ AI Board Governance ============
 
-type CouncilProposal @entity {
+type BoardProposal @entity {
   id: ID! # proposalId bytes32
   proposalId: Bytes! @unique @index
   proposer: Account!
   proposerAgentId: BigInt
   proposalType: Int! # enum: PARAMETER_CHANGE, TREASURY_ALLOCATION, etc.
-  status: String! @index # SUBMITTED, COUNCIL_REVIEW, APPROVED, etc.
+  status: String! @index # SUBMITTED, BOARD_REVIEW, APPROVED, etc.
   qualityScore: Int!
   contentHash: Bytes!
   targetContract: String
@@ -855,18 +855,18 @@ type CouncilProposal @entity {
   directorApproved: Boolean!
   directorDecisionHash: Bytes
   createdAt: DateTime! @index
-  councilVoteEnd: DateTime
+  boardVoteEnd: DateTime
   gracePeriodEnd: DateTime
   executedAt: DateTime
-  councilVotes: [CouncilVote!]! @derivedFrom(field: "proposal")
+  boardVotes: [BoardVote!]! @derivedFrom(field: "proposal")
   backers: [ProposalBacker!]! @derivedFrom(field: "proposal")
   vetoVotes: [VetoVote!]! @derivedFrom(field: "proposal")
 }
 
-type CouncilVote @entity {
+type BoardVote @entity {
   id: ID!
-  proposal: CouncilProposal!
-  councilAgent: Account!
+  proposal: BoardProposal!
+  boardAgent: Account!
   role: String! # TREASURY, CODE, COMMUNITY, SECURITY
   vote: String! # APPROVE, REJECT, ABSTAIN, REQUEST_CHANGES
   reasoningHash: Bytes!
@@ -878,7 +878,7 @@ type CouncilVote @entity {
 
 type ProposalBacker @entity {
   id: ID!
-  proposal: CouncilProposal!
+  proposal: BoardProposal!
   backer: Account!
   agentId: BigInt
   stakedAmount: BigInt!
@@ -888,7 +888,7 @@ type ProposalBacker @entity {
 
 type VetoVote @entity {
   id: ID!
-  proposal: CouncilProposal!
+  proposal: BoardProposal!
   voter: Account!
   agentId: BigInt
   category: String! # ALREADY_DONE, DUPLICATE, IMPOSSIBLE, HARMFUL, etc.
@@ -900,7 +900,7 @@ type VetoVote @entity {
 
 type DirectorDecision @entity {
   id: ID! # decisionId
-  proposal: CouncilProposal!
+  proposal: BoardProposal!
   modelId: String!
   approved: Boolean!
   decisionHash: Bytes!
@@ -927,7 +927,7 @@ type Delegate @entity {
   totalDelegated: BigInt!
   delegatorCount: Int!
   isActive: Boolean!
-  isSecurityCouncil: Boolean! @index
+  isSecurityBoard: Boolean! @index
   proposalsVoted: Int!
   proposalsCreated: Int!
   registeredAt: DateTime! @index
@@ -945,7 +945,7 @@ type Delegation @entity {
   active: Boolean! @index
 }
 
-type SecurityCouncilMember @entity {
+type SecurityBoardMember @entity {
   id: ID! # member address + election timestamp
   member: Account!
   agentId: BigInt
@@ -955,7 +955,7 @@ type SecurityCouncilMember @entity {
   active: Boolean! @index
 }
 
-type SecurityCouncilUpdate @entity {
+type SecurityBoardUpdate @entity {
   id: ID!
   members: [String!]!
   memberCount: Int!
@@ -2895,7 +2895,7 @@ type KeepaliveStats @entity {
   lastUpdated: DateTime!
 }
 
-# ============ Council Registry Integration Entities ============
+# ============ Board Registry Integration Entities ============
 
 type CompositeScoreCalculation @entity {
   id: ID! # agentId

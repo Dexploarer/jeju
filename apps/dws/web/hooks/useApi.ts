@@ -437,6 +437,27 @@ export function useInvokeWorker<
   })
 }
 
+export function useDeleteWorker() {
+  const { address } = useAccount()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (workerId: string) => {
+      const response = await fetch(`${DWS_API_URL}/workers/${workerId}`, {
+        method: 'DELETE',
+        headers: address ? { 'x-jeju-address': address } : {},
+      })
+      if (!response.ok) {
+        throw new Error('Failed to delete worker')
+      }
+      return { id: workerId }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workers'] })
+    },
+  })
+}
+
 // Storage hooks
 
 export function useUploadFile() {
@@ -851,6 +872,49 @@ export function useDeposit() {
   })
 }
 
+// Transaction history hook
+export interface Transaction {
+  id: string
+  type: 'deposit' | 'payment' | 'earning' | 'withdrawal'
+  amount: string
+  service: string
+  timestamp: number
+  status: 'completed' | 'pending' | 'failed'
+  txHash?: string
+}
+
+export function useTransactionHistory(limit = 20) {
+  const { address } = useAccount()
+  return useQuery({
+    queryKey: ['transactions', address, limit],
+    queryFn: () =>
+      fetchApi<{ transactions: Transaction[]; total: number }>(
+        `/api-marketplace/account/transactions?limit=${limit}`,
+        { address },
+      ),
+    enabled: !!address,
+  })
+}
+
+export function useWithdraw() {
+  const { address } = useAccount()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (amount: string) =>
+      postApi<{ success: boolean; txHash: string }>(
+        '/api-marketplace/account/withdraw',
+        { amount },
+        { address },
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user-account'] })
+      queryClient.invalidateQueries({ queryKey: ['transactions'] })
+      queryClient.invalidateQueries({ queryKey: ['provider-stats'] })
+    },
+  })
+}
+
 // Provider/Operator stats hook
 
 interface OperatorNode {
@@ -932,6 +996,38 @@ export function useRegisterNode() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['compute-nodes'] })
+      queryClient.invalidateQueries({ queryKey: ['provider-stats'] })
+    },
+  })
+}
+
+export function useDeregisterNode() {
+  const { address } = useAccount()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (nodeId: string) =>
+      postApi<{ success: boolean }>('/staking/deregister', { nodeId }, { address }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['compute-nodes'] })
+      queryClient.invalidateQueries({ queryKey: ['provider-stats'] })
+    },
+  })
+}
+
+export function useUpdateNodePerformance() {
+  const { address } = useAccount()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (nodeId: string) =>
+      postApi<{ success: boolean; performance: { uptimeScore: number; requestsServed: number } }>(
+        '/staking/update-performance',
+        { nodeId },
+        { address },
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['provider-stats'] })
     },
   })
 }

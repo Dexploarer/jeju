@@ -7220,7 +7220,7 @@ export const daoRegistryAbi = [
       { name: 'role', internalType: 'string', type: 'string' },
       { name: 'weight', internalType: 'uint256', type: 'uint256' },
     ],
-    name: 'addCouncilMember',
+    name: 'addBoardMember',
     outputs: [],
     stateMutability: 'nonpayable',
   },
@@ -7261,7 +7261,7 @@ export const daoRegistryAbi = [
         components: [
           { name: 'minQualityScore', internalType: 'uint256', type: 'uint256' },
           {
-            name: 'councilVotingPeriod',
+            name: 'boardVotingPeriod',
             internalType: 'uint256',
             type: 'uint256',
           },
@@ -7292,7 +7292,7 @@ export const daoRegistryAbi = [
     name: 'defaultParams',
     outputs: [
       { name: 'minQualityScore', internalType: 'uint256', type: 'uint256' },
-      { name: 'councilVotingPeriod', internalType: 'uint256', type: 'uint256' },
+      { name: 'boardVotingPeriod', internalType: 'uint256', type: 'uint256' },
       { name: 'gracePeriod', internalType: 'uint256', type: 'uint256' },
       { name: 'minProposalStake', internalType: 'uint256', type: 'uint256' },
       { name: 'quorumBps', internalType: 'uint256', type: 'uint256' },
@@ -7336,11 +7336,11 @@ export const daoRegistryAbi = [
   {
     type: 'function',
     inputs: [{ name: 'daoId', internalType: 'bytes32', type: 'bytes32' }],
-    name: 'getCouncilMembers',
+    name: 'getBoardMembers',
     outputs: [
       {
         name: '',
-        internalType: 'struct IDAORegistry.CouncilMember[]',
+        internalType: 'struct IDAORegistry.BoardMember[]',
         type: 'tuple[]',
         components: [
           { name: 'member', internalType: 'address', type: 'address' },
@@ -7369,7 +7369,7 @@ export const daoRegistryAbi = [
           { name: 'displayName', internalType: 'string', type: 'string' },
           { name: 'description', internalType: 'string', type: 'string' },
           { name: 'treasury', internalType: 'address', type: 'address' },
-          { name: 'council', internalType: 'address', type: 'address' },
+          { name: 'board', internalType: 'address', type: 'address' },
           { name: 'directorAgent', internalType: 'address', type: 'address' },
           { name: 'feeConfig', internalType: 'address', type: 'address' },
           { name: 'directorModelId', internalType: 'bytes32', type: 'bytes32' },
@@ -7402,7 +7402,7 @@ export const daoRegistryAbi = [
           { name: 'displayName', internalType: 'string', type: 'string' },
           { name: 'description', internalType: 'string', type: 'string' },
           { name: 'treasury', internalType: 'address', type: 'address' },
-          { name: 'council', internalType: 'address', type: 'address' },
+          { name: 'board', internalType: 'address', type: 'address' },
           { name: 'directorAgent', internalType: 'address', type: 'address' },
           { name: 'feeConfig', internalType: 'address', type: 'address' },
           { name: 'directorModelId', internalType: 'bytes32', type: 'bytes32' },
@@ -7447,7 +7447,7 @@ export const daoRegistryAbi = [
               { name: 'displayName', internalType: 'string', type: 'string' },
               { name: 'description', internalType: 'string', type: 'string' },
               { name: 'treasury', internalType: 'address', type: 'address' },
-              { name: 'council', internalType: 'address', type: 'address' },
+              { name: 'board', internalType: 'address', type: 'address' },
               {
                 name: 'directorAgent',
                 internalType: 'address',
@@ -7493,7 +7493,7 @@ export const daoRegistryAbi = [
                 type: 'uint256',
               },
               {
-                name: 'councilVotingPeriod',
+                name: 'boardVotingPeriod',
                 internalType: 'uint256',
                 type: 'uint256',
               },
@@ -7507,8 +7507,8 @@ export const daoRegistryAbi = [
             ],
           },
           {
-            name: 'councilMembers',
-            internalType: 'struct IDAORegistry.CouncilMember[]',
+            name: 'boardMembers',
+            internalType: 'struct IDAORegistry.BoardMember[]',
             type: 'tuple[]',
             components: [
               { name: 'member', internalType: 'address', type: 'address' },
@@ -7542,7 +7542,7 @@ export const daoRegistryAbi = [
         components: [
           { name: 'minQualityScore', internalType: 'uint256', type: 'uint256' },
           {
-            name: 'councilVotingPeriod',
+            name: 'boardVotingPeriod',
             internalType: 'uint256',
             type: 'uint256',
           },
@@ -7592,7 +7592,7 @@ export const daoRegistryAbi = [
       { name: 'daoId', internalType: 'bytes32', type: 'bytes32' },
       { name: 'member', internalType: 'address', type: 'address' },
     ],
-    name: 'isCouncilMember',
+    name: 'isBoardMember',
     outputs: [{ name: '', internalType: 'bool', type: 'bool' }],
     stateMutability: 'view',
   },
@@ -7653,7 +7653,7 @@ export const daoRegistryAbi = [
       { name: 'daoId', internalType: 'bytes32', type: 'bytes32' },
       { name: 'member', internalType: 'address', type: 'address' },
     ],
-    name: 'removeCouncilMember',
+    name: 'removeBoardMember',
     outputs: [],
     stateMutability: 'nonpayable',
   },
@@ -7719,9 +7719,9 @@ export const daoRegistryAbi = [
     type: 'function',
     inputs: [
       { name: 'daoId', internalType: 'bytes32', type: 'bytes32' },
-      { name: 'council', internalType: 'address', type: 'address' },
+      { name: 'board', internalType: 'address', type: 'address' },
     ],
-    name: 'setDAOCouncilContract',
+    name: 'setDAOBoardContract',
     outputs: [],
     stateMutability: 'nonpayable',
   },
@@ -7769,7 +7769,7 @@ export const daoRegistryAbi = [
         components: [
           { name: 'minQualityScore', internalType: 'uint256', type: 'uint256' },
           {
-            name: 'councilVotingPeriod',
+            name: 'boardVotingPeriod',
             internalType: 'uint256',
             type: 'uint256',
           },
@@ -7798,7 +7798,7 @@ export const daoRegistryAbi = [
         components: [
           { name: 'minQualityScore', internalType: 'uint256', type: 'uint256' },
           {
-            name: 'councilVotingPeriod',
+            name: 'boardVotingPeriod',
             internalType: 'uint256',
             type: 'uint256',
           },
@@ -7857,7 +7857,7 @@ export const daoRegistryAbi = [
       { name: 'member', internalType: 'address', type: 'address' },
       { name: 'weight', internalType: 'uint256', type: 'uint256' },
     ],
-    name: 'updateCouncilMemberWeight',
+    name: 'updateBoardMemberWeight',
     outputs: [],
     stateMutability: 'nonpayable',
   },
@@ -7949,7 +7949,7 @@ export const daoRegistryAbi = [
         indexed: false,
       },
     ],
-    name: 'CouncilMemberAdded',
+    name: 'BoardMemberAdded',
   },
   {
     type: 'event',
@@ -7968,7 +7968,7 @@ export const daoRegistryAbi = [
         indexed: true,
       },
     ],
-    name: 'CouncilMemberRemoved',
+    name: 'BoardMemberRemoved',
   },
   {
     type: 'event',
@@ -7993,7 +7993,7 @@ export const daoRegistryAbi = [
         indexed: false,
       },
     ],
-    name: 'CouncilMemberUpdated',
+    name: 'BoardMemberUpdated',
   },
   {
     type: 'event',
@@ -10806,7 +10806,7 @@ export const feeConfigAbi = [
   {
     type: 'constructor',
     inputs: [
-      { name: '_council', internalType: 'address', type: 'address' },
+      { name: '_board', internalType: 'address', type: 'address' },
       { name: '_director', internalType: 'address', type: 'address' },
       { name: '_treasury', internalType: 'address', type: 'address' },
       { name: 'initialOwner', internalType: 'address', type: 'address' },
@@ -10866,7 +10866,7 @@ export const feeConfigAbi = [
   {
     type: 'function',
     inputs: [],
-    name: 'council',
+    name: 'board',
     outputs: [{ name: '', internalType: 'address', type: 'address' }],
     stateMutability: 'view',
   },
@@ -11381,8 +11381,8 @@ export const feeConfigAbi = [
   },
   {
     type: 'function',
-    inputs: [{ name: 'newCouncil', internalType: 'address', type: 'address' }],
-    name: 'setCouncil',
+    inputs: [{ name: 'newBoard', internalType: 'address', type: 'address' }],
+    name: 'setBoard',
     outputs: [],
     stateMutability: 'nonpayable',
   },
@@ -11656,19 +11656,19 @@ export const feeConfigAbi = [
     anonymous: false,
     inputs: [
       {
-        name: 'oldCouncil',
+        name: 'oldBoard',
         internalType: 'address',
         type: 'address',
         indexed: true,
       },
       {
-        name: 'newCouncil',
+        name: 'newBoard',
         internalType: 'address',
         type: 'address',
         indexed: true,
       },
     ],
-    name: 'CouncilUpdated',
+    name: 'BoardUpdated',
   },
   {
     type: 'event',
@@ -24498,7 +24498,7 @@ export const paymentRequestRegistryAbi = [
       },
       { name: 'reason', internalType: 'string', type: 'string' },
     ],
-    name: 'councilVote',
+    name: 'boardVote',
     outputs: [],
     stateMutability: 'nonpayable',
   },
@@ -24573,11 +24573,11 @@ export const paymentRequestRegistryAbi = [
   {
     type: 'function',
     inputs: [{ name: 'requestId', internalType: 'bytes32', type: 'bytes32' }],
-    name: 'getCouncilVotes',
+    name: 'getBoardVotes',
     outputs: [
       {
         name: '',
-        internalType: 'struct PaymentRequestRegistry.CouncilVote[]',
+        internalType: 'struct PaymentRequestRegistry.BoardVote[]',
         type: 'tuple[]',
         components: [
           { name: 'voter', internalType: 'address', type: 'address' },
@@ -24604,13 +24604,13 @@ export const paymentRequestRegistryAbi = [
         type: 'tuple',
         components: [
           {
-            name: 'requiresCouncilApproval',
+            name: 'requiresBoardApproval',
             internalType: 'bool',
             type: 'bool',
           },
-          { name: 'minCouncilVotes', internalType: 'uint256', type: 'uint256' },
+          { name: 'minBoardVotes', internalType: 'uint256', type: 'uint256' },
           {
-            name: 'councilSupermajorityBps',
+            name: 'boardSupermajorityBps',
             internalType: 'uint256',
             type: 'uint256',
           },
@@ -24783,13 +24783,13 @@ export const paymentRequestRegistryAbi = [
         type: 'tuple',
         components: [
           {
-            name: 'requiresCouncilApproval',
+            name: 'requiresBoardApproval',
             internalType: 'bool',
             type: 'bool',
           },
-          { name: 'minCouncilVotes', internalType: 'uint256', type: 'uint256' },
+          { name: 'minBoardVotes', internalType: 'uint256', type: 'uint256' },
           {
-            name: 'councilSupermajorityBps',
+            name: 'boardSupermajorityBps',
             internalType: 'uint256',
             type: 'uint256',
           },
@@ -24929,7 +24929,7 @@ export const paymentRequestRegistryAbi = [
         indexed: false,
       },
     ],
-    name: 'CouncilVoteCast',
+    name: 'BoardVoteCast',
   },
   {
     type: 'event',
@@ -25169,7 +25169,7 @@ export const paymentRequestRegistryAbi = [
   { type: 'error', inputs: [], name: 'InvalidEvidence' },
   { type: 'error', inputs: [], name: 'NotAuthorized' },
   { type: 'error', inputs: [], name: 'NotDirector' },
-  { type: 'error', inputs: [], name: 'NotCouncilMember' },
+  { type: 'error', inputs: [], name: 'NotBoardMember' },
   { type: 'error', inputs: [], name: 'NotRequester' },
   {
     type: 'error',
@@ -31237,14 +31237,14 @@ export const workAgreementRegistryAbi = [
   {
     type: 'function',
     inputs: [],
-    name: 'COUNCIL_REVIEW_PERIOD',
+    name: 'BOARD_REVIEW_PERIOD',
     outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
     stateMutability: 'view',
   },
   {
     type: 'function',
     inputs: [],
-    name: 'MIN_COUNCIL_VOTES',
+    name: 'MIN_BOARD_VOTES',
     outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
     stateMutability: 'view',
   },
@@ -31493,14 +31493,14 @@ export const workAgreementRegistryAbi = [
             internalType: 'enum WorkAgreementRegistry.DisputeStatus',
             type: 'uint8',
           },
-          { name: 'councilDeadline', internalType: 'uint256', type: 'uint256' },
+          { name: 'boardDeadline', internalType: 'uint256', type: 'uint256' },
           {
-            name: 'councilApprovals',
+            name: 'boardApprovals',
             internalType: 'uint256',
             type: 'uint256',
           },
           {
-            name: 'councilRejections',
+            name: 'boardRejections',
             internalType: 'uint256',
             type: 'uint256',
           },
@@ -31870,7 +31870,7 @@ export const workAgreementRegistryAbi = [
         indexed: false,
       },
     ],
-    name: 'DisputeCouncilVote',
+    name: 'DisputeBoardVote',
   },
   {
     type: 'event',
@@ -32077,7 +32077,7 @@ export const workAgreementRegistryAbi = [
   { type: 'error', inputs: [], name: 'AgreementNotFound' },
   { type: 'error', inputs: [], name: 'AlreadyCompleted' },
   { type: 'error', inputs: [], name: 'AlreadyVoted' },
-  { type: 'error', inputs: [], name: 'CouncilPeriodNotEnded' },
+  { type: 'error', inputs: [], name: 'BoardPeriodNotEnded' },
   { type: 'error', inputs: [], name: 'DisputeExists' },
   { type: 'error', inputs: [], name: 'DisputeNotFound' },
   { type: 'error', inputs: [], name: 'EnforcedPause' },
@@ -32087,7 +32087,7 @@ export const workAgreementRegistryAbi = [
   { type: 'error', inputs: [], name: 'InvalidStatus' },
   { type: 'error', inputs: [], name: 'MilestoneNotFound' },
   { type: 'error', inputs: [], name: 'NotContributor' },
-  { type: 'error', inputs: [], name: 'NotCouncilMember' },
+  { type: 'error', inputs: [], name: 'NotBoardMember' },
   { type: 'error', inputs: [], name: 'NotDAOAdmin' },
   { type: 'error', inputs: [], name: 'NotDisputeParty' },
   { type: 'error', inputs: [], name: 'NotFutarchyContract' },

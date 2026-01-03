@@ -135,7 +135,7 @@ export const CreateRoomRequestSchema = z.object({
   name: NonEmptyStringSchema,
   description: z.string().optional(),
   roomType: z
-    .enum(['collaboration', 'adversarial', 'debate', 'council'])
+    .enum(['collaboration', 'adversarial', 'debate', 'board'])
     .default('collaboration'),
   config: z
     .object({
@@ -173,7 +173,7 @@ export const SetPhaseRequestSchema = z.object({
 export const RoomSearchQuerySchema = z.object({
   name: z.string().optional(),
   roomType: z
-    .enum(['collaboration', 'adversarial', 'debate', 'council'])
+    .enum(['collaboration', 'adversarial', 'debate', 'board'])
     .optional(),
   active: z.coerce.boolean().optional(),
   limit: z.coerce.number().int().positive().max(100).default(20),

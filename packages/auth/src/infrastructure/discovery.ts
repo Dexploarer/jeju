@@ -66,7 +66,7 @@ export interface DiscoveredApp {
   authEndpoint: string
   callbackEndpoint: string
   owner: Address
-  council?: Address
+  board?: Address
   redirectUris: string[]
   metadata: { logoUri: string; policyUri: string; termsUri: string }
   teeNodes: DiscoveredNode[]
@@ -191,7 +191,7 @@ export class OAuth3DecentralizedDiscovery {
       authEndpoint: '',
       callbackEndpoint: '',
       owner: appData.owner,
-      council: appData.council === ZERO_ADDRESS ? undefined : appData.council,
+      board: appData.board === ZERO_ADDRESS ? undefined : appData.board,
       redirectUris: [...configData.redirectUris],
       metadata: {
         logoUri: configData.logoUri,
@@ -225,7 +225,7 @@ export class OAuth3DecentralizedDiscovery {
       authEndpoint: jnsApp.authEndpoint,
       callbackEndpoint: jnsApp.callbackEndpoint,
       owner: jnsApp.owner,
-      council: jnsApp.council,
+      board: jnsApp.board,
       redirectUris: jnsApp.redirectUris,
       metadata: jnsApp.metadata,
       teeNodes: nodes.slice(0, 5),

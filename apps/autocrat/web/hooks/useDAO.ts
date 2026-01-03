@@ -132,7 +132,7 @@ async function createDAO(draft: CreateDAODraft): Promise<DAODetail> {
     },
     governance: {
       minQualityScore: draft.governanceParams.minQualityScore,
-      boardVotingPeriod: draft.governanceParams.councilVotingPeriod,
+      boardVotingPeriod: draft.governanceParams.boardVotingPeriod,
       gracePeriod: draft.governanceParams.gracePeriod,
       minProposalStake: draft.governanceParams.minProposalStake,
       quorumBps: draft.governanceParams.quorumBps,
@@ -181,7 +181,7 @@ async function updateGovernanceParams(
   // Transform frontend params to API-expected format
   const apiPayload = {
     minQualityScore: params.minQualityScore,
-    boardVotingPeriod: params.councilVotingPeriod,
+    boardVotingPeriod: params.boardVotingPeriod,
     gracePeriod: params.gracePeriod,
     minProposalStake: params.minProposalStake,
     quorumBps: params.quorumBps,

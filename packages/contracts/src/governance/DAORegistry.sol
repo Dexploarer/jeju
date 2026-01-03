@@ -14,7 +14,7 @@ import {IDAORegistry} from "./interfaces/IDAORegistry.sol";
  *
  * Terminology:
  * - Director: The AI or human executive decision maker (formerly Director)
- * - Board: The advisory/oversight body (formerly Council)
+ * - Board: The advisory/oversight body (formerly Board)
  *
  * Key Features:
  * - Multi-tenant DAO support (Jeju DAO, Apps DAO, custom DAOs)
@@ -250,11 +250,11 @@ contract DAORegistry is IDAORegistry, Ownable, Pausable, ReentrancyGuard {
     /**
      * @notice Set DAO board contract address (legacy alias)
      */
-    function setDAOCouncilContract(bytes32 daoId, address council) external onlyExistingDAO(daoId) onlyDAOAdmin(daoId) {
-        _daos[daoId].board = council;
+    function setDAOBoardContract(bytes32 daoId, address board) external onlyExistingDAO(daoId) onlyDAOAdmin(daoId) {
+        _daos[daoId].board = board;
         _daos[daoId].updatedAt = block.timestamp;
 
-        emit DAOUpdated(daoId, "board", abi.encode(council));
+        emit DAOUpdated(daoId, "board", abi.encode(board));
     }
 
     /**
@@ -352,13 +352,13 @@ contract DAORegistry is IDAORegistry, Ownable, Pausable, ReentrancyGuard {
 
         emit BoardMemberAdded(daoId, member, role, weight, isHuman);
         // Legacy event
-        emit CouncilMemberAdded(daoId, member, role, weight);
+        emit BoardMemberAdded(daoId, member, role, weight);
     }
 
     /**
-     * @notice Add a council member (legacy alias)
+     * @notice Add a board member (legacy alias)
      */
-    function addCouncilMember(bytes32 daoId, address member, uint256 agentId, string calldata role, uint256 weight)
+    function addBoardMember(bytes32 daoId, address member, uint256 agentId, string calldata role, uint256 weight)
         external
         onlyExistingDAO(daoId)
         onlyDAOAdmin(daoId)
@@ -384,7 +384,7 @@ contract DAORegistry is IDAORegistry, Ownable, Pausable, ReentrancyGuard {
         _daos[daoId].updatedAt = block.timestamp;
 
         emit BoardMemberAdded(daoId, member, role, weight, isHuman);
-        emit CouncilMemberAdded(daoId, member, role, weight);
+        emit BoardMemberAdded(daoId, member, role, weight);
     }
 
     /**
@@ -398,20 +398,20 @@ contract DAORegistry is IDAORegistry, Ownable, Pausable, ReentrancyGuard {
 
         emit BoardMemberRemoved(daoId, member);
         // Legacy event
-        emit CouncilMemberRemoved(daoId, member);
+        emit BoardMemberRemoved(daoId, member);
     }
 
     /**
-     * @notice Remove a council member (legacy alias)
+     * @notice Remove a board member (legacy alias)
      */
-    function removeCouncilMember(bytes32 daoId, address member) external onlyExistingDAO(daoId) onlyDAOAdmin(daoId) {
+    function removeBoardMember(bytes32 daoId, address member) external onlyExistingDAO(daoId) onlyDAOAdmin(daoId) {
         if (_boardMembers[daoId][member].addedAt == 0) revert MemberNotFound();
 
         _boardMembers[daoId][member].isActive = false;
         _daos[daoId].updatedAt = block.timestamp;
 
         emit BoardMemberRemoved(daoId, member);
-        emit CouncilMemberRemoved(daoId, member);
+        emit BoardMemberRemoved(daoId, member);
     }
 
     /**
@@ -430,13 +430,13 @@ contract DAORegistry is IDAORegistry, Ownable, Pausable, ReentrancyGuard {
 
         emit BoardMemberUpdated(daoId, member, weight);
         // Legacy event
-        emit CouncilMemberUpdated(daoId, member, weight);
+        emit BoardMemberUpdated(daoId, member, weight);
     }
 
     /**
-     * @notice Update council member weight (legacy alias)
+     * @notice Update board member weight (legacy alias)
      */
-    function updateCouncilMemberWeight(bytes32 daoId, address member, uint256 weight)
+    function updateBoardMemberWeight(bytes32 daoId, address member, uint256 weight)
         external
         onlyExistingDAO(daoId)
         onlyDAOAdmin(daoId)
@@ -448,7 +448,7 @@ contract DAORegistry is IDAORegistry, Ownable, Pausable, ReentrancyGuard {
         _daos[daoId].updatedAt = block.timestamp;
 
         emit BoardMemberUpdated(daoId, member, weight);
-        emit CouncilMemberUpdated(daoId, member, weight);
+        emit BoardMemberUpdated(daoId, member, weight);
     }
 
     // ============ Package/Repo Linking ============
@@ -633,9 +633,9 @@ contract DAORegistry is IDAORegistry, Ownable, Pausable, ReentrancyGuard {
     }
 
     /**
-     * @notice Get council members for a DAO (legacy alias)
+     * @notice Get board members for a DAO (legacy alias)
      */
-    function getCouncilMembers(bytes32 daoId) external view returns (BoardMember[] memory) {
+    function getBoardMembers(bytes32 daoId) external view returns (BoardMember[] memory) {
         address[] memory addrs = _boardMemberAddresses[daoId];
         BoardMember[] memory members = new BoardMember[](addrs.length);
         uint256 activeCount = 0;
@@ -678,9 +678,9 @@ contract DAORegistry is IDAORegistry, Ownable, Pausable, ReentrancyGuard {
     }
 
     /**
-     * @notice Check if address is council member (legacy alias)
+     * @notice Check if address is board member (legacy alias)
      */
-    function isCouncilMember(bytes32 daoId, address member) external view returns (bool) {
+    function isBoardMember(bytes32 daoId, address member) external view returns (bool) {
         return _boardMembers[daoId][member].isActive;
     }
 

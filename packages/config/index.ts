@@ -2614,16 +2614,16 @@ export function getPublicApiUrl(): string | undefined {
   return process.env.PUBLIC_API_URL
 }
 
-// Council Configuration
+// Board Configuration
 
-/** Get Jeju Council OAuth3 app address */
-export function getCouncilJejuOauth3App(): string {
-  return process.env.COUNCIL_JEJU_OAUTH3_APP ?? '0x'
+/** Get Jeju Board OAuth3 app address */
+export function getBoardJejuOauth3App(): string {
+  return process.env.BOARD_JEJU_OAUTH3_APP ?? '0x'
 }
 
-/** Get Eliza Council OAuth3 app address */
-export function getCouncilElizaOauth3App(): string {
-  return process.env.COUNCIL_ELIZA_OAUTH3_APP ?? '0x'
+/** Get Eliza Board OAuth3 app address */
+export function getBoardElizaOauth3App(): string {
+  return process.env.BOARD_ELIZA_OAUTH3_APP ?? '0x'
 }
 
 // Hyperlane Configuration

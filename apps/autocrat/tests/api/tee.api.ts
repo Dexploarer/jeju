@@ -105,7 +105,7 @@ test.describe('Hardware TEE Flow (Mocked)', () => {
 
   const MOCK_DECISION = {
     approved: true,
-    reasoning: 'Test approved with high confidence based on council consensus.',
+    reasoning: 'Test approved with high confidence based on board consensus.',
     confidence: 95,
     alignment: 92,
     recommendations: ['Proceed with implementation', 'Monitor execution'],

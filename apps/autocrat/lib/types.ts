@@ -3,7 +3,7 @@
  *
  * Terminology:
  * - Director: The AI or human executive decision maker (formerly Director)
- * - Board: The advisory/oversight body (formerly Council)
+ * - Board: The advisory/oversight body (formerly Board)
  */
 
 import type { Address } from 'viem'
@@ -37,8 +37,8 @@ export type ProposalStatus =
 
 // Legacy alias
 export const LegacyProposalStatus = {
-  COUNCIL_REVIEW: ProposalStatus.BOARD_REVIEW,
-  COUNCIL_FINAL: ProposalStatus.BOARD_FINAL,
+  BOARD_REVIEW: ProposalStatus.BOARD_REVIEW,
+  BOARD_FINAL: ProposalStatus.BOARD_FINAL,
   DIRECTOR_QUEUE: ProposalStatus.DIRECTOR_QUEUE,
 } as const
 
@@ -111,9 +111,6 @@ export interface BoardMemberConfig {
   isHuman: boolean
 }
 
-// Legacy alias
-export type CouncilMemberConfig = BoardMemberConfig
-
 export interface GovernanceParams {
   minQualityScore: number
   boardVotingPeriod: number
@@ -141,7 +138,7 @@ export interface DAO {
   displayName: string
   description: string
   treasury: Address
-  board: Address // Board governance contract (formerly council)
+  board: Address // Board governance contract (formerly board)
   directorAgent: Address // Director agent contract (formerly directorAgent)
   feeConfig: Address
   directorModelId: string // AI model ID (formerly directorModelId)
@@ -173,7 +170,7 @@ export interface DAOConfig {
 }
 
 export interface DAOContracts {
-  board: Address // Board governance contract (formerly council)
+  board: Address // Board governance contract (formerly board)
   directorAgent: Address // Director agent contract (formerly directorAgent)
   treasury: Address
   feeConfig: Address
@@ -188,7 +185,7 @@ export interface DAOContracts {
 
 export interface DAOAgents {
   director: AgentConfig // Formerly director
-  board: AgentConfig[] // Formerly council
+  board: AgentConfig[] // Formerly board
   proposalAgent: AgentConfig
   researchAgent: AgentConfig
   fundingAgent: AgentConfig
@@ -267,8 +264,8 @@ export interface Proposal {
   relevanceScore: number
   createdAt: number
   submittedAt: number
-  boardVoteStart: number // Formerly councilVoteStart
-  boardVoteEnd: number // Formerly councilVoteEnd
+  boardVoteStart: number // Formerly boardVoteStart
+  boardVoteEnd: number // Formerly boardVoteEnd
   directorDecisionAt: number // Formerly directorDecisionAt
   gracePeriodEnd: number
   executedAt: number
@@ -281,7 +278,7 @@ export interface Proposal {
   backerReputations: Map<Address, number>
   totalStaked: bigint
   totalReputation: number
-  boardVotes: BoardVote[] // Formerly councilVotes
+  boardVotes: BoardVote[] // Formerly boardVotes
   researchReport: ResearchReport | null
   directorDecision: DirectorDecision | null // Formerly directorDecision
   vetoVotes: VetoVote[]
@@ -305,7 +302,7 @@ export interface CasualProposal {
   clarityScore: number
   status: 'pending' | 'reviewing' | 'accepted' | 'rejected' | 'needs_revision'
   aiAssessment: AIAssessment | null
-  boardFeedback: string[] // Formerly councilFeedback
+  boardFeedback: string[] // Formerly boardFeedback
   directorFeedback: string | null // Formerly directorFeedback
   linkedPackageId: string | null
   linkedRepoId: string | null
@@ -369,10 +366,6 @@ export const BoardRole = {
 } as const
 export type BoardRole = (typeof BoardRole)[keyof typeof BoardRole]
 
-// Legacy alias
-export const CouncilRole = BoardRole
-export type CouncilRole = BoardRole
-
 export interface BoardAgent {
   id: string
   daoId: string
@@ -389,9 +382,6 @@ export interface BoardAgent {
   lastActive: number
 }
 
-// Legacy alias
-export type CouncilAgent = BoardAgent
-
 export const VoteType = {
   APPROVE: 0,
   REJECT: 1,
@@ -403,7 +393,7 @@ export type VoteType = (typeof VoteType)[keyof typeof VoteType]
 export interface BoardVote {
   proposalId: string
   daoId: string
-  boardAgentId: string // Formerly councilAgentId
+  boardAgentId: string // Formerly boardAgentId
   role: BoardRole
   vote: VoteType
   reasoning: string
@@ -413,11 +403,11 @@ export interface BoardVote {
   weight: number
   isHuman: boolean
   // Legacy accessor
-  councilAgentId?: string
+  boardAgentId?: string
 }
 
 // Legacy alias
-export type CouncilVote = BoardVote
+export type BoardVote = BoardVote
 
 export interface BoardDeliberation {
   proposalId: string
@@ -432,7 +422,7 @@ export interface BoardDeliberation {
 }
 
 // Legacy alias
-export type CouncilDeliberation = BoardDeliberation
+export type BoardDeliberation = BoardDeliberation
 
 export interface DirectorDecision {
   proposalId: string
@@ -861,7 +851,7 @@ export interface BoardConfig {
 }
 
 // Legacy alias
-export type CouncilConfig = BoardConfig
+export type BoardConfig = BoardConfig
 
 export interface AgentConfig {
   id: string
@@ -956,7 +946,7 @@ export interface BoardVoteCastEventData {
 }
 
 // Legacy alias
-export type CouncilVoteCastEventData = BoardVoteCastEventData
+export type BoardVoteCastEventData = BoardVoteCastEventData
 
 export interface DirectorDecisionMadeEventData {
   proposalId: string

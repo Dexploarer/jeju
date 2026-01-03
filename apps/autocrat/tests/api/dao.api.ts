@@ -99,7 +99,7 @@ const VALID_DAO_DRAFT = {
   ],
   governanceParams: {
     minQualityScore: 70,
-    councilVotingPeriod: 259200,
+    boardVotingPeriod: 259200,
     gracePeriod: 86400,
     minProposalStake: '0.01',
     quorumBps: 5000,
@@ -444,7 +444,7 @@ test.describe('Governance Parameter Endpoints', () => {
       if (response.ok()) {
         const data = await response.json()
         expect(data.minQualityScore).toBeDefined()
-        expect(data.councilVotingPeriod).toBeDefined()
+        expect(data.boardVotingPeriod).toBeDefined()
       }
     }
   })

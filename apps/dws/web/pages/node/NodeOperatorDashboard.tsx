@@ -20,7 +20,7 @@ import { useState } from 'react'
 import { useAccount } from 'wagmi'
 import { SkeletonStatCard } from '../../components/Skeleton'
 import { useConfirm, useToast } from '../../context/AppContext'
-import { useClaimRewards } from '../../hooks'
+import { useClaimRewards, useDeregisterNode, useUpdateNodePerformance } from '../../hooks'
 import {
   type EarningsHistoryItem,
   type NodeInfo,
@@ -34,6 +34,8 @@ export default function NodeOperatorDashboard() {
   const { showSuccess, showError } = useToast()
   const confirm = useConfirm()
   const claimRewards = useClaimRewards()
+  const deregisterNode = useDeregisterNode()
+  const updatePerformance = useUpdateNodePerformance()
   const {
     data: operatorStats,
     isLoading: statsLoading,
@@ -43,6 +45,8 @@ export default function NodeOperatorDashboard() {
   const { data: earningsHistory } = useEarningsHistory()
   const [selectedNode, setSelectedNode] = useState<string | null>(null)
   const [claimingNode, setClaimingNode] = useState<string | null>(null)
+  const [updatingNode, setUpdatingNode] = useState<string | null>(null)
+  const [deregisteringNode, setDeregisteringNode] = useState<string | null>(null)
 
   const handleClaimRewards = async (nodeId: string, nodeName: string) => {
     const confirmed = await confirm({
@@ -114,6 +118,49 @@ export default function NodeOperatorDashboard() {
 
     if (failCount > 0) {
       showError('Partial failure', `Failed to claim from ${failCount} node(s)`)
+    }
+  }
+
+  const handleDeregisterNode = async (nodeId: string, nodeName: string) => {
+    const confirmed = await confirm({
+      title: 'Deregister Node',
+      message: `Are you sure you want to deregister node ${nodeName}? Your stake will be returned after a cooldown period.`,
+      confirmText: 'Deregister',
+      cancelText: 'Cancel',
+      destructive: true,
+    })
+
+    if (!confirmed) return
+
+    setDeregisteringNode(nodeId)
+    try {
+      await deregisterNode.mutateAsync(nodeId)
+      showSuccess('Node deregistered', `Node ${nodeName} has been deregistered`)
+      refetchStats()
+      setSelectedNode(null)
+    } catch (error) {
+      showError(
+        'Deregistration failed',
+        error instanceof Error ? error.message : 'Failed to deregister node',
+      )
+    } finally {
+      setDeregisteringNode(null)
+    }
+  }
+
+  const handleUpdatePerformance = async (nodeId: string, nodeName: string) => {
+    setUpdatingNode(nodeId)
+    try {
+      await updatePerformance.mutateAsync(nodeId)
+      showSuccess('Performance updated', `Node ${nodeName} performance metrics refreshed`)
+      refetchStats()
+    } catch (error) {
+      showError(
+        'Update failed',
+        error instanceof Error ? error.message : 'Failed to update performance',
+      )
+    } finally {
+      setUpdatingNode(null)
     }
   }
 
@@ -402,7 +449,11 @@ export default function NodeOperatorDashboard() {
           node={nodes.find((n) => n.nodeId === selectedNode)}
           onClose={() => setSelectedNode(null)}
           onClaim={handleClaimRewards}
+          onDeregister={handleDeregisterNode}
+          onUpdatePerformance={handleUpdatePerformance}
           isClaiming={claimingNode === selectedNode}
+          isDeregistering={deregisteringNode === selectedNode}
+          isUpdating={updatingNode === selectedNode}
         />
       )}
 
@@ -660,16 +711,25 @@ function NodeDetailsPanel({
   node,
   onClose,
   onClaim,
+  onDeregister,
+  onUpdatePerformance,
   isClaiming,
+  isDeregistering,
+  isUpdating,
 }: {
   node: NodeInfo | undefined
   onClose: () => void
   onClaim: (nodeId: string, nodeName: string) => void
+  onDeregister: (nodeId: string, nodeName: string) => void
+  onUpdatePerformance: (nodeId: string, nodeName: string) => void
   isClaiming: boolean
+  isDeregistering: boolean
+  isUpdating: boolean
 }) {
   if (!node) return null
 
   const hasPendingRewards = parseFloat(node.pendingRewards) > 0
+  const nodeName = node.nodeId.slice(0, 10)
 
   return (
     <div
@@ -786,7 +846,7 @@ function NodeDetailsPanel({
         <button
           type="button"
           className="btn btn-primary"
-          onClick={() => onClaim(node.nodeId, node.nodeId.slice(0, 10))}
+          onClick={() => onClaim(node.nodeId, nodeName)}
           disabled={!hasPendingRewards || isClaiming}
         >
           {isClaiming ? (
@@ -797,16 +857,35 @@ function NodeDetailsPanel({
             </>
           )}
         </button>
-        <button type="button" className="btn btn-secondary">
-          <RefreshCw size={16} /> Update Performance
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={() => onUpdatePerformance(node.nodeId, nodeName)}
+          disabled={isUpdating}
+        >
+          {isUpdating ? (
+            'Updating...'
+          ) : (
+            <>
+              <RefreshCw size={16} /> Update Performance
+            </>
+          )}
         </button>
         {!node.isSlashed && (
           <button
             type="button"
             className="btn btn-secondary"
             style={{ color: 'var(--warning)' }}
+            onClick={() => onDeregister(node.nodeId, nodeName)}
+            disabled={isDeregistering}
           >
-            <AlertTriangle size={16} /> Deregister Node
+            {isDeregistering ? (
+              'Deregistering...'
+            ) : (
+              <>
+                <AlertTriangle size={16} /> Deregister Node
+              </>
+            )}
           </button>
         )}
       </div>

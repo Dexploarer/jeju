@@ -34,8 +34,12 @@ const host = getLocalhostHost()
 const DWS_PORT = CORE_PORTS.DWS_API.get()
 const DWS_URL = process.env.DWS_URL ?? `http://${host}:${DWS_PORT}`
 
-// SQLit endpoint - resolved dynamically via DWS
-const SQLIT_URL = process.env.SQLIT_URL ?? getSQLitBlockProducerUrl()
+// SQLit endpoint - try DWS embedded first (port 8546), then standalone (port 4661)
+// DWS runs an embedded SQLit server when the standalone isn't available
+const SQLIT_EMBEDDED_PORT = 8546
+const SQLIT_STANDALONE_URL = getSQLitBlockProducerUrl()
+const SQLIT_EMBEDDED_URL = `http://${host}:${SQLIT_EMBEDDED_PORT}`
+const SQLIT_URL = process.env.SQLIT_URL ?? SQLIT_EMBEDDED_URL
 
 // Crucible ports - from centralized port config
 // Frontend on CRUCIBLE_API (4020), Backend API on CRUCIBLE_EXECUTOR (4021)
@@ -179,6 +183,11 @@ async function uploadDirectory(
   for (const entry of entries) {
     const fullPath = join(dirPath, entry.name)
     const key = prefix ? `${prefix}/${entry.name}` : entry.name
+
+    // Skip sourcemaps in production uploads
+    if (entry.name.endsWith('.map')) {
+      continue
+    }
 
     if (entry.isDirectory()) {
       const subResults = await uploadDirectory(dwsUrl, fullPath, key)
@@ -325,12 +334,27 @@ async function deployWorker(
 
 /**
  * Register frontend assets with DWS CDN
- * Uses JNS-resolved domain for fully decentralized routing
+ * For localnet, CDN uses local file serving with IPFS as backup
+ * For testnet/mainnet, uses JNS-resolved domain for fully decentralized routing
  */
 async function setupCDN(
   config: StartConfig,
   assets: Map<string, { cid: string }>,
 ): Promise<void> {
+  // Get the index.html CID for IPFS gateway access
+  const indexCid = assets.get('index.html')?.cid
+  if (!indexCid) {
+    console.warn('[Crucible] No index.html found in assets')
+    return
+  }
+
+  // For localnet, just log the IPFS CID - files are served locally
+  if (config.network === 'localnet') {
+    console.log(`[Crucible] Frontend IPFS CID: ${indexCid}`)
+    console.log(`[Crucible] Access via: ${config.dwsUrl}/cdn/ipfs/${indexCid}`)
+    return
+  }
+
   const assetList = Array.from(assets.entries()).map(([path, result]) => ({
     path: `/${path}`,
     cid: result.cid,
@@ -587,15 +611,29 @@ async function start(): Promise<void> {
     process.exit(1)
   }
 
-  // 2. Check SQLit is running
-  const sqlitReady = await waitForService(
-    'SQLit',
-    config.sqlitUrl,
+  // 2. Check SQLit is running (try embedded first, then standalone)
+  let sqlitReady = await waitForService(
+    'SQLit (embedded)',
+    SQLIT_EMBEDDED_URL,
     '/v1/status',
-    10000,
+    5000,
   )
+  let activeSqlitUrl = SQLIT_EMBEDDED_URL
+
+  if (!sqlitReady) {
+    // Try standalone SQLit
+    sqlitReady = await waitForService(
+      'SQLit (standalone)',
+      SQLIT_STANDALONE_URL,
+      '/v1/status',
+      5000,
+    )
+    activeSqlitUrl = SQLIT_STANDALONE_URL
+  }
+
   if (sqlitReady) {
-    await ensureDatabase(config.sqlitUrl)
+    config.sqlitUrl = activeSqlitUrl
+    await ensureDatabase(activeSqlitUrl)
   } else {
     console.warn('[Crucible] SQLit not available - database features disabled')
   }

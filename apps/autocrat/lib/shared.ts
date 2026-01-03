@@ -101,7 +101,7 @@ export function parseJson<T>(response: string): T {
   return JSON.parse(match[0]) as T
 }
 
-export const COUNCIL_ABI = [
+export const BOARD_ABI = [
   'function getProposal(bytes32) view returns (tuple(bytes32, address, uint256, uint8, uint8, uint8, uint256, uint256, uint256, bytes32, address, bytes, uint256, uint256, uint256, uint256, bool, bytes32, bool, bytes32))',
   'function getAutocratVotes(bytes32) view returns (tuple(bytes32, address, uint8, uint8, bytes32, uint256, uint256)[])',
   'function getActiveProposals() view returns (bytes32[])',
@@ -212,7 +212,7 @@ export interface ProposalFromContract {
 
 export interface AutocratVoteFromContract {
   proposalId: `0x${string}`
-  councilAgent: `0x${string}`
+  boardAgent: `0x${string}`
   role: number
   vote: number
   reasoningHash: `0x${string}`

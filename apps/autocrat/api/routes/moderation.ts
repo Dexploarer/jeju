@@ -5,6 +5,37 @@ import { expectFlagType, getModerationSystem } from '../moderation'
 const moderation = getModerationSystem()
 
 export const moderationRoutes = new Elysia({ prefix: '/api/v1/moderation' })
+  .get(
+    '/',
+    async () => {
+      try {
+        const system = getModerationSystem()
+        return {
+          service: 'moderation',
+          status: 'available',
+          endpoints: {
+            flag: 'POST /api/v1/moderation/flag',
+            vote: 'POST /api/v1/moderation/vote',
+            resolve: 'POST /api/v1/moderation/resolve',
+            reports: 'GET /api/v1/moderation/reports/:proposalId',
+            flags: 'GET /api/v1/moderation/flags/:proposalId',
+            userFlags: 'GET /api/v1/moderation/user/:address/flags',
+            stats: 'GET /api/v1/moderation/stats',
+            pending: 'GET /api/v1/moderation/pending',
+          },
+        }
+      } catch (error) {
+        return {
+          service: 'moderation',
+          status: 'unavailable',
+          message: error instanceof Error ? error.message : 'Moderation service unavailable',
+        }
+      }
+    },
+    {
+      detail: { tags: ['moderation'], summary: 'Get moderation service info' },
+    },
+  )
   .post(
     '/flag',
     async ({ body }) => {

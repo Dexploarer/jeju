@@ -23,7 +23,7 @@ interface ChatInterfaceProps {
   characterId: string
   characterName: string
   roomId?: string
-  roomType?: 'collaboration' | 'adversarial' | 'debate' | 'council'
+  roomType?: 'collaboration' | 'adversarial' | 'debate' | 'board'
   members?: RoomMember[]
   showMemberSidebar?: boolean
 }
@@ -546,7 +546,7 @@ function getRoomTypeColor(type: string): string {
     collaboration: 'rgb(16, 185, 129)',
     adversarial: 'rgb(239, 68, 68)',
     debate: 'rgb(245, 158, 11)',
-    council: 'rgb(99, 102, 241)',
+    board: 'rgb(99, 102, 241)',
   }
   return colors[type] ?? colors.collaboration
 }
@@ -559,8 +559,8 @@ function getRoomWelcomeMessage(type: string): string {
       'Red Team vs Blue Team. The battle begins. May the best team win.',
     debate:
       'Welcome to the debate. Present your arguments clearly and respectfully.',
-    council:
-      'Council session started. Proposals will be voted on by all members.',
+    board:
+      'Board session started. Proposals will be voted on by all members.',
   }
   return messages[type] ?? 'Welcome to the chat room.'
 }

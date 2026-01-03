@@ -1,50 +1,50 @@
 /**
- * Multi-tenant Council Integration
+ * Multi-tenant Board Integration
  *
- * Enables multiple independent councils to each have their own OAuth3 apps,
+ * Enables multiple independent boards to each have their own OAuth3 apps,
  * Directors, and governance while sharing the same infrastructure.
  */
 
 import {
-  getCouncilElizaOauth3App,
-  getCouncilJejuOauth3App,
+  getBoardElizaOauth3App,
+  getBoardJejuOauth3App,
 } from '@jejunetwork/config'
 import { ZERO_ADDRESS } from '@jejunetwork/types'
 import { type Address, type Hex, isAddress, keccak256, toBytes } from 'viem'
 import type {
   AuthProvider,
-  CouncilConfig,
-  CouncilType,
+  BoardConfig,
+  BoardType,
   OAuth3App,
 } from '../types.js'
 
 /**
- * Load council address from environment or return ZERO_ADDRESS
- * Format: COUNCIL_{TYPE}_{ROLE}_ADDRESS
+ * Load board address from environment or return ZERO_ADDRESS
+ * Format: BOARD_{TYPE}_{ROLE}_ADDRESS
  */
-function loadCouncilAddress(councilType: CouncilType, role: string): Address {
-  const envKey = `COUNCIL_${councilType.toUpperCase()}_${role.toUpperCase()}_ADDRESS`
+function loadBoardAddress(boardType: BoardType, role: string): Address {
+  const envKey = `BOARD_${boardType.toUpperCase()}_${role.toUpperCase()}_ADDRESS`
   const value = process.env[envKey]
   if (!value || value === '' || !isAddress(value)) return ZERO_ADDRESS
   return value
 }
 
 /**
- * Check if a council is configured (has non-zero addresses)
+ * Check if a board is configured (has non-zero addresses)
  */
-function isCouncilConfigured(councilType: CouncilType): boolean {
-  const treasury = loadCouncilAddress(councilType, 'TREASURY')
-  const director = loadCouncilAddress(councilType, 'Director')
+function isBoardConfigured(boardType: BoardType): boolean {
+  const treasury = loadBoardAddress(boardType, 'TREASURY')
+  const director = loadBoardAddress(boardType, 'Director')
   return treasury !== ZERO_ADDRESS || director !== ZERO_ADDRESS
 }
 
-export interface CouncilDeployment {
-  councilType: CouncilType
-  config: CouncilConfig
+export interface BoardDeployment {
+  boardType: BoardType
+  config: BoardConfig
   oauth3App: OAuth3App
   treasury: Address
   director: DirectorConfig
-  agents: CouncilAgentConfig[]
+  agents: BoardAgentConfig[]
 }
 
 /**
@@ -66,7 +66,7 @@ export interface DirectorConfig {
   systemPrompt: string
 }
 
-export interface CouncilAgentConfig {
+export interface BoardAgentConfig {
   role: string
   name: string
   address: Address
@@ -74,37 +74,37 @@ export interface CouncilAgentConfig {
   votingWeight: number
 }
 
-export interface CouncilRegistry {
-  councils: Map<CouncilType, CouncilDeployment>
-  defaultCouncil: CouncilType
+export interface BoardRegistry {
+  boards: Map<BoardType, BoardDeployment>
+  defaultBoard: BoardType
 }
 
 /**
- * Load default councils - addresses from environment or ZERO_ADDRESS
+ * Load default boards - addresses from environment or ZERO_ADDRESS
  * Set environment variables to deploy:
- *   COUNCIL_JEJU_TREASURY_ADDRESS, COUNCIL_JEJU_DIRECTOR_ADDRESS, etc.
+ *   BOARD_JEJU_TREASURY_ADDRESS, BOARD_JEJU_DIRECTOR_ADDRESS, etc.
  */
-function getDefaultCouncils(): Record<CouncilType, Partial<CouncilDeployment>> {
+function getDefaultBoards(): Record<BoardType, Partial<BoardDeployment>> {
   return {
     jeju: {
-      councilType: 'jeju' as CouncilType,
+      boardType: 'jeju' as BoardType,
       config: {
-        councilId: keccak256(toBytes('jeju-council')),
-        name: 'Jeju Network Council',
-        treasury: loadCouncilAddress('jeju', 'TREASURY'),
-        directorAgent: loadCouncilAddress('jeju', 'Director'),
-        councilAgents: [
-          loadCouncilAddress('jeju', 'TREASURY_AGENT'),
-          loadCouncilAddress('jeju', 'CODE_AGENT'),
-          loadCouncilAddress('jeju', 'COMMUNITY_AGENT'),
-          loadCouncilAddress('jeju', 'SECURITY_AGENT'),
+        boardId: keccak256(toBytes('jeju-board')),
+        name: 'Jeju Network Board',
+        treasury: loadBoardAddress('jeju', 'TREASURY'),
+        directorAgent: loadBoardAddress('jeju', 'Director'),
+        boardAgents: [
+          loadBoardAddress('jeju', 'TREASURY_AGENT'),
+          loadBoardAddress('jeju', 'CODE_AGENT'),
+          loadBoardAddress('jeju', 'COMMUNITY_AGENT'),
+          loadBoardAddress('jeju', 'SECURITY_AGENT'),
         ].filter((a) => a !== ZERO_ADDRESS),
-        oauth3App: getCouncilJejuOauth3App() as Hex,
-        jnsName: 'council.jeju',
+        oauth3App: getBoardJejuOauth3App() as Hex,
+        jnsName: 'board.jeju',
       },
       director: {
         name: 'Jeju Director',
-        address: loadCouncilAddress('jeju', 'Director'),
+        address: loadBoardAddress('jeju', 'Director'),
         modelProvider: 'anthropic',
         modelId: 'claude-opus-4-5',
         systemPrompt: `You are the AI Director of Jeju Network, a decentralized L2 blockchain.
@@ -115,52 +115,52 @@ Consider technical feasibility, community benefit, and economic sustainability.`
         {
           role: 'Treasury',
           name: 'Treasury Agent',
-          address: loadCouncilAddress('jeju', 'TREASURY_AGENT'),
+          address: loadBoardAddress('jeju', 'TREASURY_AGENT'),
           specialization: 'Financial management and budget allocation',
           votingWeight: 25,
         },
         {
           role: 'Code',
           name: 'Code Agent',
-          address: loadCouncilAddress('jeju', 'CODE_AGENT'),
+          address: loadBoardAddress('jeju', 'CODE_AGENT'),
           specialization: 'Technical review and code security',
           votingWeight: 25,
         },
         {
           role: 'Community',
           name: 'Community Agent',
-          address: loadCouncilAddress('jeju', 'COMMUNITY_AGENT'),
+          address: loadBoardAddress('jeju', 'COMMUNITY_AGENT'),
           specialization: 'Community relations and user advocacy',
           votingWeight: 25,
         },
         {
           role: 'Security',
           name: 'Security Agent',
-          address: loadCouncilAddress('jeju', 'SECURITY_AGENT'),
+          address: loadBoardAddress('jeju', 'SECURITY_AGENT'),
           specialization: 'Security audits and risk assessment',
           votingWeight: 25,
         },
       ],
     },
     eliza: {
-      councilType: 'eliza' as CouncilType,
+      boardType: 'eliza' as BoardType,
       config: {
-        councilId: keccak256(toBytes('eliza-council')),
-        name: 'ElizaOS Council',
-        treasury: loadCouncilAddress('eliza', 'TREASURY'),
-        directorAgent: loadCouncilAddress('eliza', 'Director'),
-        councilAgents: [
-          loadCouncilAddress('eliza', 'SAFETY_AGENT'),
-          loadCouncilAddress('eliza', 'DEVELOPER_AGENT'),
-          loadCouncilAddress('eliza', 'INTEGRATION_AGENT'),
-          loadCouncilAddress('eliza', 'RESEARCH_AGENT'),
+        boardId: keccak256(toBytes('eliza-board')),
+        name: 'ElizaOS Board',
+        treasury: loadBoardAddress('eliza', 'TREASURY'),
+        directorAgent: loadBoardAddress('eliza', 'Director'),
+        boardAgents: [
+          loadBoardAddress('eliza', 'SAFETY_AGENT'),
+          loadBoardAddress('eliza', 'DEVELOPER_AGENT'),
+          loadBoardAddress('eliza', 'INTEGRATION_AGENT'),
+          loadBoardAddress('eliza', 'RESEARCH_AGENT'),
         ].filter((a) => a !== ZERO_ADDRESS),
-        oauth3App: getCouncilElizaOauth3App() as Hex,
-        jnsName: 'council.eliza.jeju',
+        oauth3App: getBoardElizaOauth3App() as Hex,
+        jnsName: 'board.eliza.jeju',
       },
       director: {
         name: 'Eliza Director',
-        address: loadCouncilAddress('eliza', 'Director'),
+        address: loadBoardAddress('eliza', 'Director'),
         modelProvider: 'anthropic',
         modelId: 'claude-opus-4-5',
         systemPrompt: `You are the AI Director of ElizaOS, the AI agent framework on Jeju Network.
@@ -171,28 +171,28 @@ Prioritize safety, capability advancement, and developer experience.`,
         {
           role: 'AI Safety',
           name: 'AI Safety Agent',
-          address: loadCouncilAddress('eliza', 'SAFETY_AGENT'),
+          address: loadBoardAddress('eliza', 'SAFETY_AGENT'),
           specialization: 'AI safety and alignment review',
           votingWeight: 30,
         },
         {
           role: 'Developer',
           name: 'Developer Relations Agent',
-          address: loadCouncilAddress('eliza', 'DEVELOPER_AGENT'),
+          address: loadBoardAddress('eliza', 'DEVELOPER_AGENT'),
           specialization: 'Developer tools and documentation',
           votingWeight: 25,
         },
         {
           role: 'Integration',
           name: 'Integration Agent',
-          address: loadCouncilAddress('eliza', 'INTEGRATION_AGENT'),
+          address: loadBoardAddress('eliza', 'INTEGRATION_AGENT'),
           specialization: 'Third-party integrations and partnerships',
           votingWeight: 25,
         },
         {
           role: 'Research',
           name: 'Research Agent',
-          address: loadCouncilAddress('eliza', 'RESEARCH_AGENT'),
+          address: loadBoardAddress('eliza', 'RESEARCH_AGENT'),
           specialization: 'AI research and capability advancement',
           votingWeight: 20,
         },
@@ -201,8 +201,8 @@ Prioritize safety, capability advancement, and developer experience.`,
   }
 }
 
-export class MultiTenantCouncilManager {
-  private registry: CouncilRegistry
+export class MultiTenantBoardManager {
+  private registry: BoardRegistry
 
   constructor(
     _identityRegistryAddress: Address,
@@ -210,41 +210,41 @@ export class MultiTenantCouncilManager {
     _chainId: number,
   ) {
     this.registry = {
-      councils: new Map(),
-      defaultCouncil: 'jeju' as CouncilType,
+      boards: new Map(),
+      defaultBoard: 'jeju' as BoardType,
     }
   }
 
-  async initializeDefaultCouncils(): Promise<void> {
-    const defaults = getDefaultCouncils()
+  async initializeDefaultBoards(): Promise<void> {
+    const defaults = getDefaultBoards()
     for (const [type, template] of Object.entries(defaults)) {
-      // Only register if council is configured (has at least one non-zero address)
-      if (isCouncilConfigured(type as CouncilType)) {
-        await this.registerCouncil(type as CouncilType, template)
+      // Only register if board is configured (has at least one non-zero address)
+      if (isBoardConfigured(type as BoardType)) {
+        await this.registerBoard(type as BoardType, template)
       }
     }
   }
 
-  async registerCouncil(
-    councilType: CouncilType,
-    config: Partial<CouncilDeployment>,
-  ): Promise<CouncilDeployment> {
-    const defaults = getDefaultCouncils()
-    const template = defaults[councilType]
+  async registerBoard(
+    boardType: BoardType,
+    config: Partial<BoardDeployment>,
+  ): Promise<BoardDeployment> {
+    const defaults = getDefaultBoards()
+    const template = defaults[boardType]
 
     if (!template.config || !template.director || !template.agents) {
-      throw new Error(`Missing template data for council type: ${councilType}`)
+      throw new Error(`Missing template data for board type: ${boardType}`)
     }
 
-    const deployment: CouncilDeployment = {
-      councilType,
+    const deployment: BoardDeployment = {
+      boardType,
       config: {
         ...template.config,
         ...config.config,
       },
       oauth3App:
         config.oauth3App ??
-        (await this.createCouncilOAuthApp(councilType, config)),
+        (await this.createBoardOAuthApp(boardType, config)),
       treasury: config.treasury ?? template.config.treasury,
       director: {
         ...template.director,
@@ -253,31 +253,31 @@ export class MultiTenantCouncilManager {
       agents: config.agents ?? template.agents,
     }
 
-    this.registry.councils.set(councilType, deployment)
+    this.registry.boards.set(boardType, deployment)
 
     return deployment
   }
 
-  private async createCouncilOAuthApp(
-    councilType: CouncilType,
-    config: Partial<CouncilDeployment>,
+  private async createBoardOAuthApp(
+    boardType: BoardType,
+    config: Partial<BoardDeployment>,
   ): Promise<OAuth3App> {
     const now = Date.now()
-    const appId = keccak256(toBytes(`oauth3-app:${councilType}:${now}`))
+    const appId = keccak256(toBytes(`oauth3-app:${boardType}:${now}`))
 
     const app: OAuth3App = {
       appId,
-      name: `${councilType.charAt(0).toUpperCase() + councilType.slice(1)} Council OAuth3`,
-      description: `Official OAuth3 app for the ${councilType} council`,
+      name: `${boardType.charAt(0).toUpperCase() + boardType.slice(1)} Board OAuth3`,
+      description: `Official OAuth3 app for the ${boardType} board`,
       owner:
         config.treasury ??
         ('0x0000000000000000000000000000000000000000' as Address),
-      council:
+      board:
         config.treasury ??
         ('0x0000000000000000000000000000000000000000' as Address),
       redirectUris: [
-        `https://${councilType}.jejunetwork.org/auth/callback`,
-        `https://council.${councilType}.jejunetwork.org/auth/callback`,
+        `https://${boardType}.jejunetwork.org/auth/callback`,
+        `https://board.${boardType}.jejunetwork.org/auth/callback`,
         'http://localhost:3000/auth/callback',
       ],
       allowedProviders: [
@@ -288,108 +288,108 @@ export class MultiTenantCouncilManager {
         'twitter' as AuthProvider,
         'discord' as AuthProvider,
       ],
-      jnsName: `auth.${councilType}.jeju`,
+      jnsName: `auth.${boardType}.jeju`,
       createdAt: now,
       active: true,
       metadata: {
-        logoUri: `https://assets.jejunetwork.org/councils/${councilType}/logo.png`,
-        policyUri: `https://${councilType}.jejunetwork.org/privacy`,
-        termsUri: `https://${councilType}.jejunetwork.org/terms`,
-        supportEmail: `support@${councilType}.jejunetwork.org`,
-        webhookUrl: `https://api.${councilType}.jejunetwork.org/webhooks/oauth3`,
+        logoUri: `https://assets.jejunetwork.org/boards/${boardType}/logo.png`,
+        policyUri: `https://${boardType}.jejunetwork.org/privacy`,
+        termsUri: `https://${boardType}.jejunetwork.org/terms`,
+        supportEmail: `support@${boardType}.jejunetwork.org`,
+        webhookUrl: `https://api.${boardType}.jejunetwork.org/webhooks/oauth3`,
       },
     }
 
     return app
   }
 
-  getCouncil(councilType: CouncilType): CouncilDeployment | undefined {
-    return this.registry.councils.get(councilType)
+  getBoard(boardType: BoardType): BoardDeployment | undefined {
+    return this.registry.boards.get(boardType)
   }
 
-  getAllCouncils(): CouncilDeployment[] {
-    return Array.from(this.registry.councils.values())
+  getAllBoards(): BoardDeployment[] {
+    return Array.from(this.registry.boards.values())
   }
 
-  getDefaultCouncil(): CouncilDeployment | undefined {
-    return this.registry.councils.get(this.registry.defaultCouncil)
+  getDefaultBoard(): BoardDeployment | undefined {
+    return this.registry.boards.get(this.registry.defaultBoard)
   }
 
-  setDefaultCouncil(councilType: CouncilType): void {
-    if (!this.registry.councils.has(councilType)) {
-      throw new Error(`Council ${councilType} not registered`)
+  setDefaultBoard(boardType: BoardType): void {
+    if (!this.registry.boards.has(boardType)) {
+      throw new Error(`Board ${boardType} not registered`)
     }
-    this.registry.defaultCouncil = councilType
+    this.registry.defaultBoard = boardType
   }
 
-  async updateCouncilDirector(
-    councilType: CouncilType,
+  async updateBoardDirector(
+    boardType: BoardType,
     directorConfig: Partial<DirectorConfig>,
   ): Promise<void> {
-    const council = this.registry.councils.get(councilType)
-    if (!council) {
-      throw new Error(`Council ${councilType} not found`)
+    const board = this.registry.boards.get(boardType)
+    if (!board) {
+      throw new Error(`Board ${boardType} not found`)
     }
 
-    council.director = { ...council.director, ...directorConfig }
+    board.director = { ...board.director, ...directorConfig }
   }
 
-  async addCouncilAgent(
-    councilType: CouncilType,
-    agent: CouncilAgentConfig,
+  async addBoardAgent(
+    boardType: BoardType,
+    agent: BoardAgentConfig,
   ): Promise<void> {
-    const council = this.registry.councils.get(councilType)
-    if (!council) {
-      throw new Error(`Council ${councilType} not found`)
+    const board = this.registry.boards.get(boardType)
+    if (!board) {
+      throw new Error(`Board ${boardType} not found`)
     }
 
-    const existingIndex = council.agents.findIndex((a) => a.role === agent.role)
+    const existingIndex = board.agents.findIndex((a) => a.role === agent.role)
     if (existingIndex >= 0) {
-      council.agents[existingIndex] = agent
+      board.agents[existingIndex] = agent
     } else {
-      council.agents.push(agent)
+      board.agents.push(agent)
     }
 
-    council.config.councilAgents = council.agents.map((a) => a.address)
+    board.config.boardAgents = board.agents.map((a) => a.address)
   }
 
-  async removeCouncilAgent(
-    councilType: CouncilType,
+  async removeBoardAgent(
+    boardType: BoardType,
     role: string,
   ): Promise<void> {
-    const council = this.registry.councils.get(councilType)
-    if (!council) {
-      throw new Error(`Council ${councilType} not found`)
+    const board = this.registry.boards.get(boardType)
+    if (!board) {
+      throw new Error(`Board ${boardType} not found`)
     }
 
-    council.agents = council.agents.filter((a) => a.role !== role)
-    council.config.councilAgents = council.agents.map((a) => a.address)
+    board.agents = board.agents.filter((a) => a.role !== role)
+    board.config.boardAgents = board.agents.map((a) => a.address)
   }
 
-  getCouncilOAuthApp(councilType: CouncilType): OAuth3App | undefined {
-    return this.registry.councils.get(councilType)?.oauth3App
+  getBoardOAuthApp(boardType: BoardType): OAuth3App | undefined {
+    return this.registry.boards.get(boardType)?.oauth3App
   }
 
-  async validateCouncilAccess(
-    councilType: CouncilType,
+  async validateBoardAccess(
+    boardType: BoardType,
     address: Address,
   ): Promise<{ hasAccess: boolean; roles: string[] }> {
-    const council = this.registry.councils.get(councilType)
-    if (!council) {
+    const board = this.registry.boards.get(boardType)
+    if (!board) {
       return { hasAccess: false, roles: [] }
     }
 
     const roles: string[] = []
 
-    if (council.treasury.toLowerCase() === address.toLowerCase()) {
+    if (board.treasury.toLowerCase() === address.toLowerCase()) {
       roles.push('treasury')
     }
 
-    if (council.director.address.toLowerCase() === address.toLowerCase()) {
+    if (board.director.address.toLowerCase() === address.toLowerCase()) {
       roles.push('director')
     }
 
-    for (const agent of council.agents) {
+    for (const agent of board.agents) {
       if (agent.address.toLowerCase() === address.toLowerCase()) {
         roles.push(agent.role.toLowerCase())
       }
@@ -401,41 +401,41 @@ export class MultiTenantCouncilManager {
     }
   }
 
-  getCouncilStats(): {
-    totalCouncils: number
+  getBoardStats(): {
+    totalBoards: number
     totalAgents: number
-    councilBreakdown: Record<CouncilType, { agents: number; oauth3AppId: Hex }>
+    boardBreakdown: Record<BoardType, { agents: number; oauth3AppId: Hex }>
   } {
-    const councilBreakdown: Record<
-      CouncilType,
+    const boardBreakdown: Record<
+      BoardType,
       { agents: number; oauth3AppId: Hex }
-    > = {} as Record<CouncilType, { agents: number; oauth3AppId: Hex }>
+    > = {} as Record<BoardType, { agents: number; oauth3AppId: Hex }>
     let totalAgents = 0
 
-    for (const [type, council] of this.registry.councils) {
-      councilBreakdown[type] = {
-        agents: council.agents.length,
-        oauth3AppId: council.oauth3App.appId,
+    for (const [type, board] of this.registry.boards) {
+      boardBreakdown[type] = {
+        agents: board.agents.length,
+        oauth3AppId: board.oauth3App.appId,
       }
-      totalAgents += council.agents.length
+      totalAgents += board.agents.length
     }
 
     return {
-      totalCouncils: this.registry.councils.size,
+      totalBoards: this.registry.boards.size,
       totalAgents,
-      councilBreakdown,
+      boardBreakdown,
     }
   }
 
   toJSON(): string {
     const data = {
-      defaultCouncil: this.registry.defaultCouncil,
-      councils: Object.fromEntries(
-        Array.from(this.registry.councils.entries()).map(([type, council]) => [
+      defaultBoard: this.registry.defaultBoard,
+      boards: Object.fromEntries(
+        Array.from(this.registry.boards.entries()).map(([type, board]) => [
           type,
           {
-            ...council,
-            director: { ...council.director, privateKey: undefined },
+            ...board,
+            director: { ...board.director, privateKey: undefined },
           },
         ]),
       ),
@@ -444,18 +444,18 @@ export class MultiTenantCouncilManager {
   }
 }
 
-export async function createMultiTenantCouncilManager(
+export async function createMultiTenantBoardManager(
   identityRegistryAddress: Address,
   appRegistryAddress: Address,
   chainId: number,
-): Promise<MultiTenantCouncilManager> {
-  const manager = new MultiTenantCouncilManager(
+): Promise<MultiTenantBoardManager> {
+  const manager = new MultiTenantBoardManager(
     identityRegistryAddress,
     appRegistryAddress,
     chainId,
   )
 
-  await manager.initializeDefaultCouncils()
+  await manager.initializeDefaultBoards()
 
   return manager
 }

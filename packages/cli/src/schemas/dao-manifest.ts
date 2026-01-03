@@ -17,7 +17,7 @@ export const DAODirectorConfigSchema = z.object({
   pfpCid: z.string().optional(),
 })
 
-export const DAOCouncilMemberSchema = z.object({
+export const DAOBoardMemberSchema = z.object({
   role: z.string().min(1),
   description: z.string().min(1),
   weight: z.number().int().min(1).max(10000),
@@ -27,7 +27,7 @@ export const DAOCouncilMemberSchema = z.object({
 
 export const DAOGovernanceParamsSchema = z.object({
   minQualityScore: z.number().int().min(0).max(100),
-  councilVotingPeriod: z.number().int().positive(),
+  boardVotingPeriod: z.number().int().positive(),
   gracePeriod: z.number().int().nonnegative(),
   minProposalStake: WeiAmountSchema,
   quorumBps: z.number().int().min(0).max(10000),
@@ -35,7 +35,7 @@ export const DAOGovernanceParamsSchema = z.object({
 
 export const DAOGovernanceConfigSchema = z.object({
   director: DAODirectorConfigSchema,
-  council: z.object({ members: z.array(DAOCouncilMemberSchema).min(1) }),
+  board: z.object({ members: z.array(DAOBoardMemberSchema).min(1) }),
   parameters: DAOGovernanceParamsSchema,
 })
 
@@ -139,7 +139,7 @@ export function validateDAOManifest(data: unknown): DAOManifest {
   return DAOManifestSchema.parse(data)
 }
 
-export function validateCouncilWeights(
+export function validateBoardWeights(
   members: Array<{ weight: number }>,
   expectedTotal = 10000,
 ) {

@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
 
 /**
- * Security Council Safe Deployment
+ * Security Board Safe Deployment
  *
- * Deploys a Gnosis Safe multisig for the Security Council role.
+ * Deploys a Gnosis Safe multisig for the Security Board role.
  * This is REQUIRED for Stage 2 decentralization - emergency actions
  * must be controlled by a multisig, not a single EOA.
  *
@@ -183,7 +183,7 @@ async function verifySafe(
 }
 
 async function main(): Promise<void> {
-  console.log('🔐 Security Council Safe Deployment\n')
+  console.log('🔐 Security Board Safe Deployment\n')
 
   const network = getCurrentNetwork()
   const rpcUrl = getL1RpcUrl()
@@ -265,7 +265,7 @@ async function main(): Promise<void> {
     console.log('')
 
     // For localnet, just output the intended configuration
-    const salt = keccak256(toBytes('security_council_safe'))
+    const salt = keccak256(toBytes('security_board_safe'))
     const initCodeHash = keccak256('0x' as `0x${string}`)
     const simulatedSafe = getContractAddress({
       from: SAFE_PROXY_FACTORY as Address,
@@ -282,7 +282,7 @@ async function main(): Promise<void> {
     )
     console.log('  2. Set owners and threshold via Safe UI')
     console.log(
-      '  3. Update GovernanceTimelock.securityCouncil to Safe address',
+      '  3. Update GovernanceTimelock.securityBoard to Safe address',
     )
 
     // Save simulated config
@@ -291,8 +291,8 @@ async function main(): Promise<void> {
     if (existsSync(deploymentFile)) {
       deployment = JSON.parse(readFileSync(deploymentFile, 'utf-8'))
     }
-    deployment.securityCouncil = simulatedSafe
-    deployment.securityCouncilConfig = JSON.stringify({ owners, threshold })
+    deployment.securityBoard = simulatedSafe
+    deployment.securityBoardConfig = JSON.stringify({ owners, threshold })
     writeFileSync(deploymentFile, JSON.stringify(deployment, null, 2))
     console.log(`\nConfig saved to ${deploymentFile}`)
 
@@ -332,7 +332,7 @@ async function main(): Promise<void> {
       deployerAccount,
       config,
     )
-    console.log(`\n✅ Security Council Safe deployed: ${safeAddress}`)
+    console.log(`\n✅ Security Board Safe deployed: ${safeAddress}`)
 
     // Verify configuration
     await verifySafe(publicClient, safeAddress, config)
@@ -343,13 +343,13 @@ async function main(): Promise<void> {
     if (existsSync(deploymentFile)) {
       deployment = JSON.parse(readFileSync(deploymentFile, 'utf-8'))
     }
-    deployment.securityCouncil = safeAddress
+    deployment.securityBoard = safeAddress
     writeFileSync(deploymentFile, JSON.stringify(deployment, null, 2))
     console.log(`\nSaved to ${deploymentFile}`)
 
     console.log('\n📋 Next Steps:')
     console.log(
-      '  1. Update GovernanceTimelock.securityCouncil to:',
+      '  1. Update GovernanceTimelock.securityBoard to:',
       safeAddress,
     )
     console.log('  2. Have all owners verify they can sign')

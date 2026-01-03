@@ -12,7 +12,7 @@ export { workerServerConfig } from './worker-server'
 
 export const autocratConfig: AppLoadTestConfig = {
   name: 'autocrat',
-  description: 'AI Council DAO governance',
+  description: 'AI Board DAO governance',
   baseUrl: 'http://localhost:8010',
   port: 8010,
   healthEndpoint: '/health',

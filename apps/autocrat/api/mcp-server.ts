@@ -130,8 +130,8 @@ export class AutocratMCPServer {
         },
       },
       {
-        name: 'get_council_votes',
-        description: 'Get council votes',
+        name: 'get_board_votes',
+        description: 'Get board votes',
         inputSchema: {
           type: 'object',
           properties: { proposalId: { type: 'string' } },
@@ -186,7 +186,7 @@ export class AutocratMCPServer {
 
   private setupRoutes(): void {
     this.app.get('/', () => ({
-      server: 'jeju-council',
+      server: 'jeju-board',
       version: '1.0.0',
       protocolVersion: '2024-11-05',
       resources: this.getResources(),
@@ -195,7 +195,7 @@ export class AutocratMCPServer {
 
     this.app.post('/initialize', () => ({
       protocolVersion: '2024-11-05',
-      serverInfo: { name: 'jeju-council', version: '1.0.0' },
+      serverInfo: { name: 'jeju-board', version: '1.0.0' },
       capabilities: { resources: true, tools: true, prompts: false },
     }))
 
@@ -257,10 +257,10 @@ export class AutocratMCPServer {
 
     this.app.get('/health', () => ({
       status: 'ok',
-      server: 'council-mcp',
+      server: 'board-mcp',
       version: '1.0.0',
       contracts: {
-        council: this.blockchain.councilDeployed,
+        board: this.blockchain.boardDeployed,
         directorAgent: this.blockchain.directorDeployed,
       },
     }))
@@ -296,7 +296,7 @@ export class AutocratMCPServer {
         return this.getProposal(args.proposalId)
       case 'list_proposals':
         return this.listProposals(args)
-      case 'get_council_votes':
+      case 'get_board_votes':
         return this.getAutocratVotes(args.proposalId)
       case 'get_director_decision':
         return this.getDirectorDecision(args.proposalId)

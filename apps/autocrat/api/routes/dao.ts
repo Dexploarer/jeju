@@ -300,11 +300,11 @@ export const daoRoutes = new Elysia({ prefix: '/api/v1/dao' })
     },
     {
       params: t.Object({ daoId: t.String() }),
-      detail: { tags: ['dao'], summary: 'Get council members' },
+      detail: { tags: ['dao'], summary: 'Get board members' },
     },
   )
 
-  // Add council member (agent)
+  // Add board member (agent)
   .post(
     '/:daoId/agents',
     async ({ params, body, set }) => {
@@ -316,7 +316,7 @@ export const daoRoutes = new Elysia({ prefix: '/api/v1/dao' })
           return { error: 'DAO not found', daoId: params.daoId }
         }
 
-        const txHash = await service.addCouncilMember(
+        const txHash = await service.addBoardMember(
           params.daoId,
           body.address as Address,
           BigInt(body.agentId),
@@ -331,7 +331,7 @@ export const daoRoutes = new Elysia({ prefix: '/api/v1/dao' })
       } catch (error) {
         set.status = 500
         return {
-          error: 'Failed to add council member',
+          error: 'Failed to add board member',
           daoId: params.daoId,
           details: error instanceof Error ? error.message : String(error),
         }
@@ -345,7 +345,7 @@ export const daoRoutes = new Elysia({ prefix: '/api/v1/dao' })
         role: t.String(),
         weight: t.Number(),
       }),
-      detail: { tags: ['dao'], summary: 'Add council member' },
+      detail: { tags: ['dao'], summary: 'Add board member' },
     },
   )
 
@@ -380,11 +380,11 @@ export const daoRoutes = new Elysia({ prefix: '/api/v1/dao' })
     },
     {
       params: t.Object({ daoId: t.String(), agentId: t.String() }),
-      detail: { tags: ['dao'], summary: 'Get council member' },
+      detail: { tags: ['dao'], summary: 'Get board member' },
     },
   )
 
-  // Update agent (for Director, use setDirectorPersona; for council, limited update)
+  // Update agent (for Director, use setDirectorPersona; for board, limited update)
   .patch(
     '/:daoId/agents/:agentId',
     async ({ params, body, set }) => {
@@ -419,7 +419,7 @@ export const daoRoutes = new Elysia({ prefix: '/api/v1/dao' })
           return { agentId: '0', role: 'Director', persona }
         }
 
-        // For council members, would need contract support for weight updates
+        // For board members, would need contract support for weight updates
         // For now, return current state
         const members = await service.getBoardMembers(params.daoId)
         const member = members.find(
@@ -465,7 +465,7 @@ export const daoRoutes = new Elysia({ prefix: '/api/v1/dao' })
     },
   )
 
-  // Remove council member
+  // Remove board member
   .delete(
     '/:daoId/agents/:agentId',
     async ({ params }) => {
@@ -485,7 +485,7 @@ export const daoRoutes = new Elysia({ prefix: '/api/v1/dao' })
         throw new Error('Cannot remove Director agent')
       }
 
-      const txHash = await service.removeCouncilMember(
+      const txHash = await service.removeBoardMember(
         params.daoId,
         member.member,
       )
@@ -493,7 +493,7 @@ export const daoRoutes = new Elysia({ prefix: '/api/v1/dao' })
     },
     {
       params: t.Object({ daoId: t.String(), agentId: t.String() }),
-      detail: { tags: ['dao'], summary: 'Remove council member' },
+      detail: { tags: ['dao'], summary: 'Remove board member' },
     },
   )
 

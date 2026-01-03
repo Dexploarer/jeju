@@ -60,7 +60,7 @@ async function main() {
       '0x0000000000000000000000000000000000000000',
     treasury,
     governance: process.env.GOVERNANCE_ADDRESS || treasury,
-    securityCouncil: process.env.SECURITY_COUNCIL_ADDRESS || treasury,
+    securityBoard: process.env.SECURITY_BOARD_ADDRESS || treasury,
     timelockDelay: network === 'localnet' ? 60 : 30 * 24 * 60 * 60,
   }
 
@@ -104,7 +104,7 @@ async function main() {
       path: 'src/governance/GovernanceTimelock.sol:GovernanceTimelock',
       args: [
         config.governance,
-        config.securityCouncil,
+        config.securityBoard,
         config.governance,
         config.timelockDelay.toString(),
       ],

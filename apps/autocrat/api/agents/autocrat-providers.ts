@@ -378,7 +378,7 @@ const mcpToolsProvider: Provider = {
     _message: Memory,
     _state: State,
   ): Promise<ProviderResult> => {
-    // Fetch tools from both council and Director MCP servers
+    // Fetch tools from both board and Director MCP servers
     const tools: Array<{ source: string; name: string; description: string }> =
       []
 

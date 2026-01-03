@@ -1,14 +1,14 @@
 #!/usr/bin/env bun
 
 /**
- * Deploy Council Contracts
+ * Deploy Board Contracts
  *
- * Deploys the AI Council DAO contracts:
- * - Council.sol - Main governance contract
+ * Deploys the AI Board DAO contracts:
+ * - Board.sol - Main governance contract
  * - DirectorAgent.sol - AI Director management
  *
  * Usage:
- *   DEPLOYER_KEY=0x... bun scripts/deploy-council.ts [network]
+ *   DEPLOYER_KEY=0x... bun scripts/deploy-board.ts [network]
  *
  * Networks: localnet, testnet, mainnet
  */
@@ -184,7 +184,7 @@ async function deployContract(
 
 async function main() {
   console.log('\n╔══════════════════════════════════════════╗')
-  console.log('║     JEJU AI COUNCIL CONTRACT DEPLOYMENT   ║')
+  console.log('║     JEJU AI BOARD CONTRACT DEPLOYMENT   ║')
   console.log('╚══════════════════════════════════════════╝\n')
 
   const network = process.argv[2] ?? 'localnet'
@@ -200,7 +200,7 @@ async function main() {
   if (!deployerKey) {
     error('DEPLOYER_KEY environment variable not set')
     console.log(
-      '\nUsage: DEPLOYER_KEY=0x... bun scripts/deploy-council.ts [network]',
+      '\nUsage: DEPLOYER_KEY=0x... bun scripts/deploy-board.ts [network]',
     )
     process.exit(1)
   }
@@ -210,7 +210,7 @@ async function main() {
 
   log('Compiling contracts...')
   const compileResult =
-    await $`cd ${CONTRACTS_DIR} && forge build --contracts src/council/ 2>&1`.text()
+    await $`cd ${CONTRACTS_DIR} && forge build --contracts src/board/ 2>&1`.text()
   if (compileResult.includes('Error')) {
     error('Compilation failed')
     console.log(compileResult)
@@ -258,12 +258,12 @@ async function main() {
     }
   }
 
-  const councilAddress = await deployContract(
+  const boardAddress = await deployContract(
     publicClient,
     walletClient,
     account,
     chain,
-    'Council',
+    'Board',
     [governanceToken, identityRegistry, reputationRegistry, account.address],
   )
 
@@ -275,18 +275,18 @@ async function main() {
     'DirectorAgent',
     [
       governanceToken,
-      councilAddress,
+      boardAddress,
       'claude-opus-4-5-20250514',
       account.address,
     ],
   )
 
-  log('Configuring Council with Director agent...')
-  const councilArtifact = loadContractArtifact('Council')
-  const { abi } = councilArtifact
+  log('Configuring Board with Director agent...')
+  const boardArtifact = loadContractArtifact('Board')
+  const { abi } = boardArtifact
 
   const hash = await walletClient.writeContract({
-    address: councilAddress,
+    address: boardAddress,
     abi,
     functionName: 'setDirectorAgent',
     args: [directorAgentAddress, 1],
@@ -300,7 +300,7 @@ async function main() {
     timestamp: new Date().toISOString(),
     deployer: account.address,
     contracts: {
-      Council: councilAddress,
+      Board: boardAddress,
       DirectorAgent: directorAgentAddress,
     },
     dependencies: {
@@ -322,17 +322,17 @@ async function main() {
   console.log('╚══════════════════════════════════════════╝\n')
 
   console.log('Deployed Contracts:')
-  console.log(`  Council:   ${councilAddress}`)
+  console.log(`  Board:   ${boardAddress}`)
   console.log(`  DirectorAgent:  ${directorAgentAddress}`)
 
   console.log('\nNext steps:')
-  console.log('1. Set council agent addresses using council.setCouncilAgent()')
+  console.log('1. Set board agent addresses using board.setBoardAgent()')
   console.log(
-    '2. Configure research operators using council.setResearchOperator()',
+    '2. Configure research operators using board.setResearchOperator()',
   )
   console.log('3. Update apps/autocrat/.env with contract addresses')
   console.log(`\nEnvironment variables for apps/autocrat:
-COUNCIL_ADDRESS=${councilAddress}
+BOARD_ADDRESS=${boardAddress}
 DIRECTOR_AGENT_ADDRESS=${directorAgentAddress}
 `)
 }

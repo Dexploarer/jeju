@@ -229,7 +229,7 @@ export function createMockVote(
   }
 }
 
-export function createMockCouncilVotes(): MockVote[] {
+export function createMockBoardVotes(): MockVote[] {
   return [
     createMockVote('TREASURY', 'APPROVE', 85),
     createMockVote('CODE', 'APPROVE', 90),
@@ -257,8 +257,8 @@ export function createMockDirectorDecision(
   return {
     approved,
     reasoning: approved
-      ? 'The council has approved this proposal with strong consensus.'
-      : 'The council has raised significant concerns that need to be addressed.',
+      ? 'The board has approved this proposal with strong consensus.'
+      : 'The board has raised significant concerns that need to be addressed.',
     personaResponse: approved
       ? 'Excellent proposal! I hereby approve this for implementation.'
       : 'This proposal needs more work. Please address the concerns raised.',

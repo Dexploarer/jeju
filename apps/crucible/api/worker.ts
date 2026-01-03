@@ -262,7 +262,7 @@ export function createCrucibleApp(env?: Partial<CrucibleEnv>) {
                 'collaboration',
                 'adversarial',
                 'debate',
-                'council',
+                'board',
               ]),
               config: z
                 .object({

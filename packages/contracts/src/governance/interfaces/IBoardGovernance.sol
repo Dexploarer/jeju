@@ -8,7 +8,7 @@ pragma solidity ^0.8.33;
  *
  * Terminology:
  * - Director: The AI or human executive decision maker (formerly Director)
- * - Board: The advisory/oversight body (formerly Council)
+ * - Board: The advisory/oversight body (formerly Board)
  */
 interface IBoardGovernance {
     enum ProposalStatus {

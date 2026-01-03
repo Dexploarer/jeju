@@ -16,7 +16,7 @@ import {
 import type { AutocratConfig } from '../lib'
 import {
   type AutocratVoteFromContract,
-  COUNCIL_ABI,
+  BOARD_ABI,
   type DecisionFromContract,
   DIRECTOR_AGENT_ABI,
   type DirectorStatsFromContract,
@@ -57,7 +57,7 @@ type ProposalTuple = readonly [
 
 type AutocratVoteTuple = readonly [
   `0x${string}`, // proposalId
-  `0x${string}`, // councilAgent
+  `0x${string}`, // boardAgent
   number, // role
   number, // vote
   `0x${string}`, // reasoningHash
@@ -132,7 +132,7 @@ function parseAutocratVoteTuple(
 ): AutocratVoteFromContract {
   return {
     proposalId: t[0],
-    councilAgent: t[1],
+    boardAgent: t[1],
     role: t[2],
     vote: t[3],
     reasoningHash: t[4],
@@ -217,9 +217,9 @@ function expectStringArray(result: unknown): string[] {
 
 export class AutocratBlockchain {
   readonly client: PublicClient
-  readonly councilAddress: Address
+  readonly boardAddress: Address
   readonly directorAgentAddress: Address
-  readonly councilDeployed: boolean
+  readonly boardDeployed: boolean
   readonly directorDeployed: boolean
   private readonly config: AutocratConfig
 
@@ -237,12 +237,12 @@ export class AutocratBlockchain {
       chain,
       transport: http(config.rpcUrl),
     }) as PublicClient
-    this.councilAddress = toAddress(config.contracts?.board ?? ZERO_ADDRESS)
+    this.boardAddress = toAddress(config.contracts?.board ?? ZERO_ADDRESS)
     this.directorAgentAddress = toAddress(
       config.contracts?.directorAgent ?? ZERO_ADDRESS,
     )
-    this.councilDeployed =
-      viemIsAddress(this.councilAddress) && this.councilAddress !== ZERO_ADDRESS
+    this.boardDeployed =
+      viemIsAddress(this.boardAddress) && this.boardAddress !== ZERO_ADDRESS
     this.directorDeployed =
       viemIsAddress(this.directorAgentAddress) &&
       this.directorAgentAddress !== ZERO_ADDRESS
@@ -270,17 +270,17 @@ export class AutocratBlockchain {
       proposalId,
       'Proposal ID',
     )
-    if (!this.councilDeployed) return null
+    if (!this.boardDeployed) return null
     const proposalResult = await this.client.readContract({
-      address: this.councilAddress,
-      abi: COUNCIL_ABI,
+      address: this.boardAddress,
+      abi: BOARD_ABI,
       functionName: 'getProposal',
       args: [validated],
     })
     const proposal = expectProposalTuple(proposalResult)
     const votesResult = await this.client.readContract({
-      address: this.councilAddress,
-      abi: COUNCIL_ABI,
+      address: this.boardAddress,
+      abi: BOARD_ABI,
       functionName: 'getAutocratVotes',
       args: [validated],
     })
@@ -315,7 +315,7 @@ export class AutocratBlockchain {
 
   formatVotes(votes: AutocratVoteFromContract[]) {
     return votes.map((v) => ({
-      agent: v.councilAgent,
+      agent: v.boardAgent,
       role: getAutocratRole(v.role),
       vote: getVoteType(v.vote),
       weight: v.weight.toString(),
@@ -342,17 +342,17 @@ export class AutocratBlockchain {
       limit > 0 && limit <= 1000,
       `Limit must be between 1 and 1000, got ${limit}`,
     )
-    if (!this.councilDeployed) return { total: 0, proposals: [] }
+    if (!this.boardDeployed) return { total: 0, proposals: [] }
 
     const proposalIdsResult = activeOnly
       ? await this.client.readContract({
-          address: this.councilAddress,
-          abi: COUNCIL_ABI,
+          address: this.boardAddress,
+          abi: BOARD_ABI,
           functionName: 'getActiveProposals',
         })
       : await this.client.readContract({
-          address: this.councilAddress,
-          abi: COUNCIL_ABI,
+          address: this.boardAddress,
+          abi: BOARD_ABI,
           functionName: 'getAllProposals',
         })
     const proposalIds = expectStringArray(proposalIdsResult)
@@ -360,8 +360,8 @@ export class AutocratBlockchain {
     const proposals = []
     for (const id of proposalIds.slice(-limit)) {
       const proposalResult = await this.client.readContract({
-        address: this.councilAddress,
-        abi: COUNCIL_ABI,
+        address: this.boardAddress,
+        abi: BOARD_ABI,
         functionName: 'getProposal',
         args: [id],
       })
@@ -610,7 +610,7 @@ export class AutocratBlockchain {
       gracePeriod: string
     }
   }> {
-    if (!this.councilDeployed || !this.directorDeployed) {
+    if (!this.boardDeployed || !this.directorDeployed) {
       const director = this.config.agents?.director
       const params = this.config.parameters
       const minQuality = params?.minQualityScore ?? 70
@@ -632,8 +632,8 @@ export class AutocratBlockchain {
     }
 
     const proposalCountResult = await this.client.readContract({
-      address: this.councilAddress,
-      abi: COUNCIL_ABI,
+      address: this.boardAddress,
+      abi: BOARD_ABI,
       functionName: 'proposalCount',
     })
     const proposalCount = toBigInt(proposalCountResult)
@@ -644,20 +644,20 @@ export class AutocratBlockchain {
     })
     const directorStats = expectDirectorStatsTuple(directorStatsResult)
     const minQualityResult = await this.client.readContract({
-      address: this.councilAddress,
-      abi: COUNCIL_ABI,
+      address: this.boardAddress,
+      abi: BOARD_ABI,
       functionName: 'minQualityScore',
     })
     const minQuality = Number(minQualityResult)
     const votingPeriodResult = await this.client.readContract({
-      address: this.councilAddress,
-      abi: COUNCIL_ABI,
+      address: this.boardAddress,
+      abi: BOARD_ABI,
       functionName: 'autocratVotingPeriod',
     })
     const votingPeriod = toBigInt(votingPeriodResult)
     const graceResult = await this.client.readContract({
-      address: this.councilAddress,
-      abi: COUNCIL_ABI,
+      address: this.boardAddress,
+      abi: BOARD_ABI,
       functionName: 'gracePeriod',
     })
     const grace = toBigInt(graceResult)

@@ -32,9 +32,9 @@ const MOCK_DEPLOYER_ADDRESS = expectAddress(
   '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
   'MOCK_DEPLOYER_ADDRESS',
 )
-const MOCK_COUNCIL_ADDRESS = expectAddress(
+const MOCK_BOARD_ADDRESS = expectAddress(
   '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
-  'MOCK_COUNCIL_ADDRESS',
+  'MOCK_BOARD_ADDRESS',
 )
 const MOCK_HEX_ZERO = expectHex('0x00', 'MOCK_HEX_ZERO')
 
@@ -135,7 +135,7 @@ class RegistryServiceImpl implements RegistryService {
       name: 'Example',
       description: 'A template for decentralized applications on Jeju Network',
       owner: MOCK_DEPLOYER_ADDRESS,
-      council: MOCK_COUNCIL_ADDRESS,
+      board: MOCK_BOARD_ADDRESS,
       redirectUris: [
         `http://${getLocalhostHost()}:${frontendPort}/oauth3/callback`,
       ],
@@ -222,7 +222,7 @@ class RegistryServiceImpl implements RegistryService {
   async getActiveNodes(): Promise<TEENodeInfo[]> {
     // For localnet, return mock nodes
     if (this.networkType === 'localnet') {
-      return [this.getMockTEENode(MOCK_COUNCIL_ADDRESS)]
+      return [this.getMockTEENode(MOCK_BOARD_ADDRESS)]
     }
 
     return []

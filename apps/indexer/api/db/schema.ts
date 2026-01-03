@@ -305,7 +305,7 @@ export const SCHEMA_DDL = [
     creation_block_id TEXT
   )`,
 
-  `CREATE TABLE IF NOT EXISTS council_proposal (
+  `CREATE TABLE IF NOT EXISTS board_proposal (
     id TEXT PRIMARY KEY,
     proposal_id BLOB NOT NULL,
     proposer_id TEXT,
@@ -325,15 +325,15 @@ export const SCHEMA_DDL = [
     director_approved INTEGER NOT NULL,
     director_decision_hash BLOB,
     created_at TEXT NOT NULL,
-    council_vote_end TEXT,
+    board_vote_end TEXT,
     grace_period_end TEXT,
     executed_at TEXT
   )`,
 
-  `CREATE TABLE IF NOT EXISTS council_vote (
+  `CREATE TABLE IF NOT EXISTS board_vote (
     id TEXT PRIMARY KEY,
     proposal_id TEXT,
-    council_agent_id TEXT,
+    board_agent_id TEXT,
     role TEXT NOT NULL,
     vote TEXT NOT NULL,
     reasoning_hash BLOB NOT NULL,
@@ -442,7 +442,7 @@ export const SCHEMA_DDL = [
     total_delegated INTEGER NOT NULL,
     delegator_count INTEGER NOT NULL,
     is_active INTEGER NOT NULL,
-    is_security_council INTEGER NOT NULL,
+    is_security_board INTEGER NOT NULL,
     proposals_voted INTEGER NOT NULL,
     proposals_created INTEGER NOT NULL,
     registered_at TEXT NOT NULL
@@ -1920,7 +1920,7 @@ export const SCHEMA_DDL = [
     executed_at TEXT
   )`,
 
-  `CREATE TABLE IF NOT EXISTS security_council_member (
+  `CREATE TABLE IF NOT EXISTS security_board_member (
     id TEXT PRIMARY KEY,
     member_id TEXT,
     agent_id INTEGER,
@@ -1930,7 +1930,7 @@ export const SCHEMA_DDL = [
     active INTEGER NOT NULL
   )`,
 
-  `CREATE TABLE IF NOT EXISTS security_council_update (
+  `CREATE TABLE IF NOT EXISTS security_board_update (
     id TEXT PRIMARY KEY,
     members TEXT NOT NULL,
     member_count INTEGER NOT NULL,
@@ -2394,12 +2394,12 @@ export const INDEX_DDL = [
   'CREATE INDEX IF NOT EXISTS idx_contract_creator_id ON contract(creator_id)',
   'CREATE INDEX IF NOT EXISTS idx_contract_first_seen_at ON contract(first_seen_at)',
   'CREATE INDEX IF NOT EXISTS idx_contract_last_seen_at ON contract(last_seen_at)',
-  'CREATE INDEX IF NOT EXISTS idx_council_proposal_created_at ON council_proposal(created_at)',
-  'CREATE INDEX IF NOT EXISTS idx_council_proposal_proposer_id ON council_proposal(proposer_id)',
-  'CREATE INDEX IF NOT EXISTS idx_council_proposal_status ON council_proposal(status)',
-  'CREATE INDEX IF NOT EXISTS idx_council_vote_council_agent_id ON council_vote(council_agent_id)',
-  'CREATE INDEX IF NOT EXISTS idx_council_vote_proposal_id ON council_vote(proposal_id)',
-  'CREATE INDEX IF NOT EXISTS idx_council_vote_voted_at ON council_vote(voted_at)',
+  'CREATE INDEX IF NOT EXISTS idx_board_proposal_created_at ON board_proposal(created_at)',
+  'CREATE INDEX IF NOT EXISTS idx_board_proposal_proposer_id ON board_proposal(proposer_id)',
+  'CREATE INDEX IF NOT EXISTS idx_board_proposal_status ON board_proposal(status)',
+  'CREATE INDEX IF NOT EXISTS idx_board_vote_board_agent_id ON board_vote(board_agent_id)',
+  'CREATE INDEX IF NOT EXISTS idx_board_vote_proposal_id ON board_vote(proposal_id)',
+  'CREATE INDEX IF NOT EXISTS idx_board_vote_voted_at ON board_vote(voted_at)',
   'CREATE INDEX IF NOT EXISTS idx_cross_chain_voucher_issued_at ON cross_chain_voucher(issued_at)',
   'CREATE INDEX IF NOT EXISTS idx_cross_chain_voucher_request_created_at ON cross_chain_voucher_request(created_at)',
   'CREATE INDEX IF NOT EXISTS idx_cross_chain_voucher_request_destination_chain ON cross_chain_voucher_request(destination_chain)',
@@ -2429,7 +2429,7 @@ export const INDEX_DDL = [
   'CREATE INDEX IF NOT EXISTS idx_decoded_event_timestamp ON decoded_event(timestamp)',
   'CREATE INDEX IF NOT EXISTS idx_decoded_event_transaction_id ON decoded_event(transaction_id)',
   'CREATE INDEX IF NOT EXISTS idx_delegate_delegate_id ON delegate(delegate_id)',
-  'CREATE INDEX IF NOT EXISTS idx_delegate_is_security_council ON delegate(is_security_council)',
+  'CREATE INDEX IF NOT EXISTS idx_delegate_is_security_board ON delegate(is_security_board)',
   'CREATE INDEX IF NOT EXISTS idx_delegate_registered_at ON delegate(registered_at)',
   'CREATE INDEX IF NOT EXISTS idx_delegation_active ON delegation(active)',
   'CREATE INDEX IF NOT EXISTS idx_delegation_delegate_id ON delegation(delegate_id)',
@@ -2737,10 +2737,10 @@ export const INDEX_DDL = [
   'CREATE INDEX IF NOT EXISTS idx_safe_approval_approver_id ON safe_approval(approver_id)',
   'CREATE INDEX IF NOT EXISTS idx_safe_approval_execution_id ON safe_approval(execution_id)',
   'CREATE INDEX IF NOT EXISTS idx_safe_execution_created_at ON safe_execution(created_at)',
-  'CREATE INDEX IF NOT EXISTS idx_security_council_member_active ON security_council_member(active)',
-  'CREATE INDEX IF NOT EXISTS idx_security_council_member_elected_at ON security_council_member(elected_at)',
-  'CREATE INDEX IF NOT EXISTS idx_security_council_member_member_id ON security_council_member(member_id)',
-  'CREATE INDEX IF NOT EXISTS idx_security_council_update_updated_at ON security_council_update(updated_at)',
+  'CREATE INDEX IF NOT EXISTS idx_security_board_member_active ON security_board_member(active)',
+  'CREATE INDEX IF NOT EXISTS idx_security_board_member_elected_at ON security_board_member(elected_at)',
+  'CREATE INDEX IF NOT EXISTS idx_security_board_member_member_id ON security_board_member(member_id)',
+  'CREATE INDEX IF NOT EXISTS idx_security_board_update_updated_at ON security_board_update(updated_at)',
   'CREATE INDEX IF NOT EXISTS idx_storage_deal_cid ON storage_deal(cid)',
   'CREATE INDEX IF NOT EXISTS idx_storage_deal_created_at ON storage_deal(created_at)',
   'CREATE INDEX IF NOT EXISTS idx_storage_deal_provider_id ON storage_deal(provider_id)',
@@ -2829,7 +2829,7 @@ export const INDEX_DDL = [
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_compute_rental_rental_id ON compute_rental(rental_id)',
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_container_image_cid ON container_image(cid)',
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_contract_address ON contract(address)',
-  'CREATE UNIQUE INDEX IF NOT EXISTS idx_council_proposal_proposal_id ON council_proposal(proposal_id)',
+  'CREATE UNIQUE INDEX IF NOT EXISTS idx_board_proposal_proposal_id ON board_proposal(proposal_id)',
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_cross_chain_voucher_request_request_id ON cross_chain_voucher_request(request_id)',
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_cross_chain_voucher_voucher_id ON cross_chain_voucher(voucher_id)',
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_cross_service_request_request_id ON cross_service_request(request_id)',

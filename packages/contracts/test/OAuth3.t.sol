@@ -17,7 +17,7 @@ contract OAuth3Test is Test {
     address public owner;
     address public user1;
     address public user2;
-    address public council;
+    address public board;
 
     uint256 public user1PrivateKey;
     uint256 public user2PrivateKey;
@@ -30,7 +30,7 @@ contract OAuth3Test is Test {
         user2PrivateKey = 0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890;
         user1 = vm.addr(user1PrivateKey);
         user2 = vm.addr(user2PrivateKey);
-        council = makeAddr("council");
+        board = makeAddr("board");
 
         // Deploy TEE Verifier first (placeholder address for identity registry)
         teeVerifier = new OAuth3TEEVerifier(address(0));
@@ -157,14 +157,14 @@ contract OAuth3Test is Test {
             webhookUrl: "https://example.com/webhook"
         });
 
-        bytes32 appId = appRegistry.registerApp("Test App", "A test OAuth3 app", council, config);
+        bytes32 appId = appRegistry.registerApp("Test App", "A test OAuth3 app", board, config);
 
         assertNotEq(appId, bytes32(0));
 
         IOAuth3AppRegistry.App memory app = appRegistry.getApp(appId);
         assertEq(app.name, "Test App");
         assertEq(app.owner, address(this));
-        assertEq(app.council, council);
+        assertEq(app.board, board);
         assertTrue(app.active);
     }
 
@@ -397,7 +397,7 @@ contract OAuth3Test is Test {
             webhookUrl: "https://api.jejunetwork.org/webhooks"
         });
 
-        bytes32 appId = appRegistry.registerApp("Jeju Cloud", "Official Jeju Cloud app", council, config);
+        bytes32 appId = appRegistry.registerApp("Jeju Cloud", "Official Jeju Cloud app", board, config);
 
         // 2. Create identity for user
         IOAuth3IdentityRegistry.IdentityMetadata memory metadata = IOAuth3IdentityRegistry.IdentityMetadata({

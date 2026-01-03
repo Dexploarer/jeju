@@ -14,7 +14,12 @@ import { useState } from 'react'
 import { useAccount } from 'wagmi'
 import { Skeleton, SkeletonTable } from '../../components/Skeleton'
 import { useConfirm, useToast } from '../../context/AppContext'
-import { useDeployWorker, useInvokeWorker, useWorkers } from '../../hooks'
+import {
+  useDeleteWorker,
+  useDeployWorker,
+  useInvokeWorker,
+  useWorkers,
+} from '../../hooks'
 
 const SAMPLE_CODE = `// Hello World Worker
 export default {
@@ -38,6 +43,7 @@ export default function WorkersPage() {
   const { data: workersData, isLoading, refetch } = useWorkers()
   const deployWorker = useDeployWorker()
   const invokeWorker = useInvokeWorker()
+  const deleteWorker = useDeleteWorker()
 
   const [showModal, setShowModal] = useState(false)
   const [showInvokeModal, setShowInvokeModal] = useState<string | null>(null)
@@ -82,7 +88,7 @@ export default function WorkersPage() {
     }
   }
 
-  const handleDelete = async (_workerId: string, workerName: string) => {
+  const handleDelete = async (workerId: string, workerName: string) => {
     const confirmed = await confirm({
       title: 'Delete Worker',
       message: `Are you sure you want to delete "${workerName}"? This action cannot be undone.`,
@@ -94,9 +100,8 @@ export default function WorkersPage() {
     if (!confirmed) return
 
     try {
-      // TODO: Implement delete mutation when API is ready
+      await deleteWorker.mutateAsync(workerId)
       showSuccess('Worker deleted', `Deleted "${workerName}"`)
-      refetch()
     } catch (error) {
       showError(
         'Delete failed',

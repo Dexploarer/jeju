@@ -86,7 +86,7 @@ describe('TEE Encryption', () => {
     console.log(`✅ Recommendations: ${result.recommendations.join(', ')}`)
   })
 
-  test('alignment score reflects council consensus', async () => {
+  test('alignment score reflects board consensus', async () => {
     if (SKIP_TEE_TESTS) {
       console.log('⏭️  Skipping: TEE infrastructure not available')
       return

@@ -252,7 +252,7 @@ export class ERC8004Client {
         address: this.identityAddress,
         abi: identityRegistryAbi,
         functionName: 'updateTags',
-        args: [agentId, ['council', role.toLowerCase(), 'governance']],
+        args: [agentId, ['board', role.toLowerCase(), 'governance']],
         account: this.account,
       }) as Promise<`0x${string}`>,
     ])

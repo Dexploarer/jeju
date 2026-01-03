@@ -8,7 +8,7 @@ pragma solidity ^0.8.33;
  *
  * Terminology:
  * - Director: The AI or human executive decision maker (formerly Director)
- * - Board: The advisory/oversight body (formerly Council)
+ * - Board: The advisory/oversight body (formerly Board)
  */
 interface IDAORegistry {
     // ============ Enums ============
@@ -70,7 +70,7 @@ interface IDAORegistry {
         string displayName;
         string description;
         address treasury;
-        address board; // Board governance contract (formerly council)
+        address board; // Board governance contract (formerly board)
         address directorAgent; // Director agent contract (formerly directorAgent)
         address feeConfig;
         bytes32 directorModelId; // AI model ID (formerly directorModelId)
@@ -107,9 +107,9 @@ interface IDAORegistry {
     event GovernanceParamsUpdated(bytes32 indexed daoId);
 
     // ============ Legacy Events (for backwards compatibility) ============
-    event CouncilMemberAdded(bytes32 indexed daoId, address indexed member, string role, uint256 weight);
-    event CouncilMemberRemoved(bytes32 indexed daoId, address indexed member);
-    event CouncilMemberUpdated(bytes32 indexed daoId, address indexed member, uint256 newWeight);
+    event BoardMemberAdded(bytes32 indexed daoId, address indexed member, string role, uint256 weight);
+    event BoardMemberRemoved(bytes32 indexed daoId, address indexed member);
+    event BoardMemberUpdated(bytes32 indexed daoId, address indexed member, uint256 newWeight);
 
     // ============ DAO Management ============
 
@@ -211,7 +211,7 @@ interface IDAORegistry {
 
     // ============ Legacy View Functions (backwards compatibility) ============
 
-    function getCouncilMembers(bytes32 daoId) external view returns (BoardMember[] memory);
+    function getBoardMembers(bytes32 daoId) external view returns (BoardMember[] memory);
 
-    function isCouncilMember(bytes32 daoId, address member) external view returns (bool);
+    function isBoardMember(bytes32 daoId, address member) external view returns (bool);
 }

@@ -387,7 +387,7 @@ const DelegationComponents = [
   { name: 'lockedUntil', type: 'uint256' },
 ] as const
 
-const SecurityCouncilComponents = [
+const SecurityBoardComponents = [
   { name: 'member', type: 'address' },
   { name: 'agentId', type: 'uint256' },
   { name: 'combinedScore', type: 'uint256' },
@@ -418,18 +418,18 @@ const DELEGATION_ABI: Abi = [
   },
   {
     type: 'function',
-    name: 'getSecurityCouncil',
+    name: 'getSecurityBoard',
     stateMutability: 'view',
     inputs: [],
     outputs: [{ name: '', type: 'address[]' }],
   },
   {
     type: 'function',
-    name: 'getSecurityCouncilDetails',
+    name: 'getSecurityBoardDetails',
     stateMutability: 'view',
     inputs: [],
     outputs: [
-      { name: '', type: 'tuple[]', components: SecurityCouncilComponents },
+      { name: '', type: 'tuple[]', components: SecurityBoardComponents },
     ],
   },
   {
@@ -441,7 +441,7 @@ const DELEGATION_ABI: Abi = [
   },
   {
     type: 'function',
-    name: 'isSecurityCouncilMember',
+    name: 'isSecurityBoardMember',
     stateMutability: 'view',
     inputs: [{ name: '', type: 'address' }],
     outputs: [{ name: '', type: 'bool' }],
@@ -523,8 +523,8 @@ interface ContractTopDelegate {
   isActive: boolean
 }
 
-/** Contract return type for security council member */
-interface ContractSecurityCouncilMember {
+/** Contract return type for security board member */
+interface ContractSecurityBoardMember {
   member: Address
   agentId: bigint
   combinedScore: bigint
@@ -974,13 +974,13 @@ export class RegistryIntegrationClient {
     }))
   }
 
-  async getSecurityCouncil() {
+  async getSecurityBoard() {
     if (!this.delegationAddress) return []
     const details = (await readContract(this.client, {
       address: this.delegationAddress,
       abi: DELEGATION_ABI,
-      functionName: 'getSecurityCouncilDetails',
-    })) as ContractSecurityCouncilMember[]
+      functionName: 'getSecurityBoardDetails',
+    })) as ContractSecurityBoardMember[]
     return details.map((m) => ({
       member: m.member,
       agentId: m.agentId,
@@ -989,12 +989,12 @@ export class RegistryIntegrationClient {
     }))
   }
 
-  async isSecurityCouncilMember(address: Address): Promise<boolean> {
+  async isSecurityBoardMember(address: Address): Promise<boolean> {
     if (!this.delegationAddress) return false
     return readContract(this.client, {
       address: this.delegationAddress,
       abi: DELEGATION_ABI,
-      functionName: 'isSecurityCouncilMember',
+      functionName: 'isSecurityBoardMember',
       args: [address],
     }) as Promise<boolean>
   }

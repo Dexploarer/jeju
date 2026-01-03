@@ -139,7 +139,7 @@ export interface RoomMember {
   score?: number
 }
 
-export type RoomType = 'collaboration' | 'adversarial' | 'debate' | 'council'
+export type RoomType = 'collaboration' | 'adversarial' | 'debate' | 'board'
 
 export type AgentRole =
   | 'participant'

@@ -14,6 +14,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { useAccount } from 'wagmi'
+import { SkeletonCard, SkeletonStatCard } from '../components/Skeleton'
 import {
   useCacheStats,
   useContainers,
@@ -99,9 +100,29 @@ export default function Dashboard({ viewMode }: DashboardProps) {
   // Consumer mode loading state
   if (isDataLoading) {
     return (
-      <div className="empty-state" style={{ paddingTop: '4rem' }}>
-        <div className="spinner" style={{ width: 48, height: 48 }} />
-        <p>Loading...</p>
+      <div>
+        <div className="page-header">
+          <h1 className="page-title">Dashboard</h1>
+        </div>
+        <div className="stats-grid">
+          <SkeletonStatCard />
+          <SkeletonStatCard />
+          <SkeletonStatCard />
+          <SkeletonStatCard />
+        </div>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+            gap: '1.5rem',
+            marginTop: '1.5rem',
+          }}
+        >
+          <SkeletonCard height="200px" />
+          <SkeletonCard height="200px" />
+          <SkeletonCard height="200px" />
+          <SkeletonCard height="200px" />
+        </div>
       </div>
     )
   }

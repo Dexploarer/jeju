@@ -486,11 +486,11 @@ export class RoomSDK {
   }
 
   private roomTypeToNumber(type: RoomType): number {
-    return { collaboration: 0, adversarial: 1, debate: 2, council: 3 }[type]
+    return { collaboration: 0, adversarial: 1, debate: 2, board: 3 }[type]
   }
 
   private numberToRoomType(num: number): RoomType {
-    const types = ['collaboration', 'adversarial', 'debate', 'council'] as const
+    const types = ['collaboration', 'adversarial', 'debate', 'board'] as const
     if (num < 0 || num >= types.length) {
       throw new Error(
         `Invalid room type number: ${num}. Must be 0-${types.length - 1}`,

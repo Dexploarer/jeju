@@ -191,10 +191,10 @@ export const GovernanceAddressesSchema = z
     governanceToken: z.string().optional(),
     identityRegistry: z.string().optional(),
     reputationRegistry: z.string().optional(),
-    council: z.string().optional(),
+    board: z.string().optional(),
     delegationRegistry: z.string().optional(),
     circuitBreaker: z.string().optional(),
-    councilSafeModule: z.string().optional(),
+    boardSafeModule: z.string().optional(),
     safe: z.string().optional(),
   })
   .passthrough()

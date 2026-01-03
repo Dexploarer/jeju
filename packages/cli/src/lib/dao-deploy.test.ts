@@ -5,7 +5,7 @@
  * - Manifest discovery from filesystem
  * - Contract address loading
  * - Deployment option validation
- * - Council address resolution
+ * - Board address resolution
  * - Integration with real filesystem
  */
 
@@ -21,7 +21,7 @@ import {
 } from '@jejunetwork/contracts'
 import {
   CHAIN_CONFIG,
-  getDevCouncilAddresses,
+  getDevBoardAddresses,
   getDevDirectorAddress,
   WELL_KNOWN_KEYS,
 } from '../types'
@@ -44,7 +44,7 @@ function createTestManifest(name: string, displayName: string) {
         personality: 'Professional',
         traits: ['wise', 'fair'],
       },
-      council: {
+      board: {
         members: [
           { role: 'Treasury', description: 'Treasury guardian', weight: 5000 },
           { role: 'Code', description: 'Code guardian', weight: 5000 },
@@ -52,7 +52,7 @@ function createTestManifest(name: string, displayName: string) {
       },
       parameters: {
         minQualityScore: 60,
-        councilVotingPeriod: 172800,
+        boardVotingPeriod: 172800,
         gracePeriod: 86400,
         minProposalStake: '10000000000000000',
         quorumBps: 5000,
@@ -97,11 +97,11 @@ describe('WELL_KNOWN_KEYS', () => {
     }
   })
 
-  test('council accounts are accounts 1-4', () => {
-    expect(WELL_KNOWN_KEYS.dev[1].role).toBe('council-treasury')
-    expect(WELL_KNOWN_KEYS.dev[2].role).toBe('council-code')
-    expect(WELL_KNOWN_KEYS.dev[3].role).toBe('council-community')
-    expect(WELL_KNOWN_KEYS.dev[4].role).toBe('council-security')
+  test('board accounts are accounts 1-4', () => {
+    expect(WELL_KNOWN_KEYS.dev[1].role).toBe('board-treasury')
+    expect(WELL_KNOWN_KEYS.dev[2].role).toBe('board-code')
+    expect(WELL_KNOWN_KEYS.dev[3].role).toBe('board-community')
+    expect(WELL_KNOWN_KEYS.dev[4].role).toBe('board-security')
   })
 
   test('Director agent is account 5', () => {
@@ -129,17 +129,17 @@ describe('WELL_KNOWN_KEYS', () => {
 })
 
 // ============================================================================
-// getDevCouncilAddresses Tests
+// getDevBoardAddresses Tests
 // ============================================================================
 
-describe('getDevCouncilAddresses', () => {
-  test('returns 4 council addresses', () => {
-    const addresses = getDevCouncilAddresses()
+describe('getDevBoardAddresses', () => {
+  test('returns 4 board addresses', () => {
+    const addresses = getDevBoardAddresses()
     expect(Object.keys(addresses)).toHaveLength(4)
   })
 
   test('returns correct address mapping', () => {
-    const addresses = getDevCouncilAddresses()
+    const addresses = getDevBoardAddresses()
     expect(addresses['Treasury Guardian']).toBe(WELL_KNOWN_KEYS.dev[1].address)
     expect(addresses['Code Guardian']).toBe(WELL_KNOWN_KEYS.dev[2].address)
     expect(addresses['Community Guardian']).toBe(WELL_KNOWN_KEYS.dev[3].address)
@@ -147,7 +147,7 @@ describe('getDevCouncilAddresses', () => {
   })
 
   test('all addresses are valid ethereum addresses', () => {
-    const addresses = getDevCouncilAddresses()
+    const addresses = getDevBoardAddresses()
     for (const address of Object.values(addresses)) {
       expect(address).toMatch(/^0x[a-fA-F0-9]{40}$/)
     }
@@ -374,40 +374,40 @@ describe('Deployment Options', () => {
 })
 
 // ============================================================================
-// Council Resolution Tests
+// Board Resolution Tests
 // ============================================================================
 
-describe('Council Address Resolution', () => {
-  test('maps council roles to anvil addresses', () => {
-    const councilAddresses = getDevCouncilAddresses()
+describe('Board Address Resolution', () => {
+  test('maps board roles to anvil addresses', () => {
+    const boardAddresses = getDevBoardAddresses()
 
     // Verify each role maps correctly
-    expect(councilAddresses['Treasury Guardian']).toBeDefined()
-    expect(councilAddresses['Code Guardian']).toBeDefined()
-    expect(councilAddresses['Community Guardian']).toBeDefined()
-    expect(councilAddresses['Security Guardian']).toBeDefined()
+    expect(boardAddresses['Treasury Guardian']).toBeDefined()
+    expect(boardAddresses['Code Guardian']).toBeDefined()
+    expect(boardAddresses['Community Guardian']).toBeDefined()
+    expect(boardAddresses['Security Guardian']).toBeDefined()
   })
 
-  test('council addresses match WELL_KNOWN_KEYS positions', () => {
-    const councilAddresses = getDevCouncilAddresses()
+  test('board addresses match WELL_KNOWN_KEYS positions', () => {
+    const boardAddresses = getDevBoardAddresses()
 
     // Position 1 = Treasury Guardian
-    expect(councilAddresses['Treasury Guardian']).toBe(
+    expect(boardAddresses['Treasury Guardian']).toBe(
       WELL_KNOWN_KEYS.dev[1].address,
     )
 
     // Position 2 = Code Guardian
-    expect(councilAddresses['Code Guardian']).toBe(
+    expect(boardAddresses['Code Guardian']).toBe(
       WELL_KNOWN_KEYS.dev[2].address,
     )
 
     // Position 3 = Community Guardian
-    expect(councilAddresses['Community Guardian']).toBe(
+    expect(boardAddresses['Community Guardian']).toBe(
       WELL_KNOWN_KEYS.dev[3].address,
     )
 
     // Position 4 = Security Guardian
-    expect(councilAddresses['Security Guardian']).toBe(
+    expect(boardAddresses['Security Guardian']).toBe(
       WELL_KNOWN_KEYS.dev[4].address,
     )
   })
@@ -586,7 +586,7 @@ describe('Data Integrity', () => {
       expect(discovered.governance.director.name).toBe(
         original.governance.director.name,
       )
-      expect(discovered.governance.council.members).toHaveLength(2)
+      expect(discovered.governance.board.members).toHaveLength(2)
       expect(discovered.funding.minStake).toBe(original.funding.minStake)
       expect(discovered.packages?.seeded).toHaveLength(1)
       expect(discovered.repos?.seeded).toHaveLength(1)
@@ -649,12 +649,12 @@ describe('Contract ABI Verification', () => {
     expect(createDAO?.inputs).toHaveLength(7)
   })
 
-  test('DAORegistry has addCouncilMember function', () => {
-    const addCouncilMember = daoRegistryAbi.find(
-      (item) => item.type === 'function' && item.name === 'addCouncilMember',
+  test('DAORegistry has addBoardMember function', () => {
+    const addBoardMember = daoRegistryAbi.find(
+      (item) => item.type === 'function' && item.name === 'addBoardMember',
     )
-    expect(addCouncilMember).toBeDefined()
-    expect(addCouncilMember?.inputs).toHaveLength(5)
+    expect(addBoardMember).toBeDefined()
+    expect(addBoardMember?.inputs).toHaveLength(5)
   })
 
   test('DAORegistry has linkPackage function', () => {
@@ -823,7 +823,7 @@ describe('DAODeployOptions', () => {
       rootDir: '/path/to/root',
       seed: true,
       dryRun: false,
-      skipCouncil: false,
+      skipBoard: false,
       skipFundingConfig: false,
       verbose: true,
     }
@@ -833,7 +833,7 @@ describe('DAODeployOptions', () => {
     expect(options.rootDir).toBe('/path/to/root')
     expect(options.seed).toBe(true)
     expect(options.dryRun).toBe(false)
-    expect(options.skipCouncil).toBe(false)
+    expect(options.skipBoard).toBe(false)
     expect(options.skipFundingConfig).toBe(false)
     expect(options.verbose).toBe(true)
   })
@@ -845,7 +845,7 @@ describe('DAODeployOptions', () => {
       rootDir: '/path/to/root',
       seed: false,
       dryRun: true,
-      skipCouncil: true,
+      skipBoard: true,
       skipFundingConfig: true,
       verbose: false,
       ipfsApiUrl: 'https://ipfs.infura.io:5001',
@@ -861,7 +861,7 @@ describe('DAODeployOptions', () => {
       rootDir: '/path/to/root',
       seed: true,
       dryRun: false,
-      skipCouncil: false,
+      skipBoard: false,
       skipFundingConfig: false,
       verbose: false,
       fundTreasury: '1000000000000000000',
@@ -898,8 +898,8 @@ describe('Deployment Prerequisites', () => {
     expect(WELL_KNOWN_KEYS.dev[0].role).toBe('deployer')
   })
 
-  test('council roles map to dev addresses correctly', () => {
-    const devAddresses = getDevCouncilAddresses()
+  test('board roles map to dev addresses correctly', () => {
+    const devAddresses = getDevBoardAddresses()
     expect(Object.keys(devAddresses)).toHaveLength(4)
     expect(devAddresses['Treasury Guardian']).toBe(
       WELL_KNOWN_KEYS.dev[1].address,

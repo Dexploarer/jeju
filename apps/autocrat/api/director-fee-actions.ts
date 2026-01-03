@@ -200,7 +200,7 @@ export async function getFeeConfigState(): Promise<FeeConfigState> {
     client.readContract({
       address,
       abi: feeConfigAbi,
-      functionName: 'council',
+      functionName: 'board',
     }),
     client.readContract({
       address,
@@ -266,7 +266,7 @@ export async function getFeeConfigState(): Promise<FeeConfigState> {
 }
 /**
  * Execute a pending fee change (Director only)
- * The change must have been proposed by council and passed its timelock
+ * The change must have been proposed by board and passed its timelock
  */
 export async function directorExecuteFeeChange(changeId: Hex): Promise<Hash> {
   const { address, wallet } = ensureWrite()
@@ -285,7 +285,7 @@ export async function directorExecuteFeeChange(changeId: Hex): Promise<Hash> {
 }
 
 /**
- * Cancel a pending fee change (Director or Council)
+ * Cancel a pending fee change (Director or Board)
  */
 export async function directorCancelFeeChange(changeId: Hex): Promise<Hash> {
   const { address, wallet } = ensureWrite()
@@ -649,7 +649,7 @@ export const directorFeeSkills = [
   },
   {
     id: 'execute-fee-change',
-    description: 'Execute a pending fee change proposed by council',
+    description: 'Execute a pending fee change proposed by board',
     parameters: {
       changeId: 'The change ID to execute (bytes32)',
     },

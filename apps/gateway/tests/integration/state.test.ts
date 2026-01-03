@@ -1,5 +1,10 @@
 /**
- * Gateway State Module Tests
+ * Gateway State Module Integration Tests
+ *
+ * REQUIRES: Jeju CLI infrastructure (SQLit)
+ * Run with: jeju test --mode integration --app gateway
+ *
+ * These tests will skip if infrastructure is not available.
  */
 
 import { beforeAll, describe, expect, test } from 'bun:test'
@@ -10,7 +15,7 @@ import {
   intentState,
   routeState,
   solverState,
-} from './state'
+} from '../../api/services/state'
 
 describe('Gateway State Module', () => {
   beforeAll(async () => {

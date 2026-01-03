@@ -12,38 +12,40 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { useAccount } from 'wagmi'
-import { SkeletonStatCard } from '../components/Skeleton'
-import { useToast } from '../context/AppContext'
-import { useDeposit, useProviderStats, useUserAccount } from '../hooks'
+import { SkeletonStatCard, SkeletonTable } from '../components/Skeleton'
+import { useConfirm, useToast } from '../context/AppContext'
+import {
+  type Transaction,
+  useDeposit,
+  useProviderStats,
+  useTransactionHistory,
+  useUserAccount,
+  useWithdraw,
+} from '../hooks'
 import type { ViewMode } from '../types'
 
 interface BillingProps {
   viewMode: ViewMode
 }
 
-interface Transaction {
-  id: string
-  type: 'deposit' | 'payment' | 'earning'
-  amount: string
-  service: string
-  timestamp: number
-  status: 'completed' | 'pending'
-}
-
 export default function BillingPage({ viewMode }: BillingProps) {
   const { isConnected, address } = useAccount()
   const { showSuccess, showError } = useToast()
+  const confirm = useConfirm()
   const { data: account, isLoading: accountLoading, refetch } = useUserAccount()
   const {
     data: providerStats,
     isLoading: providerLoading,
     refetch: refetchProvider,
   } = useProviderStats()
+  const { data: txHistory, isLoading: txLoading } = useTransactionHistory()
   const deposit = useDeposit()
+  const withdraw = useWithdraw()
 
   const [showDepositModal, setShowDepositModal] = useState(false)
   const [depositAmount, setDepositAmount] = useState('0.01')
-  const [transactions] = useState<Transaction[]>([])
+  
+  const transactions = txHistory?.transactions ?? []
 
   const handleDeposit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -68,6 +70,29 @@ export default function BillingPage({ viewMode }: BillingProps) {
       refetchProvider()
     } else {
       refetch()
+    }
+  }
+
+  const handleWithdraw = async () => {
+    if (totalPendingRewards === 0) return
+
+    const confirmed = await confirm({
+      title: 'Withdraw Rewards',
+      message: `Withdraw ${totalPendingRewards.toFixed(4)} ETH to your wallet? This will transfer all pending rewards.`,
+      confirmText: 'Withdraw',
+      cancelText: 'Cancel',
+    })
+
+    if (!confirmed) return
+
+    try {
+      await withdraw.mutateAsync(totalPendingRewards.toFixed(18))
+      showSuccess('Withdrawal successful', 'Rewards transferred to your wallet')
+    } catch (error) {
+      showError(
+        'Withdrawal failed',
+        error instanceof Error ? error.message : 'Unknown error',
+      )
     }
   }
 
@@ -134,9 +159,10 @@ export default function BillingPage({ viewMode }: BillingProps) {
             <button
               type="button"
               className="btn btn-primary"
-              disabled={!isConnected || totalPendingRewards === 0}
+              onClick={handleWithdraw}
+              disabled={!isConnected || totalPendingRewards === 0 || withdraw.isPending}
             >
-              <ArrowUpRight size={16} /> Withdraw
+              <ArrowUpRight size={16} /> {withdraw.isPending ? 'Withdrawing...' : 'Withdraw'}
             </button>
           )}
         </div>
@@ -285,7 +311,9 @@ export default function BillingPage({ viewMode }: BillingProps) {
             </button>
           </div>
 
-          {transactions.length === 0 ? (
+          {txLoading ? (
+            <SkeletonTable rows={3} columns={3} />
+          ) : transactions.length === 0 ? (
             <div className="empty-state" style={{ padding: '2rem' }}>
               <Activity size={32} />
               <h3>No transactions yet</h3>

@@ -315,14 +315,14 @@ export const debateBehavior: RoomBehavior = {
 }
 
 /**
- * Council Room Behavior
+ * Board Room Behavior
  * - Governance/proposal mechanics
  * - Quorum requirements
  * - Voting with stake-weighted options
  */
-export const councilBehavior: RoomBehavior = {
-  type: 'council',
-  label: 'Council',
+export const boardBehavior: RoomBehavior = {
+  type: 'board',
+  label: 'Board',
   description:
     'Governance workspace with proposal creation, quorum requirements, and voting',
   icon: '🏛️',
@@ -428,7 +428,7 @@ export function getRoomBehavior(type: RoomType): RoomBehavior {
     collaboration: collaborationBehavior,
     adversarial: adversarialBehavior,
     debate: debateBehavior,
-    council: councilBehavior,
+    board: boardBehavior,
   }
   return behaviors[type]
 }
@@ -440,7 +440,7 @@ export const ROOM_BEHAVIORS: Record<RoomType, RoomBehavior> = {
   collaboration: collaborationBehavior,
   adversarial: adversarialBehavior,
   debate: debateBehavior,
-  council: councilBehavior,
+  board: boardBehavior,
 }
 
 /**

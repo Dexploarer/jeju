@@ -39,7 +39,7 @@ contract DecentralizationFuzzTest is Test {
         sequencerRegistry = new SequencerRegistry(
             address(jejuToken), address(identityRegistry), address(reputationRegistry), treasury, owner
         );
-        timelock = new GovernanceTimelock(governance, makeAddr("council"), owner, 60);
+        timelock = new GovernanceTimelock(governance, makeAddr("board"), owner, 60);
         disputeFactory = new DisputeGameFactory(treasury, owner);
         vm.stopPrank();
 

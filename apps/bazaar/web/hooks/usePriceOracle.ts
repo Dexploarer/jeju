@@ -20,7 +20,15 @@ const PRICE_ORACLE_ABI = parseAbi([
 // Common token addresses for price lookups
 export const ETH_ADDRESS = zeroAddress // Native ETH uses zero address
 
-// Fallback prices for when oracle isn't available (testnet)
+/**
+ * Fallback prices for when oracle isn't available.
+ * These are used on localnet/testnet when:
+ * 1. PriceOracle contract is not deployed
+ * 2. Oracle contract call fails
+ *
+ * In production, these should never be used - the oracle
+ * should always be available and these fallbacks will log warnings.
+ */
 const FALLBACK_PRICES: Record<string, number> = {
   ETH: 2500,
   WETH: 2500,
@@ -45,6 +53,11 @@ export function usePriceOracle(tokenAddress: Address | undefined) {
     queryFn: async (): Promise<PriceData> => {
       // No oracle deployed - use fallback
       if (!oracleAddress || oracleAddress === zeroAddress || !publicClient) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(
+            '[usePriceOracle] Oracle not deployed, using fallback price',
+          )
+        }
         return {
           priceUSD: tokenAddress === ETH_ADDRESS ? FALLBACK_PRICES.ETH : 0,
           decimals: 8,
@@ -67,8 +80,14 @@ export function usePriceOracle(tokenAddress: Address | undefined) {
           functionName: 'isPriceFresh',
           args: [tokenAddress ?? ETH_ADDRESS],
         }),
-      ]).catch(() => {
+      ]).catch((err) => {
         // Oracle call failed - use fallback
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(
+            '[usePriceOracle] Oracle call failed, using fallback:',
+            err,
+          )
+        }
         return [[BigInt(FALLBACK_PRICES.ETH * 1e8), 8n] as const, true] as const
       })
 
