@@ -337,76 +337,38 @@ async function startWorkerProcess(config: StartConfig): Promise<void> {
 
 /**
  * Register frontend assets with DWS CDN
- * For localnet, CDN uses local file serving with IPFS as backup
- * For testnet/mainnet, uses JNS-resolved domain for fully decentralized routing
+ * Assets are stored in IPFS and accessible via DWS CDN gateway
+ *
+ * Access patterns:
+ * - IPFS gateway: /cdn/ipfs/{cid}
+ * - App routes: /cdn/apps/crucible/* (requires jeju-manifest.json)
  */
 async function setupCDN(
   config: StartConfig,
   assets: Map<string, { cid: string }>,
 ): Promise<void> {
-  // Get the index.html CID for IPFS gateway access
   const indexCid = assets.get('index.html')?.cid
   if (!indexCid) {
     console.warn('[Crucible] No index.html found in assets')
     return
   }
 
-  // For localnet, just log the IPFS CID - files are served locally
-  if (config.network === 'localnet') {
-    console.log(`[Crucible] Frontend IPFS CID: ${indexCid}`)
-    console.log(`[Crucible] Access via: ${config.dwsUrl}/cdn/ipfs/${indexCid}`)
-    return
+  // Log available access methods
+  console.log(`[Crucible] Frontend uploaded to IPFS:`)
+  console.log(`  Index CID: ${indexCid}`)
+  console.log(`  IPFS Gateway: ${config.dwsUrl}/cdn/ipfs/${indexCid}`)
+
+  // For testnet/mainnet, log JNS info
+  if (config.network !== 'localnet') {
+    const jnsDomain = 'crucible.jeju'
+    console.log(`  JNS Domain: ${jnsDomain}`)
+    console.log(`  To register: jeju jns set ${jnsDomain} ipfs://${indexCid}`)
   }
 
-  const assetList = Array.from(assets.entries()).map(([path, result]) => ({
-    path: `/${path}`,
-    cid: result.cid,
-    contentType: getContentType(path),
-    immutable:
-      path.includes('-') && (path.endsWith('.js') || path.endsWith('.css')),
-  }))
-
-  // Domain is resolved via JNS - use .jeju TLD
-  const jnsDomain = 'crucible.jeju'
-  const httpDomain =
-    config.network === 'localnet'
-      ? 'crucible.local.jejunetwork.org'
-      : config.network === 'testnet'
-        ? 'crucible.testnet.jejunetwork.org'
-        : 'crucible.jejunetwork.org'
-
-  const cdnConfig = {
-    name: 'crucible',
-    jnsName: jnsDomain,
-    domain: httpDomain,
-    spa: {
-      enabled: true,
-      fallback: '/index.html',
-      // API routes that should be proxied to the worker
-      routes: ['/api/*', '/a2a/*', '/mcp/*', '/health', '/.well-known/*'],
-    },
-    assets: assetList,
-    workerEndpoint: `http://${host}:${config.apiPort}`,
-    cacheRules: [
-      { pattern: '/chunks/**', ttl: 31536000, immutable: true },
-      { pattern: '/assets/**', ttl: 31536000, immutable: true },
-      { pattern: '/*.js', ttl: 31536000, immutable: true },
-      { pattern: '/globals.css', ttl: 86400 },
-      { pattern: '/index.html', ttl: 60, staleWhileRevalidate: 3600 },
-    ],
-  }
-
-  const response = await fetch(`${config.dwsUrl}/cdn/configure`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(cdnConfig),
-    signal: AbortSignal.timeout(10000),
-  })
-
-  if (!response.ok) {
-    console.warn('[Crucible] CDN configuration failed:', await response.text())
-  } else {
-    console.log(`[Crucible] CDN configured for ${jnsDomain} -> ${httpDomain}`)
+  // Log all uploaded assets
+  console.log(`[Crucible] Uploaded ${assets.size} assets:`)
+  for (const [path, { cid }] of assets.entries()) {
+    console.log(`  ${path}: ${cid.slice(0, 12)}...`)
   }
 }
 
@@ -715,7 +677,27 @@ async function start(): Promise<void> {
   )
   console.log('╚════════════════════════════════════════════════════════════╝')
   console.log('')
+
+  // Keep process running
+  console.log('Press Ctrl+C to stop...')
 }
+
+// Handle graceful shutdown
+process.on('SIGINT', () => {
+  console.log('\n[Crucible] Shutting down...')
+  if (_workerProcess) {
+    _workerProcess.kill()
+  }
+  process.exit(0)
+})
+
+process.on('SIGTERM', () => {
+  console.log('\n[Crucible] Received SIGTERM, shutting down...')
+  if (_workerProcess) {
+    _workerProcess.kill()
+  }
+  process.exit(0)
+})
 
 start().catch((error) => {
   console.error('[Crucible] Start failed:', error)

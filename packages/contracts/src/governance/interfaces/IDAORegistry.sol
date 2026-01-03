@@ -106,11 +106,6 @@ interface IDAORegistry {
     event RepoUnlinked(bytes32 indexed daoId, bytes32 indexed repoId);
     event GovernanceParamsUpdated(bytes32 indexed daoId);
 
-    // ============ Legacy Events (for backwards compatibility) ============
-    event BoardMemberAdded(bytes32 indexed daoId, address indexed member, string role, uint256 weight);
-    event BoardMemberRemoved(bytes32 indexed daoId, address indexed member);
-    event BoardMemberUpdated(bytes32 indexed daoId, address indexed member, uint256 newWeight);
-
     // ============ DAO Management ============
 
     function createDAO(
@@ -208,10 +203,4 @@ interface IDAORegistry {
     function getPackageDAO(bytes32 packageId) external view returns (bytes32 daoId);
 
     function getRepoDAO(bytes32 repoId) external view returns (bytes32 daoId);
-
-    // ============ Legacy View Functions (backwards compatibility) ============
-
-    function getBoardMembers(bytes32 daoId) external view returns (BoardMember[] memory);
-
-    function isBoardMember(bytes32 daoId, address member) external view returns (bool);
 }

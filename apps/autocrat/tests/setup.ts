@@ -111,7 +111,7 @@ async function verifyContractsDeployed(
 // API Server
 // ============================================================================
 
-async function checkApi(url: string, timeout = 3000): Promise<boolean> {
+export async function checkApi(url: string, timeout = 3000): Promise<boolean> {
   try {
     const response = await fetch(`${url}/health`, {
       signal: AbortSignal.timeout(timeout),
@@ -229,9 +229,9 @@ export async function getTestEnv(): Promise<TestEnv> {
  * The chain should already be running from the shared setup.
  */
 export async function ensureServices(
-  options: { api?: boolean } = {},
+  options: { api?: boolean; chain?: boolean } = {},
 ): Promise<TestEnv> {
-  const { api = false } = options
+  const { api = false, chain = false } = options
 
   console.log('\n🔧 Autocrat test setup...')
 

@@ -248,16 +248,6 @@ contract DAORegistry is IDAORegistry, Ownable, Pausable, ReentrancyGuard {
     }
 
     /**
-     * @notice Set DAO board contract address (legacy alias)
-     */
-    function setDAOBoardContract(bytes32 daoId, address board) external onlyExistingDAO(daoId) onlyDAOAdmin(daoId) {
-        _daos[daoId].board = board;
-        _daos[daoId].updatedAt = block.timestamp;
-
-        emit DAOUpdated(daoId, "board", abi.encode(board));
-    }
-
-    /**
      * @notice Set DAO Director agent contract address
      */
     function setDAODirectorAgent(bytes32 daoId, address directorAgent)
@@ -351,40 +341,6 @@ contract DAORegistry is IDAORegistry, Ownable, Pausable, ReentrancyGuard {
         _daos[daoId].updatedAt = block.timestamp;
 
         emit BoardMemberAdded(daoId, member, role, weight, isHuman);
-        // Legacy event
-        emit BoardMemberAdded(daoId, member, role, weight);
-    }
-
-    /**
-     * @notice Add a board member (legacy alias)
-     */
-    function addBoardMember(bytes32 daoId, address member, uint256 agentId, string calldata role, uint256 weight)
-        external
-        onlyExistingDAO(daoId)
-        onlyDAOAdmin(daoId)
-    {
-        if (member == address(0)) revert InvalidAddress();
-        if (weight == 0 || weight > 10000) revert InvalidWeight();
-        if (_boardMembers[daoId][member].addedAt != 0) revert MemberAlreadyExists();
-
-        // Default to AI (agentId > 0 implies AI)
-        bool isHuman = agentId == 0;
-
-        _boardMembers[daoId][member] = BoardMember({
-            member: member,
-            agentId: agentId,
-            role: role,
-            weight: weight,
-            addedAt: block.timestamp,
-            isActive: true,
-            isHuman: isHuman
-        });
-
-        _boardMemberAddresses[daoId].push(member);
-        _daos[daoId].updatedAt = block.timestamp;
-
-        emit BoardMemberAdded(daoId, member, role, weight, isHuman);
-        emit BoardMemberAdded(daoId, member, role, weight);
     }
 
     /**
@@ -396,21 +352,6 @@ contract DAORegistry is IDAORegistry, Ownable, Pausable, ReentrancyGuard {
         _boardMembers[daoId][member].isActive = false;
         _daos[daoId].updatedAt = block.timestamp;
 
-        emit BoardMemberRemoved(daoId, member);
-        // Legacy event
-        emit BoardMemberRemoved(daoId, member);
-    }
-
-    /**
-     * @notice Remove a board member (legacy alias)
-     */
-    function removeBoardMember(bytes32 daoId, address member) external onlyExistingDAO(daoId) onlyDAOAdmin(daoId) {
-        if (_boardMembers[daoId][member].addedAt == 0) revert MemberNotFound();
-
-        _boardMembers[daoId][member].isActive = false;
-        _daos[daoId].updatedAt = block.timestamp;
-
-        emit BoardMemberRemoved(daoId, member);
         emit BoardMemberRemoved(daoId, member);
     }
 
@@ -428,26 +369,6 @@ contract DAORegistry is IDAORegistry, Ownable, Pausable, ReentrancyGuard {
         _boardMembers[daoId][member].weight = weight;
         _daos[daoId].updatedAt = block.timestamp;
 
-        emit BoardMemberUpdated(daoId, member, weight);
-        // Legacy event
-        emit BoardMemberUpdated(daoId, member, weight);
-    }
-
-    /**
-     * @notice Update board member weight (legacy alias)
-     */
-    function updateBoardMemberWeight(bytes32 daoId, address member, uint256 weight)
-        external
-        onlyExistingDAO(daoId)
-        onlyDAOAdmin(daoId)
-    {
-        if (_boardMembers[daoId][member].addedAt == 0) revert MemberNotFound();
-        if (weight == 0 || weight > 10000) revert InvalidWeight();
-
-        _boardMembers[daoId][member].weight = weight;
-        _daos[daoId].updatedAt = block.timestamp;
-
-        emit BoardMemberUpdated(daoId, member, weight);
         emit BoardMemberUpdated(daoId, member, weight);
     }
 
@@ -633,30 +554,6 @@ contract DAORegistry is IDAORegistry, Ownable, Pausable, ReentrancyGuard {
     }
 
     /**
-     * @notice Get board members for a DAO (legacy alias)
-     */
-    function getBoardMembers(bytes32 daoId) external view returns (BoardMember[] memory) {
-        address[] memory addrs = _boardMemberAddresses[daoId];
-        BoardMember[] memory members = new BoardMember[](addrs.length);
-        uint256 activeCount = 0;
-
-        for (uint256 i = 0; i < addrs.length; i++) {
-            BoardMember memory m = _boardMembers[daoId][addrs[i]];
-            if (m.isActive) {
-                members[activeCount] = m;
-                activeCount++;
-            }
-        }
-
-        BoardMember[] memory result = new BoardMember[](activeCount);
-        for (uint256 i = 0; i < activeCount; i++) {
-            result[i] = members[i];
-        }
-
-        return result;
-    }
-
-    /**
      * @notice Get linked packages for a DAO
      */
     function getLinkedPackages(bytes32 daoId) external view returns (bytes32[] memory) {
@@ -672,13 +569,6 @@ contract DAORegistry is IDAORegistry, Ownable, Pausable, ReentrancyGuard {
 
     /**
      * @notice Check if address is board member
-     */
-    function isBoardMember(bytes32 daoId, address member) external view returns (bool) {
-        return _boardMembers[daoId][member].isActive;
-    }
-
-    /**
-     * @notice Check if address is board member (legacy alias)
      */
     function isBoardMember(bytes32 daoId, address member) external view returns (bool) {
         return _boardMembers[daoId][member].isActive;

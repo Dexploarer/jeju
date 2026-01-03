@@ -1,13 +1,14 @@
 /**
  * Crucible Playwright Configuration
  */
-import { CORE_PORTS } from '@jejunetwork/config/ports'
 import { defineConfig, devices } from '@playwright/test'
 
-const PORT = CORE_PORTS.CRUCIBLE_API.get()
+// Frontend port 4020, API port 4021
+const FRONTEND_PORT = 4020
 
 export default defineConfig({
   testDir: './tests/e2e',
+  testMatch: '**/*.e2e.ts',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -17,7 +18,7 @@ export default defineConfig({
   timeout: 120000,
 
   use: {
-    baseURL: `http://localhost:${PORT}`,
+    baseURL: `http://localhost:${FRONTEND_PORT}`,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -35,7 +36,7 @@ export default defineConfig({
     ? undefined
     : {
         command: 'bun run start',
-        url: `http://localhost:${PORT}`,
+        url: `http://localhost:${FRONTEND_PORT}`,
         reuseExistingServer: true,
         timeout: 180000,
       },

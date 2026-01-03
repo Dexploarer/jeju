@@ -169,7 +169,7 @@ export {
   type DuplicateConfigType,
   getDuplicateStats,
 } from './dedup'
-// Build Utilities (for production builds - NOT worker compatible)
+// Build Utilities (for production builds)
 export {
   BROWSER_EXTERNALS,
   createBrowserPlugin,

@@ -20,10 +20,18 @@ beforeAll(async () => {
   dwsAvailable = await checkDWSHealth()
   if (!dwsAvailable) {
     console.log(
-      '[Agent Seeding Tests] DWS not available - some tests will use mock mode',
+      '[Agent Seeding Tests] DWS not available - runtime initialization tests will be skipped',
     )
   }
 })
+
+function skipIfNoDWS(): boolean {
+  if (!dwsAvailable) {
+    console.log('[Skipped] DWS not available')
+    return true
+  }
+  return false
+}
 
 describe('Agent Seeding', () => {
   describe('Character Definitions', () => {
@@ -151,6 +159,9 @@ describe('Agent Seeding', () => {
 
   describe('Runtime Manager', () => {
     test('should manage multiple runtimes', async () => {
+      // runtimeManager.createRuntime calls initialize which requires DWS
+      if (skipIfNoDWS()) return
+
       // Clean up first
       await runtimeManager.shutdown()
 
@@ -177,6 +188,9 @@ describe('Agent Seeding', () => {
     })
 
     test('should not duplicate runtimes', async () => {
+      // runtimeManager.createRuntime calls initialize which requires DWS
+      if (skipIfNoDWS()) return
+
       const char = getCharacter('liaison')
       expect(char).toBeDefined()
       if (!char) return

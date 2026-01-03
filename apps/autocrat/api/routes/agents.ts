@@ -248,6 +248,53 @@ export const agentsRoutes = new Elysia({ prefix: '/api/v1/agents' })
       detail: { tags: ['agents'], summary: 'Get board/board members' },
     },
   )
+  // Legacy alias: /council -> /board
+  .get(
+    '/council',
+    async ({ set }) => {
+      try {
+        const a2aServer = createAutocratA2AServer(config, blockchain)
+        const response = await a2aServer.getRouter().fetch(
+          new Request('http://localhost/a2a', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              id: 1,
+              method: 'message/send',
+              params: {
+                message: {
+                  messageId: `rest-${Date.now()}`,
+                  parts: [
+                    { kind: 'data', data: { skillId: 'get-board-status' } },
+                  ],
+                },
+              },
+            }),
+          }),
+        )
+        const result = expectValid(
+          A2AJsonRpcResponseSchema,
+          await response.json(),
+          'Council status A2A response',
+        )
+        return result
+      } catch (error) {
+        console.warn(
+          '[Agents] Error getting council status:',
+          error instanceof Error ? error.message : String(error),
+        )
+        set.status = 200
+        return {
+          members: [],
+          message: 'Council not available - use /board instead',
+        }
+      }
+    },
+    {
+      detail: { tags: ['agents'], summary: 'Get council (legacy, use /board)' },
+    },
+  )
   // Get agent by ID - must be after specific routes like /director, /board
   .get(
     '/:id',

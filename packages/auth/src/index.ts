@@ -28,7 +28,7 @@ export {
   createMultiTenantBoardManager,
   type DirectorConfig,
   MultiTenantBoardManager,
-} from './board/multi-tenant.js'
+} from './council/multi-tenant.js'
 // Verifiable Credentials
 export {
   addressFromDid,

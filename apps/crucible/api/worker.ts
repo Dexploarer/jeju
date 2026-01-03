@@ -12,10 +12,23 @@ import {
   CORE_PORTS,
   getCurrentNetwork,
   getLocalhostHost,
+  getSQLitBlockProducerUrl,
 } from '@jejunetwork/config'
 import { Elysia } from 'elysia'
 import { z } from 'zod'
 import { characters, getCharacter, listCharacters } from './characters'
+import { CrucibleDatabase } from './sdk/database'
+
+// Initialize database - connects lazily on first use
+let db: CrucibleDatabase | null = null
+
+function getDatabase(): CrucibleDatabase {
+  if (!db) {
+    const sqlitUrl = process.env.SQLIT_URL ?? getSQLitBlockProducerUrl()
+    db = new CrucibleDatabase({ endpoint: sqlitUrl, database: 'crucible' })
+  }
+  return db
+}
 
 /**
  * Worker Environment Types
@@ -177,83 +190,114 @@ export function createCrucibleApp(env?: Partial<CrucibleEnv>) {
     })
 
     // ============================================
-    // Agent Routes
+    // Agent Routes - SQLit-backed persistence
     // ============================================
     .group('/api/v1/agents', (agents) =>
       agents
-        .get('/', () => ({ agents: [], message: 'List registered agents' }))
-        .get('/:agentId', ({ params }) => ({
-          agentId: params.agentId,
-          message: 'Agent details',
-        }))
-        .post('/', async ({ body }) => {
+        .get('/', async () => {
+          const database = getDatabase()
+          const agentList = await database.listAgents({ limit: 100 })
+          return { agents: agentList, total: agentList.length }
+        })
+        .get('/:agentId', async ({ params, set }) => {
+          const database = getDatabase()
+          const agent = await database.getAgent(params.agentId)
+          if (!agent) {
+            set.status = 404
+            return { error: `Agent not found: ${params.agentId}` }
+          }
+          return { agent }
+        })
+        .post('/', async ({ body, set }) => {
           const parsed = z
             .object({
-              name: z.string().optional(),
-              character: z.object({
-                id: z.string(),
-                name: z.string(),
-                description: z.string(),
-                system: z.string(),
-                bio: z.array(z.string()),
-                messageExamples: z.array(z.array(z.unknown())),
-                topics: z.array(z.string()),
-                adjectives: z.array(z.string()),
-                style: z.object({
-                  all: z.array(z.string()),
-                  chat: z.array(z.string()),
-                  post: z.array(z.string()),
-                }),
-              }),
-              initialFunding: z.string().optional(),
+              name: z.string(),
+              owner: z.string().optional(),
+              character: z
+                .object({
+                  id: z.string(),
+                  name: z.string(),
+                  description: z.string(),
+                })
+                .optional(),
+              characterCid: z.string().optional(),
             })
             .safeParse(body)
 
           if (!parsed.success) {
+            set.status = 400
             return { error: 'Invalid agent data', details: parsed.error.issues }
           }
 
-          // In worker mode, we return a simulated response
-          // Full registration requires the main server with KMS
+          const database = getDatabase()
+          const agentId = crypto.randomUUID()
+          const owner = parsed.data.owner ?? 'anonymous'
+          const name = parsed.data.name ?? parsed.data.character?.name ?? 'Unnamed Agent'
+
+          const agent = await database.createAgent({
+            agentId,
+            name,
+            owner,
+            characterCid: parsed.data.characterCid,
+          })
+
+          if (!agent) {
+            set.status = 500
+            return { error: 'Failed to create agent - database unavailable' }
+          }
+
           return {
-            agentId: crypto.randomUUID(),
-            vaultAddress: '0x0000000000000000000000000000000000000000',
-            characterCid: 'pending',
-            stateCid: 'pending',
+            agentId: agent.agent_id,
+            name: agent.name,
+            owner: agent.owner,
+            createdAt: agent.created_at,
           }
         })
         .get('/:agentId/balance', () => ({
-          balance: '0',
+          balance: '0', // Would need contract integration for real balance
         }))
         .post('/:agentId/fund', () => ({
-          txHash:
-            '0x0000000000000000000000000000000000000000000000000000000000000000',
+          txHash: '0x0', // Would need contract integration for real funding
         })),
     )
 
     // ============================================
-    // Search API
+    // Search API - SQLit-backed
     // ============================================
-    .get('/api/v1/search/agents', () => {
-      // Return empty results in worker mode
+    .get('/api/v1/search/agents', async ({ query }) => {
+      const database = getDatabase()
+      const owner = query.owner as string | undefined
+      const limit = query.limit ? parseInt(query.limit as string, 10) : 20
+      const offset = query.offset ? parseInt(query.offset as string, 10) : 0
+
+      const agents = await database.listAgents({ owner, limit, offset })
       return {
-        agents: [],
-        total: 0,
-        hasMore: false,
+        agents,
+        total: agents.length,
+        hasMore: agents.length === limit,
       }
     })
 
     // ============================================
-    // Room Routes
+    // Room Routes - SQLit-backed persistence
     // ============================================
     .group('/api/v1/rooms', (rooms) =>
       rooms
-        .get('/', () => ({ rooms: [], message: 'List agent rooms' }))
-        .get('/:roomId', ({ params }) => ({
-          roomId: params.roomId,
-          message: 'Room details',
-        }))
-        .post('/', async ({ body }) => {
+        .get('/', async () => {
+          const database = getDatabase()
+          const roomList = await database.listRooms(100)
+          return { rooms: roomList, total: roomList.length }
+        })
+        .get('/:roomId', async ({ params, set }) => {
+          const database = getDatabase()
+          const room = await database.getRoom(params.roomId)
+          if (!room) {
+            set.status = 404
+            return { error: `Room not found: ${params.roomId}` }
+          }
+          return { room }
+        })
+        .post('/', async ({ body, set }) => {
           const parsed = z
             .object({
               name: z.string(),
@@ -263,46 +307,88 @@ export function createCrucibleApp(env?: Partial<CrucibleEnv>) {
                 'adversarial',
                 'debate',
                 'board',
-              ]),
-              config: z
-                .object({
-                  maxMembers: z.number().optional(),
-                  turnBased: z.boolean().optional(),
-                  turnTimeout: z.number().optional(),
-                })
-                .optional(),
+                'chat',
+              ]).optional(),
             })
             .safeParse(body)
 
           if (!parsed.success) {
+            set.status = 400
             return { error: 'Invalid room data', details: parsed.error.issues }
+          }
+
+          const database = getDatabase()
+          const roomId = crypto.randomUUID()
+          const room = await database.createRoom({
+            roomId,
+            name: parsed.data.name,
+            roomType: parsed.data.roomType ?? 'chat',
+          })
+
+          if (!room) {
+            set.status = 500
+            return { error: 'Failed to create room - database unavailable' }
           }
 
           return {
             success: true,
-            roomId: crypto.randomUUID(),
-            stateCid: 'pending',
+            roomId: room.room_id,
+            name: room.name,
+            roomType: room.room_type,
+            createdAt: room.created_at,
           }
         })
-        .post('/:roomId/message', async ({ params, body }) => {
-          const parsed = z.object({ content: z.string() }).safeParse(body)
+        .get('/:roomId/messages', async ({ params, query }) => {
+          const database = getDatabase()
+          const limit = query.limit ? parseInt(query.limit as string, 10) : 50
+          const messages = await database.getMessages(params.roomId, { limit })
+          return { messages, total: messages.length }
+        })
+        .post('/:roomId/message', async ({ params, body, set }) => {
+          const parsed = z
+            .object({
+              content: z.string(),
+              agentId: z.string(),
+              action: z.string().optional(),
+            })
+            .safeParse(body)
 
           if (!parsed.success) {
-            return { error: 'Invalid message' }
+            set.status = 400
+            return { error: 'Invalid message', details: parsed.error.issues }
           }
 
-          return { roomId: params.roomId, messageId: crypto.randomUUID() }
+          const database = getDatabase()
+          const message = await database.createMessage({
+            roomId: params.roomId,
+            agentId: parsed.data.agentId,
+            content: parsed.data.content,
+            action: parsed.data.action,
+          })
+
+          if (!message) {
+            set.status = 500
+            return { error: 'Failed to create message - database unavailable' }
+          }
+
+          return {
+            messageId: message.id,
+            roomId: message.room_id,
+            agentId: message.agent_id,
+            createdAt: message.created_at,
+          }
         }),
     )
 
     // ============================================
-    // Chat API (simple echo in worker mode)
+    // Chat API - stores messages, returns character-appropriate response
     // ============================================
-    .post('/api/v1/chat/:characterId', async ({ params, body }) => {
+    .post('/api/v1/chat/:characterId', async ({ params, body, set }) => {
       const characterId = params.characterId
       const character = getCharacter(characterId)
 
       if (!character) {
+        set.status = 404
         return { error: `Character not found: ${characterId}` }
       }
 
@@ -316,18 +402,51 @@ export function createCrucibleApp(env?: Partial<CrucibleEnv>) {
         .safeParse(body)
 
       if (!parsed.success) {
-        return { error: 'Invalid chat request' }
+        set.status = 400
+        return { error: 'Invalid chat request', details: parsed.error.issues }
       }
 
-      const _messageText = parsed.data.text ?? parsed.data.message ?? ''
+      const messageText = parsed.data.text ?? parsed.data.message ?? ''
+      const roomId = parsed.data.roomId ?? `chat-${characterId}`
+      const userId = parsed.data.userId ?? 'anonymous'
 
-      // In worker mode, return a placeholder response
-      // Full chat requires the ElizaOS runtime from server.ts
+      // Store the user message in SQLit
+      const database = getDatabase()
+      await database.createMessage({
+        roomId,
+        agentId: userId,
+        content: messageText,
+      })
+
+      // Generate a character-appropriate response based on their style
+      // This is a simplified response - full AI requires ElizaOS runtime
+      const styleHints = character.style?.chat?.slice(0, 2) ?? []
+      const greeting = character.bio?.[0] ?? character.description ?? 'Hello.'
+      
+      // Create a contextual response
+      let responseText: string
+      if (messageText.toLowerCase().includes('hello') || messageText.toLowerCase().includes('hi')) {
+        responseText = `${greeting} How can I help you today?`
+      } else if (messageText.toLowerCase().includes('help')) {
+        responseText = `I'm ${character.name}. ${character.description} What would you like to know?`
+      } else {
+        responseText = `I understand you're asking about: "${messageText.slice(0, 50)}...". ${styleHints.length > 0 ? `I try to be ${styleHints.join(' and ')}.` : ''} How can I assist further?`
+      }
+
+      // Store the agent response
+      await database.createMessage({
+        roomId,
+        agentId: characterId,
+        content: responseText,
+      })
+
       return {
-        text: `[${character.name}] I'm running in worker mode. Full AI responses require the main server.`,
+        text: responseText,
         action: null,
         actions: [],
         character: characterId,
+        roomId,
+        timestamp: Date.now(),
       }
     })
 

@@ -69,7 +69,9 @@ describe('Crucible Agent Runtime', () => {
     })
 
     test('should initialize runtime with jejuPlugin actions', async () => {
-      // This test doesn't require inference
+      // Runtime initialization requires DWS for health check
+      if (skipIfNoInference()) return
+
       const character = getCharacter('community-manager')
       expect(character).toBeDefined()
       if (!character) throw new Error('character not found')
@@ -151,7 +153,9 @@ describe('Crucible Agent Runtime', () => {
 
   describe('Runtime Manager', () => {
     test('should create and track runtimes', async () => {
-      // This test doesn't require inference
+      // runtimeManager.createRuntime calls initialize which requires DWS
+      if (skipIfNoInference()) return
+
       const character = getCharacter('devrel')
       expect(character).toBeDefined()
       if (!character) throw new Error('character not found')
@@ -171,7 +175,9 @@ describe('Crucible Agent Runtime', () => {
     })
 
     test('should not duplicate runtimes', async () => {
-      // This test doesn't require inference
+      // runtimeManager.createRuntime calls initialize which requires DWS
+      if (skipIfNoInference()) return
+
       const character = getCharacter('liaison')
       expect(character).toBeDefined()
       if (!character) throw new Error('character not found')
@@ -233,7 +239,9 @@ describe('Crucible Agent Runtime', () => {
 
   describe('Plugin Integration', () => {
     test('should load jeju plugin actions', async () => {
-      // This test doesn't require inference
+      // runtime.initialize() requires DWS health check
+      if (skipIfNoInference()) return
+
       const character = getCharacter('community-manager')
       if (!character) throw new Error('character not found')
       const runtime = createCrucibleRuntime({
