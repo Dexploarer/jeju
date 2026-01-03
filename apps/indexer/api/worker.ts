@@ -41,18 +41,31 @@ interface KVNamespace {
 // Zod schemas for request validation
 const GraphQLRequestSchema = z.object({
   query: z.string(),
-  variables: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
+  variables: z
+    .record(
+      z.string(),
+      z.union([z.string(), z.number(), z.boolean(), z.null()]),
+    )
+    .optional(),
   operationName: z.string().optional(),
 })
 
 const A2ARequestSchema = z.object({
   skill: z.string(),
-  params: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
+  params: z
+    .record(
+      z.string(),
+      z.union([z.string(), z.number(), z.boolean(), z.null()]),
+    )
+    .optional(),
 })
 
 const MCPRequestSchema = z.object({
   tool: z.string(),
-  arguments: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])),
+  arguments: z.record(
+    z.string(),
+    z.union([z.string(), z.number(), z.boolean(), z.null()]),
+  ),
 })
 
 // Database ID for SQLit
@@ -65,14 +78,19 @@ const DATABASE_ID = process.env.SQLIT_DATABASE_ID ?? 'indexer-testnet'
 async function executeGraphQLQuery(
   query: string,
   variables?: Record<string, string | number | boolean | null>,
-): Promise<{ data: Record<string, unknown> | null; errors?: Array<{ message: string }> }> {
+): Promise<{
+  data: Record<string, unknown> | null
+  errors?: Array<{ message: string }>
+}> {
   const sqlit = getSQLit()
-  
+
   // Parse the GraphQL query to extract operation
   const blocksMatch = query.match(/blocks\s*(?:\(([^)]*)\))?\s*\{([^}]+)\}/)
-  const transactionsMatch = query.match(/transactions\s*(?:\(([^)]*)\))?\s*\{([^}]+)\}/)
+  const transactionsMatch = query.match(
+    /transactions\s*(?:\(([^)]*)\))?\s*\{([^}]+)\}/,
+  )
   const accountsMatch = query.match(/accounts\s*(?:\(([^)]*)\))?\s*\{([^}]+)\}/)
-  
+
   // Extract limit from query or variables
   const extractLimit = (args: string | undefined): number => {
     if (!args) return 10
@@ -85,23 +103,28 @@ async function executeGraphQLQuery(
   }
 
   // Extract orderBy from query
-  const extractOrderBy = (args: string | undefined): { field: string; dir: 'ASC' | 'DESC' } => {
+  const extractOrderBy = (
+    args: string | undefined,
+  ): { field: string; dir: 'ASC' | 'DESC' } => {
     if (!args) return { field: 'number', dir: 'DESC' }
     const orderMatch = args.match(/orderBy:\s*(\w+)_(ASC|DESC)/)
     if (orderMatch) {
-      return { 
+      return {
         field: orderMatch[1].replace(/([A-Z])/g, '_$1').toLowerCase(),
-        dir: orderMatch[2] as 'ASC' | 'DESC'
+        dir: orderMatch[2] as 'ASC' | 'DESC',
       }
     }
     return { field: 'number', dir: 'DESC' }
   }
 
   // Extract where clause
-  const extractWhere = (args: string | undefined, vars?: Record<string, string | number | boolean | null>): Record<string, string | number> => {
+  const extractWhere = (
+    args: string | undefined,
+    vars?: Record<string, string | number | boolean | null>,
+  ): Record<string, string | number> => {
     const where: Record<string, string | number> = {}
     if (!args) return where
-    
+
     // Match patterns like: number_eq: 123 or hash_eq: "0x..."
     const eqMatches = args.matchAll(/(\w+)_eq:\s*(?:"([^"]+)"|(\d+)|\$(\w+))/g)
     for (const match of eqMatches) {
@@ -109,7 +132,7 @@ async function executeGraphQLQuery(
       const stringVal = match[2]
       const numVal = match[3]
       const varName = match[4]
-      
+
       if (stringVal) {
         where[field] = stringVal
       } else if (numVal) {
@@ -128,9 +151,9 @@ async function executeGraphQLQuery(
   const mapFields = (fields: string): string[] => {
     return fields
       .split(/[,\s]+/)
-      .filter(f => f && !f.includes('{') && !f.includes('}'))
-      .map(f => f.trim())
-      .filter(f => /^\w+$/.test(f))
+      .filter((f) => f && !f.includes('{') && !f.includes('}'))
+      .map((f) => f.trim())
+      .filter((f) => /^\w+$/.test(f))
   }
 
   try {
@@ -140,10 +163,10 @@ async function executeGraphQLQuery(
       const limit = extractLimit(args)
       const orderBy = extractOrderBy(args)
       const where = extractWhere(args, variables)
-      
+
       let sql = `SELECT * FROM block`
       const params: (string | number)[] = []
-      
+
       if (Object.keys(where).length > 0) {
         const conditions = Object.entries(where).map(([k, v]) => {
           params.push(v)
@@ -151,14 +174,18 @@ async function executeGraphQLQuery(
         })
         sql += ` WHERE ${conditions.join(' AND ')}`
       }
-      
+
       sql += ` ORDER BY "${orderBy.field}" ${orderBy.dir} LIMIT ${limit}`
-      
-      const result = await sqlit.query<Record<string, string | number | null>>(sql, params, DATABASE_ID)
-      
+
+      const result = await sqlit.query<Record<string, string | number | null>>(
+        sql,
+        params,
+        DATABASE_ID,
+      )
+
       return {
         data: {
-          blocks: result.rows.map(row => {
+          blocks: result.rows.map((row) => {
             const mapped: Record<string, string | number | null> = {}
             for (const field of fields) {
               const snakeField = field.replace(/([A-Z])/g, '_$1').toLowerCase()
@@ -169,17 +196,17 @@ async function executeGraphQLQuery(
         },
       }
     }
-    
+
     if (transactionsMatch) {
       const args = transactionsMatch[1]
       const fields = mapFields(transactionsMatch[2])
       const limit = extractLimit(args)
       const orderBy = extractOrderBy(args)
       const where = extractWhere(args, variables)
-      
+
       let sql = `SELECT * FROM "transaction"`
       const params: (string | number)[] = []
-      
+
       if (Object.keys(where).length > 0) {
         const conditions = Object.entries(where).map(([k, v]) => {
           params.push(v)
@@ -187,14 +214,18 @@ async function executeGraphQLQuery(
         })
         sql += ` WHERE ${conditions.join(' AND ')}`
       }
-      
+
       sql += ` ORDER BY "${orderBy.field}" ${orderBy.dir} LIMIT ${limit}`
-      
-      const result = await sqlit.query<Record<string, string | number | null>>(sql, params, DATABASE_ID)
-      
+
+      const result = await sqlit.query<Record<string, string | number | null>>(
+        sql,
+        params,
+        DATABASE_ID,
+      )
+
       return {
         data: {
-          transactions: result.rows.map(row => {
+          transactions: result.rows.map((row) => {
             const mapped: Record<string, string | number | null> = {}
             for (const field of fields) {
               const snakeField = field.replace(/([A-Z])/g, '_$1').toLowerCase()
@@ -205,16 +236,16 @@ async function executeGraphQLQuery(
         },
       }
     }
-    
+
     if (accountsMatch) {
       const args = accountsMatch[1]
       const fields = mapFields(accountsMatch[2])
       const limit = extractLimit(args)
       const where = extractWhere(args, variables)
-      
+
       let sql = `SELECT * FROM account`
       const params: (string | number)[] = []
-      
+
       if (Object.keys(where).length > 0) {
         const conditions = Object.entries(where).map(([k, v]) => {
           params.push(v)
@@ -222,14 +253,18 @@ async function executeGraphQLQuery(
         })
         sql += ` WHERE ${conditions.join(' AND ')}`
       }
-      
+
       sql += ` LIMIT ${limit}`
-      
-      const result = await sqlit.query<Record<string, string | number | null>>(sql, params, DATABASE_ID)
-      
+
+      const result = await sqlit.query<Record<string, string | number | null>>(
+        sql,
+        params,
+        DATABASE_ID,
+      )
+
       return {
         data: {
-          accounts: result.rows.map(row => {
+          accounts: result.rows.map((row) => {
             const mapped: Record<string, string | number | null> = {}
             for (const field of fields) {
               const snakeField = field.replace(/([A-Z])/g, '_$1').toLowerCase()
@@ -240,7 +275,7 @@ async function executeGraphQLQuery(
         },
       }
     }
-    
+
     // Introspection query - return basic schema info
     if (query.includes('__schema') || query.includes('__type')) {
       return {
@@ -256,12 +291,15 @@ async function executeGraphQLQuery(
         },
       }
     }
-    
+
     return {
       data: null,
-      errors: [{
-        message: 'Unsupported query. Supported: blocks, transactions, accounts. Use REST API at /api/* for full functionality.',
-      }],
+      errors: [
+        {
+          message:
+            'Unsupported query. Supported: blocks, transactions, accounts. Use REST API at /api/* for full functionality.',
+        },
+      ],
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
@@ -307,7 +345,7 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
     .onError(({ error, set }) => {
       const message = error instanceof Error ? error.message : String(error)
       console.error('[Indexer Worker] Error:', message)
-      
+
       // Return proper error response instead of 500
       set.status = 200 // GraphQL errors should be 200 with error in body
       return {
@@ -373,15 +411,17 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
     .get('/playground', () => {
       return Response.redirect('/graphql', 302)
     })
-    
+
     // GraphQL endpoint - executes queries against SQLit
     .post('/graphql', async ({ body }) => {
       const parsed = GraphQLRequestSchema.safeParse(body)
 
       if (!parsed.success) {
-        return { 
+        return {
           data: null,
-          errors: [{ message: 'Invalid GraphQL request: ' + parsed.error.message }] 
+          errors: [
+            { message: `Invalid GraphQL request: ${parsed.error.message}` },
+          ],
         }
       }
 
@@ -398,10 +438,15 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
         .get('/blocks', async ({ query }) => {
           const limit = parseInt(String(query.limit ?? '10'), 10)
           const offset = parseInt(String(query.offset ?? '0'), 10)
-          
+
           try {
             const sqlit = getSQLit()
-            const result = await sqlit.query<{ id: string; number: number; hash: string; timestamp: string }>(
+            const result = await sqlit.query<{
+              id: string
+              number: number
+              hash: string
+              timestamp: string
+            }>(
               `SELECT * FROM block ORDER BY number DESC LIMIT ? OFFSET ?`,
               [limit, offset],
               DATABASE_ID,
@@ -411,9 +456,9 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
               [],
               DATABASE_ID,
             )
-            return { 
-              blocks: result.rows, 
-              total: countResult.rows[0]?.count ?? 0 
+            return {
+              blocks: result.rows,
+              total: countResult.rows[0]?.count ?? 0,
             }
           } catch (err) {
             const message = err instanceof Error ? err.message : String(err)
@@ -423,7 +468,12 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
         .get('/blocks/latest', async () => {
           try {
             const sqlit = getSQLit()
-            const result = await sqlit.query<{ id: string; number: number; hash: string; timestamp: string }>(
+            const result = await sqlit.query<{
+              id: string
+              number: number
+              hash: string
+              timestamp: string
+            }>(
               `SELECT * FROM block ORDER BY number DESC LIMIT 1`,
               [],
               DATABASE_ID,
@@ -438,7 +488,12 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
           try {
             const sqlit = getSQLit()
             const blockNumber = parseInt(params.blockNumber, 10)
-            const result = await sqlit.query<{ id: string; number: number; hash: string; timestamp: string }>(
+            const result = await sqlit.query<{
+              id: string
+              number: number
+              hash: string
+              timestamp: string
+            }>(
               `SELECT * FROM block WHERE number = ? LIMIT 1`,
               [blockNumber],
               DATABASE_ID,
@@ -446,7 +501,11 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
             return { block: result.rows[0] ?? null }
           } catch (err) {
             const message = err instanceof Error ? err.message : String(err)
-            return { blockNumber: params.blockNumber, block: null, error: message }
+            return {
+              blockNumber: params.blockNumber,
+              block: null,
+              error: message,
+            }
           }
         })
 
@@ -454,10 +513,14 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
         .get('/transactions', async ({ query }) => {
           const limit = parseInt(String(query.limit ?? '10'), 10)
           const offset = parseInt(String(query.offset ?? '0'), 10)
-          
+
           try {
             const sqlit = getSQLit()
-            const result = await sqlit.query<{ id: string; hash: string; block_number: number }>(
+            const result = await sqlit.query<{
+              id: string
+              hash: string
+              block_number: number
+            }>(
               `SELECT * FROM "transaction" ORDER BY block_number DESC LIMIT ? OFFSET ?`,
               [limit, offset],
               DATABASE_ID,
@@ -467,9 +530,9 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
               [],
               DATABASE_ID,
             )
-            return { 
-              transactions: result.rows, 
-              total: countResult.rows[0]?.count ?? 0 
+            return {
+              transactions: result.rows,
+              total: countResult.rows[0]?.count ?? 0,
             }
           } catch (err) {
             const message = err instanceof Error ? err.message : String(err)
@@ -479,7 +542,11 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
         .get('/transactions/:hash', async ({ params }) => {
           try {
             const sqlit = getSQLit()
-            const result = await sqlit.query<{ id: string; hash: string; block_number: number }>(
+            const result = await sqlit.query<{
+              id: string
+              hash: string
+              block_number: number
+            }>(
               `SELECT * FROM "transaction" WHERE hash = ? LIMIT 1`,
               [params.hash],
               DATABASE_ID,
@@ -496,12 +563,16 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
           try {
             const sqlit = getSQLit()
             const address = params.address.toLowerCase()
-            const result = await sqlit.query<{ id: string; address: string; transaction_count: number }>(
+            const result = await sqlit.query<{
+              id: string
+              address: string
+              transaction_count: number
+            }>(
               `SELECT * FROM account WHERE address = ? OR id = ? LIMIT 1`,
               [address, address],
               DATABASE_ID,
             )
-            return { 
+            return {
               account: result.rows[0] ?? null,
               address: params.address,
             }
@@ -513,7 +584,7 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
         .get('/addresses/:address/transactions', async ({ params, query }) => {
           const limit = parseInt(String(query.limit ?? '10'), 10)
           const address = params.address.toLowerCase()
-          
+
           try {
             const sqlit = getSQLit()
             const result = await sqlit.query<{ id: string; hash: string }>(
@@ -531,10 +602,14 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
         // Tokens
         .get('/tokens', async ({ query }) => {
           const limit = parseInt(String(query.limit ?? '10'), 10)
-          
+
           try {
             const sqlit = getSQLit()
-            const result = await sqlit.query<{ id: string; address: string; contract_type: string }>(
+            const result = await sqlit.query<{
+              id: string
+              address: string
+              contract_type: string
+            }>(
               `SELECT * FROM contract WHERE is_erc20 = 1 OR is_erc721 = 1 OR is_erc1155 = 1 LIMIT ?`,
               [limit],
               DATABASE_ID,
@@ -549,7 +624,11 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
           try {
             const sqlit = getSQLit()
             const address = params.address.toLowerCase()
-            const result = await sqlit.query<{ id: string; address: string; contract_type: string }>(
+            const result = await sqlit.query<{
+              id: string
+              address: string
+              contract_type: string
+            }>(
               `SELECT * FROM contract WHERE address = ? LIMIT 1`,
               [address],
               DATABASE_ID,
@@ -564,10 +643,14 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
         // Events
         .get('/events', async ({ query }) => {
           const limit = parseInt(String(query.limit ?? '10'), 10)
-          
+
           try {
             const sqlit = getSQLit()
-            const result = await sqlit.query<{ id: string; event_name: string; timestamp: string }>(
+            const result = await sqlit.query<{
+              id: string
+              event_name: string
+              timestamp: string
+            }>(
               `SELECT * FROM decoded_event ORDER BY timestamp DESC LIMIT ?`,
               [limit],
               DATABASE_ID,
@@ -581,18 +664,29 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
         .get('/events/:contractAddress', async ({ params, query }) => {
           const limit = parseInt(String(query.limit ?? '10'), 10)
           const contractAddress = params.contractAddress.toLowerCase()
-          
+
           try {
             const sqlit = getSQLit()
-            const result = await sqlit.query<{ id: string; event_name: string; timestamp: string }>(
+            const result = await sqlit.query<{
+              id: string
+              event_name: string
+              timestamp: string
+            }>(
               `SELECT * FROM decoded_event WHERE address_id = ? ORDER BY timestamp DESC LIMIT ?`,
               [contractAddress, limit],
               DATABASE_ID,
             )
-            return { contractAddress: params.contractAddress, events: result.rows }
+            return {
+              contractAddress: params.contractAddress,
+              events: result.rows,
+            }
           } catch (err) {
             const message = err instanceof Error ? err.message : String(err)
-            return { contractAddress: params.contractAddress, events: [], error: message }
+            return {
+              contractAddress: params.contractAddress,
+              events: [],
+              error: message,
+            }
           }
         })
 
@@ -600,13 +694,30 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
         .get('/stats', async () => {
           try {
             const sqlit = getSQLit()
-            const [blocksCount, txCount, accountsCount, latestBlock] = await Promise.all([
-              sqlit.query<{ count: number }>(`SELECT COUNT(*) as count FROM block`, [], DATABASE_ID),
-              sqlit.query<{ count: number }>(`SELECT COUNT(*) as count FROM "transaction"`, [], DATABASE_ID),
-              sqlit.query<{ count: number }>(`SELECT COUNT(*) as count FROM account`, [], DATABASE_ID),
-              sqlit.query<{ timestamp: string }>(`SELECT timestamp FROM block ORDER BY number DESC LIMIT 1`, [], DATABASE_ID),
-            ])
-            
+            const [blocksCount, txCount, accountsCount, latestBlock] =
+              await Promise.all([
+                sqlit.query<{ count: number }>(
+                  `SELECT COUNT(*) as count FROM block`,
+                  [],
+                  DATABASE_ID,
+                ),
+                sqlit.query<{ count: number }>(
+                  `SELECT COUNT(*) as count FROM "transaction"`,
+                  [],
+                  DATABASE_ID,
+                ),
+                sqlit.query<{ count: number }>(
+                  `SELECT COUNT(*) as count FROM account`,
+                  [],
+                  DATABASE_ID,
+                ),
+                sqlit.query<{ timestamp: string }>(
+                  `SELECT timestamp FROM block ORDER BY number DESC LIMIT 1`,
+                  [],
+                  DATABASE_ID,
+                ),
+              ])
+
             return {
               totalBlocks: blocksCount.rows[0]?.count ?? 0,
               totalTransactions: txCount.rows[0]?.count ?? 0,
@@ -638,7 +749,7 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
             )
             const txInLastMinute = result.rows[0]?.count ?? 0
             const currentTPS = txInLastMinute / 60
-            
+
             return {
               currentTPS: Math.round(currentTPS * 100) / 100,
               avgTPS: currentTPS,
@@ -673,12 +784,16 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
 
           // Execute skill based on name
           const { skill, params } = parsed.data
-          
+
           if (skill === 'query_blocks') {
             const limit = typeof params?.limit === 'number' ? params.limit : 10
             try {
               const sqlit = getSQLit()
-              const result = await sqlit.query<{ number: number; hash: string; timestamp: string }>(
+              const result = await sqlit.query<{
+                number: number
+                hash: string
+                timestamp: string
+              }>(
                 `SELECT number, hash, timestamp FROM block ORDER BY number DESC LIMIT ?`,
                 [limit],
                 DATABASE_ID,
@@ -689,7 +804,7 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
               return { skill, error: message }
             }
           }
-          
+
           return { skill, result: 'Skill not implemented' }
         }),
     )
@@ -748,12 +863,16 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
           }
 
           const { tool, arguments: args } = parsed.data
-          
+
           if (tool === 'indexer_query_blocks') {
             const limit = typeof args.limit === 'number' ? args.limit : 10
             try {
               const sqlit = getSQLit()
-              const result = await sqlit.query<{ number: number; hash: string; timestamp: string }>(
+              const result = await sqlit.query<{
+                number: number
+                hash: string
+                timestamp: string
+              }>(
                 `SELECT number, hash, timestamp FROM block ORDER BY number DESC LIMIT ?`,
                 [limit],
                 DATABASE_ID,
@@ -764,36 +883,38 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
               return { tool, error: message }
             }
           }
-          
+
           if (tool === 'indexer_query_transactions') {
             const limit = typeof args.limit === 'number' ? args.limit : 10
-            const address = typeof args.address === 'string' ? args.address.toLowerCase() : null
-            
+            const address =
+              typeof args.address === 'string'
+                ? args.address.toLowerCase()
+                : null
+
             try {
               const sqlit = getSQLit()
               let sql = `SELECT hash, block_number, from_id, to_id FROM "transaction"`
               const params: (string | number)[] = []
-              
+
               if (address) {
                 sql += ` WHERE from_id = ? OR to_id = ?`
                 params.push(address, address)
               }
-              
+
               sql += ` ORDER BY block_number DESC LIMIT ?`
               params.push(limit)
-              
-              const result = await sqlit.query<{ hash: string; block_number: number }>(
-                sql,
-                params,
-                DATABASE_ID,
-              )
+
+              const result = await sqlit.query<{
+                hash: string
+                block_number: number
+              }>(sql, params, DATABASE_ID)
               return { tool, result: result.rows }
             } catch (err) {
               const message = err instanceof Error ? err.message : String(err)
               return { tool, error: message }
             }
           }
-          
+
           if (tool === 'indexer_graphql') {
             const query = typeof args.query === 'string' ? args.query : ''
             return await executeGraphQLQuery(query)

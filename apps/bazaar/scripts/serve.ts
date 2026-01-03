@@ -157,7 +157,7 @@ async function uploadToIPFS(filePath: string, name: string): Promise<string> {
   const content = await readFile(filePath)
 
   const formData = new FormData()
-  formData.append('file', new Blob([content]), name)
+  formData.append('file', new Blob([new Uint8Array(content)]), name)
   formData.append('tier', 'popular')
   formData.append('category', 'app')
 
@@ -268,7 +268,7 @@ async function deployWorkerToWorkerd(): Promise<void> {
   const codeFormData = new FormData()
   codeFormData.append(
     'file',
-    new Blob([workerCode], { type: 'application/javascript' }),
+    new Blob([new Uint8Array(workerCode)], { type: 'application/javascript' }),
     'bazaar-api-worker.js',
   )
   codeFormData.append('tier', 'compute')

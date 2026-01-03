@@ -121,7 +121,7 @@ async function uploadToIPFS(
   const hash = keccak256(content) as `0x${string}`
 
   const formData = new FormData()
-  formData.append('file', new Blob([content]), name)
+  formData.append('file', new Blob([new Uint8Array(content)]), name)
   formData.append('name', name)
 
   const response = await fetch(`${dwsUrl}/storage/upload`, {
@@ -319,6 +319,45 @@ function getContentType(path: string): string {
   return 'application/octet-stream'
 }
 
+// Register App with DWS
+
+async function registerApp(
+  config: DeployConfig,
+  staticAssets: Map<string, UploadResult>,
+  workerId: string,
+): Promise<void> {
+  const staticFiles: Record<string, string> = {}
+  for (const [path, result] of staticAssets.entries()) {
+    // Normalize path with leading slash
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`
+    staticFiles[normalizedPath] = result.cid
+  }
+
+  const appData = {
+    name: 'bazaar',
+    jnsName: 'bazaar.jeju',
+    frontendCid: staticAssets.get('index.html')?.cid ?? null,
+    staticFiles,
+    backendWorkerId: workerId,
+    backendEndpoint: null,
+    apiPaths: ['/api', '/health', '/.well-known'],
+    spa: true,
+    enabled: true,
+  }
+
+  const response = await fetch(`${config.dwsUrl}/apps/deployed`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(appData),
+  })
+
+  if (!response.ok) {
+    console.warn(`   ⚠️ App registration failed: ${await response.text()}`)
+  } else {
+    console.log('   ✅ App registered with static files')
+  }
+}
+
 // Main Deploy Function
 
 async function deploy(): Promise<void> {
@@ -350,8 +389,12 @@ async function deploy(): Promise<void> {
   const workerId = await deployWorker(config, workerBundle)
   console.log(`   Worker ID: ${workerId}\n`)
 
-  // Setup CDN
-  console.log('🌐 Configuring CDN...')
+  // Register app with static files
+  console.log('📝 Registering app...')
+  await registerApp(config, staticAssets, workerId)
+
+  // Setup CDN (optional)
+  console.log('\n🌐 Configuring CDN...')
   await setupCDN(config, staticAssets)
 
   // Print summary

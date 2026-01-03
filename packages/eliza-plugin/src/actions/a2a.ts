@@ -136,11 +136,13 @@ export const discoverAgentsAction: Action = {
     }
 
     // Sanitize agent names and endpoints to prevent injection
-    const sanitizedAgents = agents.slice(0, 10).map((agent) => ({
-      name: truncateOutput(agent.name, 100),
-      endpoint: truncateOutput(agent.endpoint, 200),
-      skillCount: agent.skills.length,
-    }))
+    const sanitizedAgents = agents
+      .slice(0, 10)
+      .map((agent: { name: string; endpoint: string; skills: unknown[] }) => ({
+        name: truncateOutput(agent.name, 100),
+        endpoint: truncateOutput(agent.endpoint, 200),
+        skillCount: agent.skills.length,
+      }))
 
     const agentList = sanitizedAgents
       .map(
