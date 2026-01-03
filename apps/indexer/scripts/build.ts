@@ -110,6 +110,7 @@ async function build() {
   console.log('  lib/        - Compiled TypeScript')
   console.log(`  dist/web/${mainFileName} - Frontend bundle`)
   console.log('  dist/index.html - Entry HTML')
+  process.exit(0)
 }
 
 build().catch((err) => {

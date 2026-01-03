@@ -144,7 +144,9 @@ async function buildFrontend(): Promise<void> {
     entrypoints: ['./web/client.tsx'],
     outdir: WEB_DIR,
     target: 'browser',
-    // Disabled splitting due to Bun bundler bug with @noble/curves creating duplicate exports
+    // splitting: false produces smaller bundles (5MB vs 105MB with splitting)
+    // Code splitting duplicates shared deps like TensorFlow.js model shards
+    // Only enable splitting for apps with lazy routes where initial load matters
     splitting: false,
     packages: 'bundle',
     minify: true,
@@ -287,6 +289,7 @@ async function build(): Promise<void> {
   await Promise.all([buildFrontend(), buildApi()])
 
   console.log('\nBuild complete.')
+  process.exit(0)
 }
 
 build().catch((error) => {

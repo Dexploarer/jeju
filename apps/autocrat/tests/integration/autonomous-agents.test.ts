@@ -10,20 +10,16 @@
  * 6. Full governance flow with localnet
  */
 
-import { beforeAll, afterAll, describe, expect, test } from 'bun:test'
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { getLocalhostHost } from '@jejunetwork/config'
 import {
+  type AgentVote,
   autocratAgentRuntime,
   checkDWSCompute,
-  dwsGenerate,
   type DeliberationRequest,
-  type AgentVote,
+  dwsGenerate,
 } from '../../api/agents/runtime'
-import {
-  autocratAgentTemplates,
-  directorAgent,
-  getAgentByRole,
-} from '../../api/agents/templates'
+import { directorAgent, getAgentByRole } from '../../api/agents/templates'
 import { ensureServices } from '../setup'
 
 // Test state
@@ -388,8 +384,16 @@ describe('3. Director Decision-Making', () => {
     expect(Array.isArray(decision.recommendations)).toBe(true)
 
     setCriteria('director', 'canMakeDecision', true)
-    setCriteria('director', 'hasPersonaResponse', decision.personaResponse.length > 0)
-    setCriteria('director', 'hasRecommendations', decision.recommendations.length > 0)
+    setCriteria(
+      'director',
+      'hasPersonaResponse',
+      decision.personaResponse.length > 0,
+    )
+    setCriteria(
+      'director',
+      'hasRecommendations',
+      decision.recommendations.length > 0,
+    )
     setCriteria('director', 'hasConfidenceScore', decision.confidence > 0)
 
     console.log('')
@@ -443,7 +447,9 @@ describe('3. Director Decision-Making', () => {
 
     expect(decision).toBeDefined()
     expect(decision.approved).toBe(false)
-    console.log(`Rejection scenario: ${decision.approved ? 'APPROVED' : 'REJECTED'} as expected`)
+    console.log(
+      `Rejection scenario: ${decision.approved ? 'APPROVED' : 'REJECTED'} as expected`,
+    )
   }, 60000)
 })
 
@@ -523,7 +529,9 @@ describe('5. A2A Actions via API', () => {
       setCriteria('a2a', 'getDirectorStatusWorks', true)
       console.log('A2A get-director-status works')
     } catch (err) {
-      console.log(`A2A test failed: ${err instanceof Error ? err.message : 'Unknown'}`)
+      console.log(
+        `A2A test failed: ${err instanceof Error ? err.message : 'Unknown'}`,
+      )
     }
   }, 15000)
 
@@ -547,7 +555,8 @@ describe('5. A2A Actions via API', () => {
                     skillId: 'assess-proposal',
                     title: 'Test Proposal',
                     summary: 'A test proposal for validation',
-                    description: 'This is a detailed description of the test proposal.',
+                    description:
+                      'This is a detailed description of the test proposal.',
                   },
                 },
               ],
@@ -564,7 +573,9 @@ describe('5. A2A Actions via API', () => {
       setCriteria('a2a', 'assessProposalWorks', true)
       console.log('A2A assess-proposal works')
     } catch (err) {
-      console.log(`A2A assess-proposal test failed: ${err instanceof Error ? err.message : 'Unknown'}`)
+      console.log(
+        `A2A assess-proposal test failed: ${err instanceof Error ? err.message : 'Unknown'}`,
+      )
     }
   }, 35000)
 
@@ -604,7 +615,9 @@ describe('5. A2A Actions via API', () => {
       setCriteria('a2a', 'chatWorks', true)
       console.log('A2A chat works')
     } catch (err) {
-      console.log(`A2A chat test failed: ${err instanceof Error ? err.message : 'Unknown'}`)
+      console.log(
+        `A2A chat test failed: ${err instanceof Error ? err.message : 'Unknown'}`,
+      )
     }
   }, 35000)
 })
@@ -612,17 +625,25 @@ describe('5. A2A Actions via API', () => {
 describe('6. Orchestrator Loop', () => {
   test('should verify orchestrator can be started', async () => {
     try {
-      const response = await fetch(`${autocratApiUrl}/api/v1/orchestrator/status`, {
-        signal: AbortSignal.timeout(5000),
-      })
+      const response = await fetch(
+        `${autocratApiUrl}/api/v1/orchestrator/status`,
+        {
+          signal: AbortSignal.timeout(5000),
+        },
+      )
 
       if (response.ok) {
         const status = await response.json()
         setCriteria('orchestrator', 'canStart', status.running || true)
-        console.log('Orchestrator status:', status.running ? 'Running' : 'Stopped')
+        console.log(
+          'Orchestrator status:',
+          status.running ? 'Running' : 'Stopped',
+        )
       }
     } catch (err) {
-      console.log(`Orchestrator test skipped: ${err instanceof Error ? err.message : 'Unknown'}`)
+      console.log(
+        `Orchestrator test skipped: ${err instanceof Error ? err.message : 'Unknown'}`,
+      )
     }
   }, 10000)
 })
@@ -630,9 +651,15 @@ describe('6. Orchestrator Loop', () => {
 describe('7. Full Governance Flow', () => {
   test('should run complete deliberation and decision flow', async () => {
     console.log('')
-    console.log('╔════════════════════════════════════════════════════════════╗')
-    console.log('║           FULL GOVERNANCE FLOW SIMULATION                  ║')
-    console.log('╚════════════════════════════════════════════════════════════╝')
+    console.log(
+      '╔════════════════════════════════════════════════════════════╗',
+    )
+    console.log(
+      '║           FULL GOVERNANCE FLOW SIMULATION                  ║',
+    )
+    console.log(
+      '╚════════════════════════════════════════════════════════════╝',
+    )
     console.log('')
 
     // Step 1: Create proposal
@@ -692,9 +719,14 @@ describe('7. Full Governance Flow', () => {
     }
     console.log('')
 
-    console.log('╔════════════════════════════════════════════════════════════╗')
-    console.log('║               GOVERNANCE FLOW COMPLETE                      ║')
-    console.log('╚════════════════════════════════════════════════════════════╝')
+    console.log(
+      '╔════════════════════════════════════════════════════════════╗',
+    )
+    console.log(
+      '║               GOVERNANCE FLOW COMPLETE                      ║',
+    )
+    console.log(
+      '╚════════════════════════════════════════════════════════════╝',
+    )
   }, 600000) // 10 minutes
 })
-

@@ -161,18 +161,15 @@ async function registerAgent(
     result.characterCid = storeResult.cid
 
     // Register with Crucible API (uses config-based URL)
-    const registerResponse = await fetch(
-      `${crucibleEndpoint}/api/v1/agents`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          characterCid: result.characterCid,
-          initialFunding: parseEther('0.01').toString(),
-          botType: 'ai_agent',
-        }),
-      },
-    )
+    const registerResponse = await fetch(`${crucibleEndpoint}/api/v1/agents`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        characterCid: result.characterCid,
+        initialFunding: parseEther('0.01').toString(),
+        botType: 'ai_agent',
+      }),
+    })
 
     if (!registerResponse.ok) {
       const errorText = await registerResponse.text()

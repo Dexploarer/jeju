@@ -397,9 +397,7 @@ describe('Board Address Resolution', () => {
     )
 
     // Position 2 = Code Guardian
-    expect(boardAddresses['Code Guardian']).toBe(
-      WELL_KNOWN_KEYS.dev[2].address,
-    )
+    expect(boardAddresses['Code Guardian']).toBe(WELL_KNOWN_KEYS.dev[2].address)
 
     // Position 3 = Community Guardian
     expect(boardAddresses['Community Guardian']).toBe(

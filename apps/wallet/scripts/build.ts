@@ -220,6 +220,7 @@ async function build() {
   console.log(`  dist/miniapp/index.html   - Miniapp page`)
   console.log(`  dist/miniapp/styles.css   - Miniapp CSS (tree-shaken)`)
   console.log(`  dist/miniapp/${miniappFileName} - Miniapp bundle`)
+  process.exit(0)
 }
 
 build().catch((err) => {

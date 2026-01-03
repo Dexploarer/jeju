@@ -326,19 +326,25 @@ async function main() {
   console.log('🔧 Setting up network workspace...\n')
 
   // Check if running during postinstall
-  const isPostInstall = Boolean(process.env.npm_lifecycle_event === 'postinstall')
+  const isPostInstall = Boolean(
+    process.env.npm_lifecycle_event === 'postinstall',
+  )
 
   // 1. Initialize git submodules (contract libs)
   // Skip during postinstall to avoid hanging - it's optional and can be slow
   if (isPostInstall) {
     console.log('📚 Skipping contract libraries sync during postinstall')
-    console.log('   ℹ️  Run manually if needed: git submodule update --init --recursive\n')
+    console.log(
+      '   ℹ️  Run manually if needed: git submodule update --init --recursive\n',
+    )
   } else {
     console.log('📚 Initializing contract libraries...\n')
     console.log('   (Attempting with 30s timeout - will skip if too slow)\n')
 
     const result = await runWithTimeout(
-      ['git submodule update --init --recursive --depth 1 packages/contracts/lib/'] as unknown as Parameters<typeof $>[0],
+      [
+        'git submodule update --init --recursive --depth 1 packages/contracts/lib/',
+      ] as unknown as Parameters<typeof $>[0],
       30000,
     )
 
@@ -437,18 +443,24 @@ async function main() {
   // Skip during postinstall to avoid hanging - user can run manually
   if (isPostInstall) {
     console.log('   🎭 Skipping Playwright browser install during postinstall')
-    console.log('   ℹ️  Run manually if needed: bunx playwright install chromium\n')
+    console.log(
+      '   ℹ️  Run manually if needed: bunx playwright install chromium\n',
+    )
   } else {
     console.log('   🎭 Installing Playwright browsers...')
     const playwrightResult = await runWithTimeout(
-      ['bunx playwright install chromium'] as unknown as Parameters<typeof $>[0],
+      ['bunx playwright install chromium'] as unknown as Parameters<
+        typeof $
+      >[0],
       60000,
     )
 
     if (playwrightResult.exitCode === 0) {
       console.log('   ✅ Playwright browsers installed\n')
     } else if (playwrightResult.timedOut) {
-      console.log('   ⚠️  Playwright install timed out (run: bunx playwright install)\n')
+      console.log(
+        '   ⚠️  Playwright install timed out (run: bunx playwright install)\n',
+      )
     } else {
       console.log(
         '   ⚠️  Could not install Playwright browsers (run: bunx playwright install)\n',

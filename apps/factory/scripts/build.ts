@@ -302,6 +302,7 @@ async function build(): Promise<void> {
   await Promise.all([buildFrontend(), buildApi()])
 
   console.log('\nBuild complete.')
+  process.exit(0)
 }
 
 build().catch((error) => {

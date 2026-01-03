@@ -244,7 +244,10 @@ async function buildLander(): Promise<void> {
   const mainFileName = mainEntry ? mainEntry.path.split('/').pop() : 'main.js'
 
   // Copy and update index.html
-  const landerHtml = await readFile(resolve(APP_DIR, 'lander/index.html'), 'utf-8')
+  const landerHtml = await readFile(
+    resolve(APP_DIR, 'lander/index.html'),
+    'utf-8',
+  )
   let updatedHtml = landerHtml.replace('/main.tsx', `/${mainFileName}`)
   // Replace any Tailwind CDN script with compiled CSS
   updatedHtml = updatedHtml.replace(
@@ -329,6 +332,7 @@ async function build(): Promise<void> {
   console.log('   CLI bundle: ./dist/cli/')
   console.log('   Lander: ./dist/lander/')
   console.log('   Deployment manifest: ./dist/deployment.json')
+  process.exit(0)
 }
 
 build().catch((error) => {

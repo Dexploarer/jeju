@@ -178,6 +178,7 @@ async function build() {
   console.log('  dist/web/styles.css   - Compiled CSS')
   console.log('  dist/index.html       - Entry HTML')
   console.log('  dist/favicon.svg      - Favicon')
+  process.exit(0)
 }
 
 build().catch((err) => {

@@ -41,8 +41,10 @@ beforeAll(async () => {
     const module = await import('../../../api/leaderboard/server')
     leaderboardApp = module.leaderboardApp
     isInfraAvailable = true
-  } catch (error) {
-    console.warn('⚠️  Leaderboard tests skipped: Jeju CLI infrastructure required')
+  } catch (_error) {
+    console.warn(
+      '⚠️  Leaderboard tests skipped: Jeju CLI infrastructure required',
+    )
     console.warn('   Run with: jeju test --mode integration --app gateway')
     isInfraAvailable = false
   }
@@ -128,7 +130,10 @@ describe('Leaderboard API', () => {
             message: {
               messageId: 'test-123',
               parts: [
-                { kind: 'data', data: { skillId: 'get-leaderboard', limit: 5 } },
+                {
+                  kind: 'data',
+                  data: { skillId: 'get-leaderboard', limit: 5 },
+                },
               ],
             },
           },

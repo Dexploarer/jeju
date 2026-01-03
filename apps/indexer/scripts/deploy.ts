@@ -311,8 +311,9 @@ async function registerApp(
     staticFilesRecord[path] = cid
   }
 
-  // Construct backend endpoint from worker ID
-  const backendEndpoint = `${config.dwsUrl}/workers/${workerInfo.functionId}`
+  // Use CID-based worker endpoint - CID workers are automatically deployed on demand
+  // UUID-based workers require the runtime to have them loaded, CID-based are more reliable
+  const backendEndpoint = `${config.dwsUrl}/workers/${workerInfo.codeCid}/http`
 
   // App registration data for DWS app router
   const appConfig = {
@@ -320,8 +321,8 @@ async function registerApp(
     jnsName: 'indexer.jeju',
     frontendCid: indexCid, // CID for index.html (used as fallback)
     staticFiles: staticFilesRecord, // Map of all file paths to CIDs
-    backendWorkerId: workerInfo.functionId, // DWS worker ID
-    backendEndpoint: backendEndpoint, // DWS worker endpoint
+    backendWorkerId: workerInfo.codeCid, // Use CID for reliable on-demand deployment
+    backendEndpoint: backendEndpoint, // DWS worker endpoint (CID-based)
     apiPaths: ['/api', '/health', '/a2a', '/mcp', '/graphql'], // Note: no trailing slashes - isApiPath checks pathname.startsWith(prefix + '/')
     spa: true, // Single-page application
     enabled: true,
@@ -330,7 +331,7 @@ async function registerApp(
   console.log('[Indexer] Registering app with DWS...')
   console.log(`   Frontend CID: ${indexCid}`)
   console.log(`   Static files: ${staticFiles.size}`)
-  console.log(`   Backend worker: ${workerInfo.functionId}`)
+  console.log(`   Backend worker CID: ${workerInfo.codeCid}`)
   console.log(`   Backend endpoint: ${backendEndpoint}`)
   console.log(`   API paths: ${appConfig.apiPaths.join(', ')}`)
 
@@ -405,7 +406,7 @@ async function deploy(): Promise<void> {
   console.log(`${`║  API:      ${domain}/api`.padEnd(61)}║`)
   console.log(`${`║  GraphQL:  ${domain}/graphql`.padEnd(61)}║`)
   console.log(
-    `${`║  Worker:   ${workerInfo.functionId.slice(0, 36)}`.padEnd(61)}║`,
+    `${`║  Worker:   ${workerInfo.codeCid.slice(0, 36)}`.padEnd(61)}║`,
   )
   console.log(
     `${`║  IPFS:     ipfs://${staticResult.rootCid.slice(0, 20)}...`.padEnd(61)}║`,

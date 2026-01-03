@@ -1491,7 +1491,15 @@ if (import.meta.main) {
     port: PORT,
     maxRequestBodySize: 500 * 1024 * 1024, // 500MB for large artifact uploads
     idleTimeout: 120, // 120 seconds - health checks can take time when external services are slow
-    async fetch(req: Request, server) {
+    async fetch(
+      req: Request,
+      server: {
+        upgrade(
+          req: Request,
+          options?: { data?: WebSocketData; headers?: HeadersInit },
+        ): boolean
+      },
+    ) {
       // Handle WebSocket upgrades for price streaming
       const url = new URL(req.url)
       if (
@@ -1517,9 +1525,7 @@ if (import.meta.main) {
       }
 
       // App routing - check if request is for a deployed app
-      const rawHostname = req.headers.get('host') ?? url.hostname
-      // Strip port from hostname if present
-      const hostname = rawHostname.split(':')[0]
+      const hostname = req.headers.get('host') ?? url.hostname
       console.log(`[Bun.serve] Request: ${hostname}${url.pathname}`)
 
       // Special handling for core services with internal routing
@@ -1550,10 +1556,12 @@ if (import.meta.main) {
       }
 
       // Check if this is a deployed app (not dws itself)
+      // Note: hostname may include port (e.g., localhost:4030), so use startsWith
+      const hostnameWithoutPort = hostname.split(':')[0]
       if (
-        !hostname.startsWith('dws.') &&
-        !hostname.startsWith('127.') &&
-        hostname !== 'localhost'
+        !hostnameWithoutPort.startsWith('dws.') &&
+        !hostnameWithoutPort.startsWith('127.') &&
+        hostnameWithoutPort !== 'localhost'
       ) {
         const appName = hostname.split('.')[0]
         const deployedApp = getDeployedApp(appName)

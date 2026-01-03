@@ -52,7 +52,10 @@ export const registryRoutes = new Elysia({ prefix: '/api/v1/registry' })
         return {
           service: 'registry',
           status: 'unavailable',
-          message: error instanceof Error ? error.message : 'Registry service unavailable',
+          message:
+            error instanceof Error
+              ? error.message
+              : 'Registry service unavailable',
         }
       }
     },

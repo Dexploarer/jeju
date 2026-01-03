@@ -12,8 +12,8 @@ import {
 import { expectValid } from '@jejunetwork/types'
 import { Elysia } from 'elysia'
 import {
-  CasualProposalCategorySchema,
   type BoardConfig,
+  CasualProposalCategorySchema,
   ProposalTypeSchema,
 } from '../lib'
 import { createAutocratA2AServer } from './a2a-server'
@@ -1176,9 +1176,7 @@ async function start() {
     triggerMode = 'compute'
   }
 
-  console.log(
-    `[Board] port=${port} tee=${getTEEMode()} trigger=${triggerMode}`,
-  )
+  console.log(`[Board] port=${port} tee=${getTEEMode()} trigger=${triggerMode}`)
 
   if (blockchain.boardDeployed) {
     const orchestratorConfig: import('./orchestrator').AutocratConfig = {
@@ -1203,8 +1201,8 @@ start()
 export default { port, fetch: app.fetch }
 export { app, config }
 export type {
-  CasualProposalCategory,
   BoardConfig,
+  CasualProposalCategory,
   DirectorPersona,
   FundingConfig,
   GovernanceParams,

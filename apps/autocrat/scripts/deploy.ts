@@ -12,11 +12,7 @@
 import { existsSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
-import {
-  getCurrentNetwork,
-  getDWSUrl,
-  getL2RpcUrl,
-} from '@jejunetwork/config'
+import { getCurrentNetwork, getDWSUrl, getL2RpcUrl } from '@jejunetwork/config'
 import { $ } from 'bun'
 import { type Address, keccak256 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'

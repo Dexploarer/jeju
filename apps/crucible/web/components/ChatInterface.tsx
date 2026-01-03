@@ -559,8 +559,7 @@ function getRoomWelcomeMessage(type: string): string {
       'Red Team vs Blue Team. The battle begins. May the best team win.',
     debate:
       'Welcome to the debate. Present your arguments clearly and respectfully.',
-    board:
-      'Board session started. Proposals will be voted on by all members.',
+    board: 'Board session started. Proposals will be voted on by all members.',
   }
   return messages[type] ?? 'Welcome to the chat room.'
 }

@@ -73,6 +73,7 @@ async function build() {
     target: 'browser',
     minify: true,
     sourcemap: 'external',
+    splitting: false,
     packages: 'bundle',
     drop: ['debugger'],
   })
@@ -104,6 +105,7 @@ async function build() {
   console.log('  dist/api/index.js    - API server')
   console.log('  dist/api/worker.js   - DWS worker (if successful)')
   console.log('  dist/web/            - Frontend assets')
+  process.exit(0)
 }
 
 build().catch((err) => {

@@ -52,11 +52,12 @@ const SQLIT_DATABASE_ID = config.sqlitDatabaseId || 'indexer-testnet'
 console.log(`[Indexer] Using SQLit database: ${SQLIT_DATABASE_ID}`)
 
 // SQLitDatabase implements all Store methods used by the indexer
-// Type assertion needed - SQLitDatabase provides compatible Store interface at runtime
-// The cast through unknown is needed because TypeORM Store has extra methods we don't use
+// Type assertion through unknown is needed because SQLitDatabase provides compatible
+// Store interface at runtime but TypeORM Store has extra methods we don't use
+// Note: FinalDatabase type comes from transitive dependency
 import type { FinalDatabase } from '@subsquid/util-internal-processor-tools'
 
-const db: FinalDatabase<Store> = new SQLitDatabase({
+const db = new SQLitDatabase({
   databaseId: SQLIT_DATABASE_ID,
 }) as unknown as FinalDatabase<Store>
 processor.run(db, async (ctx: ProcessorContext<Store>) => {

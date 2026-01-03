@@ -152,7 +152,7 @@ async function checkDWSCompute(): Promise<{
 // Register a board agent
 async function registerBoardAgent(
   template: AutocratAgentTemplate,
-  daoId: string,
+  _daoId: string,
   autocratEndpoint: string,
   dryRun: boolean,
 ): Promise<SeedResult> {
@@ -173,19 +173,16 @@ async function registerBoardAgent(
 
   try {
     // Register agent via autocrat API
-    const response = await fetch(
-      `${autocratEndpoint}/api/v1/agents/register`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: template.name,
-          role: template.role,
-          a2aEndpoint: `${autocratEndpoint}/a2a`,
-          mcpEndpoint: `${autocratEndpoint}/mcp`,
-        }),
-      },
-    )
+    const response = await fetch(`${autocratEndpoint}/api/v1/agents/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: template.name,
+        role: template.role,
+        a2aEndpoint: `${autocratEndpoint}/a2a`,
+        mcpEndpoint: `${autocratEndpoint}/mcp`,
+      }),
+    })
 
     if (!response.ok) {
       const errorText = await response.text()
@@ -237,7 +234,8 @@ async function seedDAO(
     }
 
     // Create or update DAO with correct API path and schema
-    const displayName = config.daoName.charAt(0).toUpperCase() + config.daoName.slice(1)
+    const displayName =
+      config.daoName.charAt(0).toUpperCase() + config.daoName.slice(1)
     const response = await fetch(`${autocratEndpoint}/api/v1/dao`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

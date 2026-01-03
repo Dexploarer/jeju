@@ -183,6 +183,7 @@ async function build() {
       target: 'bun',
       minify: true,
       sourcemap: 'external',
+      drop: ['debugger'],
     })
     if (!result.success) {
       console.warn(`[Gateway] Warning: ${apiFile} build failed`)
@@ -264,6 +265,7 @@ async function build() {
   console.log(`  dist/web/${mainFileName} - Frontend bundle`)
   console.log('  dist/api/                - API servers')
   console.log('  dist/index.html          - Entry HTML')
+  process.exit(0)
 }
 
 build().catch((err) => {

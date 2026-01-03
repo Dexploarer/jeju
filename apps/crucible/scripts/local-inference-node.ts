@@ -19,19 +19,6 @@ if (!GROQ_API_KEY) {
   process.exit(1)
 }
 
-// Chat completion request
-interface ChatMessage {
-  role: 'system' | 'user' | 'assistant'
-  content: string
-}
-
-interface ChatCompletionRequest {
-  model: string
-  messages: ChatMessage[]
-  temperature?: number
-  max_tokens?: number
-}
-
 // Map model names to GROQ models
 function mapModel(model: string): string {
   const lower = model.toLowerCase()
@@ -100,7 +87,7 @@ const app = new Elysia()
   )
 
 // Start server
-const server = app.listen(PORT)
+const _server = app.listen(PORT)
 console.log(`[Inference Node] Started on port ${PORT}`)
 console.log(`[Inference Node] Using GROQ provider`)
 
@@ -164,5 +151,3 @@ process.on('SIGINT', () => {
   console.log('[Inference Node] Shutting down...')
   process.exit(0)
 })
-
-

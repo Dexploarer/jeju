@@ -144,9 +144,18 @@ export class DWSClient {
     const result = await this.fetch('/compute/nodes/stats', {
       schema: ComputeNodeStatsSchema,
     })
-    // Handle both response formats
-    const activeNodes = result.inference?.activeNodes ?? result.activeNodes ?? 0
-    const totalNodes = result.totalNodes ?? activeNodes
+    // Handle both response formats - also check training nodes as fallback
+    // since inference nodes may register as training nodes
+    const activeNodes =
+      result.inference?.activeNodes ??
+      result.training?.activeNodes ??
+      result.activeNodes ??
+      0
+    const totalNodes =
+      result.inference?.totalNodes ??
+      result.training?.totalNodes ??
+      result.totalNodes ??
+      activeNodes
     return { totalNodes, activeNodes }
   }
 

@@ -243,8 +243,7 @@ export class MultiTenantBoardManager {
         ...config.config,
       },
       oauth3App:
-        config.oauth3App ??
-        (await this.createBoardOAuthApp(boardType, config)),
+        config.oauth3App ?? (await this.createBoardOAuthApp(boardType, config)),
       treasury: config.treasury ?? template.config.treasury,
       director: {
         ...template.director,
@@ -353,10 +352,7 @@ export class MultiTenantBoardManager {
     board.config.boardAgents = board.agents.map((a) => a.address)
   }
 
-  async removeBoardAgent(
-    boardType: BoardType,
-    role: string,
-  ): Promise<void> {
+  async removeBoardAgent(boardType: BoardType, role: string): Promise<void> {
     const board = this.registry.boards.get(boardType)
     if (!board) {
       throw new Error(`Board ${boardType} not found`)

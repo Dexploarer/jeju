@@ -1,5 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
+import { reportBundleSizes } from '@jejunetwork/shared'
 import type { BunPlugin } from 'bun'
 
 const outdir = './dist'
@@ -136,6 +137,8 @@ if (!result.success) {
   process.exit(1)
 }
 
+reportBundleSizes(result, 'DWS Frontend')
+
 // Find the main entry file with hash
 const mainEntry = result.outputs.find(
   (o) => o.kind === 'entry-point' && o.path.includes('main'),
@@ -160,7 +163,4 @@ if (cssFileName) {
 writeFileSync(join(outdir, 'index.html'), indexHtml)
 
 console.log('Build succeeded.')
-console.log(`  Entry: ${mainFileName}`)
-for (const output of result.outputs) {
-  console.log(`  ${output.path}`)
-}
+process.exit(0)

@@ -207,15 +207,19 @@ async function uploadToIPFS(
       }
     }
 
-    const errorText = response ? await response.text() : (lastError?.message ?? 'Unknown error')
+    const errorText = response
+      ? await response.text()
+      : (lastError?.message ?? 'Unknown error')
     console.log(`   Attempt ${attempt}/3 failed for ${name}: ${errorText}`)
-    
+
     if (attempt < 3) {
       const delay = attempt * 2000 // 2s, 4s
       console.log(`   Retrying in ${delay / 1000}s...`)
-      await new Promise(resolve => setTimeout(resolve, delay))
+      await new Promise((resolve) => setTimeout(resolve, delay))
     } else {
-      throw new Error(`Upload failed for ${name} after 3 attempts: ${errorText}`)
+      throw new Error(
+        `Upload failed for ${name} after 3 attempts: ${errorText}`,
+      )
     }
   }
 
@@ -423,9 +427,14 @@ async function deploy(): Promise<void> {
   // Upload static assets to IPFS via DWS
   console.log('\n[Step 1/4] Uploading static assets to IPFS...')
   const webAssets = await uploadDirectory(config.dwsUrl, './dist/web', 'web')
-  
+
   // Upload root-level files
-  const rootFiles = ['index.html', 'favicon.svg', 'agent-card.json', 'rpc-config.json']
+  const rootFiles = [
+    'index.html',
+    'favicon.svg',
+    'agent-card.json',
+    'rpc-config.json',
+  ]
   for (const file of rootFiles) {
     if (existsSync(resolve(APP_DIR, `./dist/${file}`))) {
       const result = await uploadToIPFS(config.dwsUrl, `./dist/${file}`, file)

@@ -16,7 +16,7 @@ import { join } from 'node:path'
 import {
   CORE_PORTS,
   getDWSComputeUrl,
-  getDwsApiUrl,
+  getDWSUrl,
   getIpfsApiUrl,
   getLocalhostHost,
   getServiceUrl,
@@ -57,8 +57,8 @@ const DOCKER_SERVICES = {
   },
 } as const
 
-// Environment URLs
-const DWS_URL = getDwsApiUrl()
+// Environment URLs - use network-aware config for localnet
+const DWS_URL = getDWSUrl('localnet')
 
 async function checkDockerService(
   port: number,

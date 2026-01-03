@@ -246,9 +246,7 @@ async function checkTimelock(network: NetworkType): Promise<CheckResult> {
   }
 }
 
-async function checkSecurityBoard(
-  network: NetworkType,
-): Promise<CheckResult> {
+async function checkSecurityBoard(network: NetworkType): Promise<CheckResult> {
   const deployment = loadDeployment(network)
   const timelockAddress = deployment.stage2?.GovernanceTimelock
 

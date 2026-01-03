@@ -154,15 +154,10 @@ describe('Attestation End-to-End Tests', () => {
       '0x5FC8d32690cc91D4c39d9d3abcBD16989F875707') as Address
 
     // Check if contracts are deployed
-    contractsDeployed = await checkContractsDeployed(
-      publicClient,
-      boardAddress,
-    )
+    contractsDeployed = await checkContractsDeployed(publicClient, boardAddress)
     if (!contractsDeployed) {
       console.log('⚠️  Contracts not deployed - on-chain tests will be skipped')
-      console.log(
-        '   Run: jeju dev --bootstrap or scripts/start-board-dev.sh',
-      )
+      console.log('   Run: jeju dev --bootstrap or scripts/start-board-dev.sh')
       return
     }
 

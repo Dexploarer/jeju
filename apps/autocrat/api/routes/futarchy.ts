@@ -41,7 +41,10 @@ export const futarchyRoutes = new Elysia({ prefix: '/api/v1/futarchy' })
         return {
           service: 'futarchy',
           status: 'unavailable',
-          message: error instanceof Error ? error.message : 'Futarchy service unavailable',
+          message:
+            error instanceof Error
+              ? error.message
+              : 'Futarchy service unavailable',
         }
       }
     },

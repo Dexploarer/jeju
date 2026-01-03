@@ -56,7 +56,10 @@ export const bugBountyRoutes = new Elysia({ prefix: '/api/v1/bug-bounty' })
         return {
           service: 'bug-bounty',
           status: 'unavailable',
-          message: error instanceof Error ? error.message : 'Bug bounty service requires SQLit',
+          message:
+            error instanceof Error
+              ? error.message
+              : 'Bug bounty service requires SQLit',
           hint: 'Ensure SQLit is running: docker compose up -d sqlit or bun run packages/sqlit/adapter/server.ts',
         }
       }

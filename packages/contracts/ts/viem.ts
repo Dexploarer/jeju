@@ -28,9 +28,9 @@ import type {
   ContractFunctionName,
   GetContractReturnType,
   Hex,
-  PublicClient as ViemPublicClient,
   ReadContractReturnType,
   Transport,
+  PublicClient as ViemPublicClient,
   WalletClient as ViemWalletClient,
   WriteContractParameters,
 } from 'viem'
@@ -190,7 +190,9 @@ export interface PublicClientConfig {
  * })
  * ```
  */
-export function createTypedPublicClient(config: PublicClientConfig): ViemPublicClient {
+export function createTypedPublicClient(
+  config: PublicClientConfig,
+): ViemPublicClient {
   return createPublicClient({
     chain: {
       id: config.chainId,
@@ -225,7 +227,9 @@ export interface WalletClientConfig extends PublicClientConfig {
  * })
  * ```
  */
-export function createTypedWalletClient(config: WalletClientConfig): ViemWalletClient {
+export function createTypedWalletClient(
+  config: WalletClientConfig,
+): ViemWalletClient {
   return createWalletClient({
     account: config.account,
     chain: {

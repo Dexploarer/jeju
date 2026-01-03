@@ -4,24 +4,12 @@
   "description": "Unified messaging protocol for Jeju Network - public (Farcaster) and private (XMTP) messaging",
   "license": "MIT",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
   "exports": {
-    ".": {
-      "bun": "./src/index.ts",
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    },
-    "./farcaster": {
-      "bun": "./src/farcaster/index.ts",
-      "types": "./dist/farcaster/index.d.ts",
-      "import": "./dist/farcaster/index.js"
-    },
-    "./sdk": {
-      "bun": "./src/sdk/index.ts",
-      "types": "./dist/sdk/index.d.ts",
-      "import": "./dist/sdk/index.js"
-    }
+    ".": "./src/index.ts",
+    "./farcaster": "./src/farcaster/index.ts",
+    "./sdk": "./src/sdk/index.ts"
   },
   "files": ["dist", "src"],
   "sideEffects": false,

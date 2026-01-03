@@ -58,7 +58,14 @@ async function syncToConfigMap(config: SyncConfig): Promise<void> {
 
     await execa(
       'kubectl',
-      ['delete', 'configmap', configMapName, '-n', namespace, '--ignore-not-found'],
+      [
+        'delete',
+        'configmap',
+        configMapName,
+        '-n',
+        namespace,
+        '--ignore-not-found',
+      ],
       { reject: false },
     )
 

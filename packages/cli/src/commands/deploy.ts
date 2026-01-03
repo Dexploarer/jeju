@@ -931,13 +931,12 @@ deployCommand
 deployCommand
   .command('transfer-ownership')
   .description('Transfer contract ownership to multisig/DAO')
-  .option(
-    '--network <network>',
-    'Network: testnet | mainnet',
-    'testnet',
-  )
+  .option('--network <network>', 'Network: testnet | mainnet', 'testnet')
   .option('--to <address>', 'New owner address (multisig)')
-  .option('--contracts <list>', 'Specific contracts to transfer (comma-separated)')
+  .option(
+    '--contracts <list>',
+    'Specific contracts to transfer (comma-separated)',
+  )
   .option('--dry-run', 'Simulate without making changes')
   .action(async (options) => {
     const rootDir = findMonorepoRoot()
@@ -1127,7 +1126,9 @@ deployCommand
     'localnet',
   )
   .action(async () => {
-    logger.error('Governance deployment has been consolidated into DAO deployment.')
+    logger.error(
+      'Governance deployment has been consolidated into DAO deployment.',
+    )
     logger.info('Use: jeju deploy dao --network <network>')
     process.exit(1)
   })
@@ -1497,14 +1498,18 @@ deployCommand
     logger.keyValue('Network', options.network)
     logger.newline()
 
-    await execa('bun', ['run', scriptPath, '--apps', appName, '--skip-contracts'], {
-      cwd: rootDir,
-      stdio: 'inherit',
-      env: {
-        ...process.env,
-        NETWORK: options.network,
+    await execa(
+      'bun',
+      ['run', scriptPath, '--apps', appName, '--skip-contracts'],
+      {
+        cwd: rootDir,
+        stdio: 'inherit',
+        env: {
+          ...process.env,
+          NETWORK: options.network,
+        },
       },
-    })
+    )
   })
 
 deployCommand

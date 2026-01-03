@@ -761,7 +761,9 @@ export function createAppDeployerRouter() {
         const body = (await request.json()) as {
           name: string
           frontendCid?: string
+          staticFiles?: Record<string, string>
           backendCid?: string
+          backendWorkerId?: string
           jnsName?: string
           apiPaths?: string[]
           spa?: boolean
@@ -773,10 +775,13 @@ export function createAppDeployerRouter() {
         }
 
         // If backend CID provided, deploy as worker
-        let backendWorkerId: string | null = null
-        let backendEndpoint: string | null = null
+        // If backendWorkerId provided, use it directly (for pre-deployed workers)
+        let backendWorkerId: string | null = body.backendWorkerId ?? null
+        let backendEndpoint: string | null = backendWorkerId
+          ? `http://127.0.0.1:4030/workers/${backendWorkerId}/http`
+          : null
 
-        if (body.backendCid) {
+        if (body.backendCid && !backendWorkerId) {
           const { createBackendManager } = await import('../storage/backends')
           const backend = createBackendManager()
           const { WorkerRuntime } = await import('../workers/runtime')
@@ -825,7 +830,7 @@ export function createAppDeployerRouter() {
           name: body.name,
           jnsName: body.jnsName ?? `${body.name}.jeju`,
           frontendCid: body.frontendCid ?? null,
-          staticFiles: null,
+          staticFiles: body.staticFiles ?? null,
           backendWorkerId,
           backendEndpoint,
           apiPaths: body.apiPaths ?? ['/api'],

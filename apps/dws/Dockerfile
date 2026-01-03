@@ -24,6 +24,7 @@ COPY packages/types/package.json ./packages/types/
 COPY packages/ui/package.json ./packages/ui/
 COPY packages/token/package.json ./packages/token/
 COPY packages/sqlit/package.json ./packages/sqlit/
+COPY packages/cache/package.json ./packages/cache/
 COPY apps/dws/package.json ./apps/dws/
 
 # Install all dependencies (not using --frozen-lockfile because we're copying a subset of the monorepo)
@@ -44,6 +45,7 @@ COPY packages/types/ ./packages/types/
 COPY packages/ui/ ./packages/ui/
 COPY packages/token/ ./packages/token/
 COPY packages/sqlit/ ./packages/sqlit/
+COPY packages/cache/ ./packages/cache/
 COPY apps/dws/ ./apps/dws/
 COPY tsconfig.json tsconfig.base.json ./
 
@@ -62,11 +64,14 @@ RUN cd packages/auth && bun x tsc || true
 RUN cd packages/api && bun x tsc || true
 RUN cd packages/kms && bun x tsc || true
 RUN cd packages/sdk && bun x tsc || true
+RUN cd packages/cache && bun x tsc || true
 
 # Build DWS web frontend
 WORKDIR /app/apps/dws
+# Debug: check if build.web.ts exists
+RUN ls -la && echo "--- Checking build file ---"
 # Set NETWORK env var for frontend build to use correct API URLs
-RUN NETWORK=testnet bun run build:web
+RUN NETWORK=testnet bun ./build.web.ts
 
 # Production stage
 FROM --platform=linux/amd64 oven/bun:1.3

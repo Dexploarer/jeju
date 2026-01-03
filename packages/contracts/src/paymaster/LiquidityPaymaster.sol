@@ -55,7 +55,7 @@ contract LiquidityPaymaster is BasePaymaster {
         address _oracle,
         uint256 _feeMargin,
         address _owner
-    ) BasePaymaster(_entryPoint, _owner) {
+    ) BasePaymaster(_entryPoint) {
         require(_token != address(0), "Invalid token");
         require(_vault != address(0), "Invalid vault");
         require(_oracle != address(0), "Invalid oracle");
@@ -65,7 +65,7 @@ contract LiquidityPaymaster is BasePaymaster {
         vault = _vault;
         oracle = IPriceOracle(_oracle);
         feeMargin = _feeMargin;
-        if (_owner != msg.sender) {
+        if (_owner != address(0) && _owner != msg.sender) {
             _transferOwnership(_owner);
         }
     }

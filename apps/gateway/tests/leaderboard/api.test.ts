@@ -183,7 +183,10 @@ describe('Leaderboard API', () => {
             message: {
               messageId: 'test-123',
               parts: [
-                { kind: 'data', data: { skillId: 'get-leaderboard', limit: 5 } },
+                {
+                  kind: 'data',
+                  data: { skillId: 'get-leaderboard', limit: 5 },
+                },
               ],
             },
           },

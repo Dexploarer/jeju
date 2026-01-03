@@ -98,6 +98,7 @@ async function build() {
   console.log('  dist/api/a2a.js      - API server')
   console.log(`  dist/web/${mainFileName} - Frontend bundle`)
   console.log('  dist/index.html      - Entry HTML')
+  process.exit(0)
 }
 
 build().catch((err) => {

@@ -20,12 +20,12 @@ import { getAppRegistry } from '../../../src/cdn/app-registry'
 import { getLocalCDNServer } from '../../../src/cdn/local-server'
 import { getIngressController } from '../../infrastructure'
 import { deployedAppState, isDegradedMode } from '../../state'
-import { getSharedWorkersRuntime } from './workers'
 import {
   isConfigMapAvailable,
   loadAppsFromConfigMap,
   saveAppsToConfigMap,
 } from './configmap-persistence'
+import { getSharedWorkersRuntime } from './workers'
 
 // App deployment registry - tracks deployed apps and their configurations
 export interface DeployedApp {
@@ -459,32 +459,37 @@ async function serveFrontendFromStorage(
   // Fallback to frontendCid as directory (legacy behavior)
   if (!fileCid && app.frontendCid) {
     // First check if frontendCid is a manifest (has .files property)
-    const storageBaseUrl = NETWORK === 'localnet'
-      ? `http://${getLocalhostHost()}:4030`
-      : `https://dws.${NETWORK === 'testnet' ? 'testnet.' : ''}jejunetwork.org`
-    
+    const storageBaseUrl =
+      NETWORK === 'localnet'
+        ? `http://${getLocalhostHost()}:4030`
+        : `https://dws.${NETWORK === 'testnet' ? 'testnet.' : ''}jejunetwork.org`
+
     try {
       const manifestUrl = `${storageBaseUrl}/storage/ipfs/${app.frontendCid}`
       const manifestResponse = await fetch(manifestUrl, {
         signal: AbortSignal.timeout(5000),
       }).catch(() => null)
-      
+
       if (manifestResponse?.ok) {
         const content = await manifestResponse.text()
         // Check if it's a manifest JSON with files property
         if (content.startsWith('{') && content.includes('"files"')) {
-          const manifest = JSON.parse(content) as { files?: Record<string, string> }
+          const manifest = JSON.parse(content) as {
+            files?: Record<string, string>
+          }
           if (manifest.files) {
             // Look up the file in the manifest
             fileCid = manifest.files[path] ?? null
-            console.log(`[AppRouter] Found ${path} in manifest: ${fileCid ? 'yes' : 'no'}`)
+            console.log(
+              `[AppRouter] Found ${path} in manifest: ${fileCid ? 'yes' : 'no'}`,
+            )
           }
         }
       }
     } catch {
       // Ignore manifest parsing errors
     }
-    
+
     // If still no CID, try using IPFS gateway with directory CID
     if (!fileCid) {
       const gateway = getIpfsGatewayUrl(NETWORK)
@@ -686,7 +691,10 @@ export async function proxyToBackend(
 
   if (app.backendEndpoint) {
     // Check if this is a DWS worker endpoint that needs /http prefix
-    if (app.backendEndpoint.includes('/workers/') && !app.backendEndpoint.endsWith('/http')) {
+    if (
+      app.backendEndpoint.includes('/workers/') &&
+      !app.backendEndpoint.endsWith('/http')
+    ) {
       targetUrl = `${app.backendEndpoint}/http${pathname}`
     } else {
       // Direct endpoint (container, external service, or worker endpoint already with /http)
@@ -698,11 +706,17 @@ export async function proxyToBackend(
     if (runtime) {
       try {
         // Try to get function directly or deploy from CID if needed
-        let fn = runtime.getFunction(app.backendWorkerId)
+        const fn = runtime.getFunction(app.backendWorkerId)
 
         // If not found and it looks like a CID, try on-demand deployment
-        if (!fn && (app.backendWorkerId.startsWith('Qm') || app.backendWorkerId.startsWith('bafy'))) {
-          console.log(`[AppRouter] Worker ${app.backendWorkerId} not in memory, attempting CID deployment`)
+        if (
+          !fn &&
+          (app.backendWorkerId.startsWith('Qm') ||
+            app.backendWorkerId.startsWith('bafy'))
+        ) {
+          console.log(
+            `[AppRouter] Worker ${app.backendWorkerId} not in memory, attempting CID deployment`,
+          )
           // The workers router handles CID deployment, so we still need HTTP for this case
         } else if (fn) {
           // Direct invocation for in-memory workers
@@ -717,7 +731,10 @@ export async function proxyToBackend(
             path: pathname,
             headers: requestHeaders,
             query: Object.fromEntries(url.searchParams),
-            body: request.method !== 'GET' && request.method !== 'HEAD' ? await request.text() : null,
+            body:
+              request.method !== 'GET' && request.method !== 'HEAD'
+                ? await request.text()
+                : null,
           }
 
           const httpResponse = await runtime.invokeHTTP(fn.id, httpEvent)
@@ -732,7 +749,9 @@ export async function proxyToBackend(
           })
         }
       } catch (err) {
-        console.error(`[AppRouter] Direct worker invocation failed: ${err instanceof Error ? err.message : String(err)}`)
+        console.error(
+          `[AppRouter] Direct worker invocation failed: ${err instanceof Error ? err.message : String(err)}`,
+        )
         // Fall through to HTTP proxy
       }
     }

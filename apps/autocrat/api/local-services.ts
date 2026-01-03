@@ -227,7 +227,9 @@ export async function initLocalServices(): Promise<void> {
   await initStorage()
   const dwsAvailable = await checkDWSCompute()
   if (!dwsAvailable) {
-    console.warn('[LocalServices] DWS compute not available - AI features will be limited')
+    console.warn(
+      '[LocalServices] DWS compute not available - AI features will be limited',
+    )
   }
   initialized = true
 }

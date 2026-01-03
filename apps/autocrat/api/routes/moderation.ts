@@ -27,7 +27,10 @@ export const moderationRoutes = new Elysia({ prefix: '/api/v1/moderation' })
         return {
           service: 'moderation',
           status: 'unavailable',
-          message: error instanceof Error ? error.message : 'Moderation service unavailable',
+          message:
+            error instanceof Error
+              ? error.message
+              : 'Moderation service unavailable',
         }
       }
     },

@@ -34,7 +34,7 @@ async function build() {
       target: 'browser',
       minify: true,
       sourcemap: 'external',
-      splitting: true,
+      splitting: false,
       packages: 'bundle',
       drop: ['debugger'],
       naming: {
@@ -166,6 +166,7 @@ async function build() {
   console.log('  dist/server.js    - Main server')
   console.log('  dist/index.js     - Library entry')
   console.log('  dist/worker/      - Worker bundle')
+  process.exit(0)
 }
 
 build().catch((err) => {

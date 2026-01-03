@@ -108,7 +108,9 @@ async function main(): Promise<void> {
     console.log(`   ✅ ${name}`)
   }
 
-  console.log(`\n✅ All infrastructure images built${PUSH ? ' and pushed' : ''}\n`)
+  console.log(
+    `\n✅ All infrastructure images built${PUSH ? ' and pushed' : ''}\n`,
+  )
 }
 
 main()

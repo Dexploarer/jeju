@@ -234,9 +234,11 @@ export async function syncFromChain(): Promise<void> {
       functionName: 'getActiveProvidersByService',
       args: [SERVICE_INFERENCE],
     })) as Address[]
-  } catch (err) {
+  } catch (_err) {
     // Chain sync failed - preserve local nodes
-    console.log(`[Inference] Chain sync failed, preserving ${locallyRegisteredNodes.size} local nodes`)
+    console.log(
+      `[Inference] Chain sync failed, preserving ${locallyRegisteredNodes.size} local nodes`,
+    )
     lastSyncTimestamp = now
     return
   }
@@ -514,7 +516,7 @@ export function registerNode(
   const addressLower = node.address.toLowerCase()
   inferenceNodes.set(addressLower, fullNode)
   locallyRegisteredNodes.add(addressLower)
-  
+
   console.log(
     `[Inference] Node registered locally: ${node.address} (${node.provider}, ${node.models.length} models)`,
   )

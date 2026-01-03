@@ -155,6 +155,7 @@ async function build() {
   if (existsSync(landerEntry)) {
     console.log('  dist/lander/         - Landing page')
   }
+  process.exit(0)
 }
 
 build().catch((err) => {

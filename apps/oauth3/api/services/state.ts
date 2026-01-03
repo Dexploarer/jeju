@@ -34,7 +34,9 @@ async function getSQLitClient(): Promise<SQLitClient> {
     if (!isProductionEnv()) {
       const healthy = await sqlitClient.isHealthy().catch(() => false)
       if (!healthy) {
-        console.warn('[OAuth3] SQLit not available - some features will not work')
+        console.warn(
+          '[OAuth3] SQLit not available - some features will not work',
+        )
         // Don't throw in dev mode - allow app to start
       } else {
         await ensureTablesExist()

@@ -281,9 +281,7 @@ async function main(): Promise<void> {
       '  1. Deploy on a chain with Safe contracts (Base, Ethereum, etc.)',
     )
     console.log('  2. Set owners and threshold via Safe UI')
-    console.log(
-      '  3. Update GovernanceTimelock.securityBoard to Safe address',
-    )
+    console.log('  3. Update GovernanceTimelock.securityBoard to Safe address')
 
     // Save simulated config
     const deploymentFile = join(DEPLOYMENTS_DIR, `${network}.json`)
@@ -348,10 +346,7 @@ async function main(): Promise<void> {
     console.log(`\nSaved to ${deploymentFile}`)
 
     console.log('\n📋 Next Steps:')
-    console.log(
-      '  1. Update GovernanceTimelock.securityBoard to:',
-      safeAddress,
-    )
+    console.log('  1. Update GovernanceTimelock.securityBoard to:', safeAddress)
     console.log('  2. Have all owners verify they can sign')
     console.log('  3. Test emergency actions via Safe')
   } catch (error) {

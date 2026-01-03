@@ -60,6 +60,18 @@ export {
   applyBrandingToDocument,
   getBrandingCssVars,
 } from './branding'
+// Build Utilities (for production builds - NOT worker compatible)
+export {
+  BROWSER_EXTERNALS,
+  createBrowserPlugin,
+  createDefines,
+  createFrontendBuildConfig,
+  createWorkerBuildConfig,
+  formatBytes as formatBuildBytes,
+  reportBundleSizes,
+  validateBuildInputs,
+  WORKER_EXTERNALS,
+} from './build'
 // Legacy cache exports for backwards compatibility
 export {
   type CacheClient,
@@ -169,18 +181,6 @@ export {
   type DuplicateConfigType,
   getDuplicateStats,
 } from './dedup'
-// Build Utilities (for production builds)
-export {
-  BROWSER_EXTERNALS,
-  createBrowserPlugin,
-  createDefines,
-  createFrontendBuildConfig,
-  createWorkerBuildConfig,
-  formatBytes as formatBuildBytes,
-  reportBundleSizes,
-  validateBuildInputs,
-  WORKER_EXTERNALS,
-} from './build'
 // Dev Server (for frontend development)
 export {
   type AppTheme,

@@ -437,6 +437,7 @@ async function build(): Promise<void> {
   await createDeploymentBundle()
 
   console.log('\nBuild complete.')
+  process.exit(0)
 }
 
 build().catch((error) => {
