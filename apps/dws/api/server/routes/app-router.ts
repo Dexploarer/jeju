@@ -20,12 +20,12 @@ import { getAppRegistry } from '../../../src/cdn/app-registry'
 import { getLocalCDNServer } from '../../../src/cdn/local-server'
 import { getIngressController } from '../../infrastructure'
 import { deployedAppState, isDegradedMode } from '../../state'
+import { getSharedWorkersRuntime, getSharedWorkerRegistry } from './workers'
 import {
   isConfigMapAvailable,
   loadAppsFromConfigMap,
   saveAppsToConfigMap,
 } from './configmap-persistence'
-import { getSharedWorkersRuntime } from './workers'
 
 // App deployment registry - tracks deployed apps and their configurations
 export interface DeployedApp {
@@ -459,37 +459,32 @@ async function serveFrontendFromStorage(
   // Fallback to frontendCid as directory (legacy behavior)
   if (!fileCid && app.frontendCid) {
     // First check if frontendCid is a manifest (has .files property)
-    const storageBaseUrl =
-      NETWORK === 'localnet'
-        ? `http://${getLocalhostHost()}:4030`
-        : `https://dws.${NETWORK === 'testnet' ? 'testnet.' : ''}jejunetwork.org`
-
+    const storageBaseUrl = NETWORK === 'localnet'
+      ? `http://${getLocalhostHost()}:4030`
+      : `https://dws.${NETWORK === 'testnet' ? 'testnet.' : ''}jejunetwork.org`
+    
     try {
       const manifestUrl = `${storageBaseUrl}/storage/ipfs/${app.frontendCid}`
       const manifestResponse = await fetch(manifestUrl, {
         signal: AbortSignal.timeout(5000),
       }).catch(() => null)
-
+      
       if (manifestResponse?.ok) {
         const content = await manifestResponse.text()
         // Check if it's a manifest JSON with files property
         if (content.startsWith('{') && content.includes('"files"')) {
-          const manifest = JSON.parse(content) as {
-            files?: Record<string, string>
-          }
+          const manifest = JSON.parse(content) as { files?: Record<string, string> }
           if (manifest.files) {
             // Look up the file in the manifest
             fileCid = manifest.files[path] ?? null
-            console.log(
-              `[AppRouter] Found ${path} in manifest: ${fileCid ? 'yes' : 'no'}`,
-            )
+            console.log(`[AppRouter] Found ${path} in manifest: ${fileCid ? 'yes' : 'no'}`)
           }
         }
       }
     } catch {
       // Ignore manifest parsing errors
     }
-
+    
     // If still no CID, try using IPFS gateway with directory CID
     if (!fileCid) {
       const gateway = getIpfsGatewayUrl(NETWORK)
@@ -680,7 +675,13 @@ export async function ensureWorkerDeployed(
 }
 
 /**
- * Proxy request to backend
+ * Proxy request to backend with multi-tier worker lookup
+ *
+ * Lookup order:
+ * 1. Local runtime memory (fastest, ~0.01ms)
+ * 2. Registry service (checks cache, SQLit, ~1-50ms)
+ * 3. Warm pod routing (forward to another pod, ~5-100ms)
+ * 4. HTTP proxy fallback (last resort)
  */
 export async function proxyToBackend(
   request: Request,
@@ -701,63 +702,127 @@ export async function proxyToBackend(
       targetUrl = `${app.backendEndpoint}${pathname}`
     }
   } else if (app.backendWorkerId) {
-    // DWS worker - try direct in-process invocation first for reliability
+    // DWS worker - use multi-tier lookup
     const runtime = getSharedWorkersRuntime()
-    if (runtime) {
-      try {
-        // Try to get function directly or deploy from CID if needed
-        const fn = runtime.getFunction(app.backendWorkerId)
+    const registry = getSharedWorkerRegistry()
 
-        // If not found and it looks like a CID, try on-demand deployment
-        if (
-          !fn &&
-          (app.backendWorkerId.startsWith('Qm') ||
-            app.backendWorkerId.startsWith('bafy'))
-        ) {
+    if (runtime && registry) {
+      // Tier 1: Check local runtime memory first (fastest path)
+      let fn = runtime.getFunction(app.backendWorkerId)
+
+      // Tier 2: Use registry's multi-tier lookup
+      if (!fn) {
+        console.log(
+          `[AppRouter] Worker ${app.backendWorkerId} not in local memory, using registry lookup`,
+        )
+        const result = await registry.getWorker(app.backendWorkerId)
+        if (result) {
+          fn = result.worker
           console.log(
-            `[AppRouter] Worker ${app.backendWorkerId} not in memory, attempting CID deployment`,
+            `[AppRouter] Found worker via registry: source=${result.source}, loadTime=${result.loadTimeMs}ms, coldStart=${result.coldStart}`,
           )
-          // The workers router handles CID deployment, so we still need HTTP for this case
-        } else if (fn) {
-          // Direct invocation for in-memory workers
-          const requestHeaders: Record<string, string> = {}
-          request.headers.forEach((value, key) => {
-            requestHeaders[key] = value
-          })
+        }
+      }
 
+      // Tier 3: Check for warm pods (other pods that have this worker loaded)
+      if (!fn) {
+        console.log(
+          `[AppRouter] Worker ${app.backendWorkerId} not found locally, checking warm pods`,
+        )
+        const warmPods = registry.findWarmPods(
+          app.backendWorkerId,
+          registry.getPodRegion(),
+        )
+
+        if (warmPods.length > 0) {
+          // Route to the first warm pod (already sorted by preference)
+          const targetPod = warmPods[0]
+          console.log(
+            `[AppRouter] Routing to warm pod: ${targetPod.podId} (${targetPod.region})`,
+          )
+
+          // Build target URL for the warm pod
+          targetUrl = `${targetPod.endpoint}/workers/${app.backendWorkerId}/http${pathname}`
+
+          // Make HTTP request to the warm pod
           const url = new URL(request.url)
-          const httpEvent = {
+          const targetUrlObj = new URL(targetUrl)
+
+          const proxyHeaders = new Headers(request.headers)
+          proxyHeaders.set('Host', targetUrlObj.host)
+          proxyHeaders.set('X-Forwarded-Host', request.headers.get('host') ?? '')
+          proxyHeaders.set('X-DWS-Routed-From', registry.getPodId())
+
+          const proxyRequest = new Request(targetUrl + url.search, {
             method: request.method,
-            path: pathname,
-            headers: requestHeaders,
-            query: Object.fromEntries(url.searchParams),
+            headers: proxyHeaders,
             body:
               request.method !== 'GET' && request.method !== 'HEAD'
-                ? await request.text()
-                : null,
-          }
-
-          const httpResponse = await runtime.invokeHTTP(fn.id, httpEvent)
-
-          const responseHeaders = new Headers(httpResponse.headers)
-          responseHeaders.set('X-DWS-Backend', app.backendWorkerId)
-          responseHeaders.set('X-DWS-Invocation', 'direct')
-
-          return new Response(httpResponse.body, {
-            status: httpResponse.statusCode,
-            headers: responseHeaders,
+                ? request.body
+                : undefined,
           })
+
+          const response = await fetch(proxyRequest, {
+            signal: AbortSignal.timeout(30000),
+          }).catch((err: Error) => {
+            console.error(
+              `[AppRouter] Warm pod request failed: ${err.message}`,
+            )
+            return null
+          })
+
+          if (response?.ok || (response && response.status < 500)) {
+            const headers = new Headers(response.headers)
+            headers.set('X-DWS-Backend', app.backendWorkerId)
+            headers.set('X-DWS-Invocation', 'warm-pod')
+            headers.set('X-DWS-Warm-Pod', targetPod.podId)
+
+            return new Response(response.body, {
+              status: response.status,
+              headers,
+            })
+          }
+          // Fall through to other methods if warm pod failed
         }
-      } catch (err) {
-        console.error(
-          `[AppRouter] Direct worker invocation failed: ${err instanceof Error ? err.message : String(err)}`,
-        )
-        // Fall through to HTTP proxy
+      }
+
+      // Execute direct invocation if we have the function locally
+      if (fn) {
+        const requestHeaders: Record<string, string> = {}
+        request.headers.forEach((value, key) => {
+          requestHeaders[key] = value
+        })
+
+        const url = new URL(request.url)
+        const httpEvent = {
+          method: request.method,
+          path: pathname,
+          headers: requestHeaders,
+          query: Object.fromEntries(url.searchParams),
+          body:
+            request.method !== 'GET' && request.method !== 'HEAD'
+              ? await request.text()
+              : null,
+        }
+
+        const httpResponse = await runtime.invokeHTTP(fn.id, httpEvent)
+
+        const responseHeaders = new Headers(httpResponse.headers)
+        responseHeaders.set('X-DWS-Backend', app.backendWorkerId)
+        responseHeaders.set('X-DWS-Invocation', 'direct')
+        responseHeaders.set('X-DWS-Pod', registry.getPodId())
+
+        return new Response(httpResponse.body, {
+          status: httpResponse.statusCode,
+          headers: responseHeaders,
+        })
       }
     }
 
-    // Fall back to HTTP proxy (for CID-based workers or when direct invocation fails)
-    // Use K8s internal service URL if available, otherwise external URL
+    // Tier 4: Fall back to HTTP proxy (for CID-based workers or when all else fails)
+    console.log(
+      `[AppRouter] Falling back to HTTP proxy for ${app.backendWorkerId}`,
+    )
     const k8sServiceUrl = 'http://dws.dws.svc.cluster.local:4030'
     const network = getCurrentNetwork()
 

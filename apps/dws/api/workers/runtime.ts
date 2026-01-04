@@ -23,19 +23,45 @@ import { DEFAULT_POOL_CONFIG } from './types'
 // Runtime mode: 'bun' for direct Bun process spawning, 'workerd' for workerd V8 isolates
 type RuntimeMode = 'bun' | 'workerd'
 
-// Worker bootstrap - just sets env and imports the main module
-// Most worker code (like Factory) already starts its own server using PORT env var
+// SECURITY: List of env vars that are SAFE to pass to workers (non-sensitive config)
+// These are public network configuration that is not sensitive
+const SAFE_ENV_KEYS = new Set([
+  'PORT',
+  'NODE_ENV',
+  'NETWORK',
+  'JEJU_NETWORK',
+  'TEE_MODE',
+  'TEE_PLATFORM',
+  'TEE_REGION',
+  'RPC_URL',
+  'L2_RPC_URL',
+  'L1_RPC_URL',
+  'CHAIN_ID',
+  'L1_CHAIN_ID',
+  'DWS_URL',
+  'GATEWAY_URL',
+  'INDEXER_URL',
+  'KMS_URL', // Workers need this to fetch secrets from KMS
+  'OAUTH3_URL',
+  'FUNCTION_ID',
+  'INSTANCE_ID',
+  'WORKER_ID',
+  'KMS_SECRET_IDS', // List of secret IDs to fetch from KMS
+  'OWNER_ADDRESS',
+])
+
+// Worker bootstrap - sets env and imports the main module
+// SECURITY: No secrets are embedded - workers fetch secrets from KMS at runtime
 function createWorkerBootstrap(port: number, _handler: string): string {
   // Bootstrap that handles both standalone servers and fetch-export workers
   return `
 // DWS Worker Bootstrap - Starts worker on port ${port}
+// SECURITY: No secrets embedded - workers fetch from KMS at runtime
 const PORT = ${port};
 
-// Provide default environment for workers
-// These are the standard environment variables expected by Jeju workers
-// Note: Chain config should match packages/config/chain/*.json
+// SECURITY: Only non-sensitive config is passed via environment
+// Secrets MUST be fetched from KMS at runtime using KMS_SECRET_IDS
 const workerEnv = {
-  ...process.env,
   PORT: String(PORT),
   NODE_ENV: process.env.NODE_ENV || 'production',
   NETWORK: process.env.NETWORK || process.env.JEJU_NETWORK || 'testnet',
@@ -43,24 +69,25 @@ const workerEnv = {
   TEE_MODE: process.env.TEE_MODE || 'simulated',
   TEE_PLATFORM: process.env.TEE_PLATFORM || 'dws',
   TEE_REGION: process.env.TEE_REGION || 'global',
-  // Chain configuration - must match chain/*.json
+  // Chain configuration - public network info
   RPC_URL: process.env.RPC_URL || process.env.L2_RPC_URL || 'https://testnet-rpc.jejunetwork.org',
   L2_RPC_URL: process.env.L2_RPC_URL || process.env.RPC_URL || 'https://testnet-rpc.jejunetwork.org',
   L1_RPC_URL: process.env.L1_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com',
   CHAIN_ID: process.env.CHAIN_ID || '420690',
   L1_CHAIN_ID: process.env.L1_CHAIN_ID || '11155111',
-  // Service URLs
+  // Service URLs - public endpoints
   DWS_URL: process.env.DWS_URL || 'https://dws.testnet.jejunetwork.org',
   GATEWAY_URL: process.env.GATEWAY_URL || 'https://gateway.testnet.jejunetwork.org',
   INDEXER_URL: process.env.INDEXER_URL || 'https://indexer.testnet.jejunetwork.org/graphql',
   KMS_URL: process.env.KMS_URL || 'https://kms.testnet.jejunetwork.org',
   OAUTH3_URL: process.env.OAUTH3_URL || 'https://oauth3.testnet.jejunetwork.org',
-  // SQLit
-  SQLIT_NODES: process.env.SQLIT_NODES || process.env.SQLIT_URL || '',
-  SQLIT_URL: process.env.SQLIT_URL || process.env.SQLIT_NODES || '',
-  SQLIT_DATABASE_ID: process.env.SQLIT_DATABASE_ID || '',
-  SQLIT_PRIVATE_KEY: process.env.SQLIT_PRIVATE_KEY || '',
-  SQLIT_MINER_ENDPOINT: process.env.SQLIT_MINER_ENDPOINT || '',
+  // Worker identity for KMS auth
+  FUNCTION_ID: process.env.FUNCTION_ID || '',
+  INSTANCE_ID: process.env.INSTANCE_ID || '',
+  WORKER_ID: process.env.WORKER_ID || process.env.FUNCTION_ID || '',
+  OWNER_ADDRESS: process.env.OWNER_ADDRESS || '',
+  KMS_SECRET_IDS: process.env.KMS_SECRET_IDS || '',
+  // SECURITY: NO SECRETS HERE - SQLIT_PRIVATE_KEY etc must come from KMS
 };
 
 // ExecutionContext stub for Cloudflare Workers compatibility
@@ -472,17 +499,41 @@ export class WorkerRuntime {
         `[WorkerRuntime] Starting worker ${fn.name} on port ${instance.port}...`,
       )
 
-      // Spawn the worker process
+      // SECURITY: Only pass safe environment variables to workers
+      // Sensitive secrets must be fetched from KMS at runtime
+      const safeEnv: Record<string, string> = {}
+      for (const key of SAFE_ENV_KEYS) {
+        const value = process.env[key]
+        if (value !== undefined && value !== '') {
+          safeEnv[key] = value
+        }
+      }
+
+      // Also pass any non-secret env vars from the worker's config
+      // SECURITY: fn.env should NOT contain secrets - they should be KMS IDs
+      if (fn.env) {
+        for (const [key, value] of Object.entries(fn.env)) {
+          if (value !== undefined && value !== '') {
+            safeEnv[key] = value
+          }
+        }
+      }
+
+      // Spawn the worker process with only safe environment variables
       const proc = Bun.spawn([bunPath, 'run', bootstrapPath], {
         env: {
-          ...process.env,
-          ...fn.env,
+          ...safeEnv,
           PORT: String(instance.port),
           FUNCTION_ID: fn.id,
           INSTANCE_ID: instance.id,
+          WORKER_ID: fn.id,
+          OWNER_ADDRESS: fn.owner,
           FUNCTION_MEMORY: String(fn.memory),
           FUNCTION_TIMEOUT: String(fn.timeout),
-          NODE_ENV: process.env.NODE_ENV || 'production',
+          NODE_ENV: process.env.NODE_ENV ?? 'production',
+          // Pass KMS endpoint so worker can fetch secrets
+          KMS_URL: process.env.KMS_URL ?? 'https://kms.testnet.jejunetwork.org',
+          KMS_ENDPOINT: process.env.KMS_URL ?? 'https://kms.testnet.jejunetwork.org',
         },
         stdout: 'pipe',
         stderr: 'pipe',

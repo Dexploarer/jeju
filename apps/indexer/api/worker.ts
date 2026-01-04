@@ -13,9 +13,81 @@ import {
   getCurrentNetwork,
   getLocalhostHost,
 } from '@jejunetwork/config'
-import { getSQLit } from '@jejunetwork/db'
 import { Elysia } from 'elysia'
 import { z } from 'zod'
+
+/**
+ * Simple HTTP-based SQLit client for worker environments.
+ * Uses the DWS SQLit proxy endpoint directly.
+ */
+const SQLIT_ENDPOINT =
+  process.env.SQLIT_BLOCK_PRODUCER_ENDPOINT ??
+  (getCurrentNetwork() === 'localnet'
+    ? 'http://127.0.0.1:4030/sqlit'
+    : getCurrentNetwork() === 'testnet'
+      ? 'https://dws.testnet.jejunetwork.org/sqlit'
+      : 'https://dws.jejunetwork.org/sqlit')
+
+interface SQLitQueryResult {
+  success: boolean
+  status: string
+  data: {
+    columns: string[]
+    rows: Array<Array<string | number | null>>
+    types: string[]
+  } | null
+}
+
+async function sqlitQuery(
+  database: string,
+  sql: string,
+  args?: Array<string | number | null>,
+): Promise<SQLitQueryResult> {
+  const url = `${SQLIT_ENDPOINT}/v1/query`
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ database, query: sql, args }),
+    })
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => 'unknown')
+      return {
+        success: false,
+        status: `SQLit query failed: ${response.status} at ${url} - ${text}`,
+        data: null,
+      }
+    }
+
+    return response.json() as Promise<SQLitQueryResult>
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    return {
+      success: false,
+      status: `SQLit fetch error: ${message} (endpoint: ${url})`,
+      data: null,
+    }
+  }
+}
+
+/**
+ * Convert SQLit query result to array of objects
+ */
+function resultToObjects(
+  result: SQLitQueryResult,
+): Array<Record<string, string | number | null>> {
+  if (!result.success || !result.data) return []
+  const { columns, rows } = result.data
+  return rows.map((row) => {
+    const obj: Record<string, string | number | null> = {}
+    columns.forEach((col, i) => {
+      obj[col] = row[i]
+    })
+    return obj
+  })
+}
 
 /**
  * Worker Environment Types
@@ -68,8 +140,60 @@ const MCPRequestSchema = z.object({
   ),
 })
 
-// Database ID for SQLit
-const DATABASE_ID = process.env.SQLIT_DATABASE_ID ?? 'indexer-testnet'
+// Database IDs per network (created via /sqlit/v1/admin/create)
+// These must be hardcoded since env vars don't persist reliably in DWS workers
+const DATABASE_IDS: Record<string, string> = {
+  localnet: 'indexer-local',
+  testnet: 'f5bf9ea3723bf1c3d77b6914f1f8ecd1c1d8c9bd89890d769488e9a9682db960',
+  mainnet: 'indexer-mainnet', // To be created on mainnet deployment
+}
+
+/**
+ * Detect network from SQLit endpoint URL when env vars aren't available.
+ * This handles the case where workers are loaded by CID without env vars.
+ */
+function detectNetworkFromEndpoint(): string {
+  // Check env var first (most reliable when available)
+  const envNetwork = process.env.JEJU_NETWORK || process.env.NETWORK
+  if (envNetwork && DATABASE_IDS[envNetwork]) {
+    return envNetwork
+  }
+
+  // Detect from SQLit endpoint URL
+  if (SQLIT_ENDPOINT.includes('testnet')) {
+    return 'testnet'
+  }
+  if (
+    SQLIT_ENDPOINT.includes('dws.jejunetwork.org') &&
+    !SQLIT_ENDPOINT.includes('testnet')
+  ) {
+    return 'mainnet'
+  }
+
+  // K8s internal endpoint - check cluster context or default to testnet for DWS cluster
+  if (SQLIT_ENDPOINT.includes('svc.cluster.local')) {
+    // In K8s, check for namespace hints or default to testnet
+    // The DWS K8s cluster runs testnet
+    return 'testnet'
+  }
+
+  // Fallback to localnet for localhost/127.0.0.1
+  return 'localnet'
+}
+
+// Detect network and log for debugging
+const DETECTED_NETWORK = detectNetworkFromEndpoint()
+
+// Database ID for SQLit - use env var override if set, otherwise detect from endpoint
+const DATABASE_ID =
+  process.env.SQLIT_DATABASE_ID ??
+  DATABASE_IDS[DETECTED_NETWORK] ??
+  // Ultimate fallback: use testnet database ID (most common DWS deployment target)
+  DATABASE_IDS.testnet
+
+console.log(
+  `[Indexer Worker] Initializing: network=${DETECTED_NETWORK}, databaseId=${DATABASE_ID}, endpoint=${SQLIT_ENDPOINT}`,
+)
 
 /**
  * Execute a GraphQL-like query against SQLit
@@ -82,8 +206,6 @@ async function executeGraphQLQuery(
   data: Record<string, unknown> | null
   errors?: Array<{ message: string }>
 }> {
-  const sqlit = getSQLit()
-
   // Parse the GraphQL query to extract operation
   const blocksMatch = query.match(/blocks\s*(?:\(([^)]*)\))?\s*\{([^}]+)\}/)
   const transactionsMatch = query.match(
@@ -164,8 +286,8 @@ async function executeGraphQLQuery(
       const orderBy = extractOrderBy(args)
       const where = extractWhere(args, variables)
 
-      let sql = `SELECT * FROM block`
-      const params: (string | number)[] = []
+      let sql = `SELECT * FROM blocks`
+      const params: Array<string | number | null> = []
 
       if (Object.keys(where).length > 0) {
         const conditions = Object.entries(where).map(([k, v]) => {
@@ -177,15 +299,17 @@ async function executeGraphQLQuery(
 
       sql += ` ORDER BY "${orderBy.field}" ${orderBy.dir} LIMIT ${limit}`
 
-      const result = await sqlit.query<Record<string, string | number | null>>(
-        sql,
-        params,
-        DATABASE_ID,
-      )
+      const result = await sqlitQuery(DATABASE_ID, sql, params)
+
+      if (!result.success) {
+        return { data: null, errors: [{ message: result.status }] }
+      }
+
+      const rows = resultToObjects(result)
 
       return {
         data: {
-          blocks: result.rows.map((row) => {
+          blocks: rows.map((row) => {
             const mapped: Record<string, string | number | null> = {}
             for (const field of fields) {
               const snakeField = field.replace(/([A-Z])/g, '_$1').toLowerCase()
@@ -204,8 +328,8 @@ async function executeGraphQLQuery(
       const orderBy = extractOrderBy(args)
       const where = extractWhere(args, variables)
 
-      let sql = `SELECT * FROM "transaction"`
-      const params: (string | number)[] = []
+      let sql = `SELECT * FROM transactions`
+      const params: Array<string | number | null> = []
 
       if (Object.keys(where).length > 0) {
         const conditions = Object.entries(where).map(([k, v]) => {
@@ -217,15 +341,17 @@ async function executeGraphQLQuery(
 
       sql += ` ORDER BY "${orderBy.field}" ${orderBy.dir} LIMIT ${limit}`
 
-      const result = await sqlit.query<Record<string, string | number | null>>(
-        sql,
-        params,
-        DATABASE_ID,
-      )
+      const result = await sqlitQuery(DATABASE_ID, sql, params)
+
+      if (!result.success) {
+        return { data: null, errors: [{ message: result.status }] }
+      }
+
+      const rows = resultToObjects(result)
 
       return {
         data: {
-          transactions: result.rows.map((row) => {
+          transactions: rows.map((row) => {
             const mapped: Record<string, string | number | null> = {}
             for (const field of fields) {
               const snakeField = field.replace(/([A-Z])/g, '_$1').toLowerCase()
@@ -243,8 +369,8 @@ async function executeGraphQLQuery(
       const limit = extractLimit(args)
       const where = extractWhere(args, variables)
 
-      let sql = `SELECT * FROM account`
-      const params: (string | number)[] = []
+      let sql = `SELECT * FROM accounts`
+      const params: Array<string | number | null> = []
 
       if (Object.keys(where).length > 0) {
         const conditions = Object.entries(where).map(([k, v]) => {
@@ -256,15 +382,17 @@ async function executeGraphQLQuery(
 
       sql += ` LIMIT ${limit}`
 
-      const result = await sqlit.query<Record<string, string | number | null>>(
-        sql,
-        params,
-        DATABASE_ID,
-      )
+      const result = await sqlitQuery(DATABASE_ID, sql, params)
+
+      if (!result.success) {
+        return { data: null, errors: [{ message: result.status }] }
+      }
+
+      const rows = resultToObjects(result)
 
       return {
         data: {
-          accounts: result.rows.map((row) => {
+          accounts: rows.map((row) => {
             const mapped: Record<string, string | number | null> = {}
             for (const field of fields) {
               const snakeField = field.replace(/([A-Z])/g, '_$1').toLowerCase()
@@ -276,17 +404,142 @@ async function executeGraphQLQuery(
       }
     }
 
-    // Introspection query - return basic schema info
+    // Introspection query - return full schema for GraphiQL
     if (query.includes('__schema') || query.includes('__type')) {
       return {
         data: {
           __schema: {
             queryType: { name: 'Query' },
+            mutationType: null,
+            subscriptionType: null,
             types: [
-              { name: 'Block', kind: 'OBJECT' },
-              { name: 'Transaction', kind: 'OBJECT' },
-              { name: 'Account', kind: 'OBJECT' },
+              {
+                kind: 'OBJECT',
+                name: 'Query',
+                fields: [
+                  {
+                    name: 'blocks',
+                    args: [
+                      { name: 'limit', type: { kind: 'SCALAR', name: 'Int' } },
+                      { name: 'offset', type: { kind: 'SCALAR', name: 'Int' } },
+                      { name: 'orderBy', type: { kind: 'ENUM', name: 'BlockOrderBy' } },
+                      { name: 'where', type: { kind: 'INPUT_OBJECT', name: 'BlockWhereInput' } },
+                    ],
+                    type: { kind: 'LIST', ofType: { kind: 'OBJECT', name: 'Block' } },
+                  },
+                  {
+                    name: 'transactions',
+                    args: [
+                      { name: 'limit', type: { kind: 'SCALAR', name: 'Int' } },
+                      { name: 'offset', type: { kind: 'SCALAR', name: 'Int' } },
+                      { name: 'orderBy', type: { kind: 'ENUM', name: 'TransactionOrderBy' } },
+                      { name: 'where', type: { kind: 'INPUT_OBJECT', name: 'TransactionWhereInput' } },
+                    ],
+                    type: { kind: 'LIST', ofType: { kind: 'OBJECT', name: 'Transaction' } },
+                  },
+                  {
+                    name: 'accounts',
+                    args: [
+                      { name: 'limit', type: { kind: 'SCALAR', name: 'Int' } },
+                      { name: 'where', type: { kind: 'INPUT_OBJECT', name: 'AccountWhereInput' } },
+                    ],
+                    type: { kind: 'LIST', ofType: { kind: 'OBJECT', name: 'Account' } },
+                  },
+                ],
+                interfaces: [],
+              },
+              {
+                kind: 'OBJECT',
+                name: 'Block',
+                fields: [
+                  { name: 'id', type: { kind: 'NON_NULL', ofType: { kind: 'SCALAR', name: 'ID' } }, args: [] },
+                  { name: 'number', type: { kind: 'NON_NULL', ofType: { kind: 'SCALAR', name: 'Int' } }, args: [] },
+                  { name: 'hash', type: { kind: 'NON_NULL', ofType: { kind: 'SCALAR', name: 'String' } }, args: [] },
+                  { name: 'parentHash', type: { kind: 'SCALAR', name: 'String' }, args: [] },
+                  { name: 'timestamp', type: { kind: 'SCALAR', name: 'DateTime' }, args: [] },
+                  { name: 'transactionCount', type: { kind: 'SCALAR', name: 'Int' }, args: [] },
+                  { name: 'gasUsed', type: { kind: 'SCALAR', name: 'BigInt' }, args: [] },
+                  { name: 'gasLimit', type: { kind: 'SCALAR', name: 'BigInt' }, args: [] },
+                ],
+                interfaces: [],
+              },
+              {
+                kind: 'OBJECT',
+                name: 'Transaction',
+                fields: [
+                  { name: 'id', type: { kind: 'NON_NULL', ofType: { kind: 'SCALAR', name: 'ID' } }, args: [] },
+                  { name: 'hash', type: { kind: 'NON_NULL', ofType: { kind: 'SCALAR', name: 'String' } }, args: [] },
+                  { name: 'blockNumber', type: { kind: 'SCALAR', name: 'Int' }, args: [] },
+                  { name: 'from', type: { kind: 'SCALAR', name: 'String' }, args: [] },
+                  { name: 'to', type: { kind: 'SCALAR', name: 'String' }, args: [] },
+                  { name: 'value', type: { kind: 'SCALAR', name: 'BigInt' }, args: [] },
+                  { name: 'gasUsed', type: { kind: 'SCALAR', name: 'BigInt' }, args: [] },
+                  { name: 'status', type: { kind: 'SCALAR', name: 'String' }, args: [] },
+                ],
+                interfaces: [],
+              },
+              {
+                kind: 'OBJECT',
+                name: 'Account',
+                fields: [
+                  { name: 'id', type: { kind: 'NON_NULL', ofType: { kind: 'SCALAR', name: 'ID' } }, args: [] },
+                  { name: 'address', type: { kind: 'NON_NULL', ofType: { kind: 'SCALAR', name: 'String' } }, args: [] },
+                  { name: 'isContract', type: { kind: 'SCALAR', name: 'Boolean' }, args: [] },
+                  { name: 'transactionCount', type: { kind: 'SCALAR', name: 'Int' }, args: [] },
+                ],
+                interfaces: [],
+              },
+              { kind: 'SCALAR', name: 'ID' },
+              { kind: 'SCALAR', name: 'String' },
+              { kind: 'SCALAR', name: 'Int' },
+              { kind: 'SCALAR', name: 'Boolean' },
+              { kind: 'SCALAR', name: 'BigInt' },
+              { kind: 'SCALAR', name: 'DateTime' },
+              {
+                kind: 'ENUM',
+                name: 'BlockOrderBy',
+                enumValues: [
+                  { name: 'number_ASC' },
+                  { name: 'number_DESC' },
+                  { name: 'timestamp_ASC' },
+                  { name: 'timestamp_DESC' },
+                ],
+              },
+              {
+                kind: 'ENUM',
+                name: 'TransactionOrderBy',
+                enumValues: [
+                  { name: 'blockNumber_ASC' },
+                  { name: 'blockNumber_DESC' },
+                ],
+              },
+              {
+                kind: 'INPUT_OBJECT',
+                name: 'BlockWhereInput',
+                inputFields: [
+                  { name: 'number_eq', type: { kind: 'SCALAR', name: 'Int' } },
+                  { name: 'hash_eq', type: { kind: 'SCALAR', name: 'String' } },
+                ],
+              },
+              {
+                kind: 'INPUT_OBJECT',
+                name: 'TransactionWhereInput',
+                inputFields: [
+                  { name: 'hash_eq', type: { kind: 'SCALAR', name: 'String' } },
+                  { name: 'from_eq', type: { kind: 'SCALAR', name: 'String' } },
+                  { name: 'to_eq', type: { kind: 'SCALAR', name: 'String' } },
+                ],
+              },
+              {
+                kind: 'INPUT_OBJECT',
+                name: 'AccountWhereInput',
+                inputFields: [
+                  { name: 'id_eq', type: { kind: 'SCALAR', name: 'String' } },
+                  { name: 'address_eq', type: { kind: 'SCALAR', name: 'String' } },
+                ],
+              },
             ],
+            directives: [],
           },
         },
       }
@@ -358,10 +611,12 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
     .get('/health', () => ({
       status: 'ok',
       service: 'indexer-api',
-      version: '2.0.0',
+      version: '2.0.1',
       network,
+      detectedNetwork: DETECTED_NETWORK,
       runtime: 'workerd',
       databaseId: DATABASE_ID,
+      sqlitEndpoint: SQLIT_ENDPOINT,
       endpoints: {
         graphql: '/graphql',
         rest: '/api',
@@ -439,74 +694,48 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
           const limit = parseInt(String(query.limit ?? '10'), 10)
           const offset = parseInt(String(query.offset ?? '0'), 10)
 
-          try {
-            const sqlit = getSQLit()
-            const result = await sqlit.query<{
-              id: string
-              number: number
-              hash: string
-              timestamp: string
-            }>(
-              `SELECT * FROM block ORDER BY number DESC LIMIT ? OFFSET ?`,
-              [limit, offset],
-              DATABASE_ID,
-            )
-            const countResult = await sqlit.query<{ count: number }>(
-              `SELECT COUNT(*) as count FROM block`,
-              [],
-              DATABASE_ID,
-            )
-            return {
-              blocks: result.rows,
-              total: countResult.rows[0]?.count ?? 0,
-            }
-          } catch (err) {
-            const message = err instanceof Error ? err.message : String(err)
-            return { blocks: [], total: 0, error: message }
+          const result = await sqlitQuery(
+            DATABASE_ID,
+            `SELECT * FROM blocks ORDER BY number DESC LIMIT ? OFFSET ?`,
+            [limit, offset],
+          )
+          const countResult = await sqlitQuery(
+            DATABASE_ID,
+            `SELECT COUNT(*) as count FROM blocks`,
+            [],
+          )
+          if (!result.success) {
+            return { blocks: [], total: 0, error: result.status }
+          }
+          return {
+            blocks: resultToObjects(result),
+            total: resultToObjects(countResult)[0]?.count ?? 0,
           }
         })
         .get('/blocks/latest', async () => {
-          try {
-            const sqlit = getSQLit()
-            const result = await sqlit.query<{
-              id: string
-              number: number
-              hash: string
-              timestamp: string
-            }>(
-              `SELECT * FROM block ORDER BY number DESC LIMIT 1`,
-              [],
-              DATABASE_ID,
-            )
-            return { block: result.rows[0] ?? null }
-          } catch (err) {
-            const message = err instanceof Error ? err.message : String(err)
-            return { block: null, error: message }
+          const result = await sqlitQuery(
+            DATABASE_ID,
+            `SELECT * FROM blocks ORDER BY number DESC LIMIT 1`,
+            [],
+          )
+          if (!result.success) {
+            return { block: null, error: result.status }
           }
+          const rows = resultToObjects(result)
+          return { block: rows[0] ?? null }
         })
         .get('/blocks/:blockNumber', async ({ params }) => {
-          try {
-            const sqlit = getSQLit()
-            const blockNumber = parseInt(params.blockNumber, 10)
-            const result = await sqlit.query<{
-              id: string
-              number: number
-              hash: string
-              timestamp: string
-            }>(
-              `SELECT * FROM block WHERE number = ? LIMIT 1`,
-              [blockNumber],
-              DATABASE_ID,
-            )
-            return { block: result.rows[0] ?? null }
-          } catch (err) {
-            const message = err instanceof Error ? err.message : String(err)
-            return {
-              blockNumber: params.blockNumber,
-              block: null,
-              error: message,
-            }
+          const blockNumber = parseInt(params.blockNumber, 10)
+          const result = await sqlitQuery(
+            DATABASE_ID,
+            `SELECT * FROM blocks WHERE number = ? LIMIT 1`,
+            [blockNumber],
+          )
+          if (!result.success) {
+            return { blockNumber: params.blockNumber, block: null, error: result.status }
           }
+          const rows = resultToObjects(result)
+          return { block: rows[0] ?? null }
         })
 
         // Transactions
@@ -514,250 +743,159 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
           const limit = parseInt(String(query.limit ?? '10'), 10)
           const offset = parseInt(String(query.offset ?? '0'), 10)
 
-          try {
-            const sqlit = getSQLit()
-            const result = await sqlit.query<{
-              id: string
-              hash: string
-              block_number: number
-            }>(
-              `SELECT * FROM "transaction" ORDER BY block_number DESC LIMIT ? OFFSET ?`,
-              [limit, offset],
-              DATABASE_ID,
-            )
-            const countResult = await sqlit.query<{ count: number }>(
-              `SELECT COUNT(*) as count FROM "transaction"`,
-              [],
-              DATABASE_ID,
-            )
-            return {
-              transactions: result.rows,
-              total: countResult.rows[0]?.count ?? 0,
-            }
-          } catch (err) {
-            const message = err instanceof Error ? err.message : String(err)
-            return { transactions: [], total: 0, error: message }
+          const result = await sqlitQuery(
+            DATABASE_ID,
+            `SELECT * FROM transactions ORDER BY block_number DESC LIMIT ? OFFSET ?`,
+            [limit, offset],
+          )
+          const countResult = await sqlitQuery(
+            DATABASE_ID,
+            `SELECT COUNT(*) as count FROM transactions`,
+            [],
+          )
+          if (!result.success) {
+            return { transactions: [], total: 0, error: result.status }
+          }
+          return {
+            transactions: resultToObjects(result),
+            total: resultToObjects(countResult)[0]?.count ?? 0,
           }
         })
         .get('/transactions/:hash', async ({ params }) => {
-          try {
-            const sqlit = getSQLit()
-            const result = await sqlit.query<{
-              id: string
-              hash: string
-              block_number: number
-            }>(
-              `SELECT * FROM "transaction" WHERE hash = ? LIMIT 1`,
-              [params.hash],
-              DATABASE_ID,
-            )
-            return { transaction: result.rows[0] ?? null }
-          } catch (err) {
-            const message = err instanceof Error ? err.message : String(err)
-            return { hash: params.hash, transaction: null, error: message }
+          const result = await sqlitQuery(
+            DATABASE_ID,
+            `SELECT * FROM transactions WHERE hash = ? LIMIT 1`,
+            [params.hash],
+          )
+          if (!result.success) {
+            return { hash: params.hash, transaction: null, error: result.status }
           }
+          const rows = resultToObjects(result)
+          return { transaction: rows[0] ?? null }
         })
 
         // Addresses/Accounts
         .get('/addresses/:address', async ({ params }) => {
-          try {
-            const sqlit = getSQLit()
-            const address = params.address.toLowerCase()
-            const result = await sqlit.query<{
-              id: string
-              address: string
-              transaction_count: number
-            }>(
-              `SELECT * FROM account WHERE address = ? OR id = ? LIMIT 1`,
-              [address, address],
-              DATABASE_ID,
-            )
-            return {
-              account: result.rows[0] ?? null,
-              address: params.address,
-            }
-          } catch (err) {
-            const message = err instanceof Error ? err.message : String(err)
-            return { address: params.address, account: null, error: message }
+          const address = params.address.toLowerCase()
+          const result = await sqlitQuery(
+            DATABASE_ID,
+            `SELECT * FROM accounts WHERE address = ? OR id = ? LIMIT 1`,
+            [address, address],
+          )
+          if (!result.success) {
+            return { address: params.address, account: null, error: result.status }
           }
+          const rows = resultToObjects(result)
+          return { account: rows[0] ?? null, address: params.address }
         })
         .get('/addresses/:address/transactions', async ({ params, query }) => {
           const limit = parseInt(String(query.limit ?? '10'), 10)
           const address = params.address.toLowerCase()
 
-          try {
-            const sqlit = getSQLit()
-            const result = await sqlit.query<{ id: string; hash: string }>(
-              `SELECT * FROM "transaction" WHERE from_id = ? OR to_id = ? ORDER BY block_number DESC LIMIT ?`,
-              [address, address, limit],
-              DATABASE_ID,
-            )
-            return { address: params.address, transactions: result.rows }
-          } catch (err) {
-            const message = err instanceof Error ? err.message : String(err)
-            return { address: params.address, transactions: [], error: message }
+          const result = await sqlitQuery(
+            DATABASE_ID,
+            `SELECT * FROM transactions WHERE from_address = ? OR to_address = ? ORDER BY block_number DESC LIMIT ?`,
+            [address, address, limit],
+          )
+          if (!result.success) {
+            return { address: params.address, transactions: [], error: result.status }
           }
+          return { address: params.address, transactions: resultToObjects(result) }
         })
 
-        // Tokens
+        // Tokens (table may not exist yet - return empty)
         .get('/tokens', async ({ query }) => {
           const limit = parseInt(String(query.limit ?? '10'), 10)
-
-          try {
-            const sqlit = getSQLit()
-            const result = await sqlit.query<{
-              id: string
-              address: string
-              contract_type: string
-            }>(
-              `SELECT * FROM contract WHERE is_erc20 = 1 OR is_erc721 = 1 OR is_erc1155 = 1 LIMIT ?`,
-              [limit],
-              DATABASE_ID,
-            )
-            return { tokens: result.rows, total: result.rows.length }
-          } catch (err) {
-            const message = err instanceof Error ? err.message : String(err)
-            return { tokens: [], total: 0, error: message }
+          const result = await sqlitQuery(
+            DATABASE_ID,
+            `SELECT * FROM contracts WHERE is_erc20 = 1 OR is_erc721 = 1 OR is_erc1155 = 1 LIMIT ?`,
+            [limit],
+          )
+          if (!result.success) {
+            return { tokens: [], total: 0, error: result.status }
           }
+          const rows = resultToObjects(result)
+          return { tokens: rows, total: rows.length }
         })
         .get('/tokens/:address', async ({ params }) => {
-          try {
-            const sqlit = getSQLit()
-            const address = params.address.toLowerCase()
-            const result = await sqlit.query<{
-              id: string
-              address: string
-              contract_type: string
-            }>(
-              `SELECT * FROM contract WHERE address = ? LIMIT 1`,
-              [address],
-              DATABASE_ID,
-            )
-            return { token: result.rows[0] ?? null }
-          } catch (err) {
-            const message = err instanceof Error ? err.message : String(err)
-            return { address: params.address, token: null, error: message }
+          const address = params.address.toLowerCase()
+          const result = await sqlitQuery(
+            DATABASE_ID,
+            `SELECT * FROM contracts WHERE address = ? LIMIT 1`,
+            [address],
+          )
+          if (!result.success) {
+            return { address: params.address, token: null, error: result.status }
           }
+          const rows = resultToObjects(result)
+          return { token: rows[0] ?? null }
         })
 
-        // Events
+        // Events (table may not exist yet - return empty)
         .get('/events', async ({ query }) => {
           const limit = parseInt(String(query.limit ?? '10'), 10)
-
-          try {
-            const sqlit = getSQLit()
-            const result = await sqlit.query<{
-              id: string
-              event_name: string
-              timestamp: string
-            }>(
-              `SELECT * FROM decoded_event ORDER BY timestamp DESC LIMIT ?`,
-              [limit],
-              DATABASE_ID,
-            )
-            return { events: result.rows, total: result.rows.length }
-          } catch (err) {
-            const message = err instanceof Error ? err.message : String(err)
-            return { events: [], total: 0, error: message }
+          const result = await sqlitQuery(
+            DATABASE_ID,
+            `SELECT * FROM decoded_events ORDER BY timestamp DESC LIMIT ?`,
+            [limit],
+          )
+          if (!result.success) {
+            return { events: [], total: 0, error: result.status }
           }
+          const rows = resultToObjects(result)
+          return { events: rows, total: rows.length }
         })
         .get('/events/:contractAddress', async ({ params, query }) => {
           const limit = parseInt(String(query.limit ?? '10'), 10)
           const contractAddress = params.contractAddress.toLowerCase()
 
-          try {
-            const sqlit = getSQLit()
-            const result = await sqlit.query<{
-              id: string
-              event_name: string
-              timestamp: string
-            }>(
-              `SELECT * FROM decoded_event WHERE address_id = ? ORDER BY timestamp DESC LIMIT ?`,
-              [contractAddress, limit],
-              DATABASE_ID,
-            )
-            return {
-              contractAddress: params.contractAddress,
-              events: result.rows,
-            }
-          } catch (err) {
-            const message = err instanceof Error ? err.message : String(err)
-            return {
-              contractAddress: params.contractAddress,
-              events: [],
-              error: message,
-            }
+          const result = await sqlitQuery(
+            DATABASE_ID,
+            `SELECT * FROM decoded_events WHERE address_id = ? ORDER BY timestamp DESC LIMIT ?`,
+            [contractAddress, limit],
+          )
+          if (!result.success) {
+            return { contractAddress: params.contractAddress, events: [], error: result.status }
+          }
+          return {
+            contractAddress: params.contractAddress,
+            events: resultToObjects(result),
           }
         })
 
         // Stats
         .get('/stats', async () => {
-          try {
-            const sqlit = getSQLit()
-            const [blocksCount, txCount, accountsCount, latestBlock] =
-              await Promise.all([
-                sqlit.query<{ count: number }>(
-                  `SELECT COUNT(*) as count FROM block`,
-                  [],
-                  DATABASE_ID,
-                ),
-                sqlit.query<{ count: number }>(
-                  `SELECT COUNT(*) as count FROM "transaction"`,
-                  [],
-                  DATABASE_ID,
-                ),
-                sqlit.query<{ count: number }>(
-                  `SELECT COUNT(*) as count FROM account`,
-                  [],
-                  DATABASE_ID,
-                ),
-                sqlit.query<{ timestamp: string }>(
-                  `SELECT timestamp FROM block ORDER BY number DESC LIMIT 1`,
-                  [],
-                  DATABASE_ID,
-                ),
-              ])
+          const [blocksCount, txCount, accountsCount, latestBlock] =
+            await Promise.all([
+              sqlitQuery(DATABASE_ID, `SELECT COUNT(*) as count FROM blocks`, []),
+              sqlitQuery(DATABASE_ID, `SELECT COUNT(*) as count FROM transactions`, []),
+              sqlitQuery(DATABASE_ID, `SELECT COUNT(*) as count FROM accounts`, []),
+              sqlitQuery(DATABASE_ID, `SELECT timestamp FROM blocks ORDER BY number DESC LIMIT 1`, []),
+            ])
 
-            return {
-              totalBlocks: blocksCount.rows[0]?.count ?? 0,
-              totalTransactions: txCount.rows[0]?.count ?? 0,
-              totalAddresses: accountsCount.rows[0]?.count ?? 0,
-              lastBlockTime: latestBlock.rows[0]?.timestamp ?? null,
-            }
-          } catch (err) {
-            const message = err instanceof Error ? err.message : String(err)
-            return {
-              totalBlocks: 0,
-              totalTransactions: 0,
-              totalAddresses: 0,
-              lastBlockTime: null,
-              error: message,
-            }
+          return {
+            totalBlocks: resultToObjects(blocksCount)[0]?.count ?? 0,
+            totalTransactions: resultToObjects(txCount)[0]?.count ?? 0,
+            totalAddresses: resultToObjects(accountsCount)[0]?.count ?? 0,
+            lastBlockTime: resultToObjects(latestBlock)[0]?.timestamp ?? null,
           }
         })
         .get('/stats/tps', async () => {
-          try {
-            const sqlit = getSQLit()
-            // Get transaction count in last minute
-            const oneMinuteAgo = new Date(Date.now() - 60000).toISOString()
-            const result = await sqlit.query<{ count: number }>(
-              `SELECT COUNT(*) as count FROM "transaction" t 
-               JOIN block b ON t.block_id = b.id 
-               WHERE b.timestamp > ?`,
-              [oneMinuteAgo],
-              DATABASE_ID,
-            )
-            const txInLastMinute = result.rows[0]?.count ?? 0
-            const currentTPS = txInLastMinute / 60
+          const oneMinuteAgo = new Date(Date.now() - 60000).toISOString()
+          const result = await sqlitQuery(
+            DATABASE_ID,
+            `SELECT COUNT(*) as count FROM transactions t 
+             JOIN blocks b ON t.block_id = b.id 
+             WHERE b.timestamp > ?`,
+            [oneMinuteAgo],
+          )
+          const txInLastMinute = resultToObjects(result)[0]?.count ?? 0
+          const currentTPS = (typeof txInLastMinute === 'number' ? txInLastMinute : 0) / 60
 
-            return {
-              currentTPS: Math.round(currentTPS * 100) / 100,
-              avgTPS: currentTPS,
-              maxTPS: currentTPS,
-            }
-          } catch (err) {
-            const message = err instanceof Error ? err.message : String(err)
-            return { currentTPS: 0, avgTPS: 0, maxTPS: 0, error: message }
+          return {
+            currentTPS: Math.round(currentTPS * 100) / 100,
+            avgTPS: currentTPS,
+            maxTPS: currentTPS,
           }
         }),
     )
@@ -787,22 +925,15 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
 
           if (skill === 'query_blocks') {
             const limit = typeof params?.limit === 'number' ? params.limit : 10
-            try {
-              const sqlit = getSQLit()
-              const result = await sqlit.query<{
-                number: number
-                hash: string
-                timestamp: string
-              }>(
-                `SELECT number, hash, timestamp FROM block ORDER BY number DESC LIMIT ?`,
-                [limit],
-                DATABASE_ID,
-              )
-              return { skill, result: result.rows }
-            } catch (err) {
-              const message = err instanceof Error ? err.message : String(err)
-              return { skill, error: message }
+            const result = await sqlitQuery(
+              DATABASE_ID,
+              `SELECT number, hash, timestamp FROM blocks ORDER BY number DESC LIMIT ?`,
+              [limit],
+            )
+            if (!result.success) {
+              return { skill, error: result.status }
             }
+            return { skill, result: resultToObjects(result) }
           }
 
           return { skill, result: 'Skill not implemented' }
@@ -866,22 +997,15 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
 
           if (tool === 'indexer_query_blocks') {
             const limit = typeof args.limit === 'number' ? args.limit : 10
-            try {
-              const sqlit = getSQLit()
-              const result = await sqlit.query<{
-                number: number
-                hash: string
-                timestamp: string
-              }>(
-                `SELECT number, hash, timestamp FROM block ORDER BY number DESC LIMIT ?`,
-                [limit],
-                DATABASE_ID,
-              )
-              return { tool, result: result.rows }
-            } catch (err) {
-              const message = err instanceof Error ? err.message : String(err)
-              return { tool, error: message }
+            const result = await sqlitQuery(
+              DATABASE_ID,
+              `SELECT number, hash, timestamp FROM blocks ORDER BY number DESC LIMIT ?`,
+              [limit],
+            )
+            if (!result.success) {
+              return { tool, error: result.status }
             }
+            return { tool, result: resultToObjects(result) }
           }
 
           if (tool === 'indexer_query_transactions') {
@@ -891,28 +1015,22 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
                 ? args.address.toLowerCase()
                 : null
 
-            try {
-              const sqlit = getSQLit()
-              let sql = `SELECT hash, block_number, from_id, to_id FROM "transaction"`
-              const params: (string | number)[] = []
+            let sql = `SELECT hash, block_number, from_address, to_address FROM transactions`
+            const params: Array<string | number | null> = []
 
-              if (address) {
-                sql += ` WHERE from_id = ? OR to_id = ?`
-                params.push(address, address)
-              }
-
-              sql += ` ORDER BY block_number DESC LIMIT ?`
-              params.push(limit)
-
-              const result = await sqlit.query<{
-                hash: string
-                block_number: number
-              }>(sql, params, DATABASE_ID)
-              return { tool, result: result.rows }
-            } catch (err) {
-              const message = err instanceof Error ? err.message : String(err)
-              return { tool, error: message }
+            if (address) {
+              sql += ` WHERE from_address = ? OR to_address = ?`
+              params.push(address, address)
             }
+
+            sql += ` ORDER BY block_number DESC LIMIT ?`
+            params.push(limit)
+
+            const result = await sqlitQuery(DATABASE_ID, sql, params)
+            if (!result.success) {
+              return { tool, error: result.status }
+            }
+            return { tool, result: resultToObjects(result) }
           }
 
           if (tool === 'indexer_graphql') {

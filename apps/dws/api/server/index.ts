@@ -32,7 +32,7 @@ import {
   isProductionEnv,
   tryGetContract,
 } from '@jejunetwork/config'
-import { type Context, Elysia } from 'elysia'
+import { Elysia, type Context } from 'elysia'
 import type { Address, Hex } from 'viem'
 import {
   getLocalCDNServer,
@@ -1431,10 +1431,9 @@ if (import.meta.main) {
   }
 
   // Adapter to convert Bun's ServerWebSocket to SubscribableWebSocket
-  function toSubscribableWebSocket(ws: {
-    readonly readyState: number
-    send(data: string): number
-  }): SubscribableWebSocket {
+  function toSubscribableWebSocket(
+    ws: { readonly readyState: number; send(data: string): number },
+  ): SubscribableWebSocket {
     return {
       get readyState() {
         return ws.readyState
@@ -1491,15 +1490,7 @@ if (import.meta.main) {
     port: PORT,
     maxRequestBodySize: 500 * 1024 * 1024, // 500MB for large artifact uploads
     idleTimeout: 120, // 120 seconds - health checks can take time when external services are slow
-    async fetch(
-      req: Request,
-      server: {
-        upgrade(
-          req: Request,
-          options?: { data?: WebSocketData; headers?: HeadersInit },
-        ): boolean
-      },
-    ) {
+    async fetch(req: Request, server: { upgrade(req: Request, options?: { data?: WebSocketData; headers?: HeadersInit }): boolean }) {
       // Handle WebSocket upgrades for price streaming
       const url = new URL(req.url)
       if (
@@ -1556,12 +1547,12 @@ if (import.meta.main) {
       }
 
       // Check if this is a deployed app (not dws itself)
-      // Note: hostname may include port (e.g., localhost:4030), so use startsWith
-      const hostnameWithoutPort = hostname.split(':')[0]
+      // Skip internal IPs and localhost for health checks
+      const isInternalIp = hostname.match(/^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.|127\.)/)
       if (
-        !hostnameWithoutPort.startsWith('dws.') &&
-        !hostnameWithoutPort.startsWith('127.') &&
-        hostnameWithoutPort !== 'localhost'
+        !hostname.startsWith('dws.') &&
+        !isInternalIp &&
+        hostname !== 'localhost'
       ) {
         const appName = hostname.split('.')[0]
         const deployedApp = getDeployedApp(appName)
@@ -1695,12 +1686,7 @@ if (import.meta.main) {
       return app.handle(req)
     },
     websocket: {
-      open(ws: {
-        data: WebSocketData
-        readyState: number
-        send(data: string): number
-        close(): void
-      }) {
+      open(ws: { data: WebSocketData; readyState: number; send(data: string): number; close(): void }) {
         const data = ws.data
         if (data.type === 'prices') {
           // Set up price subscription service
@@ -1768,12 +1754,7 @@ if (import.meta.main) {
     if (dwsPrivateKey) {
       const infra = createInfrastructure(
         {
-          network:
-            NETWORK === 'localnet' ||
-            NETWORK === 'testnet' ||
-            NETWORK === 'mainnet'
-              ? NETWORK
-              : 'localnet',
+          network: NETWORK === 'localnet' || NETWORK === 'testnet' || NETWORK === 'mainnet' ? NETWORK : 'localnet',
           privateKey: dwsPrivateKey,
           selfEndpoint: baseUrl,
         },

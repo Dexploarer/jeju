@@ -146,22 +146,52 @@ async function deployWorker(
   )
   console.log(`   Worker code uploaded: ${uploadResult.cid}`)
 
-  // Deploy worker
+  // SQLit endpoint based on network - use DWS proxy for HTTP access
+  const sqlitEndpoint =
+    config.network === 'localnet'
+      ? 'http://127.0.0.1:8546'
+      : config.network === 'testnet'
+        ? 'https://dws.testnet.jejunetwork.org/sqlit'
+        : 'https://dws.jejunetwork.org/sqlit'
+
+  // Indexer database IDs per network (created via /sqlit/v1/admin/create)
+  const databaseIds: Record<string, string> = {
+    localnet: 'indexer-local',
+    testnet: 'f5bf9ea3723bf1c3d77b6914f1f8ecd1c1d8c9bd89890d769488e9a9682db960',
+    mainnet: 'indexer-mainnet', // To be created on mainnet deployment
+  }
+  const databaseId = databaseIds[config.network] ?? 'indexer'
+
+  console.log(`   SQLit endpoint: ${sqlitEndpoint}`)
+  console.log(`   Database ID: ${databaseId}`)
+
+  // Deploy worker with SQLit credentials
   const deployResponse = await fetch(`${config.dwsUrl}/workers`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'x-jeju-address': account.address,
     },
+    // SECURITY: No secrets embedded in env - use KMS_SECRET_IDS for secrets
+    // Workers fetch secrets from KMS at runtime
     body: JSON.stringify({
       name: 'indexer-api',
       codeCid: uploadResult.cid,
       runtime: 'bun',
       handler: 'worker.js:default',
-      memory: 256,
+      memory: 512,
       timeout: 30000,
       env: {
+        // Non-sensitive config only
+        JEJU_NETWORK: config.network,
         NETWORK: config.network,
+        SQLIT_BLOCK_PRODUCER_ENDPOINT: sqlitEndpoint,
+        SQLIT_MINER_ENDPOINT: sqlitEndpoint,
+        SQLIT_DATABASE_ID: databaseId,
+        // KMS secret references - worker fetches actual values at runtime
+        // SECURITY: SQLIT_PRIVATE_KEY must be stored in KMS with ID: kms:indexer-api:SQLIT_PRIVATE_KEY
+        KMS_SECRET_IDS: 'kms:indexer-api:SQLIT_PRIVATE_KEY',
+        OWNER_ADDRESS: account.address,
       },
     }),
   })
@@ -311,9 +341,8 @@ async function registerApp(
     staticFilesRecord[path] = cid
   }
 
-  // Use CID-based worker endpoint - CID workers are automatically deployed on demand
-  // UUID-based workers require the runtime to have them loaded, CID-based are more reliable
-  const backendEndpoint = `${config.dwsUrl}/workers/${workerInfo.codeCid}/http`
+  // Use UUID-based worker endpoint to preserve env vars (CID-based doesn't preserve env)
+  const backendEndpoint = `${config.dwsUrl}/workers/${workerInfo.functionId}/http`
 
   // App registration data for DWS app router
   const appConfig = {
@@ -321,8 +350,8 @@ async function registerApp(
     jnsName: 'indexer.jeju',
     frontendCid: indexCid, // CID for index.html (used as fallback)
     staticFiles: staticFilesRecord, // Map of all file paths to CIDs
-    backendWorkerId: workerInfo.codeCid, // Use CID for reliable on-demand deployment
-    backendEndpoint: backendEndpoint, // DWS worker endpoint (CID-based)
+    backendWorkerId: workerInfo.functionId, // Use UUID to preserve env vars
+    backendEndpoint, // UUID-based endpoint
     apiPaths: ['/api', '/health', '/a2a', '/mcp', '/graphql'], // Note: no trailing slashes - isApiPath checks pathname.startsWith(prefix + '/')
     spa: true, // Single-page application
     enabled: true,
@@ -347,6 +376,59 @@ async function registerApp(
   }
 
   console.log('[Indexer] App registered successfully')
+
+  // Trigger worker sync across all DWS pods for immediate availability
+  console.log('[Indexer] Triggering cross-pod worker sync...')
+  await syncWorkersAcrossPods(config)
+}
+
+/**
+ * Sync workers across all DWS pods after deployment
+ *
+ * This ensures all pods have the worker loaded and available for immediate invocation,
+ * eliminating "Function not found" errors due to load balancer routing to a pod
+ * that doesn't have the worker loaded yet.
+ */
+async function syncWorkersAcrossPods(config: DeployConfig): Promise<void> {
+  // Call sync endpoints multiple times to hit different pods through load balancer
+  const syncPromises: Promise<{ success: boolean; podId?: string }>[] = []
+  const syncCount = 5 // Hit enough times to reach multiple pods
+
+  for (let i = 0; i < syncCount; i++) {
+    // Sync workers
+    syncPromises.push(
+      fetch(`${config.dwsUrl}/workers/sync`, {
+        method: 'POST',
+        signal: AbortSignal.timeout(10000),
+      })
+        .then((r) => r.json())
+        .catch(() => ({ success: false })) as Promise<{
+        success: boolean
+        podId?: string
+      }>,
+    )
+
+    // Sync apps
+    syncPromises.push(
+      fetch(`${config.dwsUrl}/apps/sync`, {
+        method: 'POST',
+        signal: AbortSignal.timeout(10000),
+      })
+        .then((r) => r.json())
+        .catch(() => ({ success: false })) as Promise<{
+        success: boolean
+        podId?: string
+      }>,
+    )
+  }
+
+  const results = await Promise.all(syncPromises)
+  const uniquePods = new Set(results.filter((r) => r.podId).map((r) => r.podId))
+  const successCount = results.filter((r) => r.success).length
+
+  console.log(
+    `   Synced ${successCount}/${results.length} endpoints, reached ${uniquePods.size} unique pods`,
+  )
 }
 
 async function deploy(): Promise<void> {
