@@ -183,6 +183,39 @@ const RATE_LIMIT_MAX =
     : 1000
 const SKIP_RATE_LIMIT_PATHS = ['/health', '/.well-known/']
 
+/**
+ * Get MIME type from file path extension
+ */
+function getMimeType(path: string): string {
+  const ext = path.split('.').pop()?.toLowerCase() ?? ''
+  const mimeTypes: Record<string, string> = {
+    html: 'text/html; charset=utf-8',
+    js: 'application/javascript',
+    mjs: 'application/javascript',
+    css: 'text/css',
+    json: 'application/json',
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    gif: 'image/gif',
+    svg: 'image/svg+xml',
+    webp: 'image/webp',
+    ico: 'image/x-icon',
+    woff: 'font/woff',
+    woff2: 'font/woff2',
+    ttf: 'font/ttf',
+    eot: 'application/vnd.ms-fontobject',
+    mp4: 'video/mp4',
+    webm: 'video/webm',
+    mp3: 'audio/mpeg',
+    wav: 'audio/wav',
+    pdf: 'application/pdf',
+    txt: 'text/plain',
+    xml: 'application/xml',
+  }
+  return mimeTypes[ext] ?? 'application/octet-stream'
+}
+
 let rateLimitCache: CacheClient | null = null
 
 function getRateLimitCache(): CacheClient {
@@ -1609,13 +1642,7 @@ if (import.meta.main) {
                 )
                 const resp = await fetch(storageUrl).catch(() => null)
                 if (resp?.ok) {
-                  const contentType = filePathWithoutSlash.endsWith('.js')
-                    ? 'application/javascript'
-                    : filePathWithoutSlash.endsWith('.css')
-                      ? 'text/css'
-                      : filePathWithoutSlash.endsWith('.html')
-                        ? 'text/html'
-                        : 'application/octet-stream'
+                  const contentType = getMimeType(filePathWithoutSlash)
                   return new Response(resp.body, {
                     headers: {
                       'Content-Type': contentType,

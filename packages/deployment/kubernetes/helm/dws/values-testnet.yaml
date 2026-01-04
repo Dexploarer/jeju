@@ -84,6 +84,15 @@ ingress:
       paths:
         - path: /
           pathType: Prefix
+    # Babylon prediction markets platform
+    - host: babylon.testnet.jejunetwork.org
+      paths:
+        - path: /
+          pathType: Prefix
+    - host: babylon-api.testnet.jejunetwork.org
+      paths:
+        - path: /
+          pathType: Prefix
 
 resources:
   limits:
