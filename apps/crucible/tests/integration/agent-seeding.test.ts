@@ -14,15 +14,13 @@ import {
   runtimeManager,
 } from '../../api/sdk/eliza-runtime'
 
-let dwsAvailable = false
-
+// DWS is required infrastructure - tests must fail if it's not running
 beforeAll(async () => {
-  dwsAvailable = await checkDWSHealth()
+  const dwsAvailable = await checkDWSHealth()
   if (!dwsAvailable) {
-    console.log(
-      '[Agent Seeding Tests] DWS not available - some tests will use mock mode',
-    )
+    throw new Error('DWS is required but not running. Start with: jeju dev')
   }
+  console.log('[Agent Seeding Tests] DWS ready')
 })
 
 describe('Agent Seeding', () => {
@@ -126,12 +124,7 @@ describe('Agent Seeding', () => {
       }
     })
 
-    test('should initialize runtime with actions (requires DWS)', async () => {
-      if (!dwsAvailable) {
-        console.log('[Skipped] Requires DWS')
-        return
-      }
-
+    test('should initialize runtime with actions', async () => {
       const char = getCharacter('project-manager')
       expect(char).toBeDefined()
       if (!char) return
@@ -249,13 +242,8 @@ describe('Agent Seeding', () => {
   })
 })
 
-describe('Agent Communication (requires DWS)', () => {
+describe('Agent Communication', () => {
   test('should process message through runtime', async () => {
-    if (!dwsAvailable) {
-      console.log('[Skipped] Requires DWS')
-      return
-    }
-
     const char = getCharacter('community-manager')
     if (!char) return
 

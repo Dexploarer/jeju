@@ -19,6 +19,7 @@
     "declarationMap": true,
     "sourceMap": true,
     "downlevelIteration": true,
+    "jsx": "react-jsx",
     "types": ["bun"]
   },
   "exclude": [

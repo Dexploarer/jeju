@@ -737,13 +737,15 @@ contract FeeConfig is Ownable, Pausable {
     // ============================================================================
 
     function setBoard(address newBoard) external onlyOwner {
-        emit BoardUpdated(board, newBoard);
+        address oldBoard = board;
         board = newBoard;
+        emit BoardUpdated(oldBoard, newBoard);
     }
 
     function setDirector(address newDirector) external onlyOwner {
-        emit DirectorUpdated(director, newDirector);
+        address oldDirector = director;
         director = newDirector;
+        emit DirectorUpdated(oldDirector, newDirector);
     }
 
     function setTreasury(address newTreasury) external onlyOwner {

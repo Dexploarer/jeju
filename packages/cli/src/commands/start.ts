@@ -82,6 +82,16 @@ async function startProduction(options: { minimal?: boolean }): Promise<void> {
   logger.step('Bootstrapping contracts...')
   await bootstrapContracts(rootDir, l2RpcUrl)
 
+  // CRITICAL: Verify contracts are actually deployed on-chain
+  logger.step('Verifying contracts on-chain...')
+  const verification = await infrastructureService.verifyContractsDeployed()
+  if (!verification.verified) {
+    logger.error(`Contract verification failed: ${verification.error}`)
+    logger.error('Contracts must be deployed before start mode can proceed.')
+    process.exit(1)
+  }
+  logger.success('Contracts verified on-chain')
+
   // Step 3: Start local domain proxy
   await startLocalProxy()
 

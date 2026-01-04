@@ -5,11 +5,100 @@
  * requiring full DWS infrastructure.
  */
 
+import { type Address, createWalletClient, type Hex, http } from 'viem'
+import { privateKeyToAccount } from 'viem/accounts'
+import { localhost } from 'viem/chains'
 import type {
   RuntimeMessage,
   RuntimeResponse,
 } from '../../api/sdk/eliza-runtime'
 import type { AgentCharacter } from '../../lib/types'
+
+/**
+ * Mock KMS Signer for testing
+ *
+ * Uses a simple private key instead of actual KMS threshold signing.
+ * Provides the same interface as the real KMSSigner.
+ */
+export class MockKMSSigner {
+  private account: ReturnType<typeof privateKeyToAccount>
+  private walletClient: ReturnType<typeof createWalletClient>
+  private initialized = false
+
+  constructor(
+    privateKey: Hex = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80', // Anvil account 0
+    rpcUrl: string = 'http://127.0.0.1:8545',
+    chainId: number = 31337, // Anvil default chain ID
+  ) {
+    this.account = privateKeyToAccount(privateKey)
+    // Use Anvil chain configuration with correct chain ID
+    const anvil = {
+      ...localhost,
+      id: chainId,
+    }
+    this.walletClient = createWalletClient({
+      account: this.account,
+      chain: anvil,
+      transport: http(rpcUrl),
+    })
+  }
+
+  async initialize(): Promise<void> {
+    this.initialized = true
+  }
+
+  isInitialized(): boolean {
+    return this.initialized
+  }
+
+  getAddress(): Address {
+    return this.account.address
+  }
+
+  getKeyId(): string {
+    return 'mock-key-id'
+  }
+
+  async signMessage(message: string | Uint8Array): Promise<{
+    signature: Hex
+    r: Hex
+    s: Hex
+    v: number
+    mode: string
+    participants: string[]
+  }> {
+    const signature = await this.account.signMessage({
+      message: typeof message === 'string' ? message : { raw: message },
+    })
+    return {
+      signature,
+      r: `0x${signature.slice(2, 66)}` as Hex,
+      s: `0x${signature.slice(66, 130)}` as Hex,
+      v: parseInt(signature.slice(130, 132), 16),
+      mode: 'mock',
+      participants: ['mock-signer'],
+    }
+  }
+
+  async signContractWrite(params: {
+    address: Address
+    abi: readonly unknown[]
+    functionName: string
+    args?: readonly unknown[]
+    value?: bigint
+  }): Promise<Hex> {
+    const hash = await this.walletClient.writeContract({
+      address: params.address,
+      abi: params.abi as Parameters<
+        typeof this.walletClient.writeContract
+      >[0]['abi'],
+      functionName: params.functionName,
+      args: params.args as readonly unknown[],
+      value: params.value,
+    })
+    return hash
+  }
+}
 
 /**
  * Mock DWS client for testing

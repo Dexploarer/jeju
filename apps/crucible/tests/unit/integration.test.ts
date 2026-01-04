@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, test } from 'bun:test'
 import { getServicesConfig } from '@jejunetwork/config'
-import { createPublicClient, createWalletClient, http, parseEther } from 'viem'
+import { createPublicClient, http, parseEther } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { localhost } from 'viem/chains'
 import { getCharacter } from '../../api/characters'
@@ -10,6 +10,7 @@ import { createLogger } from '../../api/sdk/logger'
 import { createRoomSDK } from '../../api/sdk/room'
 import { createStorage } from '../../api/sdk/storage'
 import type { CrucibleConfig } from '../../lib/types'
+import { MockKMSSigner } from '../fixtures/agent-mocks'
 
 const TEST_PRIVATE_KEY =
   '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' // anvil default
@@ -20,21 +21,26 @@ const servicesConfig = getServicesConfig()
 // DWS provides storage, compute, and CDN from a single endpoint
 const DWS_URL = servicesConfig.dws.api
 
-// Read contract addresses from env or use defaults
+// Load contract addresses from deployment file
+import deployments from '../../../../packages/contracts/deployments/localnet/deployment.json'
+
 const config: CrucibleConfig = {
   rpcUrl: servicesConfig.rpc.l2,
   privateKey: TEST_PRIVATE_KEY,
   contracts: {
     agentVault: (process.env.AGENT_VAULT_ADDRESS ??
-      '0x5FbDB2315678afecb367f032d93F642f64180aa3') as `0x${string}`,
+      deployments.crucible?.agentVault ??
+      '0xc5a5C42992dECbae36851359345FE25997F5C42d') as `0x${string}`,
     roomRegistry: (process.env.ROOM_REGISTRY_ADDRESS ??
-      '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512') as `0x${string}`,
+      deployments.crucible?.roomRegistry ??
+      '0x67d269191c92Caf3cD7723F116c85e6E9bf55933') as `0x${string}`,
     triggerRegistry: (process.env.TRIGGER_REGISTRY_ADDRESS ??
-      '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0') as `0x${string}`,
+      deployments.crucible?.triggerRegistry ??
+      '0xE6E340D132b5f46d1e472DebcD681B2aBc16e57E') as `0x${string}`,
     identityRegistry: (process.env.IDENTITY_REGISTRY_ADDRESS ??
-      '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9') as `0x${string}`,
+      deployments.registry.identityRegistry) as `0x${string}`,
     serviceRegistry: (process.env.SERVICE_REGISTRY_ADDRESS ??
-      '0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9') as `0x${string}`,
+      deployments.infrastructure.serviceRegistry) as `0x${string}`,
   },
   services: {
     dwsUrl: DWS_URL,
@@ -47,9 +53,13 @@ const config: CrucibleConfig = {
 }
 
 // Check if infrastructure is available (runs once before tests)
-const checkInfrastructure = async (): Promise<boolean> => {
-  const checks = await Promise.all([
-    fetch('http://127.0.0.1:6546', {
+const checkInfrastructure = async (): Promise<{
+  rpc: boolean
+  dws: boolean
+}> => {
+  const rpcUrl = config.rpcUrl
+  const [rpc, dws] = await Promise.all([
+    fetch(rpcUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -66,22 +76,15 @@ const checkInfrastructure = async (): Promise<boolean> => {
       .then((r) => r.ok)
       .catch(() => false),
   ])
-  return checks.every((r) => r)
+  return { rpc, dws }
 }
-
-// Skip if infrastructure not available (unless INTEGRATION=true forces it)
-const SKIP = process.env.INTEGRATION !== 'true'
 
 const log = createLogger('IntegrationTest', { level: 'debug' })
 
-describe.skipIf(SKIP)('Integration Tests', () => {
+// Infrastructure is REQUIRED - tests fail if not running
+describe('Integration Tests', () => {
   const account = privateKeyToAccount(TEST_PRIVATE_KEY as `0x${string}`)
   const publicClient = createPublicClient({
-    chain: localhost,
-    transport: http(config.rpcUrl),
-  })
-  const walletClient = createWalletClient({
-    account,
     chain: localhost,
     transport: http(config.rpcUrl),
   })
@@ -92,11 +95,15 @@ describe.skipIf(SKIP)('Integration Tests', () => {
   let roomSdk: ReturnType<typeof createRoomSDK>
 
   beforeAll(async () => {
-    // Verify infrastructure is available
-    const available = await checkInfrastructure()
-    if (!available) {
-      log.warn('Infrastructure not fully available - some tests may fail')
-      log.info('Run `jeju dev` to start all services')
+    // Verify infrastructure is available - REQUIRED
+    const infra = await checkInfrastructure()
+    if (!infra.rpc) {
+      throw new Error(
+        `RPC not available at ${config.rpcUrl}. Start with: jeju dev`,
+      )
+    }
+    if (!infra.dws) {
+      throw new Error(`DWS not available at ${DWS_URL}. Start with: jeju dev`)
     }
 
     log.info('Setting up integration test environment', {
@@ -116,12 +123,20 @@ describe.skipIf(SKIP)('Integration Tests', () => {
       logger: createLogger('Compute', { level: 'debug' }),
     })
 
+    // Use MockKMSSigner for testing - simpler than real KMS
+    const kmsSigner = new MockKMSSigner(
+      TEST_PRIVATE_KEY as `0x${string}`,
+      config.rpcUrl,
+      31337, // Anvil chain ID
+    )
+    await kmsSigner.initialize()
+
     agentSdk = createAgentSDK({
       crucibleConfig: config,
       storage,
       compute,
       publicClient,
-      walletClient,
+      kmsSigner,
       logger: createLogger('AgentSDK', { level: 'debug' }),
     })
 
@@ -129,7 +144,7 @@ describe.skipIf(SKIP)('Integration Tests', () => {
       crucibleConfig: config,
       storage,
       publicClient,
-      walletClient,
+      kmsSigner,
       logger: createLogger('RoomSDK', { level: 'debug' }),
     })
   })

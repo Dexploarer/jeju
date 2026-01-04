@@ -568,12 +568,19 @@ export class RegistryIntegrationClient {
       )
     }
 
-    const exists = await readContract(this.client, {
-      address: this.identityAddress,
-      abi: IDENTITY_ABI,
-      functionName: 'agentExists',
-      args: [agentId],
-    })
+    // Check if agent exists - the contract may revert for non-existent agents
+    let exists = false
+    try {
+      exists = (await readContract(this.client, {
+        address: this.identityAddress,
+        abi: IDENTITY_ABI,
+        functionName: 'agentExists',
+        args: [agentId],
+      })) as boolean
+    } catch {
+      // Contract reverted - agent doesn't exist
+      return null
+    }
     if (!exists) return null
 
     const [agent, tags, a2aEndpoint, mcpEndpoint, reputation] =
@@ -736,23 +743,28 @@ export class RegistryIntegrationClient {
   async getWeightedAgentReputation(
     agentId: bigint,
   ): Promise<{ reputation: number; weight: number }> {
-    if (!this.integrationAddress) {
-      const result = (await readContract(this.client, {
-        address: this.reputationAddress,
-        abi: REPUTATION_ABI,
-        functionName: 'getSummary',
-        args: [agentId, [], zeroHash, zeroHash],
-      })) as [bigint, number]
-      return { reputation: Number(result[1]), weight: 100 }
-    }
+    try {
+      if (!this.integrationAddress) {
+        const result = (await readContract(this.client, {
+          address: this.reputationAddress,
+          abi: REPUTATION_ABI,
+          functionName: 'getSummary',
+          args: [agentId, [], zeroHash, zeroHash],
+        })) as [bigint, number]
+        return { reputation: Number(result[1]), weight: 100 }
+      }
 
-    const result = (await readContract(this.client, {
-      address: this.integrationAddress,
-      abi: INTEGRATION_ABI,
-      functionName: 'getWeightedAgentReputation',
-      args: [agentId],
-    })) as [bigint, bigint]
-    return { reputation: Number(result[0]), weight: Number(result[1]) }
+      const result = (await readContract(this.client, {
+        address: this.integrationAddress,
+        abi: INTEGRATION_ABI,
+        functionName: 'getWeightedAgentReputation',
+        args: [agentId],
+      })) as [bigint, bigint]
+      return { reputation: Number(result[0]), weight: Number(result[1]) }
+    } catch {
+      // Agent doesn't exist or contract reverted
+      return { reputation: 0, weight: 0 }
+    }
   }
 
   async searchByTag(
@@ -760,35 +772,40 @@ export class RegistryIntegrationClient {
     offset = 0,
     limit = 50,
   ): Promise<SearchResult> {
-    if (this.integrationAddress) {
-      const result = (await readContract(this.client, {
-        address: this.integrationAddress,
-        abi: INTEGRATION_ABI,
-        functionName: 'searchByTag',
-        args: [tag, BigInt(offset), BigInt(limit)],
-      })) as ContractSearchResult
-      return {
-        agentIds: result.agentIds,
-        total: Number(result.total),
-        offset: Number(result.offset),
-        limit: Number(result.limit),
+    try {
+      if (this.integrationAddress) {
+        const result = (await readContract(this.client, {
+          address: this.integrationAddress,
+          abi: INTEGRATION_ABI,
+          functionName: 'searchByTag',
+          args: [tag, BigInt(offset), BigInt(limit)],
+        })) as ContractSearchResult
+        return {
+          agentIds: result.agentIds,
+          total: Number(result.total),
+          offset: Number(result.offset),
+          limit: Number(result.limit),
+        }
       }
-    }
 
-    const agentIds = (await readContract(this.client, {
-      address: this.identityAddress,
-      abi: IDENTITY_ABI,
-      functionName: 'getAgentsByTag',
-      args: [tag],
-    })) as bigint[]
-    const total = agentIds.length
-    const sliced = agentIds.slice(offset, offset + limit)
+      const agentIds = (await readContract(this.client, {
+        address: this.identityAddress,
+        abi: IDENTITY_ABI,
+        functionName: 'getAgentsByTag',
+        args: [tag],
+      })) as bigint[]
+      const total = agentIds.length
+      const sliced = agentIds.slice(offset, offset + limit)
 
-    return {
-      agentIds: sliced,
-      total,
-      offset,
-      limit,
+      return {
+        agentIds: sliced,
+        total,
+        offset,
+        limit,
+      }
+    } catch {
+      // No agents with this tag or contract reverted
+      return { agentIds: [], total: 0, offset, limit }
     }
   }
 
@@ -797,139 +814,170 @@ export class RegistryIntegrationClient {
     offset = 0,
     limit = 50,
   ): Promise<{ agentIds: bigint[]; scores: number[] }> {
-    if (this.integrationAddress) {
-      const result = (await readContract(this.client, {
-        address: this.integrationAddress,
-        abi: INTEGRATION_ABI,
-        functionName: 'getAgentsByScore',
-        args: [BigInt(minScore), BigInt(offset), BigInt(limit)],
-      })) as [bigint[], bigint[]]
-      return {
-        agentIds: result[0],
-        scores: result[1].map((s) => Number(s)),
+    try {
+      if (this.integrationAddress) {
+        const result = (await readContract(this.client, {
+          address: this.integrationAddress,
+          abi: INTEGRATION_ABI,
+          functionName: 'getAgentsByScore',
+          args: [BigInt(minScore), BigInt(offset), BigInt(limit)],
+        })) as [bigint[], bigint[]]
+        return {
+          agentIds: result[0],
+          scores: result[1].map((s) => Number(s)),
+        }
       }
-    }
 
-    const allAgents = (await readContract(this.client, {
-      address: this.identityAddress,
-      abi: IDENTITY_ABI,
-      functionName: 'getActiveAgents',
-      args: [BigInt(0), BigInt(500)],
-    })) as bigint[]
-    const profiles = await this.getAgentProfiles(allAgents)
+      const allAgents = (await readContract(this.client, {
+        address: this.identityAddress,
+        abi: IDENTITY_ABI,
+        functionName: 'getActiveAgents',
+        args: [BigInt(0), BigInt(500)],
+      })) as bigint[]
+      const profiles = await this.getAgentProfiles(allAgents)
 
-    const filtered = profiles
-      .filter((p) => p.compositeScore >= minScore && !p.isBanned)
-      .slice(offset, offset + limit)
+      const filtered = profiles
+        .filter((p) => p.compositeScore >= minScore && !p.isBanned)
+        .slice(offset, offset + limit)
 
-    return {
-      agentIds: filtered.map((p) => p.agentId),
-      scores: filtered.map((p) => p.compositeScore),
+      return {
+        agentIds: filtered.map((p) => p.agentId),
+        scores: filtered.map((p) => p.compositeScore),
+      }
+    } catch {
+      return { agentIds: [], scores: [] }
     }
   }
 
   async getTopAgents(count = 10): Promise<AgentProfile[]> {
-    if (this.integrationAddress) {
-      const profiles = await readContract(this.client, {
-        address: this.integrationAddress,
-        abi: INTEGRATION_ABI,
-        functionName: 'getTopAgents',
-        args: [BigInt(count)],
-      })
-      return (profiles as Array<Parameters<typeof this._parseProfile>[0]>).map(
-        (p) => this._parseProfile(p),
-      )
+    try {
+      if (this.integrationAddress) {
+        const profiles = await readContract(this.client, {
+          address: this.integrationAddress,
+          abi: INTEGRATION_ABI,
+          functionName: 'getTopAgents',
+          args: [BigInt(count)],
+        })
+        return (
+          profiles as Array<Parameters<typeof this._parseProfile>[0]>
+        ).map((p) => this._parseProfile(p))
+      }
+
+      const allAgents = (await readContract(this.client, {
+        address: this.identityAddress,
+        abi: IDENTITY_ABI,
+        functionName: 'getActiveAgents',
+        args: [BigInt(0), BigInt(200)],
+      })) as bigint[]
+      const profiles = await this.getAgentProfiles(allAgents)
+
+      return profiles
+        .filter((p) => !p.isBanned)
+        .sort((a, b) => b.compositeScore - a.compositeScore)
+        .slice(0, count)
+    } catch {
+      return []
     }
-
-    const allAgents = (await readContract(this.client, {
-      address: this.identityAddress,
-      abi: IDENTITY_ABI,
-      functionName: 'getActiveAgents',
-      args: [BigInt(0), BigInt(200)],
-    })) as bigint[]
-    const profiles = await this.getAgentProfiles(allAgents)
-
-    return profiles
-      .filter((p) => !p.isBanned)
-      .sort((a, b) => b.compositeScore - a.compositeScore)
-      .slice(0, count)
   }
 
   async getActiveAgents(offset = 0, limit = 100): Promise<bigint[]> {
-    return readContract(this.client, {
-      address: this.identityAddress,
-      abi: IDENTITY_ABI,
-      functionName: 'getActiveAgents',
-      args: [BigInt(offset), BigInt(limit)],
-    }) as Promise<bigint[]>
+    try {
+      return (await readContract(this.client, {
+        address: this.identityAddress,
+        abi: IDENTITY_ABI,
+        functionName: 'getActiveAgents',
+        args: [BigInt(offset), BigInt(limit)],
+      })) as bigint[]
+    } catch {
+      return []
+    }
   }
 
   async getTotalAgents(): Promise<number> {
-    const total = (await readContract(this.client, {
-      address: this.identityAddress,
-      abi: IDENTITY_ABI,
-      functionName: 'totalAgents',
-    })) as bigint
-    return Number(total)
+    try {
+      const total = (await readContract(this.client, {
+        address: this.identityAddress,
+        abi: IDENTITY_ABI,
+        functionName: 'totalAgents',
+      })) as bigint
+      return Number(total)
+    } catch {
+      return 0
+    }
   }
 
   async canSubmitProposal(agentId: bigint): Promise<EligibilityResult> {
-    if (this.integrationAddress) {
-      const result = (await readContract(this.client, {
-        address: this.integrationAddress,
-        abi: INTEGRATION_ABI,
-        functionName: 'canSubmitProposal',
-        args: [agentId],
-      })) as [boolean, string]
-      return { eligible: result[0], reason: result[1] }
-    }
+    try {
+      if (this.integrationAddress) {
+        const result = (await readContract(this.client, {
+          address: this.integrationAddress,
+          abi: INTEGRATION_ABI,
+          functionName: 'canSubmitProposal',
+          args: [agentId],
+        })) as [boolean, string]
+        return { eligible: result[0], reason: result[1] }
+      }
 
-    const profile = await this.getAgentProfile(agentId)
-    if (!profile) return { eligible: false, reason: 'Agent does not exist' }
-    if (profile.isBanned) return { eligible: false, reason: 'Agent is banned' }
-    if (profile.compositeScore < 50)
-      return { eligible: false, reason: 'Composite score too low' }
-    return { eligible: true, reason: '' }
+      const profile = await this.getAgentProfile(agentId)
+      if (!profile) return { eligible: false, reason: 'Agent does not exist' }
+      if (profile.isBanned)
+        return { eligible: false, reason: 'Agent is banned' }
+      if (profile.compositeScore < 50)
+        return { eligible: false, reason: 'Composite score too low' }
+      return { eligible: true, reason: '' }
+    } catch {
+      return { eligible: false, reason: 'Agent does not exist' }
+    }
   }
 
   async canVote(agentId: bigint): Promise<EligibilityResult> {
-    if (this.integrationAddress) {
-      const result = (await readContract(this.client, {
-        address: this.integrationAddress,
-        abi: INTEGRATION_ABI,
-        functionName: 'canVote',
-        args: [agentId],
-      })) as [boolean, string]
-      return { eligible: result[0], reason: result[1] }
-    }
+    try {
+      if (this.integrationAddress) {
+        const result = (await readContract(this.client, {
+          address: this.integrationAddress,
+          abi: INTEGRATION_ABI,
+          functionName: 'canVote',
+          args: [agentId],
+        })) as [boolean, string]
+        return { eligible: result[0], reason: result[1] }
+      }
 
-    const profile = await this.getAgentProfile(agentId)
-    if (!profile) return { eligible: false, reason: 'Agent does not exist' }
-    if (profile.isBanned) return { eligible: false, reason: 'Agent is banned' }
-    if (profile.compositeScore < 30)
-      return { eligible: false, reason: 'Composite score too low' }
-    return { eligible: true, reason: '' }
+      const profile = await this.getAgentProfile(agentId)
+      if (!profile) return { eligible: false, reason: 'Agent does not exist' }
+      if (profile.isBanned)
+        return { eligible: false, reason: 'Agent is banned' }
+      if (profile.compositeScore < 30)
+        return { eligible: false, reason: 'Composite score too low' }
+      return { eligible: true, reason: '' }
+    } catch {
+      return { eligible: false, reason: 'Agent does not exist' }
+    }
   }
 
   async canConductResearch(agentId: bigint): Promise<EligibilityResult> {
-    if (this.integrationAddress) {
-      const result = (await readContract(this.client, {
-        address: this.integrationAddress,
-        abi: INTEGRATION_ABI,
-        functionName: 'canConductResearch',
-        args: [agentId],
-      })) as [boolean, string]
-      return { eligible: result[0], reason: result[1] }
-    }
+    try {
+      if (this.integrationAddress) {
+        const result = (await readContract(this.client, {
+          address: this.integrationAddress,
+          abi: INTEGRATION_ABI,
+          functionName: 'canConductResearch',
+          args: [agentId],
+        })) as [boolean, string]
+        return { eligible: result[0], reason: result[1] }
+      }
 
-    const profile = await this.getAgentProfile(agentId)
-    if (!profile) return { eligible: false, reason: 'Agent does not exist' }
-    if (profile.isBanned) return { eligible: false, reason: 'Agent is banned' }
-    if (profile.stakeTier < 2)
-      return { eligible: false, reason: 'Insufficient stake tier' }
-    if (profile.compositeScore < 70)
-      return { eligible: false, reason: 'Composite score too low' }
-    return { eligible: true, reason: '' }
+      const profile = await this.getAgentProfile(agentId)
+      if (!profile) return { eligible: false, reason: 'Agent does not exist' }
+      if (profile.isBanned)
+        return { eligible: false, reason: 'Agent is banned' }
+      if (profile.stakeTier < 2)
+        return { eligible: false, reason: 'Insufficient stake tier' }
+      if (profile.compositeScore < 70)
+        return { eligible: false, reason: 'Composite score too low' }
+      return { eligible: true, reason: '' }
+    } catch {
+      return { eligible: false, reason: 'Agent does not exist' }
+    }
   }
 
   async getDelegate(address: Address) {

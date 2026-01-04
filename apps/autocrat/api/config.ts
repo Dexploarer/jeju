@@ -1,5 +1,6 @@
 import {
   createAppConfig,
+  getCurrentNetwork,
   getEnvNumber,
   getEnvVar,
   getLocalhostHost,
@@ -51,13 +52,13 @@ export interface AutocratConfig {
   nodeEnv: string
 }
 
+// Get network value from shared config (defaults to localnet for dev)
+const network = getCurrentNetwork()
+
 const { config, configure: setAutocratConfig } =
   createAppConfig<AutocratConfig>({
     rpcUrl: getEnvVar('RPC_URL') ?? '',
-    network: (getEnvVar('JEJU_NETWORK') ?? 'testnet') as
-      | 'mainnet'
-      | 'testnet'
-      | 'localnet',
+    network,
     defaultDao: getEnvVar('DEFAULT_DAO') ?? 'jeju',
     directorModelId: getEnvVar('DIRECTOR_MODEL_ID') ?? 'claude-opus-4-5',
     operatorKey: getEnvVar('OPERATOR_KEY'),
@@ -66,7 +67,12 @@ const { config, configure: setAutocratConfig } =
     autocratApiKey: getEnvVar('AUTOCRAT_API_KEY'),
     cloudApiKey: getEnvVar('CLOUD_API_KEY'),
     teePlatform: getEnvVar('TEE_PLATFORM'),
-    teeEncryptionSecret: getEnvVar('TEE_ENCRYPTION_SECRET'),
+    teeEncryptionSecret:
+      getEnvVar('TEE_ENCRYPTION_SECRET') ??
+      // Default for local development - DO NOT use in production
+      (network === 'localnet'
+        ? 'localnet-tee-secret-32-chars-min!'
+        : undefined),
     ollamaUrl: getEnvVar('OLLAMA_URL') ?? `http://${getLocalhostHost()}:11434`,
     ollamaModel: getEnvVar('OLLAMA_MODEL') ?? 'llama3.2',
     computeModel: getEnvVar('COMPUTE_MODEL'),

@@ -1,6 +1,6 @@
 /** Infrastructure service for Jeju development */
 
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { platform } from 'node:os'
 import { join } from 'node:path'
 import {
@@ -16,6 +16,8 @@ import {
 import { execa, type ResultPromise } from 'execa'
 import { logger } from '../lib/logger'
 import { DEFAULT_PORTS } from '../types'
+
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
 // ERC-4337 Bundler port
 const BUNDLER_PORT = 4337
@@ -961,6 +963,85 @@ export class InfrastructureService {
         status: status.messageRelay ? 'ok' : 'warn',
       },
     ])
+  }
+
+  /**
+   * Verify contracts are deployed on-chain
+   * Returns { verified, error } - throws nothing, just reports status
+   */
+  async verifyContractsDeployed(): Promise<{
+    verified: boolean
+    error?: string
+    contracts?: Record<string, string>
+  }> {
+    const bootstrapFile = join(
+      this.rootDir,
+      'packages/contracts/deployments/localnet-complete.json',
+    )
+
+    // Check 1: Bootstrap file must exist
+    if (!existsSync(bootstrapFile)) {
+      return {
+        verified: false,
+        error: 'Bootstrap file not found. Run: bun run jeju dev',
+      }
+    }
+
+    // Check 2: Bootstrap file must have valid contracts
+    const data = JSON.parse(readFileSync(bootstrapFile, 'utf-8'))
+    const contracts = data?.contracts as Record<string, string>
+    if (
+      !contracts ||
+      !contracts.jnsRegistry ||
+      contracts.jnsRegistry === ZERO_ADDRESS
+    ) {
+      return {
+        verified: false,
+        error: 'JNS Registry not found in bootstrap file',
+      }
+    }
+
+    // Check 3: Verify contract is actually deployed on-chain
+    const rpcUrl = getL2RpcUrl()
+    const contractAddress = contracts.jnsRegistry
+
+    try {
+      const response = await fetch(rpcUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_getCode',
+          params: [contractAddress, 'latest'],
+          id: 1,
+        }),
+        signal: AbortSignal.timeout(10000),
+      })
+
+      if (!response.ok) {
+        return {
+          verified: false,
+          error: `RPC request failed: ${response.status}`,
+        }
+      }
+
+      const result = await response.json()
+      const code = result.result as string
+
+      if (!code || code === '0x' || code.length < 4) {
+        return {
+          verified: false,
+          error: `JNS Registry at ${contractAddress} has no code on-chain (chain may have been reset)`,
+        }
+      }
+
+      return { verified: true, contracts }
+    } catch (error) {
+      return {
+        verified: false,
+        error: `Failed to verify: ${error instanceof Error ? error.message : String(error)}`,
+      }
+    }
   }
 
   /**

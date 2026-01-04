@@ -20,7 +20,7 @@ import { getL2RpcUrl, getLocalhostHost } from '@jejunetwork/config'
 import { createPublicClient, http } from 'viem'
 import { localhost } from 'viem/chains'
 
-const API_PORT = parseInt(process.env.API_PORT || '8010', 10)
+const API_PORT = parseInt(process.env.API_PORT || '4040', 10)
 
 // Track managed processes for cleanup
 const managedProcesses: ChildProcess[] = []
@@ -111,7 +111,7 @@ async function verifyContractsDeployed(
 // API Server
 // ============================================================================
 
-async function checkApi(url: string, timeout = 3000): Promise<boolean> {
+export async function checkApi(url: string, timeout = 3000): Promise<boolean> {
   try {
     const response = await fetch(`${url}/health`, {
       signal: AbortSignal.timeout(timeout),
@@ -229,7 +229,7 @@ export async function getTestEnv(): Promise<TestEnv> {
  * The chain should already be running from the shared setup.
  */
 export async function ensureServices(
-  options: { api?: boolean } = {},
+  options: { api?: boolean; chain?: boolean } = {},
 ): Promise<TestEnv> {
   const { api = false } = options
 
@@ -258,10 +258,15 @@ export async function ensureServices(
     `   Chain:     ${env.rpcUrl} ${env.chainRunning ? '✅' : '❌'}${env.chainId ? ` (chainId: ${env.chainId})` : ''}`,
   )
   console.log(
-    `   Contracts: ${env.contractsDeployed ? '✅ deployed' : '⚠️  not deployed (some tests may skip)'}`,
+    `   Contracts: ${env.contractsDeployed ? '✅ deployed' : '❌ not deployed'}`,
   )
   console.log(`   API:       ${env.apiUrl} ${env.apiRunning ? '✅' : '❌'}`)
   console.log('')
+
+  // Contracts MUST be deployed
+  if (!env.contractsDeployed) {
+    throw new Error('Contracts not deployed. Run: bun run jeju dev')
+  }
 
   return env
 }

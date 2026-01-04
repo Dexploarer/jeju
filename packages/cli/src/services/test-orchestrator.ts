@@ -6,9 +6,12 @@
  * - If any service fails to start, the test run crashes immediately
  * - No skip options for required infrastructure
  * - Smoke tests run before E2E tests to verify testing system works
+ * - Contracts MUST be deployed before tests run - verified on-chain
  */
 
-import { getSQLitBlockProducerUrl } from '@jejunetwork/config'
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { getL2RpcUrl, getSQLitBlockProducerUrl } from '@jejunetwork/config'
 import { logger } from '../lib/logger'
 import { runSmokeTests } from '../testing/smoke-test-runner'
 import type { TestMode } from '../types'
@@ -81,10 +84,96 @@ export class TestOrchestrator {
   private dockerOrchestrator: DockerOrchestrator | null = null
   private appOrchestrator: AppOrchestrator | null = null
   private setupComplete: boolean = false
+  private contractsVerified: boolean = false
 
   constructor(options: TestOrchestratorOptions) {
     this.options = options
     this.infrastructureService = new InfrastructureService(options.rootDir)
+  }
+
+  /**
+   * Verify contracts are deployed on-chain - REQUIRED for integration/e2e/full tests
+   * This is a HARD check - throws if contracts aren't deployed
+   */
+  private async verifyContractsDeployed(): Promise<void> {
+    const bootstrapFile = join(
+      this.options.rootDir,
+      'packages/contracts/deployments/localnet-complete.json',
+    )
+
+    // Check 1: Bootstrap file must exist
+    if (!existsSync(bootstrapFile)) {
+      throw new Error(
+        'FATAL: Contracts not deployed - bootstrap file not found.\n\n' +
+          `Expected: ${bootstrapFile}\n\n` +
+          'The test orchestrator requires contracts to be deployed.\n' +
+          'Run: bun run jeju dev (which bootstraps contracts automatically)',
+      )
+    }
+
+    // Check 2: Bootstrap file must have valid contracts
+    const data = JSON.parse(readFileSync(bootstrapFile, 'utf-8'))
+    const contracts = data?.contracts
+    const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
+
+    if (
+      !contracts ||
+      !contracts.jnsRegistry ||
+      contracts.jnsRegistry === ZERO_ADDRESS
+    ) {
+      throw new Error(
+        'FATAL: Contracts not deployed - JNS Registry not found in bootstrap file.\n\n' +
+          'The bootstrap file exists but contracts are not properly configured.\n' +
+          'Run: bun run jeju dev',
+      )
+    }
+
+    // Check 3: Verify at least one contract is actually on-chain
+    const rpcUrl = getL2RpcUrl()
+    const contractAddress = contracts.jnsRegistry as string
+
+    try {
+      const response = await fetch(rpcUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_getCode',
+          params: [contractAddress, 'latest'],
+          id: 1,
+        }),
+        signal: AbortSignal.timeout(10000),
+      })
+
+      if (!response.ok) {
+        throw new Error(`RPC request failed: ${response.status}`)
+      }
+
+      const result = await response.json()
+      const code = result.result as string
+
+      if (!code || code === '0x' || code.length < 4) {
+        throw new Error(
+          'FATAL: Contracts not deployed on-chain.\n\n' +
+            `JNS Registry at ${contractAddress} has no code.\n` +
+            'This usually means the chain was reset without re-deploying contracts.\n\n' +
+            'Run: bun run jeju dev (or use --no-bootstrap if contracts are known good)',
+        )
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith('FATAL:')) {
+        throw error
+      }
+      throw new Error(
+        'FATAL: Cannot verify contracts on-chain.\n\n' +
+          `RPC: ${rpcUrl}\n` +
+          `Error: ${error instanceof Error ? error.message : String(error)}\n\n` +
+          'Make sure the chain is running: bun run jeju dev',
+      )
+    }
+
+    this.contractsVerified = true
+    logger.success('Contracts verified on-chain')
   }
 
   async setup(): Promise<void> {
@@ -152,7 +241,11 @@ export class TestOrchestrator {
       // Bootstrap contracts (REQUIRED - no skip option)
       logger.step('Bootstrapping contracts...')
       await this.localnetOrchestrator.bootstrap()
-      logger.success('Contracts deployed')
+
+      // CRITICAL: Verify contracts are actually deployed on-chain
+      // This catches cases where bootstrap ran but chain was reset
+      logger.step('Verifying contracts on-chain...')
+      await this.verifyContractsDeployed()
     }
 
     // Step 4: Start Docker services (REQUIRED for integration/e2e/full/infra)
@@ -302,6 +395,9 @@ export class TestOrchestrator {
       ANVIL_AVAILABLE: this.localnetOrchestrator ? 'true' : 'false',
       DOCKER_AVAILABLE: this.dockerOrchestrator ? 'true' : 'false',
       IPFS_AVAILABLE: this.dockerOrchestrator ? 'true' : 'false',
+      // CONTRACTS_VERIFIED means we've verified contracts on-chain, not just file exists
+      CONTRACTS_VERIFIED: this.contractsVerified ? 'true' : 'false',
+      CONTRACTS_DEPLOYED: this.contractsVerified ? 'true' : 'false',
     }
 
     Object.assign(env, this.infrastructureService.getEnvVars())

@@ -3,6 +3,8 @@
  *
  * Tests governance agent initialization, seeding, and verification.
  * Verifies the deliberation and decision-making flow.
+ *
+ * DWS is required infrastructure - tests will fail if it's not running.
  */
 
 import { beforeAll, describe, expect, test } from 'bun:test'
@@ -18,15 +20,18 @@ import {
   getAgentByRole,
 } from '../../api/agents/templates'
 
-let dwsAvailable = false
-
+// DWS is required infrastructure - tests must fail if it's not running
 beforeAll(async () => {
-  dwsAvailable = await checkDWSCompute()
+  const dwsAvailable = await checkDWSCompute()
   if (!dwsAvailable) {
-    console.log(
-      '[Autocrat Tests] DWS not available - inference tests will be skipped',
+    throw new Error(
+      'DWS compute is required but not running. Start with: jeju dev',
     )
   }
+  console.log('[Autocrat Agent Tests] DWS compute ready')
+
+  // Initialize runtime for subsequent tests
+  await autocratAgentRuntime.initialize()
 })
 
 describe('Autocrat Agent Templates', () => {
@@ -80,23 +85,12 @@ describe('Autocrat Agent Templates', () => {
 })
 
 describe('Autocrat Runtime Manager', () => {
-  test('should initialize runtime manager', async () => {
-    if (!dwsAvailable) {
-      console.log('[Skipped] Requires DWS')
-      return
-    }
-
-    await autocratAgentRuntime.initialize()
+  test('should be initialized', async () => {
     expect(autocratAgentRuntime.isInitialized()).toBe(true)
     expect(autocratAgentRuntime.isDWSAvailable()).toBe(true)
   })
 
   test('should get runtime for each board agent', async () => {
-    if (!dwsAvailable || !autocratAgentRuntime.isInitialized()) {
-      console.log('[Skipped] Requires DWS and initialized runtime')
-      return
-    }
-
     for (const template of autocratAgentTemplates) {
       const runtime = autocratAgentRuntime.getRuntime(template.id)
       expect(runtime).toBeDefined()
@@ -104,27 +98,13 @@ describe('Autocrat Runtime Manager', () => {
   })
 
   test('should get Director runtime', async () => {
-    if (!dwsAvailable || !autocratAgentRuntime.isInitialized()) {
-      console.log('[Skipped] Requires DWS and initialized runtime')
-      return
-    }
-
     const directorRuntime = autocratAgentRuntime.getRuntime('director')
     expect(directorRuntime).toBeDefined()
   })
 })
 
 describe('Agent Deliberation', () => {
-  test('should deliberate on proposal (requires DWS)', async () => {
-    if (!dwsAvailable) {
-      console.log('[Skipped] Requires DWS')
-      return
-    }
-
-    if (!autocratAgentRuntime.isInitialized()) {
-      await autocratAgentRuntime.initialize()
-    }
-
+  test('should deliberate on proposal', async () => {
     const request: DeliberationRequest = {
       proposalId: 'test-proposal-001',
       title: 'Test Proposal for Unit Testing',
@@ -148,16 +128,7 @@ describe('Agent Deliberation', () => {
     expect(vote.confidence).toBeLessThanOrEqual(100)
   }, 60000)
 
-  test('should deliberate with all board agents (requires DWS)', async () => {
-    if (!dwsAvailable) {
-      console.log('[Skipped] Requires DWS')
-      return
-    }
-
-    if (!autocratAgentRuntime.isInitialized()) {
-      await autocratAgentRuntime.initialize()
-    }
-
+  test('should deliberate with all board agents', async () => {
     const request: DeliberationRequest = {
       proposalId: 'test-proposal-002',
       title: 'Multi-Agent Deliberation Test',
@@ -182,16 +153,7 @@ describe('Agent Deliberation', () => {
 })
 
 describe('Director Decision', () => {
-  test('should make Director decision (requires DWS)', async () => {
-    if (!dwsAvailable) {
-      console.log('[Skipped] Requires DWS')
-      return
-    }
-
-    if (!autocratAgentRuntime.isInitialized()) {
-      await autocratAgentRuntime.initialize()
-    }
-
+  test('should make Director decision', async () => {
     const mockVotes: AgentVote[] = [
       {
         role: 'TREASURY',
@@ -235,16 +197,7 @@ describe('Director Decision', () => {
 })
 
 describe('DAO-Specific Agents', () => {
-  test('should register DAO agents with custom persona (requires DWS)', async () => {
-    if (!dwsAvailable) {
-      console.log('[Skipped] Requires DWS')
-      return
-    }
-
-    if (!autocratAgentRuntime.isInitialized()) {
-      await autocratAgentRuntime.initialize()
-    }
-
+  test('should register DAO agents with custom persona', async () => {
     const daoId = 'test-dao-seeding'
     const persona = {
       name: 'Test Director',
@@ -268,11 +221,6 @@ describe('DAO-Specific Agents', () => {
   })
 
   test('should get DAO-specific runtime', async () => {
-    if (!dwsAvailable) {
-      console.log('[Skipped] Requires DWS')
-      return
-    }
-
     const daoId = 'test-dao-seeding'
     const runtime = autocratAgentRuntime.getDAORuntime(daoId, 'treasury')
     expect(runtime).toBeDefined()

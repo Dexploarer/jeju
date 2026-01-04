@@ -230,9 +230,17 @@ export function createGovernanceModule(
   wallet: BaseWallet,
   network: NetworkType,
 ): GovernanceModule {
-  const boardAddress = requireContract('governance', 'board', network)
-  const delegationAddress = requireContract('governance', 'delegation', network)
   const services = getServicesConfig(network)
+
+  // Lazy-load contract addresses - throw on method call if not deployed
+  const getBoardAddress = (): Address => {
+    const addr = requireContract('governance', 'board', network)
+    return addr
+  }
+  const getDelegationAddress = (): Address => {
+    const addr = requireContract('governance', 'delegation', network)
+    return addr
+  }
 
   async function createProposal(params: CreateProposalParams): Promise<Hex> {
     // Upload content to IPFS
@@ -261,7 +269,7 @@ export function createGovernanceModule(
       ],
     })
 
-    return wallet.sendTransaction({ to: boardAddress, data })
+    return wallet.sendTransaction({ to: getBoardAddress(), data })
   }
 
   async function getProposal(proposalId: Hex): Promise<ProposalInfo> {
@@ -304,7 +312,11 @@ export function createGovernanceModule(
       args: [proposalId],
     })
 
-    return wallet.sendTransaction({ to: boardAddress, data, value: amount })
+    return wallet.sendTransaction({
+      to: getBoardAddress(),
+      data,
+      value: amount,
+    })
   }
 
   async function vote(params: VoteParams): Promise<Hex> {
@@ -318,7 +330,7 @@ export function createGovernanceModule(
       args: [params.proposalId, VoteTypeValue[params.vote], reasonHash],
     })
 
-    return wallet.sendTransaction({ to: boardAddress, data })
+    return wallet.sendTransaction({ to: getBoardAddress(), data })
   }
 
   async function getVotingPower(): Promise<bigint> {
@@ -340,7 +352,7 @@ export function createGovernanceModule(
       args: [delegateTo],
     })
 
-    return wallet.sendTransaction({ to: delegationAddress, data })
+    return wallet.sendTransaction({ to: getDelegationAddress(), data })
   }
 
   async function undelegate(): Promise<Hex> {
@@ -350,7 +362,7 @@ export function createGovernanceModule(
       args: [],
     })
 
-    return wallet.sendTransaction({ to: delegationAddress, data })
+    return wallet.sendTransaction({ to: getDelegationAddress(), data })
   }
 
   async function listDelegates(): Promise<DelegateInfo[]> {

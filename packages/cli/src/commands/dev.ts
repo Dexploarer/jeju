@@ -118,6 +118,17 @@ async function startDev(options: {
     logger.step('Bootstrapping contracts...')
     await bootstrapContracts(rootDir, l2RpcUrl)
     didBootstrap = true
+
+    // CRITICAL: Verify contracts are actually deployed on-chain
+    // This catches cases where bootstrap ran but chain was reset
+    logger.step('Verifying contracts on-chain...')
+    const verification = await infrastructureService.verifyContractsDeployed()
+    if (!verification.verified) {
+      logger.error(`Contract verification failed: ${verification.error}`)
+      logger.error('Contracts must be deployed before dev mode can proceed.')
+      process.exit(1)
+    }
+    logger.success('Contracts verified on-chain')
   } else {
     logger.debug('Skipping bootstrap (--no-bootstrap)')
   }

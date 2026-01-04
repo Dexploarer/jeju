@@ -30,7 +30,7 @@
     "multiTokenPaymaster": null
   },
   "registry": {
-    "identityRegistry": "0xf5059a5D33d5853360D16C683c16e67980206f36",
+    "identityRegistry": "0x4A679253410272dd5232B3Ff7cF5dbB88f295319",
     "reputationRegistry": null,
     "validationRegistry": null,
     "registryGovernance": null
@@ -92,6 +92,11 @@
     "providerRegistry": "0x5b73C5498c1E3b4dbA84de0F1833c4a029d90519",
     "billing": "0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496",
     "serviceProvisioning": "0x34A1D3fff3958843C43aD80F30b94c510645C316"
+  },
+  "crucible": {
+    "agentVault": "0xc5a5C42992dECbae36851359345FE25997F5C42d",
+    "roomRegistry": "0x67d269191c92Caf3cD7723F116c85e6E9bf55933",
+    "triggerRegistry": "0xE6E340D132b5f46d1e472DebcD681B2aBc16e57E"
   },
   "governance": {
     "daoRegistry": "0x998abeb3E57409262aE5b751f60747921B33613E",

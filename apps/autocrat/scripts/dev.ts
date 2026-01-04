@@ -77,6 +77,14 @@ async function startAPIServer(): Promise<boolean> {
       NETWORK: 'localnet',
       TEE_MODE: 'simulated',
       TEE_PLATFORM: 'local',
+      // Ensure correct RPC and keys for localnet
+      RPC_URL: process.env.RPC_URL ?? 'http://127.0.0.1:6546',
+      PRIVATE_KEY:
+        process.env.PRIVATE_KEY ??
+        '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
+      SQLIT_PRIVATE_KEY:
+        process.env.SQLIT_PRIVATE_KEY ??
+        '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
     },
   })
 
@@ -338,6 +346,14 @@ async function seedJejuDAO(): Promise<void> {
     env: {
       ...process.env,
       AUTOCRAT_API_URL: `http://${getLocalhostHost()}:${API_PORT}`,
+      // Ensure correct RPC and private key for localnet
+      RPC_URL: process.env.RPC_URL ?? 'http://127.0.0.1:6546',
+      PRIVATE_KEY:
+        process.env.PRIVATE_KEY ??
+        '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
+      SQLIT_PRIVATE_KEY:
+        process.env.SQLIT_PRIVATE_KEY ??
+        '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
     },
   })
 

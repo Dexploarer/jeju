@@ -28,8 +28,8 @@
     "rpcGateway": "http://127.0.0.1:4004",
     "bazaar": "http://127.0.0.1:4006",
     "storage": {
-      "api": "http://127.0.0.1:3100",
-      "ipfsGateway": "http://127.0.0.1:3100"
+      "api": "http://127.0.0.1:4030/storage",
+      "ipfsGateway": "http://127.0.0.1:4030/cdn"
     },
     "compute": {
       "marketplace": "http://127.0.0.1:4007",

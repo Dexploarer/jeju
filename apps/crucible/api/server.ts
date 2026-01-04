@@ -329,6 +329,14 @@ const LOCALNET_DEFAULTS = {
   indexerGraphql: string
 }
 
+// Agent private key for on-chain actions (optional - from env or generated)
+const AGENT_PRIVATE_KEY = (process.env.PRIVATE_KEY ??
+  process.env.SQLIT_PRIVATE_KEY ??
+  // Default localnet key for development
+  (getCurrentNetwork() === 'localnet'
+    ? '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'
+    : undefined)) as `0x${string}` | undefined
+
 const config: CrucibleConfig = {
   rpcUrl: getRequiredEnv('RPC_URL', LOCALNET_DEFAULTS.rpcUrl),
   kmsKeyId: getRequiredEnv('KMS_KEY_ID', 'default'),
@@ -488,6 +496,8 @@ async function seedDefaultAgents(): Promise<void> {
       const _runtime = await runtimeManager.createRuntime({
         agentId,
         character,
+        privateKey: AGENT_PRIVATE_KEY,
+        network: config.network,
       })
       log.info('Agent runtime seeded', { agentId, name: character.name })
     } catch (err) {
@@ -792,6 +802,8 @@ app.post('/api/v1/chat/:characterId', async ({ params, body }) => {
     runtime = await runtimeManager.createRuntime({
       agentId: characterId,
       character,
+      privateKey: AGENT_PRIVATE_KEY,
+      network: config.network,
     })
   }
 
@@ -839,6 +851,8 @@ app.post('/api/v1/chat/init', async () => {
       await runtimeManager.createRuntime({
         agentId: id,
         character,
+        privateKey: AGENT_PRIVATE_KEY,
+        network: config.network,
       })
       results[id] = { success: true }
     } catch (e) {
@@ -861,6 +875,11 @@ app.get('/metrics', ({ set }) => {
   const uptimeSeconds = Math.floor((Date.now() - metrics.startTime) / 1000)
   const avgLatency =
     metrics.latency.count > 0 ? metrics.latency.sum / metrics.latency.count : 0
+
+  // Get autonomous agent metrics
+  const autonomousStatus = autonomousRunner?.getStatus()
+  const autonomousAgents = autonomousStatus?.agents ?? []
+  const totalTicks = autonomousAgents.reduce((sum, a) => sum + a.tickCount, 0)
 
   const lines = [
     '# HELP crucible_requests_total Total HTTP requests',
@@ -892,11 +911,36 @@ app.get('/metrics', ({ set }) => {
     '# TYPE crucible_uptime_seconds gauge',
     `crucible_uptime_seconds ${uptimeSeconds}`,
     '',
+    '# HELP crucible_autonomous_enabled Whether autonomous mode is enabled',
+    '# TYPE crucible_autonomous_enabled gauge',
+    `crucible_autonomous_enabled ${autonomousRunner ? 1 : 0}`,
+    '',
+    '# HELP crucible_autonomous_agents_count Number of autonomous agents',
+    '# TYPE crucible_autonomous_agents_count gauge',
+    `crucible_autonomous_agents_count ${autonomousAgents.length}`,
+    '',
+    '# HELP crucible_autonomous_ticks_total Total autonomous agent ticks',
+    '# TYPE crucible_autonomous_ticks_total counter',
+    `crucible_autonomous_ticks_total ${totalTicks}`,
+    '',
+  ]
+
+  // Add per-agent tick metrics
+  for (const agent of autonomousAgents) {
+    lines.push(
+      `crucible_autonomous_agent_ticks{agent="${agent.id}",character="${agent.character}"} ${agent.tickCount}`,
+    )
+  }
+  if (autonomousAgents.length > 0) {
+    lines.push('')
+  }
+
+  lines.push(
     '# HELP crucible_info Service info',
     '# TYPE crucible_info gauge',
     `crucible_info{version="1.0.0",network="${config.network}"} 1`,
     '',
-  ]
+  )
 
   set.headers['Content-Type'] = 'text/plain; version=0.0.4; charset=utf-8'
   return lines.join('\n')
@@ -1450,11 +1494,55 @@ if (crucibleConfig.autonomousEnabled) {
     enableBuiltinCharacters: crucibleConfig.enableBuiltinCharacters,
     defaultTickIntervalMs: crucibleConfig.defaultTickIntervalMs,
     maxConcurrentAgents: crucibleConfig.maxConcurrentAgents,
+    privateKey: AGENT_PRIVATE_KEY,
+    network: config.network,
   })
   autonomousRunner
     .start()
-    .then(() => {
+    .then(async () => {
       log.info('Autonomous agent runner started')
+
+      // Auto-register key agents for autonomous operation
+      const autoStartAgents = [
+        'project-manager',
+        'red-team',
+        'blue-team',
+        'moderator',
+        'community-manager',
+      ]
+
+      for (const agentId of autoStartAgents) {
+        const character = getCharacter(agentId)
+        if (!character) continue
+
+        try {
+          await autonomousRunner?.registerAgent({
+            agentId: `autonomous-${agentId}`,
+            character,
+            tickIntervalMs: crucibleConfig.defaultTickIntervalMs,
+            maxActionsPerTick: 3,
+            enabled: true,
+            capabilities: {
+              canChat: true,
+              a2a: true,
+              compute: true,
+              canTrade: agentId === 'project-manager',
+              canVote: true,
+              canPropose: agentId === 'project-manager',
+              canDelegate: false,
+              canStake: false,
+              canBridge: false,
+              canModerate: agentId === 'moderator' || agentId === 'blue-team',
+            },
+          })
+          log.info('Auto-registered autonomous agent', { agentId })
+        } catch (err) {
+          log.warn('Failed to auto-register agent', {
+            agentId,
+            error: err instanceof Error ? err.message : String(err),
+          })
+        }
+      }
     })
     .catch((err) => {
       log.error('Failed to start autonomous runner', { error: String(err) })
@@ -1476,10 +1564,57 @@ app.get('/api/v1/autonomous/status', () => {
   }
 })
 
+// Get detailed autonomous agent activity
+app.get('/api/v1/autonomous/activity', () => {
+  if (!autonomousRunner) {
+    return {
+      enabled: false,
+      agents: [],
+      summary: {
+        totalAgents: 0,
+        totalTicks: 0,
+        totalErrors: 0,
+        uptime: 0,
+      },
+    }
+  }
+
+  const status = autonomousRunner.getStatus()
+  const uptimeMs = Date.now() - metrics.startTime
+
+  return {
+    enabled: true,
+    summary: {
+      totalAgents: status.agentCount,
+      totalTicks: status.agents.reduce((sum, a) => sum + a.tickCount, 0),
+      avgTicksPerAgent:
+        status.agentCount > 0
+          ? status.agents.reduce((sum, a) => sum + a.tickCount, 0) /
+            status.agentCount
+          : 0,
+      uptimeMs,
+      uptimeHours: Math.round((uptimeMs / (1000 * 60 * 60)) * 100) / 100,
+    },
+    agents: status.agents.map((agent) => ({
+      ...agent,
+      lastTickAgo: agent.lastTick > 0 ? Date.now() - agent.lastTick : null,
+      tickRate:
+        agent.lastTick > 0 && uptimeMs > 0
+          ? Math.round((agent.tickCount / (uptimeMs / 1000 / 60)) * 100) / 100 // ticks per minute
+          : 0,
+    })),
+    network: config.network,
+    actionsToday: actionCounter.getTodayCount(),
+  }
+})
+
 // Start autonomous runner (if not already running)
 app.post('/api/v1/autonomous/start', async () => {
   if (!autonomousRunner) {
-    autonomousRunner = createAgentRunner()
+    autonomousRunner = createAgentRunner({
+      privateKey: AGENT_PRIVATE_KEY,
+      network: config.network,
+    })
   }
   await autonomousRunner.start()
   return { success: true, status: autonomousRunner.getStatus() }

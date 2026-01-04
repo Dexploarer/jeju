@@ -147,6 +147,11 @@ export type ABI = z.infer<typeof ABISchema>
 
 export const DWSHealthResponseSchema = z.object({
   status: z.string(),
+  service: z.string().optional(),
+  teeMode: z.string().optional(),
+  teePlatform: z.string().optional(),
+  teeRegion: z.string().optional(),
+  network: z.string().optional(),
   version: z.string().optional(),
   uptime: z.number().optional(),
 })
@@ -193,12 +198,38 @@ export const DWSInvokeResponseSchema = z.object({
 export type DWSInvokeResponse = z.infer<typeof DWSInvokeResponseSchema>
 
 export const AgentCardResponseSchema = z.object({
+  protocolVersion: z.string().optional(),
   name: z.string(),
   description: z.string().optional(),
-  version: z.string().optional(),
-  skills: z.array(z.string()).optional(),
-  icon: z.string().optional(),
   url: z.string().optional(),
+  preferredTransport: z.string().optional(),
+  provider: z
+    .object({
+      organization: z.string().optional(),
+      url: z.string().optional(),
+    })
+    .optional(),
+  version: z.string().optional(),
+  capabilities: z
+    .object({
+      streaming: z.boolean().optional(),
+      pushNotifications: z.boolean().optional(),
+      stateTransitionHistory: z.boolean().optional(),
+    })
+    .optional(),
+  defaultInputModes: z.array(z.string()).optional(),
+  defaultOutputModes: z.array(z.string()).optional(),
+  skills: z
+    .array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        description: z.string().optional(),
+        tags: z.array(z.string()).optional(),
+      }),
+    )
+    .optional(),
+  icon: z.string().optional(),
 })
 
 export type AgentCardResponse = z.infer<typeof AgentCardResponseSchema>

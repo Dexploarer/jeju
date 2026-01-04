@@ -14,8 +14,8 @@ const DWSHealthSchema = z.object({
 const ComputeNodeStatsSchema = z.object({
   inference: z
     .object({
-      totalNodes: z.number(),
-      activeNodes: z.number(),
+      totalNodes: z.number().optional(),
+      activeNodes: z.number().optional(),
       totalCapacity: z.number().optional(),
       currentLoad: z.number().optional(),
       providers: z.array(z.string()).optional(),
@@ -24,8 +24,8 @@ const ComputeNodeStatsSchema = z.object({
     .optional(),
   training: z
     .object({
-      totalNodes: z.number(),
-      activeNodes: z.number(),
+      totalNodes: z.number().optional(),
+      activeNodes: z.number().optional(),
       totalRuns: z.number().optional(),
       activeRuns: z.number().optional(),
     })
@@ -144,9 +144,18 @@ export class DWSClient {
     const result = await this.fetch('/compute/nodes/stats', {
       schema: ComputeNodeStatsSchema,
     })
-    // Handle both response formats
-    const activeNodes = result.inference?.activeNodes ?? result.activeNodes ?? 0
-    const totalNodes = result.totalNodes ?? activeNodes
+    // Handle both response formats - also check training nodes as fallback
+    // since inference nodes may register as training nodes
+    const activeNodes =
+      result.inference?.activeNodes ??
+      result.training?.activeNodes ??
+      result.activeNodes ??
+      0
+    const totalNodes =
+      result.inference?.totalNodes ??
+      result.training?.totalNodes ??
+      result.totalNodes ??
+      activeNodes
     return { totalNodes, activeNodes }
   }
 

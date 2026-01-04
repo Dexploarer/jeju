@@ -243,7 +243,7 @@ async function start() {
     }
   } catch (_error) {
     console.warn(
-      '[Council] Compute service unavailable (DWS not running). Using local mode.',
+      '[Board] Compute service unavailable (DWS not running). Using local mode.',
     )
   }
 

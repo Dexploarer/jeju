@@ -23,8 +23,6 @@ import { directorAgent, getAgentByRole } from '../../api/agents/templates'
 import { ensureServices } from '../setup'
 
 // Test state
-let dwsAvailable = false
-let servicesReady = false
 let autocratApiUrl = ''
 const host = getLocalhostHost()
 
@@ -95,38 +93,24 @@ beforeAll(async () => {
   console.log('╚════════════════════════════════════════════════════════════╝')
   console.log('')
 
-  // Check DWS availability first
-  try {
-    dwsAvailable = await checkDWSCompute()
-    setCriteria('initialization', 'dwsComputeAvailable', dwsAvailable)
-    console.log(
-      `DWS Compute: ${dwsAvailable ? '✅ Available' : '❌ Not available'}`,
-    )
-  } catch (err) {
-    console.log(
-      `DWS Compute: ❌ Error - ${err instanceof Error ? err.message : 'Unknown'}`,
-    )
-  }
-
+  // DWS is required infrastructure - fail if not running
+  const dwsAvailable = await checkDWSCompute()
   if (!dwsAvailable) {
-    console.log('')
-    console.log('⚠️  DWS compute is required for agent inference.')
-    console.log('   Start DWS: cd apps/dws && bun run dev')
-    return
+    throw new Error(
+      'DWS compute is required but not running. Start with: jeju dev',
+    )
   }
+  setCriteria('initialization', 'dwsComputeAvailable', true)
+  console.log('DWS Compute: ✅ Available')
 
-  // Try to start services
-  try {
-    const env = await ensureServices({ dws: true, contracts: true })
-    servicesReady = env.contractsDeployed
-    console.log(
-      `Contracts: ${servicesReady ? '✅ Deployed' : '⚠️ Not deployed'}`,
-    )
-  } catch (err) {
-    console.log(
-      `Services: ⚠️ ${err instanceof Error ? err.message : 'Setup error'}`,
+  // Start services - required
+  const env = await ensureServices({ dws: true, contracts: true })
+  if (!env.contractsDeployed) {
+    throw new Error(
+      'Contracts are required but not deployed. Deploy with: cd packages/contracts && bun run deploy:localnet',
     )
   }
+  console.log('Contracts: ✅ Deployed')
 
   autocratApiUrl = `http://${host}:4040`
   console.log(`Autocrat API: ${autocratApiUrl}`)
@@ -169,12 +153,14 @@ afterAll(async () => {
 
 describe('1. Agent Initialization', () => {
   test('DWS compute should be available', async () => {
-    expect(dwsAvailable).toBe(true)
+    // DWS was verified in beforeAll - this test validates the check passed
+    expect(true).toBe(true) // DWS is always available when tests run
   })
 
   test('should verify DWS can generate responses', async () => {
+    const dwsAvailable = await checkDWSCompute()
     if (!dwsAvailable) {
-      console.log('⏭️  Skipping: DWS not available')
+      console.log('Skipping: DWS not available')
       return
     }
 
@@ -189,11 +175,6 @@ describe('1. Agent Initialization', () => {
   }, 30000)
 
   test('should initialize agent runtime', async () => {
-    if (!dwsAvailable) {
-      console.log('⏭️  Skipping: DWS not available')
-      return
-    }
-
     await autocratAgentRuntime.initialize()
     expect(autocratAgentRuntime.isInitialized()).toBe(true)
     setCriteria('initialization', 'runtimeInitialized', true)
@@ -259,11 +240,6 @@ describe('2. Board Agent Deliberation', () => {
   }
 
   test('Treasury agent should deliberate', async () => {
-    if (!dwsAvailable || !autocratAgentRuntime.isInitialized()) {
-      console.log('⏭️  Skipping: Runtime not ready')
-      return
-    }
-
     const vote = await autocratAgentRuntime.deliberate('treasury', testProposal)
 
     expect(vote).toBeDefined()
@@ -283,11 +259,6 @@ describe('2. Board Agent Deliberation', () => {
   }, 60000)
 
   test('Code agent should deliberate', async () => {
-    if (!dwsAvailable || !autocratAgentRuntime.isInitialized()) {
-      console.log('⏭️  Skipping: Runtime not ready')
-      return
-    }
-
     const vote = await autocratAgentRuntime.deliberate('code', testProposal)
 
     expect(vote).toBeDefined()
@@ -299,11 +270,6 @@ describe('2. Board Agent Deliberation', () => {
   }, 60000)
 
   test('Community agent should deliberate', async () => {
-    if (!dwsAvailable || !autocratAgentRuntime.isInitialized()) {
-      console.log('⏭️  Skipping: Runtime not ready')
-      return
-    }
-
     const vote = await autocratAgentRuntime.deliberate(
       'community',
       testProposal,
@@ -318,11 +284,6 @@ describe('2. Board Agent Deliberation', () => {
   }, 60000)
 
   test('Security agent should deliberate', async () => {
-    if (!dwsAvailable || !autocratAgentRuntime.isInitialized()) {
-      console.log('⏭️  Skipping: Runtime not ready')
-      return
-    }
-
     const vote = await autocratAgentRuntime.deliberate('security', testProposal)
 
     expect(vote).toBeDefined()
@@ -334,11 +295,6 @@ describe('2. Board Agent Deliberation', () => {
   }, 60000)
 
   test('Legal agent should deliberate', async () => {
-    if (!dwsAvailable || !autocratAgentRuntime.isInitialized()) {
-      console.log('⏭️  Skipping: Runtime not ready')
-      return
-    }
-
     const vote = await autocratAgentRuntime.deliberate('legal', testProposal)
 
     expect(vote).toBeDefined()
@@ -350,11 +306,6 @@ describe('2. Board Agent Deliberation', () => {
   }, 60000)
 
   test('All board agents should deliberate together', async () => {
-    if (!dwsAvailable || !autocratAgentRuntime.isInitialized()) {
-      console.log('⏭️  Skipping: Runtime not ready')
-      return
-    }
-
     const votes = await autocratAgentRuntime.deliberateAll(testProposal)
 
     expect(votes.length).toBeGreaterThanOrEqual(5)
@@ -380,11 +331,6 @@ describe('2. Board Agent Deliberation', () => {
 
 describe('3. Director Decision-Making', () => {
   test('Director should make decision based on votes', async () => {
-    if (!dwsAvailable || !autocratAgentRuntime.isInitialized()) {
-      console.log('⏭️  Skipping: Runtime not ready')
-      return
-    }
-
     const mockVotes: AgentVote[] = [
       {
         role: 'TREASURY',
@@ -471,11 +417,6 @@ describe('3. Director Decision-Making', () => {
   }, 60000)
 
   test('Director should handle rejection scenario', async () => {
-    if (!dwsAvailable || !autocratAgentRuntime.isInitialized()) {
-      console.log('⏭️  Skipping: Runtime not ready')
-      return
-    }
-
     const rejectVotes: AgentVote[] = [
       {
         role: 'TREASURY',
@@ -518,11 +459,6 @@ describe('3. Director Decision-Making', () => {
 
 describe('4. DAO-Specific Agents', () => {
   test('should register custom DAO with persona', async () => {
-    if (!dwsAvailable || !autocratAgentRuntime.isInitialized()) {
-      console.log('⏭️  Skipping: Runtime not ready')
-      return
-    }
-
     const daoId = 'test-custom-dao'
     const persona = {
       name: 'Sun Wukong',
@@ -547,11 +483,6 @@ describe('4. DAO-Specific Agents', () => {
   })
 
   test('should get DAO-specific runtime', async () => {
-    if (!dwsAvailable || !autocratAgentRuntime.isInitialized()) {
-      console.log('⏭️  Skipping: Runtime not ready')
-      return
-    }
-
     const daoId = 'test-custom-dao'
     const runtime = autocratAgentRuntime.getDAORuntime(daoId, 'treasury')
 
@@ -560,11 +491,6 @@ describe('4. DAO-Specific Agents', () => {
   })
 
   test('should get custom Director persona', async () => {
-    if (!dwsAvailable || !autocratAgentRuntime.isInitialized()) {
-      console.log('⏭️  Skipping: Runtime not ready')
-      return
-    }
-
     const daoId = 'test-custom-dao'
     const personaConfig = autocratAgentRuntime.getDirectorPersona(daoId)
 
@@ -579,11 +505,6 @@ describe('4. DAO-Specific Agents', () => {
 
 describe('5. A2A Actions via API', () => {
   test('should get Director status via A2A', async () => {
-    if (!servicesReady) {
-      console.log('⏭️  Skipping: Services not ready')
-      return
-    }
-
     try {
       const response = await fetch(`${autocratApiUrl}/a2a`, {
         method: 'POST',
@@ -619,11 +540,6 @@ describe('5. A2A Actions via API', () => {
   }, 15000)
 
   test('should assess proposal via A2A', async () => {
-    if (!servicesReady) {
-      console.log('⏭️  Skipping: Services not ready')
-      return
-    }
-
     try {
       const response = await fetch(`${autocratApiUrl}/a2a`, {
         method: 'POST',
@@ -668,11 +584,6 @@ describe('5. A2A Actions via API', () => {
   }, 35000)
 
   test('should chat with agent via A2A', async () => {
-    if (!servicesReady) {
-      console.log('⏭️  Skipping: Services not ready')
-      return
-    }
-
     try {
       const response = await fetch(`${autocratApiUrl}/a2a`, {
         method: 'POST',
@@ -717,11 +628,6 @@ describe('5. A2A Actions via API', () => {
 
 describe('6. Orchestrator Loop', () => {
   test('should verify orchestrator can be started', async () => {
-    if (!servicesReady) {
-      console.log('⏭️  Skipping: Services not ready')
-      return
-    }
-
     try {
       const response = await fetch(
         `${autocratApiUrl}/api/v1/orchestrator/status`,
@@ -748,11 +654,6 @@ describe('6. Orchestrator Loop', () => {
 
 describe('7. Full Governance Flow', () => {
   test('should run complete deliberation and decision flow', async () => {
-    if (!dwsAvailable || !autocratAgentRuntime.isInitialized()) {
-      console.log('⏭️  Skipping: Runtime not ready')
-      return
-    }
-
     console.log('')
     console.log(
       '╔════════════════════════════════════════════════════════════╗',

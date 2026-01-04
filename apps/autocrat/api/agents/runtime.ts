@@ -108,10 +108,28 @@ function getDWSEndpoint(): string {
 export async function checkDWSCompute(): Promise<boolean> {
   try {
     const endpoint = getDWSEndpoint()
-    const r = await fetch(`${endpoint}/health`, {
+    // First check health - endpoint already includes /compute
+    const healthRes = await fetch(`${endpoint}/health`, {
       signal: AbortSignal.timeout(2000),
     })
-    return r.ok
+    if (!healthRes.ok) return false
+
+    // Then verify inference capability with a minimal test request
+    // Note: endpoint already includes /compute, so just add /chat/completions
+    const testRes = await fetch(`${endpoint}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'llama-3.1-8b-instant',
+        messages: [{ role: 'user', content: 'test' }],
+        max_tokens: 1,
+      }),
+      signal: AbortSignal.timeout(5000),
+    })
+
+    // 200 = working, 400 = parsing issue but endpoint works
+    // 500 NOT_FOUND = no inference nodes registered
+    return testRes.ok || testRes.status === 400
   } catch {
     return false
   }
@@ -124,7 +142,8 @@ export async function dwsGenerate(
 ): Promise<string> {
   const endpoint = getDWSEndpoint()
   // Use OpenAI-compatible endpoint via DWS compute router
-  const r = await fetch(`${endpoint}/compute/chat/completions`, {
+  // Note: endpoint already includes /compute, so just add /chat/completions
+  const r = await fetch(`${endpoint}/chat/completions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

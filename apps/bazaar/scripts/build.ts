@@ -14,8 +14,21 @@ import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { getCurrentNetwork } from '@jejunetwork/config'
-import { reportBundleSizes } from '@jejunetwork/shared'
 import type { BunPlugin } from 'bun'
+
+// Simple bundle size reporter
+function reportBundleSizes(
+  result: { outputs: Array<{ path: string; size?: number }> },
+  label: string,
+): void {
+  console.log(`\n${label} Bundle Sizes:`)
+  for (const output of result.outputs) {
+    const name = output.path.split('/').pop()
+    const size = output.size ?? 0
+    const kb = (size / 1024).toFixed(2)
+    console.log(`  ${name}: ${kb} KB`)
+  }
+}
 
 const DIST_DIR = './dist'
 const STATIC_DIR = `${DIST_DIR}/static`

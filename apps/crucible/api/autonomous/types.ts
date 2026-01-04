@@ -21,6 +21,7 @@ export interface AutonomousCapabilities {
   canBridge: boolean
   a2a?: boolean
   compute?: boolean
+  canModerate?: boolean
 }
 
 export interface AgentGoal {
@@ -105,6 +106,10 @@ export interface AutonomousRunnerConfig {
   enableBuiltinCharacters?: boolean
   defaultTickIntervalMs?: number
   maxConcurrentAgents?: number
+  /** Private key for agent on-chain actions */
+  privateKey?: `0x${string}`
+  /** Network to connect to */
+  network?: 'localnet' | 'testnet' | 'mainnet'
 }
 
 export interface AutonomousRunnerStatus {

@@ -258,10 +258,16 @@ export class CrucibleStorage {
     expect(content, 'Content is required')
     expect(filename, 'Filename is required')
     expectTrue(filename.length > 0, 'Filename cannot be empty')
-    const r = await fetch(`${this.config.apiUrl}/api/v1/add`, {
+
+    // Use multipart form data for DWS storage API
+    const formData = new FormData()
+    const blob = new Blob([content], { type: 'application/json' })
+    formData.append('file', blob, filename)
+    formData.append('tier', 'popular')
+
+    const r = await fetch(`${this.config.apiUrl}/upload`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content, filename, pin: true }),
+      body: formData,
     })
     if (!r.ok) {
       throw new Error(`Failed to upload to IPFS: ${await r.text()}`)

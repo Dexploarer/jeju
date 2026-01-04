@@ -1135,15 +1135,15 @@ deployCommand
 
 deployCommand
   .command('council')
-  .description('Deploy Council contracts (use deploy security-council instead)')
+  .description('Deploy Board contracts (use deploy security-board instead)')
   .option(
     '--network <network>',
     'Network: localnet | testnet | mainnet',
     'localnet',
   )
   .action(async () => {
-    logger.error('Council deployment has been consolidated.')
-    logger.info('Use: jeju deploy security-council --network <network>')
+    logger.error('Council deployment has been renamed to board.')
+    logger.info('Use: jeju deploy security-board --network <network>')
     process.exit(1)
   })
 

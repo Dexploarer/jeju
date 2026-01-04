@@ -68,8 +68,12 @@ const MAX_BACKOFF_MS = 300000 // 5 minutes max
 export class AutonomousAgentRunner {
   private agents: Map<string, RegisteredAgent> = new Map()
   private running = false
-  private config: Required<Omit<ExtendedRunnerConfig, 'onBatchFlushed'>> & {
+  private config: Required<
+    Omit<ExtendedRunnerConfig, 'onBatchFlushed' | 'privateKey' | 'network'>
+  > & {
     onBatchFlushed?: (batch: TrajectoryBatchReference) => Promise<void>
+    privateKey?: `0x${string}`
+    network?: 'localnet' | 'testnet' | 'mainnet'
   }
   private trajectoryRecorder: TrajectoryRecorder
   private storage: StaticTrajectoryStorage
@@ -81,6 +85,8 @@ export class AutonomousAgentRunner {
       maxConcurrentAgents: config.maxConcurrentAgents ?? 10,
       enableTrajectoryRecording: config.enableTrajectoryRecording ?? true,
       onBatchFlushed: config.onBatchFlushed,
+      privateKey: config.privateKey,
+      network: config.network,
     }
 
     // Initialize static storage for trajectories
@@ -352,6 +358,8 @@ export class AutonomousAgentRunner {
     agent.runtime = createCrucibleRuntime({
       agentId: agent.config.agentId,
       character: agent.config.character,
+      privateKey: this.config.privateKey,
+      network: this.config.network,
     })
 
     await agent.runtime.initialize()
