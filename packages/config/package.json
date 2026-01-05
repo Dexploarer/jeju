@@ -10,7 +10,8 @@
     ".": "./index.ts",
     "./ports": "./ports.ts",
     "./json-loader": "./json-loader.ts",
-    "./chainlink": "./chainlink/index.ts"
+    "./chainlink": "./chainlink/index.ts",
+    "./test-config": "./test-config.ts"
   },
   "files": [
     "*.ts",

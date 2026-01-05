@@ -175,6 +175,16 @@ export const testCommand = new Command('test')
     // Set network environment for all child processes
     process.env.JEJU_NETWORK = network
 
+    // Clear local RPC env vars when testing against remote networks
+    // This ensures getServicesConfig returns the correct remote URLs
+    if (isRemoteNetwork) {
+      delete process.env.RPC_URL
+      delete process.env.JEJU_RPC_URL
+      delete process.env.L2_RPC_URL
+      delete process.env.L1_RPC_URL
+      delete process.env.WS_URL
+    }
+
     logger.header(`JEJU TEST - ${mode.toUpperCase()}`)
     if (isRemoteNetwork) {
       logger.info(`Target network: ${network} (remote)`)
@@ -330,6 +340,9 @@ export const testCommand = new Command('test')
       if (options.infraOnly) {
         logger.success('Setup complete. Services are running.')
         logger.info('Run with --teardown-only to stop services.')
+      } else {
+        // Explicitly exit after tests complete
+        process.exit(0)
       }
     } catch (error) {
       logger.error(
@@ -1582,6 +1595,8 @@ async function buildSynpressCache(
       env: {
         ...process.env,
         SYNPRESS_CACHE_DIR: cacheDir,
+        // Use bun to run TypeScript files in synpress
+        NODE_OPTIONS: '--import tsx/esm',
       },
     })
     logger.success('Wallet cache built successfully')

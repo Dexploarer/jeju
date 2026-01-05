@@ -22,12 +22,16 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { getL2RpcUrl, getLocalhostHost } from '@jejunetwork/config'
 import {
+  bootstrapOracleRegistry,
   bootstrapPerps,
   bootstrapPredictionMarkets,
   bootstrapTFMMPools,
+  bootstrapWeightUpdateRunner,
+  saveOracleDeployment,
   savePerpsDeployment,
   savePredictionMarketDeployment,
   saveTFMMDeployment,
+  saveWeightRunnerDeployment,
 } from '../lib/bootstrap'
 import { getDeployerKey } from '../lib/secrets'
 
@@ -498,13 +502,35 @@ async function main(): Promise<void> {
     seedWarnings.push(warning)
   }
 
-  // Step 6: Bootstrap TFMM pools
-  console.log('\n7. Bootstrapping TFMM liquidity pools...')
+  // Step 6: Bootstrap Oracle Registry
+  console.log('\n7. Bootstrapping Oracle Registry...')
+  let oracleRegistryAddress: string | null = null
+  try {
+    const oracleResult = await bootstrapOracleRegistry(RPC_URL, CONTRACTS_DIR)
+    if (oracleResult) {
+      oracleRegistryAddress = oracleResult.oracleRegistry
+      saveOracleDeployment(CONTRACTS_DIR, oracleResult)
+      console.log(`  OracleRegistry: ${oracleResult.oracleRegistry}`)
+    }
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error)
+    const warning = `Oracle bootstrap failed: ${msg.slice(0, 80)}`
+    console.log(`  WARNING: ${warning}`)
+    seedWarnings.push(warning)
+  }
+
+  // Step 7: Bootstrap TFMM pools
+  console.log('\n8. Bootstrapping TFMM liquidity pools...')
   let tfmmPoolCount = 0
+  let tfmmPools: Array<{ address: string; tokens: string[] }> = []
   try {
     const tfmmResult = await bootstrapTFMMPools(RPC_URL, CONTRACTS_DIR)
     if (tfmmResult) {
       tfmmPoolCount = tfmmResult.pools.length
+      tfmmPools = tfmmResult.pools.map((p) => ({
+        address: p.address,
+        tokens: p.tokens,
+      }))
       saveTFMMDeployment(CONTRACTS_DIR, tfmmResult)
     }
   } catch (error) {
@@ -512,6 +538,28 @@ async function main(): Promise<void> {
     const warning = `TFMM pools bootstrap failed: ${msg.slice(0, 80)}`
     console.log(`  WARNING: ${warning}`)
     seedWarnings.push(warning)
+  }
+
+  // Step 8: Bootstrap WeightUpdateRunner for pool rebalancing
+  if (oracleRegistryAddress && tfmmPools.length > 0) {
+    console.log('\n9. Bootstrapping WeightUpdateRunner...')
+    try {
+      const runnerResult = await bootstrapWeightUpdateRunner(
+        RPC_URL,
+        CONTRACTS_DIR,
+        oracleRegistryAddress,
+        tfmmPools,
+      )
+      if (runnerResult) {
+        saveWeightRunnerDeployment(CONTRACTS_DIR, runnerResult)
+        console.log(`  WeightUpdateRunner: ${runnerResult.weightUpdateRunner}`)
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error)
+      const warning = `WeightUpdateRunner bootstrap failed: ${msg.slice(0, 80)}`
+      console.log(`  WARNING: ${warning}`)
+      seedWarnings.push(warning)
+    }
   }
 
   const result: SeedResult = {

@@ -1,4 +1,4 @@
-import { WalletButton as DecentralizedWalletButton } from '@jejunetwork/ui/wallet'
+import { WalletButton as DecentralizedWalletButton } from '@jejunetwork/ui'
 
 export function WalletButton() {
   return (

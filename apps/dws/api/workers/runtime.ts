@@ -58,6 +58,11 @@ const SAFE_ENV_KEYS = new Set([
   'SQLIT_URL',
   // Static assets
   'STATIC_ASSETS_URL',
+  // OAuth3 worker config (non-secret config)
+  'SERVICE_AGENT_ID',
+  'ALLOWED_ORIGINS',
+  'MPC_REGISTRY_ADDRESS',
+  'IDENTITY_REGISTRY_ADDRESS',
 ])
 
 // Worker bootstrap - sets env and imports the main module

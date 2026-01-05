@@ -9,12 +9,12 @@
  * - Token price caching (cachedTokenPrice)
  */
 
-import { createHash } from 'node:crypto'
 import {
   type CacheClient,
   getCacheClient,
   safeParseCached,
 } from '@jejunetwork/cache'
+import { createHash } from '../crypto/universal'
 import { z } from 'zod'
 
 /**
@@ -45,7 +45,7 @@ export const CacheTTL = {
  * Hash a value to create a cache key
  */
 export function hashKey(value: string): string {
-  return createHash('sha256').update(value).digest('hex').slice(0, 16)
+  return createHash('sha256').update(value).digestHex().slice(0, 16)
 }
 
 /**

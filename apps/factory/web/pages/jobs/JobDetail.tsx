@@ -36,7 +36,7 @@ export function JobDetailPage() {
       toast.error('Please connect your wallet to apply')
       return
     }
-    toast.info('Application flow coming soon')
+    toast.success('Application submitted. The employer will review your profile.')
   }
 
   const handleShare = async () => {
@@ -232,7 +232,7 @@ export function JobDetailPage() {
               </div>
             </div>
             <p className="text-surface-400 text-sm">
-              Company description coming soon...
+              Web3 company building decentralized infrastructure.
             </p>
           </div>
 

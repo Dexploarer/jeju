@@ -223,13 +223,12 @@ releases:
       - ../helm/op-challenger/values-{{ .Environment.Name }}.yaml
 
   # Jeju DA (Native Data Availability with PeerDAS integration)
-  - name: jeju-da
-    namespace: da
-    createNamespace: true
-    chart: ../helm/jeju-da
-    installed: false  # Enable if using custom DA instead of native blobs
-    values:
-      - ../helm/jeju-da/values.yaml
+  # NOTE: Now deployed via DWS (apps/dws/api/services/data-availability.ts)
+  # - name: jeju-da
+  #   namespace: da
+  #   createNamespace: true
+  #   chart: ../helm/jeju-da
+  #   installed: false
 
   # ERC-4337 Bundler (Account Abstraction)
   # NOTE: This is CHAIN INFRASTRUCTURE for account abstraction.
@@ -244,17 +243,15 @@ releases:
       - ../helm/bundler/values-{{ .Environment.Name }}.yaml
 
   # RPC Gateway (Load Balancer + Rate Limiting)
-  # NOTE: This is CHAIN INFRASTRUCTURE, not an app.
-  # It provides access to the blockchain nodes.
-  # FUTURE: Could be migrated to DWS workers for full decentralization
-  - name: rpc-gateway
-    namespace: rpc
-    chart: ../helm/rpc-gateway
-    values:
-      - ../helm/rpc-gateway/values.yaml
-      - ../helm/rpc-gateway/values-{{ .Environment.Name }}.yaml
+  # NOTE: Now deployed via DWS (apps/dws/api/services/workers.ts - deployRPCGateway)
+  # Legacy K8s deployment removed - use DWS provisioning instead
+  # - name: rpc-gateway
+  #   namespace: rpc
+  #   chart: ../helm/rpc-gateway
 
   # Subsquid Indexer (Blockchain Data Indexer)
+  # NOTE: For DWS-managed indexer, use the DWS Marketplace contract
+  # packages/contracts/src/dws/DWSMarketplace.sol - registerIndexer()
   - name: subsquid
     namespace: indexer
     createNamespace: true
@@ -307,28 +304,21 @@ releases:
   # ==========================================================================
 
   # SQLit Adapter (HTTP API for SQLit - required by DWS for decentralized state)
-  - name: sqlit-adapter
-    namespace: dws
-    createNamespace: true
-    chart: ../helm/sqlit-adapter
-    installed: {{ ne .Environment.Name "localnet" }}
-    values:
-      - ../helm/sqlit-adapter/values.yaml
-      {{- if ne .Environment.Name "localnet" }}
-      - ../helm/sqlit-adapter/values-{{ .Environment.Name }}.yaml
-      {{- end }}
-    set:
-      - name: image.repository
-        value: {{ .Values.ecr_registry | default "jeju" }}/sqlit-adapter
+  # NOTE: Now deployed via DWS (apps/dws/api/services/workers.ts - deploySQLitAdapter)
+  # Legacy K8s deployment removed - use DWS provisioning instead
+  # - name: sqlit-adapter
+  #   namespace: dws
+  #   createNamespace: true
+  #   chart: ../helm/sqlit-adapter
 
   # DWS Core Service
+  # NOTE: DWS now self-provisions its dependencies via DWS services
+  # SQLit Adapter is deployed via: apps/dws/api/services/workers.ts
   - name: dws
     namespace: dws
     createNamespace: true
     chart: ../helm/dws
     installed: {{ ne .Environment.Name "localnet" }}
-    needs:
-      - dws/sqlit-adapter
     values:
       - ../helm/dws/values.yaml
       - ../helm/dws/values-{{ .Environment.Name }}.yaml
@@ -346,16 +336,12 @@ releases:
   # NOTE: compute and oauth3 are now deployed via DWS (on-chain provisioning)
 
   # Farcaster Hubble (Self-hosted Farcaster hub)
-  - name: farcaster-hubble
-    namespace: farcaster
-    createNamespace: true
-    chart: ../helm/farcaster-hubble
-    installed: {{ ne .Environment.Name "localnet" }}
-    values:
-      - ../helm/farcaster-hubble/values.yaml
-      {{- if ne .Environment.Name "localnet" }}
-      - ../helm/farcaster-hubble/values-{{ .Environment.Name }}.yaml
-      {{- end }}
+  # NOTE: Now deployed via DWS (apps/dws/api/services/hubble.ts)
+  # Legacy K8s deployment removed - use DWS provisioning instead
+  # - name: farcaster-hubble
+  #   namespace: farcaster
+  #   createNamespace: true
+  #   chart: ../helm/farcaster-hubble
 
   # ==========================================================================
   # External Chain Nodes (Deployed via DWS for testnet/mainnet)

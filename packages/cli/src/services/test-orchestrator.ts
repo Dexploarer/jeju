@@ -429,6 +429,13 @@ export class TestOrchestrator {
       INDEXER_URL: services.indexer.graphql,
       EXPLORER_URL: services.explorer,
       DWS_URL: services.dws.api,
+      DWS_API_URL: services.dws.api,
+      GATEWAY_URL: services.gateway.api,
+      GATEWAY_UI_URL: services.gateway.ui,
+      BAZAAR_URL: services.bazaar,
+      AUTOCRAT_URL: services.autocrat.api,
+      CRUCIBLE_URL: services.crucible.api,
+      FACTORY_URL: services.factory.api,
       SQLIT_URL: isRemoteNetwork ? services.sqlit.blockProducer : getSQLitBlockProducerUrl(),
       // Skip local webserver when testing remote
       SKIP_WEBSERVER: isRemoteNetwork ? '1' : '',

@@ -26,8 +26,8 @@ const PROVIDERS = {
   openai: {
     baseUrl: 'https://api.openai.com/v1',
     envKey: 'OPENAI_API_KEY',
-    model: 'gpt-4o',
-    visionModel: 'gpt-4o',
+    model: 'gpt-5',
+    visionModel: 'gpt-5',
   },
 } as const
 

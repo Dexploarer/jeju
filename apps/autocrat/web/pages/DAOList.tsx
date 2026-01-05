@@ -13,7 +13,7 @@ import {
 } from 'lucide-react'
 import { useCallback, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { DAO_STATUS_STYLES } from '../constants/ui'
+import { getDAOStatusStyle } from '../constants/ui'
 import { useDAOs } from '../hooks/useDAO'
 import type { DAOListItem, DAOStatus } from '../types/dao'
 
@@ -22,7 +22,7 @@ interface DAOCardProps {
 }
 
 function DAOCard({ dao }: DAOCardProps) {
-  const statusStyle = DAO_STATUS_STYLES[dao.status]
+  const statusStyle = getDAOStatusStyle(dao.status)
 
   return (
     <Link
@@ -120,7 +120,7 @@ function DAOCard({ dao }: DAOCardProps) {
               style={{ color: 'var(--text-secondary)' }}
             >
               <Users className="w-3.5 h-3.5" aria-hidden="true" />
-              <span>{dao.memberCount.toLocaleString()} members</span>
+              <span>{(dao.memberCount ?? 0).toLocaleString()} members</span>
             </div>
             {dao.activeProposalCount > 0 && (
               <div

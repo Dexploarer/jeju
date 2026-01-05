@@ -7,9 +7,11 @@ resources:
   limits:
     cpu: 1000m
     memory: 2Gi
+    ephemeral-storage: 15Gi
   requests:
     cpu: 250m
     memory: 512Mi
+    ephemeral-storage: 5Gi
 
 persistence:
   enabled: true

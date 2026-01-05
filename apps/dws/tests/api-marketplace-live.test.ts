@@ -468,7 +468,7 @@ describe('Azure OpenAI Live', () => {
       {
         listingId: listing?.id,
         endpoint:
-          '/deployments/gpt-4/chat/completions?api-version=2024-02-15-preview',
+          '/deployments/gpt-5/chat/completions?api-version=2024-02-15-preview',
         method: 'POST',
         body: {
           messages: [{ role: 'user', content: 'Say test' }],

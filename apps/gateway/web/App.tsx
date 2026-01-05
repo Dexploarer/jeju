@@ -1,6 +1,8 @@
+import { OAuth3Provider } from '@jejunetwork/auth/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { WagmiProvider } from 'wagmi'
+import { CHAIN_ID, OAUTH3_AGENT_URL, RPC_URL } from '../lib/config'
 import { config } from '../lib/wagmi-config'
 import { BanCheckWrapper } from './components/BanCheckWrapper'
 // Lazy load route components for better performance
@@ -59,9 +61,18 @@ export default function App() {
       <ThemeProvider>
         <WagmiProvider config={config}>
           <QueryClientProvider client={queryClient}>
-            <ToastProvider>
-              <BanCheckWrapper>
-                <BrowserRouter>
+            <OAuth3Provider
+              config={{
+                appId: 'gateway.apps.jeju',
+                redirectUri: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback`,
+                chainId: CHAIN_ID,
+                rpcUrl: RPC_URL,
+                teeAgentUrl: OAUTH3_AGENT_URL,
+              }}
+            >
+              <ToastProvider>
+                <BanCheckWrapper>
+                  <BrowserRouter>
                   <OnboardingWizard />
                   <Routes>
                     <Route
@@ -166,9 +177,10 @@ export default function App() {
                       element={<Navigate to="/registry" replace />}
                     />
                   </Routes>
-                </BrowserRouter>
-              </BanCheckWrapper>
-            </ToastProvider>
+                  </BrowserRouter>
+                </BanCheckWrapper>
+              </ToastProvider>
+            </OAuth3Provider>
           </QueryClientProvider>
         </WagmiProvider>
       </ThemeProvider>

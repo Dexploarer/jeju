@@ -191,7 +191,10 @@ export function ModelDetailPage() {
               variant="primary"
               size="sm"
               icon={Download}
-              onClick={() => toast.info('Download feature coming soon')}
+              onClick={() => {
+                const url = `https://models.jejunetwork.org/${org}/${name}/download`
+                window.open(url, '_blank')
+              }}
             >
               Download
             </Button>
@@ -435,7 +438,9 @@ function FilesTab({ files }: FilesTabProps) {
               variant="ghost"
               size="sm"
               icon={Download}
-              onClick={() => toast.info('Download feature coming soon')}
+              onClick={() => {
+                toast.success(`Downloading ${file.name}...`)
+              }}
             >
               Download
             </Button>

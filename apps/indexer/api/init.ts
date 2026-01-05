@@ -3,16 +3,14 @@
  */
 
 import 'reflect-metadata'
-// Preload core models in correct order to avoid circular import issues
-import '../src/model/generated/block.model'
-import '../src/model/generated/transaction.model'
-import '../src/model/generated/account.model'
-import '../src/model/generated/contract.model'
-import '../src/model/generated/log.model'
-import '../src/model/generated/decodedEvent.model'
+// Import ALL models via the index file which handles circular dependency ordering
+// The index.ts imports all models as side effects first, then exports them
+import '../src/model'
 
+import { getContract, getCurrentNetwork } from '@jejunetwork/config'
 import { type ContractInfo, registerContract } from './contract-events'
 import { getContractAddressSet, loadNetworkConfig } from './network-config'
+import { registerTFMMPool } from './tfmm-processor'
 
 const CONTRACT_TYPES: Record<string, ContractInfo['type']> = {
   entryPoint: 'paymaster',
@@ -97,6 +95,27 @@ export function initializeIndexer(): void {
   }
 
   console.log(`Registered ${registeredCount} known contracts`)
+
+  // Register TFMM pools from amm category
+  const network = getCurrentNetwork()
+  let tfmmPoolCount = 0
+  try {
+    const ammContracts = getContract('amm', '', network)
+    if (ammContracts && typeof ammContracts === 'object') {
+      for (const [name, address] of Object.entries(ammContracts)) {
+        if (name.startsWith('TFMMPool_') && typeof address === 'string') {
+          registerTFMMPool(address)
+          tfmmPoolCount++
+        }
+      }
+    }
+  } catch {
+    // AMM category may not exist on all networks
+  }
+
+  if (tfmmPoolCount > 0) {
+    console.log(`Registered ${tfmmPoolCount} TFMM pools for event processing`)
+  }
 
   const addressSet = getContractAddressSet(config)
   if (addressSet.size > 0) {

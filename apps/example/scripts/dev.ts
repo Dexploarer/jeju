@@ -136,7 +136,8 @@ async function startFrontendServer(): Promise<boolean> {
   }
 
   const indexHtml = await readFile(resolve(APP_DIR, 'web/index.html'), 'utf-8')
-  const devHtml = indexHtml.replace('/main.ts', '/main.js')
+  // Replace ./app.ts with /app.js to serve the built bundle
+  const devHtml = indexHtml.replace('./app.ts', '/app.js')
 
   const host = getLocalhostHost()
 
@@ -177,6 +178,19 @@ async function startFrontendServer(): Promise<boolean> {
         return new Response(devHtml, {
           headers: { 'Content-Type': 'text/html' },
         })
+      }
+
+      // Serve compiled app.js from dist/dev
+      if (pathname === '/app.js') {
+        const bundleFile = Bun.file(resolve(APP_DIR, 'dist/dev/app.js'))
+        if (await bundleFile.exists()) {
+          return new Response(bundleFile, {
+            headers: {
+              'Content-Type': 'application/javascript',
+              'Cache-Control': 'no-cache',
+            },
+          })
+        }
       }
 
       // Serve from dist/dev

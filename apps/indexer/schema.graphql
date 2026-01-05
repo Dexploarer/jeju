@@ -244,15 +244,15 @@ type TFMMPool @entity {
   name: String! @index
   symbol: String!
   
-  # Pool tokens
-  tokens: [String!]!
-  tokenSymbols: [String!]!
+  # Pool tokens (stored as JSON for array support)
+  tokens: JSON!          # string[]
+  tokenSymbols: JSON!    # string[]
   
-  # Current state
-  balances: [BigInt!]!
-  currentWeights: [BigInt!]!
-  targetWeights: [BigInt!]!
-  weightDeltas: [BigInt!]!
+  # Current state (stored as JSON - BigInt[] not supported)
+  balances: JSON!        # string[] (wei values)
+  currentWeights: JSON!  # string[] (wei values)
+  targetWeights: JSON!   # string[] (wei values)
+  weightDeltas: JSON!    # string[] (wei values)
   lastUpdateBlock: Int!
   blocksRemaining: Int!
   
@@ -332,7 +332,7 @@ type TFMMLiquidityEvent @entity {
   pool: TFMMPool!
   provider: Account!
   eventType: TFMMLiquidityEventType!
-  amounts: [BigInt!]!
+  amounts: JSON!  # string[] (wei values)
   lpTokens: BigInt!
   timestamp: DateTime! @index
   blockNumber: Int! @index
@@ -351,8 +351,8 @@ TFMM Weight Update event
 type TFMMWeightUpdate @entity {
   id: ID! # txHash-logIndex
   pool: TFMMPool!
-  oldWeights: [BigInt!]!
-  newWeights: [BigInt!]!
+  oldWeights: JSON!  # string[] (wei values)
+  newWeights: JSON!  # string[] (wei values)
   blocksToTarget: Int!
   blockNumber: Int! @index
   timestamp: DateTime! @index
@@ -375,8 +375,8 @@ type TFMMStats @entity {
   totalVolumeUSD24h: String!
   totalSwaps24h: Int!
   
-  # Top pools by TVL
-  topPoolsByTvl: [String!]!
+  # Top pools by TVL (stored as JSON)
+  topPoolsByTvl: JSON!  # string[]
   
   lastUpdated: DateTime!
 }

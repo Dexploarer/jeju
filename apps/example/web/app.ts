@@ -2,23 +2,47 @@ type EthereumRequestMethod =
   | 'eth_requestAccounts'
   | 'personal_sign'
   | 'eth_accounts'
+  | 'eth_chainId'
+  | 'wallet_switchEthereumChain'
+  | 'wallet_addEthereumChain'
 
 type EthereumRequestResult<M extends EthereumRequestMethod> =
   M extends 'personal_sign'
     ? string
     : M extends 'eth_requestAccounts' | 'eth_accounts'
       ? string[]
-      : never
+      : M extends 'eth_chainId'
+        ? string
+        : null
+
+interface AddEthereumChainParameter {
+  chainId: string
+  chainName: string
+  nativeCurrency: {
+    name: string
+    symbol: string
+    decimals: number
+  }
+  rpcUrls: string[]
+  blockExplorerUrls?: string[]
+}
 
 interface EthereumProvider {
   request: <M extends EthereumRequestMethod>(args: {
     method: M
-    params?: (string | number)[]
+    params?: M extends 'wallet_addEthereumChain'
+      ? [AddEthereumChainParameter]
+      : M extends 'wallet_switchEthereumChain'
+        ? [{ chainId: string }]
+        : (string | number)[]
   }) => Promise<EthereumRequestResult<M>>
-  on: (event: 'accountsChanged', handler: (accounts: string[]) => void) => void
+  on: (
+    event: 'accountsChanged' | 'chainChanged',
+    handler: (data: string[] | string) => void,
+  ) => void
   removeListener: (
-    event: 'accountsChanged',
-    handler: (accounts: string[]) => void,
+    event: 'accountsChanged' | 'chainChanged',
+    handler: (data: string[] | string) => void,
   ) => void
 }
 
@@ -59,9 +83,21 @@ interface ApiErrorResponse {
   code?: string
 }
 
+interface EthereumProviderWithMeta extends EthereumProvider {
+  isMetaMask?: boolean
+  isPhantom?: boolean
+  isCoinbaseWallet?: boolean
+  isRabby?: boolean
+  isJejuWallet?: boolean
+  isBraveWallet?: boolean
+  isTokenPocket?: boolean
+  isTrust?: boolean
+  providers?: EthereumProviderWithMeta[]
+}
+
 function hasEthereumProvider(
   win: Window,
-): win is Window & { ethereum: EthereumProvider } {
+): win is Window & { ethereum: EthereumProviderWithMeta } {
   return (
     'ethereum' in win &&
     win.ethereum !== undefined &&
@@ -69,11 +105,99 @@ function hasEthereumProvider(
   )
 }
 
+/**
+ * Check if a provider is an EVM-native wallet (not Phantom/Solana-first)
+ * Phantom injects as window.ethereum but is primarily a Solana wallet.
+ * We prefer EVM-native wallets like Rabby, MetaMask, Coinbase, etc.
+ */
+function isEvmNativeWallet(provider: EthereumProviderWithMeta): boolean {
+  // Phantom sets isPhantom=true - it's primarily a Solana wallet
+  if (provider.isPhantom) return false
+
+  // These are EVM-native wallets
+  if (provider.isJejuWallet) return true
+  if (provider.isRabby) return true
+  if (provider.isMetaMask) return true
+  if (provider.isCoinbaseWallet) return true
+  if (provider.isBraveWallet) return true
+  if (provider.isTokenPocket) return true
+  if (provider.isTrust) return true
+
+  // Unknown provider - assume it's EVM-native if it has request method
+  return typeof provider.request === 'function'
+}
+
+/**
+ * Get Ethereum provider with preference for EVM-native wallets.
+ * Priority: Jeju Wallet > Rabby > MetaMask > Other EVM > Phantom
+ *
+ * When multiple wallets are installed, they compete for window.ethereum.
+ * Phantom (Solana-first) often takes over, so we explicitly deprioritize it.
+ */
 function getEthereumProvider(): EthereumProvider | undefined {
-  if (hasEthereumProvider(window)) {
-    return window.ethereum
+  if (!hasEthereumProvider(window)) {
+    return undefined
   }
-  return undefined
+
+  const ethereum = window.ethereum as EthereumProviderWithMeta
+
+  // Check if there are multiple providers (EIP-5749)
+  if (ethereum.providers && Array.isArray(ethereum.providers)) {
+    // Priority 1: Jeju Wallet
+    const jejuWallet = ethereum.providers.find((p) => p.isJejuWallet)
+    if (jejuWallet) {
+      console.log('[Wallet] Using Jeju Wallet')
+      return jejuWallet
+    }
+
+    // Priority 2: Rabby (excellent EVM wallet)
+    const rabby = ethereum.providers.find((p) => p.isRabby)
+    if (rabby) {
+      console.log('[Wallet] Using Rabby')
+      return rabby
+    }
+
+    // Priority 3: MetaMask (but not Phantom pretending to be MetaMask)
+    const metaMask = ethereum.providers.find((p) => p.isMetaMask && !p.isPhantom)
+    if (metaMask) {
+      console.log('[Wallet] Using MetaMask')
+      return metaMask
+    }
+
+    // Priority 4: Any other EVM-native wallet
+    const evmWallet = ethereum.providers.find((p) => isEvmNativeWallet(p))
+    if (evmWallet) {
+      console.log('[Wallet] Using EVM wallet')
+      return evmWallet
+    }
+
+    // Fallback: First available (might be Phantom)
+    console.log('[Wallet] Using first available provider')
+    return ethereum.providers[0]
+  }
+
+  // Single provider - check if it's EVM-native
+  if (ethereum.isJejuWallet) {
+    console.log('[Wallet] Using Jeju Wallet')
+    return ethereum
+  }
+
+  if (ethereum.isRabby) {
+    console.log('[Wallet] Using Rabby')
+    return ethereum
+  }
+
+  if (ethereum.isMetaMask && !ethereum.isPhantom) {
+    console.log('[Wallet] Using MetaMask')
+    return ethereum
+  }
+
+  if (ethereum.isPhantom) {
+    console.log('[Wallet] Phantom detected - this is primarily a Solana wallet')
+    // Still return it as fallback, but user should know
+  }
+
+  return ethereum
 }
 
 function isHTMLInputElement(
@@ -99,6 +223,116 @@ function isValidPriority(value: string): value is 'low' | 'medium' | 'high' {
 }
 
 const API_URL = ''
+
+// Storage keys for persistence
+const STORAGE_KEYS = {
+  WALLET_ADDRESS: 'jeju-tasks-wallet',
+  CHAIN_ID: 'jeju-tasks-chain',
+} as const
+
+// Jeju Network configurations
+const JEJU_NETWORKS = {
+  localnet: {
+    chainId: '0x7a69', // 31337
+    chainName: 'Jeju Localnet',
+    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+    rpcUrls: ['http://127.0.0.1:6546'],
+    blockExplorerUrls: ['http://127.0.0.1:4000'],
+  },
+  testnet: {
+    chainId: '0x66b52', // 420690
+    chainName: 'Jeju Testnet',
+    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+    rpcUrls: ['https://testnet-rpc.jejunetwork.org'],
+    blockExplorerUrls: ['https://testnet-explorer.jejunetwork.org'],
+  },
+  mainnet: {
+    chainId: '0x66b53', // 420691
+    chainName: 'Jeju Mainnet',
+    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+    rpcUrls: ['https://rpc.jejunetwork.org'],
+    blockExplorerUrls: ['https://explorer.jejunetwork.org'],
+  },
+} as const
+
+// Determine target network based on environment
+function getTargetNetwork(): (typeof JEJU_NETWORKS)[keyof typeof JEJU_NETWORKS] {
+  // Check if we're on localhost
+  const isLocalhost =
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1'
+
+  if (isLocalhost) {
+    return JEJU_NETWORKS.localnet
+  }
+
+  // Check URL for testnet indicators
+  if (window.location.hostname.includes('testnet')) {
+    return JEJU_NETWORKS.testnet
+  }
+
+  return JEJU_NETWORKS.mainnet
+}
+
+// Save wallet address to localStorage
+function saveWalletAddress(address: string): void {
+  localStorage.setItem(STORAGE_KEYS.WALLET_ADDRESS, address)
+}
+
+// Load wallet address from localStorage
+function loadWalletAddress(): string | null {
+  return localStorage.getItem(STORAGE_KEYS.WALLET_ADDRESS)
+}
+
+// Clear wallet address from localStorage
+function clearWalletAddress(): void {
+  localStorage.removeItem(STORAGE_KEYS.WALLET_ADDRESS)
+}
+
+// Switch to Jeju network
+async function switchToJejuNetwork(
+  ethereum: EthereumProvider,
+): Promise<boolean> {
+  const targetNetwork = getTargetNetwork()
+
+  try {
+    // Try to switch to the network
+    await ethereum.request({
+      method: 'wallet_switchEthereumChain',
+      params: [{ chainId: targetNetwork.chainId }],
+    })
+    return true
+  } catch (switchError) {
+    const error = switchError as { code?: number }
+
+    // Error code 4902 means the chain hasn't been added yet
+    if (error.code === 4902) {
+      try {
+        await ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [targetNetwork],
+        })
+        return true
+      } catch (addError) {
+        console.error('Failed to add Jeju network:', addError)
+        return false
+      }
+    }
+
+    // User rejected the switch or other error
+    console.error('Failed to switch to Jeju network:', switchError)
+    return false
+  }
+}
+
+// Check if currently on correct network
+async function isOnCorrectNetwork(
+  ethereum: EthereumProvider,
+): Promise<boolean> {
+  const chainId = await ethereum.request({ method: 'eth_chainId' })
+  const targetNetwork = getTargetNetwork()
+  return chainId === targetNetwork.chainId
+}
 
 class ApiClient {
   private baseUrl: string
@@ -237,31 +471,44 @@ function validatePriority(priority: string): 'low' | 'medium' | 'high' {
 async function fetchTodos(): Promise<void> {
   setState({ loading: true, error: null })
 
-  const client = await getAuthenticatedClient()
-  const completed =
-    state.filter === 'all' ? undefined : state.filter === 'completed'
+  try {
+    const client = await getAuthenticatedClient()
+    const completed =
+      state.filter === 'all' ? undefined : state.filter === 'completed'
 
-  const response = await client.listTodos(
-    completed !== undefined ? { completed } : undefined,
-  )
+    const response = await client.listTodos(
+      completed !== undefined ? { completed } : undefined,
+    )
 
-  setState({ todos: response.todos, loading: false })
+    setState({ todos: response.todos, loading: false })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to load tasks'
+    console.error('Failed to fetch todos:', error)
+    setState({ loading: false, error: message })
+  }
 }
 
 async function createTodo(
   title: string,
   priority: 'low' | 'medium' | 'high',
 ): Promise<void> {
-  const validatedTitle = validateTitle(title)
-  const validatedPriority = validatePriority(priority)
+  try {
+    const validatedTitle = validateTitle(title)
+    const validatedPriority = validatePriority(priority)
 
-  const client = await getAuthenticatedClient()
-  await client.createTodo({
-    title: validatedTitle,
-    priority: validatedPriority,
-  })
+    const client = await getAuthenticatedClient()
+    await client.createTodo({
+      title: validatedTitle,
+      priority: validatedPriority,
+    })
 
-  await fetchTodos()
+    await fetchTodos()
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to create task'
+    console.error('Failed to create todo:', error)
+    setState({ error: message })
+    throw error
+  }
 }
 
 async function toggleTodo(id: string, completed: boolean): Promise<void> {
@@ -269,9 +516,15 @@ async function toggleTodo(id: string, completed: boolean): Promise<void> {
     throw new Error('Invalid todo ID')
   }
 
-  const client = await getAuthenticatedClient()
-  await client.updateTodo(id, { completed })
-  await fetchTodos()
+  try {
+    const client = await getAuthenticatedClient()
+    await client.updateTodo(id, { completed })
+    await fetchTodos()
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to update task'
+    console.error('Failed to toggle todo:', error)
+    setState({ error: message })
+  }
 }
 
 async function deleteTodo(id: string): Promise<void> {
@@ -279,9 +532,15 @@ async function deleteTodo(id: string): Promise<void> {
     throw new Error('Invalid todo ID')
   }
 
-  const client = await getAuthenticatedClient()
-  await client.deleteTodo(id)
-  await fetchTodos()
+  try {
+    const client = await getAuthenticatedClient()
+    await client.deleteTodo(id)
+    await fetchTodos()
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to delete task'
+    console.error('Failed to delete todo:', error)
+    setState({ error: message })
+  }
 }
 
 async function encryptTodo(id: string): Promise<void> {
@@ -289,9 +548,15 @@ async function encryptTodo(id: string): Promise<void> {
     throw new Error('Invalid todo ID')
   }
 
-  const client = await getAuthenticatedClient()
-  await client.encryptTodo(id)
-  await fetchTodos()
+  try {
+    const client = await getAuthenticatedClient()
+    await client.encryptTodo(id)
+    await fetchTodos()
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to encrypt task'
+    console.error('Failed to encrypt todo:', error)
+    setState({ error: message })
+  }
 }
 
 async function connectWallet(): Promise<void> {
@@ -306,6 +571,7 @@ async function connectWallet(): Promise<void> {
 
   setState({ isConnecting: true, error: null })
 
+  // First, get accounts (connect wallet)
   const accounts = await ethereum.request({
     method: 'eth_requestAccounts',
   })
@@ -324,12 +590,57 @@ async function connectWallet(): Promise<void> {
     return
   }
 
+  // Then switch to Jeju network (non-blocking - continue even if rejected)
+  await switchToJejuNetwork(ethereum)
+
+  // Save to localStorage for persistence
+  saveWalletAddress(address)
+
   setState({ address, isConnecting: false })
   await fetchTodos()
 }
 
 function disconnectWallet(): void {
+  clearWalletAddress()
   setState({ address: null, todos: [], error: null })
+}
+
+// Try to restore wallet connection on page load
+async function tryRestoreWallet(): Promise<void> {
+  const savedAddress = loadWalletAddress()
+  if (!savedAddress) return
+
+  const ethereum = getEthereumProvider()
+  if (!ethereum) {
+    clearWalletAddress()
+    return
+  }
+
+  // Check if the wallet is still connected
+  const accounts = await ethereum.request({ method: 'eth_accounts' })
+
+  // Verify the saved address is still accessible
+  const addressMatch = accounts.some(
+    (acc) => acc.toLowerCase() === savedAddress.toLowerCase(),
+  )
+
+  if (!addressMatch) {
+    clearWalletAddress()
+    return
+  }
+
+  // Check if on correct network
+  const onCorrectNetwork = await isOnCorrectNetwork(ethereum)
+  if (!onCorrectNetwork) {
+    // Try to switch, but don't block if user declines
+    await switchToJejuNetwork(ethereum).catch(() => {})
+  }
+
+  // Restore the session
+  setState({ address: savedAddress })
+  await fetchTodos().catch((err) => {
+    console.error('Failed to fetch todos on restore:', err)
+  })
 }
 
 function escapeHtml(text: string): string {
@@ -382,12 +693,31 @@ function renderHeader(): string {
   `
 }
 
+function getNetworkDisplayName(): string {
+  const targetNetwork = getTargetNetwork()
+  if (targetNetwork.chainId === JEJU_NETWORKS.localnet.chainId) {
+    return 'Localnet'
+  }
+  if (targetNetwork.chainId === JEJU_NETWORKS.testnet.chainId) {
+    return 'Testnet'
+  }
+  return 'Mainnet'
+}
+
 function renderUserBadge(): string {
   const address = state.address
   if (!address) return ''
 
+  const networkName = getNetworkDisplayName()
+
   return `
-    <div class="mt-4 flex items-center justify-center gap-3">
+    <div class="mt-4 flex items-center justify-center gap-3 flex-wrap">
+      <div class="glass-card px-3 py-1.5 rounded-full flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-accent-500" aria-hidden="true"></span>
+        <span class="text-xs font-medium text-accent-700 dark:text-accent-300">
+          Jeju ${networkName}
+        </span>
+      </div>
       <div class="glass-card px-4 py-2 rounded-full flex items-center gap-2">
         <span class="w-2 h-2 rounded-full bg-success-500 animate-pulse-soft" aria-hidden="true"></span>
         <span class="font-mono text-sm text-gray-700 dark:text-gray-300">
@@ -745,10 +1075,15 @@ function attachEventListeners(): void {
         return
       }
 
-      await createTodo(title, validatePriority(priority))
-      input.value = ''
-      input.focus()
-      clearError()
+      try {
+        await createTodo(title, validatePriority(priority))
+        input.value = ''
+        input.focus()
+        clearError()
+      } catch {
+        // Error already set in createTodo
+        input.focus()
+      }
     })
 
   // Filter buttons
@@ -819,16 +1154,30 @@ function attachEventListeners(): void {
 
 const ethereumProvider = getEthereumProvider()
 if (ethereumProvider) {
-  ethereumProvider.on('accountsChanged', (accounts: string[]) => {
-    if (accounts.length > 0) {
+  ethereumProvider.on('accountsChanged', (data: string[] | string) => {
+    const accounts = Array.isArray(data) ? data : [data]
+    if (accounts.length > 0 && accounts[0].startsWith('0x')) {
+      saveWalletAddress(accounts[0])
       setState({ address: accounts[0] })
       fetchTodos()
     } else {
       disconnectWallet()
     }
   })
+
+  // Handle network changes
+  ethereumProvider.on('chainChanged', () => {
+    // Reload the page when network changes to ensure clean state
+    window.location.reload()
+  })
 }
 
+// Initial render
 render()
+
+// Try to restore wallet connection after initial render
+tryRestoreWallet().catch((err) => {
+  console.error('Failed to restore wallet:', err)
+})
 
 export {}

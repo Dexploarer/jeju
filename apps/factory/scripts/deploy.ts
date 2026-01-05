@@ -13,7 +13,6 @@
 
 import { existsSync } from 'node:fs'
 import {
-  getCoreAppUrl,
   getCurrentNetwork,
   getDWSUrl,
   getEnvVar,
@@ -22,7 +21,8 @@ import {
 import { privateKeyToAccount } from 'viem/accounts'
 import { z } from 'zod'
 
-const DWS_URL = getEnvVar('DWS_URL') || getCoreAppUrl('DWS_API') || getDWSUrl()
+// Use getDWSUrl() which respects the network - getCoreAppUrl returns localhost
+const DWS_URL = getEnvVar('DWS_URL') || getDWSUrl()
 const NETWORK = getCurrentNetwork()
 
 /**
@@ -140,7 +140,7 @@ async function deploy(): Promise<DeployResult> {
   const indexFormData = new FormData()
   indexFormData.append('file', Bun.file(indexHtmlPath), 'index.html')
   indexFormData.append('tier', 'system')
-  indexFormData.append('backends', 'ipfs')
+  indexFormData.append('backends', 'local,arweave')
 
   const uploadResponse = await fetch(`${DWS_URL}/storage/upload`, {
     method: 'POST',
@@ -178,7 +178,7 @@ async function deploy(): Promise<DeployResult> {
         const fileFormData = new FormData()
         fileFormData.append('file', Bun.file(fullPath), entry.name)
         fileFormData.append('tier', 'system')
-        fileFormData.append('backends', 'ipfs')
+        fileFormData.append('backends', 'local,arweave')
 
         const resp = await fetch(`${DWS_URL}/storage/upload`, {
           method: 'POST',
@@ -224,7 +224,7 @@ async function deploy(): Promise<DeployResult> {
   const workerFormData = new FormData()
   workerFormData.append('file', Bun.file(workerPath), 'factory-worker.js')
   workerFormData.append('tier', 'system')
-  workerFormData.append('backends', 'ipfs')
+  workerFormData.append('backends', 'local,arweave')
 
   const workerUploadResponse = await fetch(`${DWS_URL}/storage/upload`, {
     method: 'POST',

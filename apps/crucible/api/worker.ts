@@ -90,7 +90,8 @@ function getAllowedOrigins(network: string): string[] | true {
  * Create the Crucible Elysia app
  */
 export function createCrucibleApp(env?: Partial<CrucibleEnv>) {
-  const network = env?.NETWORK ?? getCurrentNetwork()
+  // Check both NETWORK and JEJU_NETWORK for compatibility
+  const network = env?.NETWORK ?? (process.env.JEJU_NETWORK as 'localnet' | 'testnet' | 'mainnet') ?? getCurrentNetwork()
   const allowedOrigins = getAllowedOrigins(network)
 
   const app = new Elysia()
@@ -652,20 +653,43 @@ export function createCrucibleApp(env?: Partial<CrucibleEnv>) {
 }
 
 /**
- * Create the app instance
+ * Lazy app initialization
+ * IMPORTANT: Do NOT create app at module level - env vars may not be set yet in DWS context
  */
-const app = createCrucibleApp()
+let cachedApp: ReturnType<typeof createCrucibleApp> | null = null
+
+function getApp(env?: Partial<CrucibleEnv>): ReturnType<typeof createCrucibleApp> {
+  if (!cachedApp) {
+    // In DWS context, env is passed to fetch handler
+    // In direct Bun context, process.env should already be set
+    cachedApp = createCrucibleApp(env)
+  }
+  return cachedApp
+}
+
+/**
+ * Fetch handler wrapper that extracts env from DWS context
+ * DWS bootstrap calls: handler(request, workerEnv, execCtx)
+ */
+async function fetchHandler(
+  request: Request,
+  env?: Partial<CrucibleEnv>,
+  _ctx?: { waitUntil: (p: Promise<unknown>) => void }
+): Promise<Response> {
+  const app = getApp(env)
+  return app.fetch(request)
+}
 
 /**
  * Named export for the fetch handler (workerd compatibility)
  */
-export const fetch = app.fetch
+export const fetch = fetchHandler
 
 /**
  * Default export for workerd
  */
 export default {
-  fetch: app.fetch,
+  fetch: fetchHandler,
 }
 
 /**

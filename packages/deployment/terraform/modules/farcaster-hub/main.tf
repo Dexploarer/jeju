@@ -1,5 +1,11 @@
 # Farcaster Hub Infrastructure Module
-# Deploys self-hosted Farcaster Hubble hub to Kubernetes
+# DEPRECATED: Farcaster Hubble is now deployed via DWS
+# See: apps/dws/api/services/hubble.ts
+# 
+# To deploy Hubble via DWS:
+#   jeju infra dws-services deploy hubble --name jeju-hubble --replicas 1
+# 
+# Legacy module kept for reference only. Use DWS for new deployments.
 
 variable "environment" {
   description = "Environment name (testnet, mainnet)"

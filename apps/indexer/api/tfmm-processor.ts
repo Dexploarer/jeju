@@ -27,19 +27,19 @@ import {
 } from './utils/entities'
 import { decodeLogData, isEventInSet } from './utils/hex'
 
-// TFMM Event topic signatures (keccak256 of event signatures)
+// TFMM Event topic signatures - VERIFIED with cast keccak
 // cast keccak "Swap(address,address,address,uint256,uint256,uint256)"
 const SWAP_TOPIC: Hex =
-  '0xd6d34547c69c5ee3d2667625c188acf1006abb93dc082a0d7e7ba9e9f4b28c5a'
+  '0xd6d34547c69c5ee3d2667625c188acf1006abb93e0ee7cf03925c67cf7760413'
 // cast keccak "LiquidityAdded(address,uint256[],uint256)"
 const LIQUIDITY_ADDED_TOPIC: Hex =
-  '0x26f55a85081d24974e85c6c02c8d1e8a7c0b82f7a9d5e4c8e0c3f3c8e8c0c300'
+  '0xb60e972ce1258a7280a8e34204b1df88fcabbe8aea805e46bc1566cdc6e6e148'
 // cast keccak "LiquidityRemoved(address,uint256[],uint256)"
 const LIQUIDITY_REMOVED_TOPIC: Hex =
-  '0x7084f5476618d8e60b11ef0d7d3f06914655adb8793e28ff7f018d4c76d505d5'
+  '0x0f74fe264fb7d04b4800409b8a3562eb271296e19c3ec8835639635b3e858c45'
 // cast keccak "WeightsUpdated(uint256[],uint256[],uint256,uint256)"
 const WEIGHTS_UPDATED_TOPIC: Hex =
-  '0x8d03c6c7fdd8b462fcc3a8c59dc2c0c2a6fe9dcf9e3f48c8e8c0c3f3c8e8c0c3'
+  '0xd0f9ec7e8034c9e1939ed26dfe42e978e1c1183e2cef0fa8ccc6c0cee50d2716'
 
 const TFMM_TOPICS = new Set([
   SWAP_TOPIC,
@@ -220,6 +220,11 @@ function processSwap(
   pool.txCount = (pool.txCount ?? 0) + 1
 }
 
+// Helper to serialize bigint arrays to string arrays for JSON storage
+function serializeBigIntArray(arr: readonly bigint[]): string[] {
+  return arr.map((n) => n.toString())
+}
+
 function processLiquidityAdded(
   log: LogData,
   header: BlockHeader,
@@ -255,7 +260,7 @@ function processLiquidityAdded(
     pool,
     provider,
     eventType: TFMMLiquidityEventType.ADD,
-    amounts: amounts as bigint[],
+    amounts: serializeBigIntArray(amounts as bigint[]),
     lpTokens: lpTokensMinted,
     timestamp,
     blockNumber: header.height,
@@ -305,7 +310,7 @@ function processLiquidityRemoved(
     pool,
     provider,
     eventType: TFMMLiquidityEventType.REMOVE,
-    amounts: amounts as bigint[],
+    amounts: serializeBigIntArray(amounts as bigint[]),
     lpTokens: lpTokensBurned,
     timestamp,
     blockNumber: header.height,
@@ -344,8 +349,8 @@ function processWeightsUpdated(
   const update = new TFMMWeightUpdate({
     id: updateId,
     pool,
-    oldWeights: oldWeights as bigint[],
-    newWeights: newWeights as bigint[],
+    oldWeights: serializeBigIntArray(oldWeights as bigint[]),
+    newWeights: serializeBigIntArray(newWeights as bigint[]),
     blocksToTarget: Number(blocksToTarget),
     blockNumber: header.height,
     timestamp,
@@ -354,9 +359,9 @@ function processWeightsUpdated(
 
   weightUpdates.set(updateId, update)
 
-  // Update pool weights
-  pool.currentWeights = oldWeights as bigint[]
-  pool.targetWeights = newWeights as bigint[]
+  // Update pool weights (serialize for JSON storage)
+  pool.currentWeights = serializeBigIntArray(oldWeights as bigint[])
+  pool.targetWeights = serializeBigIntArray(newWeights as bigint[])
   pool.blocksRemaining = Number(blocksToTarget)
   pool.lastUpdateBlock = header.height
 }
@@ -389,10 +394,10 @@ export async function indexTFMMPool(
     symbol,
     tokens,
     tokenSymbols: [],
-    balances: tokens.map(() => 0n),
-    currentWeights: weights,
-    targetWeights: weights,
-    weightDeltas: tokens.map(() => 0n),
+    balances: tokens.map(() => '0'),
+    currentWeights: serializeBigIntArray(weights),
+    targetWeights: serializeBigIntArray(weights),
+    weightDeltas: tokens.map(() => '0'),
     lastUpdateBlock: blockNumber,
     blocksRemaining: 0,
     swapFeeBps,
@@ -449,7 +454,7 @@ export async function updateTFMMStats(
       totalVolume24h: 0n,
       totalVolumeUSD24h: '0',
       totalSwaps24h: 0,
-      topPoolsByTvl: [],
+      topPoolsByTvl: [], // JSON array of pool IDs
       lastUpdated: new Date(),
     })
   }

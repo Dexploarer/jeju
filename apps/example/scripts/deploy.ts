@@ -100,7 +100,7 @@ function getConfig(): DeployConfig {
 async function checkBuild(): Promise<void> {
   const requiredFiles = [
     join(APP_DIR, 'dist/index.html'),
-    join(APP_DIR, 'dist/api/index.js'),
+    join(APP_DIR, 'dist/worker/worker.js'),
   ]
 
   for (const file of requiredFiles) {
@@ -249,6 +249,17 @@ async function deployWorker(
         env: {
           APP_NAME: 'Example',
           NETWORK: config.network,
+          RPC_URL: config.rpcUrl,
+          DWS_URL: config.dwsUrl,
+          // SQLit configuration for database connectivity
+          SQLIT_NODES: `${config.dwsUrl}/sqlit`,
+          SQLIT_DATABASE_ID: 'example-todos',
+          // For testnet, use deployer key (in production, use KMS)
+          SQLIT_PRIVATE_KEY: config.privateKey,
+        },
+        database: {
+          type: 'sqlit',
+          name: 'example-db',
         },
       }),
     })
@@ -380,18 +391,18 @@ async function deploy(): Promise<void> {
 
   // Upload and deploy API worker
   console.log('')
-  console.log('[Deploy] Uploading API bundle...')
-  const apiContent = await readFile(join(APP_DIR, 'dist/api/index.js'))
-  const apiUpload = await uploadFile(
+  console.log('[Deploy] Uploading worker bundle...')
+  const workerContent = await readFile(join(APP_DIR, 'dist/worker/worker.js'))
+  const workerUpload = await uploadFile(
     config.dwsUrl,
-    Buffer.from(apiContent),
-    'example-api.js',
+    Buffer.from(workerContent),
+    'worker.js',
   )
-  console.log(`[Deploy] API CID: ${apiUpload.cid}`)
+  console.log(`[Deploy] Worker CID: ${workerUpload.cid}`)
 
   console.log('')
   console.log('[Deploy] Deploying API worker...')
-  const workerId = await deployWorker(config, apiUpload.cid)
+  const workerId = await deployWorker(config, workerUpload.cid)
   if (workerId) {
     console.log(`[Deploy] Worker ID: ${workerId}`)
   } else {
@@ -432,7 +443,7 @@ async function deploy(): Promise<void> {
   console.log('IPFS:')
   console.log(`  Frontend index: ipfs://${indexCid}`)
   console.log(`  Frontend files: ${frontendResult.files.size} files uploaded`)
-  console.log(`  API:            ipfs://${apiUpload.cid}`)
+  console.log(`  API:            ipfs://${workerUpload.cid}`)
   console.log('')
   console.log('DWS:')
   if (workerId) {

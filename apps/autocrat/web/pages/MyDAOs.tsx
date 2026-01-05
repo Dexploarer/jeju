@@ -13,12 +13,12 @@ import { useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useAccount, useConnect } from 'wagmi'
 import { injected } from 'wagmi/connectors'
-import { DAO_STATUS_STYLES } from '../constants/ui'
+import { getDAOStatusStyle } from '../constants/ui'
 import { useMyDAOs } from '../hooks/useDAO'
 import type { DAOListItem } from '../types/dao'
 
 function DAOCard({ dao }: { dao: DAOListItem }) {
-  const statusStyle = DAO_STATUS_STYLES[dao.status]
+  const statusStyle = getDAOStatusStyle(dao.status)
 
   return (
     <Link
@@ -109,7 +109,7 @@ function DAOCard({ dao }: { dao: DAOListItem }) {
               style={{ color: 'var(--text-secondary)' }}
             >
               <Users className="w-3.5 h-3.5" />
-              <span>{dao.memberCount.toLocaleString()} members</span>
+              <span>{(dao.memberCount ?? 0).toLocaleString()} members</span>
             </div>
             {dao.activeProposalCount > 0 && (
               <div

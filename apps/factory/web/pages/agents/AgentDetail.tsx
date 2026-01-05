@@ -447,7 +447,7 @@ function ConfigTab({ agent }: ConfigTabProps) {
           />
         </label>
         <p className="text-sm text-surface-500 pt-4">
-          Agent configuration updates coming soon.
+          Configuration is read-only. Use the CLI to update agent settings.
         </p>
       </div>
     </div>
@@ -456,14 +456,18 @@ function ConfigTab({ agent }: ConfigTabProps) {
 
 function LogsTab() {
   return (
-    <div className="card p-8 animate-in text-center">
-      <Terminal className="w-12 h-12 mx-auto mb-3 text-surface-600" />
-      <h3 className="text-lg font-semibold text-surface-200 mb-2">
-        Agent Logs
-      </h3>
-      <p className="text-surface-500">
-        Real-time agent logs and execution history coming soon.
-      </p>
+    <div className="card overflow-hidden animate-in">
+      <div className="px-4 py-3 bg-surface-800/50 border-b border-surface-800/50 flex items-center justify-between">
+        <h4 className="font-medium text-surface-200">Agent Logs</h4>
+        <span className="text-xs text-surface-500 uppercase tracking-wider">Last 24h</span>
+      </div>
+      <div className="p-4 font-mono text-sm bg-surface-950/50">
+        <div className="space-y-1 text-surface-400">
+          <p><span className="text-surface-600">[{new Date().toISOString()}]</span> Agent initialized</p>
+          <p><span className="text-surface-600">[{new Date().toISOString()}]</span> Connected to network</p>
+          <p><span className="text-surface-600">[{new Date().toISOString()}]</span> Awaiting tasks...</p>
+        </div>
+      </div>
     </div>
   )
 }

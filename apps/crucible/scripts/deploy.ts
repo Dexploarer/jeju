@@ -238,6 +238,7 @@ async function deployWorker(
       { pattern: '/.well-known/*', zone: 'crucible' },
     ],
     env: {
+      JEJU_NETWORK: config.network,
       NETWORK: config.network,
       RPC_URL: config.rpcUrl,
       DWS_URL: config.dwsUrl,

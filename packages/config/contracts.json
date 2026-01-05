@@ -73,12 +73,12 @@
       "workerRegistry": "0x364C7188028348566E38D762f6095741c49f492B",
       "cdnRegistry": "0x5147c5C1Cb5b5D3f56186C37a4bcFBb3Cd0bD5A7",
       "repoRegistry": "0x0dcd1bf9a1b36ce34237eeafef220932846bcd82",
-      "packageRegistry": "0x683d9cdd3239e0e01e8dc6315fa50ad92ab71d2d",
-      "managedDatabaseRegistry": "0xb185e9f6531ba9877741022c92ce858cdcc5760e",
-      "gitRegistry": "0xc1e0a9db9ea830c52603798481045688c8ae99c2",
-      "cacheManager": "0x1c9fd50df7a4f066884b58a05d91e4b55005876a",
-      "cronOrchestrator": "0x0fe4223ad99df788a6dcad148eb4086e6389ceb6",
-      "containerRegistry": "0x71a0b8a2245a9770a4d887ce1e4ecc6c1d4ff28c",
+      "packageRegistry": "0x9a86494ba45ee1f9eeed9cfc0894f6c5d13a1f0b",
+      "managedDatabaseRegistry": "0x4432a6dcfaeab227673b43c30c6fef40eabd5d30",
+      "gitRegistry": "0x8b64968f69e669facc86fa3484fd946f1bbe7c91",
+      "cacheManager": "0xc0340c0831aa40a0791cf8c3ab4287eb0a9705d8",
+      "cronOrchestrator": "0xff658343244c0475b9305859f1b7cdab9784762f",
+      "containerRegistry": "0x1c1521cf734cd13b02e8150951c3bf2b438be780",
       "storageProviderRegistry": "0xdc64a140aa3e981100a9beca4e685f962f0cf6c9",
       "identityRegistry": "0x5fc8d32690cc91d4c39d9d3abcbd16989f875707"
     },
@@ -106,7 +106,7 @@
       "inferenceServing": "0x08A90aF9A6eBBe11c322AD9930CC58E122231B5A",
       "staking": "0x7bdd3b028C4796eF0EAf07d11394d0d9d8c24139",
       "workerRegistry": "",
-      "cronTriggerRegistry": "0x0fe4223ad99df788a6dcad148eb4086e6389ceb6"
+      "cronTriggerRegistry": "0xff658343244c0475b9305859f1b7cdab9784762f"
     },
     "sequencer": {
       "registry": "0xf4fa0d1C10c47cDe9F65D56c3eC977CbEb13449A",
@@ -157,7 +157,8 @@
       "reportVerifier": "",
       "attestationVerifier": "",
       "rewardManager": "",
-      "oracleNetworkConnector": "0xDb2f554A333D189ed59eA36020a83F7d6De14328"
+      "oracleNetworkConnector": "0xDb2f554A333D189ed59eA36020a83F7d6De14328",
+      "oracleRegistry": "0x840748F7Fd3EA956E5f4c88001da5CC1ABCBc038"
     },
     "chainlink": {
       "vrfCoordinator": "",
@@ -208,7 +209,8 @@
       "XLPV2Factory": "",
       "XLPV3Factory": "",
       "XLPV3PositionManager": "",
-      "TFMMPool_JEJU_USDC": "0x0aec7c174554AF8aEc3680BB58431F6618311510"
+      "TFMMPool_JEJU_USDC": "0xde79380FBd39e08150adAA5C6c9dE3146f53029e",
+      "weightUpdateRunner": "0x837a41023CF81234f89F956C94D676918b4791c1"
     },
     "messaging": {},
     "bridge": {}

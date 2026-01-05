@@ -1,3 +1,41 @@
+// Auth components and hooks (re-exported from @jejunetwork/auth)
+export {
+  AuthHeaderButton,
+  type AuthHeaderButtonProps,
+  ConnectedAccount,
+  type ConnectedAccountProps,
+  JejuAuthButton,
+  type JejuAuthButtonProps,
+  JejuAuthProvider,
+  type LinkedAccount,
+  LoginButton,
+  type LoginButtonProps,
+  LoginModal,
+  type LoginModalProps,
+  MFASetup,
+  type MFASetupProps,
+  type OAuth3ContextValue,
+  OAuth3Provider,
+  type OAuth3ProviderProps,
+  type TypedDataParams,
+  type UseCredentialsReturn,
+  useCredentials,
+  type UseJejuAuthReturn,
+  useJejuAuth,
+  type UseJejuWalletReturn,
+  useJejuWallet,
+  type UseLoginOptions,
+  type UseLoginReturn,
+  useLogin,
+  type UseMFAOptions,
+  type UseMFAReturn,
+  useMFA,
+  useOAuth3,
+  useOAuth3Client,
+  type UseSessionReturn,
+  useSession,
+} from './auth'
+
 export {
   type NetworkContextValue,
   NetworkProvider,
@@ -33,6 +71,14 @@ export {
   useLiquidityVault,
 } from './hooks/useLiquidityVaultContract'
 export { type UseNamesResult, useNames } from './hooks/useNames'
+export {
+  Region,
+  type RegionKey,
+  type RegionValue,
+  type RegisterNodeParams,
+  type UseNodeStakingResult,
+  useNodeStaking,
+} from './hooks/useNodeStaking'
 export {
   type PaymasterDeployment,
   type UsePaymasterDeploymentResult,

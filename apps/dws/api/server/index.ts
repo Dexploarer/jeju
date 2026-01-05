@@ -94,6 +94,7 @@ import { createObservabilityRoutes } from '../observability/routes'
 import { PkgRegistryManager } from '../pkg/registry-manager'
 import { createSecurityRoutes } from '../security/routes'
 import { createServicesRouter, discoverExistingServices } from '../services'
+import { createDWSServicesRouter } from './routes/dws-services'
 import { initializeDWSState } from '../state'
 import { createBackendManager } from '../storage/backends'
 import type { ServiceHealth } from '../types'
@@ -885,6 +886,10 @@ app.use(createKeepaliveRouter())
 // Infrastructure services (postgres, redis, etc.)
 app.use(createServicesRouter())
 
+// DWS-native services (OAuth3, DA, Email, Hubble, Workers)
+// These replace K8s Helm deployments with DWS control plane
+app.use(createDWSServicesRouter())
+
 // App deployment - Heroku/EKS-like experience
 app.use(createAppDeployerRouter())
 
@@ -1255,6 +1260,13 @@ app.get('/*', async ({ path, set }: Context) => {
     '/indexer/',
     '/_internal/',
     '/.well-known/',
+    '/dws-services/',
+    '/deploy/',
+    '/apps/',
+    '/ipfs/',
+    '/upload/',
+    '/databases/',
+    '/services/',
   ]
 
   if (apiPrefixes.some((prefix) => path.startsWith(prefix))) {
@@ -1576,15 +1588,14 @@ if (import.meta.main) {
     port: PORT,
     maxRequestBodySize: 500 * 1024 * 1024, // 500MB for large artifact uploads
     idleTimeout: 120, // 120 seconds - health checks can take time when external services are slow
-    async fetch(
-      req: Request,
-      server: {
+    async fetch(req, bunServer) {
+      // Cast to simpler type for upgrade calls
+      const server = bunServer as {
         upgrade(
           req: Request,
           options?: { data?: WebSocketData; headers?: HeadersInit },
         ): boolean
-      },
-    ) {
+      }
       // Handle WebSocket upgrades for price streaming
       const url = new URL(req.url)
       if (
@@ -1646,10 +1657,23 @@ if (import.meta.main) {
           console.log(`[Bun.serve] Routing to deployed app: ${appName}`)
           // Route to backend for API paths - use DEFAULT_API_PATHS if not configured
           const apiPaths = deployedApp.apiPaths ?? DEFAULT_API_PATHS
-          const isApiRequest = apiPaths.some(
-            (path) =>
-              url.pathname === path || url.pathname.startsWith(`${path}/`),
-          )
+          const isApiRequest = apiPaths.some((pattern) => {
+            // Handle glob patterns like /api/*
+            if (pattern.endsWith('/*')) {
+              const basePrefix = pattern.slice(0, -2) // Remove /*
+              return (
+                url.pathname === basePrefix ||
+                url.pathname.startsWith(`${basePrefix}/`)
+              )
+            }
+            // Handle trailing wildcard /api*
+            if (pattern.endsWith('*')) {
+              const basePrefix = pattern.slice(0, -1)
+              return url.pathname.startsWith(basePrefix)
+            }
+            // Exact match
+            return url.pathname === pattern
+          })
           if (
             isApiRequest &&
             (deployedApp.backendEndpoint || deployedApp.backendWorkerId)

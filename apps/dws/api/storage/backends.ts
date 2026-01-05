@@ -282,6 +282,15 @@ class BackendManagerImpl implements BackendManager {
       }
     }
 
+    // Also check multi-backend manager (used by storage routes)
+    // This ensures workers can download content uploaded via the storage API
+    const { getMultiBackendManager } = await import('./multi-backend')
+    const multiBackend = getMultiBackendManager()
+    const multiResult = await multiBackend.download(cid).catch(() => null)
+    if (multiResult) {
+      return { content: multiResult.content, backend: 'local' }
+    }
+
     throw new Error(`Content not found: ${cid}`)
   }
 
@@ -357,6 +366,16 @@ class BackendManagerImpl implements BackendManager {
         return true
       }
     }
+
+    // Also check multi-backend manager (used by storage routes)
+    // This ensures workers can find CIDs uploaded via the storage API
+    const { getMultiBackendManager } = await import('./multi-backend')
+    const multiBackend = getMultiBackendManager()
+    const existsInMulti = await multiBackend.exists(cid)
+    if (existsInMulti) {
+      return true
+    }
+
     return false
   }
 

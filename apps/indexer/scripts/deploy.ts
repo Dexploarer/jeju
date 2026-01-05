@@ -157,7 +157,7 @@ async function deployWorker(
   // Indexer database IDs per network (created via /sqlit/v1/admin/create)
   const databaseIds: Record<string, string> = {
     localnet: 'indexer-local',
-    testnet: 'f5bf9ea3723bf1c3d77b6914f1f8ecd1c1d8c9bd89890d769488e9a9682db960',
+    testnet: '13b03bc72029819feeca85f8cc82bbc9844ebdb04936ee490a9df85a38584c24',
     mainnet: 'indexer-mainnet', // To be created on mainnet deployment
   }
   const databaseId = databaseIds[config.network] ?? 'indexer'

@@ -1,184 +1,309 @@
 /**
  * Release API Routes
  *
- * Provides endpoints for fetching app release information,
- * including the node app, wallet extension, and other downloadable apps.
+ * Serves release manifests for downloadable Jeju apps (node, wallet, etc).
+ * In production, manifests are fetched from DWS storage where they're
+ * published by the `jeju release publish` command.
+ * In development, placeholder manifests are returned to enable UI development.
  */
 
+import { logger } from '@jejunetwork/shared'
 import {
   type ReleaseManifest,
   ReleaseManifestSchema,
 } from '@jejunetwork/types'
 import Elysia, { t } from 'elysia'
 
-// Default release manifests for development/fallback
-// In production, these would be fetched from IPFS or a release registry
-const DEFAULT_NODE_RELEASE: ReleaseManifest = {
+const IS_PRODUCTION = process.env.NODE_ENV === 'production'
+
+// Development placeholder manifests
+// These are used when no releases have been published to storage
+const DEV_NODE_RELEASE: ReleaseManifest = {
   app: 'node',
-  version: '1.0.0',
-  releasedAt: new Date().toISOString(),
-  channel: 'stable',
+  version: '0.0.0-dev',
+  releasedAt: '2025-01-04T00:00:00.000Z',
+  channel: 'nightly',
   artifacts: [
     {
       platform: 'macos',
       arch: 'arm64',
-      filename: 'JejuNode-1.0.0-arm64.dmg',
-      cid: 'QmNodeMacArm64v100',
-      size: 89128960,
-      sha256: 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6',
+      filename: 'JejuNode-dev-arm64.dmg',
+      cid: 'DEV_PLACEHOLDER',
+      size: 0,
+      sha256: 'PLACEHOLDER',
     },
     {
       platform: 'macos',
       arch: 'x64',
-      filename: 'JejuNode-1.0.0-x64.dmg',
-      cid: 'QmNodeMacX64v100',
-      size: 96468992,
-      sha256: 'b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a1',
+      filename: 'JejuNode-dev-x64.dmg',
+      cid: 'DEV_PLACEHOLDER',
+      size: 0,
+      sha256: 'PLACEHOLDER',
     },
     {
       platform: 'windows',
       arch: 'x64',
-      filename: 'JejuNode-1.0.0-x64.msi',
-      cid: 'QmNodeWinX64v100',
-      size: 81788928,
-      sha256: 'c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a1b2',
+      filename: 'JejuNode-dev-x64.msi',
+      cid: 'DEV_PLACEHOLDER',
+      size: 0,
+      sha256: 'PLACEHOLDER',
     },
     {
       platform: 'linux',
       arch: 'x64',
-      filename: 'JejuNode-1.0.0-x64.AppImage',
-      cid: 'QmNodeLinuxX64v100',
-      size: 99614720,
-      sha256: 'd4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a1b2c3',
+      filename: 'JejuNode-dev-x64.AppImage',
+      cid: 'DEV_PLACEHOLDER',
+      size: 0,
+      sha256: 'PLACEHOLDER',
     },
     {
       platform: 'linux',
       arch: 'arm64',
-      filename: 'JejuNode-1.0.0-arm64.AppImage',
-      cid: 'QmNodeLinuxArm64v100',
-      size: 92274688,
-      sha256: 'e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a1b2c3d4',
+      filename: 'JejuNode-dev-arm64.AppImage',
+      cid: 'DEV_PLACEHOLDER',
+      size: 0,
+      sha256: 'PLACEHOLDER',
     },
   ],
-  changelog: 'Initial release with VPN, CDN, storage, and RPC services.',
-  releaseNotes:
-    'Jeju Node v1.0.0 - Start earning by providing infrastructure services.',
+  changelog: 'Development build - not for production use.',
+  releaseNotes: 'This is a placeholder. No actual binaries are available yet.',
 }
 
-const DEFAULT_WALLET_RELEASE: ReleaseManifest = {
+const DEV_WALLET_RELEASE: ReleaseManifest = {
   app: 'wallet',
-  version: '1.0.0',
-  releasedAt: new Date().toISOString(),
-  channel: 'stable',
+  version: '0.0.0-dev',
+  releasedAt: '2025-01-04T00:00:00.000Z',
+  channel: 'nightly',
   artifacts: [
     {
       platform: 'chrome',
-      filename: 'jeju-wallet-chrome-1.0.0.zip',
-      cid: 'QmWalletChromev100',
-      size: 2097152,
-      sha256: 'f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a1b2c3d4e5',
-      storeUrl:
-        'https://chrome.google.com/webstore/detail/jeju-wallet/placeholder',
+      filename: 'jeju-wallet-dev.zip',
+      cid: 'DEV_PLACEHOLDER',
+      size: 0,
+      sha256: 'PLACEHOLDER',
     },
     {
       platform: 'firefox',
-      filename: 'jeju-wallet-firefox-1.0.0.xpi',
-      cid: 'QmWalletFirefoxv100',
-      size: 2097152,
-      sha256: 'g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a1b2c3d4e5f6',
-      storeUrl: 'https://addons.mozilla.org/en-US/firefox/addon/jeju-wallet/',
+      filename: 'jeju-wallet-dev.xpi',
+      cid: 'DEV_PLACEHOLDER',
+      size: 0,
+      sha256: 'PLACEHOLDER',
     },
   ],
 }
 
-// App release registry
 type AppName = 'node' | 'wallet' | 'vpn'
-const RELEASE_REGISTRY: Record<AppName, ReleaseManifest> = {
-  node: DEFAULT_NODE_RELEASE,
-  wallet: DEFAULT_WALLET_RELEASE,
-  vpn: DEFAULT_NODE_RELEASE, // VPN uses node app
+
+const DEV_RELEASES: Record<AppName, ReleaseManifest> = {
+  node: DEV_NODE_RELEASE,
+  wallet: DEV_WALLET_RELEASE,
+  vpn: DEV_NODE_RELEASE, // VPN uses node app
+}
+
+interface StorageFetchResult {
+  manifest: ReleaseManifest | null
+  error: string | null
+  source: 'storage' | 'not_found' | 'error'
 }
 
 /**
- * Fetch release manifest from IPFS or registry
- * In production, this would query IPFS or a release contract
+ * Fetch release manifest from DWS storage.
+ * Returns detailed result including any errors encountered.
  */
-async function fetchReleaseManifest(
+async function fetchReleaseFromStorage(
   app: AppName,
-  _version?: string,
-): Promise<ReleaseManifest> {
-  // For now, return default releases
-  // TODO: Implement IPFS/contract-based release fetching
-  const manifest = RELEASE_REGISTRY[app]
-  if (!manifest) {
+  version?: string,
+): Promise<StorageFetchResult> {
+  // Determine storage URL based on environment
+  const storageBaseUrl = IS_PRODUCTION
+    ? 'https://dws.jejunetwork.org'
+    : `http://127.0.0.1:${process.env.PORT ?? 4030}`
+
+  const manifestPath = version
+    ? `/storage/releases/${app}/${version}/manifest.json`
+    : `/storage/releases/${app}/latest/manifest.json`
+
+  const url = `${storageBaseUrl}${manifestPath}`
+
+  const versionStr = version ?? 'latest'
+
+  let response: Response
+  try {
+    response = await fetch(url, { signal: AbortSignal.timeout(5000) })
+  } catch (err) {
+    const errorMessage =
+      err instanceof Error ? err.message : 'Unknown fetch error'
+    logger.warn('[Releases] Storage fetch failed', {
+      app,
+      version: versionStr,
+      url,
+      error: errorMessage,
+    })
+    return { manifest: null, error: errorMessage, source: 'error' }
+  }
+
+  if (response.status === 404) {
+    logger.info('[Releases] No release found in storage', {
+      app,
+      version: versionStr,
+    })
+    return { manifest: null, error: null, source: 'not_found' }
+  }
+
+  if (!response.ok) {
+    const errorMessage = `HTTP ${response.status}: ${response.statusText}`
+    logger.warn('[Releases] Storage returned error', {
+      app,
+      version: versionStr,
+      status: response.status,
+    })
+    return { manifest: null, error: errorMessage, source: 'error' }
+  }
+
+  let data: unknown
+  try {
+    data = await response.json()
+  } catch {
+    const errorMessage = 'Invalid JSON response'
+    logger.warn('[Releases] Invalid JSON from storage', {
+      app,
+      version: versionStr,
+    })
+    return { manifest: null, error: errorMessage, source: 'error' }
+  }
+
+  const parsed = ReleaseManifestSchema.safeParse(data)
+  if (!parsed.success) {
+    const errorMessage = `Schema validation failed: ${parsed.error.message}`
+    logger.warn('[Releases] Invalid manifest schema', {
+      app,
+      version: versionStr,
+      issueCount: parsed.error.issues.length,
+      firstIssue: parsed.error.issues[0]?.message ?? 'Unknown',
+    })
+    return { manifest: null, error: errorMessage, source: 'error' }
+  }
+
+  return { manifest: parsed.data, error: null, source: 'storage' }
+}
+
+interface ReleaseResult extends ReleaseManifest {
+  _source: 'storage' | 'development'
+  _storageError?: string
+}
+
+/**
+ * Get release manifest for an app.
+ * Always attempts storage fetch. Falls back to dev placeholders.
+ */
+async function getRelease(
+  app: AppName,
+  version?: string,
+): Promise<ReleaseResult> {
+  // Always try storage fetch first (even in dev, to test the path)
+  const storageResult = await fetchReleaseFromStorage(app, version)
+
+  if (storageResult.manifest) {
+    return { ...storageResult.manifest, _source: 'storage' }
+  }
+
+  // Fall back to dev placeholders
+  const devManifest = DEV_RELEASES[app]
+  if (!devManifest) {
     throw new Error(`Unknown app: ${app}`)
   }
-  return manifest
+
+  const result: ReleaseResult = { ...devManifest, _source: 'development' }
+
+  // Include storage error if there was one (not just "not found")
+  if (storageResult.error) {
+    result._storageError = storageResult.error
+  }
+
+  return result
+}
+
+/**
+ * Fetch all apps from storage and merge with known apps.
+ */
+async function getAllApps(): Promise<
+  Array<{
+    name: string
+    latestVersion: string
+    channel: string
+    releasedAt: string
+    platforms: string[]
+    source: 'storage' | 'development'
+  }>
+> {
+  const results = await Promise.all(
+    (Object.keys(DEV_RELEASES) as AppName[]).map(async (appName) => {
+      const result = await getRelease(appName)
+      return {
+        name: appName,
+        latestVersion: result.version,
+        channel: result.channel ?? 'stable',
+        releasedAt: result.releasedAt,
+        platforms: [...new Set(result.artifacts.map((a) => a.platform))],
+        source: result._source,
+      }
+    }),
+  )
+  return results
+}
+
+function isValidApp(app: string): app is AppName {
+  return app === 'node' || app === 'wallet' || app === 'vpn'
 }
 
 export const releasesRoutes = new Elysia({ prefix: '/releases' })
-  .get('/health', () => ({
-    status: 'healthy',
-    service: 'releases',
-    apps: Object.keys(RELEASE_REGISTRY),
-  }))
+  .get('/health', async () => {
+    // Check if storage is reachable
+    const storageResult = await fetchReleaseFromStorage('node')
+    return {
+      status: 'healthy',
+      service: 'releases',
+      environment: IS_PRODUCTION ? 'production' : 'development',
+      apps: Object.keys(DEV_RELEASES),
+      storageReachable: storageResult.source !== 'error',
+      storageHasReleases: storageResult.source === 'storage',
+    }
+  })
 
-  // Get latest release for an app
   .get(
     '/latest',
-    async ({ query }) => {
-      const app = (query.app ?? 'node') as AppName
-      const manifest = await fetchReleaseManifest(app)
-      return manifest
+    async ({ query, set }) => {
+      const app = (query.app ?? 'node') as string
+      if (!isValidApp(app)) {
+        set.status = 404
+        return { error: `Unknown app: ${app}` }
+      }
+      return getRelease(app)
     },
-    {
-      query: t.Object({
-        app: t.Optional(t.String()),
-      }),
-    },
+    { query: t.Object({ app: t.Optional(t.String()) }) },
   )
 
-  // Get specific version
   .get(
     '/:app/:version',
-    async ({ params }) => {
-      const manifest = await fetchReleaseManifest(
-        params.app as AppName,
-        params.version,
-      )
-      return manifest
+    async ({ params, set }) => {
+      if (!isValidApp(params.app)) {
+        set.status = 404
+        return { error: `Unknown app: ${params.app}` }
+      }
+      return getRelease(params.app, params.version)
     },
-    {
-      params: t.Object({
-        app: t.String(),
-        version: t.String(),
-      }),
-    },
+    { params: t.Object({ app: t.String(), version: t.String() }) },
   )
 
-  // Get latest release for node app specifically
-  .get('/node/latest', async () => {
-    return fetchReleaseManifest('node')
-  })
+  .get('/node/latest', async () => getRelease('node'))
 
-  // Get latest release for wallet
-  .get('/wallet/latest', async () => {
-    return fetchReleaseManifest('wallet')
-  })
+  .get('/wallet/latest', async () => getRelease('wallet'))
 
-  // List all available apps with their latest versions
-  .get('/apps', () => {
-    const apps = Object.entries(RELEASE_REGISTRY).map(([name, manifest]) => ({
-      name,
-      latestVersion: manifest.version,
-      channel: manifest.channel,
-      releasedAt: manifest.releasedAt,
-      platforms: [...new Set(manifest.artifacts.map((a) => a.platform))],
-    }))
+  .get('/apps', async () => {
+    const apps = await getAllApps()
     return { apps }
   })
 
-  // Validate a release manifest (for publishers)
   .post(
     '/validate',
     async ({ body }) => {
@@ -194,7 +319,10 @@ export const releasesRoutes = new Elysia({ prefix: '/releases' })
         })),
       }
     },
-    {
-      body: t.Any(),
-    },
+    { body: t.Any() },
   )
+
+/** Factory function for router creation */
+export function createReleasesRouter() {
+  return releasesRoutes
+}

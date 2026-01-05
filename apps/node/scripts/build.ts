@@ -1,20 +1,17 @@
+#!/usr/bin/env bun
 /**
  * Production build script for Node App
  *
  * Builds:
- * 1. Static frontend (dist/static/) - for IPFS/CDN deployment
+ * 1. Static frontend (dist/static/) - for IPFS/CDN deployment  
  * 2. CLI bundle (dist/cli/) - for command line usage
+ * 3. Lander (dist/lander/) - landing page
  */
 
 import { existsSync } from 'node:fs'
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
-import {
-  BROWSER_EXTERNALS,
-  createBrowserPlugin,
-  reportBundleSizes,
-} from '@jejunetwork/shared'
+import { reportBundleSizes } from '@jejunetwork/shared'
 
 const APP_DIR = resolve(import.meta.dir, '..')
 const DIST_DIR = resolve(APP_DIR, 'dist')
@@ -22,54 +19,8 @@ const STATIC_DIR = `${DIST_DIR}/static`
 const CLI_DIR = `${DIST_DIR}/cli`
 const LANDER_DIR = `${DIST_DIR}/lander`
 
-/**
- * Build Tailwind CSS with tree shaking - only includes used classes
- */
-async function buildCSS(contentGlobs: string[]): Promise<string> {
-  const inputPath = resolve(APP_DIR, 'web/globals.css')
-  if (!existsSync(inputPath)) {
-    throw new Error(`CSS input file not found: ${inputPath}`)
-  }
-
-  const tempDir = await mkdtemp(join(tmpdir(), 'node-css-'))
-  const outputPath = join(tempDir, 'output.css')
-
-  const proc = Bun.spawn(
-    [
-      'bunx',
-      'tailwindcss',
-      '-i',
-      inputPath,
-      '-o',
-      outputPath,
-      '-c',
-      resolve(APP_DIR, 'tailwind.config.ts'),
-      '--content',
-      contentGlobs.join(','),
-      '--minify',
-    ],
-    { stdout: 'pipe', stderr: 'pipe', cwd: APP_DIR },
-  )
-
-  const exitCode = await proc.exited
-  if (exitCode !== 0) {
-    const stderr = await new Response(proc.stderr).text()
-    await rm(tempDir, { recursive: true })
-    throw new Error(`Tailwind CSS build failed: ${stderr}`)
-  }
-
-  const css = await readFile(outputPath, 'utf-8')
-  await rm(tempDir, { recursive: true })
-  return css
-}
-
 async function buildFrontend(): Promise<void> {
   console.log('[Node] Building static frontend...')
-
-  // Build CSS first (tree-shaken to only web components)
-  console.log('[Node] Building CSS...')
-  const css = await buildCSS([resolve(APP_DIR, 'web/**/*.{ts,tsx}')])
-  await writeFile(`${STATIC_DIR}/globals.css`, css)
 
   const result = await Bun.build({
     entrypoints: [resolve(APP_DIR, 'web/main.tsx')],
@@ -77,46 +28,15 @@ async function buildFrontend(): Promise<void> {
     target: 'browser',
     minify: true,
     sourcemap: 'external',
-    external: BROWSER_EXTERNALS,
     packages: 'bundle',
     splitting: false,
-    plugins: [
-      createBrowserPlugin({ appDir: APP_DIR }),
-      {
-        name: 'tauri-mock',
-        setup(build) {
-          // Mock Tauri invoke for browser builds
-          build.onResolve({ filter: /@tauri-apps\/api\/core/ }, () => ({
-            path: 'tauri-mock',
-            namespace: 'tauri-mock',
-          }))
-          build.onLoad({ filter: /.*/, namespace: 'tauri-mock' }, () => ({
-            contents: `
-              export async function invoke(cmd) {
-                console.warn('Tauri invoke called in browser context:', cmd);
-                throw new Error('Tauri commands not available in browser');
-              }
-            `,
-            loader: 'js',
-          }))
-        },
-      },
-    ],
+    naming: '[name].[hash].[ext]',
+    external: ['bun:sqlite', 'node:*', '@tauri-apps/*', 'pino', 'pino-*'],
+    drop: ['debugger'],
     define: {
       'process.env.NODE_ENV': JSON.stringify('production'),
       'process.browser': JSON.stringify(true),
-      'process.env': JSON.stringify({ NODE_ENV: 'production' }),
-      process: JSON.stringify({
-        env: { NODE_ENV: 'production' },
-        browser: true,
-      }),
     },
-    naming: {
-      entry: '[name]-[hash].js',
-      chunk: 'chunks/[name]-[hash].js',
-      asset: 'assets/[name]-[hash].[ext]',
-    },
-    drop: ['debugger'],
   })
 
   if (!result.success) {
@@ -135,7 +55,7 @@ async function buildFrontend(): Promise<void> {
   )
   const mainFileName = mainEntry ? mainEntry.path.split('/').pop() : 'main.js'
 
-  // Create index.html with compiled CSS (no Tailwind CDN)
+  // Create index.html
   const html = `<!doctype html>
 <html lang="en" class="dark">
   <head>
@@ -146,7 +66,24 @@ async function buildFrontend(): Promise<void> {
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/globals.css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              jeju: { 400: '#4ade80', 500: '#22c55e', 600: '#16a34a' },
+              volcanic: {
+                100: '#f4f4f5', 500: '#71717a', 600: '#52525b',
+                700: '#3f3f46', 800: '#27272a', 900: '#18181b', 950: '#09090b'
+              }
+            },
+            fontFamily: { sans: ['DM Sans', 'system-ui', 'sans-serif'] }
+          }
+        }
+      }
+    </script>
   </head>
   <body class="bg-volcanic-950 text-volcanic-100">
     <div id="root"></div>
@@ -202,11 +139,6 @@ async function buildLander(): Promise<void> {
     return
   }
 
-  // Build lander CSS
-  console.log('[Node] Building lander CSS...')
-  const css = await buildCSS([resolve(APP_DIR, 'lander/**/*.{ts,tsx}')])
-  await writeFile(`${LANDER_DIR}/styles.css`, css)
-
   const result = await Bun.build({
     entrypoints: [landerEntry],
     outdir: LANDER_DIR,
@@ -215,16 +147,11 @@ async function buildLander(): Promise<void> {
     sourcemap: 'external',
     packages: 'bundle',
     splitting: false,
-    plugins: [createBrowserPlugin({ appDir: APP_DIR })],
+    naming: '[name].[hash].[ext]',
+    drop: ['debugger'],
     define: {
       'process.env.NODE_ENV': JSON.stringify('production'),
     },
-    naming: {
-      entry: '[name]-[hash].js',
-      chunk: 'chunks/[name]-[hash].js',
-      asset: 'assets/[name]-[hash].[ext]',
-    },
-    drop: ['debugger'],
   })
 
   if (!result.success) {
@@ -248,16 +175,7 @@ async function buildLander(): Promise<void> {
     resolve(APP_DIR, 'lander/index.html'),
     'utf-8',
   )
-  let updatedHtml = landerHtml.replace('/main.tsx', `/${mainFileName}`)
-  // Replace any Tailwind CDN script with compiled CSS
-  updatedHtml = updatedHtml.replace(
-    /<script src="https:\/\/cdn\.tailwindcss\.com"><\/script>[\s\S]*?<\/script>/g,
-    '',
-  )
-  updatedHtml = updatedHtml.replace(
-    '</head>',
-    '  <link rel="stylesheet" href="/styles.css" />\n  </head>',
-  )
+  const updatedHtml = landerHtml.replace('/main.tsx', `/${mainFileName}`)
   await writeFile(`${LANDER_DIR}/index.html`, updatedHtml)
 
   console.log(`[Node] Lander built to ${LANDER_DIR}/`)

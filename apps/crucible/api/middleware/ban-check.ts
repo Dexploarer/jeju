@@ -13,34 +13,39 @@ const AddressBodySchema = z
   })
   .passthrough() // Allow other fields but only validate address-related ones
 
-// Get config from centralized config
-const NETWORK = getCurrentNetwork()
-const RPC_URL = getRpcUrl(NETWORK)
-
+// LAZY import config to avoid module-level getCurrentNetwork() calls in DWS context
 import { config } from '../config'
-
-// Try to get contract addresses, but don't fail if not configured
-const BAN_MANAGER_ADDRESS = config.banManagerAddress as Address | undefined
-const MODERATION_MARKETPLACE_ADDRESS = config.moderationMarketplaceAddress as
-  | Address
-  | undefined
 
 // Skip paths that don't need ban checking
 const SKIP_PATHS = ['/health', '/info', '/metrics', '/.well-known']
 
-// Create checker only if ban manager is configured
+// Create checker lazily - don't initialize at module level
 let checker: BanChecker | null = null
+let checkerInitialized = false
 
-if (BAN_MANAGER_ADDRESS) {
-  const config: BanCheckConfig = {
-    banManagerAddress: BAN_MANAGER_ADDRESS,
-    moderationMarketplaceAddress: MODERATION_MARKETPLACE_ADDRESS,
-    rpcUrl: RPC_URL,
-    network: NETWORK,
-    cacheTtlMs: 30000,
-    failClosed: true,
+function getChecker(): BanChecker | null {
+  if (checkerInitialized) return checker
+  checkerInitialized = true
+  
+  // Get config lazily at runtime
+  const network = getCurrentNetwork()
+  const rpcUrl = getRpcUrl(network)
+  const banManagerAddress = config.banManagerAddress as Address | undefined
+  const moderationMarketplaceAddress = config.moderationMarketplaceAddress as Address | undefined
+  
+  if (banManagerAddress) {
+    const banConfig: BanCheckConfig = {
+      banManagerAddress,
+      moderationMarketplaceAddress,
+      rpcUrl,
+      network,
+      cacheTtlMs: 30000,
+      failClosed: true,
+    }
+    checker = new BanChecker(banConfig)
   }
-  checker = new BanChecker(config)
+  
+  return checker
 }
 
 interface BanResponse {
@@ -63,7 +68,8 @@ export function banCheckMiddleware() {
   return async (ctx: ElysiaContext): Promise<BanResponse | undefined> => {
     const { request, set } = ctx
     // Skip if no ban manager configured (local dev)
-    if (!checker) {
+    const banChecker = getChecker()
+    if (!banChecker) {
       return undefined
     }
 
@@ -110,7 +116,7 @@ export function banCheckMiddleware() {
       return undefined
     }
 
-    const result = await checker.checkBan(address as Address)
+    const result = await banChecker.checkBan(address as Address)
 
     if (!result.allowed) {
       set.status = 403

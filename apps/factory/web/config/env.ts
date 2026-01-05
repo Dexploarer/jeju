@@ -10,6 +10,7 @@ import {
   getChainId,
   getCurrentNetwork,
   getLocalhostHost,
+  getOAuth3Url,
   getRpcUrl,
 } from '@jejunetwork/config'
 
@@ -17,6 +18,7 @@ import {
 export const NETWORK = getCurrentNetwork()
 export const CHAIN_ID = getChainId(NETWORK)
 export const RPC_URL = getRpcUrl(NETWORK)
+export const OAUTH3_AGENT_URL = getOAuth3Url(NETWORK)
 
 // WalletConnect - disabled by default in development
 export const WALLETCONNECT_PROJECT_ID =
@@ -29,6 +31,10 @@ export const WALLETCONNECT_PROJECT_ID =
  * - SSR/Node: Use localhost with port 4009
  * - Localhost development: Use localhost with port 4009
  * - Production (testnet/mainnet): Use same origin (API served via DWS app router)
+ *
+ * IMPORTANT: Eden treaty requires a full URL, NOT an empty string.
+ * Returning empty string causes URLs like "https://api/bounties" instead of
+ * "https://factory.testnet.jejunetwork.org/api/bounties"
  */
 export function getFactoryApiUrl(): string {
   // Server-side rendering
@@ -36,7 +42,7 @@ export function getFactoryApiUrl(): string {
     return `http://${getLocalhostHost()}:4009`
   }
 
-  const { hostname, port, protocol, origin } = window.location
+  const { hostname, port, origin } = window.location
 
   // Local development - frontend dev server proxies to API on port 4009
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
@@ -48,14 +54,8 @@ export function getFactoryApiUrl(): string {
     return `http://${getLocalhostHost()}:4009`
   }
 
-  // Local dev with custom domain (*.local.jejunetwork.org)
-  if (hostname.includes('local.jejunetwork.org')) {
-    return `${protocol}//${hostname}${port ? `:${port}` : ''}`
-  }
-
-  // Production/testnet - use same origin
+  // Production/testnet/local dev with custom domain - use same origin
   // DWS app router proxies /api/* to the backend worker
-  // Eden treaty requires a full URL, not empty string
   return origin
 }
 

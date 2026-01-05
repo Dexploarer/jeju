@@ -8,6 +8,8 @@ const config = getTestConfig('factory')
 
 export default defineConfig({
   testDir: './tests/e2e',
+  // Ignore files that use bun:test (should be unit tests, not e2e)
+  testIgnore: ['**/releases.spec.ts'],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

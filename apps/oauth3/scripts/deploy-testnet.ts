@@ -911,7 +911,7 @@ const server = http.createServer((req, res) => {
           identityId: sessionId,
           smartAccount: address,
           expiresAt,
-          capabilities: ['SIGN_MESSAGE', 'SIGN_TRANSACTION'],
+          capabilities: ['sign_message', 'sign_transaction'],
           signingPublicKey: '0x', // Simulated for testnet
           attestation: {
             quote: '0x',

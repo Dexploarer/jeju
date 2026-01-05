@@ -37,7 +37,7 @@ import {
   createOAuth3StorageService,
   type OAuth3StorageService,
 } from '../infrastructure/storage-integration.js'
-import { FarcasterProvider } from '../providers/farcaster.js'
+import { generateFarcasterSignInMessage } from '../providers/farcaster-utils.js'
 import {
   AuthProvider,
   type JsonRecord,
@@ -199,7 +199,6 @@ export class OAuth3Client {
   private config: OAuth3Config
   private session: OAuth3Session | null = null
   private identity: OAuth3Identity | null = null
-  private farcasterProvider: FarcasterProvider
   private eventHandlers: Map<
     OAuth3EventType,
     Set<OAuth3EventHandler<OAuth3EventType>>
@@ -240,8 +239,6 @@ export class OAuth3Client {
     // Use explicit defaults from config module
     const rpcUrl = config.rpcUrl ?? DEFAULT_RPC
     const chainId = config.chainId ?? CHAIN_IDS.localnet
-
-    this.farcasterProvider = new FarcasterProvider()
 
     // Initialize decentralized services if enabled
     if (config.decentralized !== false) {
@@ -430,7 +427,7 @@ export class OAuth3Client {
     const nonce = crypto.randomUUID()
     const domain = new URL(this.config.redirectUri).hostname
 
-    const message = this.farcasterProvider.generateSignInMessage({
+    const message = generateFarcasterSignInMessage({
       domain,
       address: '0x0000000000000000000000000000000000000000' as Address,
       fid: 0,

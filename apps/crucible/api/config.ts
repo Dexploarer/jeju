@@ -57,16 +57,20 @@ export interface CrucibleConfig {
   moderationMarketplaceAddress?: string
 }
 
-const _servicesConfig = getServicesConfig()
-const network = getCurrentNetwork()
+// IMPORTANT: Do NOT call getCurrentNetwork() at module level!
+// In DWS worker context, env vars are set AFTER module evaluation begins.
+// Use lazy getter functions instead.
+function getNetwork(): 'mainnet' | 'testnet' | 'localnet' {
+  return getCurrentNetwork()
+}
 
 const { config, configure: setCrucibleConfig } =
   createAppConfig<CrucibleConfig>({
-    network,
+    network: getNetwork(),
     apiPort: getEnvNumber('API_PORT') ?? 4021,
     requireAuth:
       getEnvVar('REQUIRE_AUTH') === 'true' ||
-      (getEnvVar('REQUIRE_AUTH') !== 'false' && network !== 'localnet'),
+      (getEnvVar('REQUIRE_AUTH') !== 'false' && getNetwork() !== 'localnet'),
     rateLimitMaxRequests: getEnvNumber('RATE_LIMIT_MAX_REQUESTS') ?? 100,
     corsAllowedOrigins: (() => {
       const host = getLocalhostHost()
@@ -74,12 +78,13 @@ const { config, configure: setCrucibleConfig } =
       if (envOrigins) return envOrigins
 
       // Default origins based on network
+      const net = getNetwork()
       const localOrigins = `http://${host}:4020,http://${host}:4021`
-      if (network === 'localnet') return localOrigins
+      if (net === 'localnet') return localOrigins
 
       // Testnet/mainnet: include deployed origins
       const deployedOrigins =
-        network === 'testnet'
+        net === 'testnet'
           ? 'https://crucible.testnet.jejunetwork.org,https://dws.testnet.jejunetwork.org'
           : 'https://crucible.jejunetwork.org,https://dws.jejunetwork.org'
 

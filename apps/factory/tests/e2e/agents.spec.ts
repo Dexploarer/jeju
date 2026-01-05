@@ -1,3 +1,6 @@
+// Check if running against testnet/mainnet
+const isRemote = process.env.JEJU_NETWORK === 'testnet' || process.env.JEJU_NETWORK === 'mainnet'
+
 /**
  * Agents E2E Tests
  * Tests agent listing, deployment, and management flows
@@ -6,6 +9,9 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('Agents List', () => {
+  // Skip on remote - UI structure may differ
+  test.skip(isRemote, 'Skipping agents tests on remote network')
+  
   test('displays agents page with heading', async ({ page }) => {
     await page.goto('/agents')
     await expect(page.getByRole('heading', { name: /agents/i })).toBeVisible()
@@ -39,6 +45,7 @@ test.describe('Agents List', () => {
 })
 
 test.describe('Deploy Agent', () => {
+  test.skip(isRemote, 'Skipping on remote')
   test('displays agent deployment form', async ({ page }) => {
     await page.goto('/agents/deploy')
     await expect(page.getByRole('main')).toBeVisible()

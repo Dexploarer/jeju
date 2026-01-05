@@ -1,3 +1,4 @@
+import { useJejuAuth } from '@jejunetwork/auth/react'
 import {
   Building2,
   Menu,
@@ -11,8 +12,6 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { useAccount, useConnect, useDisconnect } from 'wagmi'
-import { injected } from 'wagmi/connectors'
 
 function useTheme() {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -56,13 +55,21 @@ export function Header() {
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const { theme, toggleTheme } = useTheme()
 
-  const { address, isConnected } = useAccount()
-  const { connect, isPending } = useConnect()
-  const { disconnect } = useDisconnect()
+  const {
+    authenticated,
+    loading: authLoading,
+    walletAddress,
+    loginWithWallet,
+    logout,
+  } = useJejuAuth()
 
-  const handleConnect = useCallback(() => {
-    connect({ connector: injected() })
-  }, [connect])
+  const handleConnect = useCallback(async () => {
+    await loginWithWallet()
+  }, [loginWithWallet])
+
+  const handleDisconnect = useCallback(async () => {
+    await logout()
+  }, [logout])
 
   const formatAddress = (addr: string) =>
     `${addr.slice(0, 6)}...${addr.slice(-4)}`
@@ -214,7 +221,7 @@ export function Header() {
             </Link>
 
             {/* Wallet Connection */}
-            {isConnected && address ? (
+            {authenticated && walletAddress ? (
               <div className="flex items-center gap-2">
                 <Link
                   to="/my-daos"
@@ -232,7 +239,7 @@ export function Header() {
                 </Link>
                 <button
                   type="button"
-                  onClick={() => disconnect()}
+                  onClick={handleDisconnect}
                   className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2"
                   style={
                     {
@@ -245,7 +252,7 @@ export function Header() {
                 >
                   <Wallet className="w-4 h-4" aria-hidden="true" />
                   <span className="hidden sm:inline">
-                    {formatAddress(address)}
+                    {formatAddress(walletAddress)}
                   </span>
                 </button>
               </div>
@@ -253,7 +260,7 @@ export function Header() {
               <button
                 type="button"
                 onClick={handleConnect}
-                disabled={isPending}
+                disabled={authLoading}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 focus:outline-none focus-visible:ring-2 disabled:opacity-60"
                 style={
                   {
@@ -266,10 +273,10 @@ export function Header() {
               >
                 <Wallet className="w-4 h-4" aria-hidden="true" />
                 <span className="hidden sm:inline">
-                  {isPending ? 'Connecting...' : 'Connect Wallet'}
+                  {authLoading ? 'Connecting...' : 'Connect Wallet'}
                 </span>
                 <span className="sm:hidden">
-                  {isPending ? '...' : 'Connect'}
+                  {authLoading ? '...' : 'Connect'}
                 </span>
               </button>
             )}

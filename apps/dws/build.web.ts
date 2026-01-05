@@ -41,6 +41,8 @@ const browserShimPlugin: BunPlugin = {
     // Dedupe React - ensure all React imports resolve to the same package
     const reactPath = require.resolve('react')
     const reactDomPath = require.resolve('react-dom')
+    const wagmiPath = require.resolve('wagmi')
+    const viemPath = require.resolve('viem')
 
     build.onResolve({ filter: /^react$/ }, () => ({
       path: reactPath,
@@ -56,6 +58,17 @@ const browserShimPlugin: BunPlugin = {
     }))
     build.onResolve({ filter: /^react-dom\/client$/ }, () => ({
       path: require.resolve('react-dom/client'),
+    }))
+
+    // Dedupe wagmi and viem to prevent context issues
+    build.onResolve({ filter: /^wagmi$/ }, () => ({
+      path: wagmiPath,
+    }))
+    build.onResolve({ filter: /^wagmi\/connectors$/ }, () => ({
+      path: require.resolve('wagmi/connectors'),
+    }))
+    build.onResolve({ filter: /^viem$/ }, () => ({
+      path: viemPath,
     }))
   },
 }

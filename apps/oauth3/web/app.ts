@@ -274,11 +274,160 @@ async function handleCallback(): Promise<void> {
 }
 
 /**
+ * Handle /authorize route - show login providers or auto-start a specific provider
+ */
+function handleAuthorize(): void {
+  const params = new URLSearchParams(window.location.search)
+  const redirectUri = params.get('redirect_uri')
+  const state = params.get('state')
+  const providerHint = params.get('provider')
+
+  if (!redirectUri) {
+    console.error('[OAuth3] No redirect_uri provided')
+    return
+  }
+
+  // Store auth params for after login
+  sessionStorage.setItem('oauth3_redirect_uri', redirectUri)
+  if (state) sessionStorage.setItem('oauth3_state', state)
+
+  // If a provider hint is provided, auto-start that provider's flow
+  if (providerHint) {
+    console.log(`[OAuth3] Provider hint: ${providerHint}, starting auth flow`)
+    startAuth(providerHint)
+    return
+  }
+
+  // Otherwise show the authorization UI for user to pick a provider
+  showAuthorizationUI(redirectUri, state)
+}
+
+/**
+ * Show authorization UI with provider buttons
+ */
+function showAuthorizationUI(redirectUri: string, state: string | null): void {
+  const main = document.querySelector('main')
+  if (!main) return
+
+  // Parse the redirect URI to show which app is requesting access
+  let appName = 'Unknown App'
+  try {
+    const url = new URL(redirectUri)
+    appName = url.hostname
+  } catch {
+    appName = redirectUri
+  }
+
+  main.innerHTML = `
+    <section class="authorize-section" style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem;">
+      <div class="authorize-card" style="background: var(--bg-card); border-radius: 16px; padding: 2.5rem; max-width: 420px; width: 100%; box-shadow: var(--shadow-md); border: 1px solid var(--border-light);">
+        <div style="text-align: center; margin-bottom: 2rem;">
+          <div style="font-size: 48px; margin-bottom: 1rem;">🔐</div>
+          <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem;">Sign In</h1>
+          <p style="color: var(--text-secondary); font-size: 0.9rem;">
+            <strong>${appName}</strong> is requesting access
+          </p>
+        </div>
+        
+        <div class="provider-buttons" style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <button onclick="startAuth('wallet')" class="provider-btn" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.875rem 1rem; border: 1px solid var(--border-light); border-radius: 10px; background: var(--bg-card); cursor: pointer; font-size: 1rem; transition: all 0.2s;">
+            <span style="font-size: 1.25rem;">🔐</span>
+            <span style="font-weight: 500;">Continue with Wallet</span>
+          </button>
+          <button onclick="startAuth('google')" class="provider-btn" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.875rem 1rem; border: 1px solid var(--border-light); border-radius: 10px; background: var(--bg-card); cursor: pointer; font-size: 1rem; transition: all 0.2s;">
+            <span style="font-size: 1.25rem;">🔵</span>
+            <span style="font-weight: 500;">Continue with Google</span>
+          </button>
+          <button onclick="startAuth('github')" class="provider-btn" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.875rem 1rem; border: 1px solid var(--border-light); border-radius: 10px; background: var(--bg-card); cursor: pointer; font-size: 1rem; transition: all 0.2s;">
+            <span style="font-size: 1.25rem;">🐙</span>
+            <span style="font-weight: 500;">Continue with GitHub</span>
+          </button>
+          <button onclick="startAuth('discord')" class="provider-btn" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.875rem 1rem; border: 1px solid var(--border-light); border-radius: 10px; background: var(--bg-card); cursor: pointer; font-size: 1rem; transition: all 0.2s;">
+            <span style="font-size: 1.25rem;">💬</span>
+            <span style="font-weight: 500;">Continue with Discord</span>
+          </button>
+          <button onclick="startAuth('twitter')" class="provider-btn" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.875rem 1rem; border: 1px solid var(--border-light); border-radius: 10px; background: var(--bg-card); cursor: pointer; font-size: 1rem; transition: all 0.2s;">
+            <span style="font-size: 1.25rem;">🐦</span>
+            <span style="font-weight: 500;">Continue with Twitter</span>
+          </button>
+          <button onclick="startAuth('farcaster')" class="provider-btn" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.875rem 1rem; border: 1px solid var(--border-light); border-radius: 10px; background: var(--bg-card); cursor: pointer; font-size: 1rem; transition: all 0.2s;">
+            <span style="font-size: 1.25rem;">🟣</span>
+            <span style="font-weight: 500;">Continue with Farcaster</span>
+          </button>
+        </div>
+        
+        <p style="text-align: center; margin-top: 1.5rem; font-size: 0.8rem; color: var(--text-muted);">
+          Powered by OAuth3 • Decentralized Identity
+        </p>
+      </div>
+    </section>
+  `
+
+  // Add hover styles
+  const style = document.createElement('style')
+  style.textContent = `
+    .provider-btn:hover {
+      background: var(--bg-elevated) !important;
+      border-color: var(--accent-primary) !important;
+    }
+  `
+  document.head.appendChild(style)
+}
+
+/**
+ * Start authentication with a specific provider
+ */
+function startAuth(provider: string): void {
+  const redirectUri = sessionStorage.getItem('oauth3_redirect_uri')
+  const state = sessionStorage.getItem('oauth3_state')
+
+  if (!redirectUri) {
+    console.error('[OAuth3] No redirect_uri in session')
+    return
+  }
+
+  // Different flows for different providers
+  let authUrl: URL
+
+  if (provider === 'wallet') {
+    // Wallet uses /wallet/challenge endpoint
+    authUrl = new URL(`${window.location.origin}/wallet/challenge`)
+  } else if (provider === 'farcaster') {
+    // Farcaster uses /farcaster/init endpoint
+    authUrl = new URL(`${window.location.origin}/farcaster/init`)
+  } else {
+    // Social providers (google, github, discord, twitter) use /oauth/social/{provider}
+    authUrl = new URL(`${window.location.origin}/oauth/social/${provider}`)
+  }
+
+  authUrl.searchParams.set('client_id', 'jeju-default') // Default client
+  authUrl.searchParams.set('redirect_uri', redirectUri)
+  if (state) authUrl.searchParams.set('state', state)
+
+  window.location.href = authUrl.toString()
+}
+
+// Expose startAuth to window for onclick handlers
+declare global {
+  interface Window {
+    startAuth: (provider: string) => void
+  }
+}
+window.startAuth = startAuth
+
+/**
  * Initialize application
  */
 async function init(): Promise<void> {
   // Set environment-specific navigation URLs
   updateNavigationLinks()
+
+  // Handle /authorize route - show login providers
+  if (window.location.pathname === '/authorize') {
+    handleAuthorize()
+    console.log('[OAuth3] Authorize flow initialized')
+    return
+  }
 
   // Handle OAuth callback if on callback path
   if (window.location.pathname === '/callback') {

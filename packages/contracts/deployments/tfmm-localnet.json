@@ -1,7 +1,7 @@
 {
   "pools": [
     {
-      "address": "0x0aec7c174554AF8aEc3680BB58431F6618311510",
+      "address": "0xde79380FBd39e08150adAA5C6c9dE3146f53029e",
       "name": "JEJU-USDC Pool",
       "symbol": "TFMM-JEJU-USDC",
       "tokens": [
@@ -18,5 +18,5 @@
       ]
     }
   ],
-  "deployedAt": "2026-01-05T06:55:28.832Z"
+  "deployedAt": "2026-01-05T09:21:08.065Z"
 }

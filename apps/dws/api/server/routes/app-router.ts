@@ -141,13 +141,23 @@ function extractAppName(hostname: string): string | null {
 
 /**
  * Check if a path should be routed to the backend
- * Handles both with and without trailing slashes in apiPaths
+ * Handles glob patterns like /api/* and exact paths
  */
 function isApiPath(pathname: string, apiPaths: string[]): boolean {
-  return apiPaths.some((prefix) => {
-    // Normalize prefix - remove trailing slash if present
-    const normalizedPrefix = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix
-    // Match exact path or path with additional segments
+  return apiPaths.some((pattern) => {
+    // Handle glob patterns
+    if (pattern.endsWith('/*')) {
+      // /api/* should match /api/anything and /api/foo/bar
+      const basePrefix = pattern.slice(0, -2) // Remove /*
+      return pathname === basePrefix || pathname.startsWith(`${basePrefix}/`)
+    }
+    if (pattern.endsWith('*')) {
+      // /api* should match /api and /apifoo
+      const basePrefix = pattern.slice(0, -1) // Remove *
+      return pathname.startsWith(basePrefix)
+    }
+    // Exact match (normalize trailing slashes)
+    const normalizedPrefix = pattern.endsWith('/') ? pattern.slice(0, -1) : pattern
     return (
       pathname === normalizedPrefix ||
       pathname === `${normalizedPrefix}/` ||

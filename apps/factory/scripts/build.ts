@@ -109,6 +109,12 @@ const browserPlugin: BunPlugin = {
     build.onResolve({ filter: /^@jejunetwork\/ui$/ }, () => ({
       path: resolve('../../packages/ui/src/index.ts'),
     }))
+    build.onResolve({ filter: /^@jejunetwork\/auth$/ }, () => ({
+      path: resolve('../../packages/auth/src/index.ts'),
+    }))
+    build.onResolve({ filter: /^@jejunetwork\/auth\/react$/ }, () => ({
+      path: resolve('../../packages/auth/src/react/index.ts'),
+    }))
   },
 }
 

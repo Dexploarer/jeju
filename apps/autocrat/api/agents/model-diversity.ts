@@ -54,7 +54,7 @@ export interface RoleModelMapping {
 
 const OPENAI_CONFIG: ModelConfig = {
   provider: 'openai',
-  model: 'gpt-4o',
+  model: 'gpt-5',
   apiKeyEnv: 'OPENAI_API_KEY',
   temperature: 0.7,
   maxTokens: 800,

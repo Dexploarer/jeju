@@ -238,7 +238,8 @@ function getClient() {
 
 function getStakingManagerAddress(): Address | null {
   const network = getCurrentNetwork()
-  const address = getContract('staking', 'nodeStakingManager', network)
+  // Use 'nodeStaking' category and 'manager' key to match contracts.json structure
+  const address = getContract('nodeStaking', 'manager', network)
   return address as Address | null
 }
 
@@ -746,36 +747,37 @@ export function createStakingRouter() {
         },
       )
 
-      // Deregister a node
-      .post(
-        '/deregister',
-        async ({ body, set }) => {
-          const stakingManager = getStakingManagerAddress()
-          if (!stakingManager) {
-            set.status = 503
-            return { error: 'Staking manager not configured' }
-          }
+      // Get contract info for registration
+      // Note: Actual registration is done client-side via wagmi useWriteContract
+      .get('/contract-info', async ({ set }) => {
+        const stakingManager = getStakingManagerAddress()
+        if (!stakingManager) {
+          set.status = 503
+          return { error: 'Staking manager not configured' }
+        }
 
-          const validBody = body as { nodeId: string }
-          if (!validBody.nodeId) {
-            set.status = 400
-            return { error: 'nodeId is required' }
-          }
+        const client = getClient()
 
-          // Note: Actual deregistration requires wallet signing
-          return {
-            success: true,
-            nodeId: validBody.nodeId,
-            message:
-              'Deregistration prepared. Sign the transaction with your wallet to complete.',
-          }
-        },
-        {
-          body: t.Object({
-            nodeId: t.String(),
+        const [minStake, baseReward] = await Promise.all([
+          client.readContract({
+            address: stakingManager,
+            abi: NODE_STAKING_MANAGER_ABI,
+            functionName: 'minStakeUSD',
           }),
-        },
-      )
+          client.readContract({
+            address: stakingManager,
+            abi: NODE_STAKING_MANAGER_ABI,
+            functionName: 'baseRewardPerMonthUSD',
+          }),
+        ])
+
+        return {
+          stakingManager,
+          minStakeUSD: formatEther(minStake),
+          baseRewardPerMonthUSD: formatEther(baseReward),
+          note: 'Use wagmi useWriteContract to call registerNode on the contract directly.',
+        }
+      })
 
       // Update node performance metrics
       .post(

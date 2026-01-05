@@ -728,3 +728,197 @@ export function saveTFMMDeployment(
     console.log(`Updated: ${configPath}`)
   }
 }
+
+interface OracleResult {
+  oracleRegistry: string
+  registeredTokens: string[]
+}
+
+/**
+ * Bootstrap OracleRegistry for TFMM pools
+ */
+export async function bootstrapOracleRegistry(
+  rpcUrl: string,
+  contractsDir: string,
+): Promise<OracleResult | null> {
+  console.log('\n=== Deploying Oracle Registry ===\n')
+
+  const privateKey = getDeployerKey(rpcUrl)
+  const config: BootstrapConfig = { rpcUrl, privateKey, contractsDir }
+  const deployer = getDeployerAddress(privateKey)
+
+  console.log(`Deployer: ${deployer}`)
+
+  const tokens = loadExistingContracts(contractsDir)
+  if (!tokens) {
+    console.error('No token contracts found. Run: jeju dev --bootstrap first')
+    return null
+  }
+
+  // Deploy OracleRegistry
+  // constructor(pyth_, twapOracle_, governance_)
+  // Use zero address for pyth/twap since we'll use manual prices initially
+  const oracleRegistry = deployContract(
+    config,
+    'src/amm/tfmm/OracleRegistry.sol:OracleRegistry',
+    [
+      '0x0000000000000000000000000000000000000000', // pyth
+      '0x0000000000000000000000000000000000000000', // twap
+      deployer, // governance
+    ],
+    'OracleRegistry',
+  )
+
+  console.log('\nRegistering token oracles...')
+
+  // Register JEJU with custom oracle (manual price)
+  // Use a simple approach: register with a heartbeat and set manual prices
+  // We'll use the OracleRegistry's registerOracle function with a dummy feed
+  // For localnet, we can set prices manually
+
+  const registeredTokens: string[] = []
+
+  // JEJU token - $100 price (8 decimals)
+  console.log('  Registering JEJU oracle...')
+  sendTx(
+    config,
+    oracleRegistry,
+    'registerOracle(address,address,uint256,uint8)',
+    [
+      tokens.jeju,
+      oracleRegistry, // Self as feed (will use latestAnswer fallback)
+      '86400', // 1 day heartbeat
+      '8', // 8 decimals
+    ],
+    'JEJU oracle registered',
+  )
+  registeredTokens.push(tokens.jeju)
+
+  // USDC token - $1 price
+  console.log('  Registering USDC oracle...')
+  sendTx(
+    config,
+    oracleRegistry,
+    'registerOracle(address,address,uint256,uint8)',
+    [
+      tokens.usdc,
+      oracleRegistry,
+      '86400',
+      '8',
+    ],
+    'USDC oracle registered',
+  )
+  registeredTokens.push(tokens.usdc)
+
+  return { oracleRegistry, registeredTokens }
+}
+
+/**
+ * Save oracle registry deployment
+ */
+export function saveOracleDeployment(
+  contractsDir: string,
+  result: OracleResult,
+): void {
+  // Update contracts.json
+  const configPath = join(contractsDir, '../config/contracts.json')
+  if (existsSync(configPath)) {
+    const config = JSON.parse(readFileSync(configPath, 'utf-8'))
+    if (!config.localnet) config.localnet = {}
+    if (!config.localnet.oracle) config.localnet.oracle = {}
+    config.localnet.oracle.oracleRegistry = result.oracleRegistry
+    writeFileSync(configPath, JSON.stringify(config, null, 2))
+    console.log(`Updated: ${configPath}`)
+  }
+
+  // Update localnet-complete.json
+  const localnetPath = join(contractsDir, 'deployments/localnet-complete.json')
+  if (existsSync(localnetPath)) {
+    const data = JSON.parse(readFileSync(localnetPath, 'utf-8'))
+    if (!data.contracts) data.contracts = {}
+    data.contracts.oracleRegistry = result.oracleRegistry
+    writeFileSync(localnetPath, JSON.stringify(data, null, 2))
+    console.log(`Updated: ${localnetPath}`)
+  }
+}
+
+interface WeightRunnerResult {
+  weightUpdateRunner: string
+  registeredPools: string[]
+}
+
+/**
+ * Bootstrap WeightUpdateRunner for TFMM pool rebalancing
+ */
+export async function bootstrapWeightUpdateRunner(
+  rpcUrl: string,
+  contractsDir: string,
+  oracleRegistry: string,
+  pools: Array<{ address: string; tokens: string[] }>,
+): Promise<WeightRunnerResult | null> {
+  console.log('\n=== Deploying Weight Update Runner ===\n')
+
+  const privateKey = getDeployerKey(rpcUrl)
+  const config: BootstrapConfig = { rpcUrl, privateKey, contractsDir }
+  const deployer = getDeployerAddress(privateKey)
+
+  console.log(`Deployer: ${deployer}`)
+  console.log(`OracleRegistry: ${oracleRegistry}`)
+
+  // Deploy WeightUpdateRunner
+  // constructor(oracleRegistry_, governance_)
+  const weightUpdateRunner = deployContract(
+    config,
+    'src/amm/tfmm/WeightUpdateRunner.sol:WeightUpdateRunner',
+    [oracleRegistry, deployer],
+    'WeightUpdateRunner',
+  )
+
+  console.log('\nRegistering pools...')
+
+  const registeredPools: string[] = []
+
+  // Deploy a default strategy rule (MomentumStrategy or use zero address)
+  // For now, we'll skip strategy registration since it requires strategy contracts
+  // Pools can still be updated manually via updateWeights
+
+  for (const pool of pools) {
+    console.log(`  Registering pool ${pool.address}...`)
+
+    // Register pool with WeightUpdateRunner
+    // registerPool(pool, strategyRule, oracles[], updateIntervalSec, blocksToTarget)
+    const oraclesArg = `[${pool.tokens.join(',')}]`
+
+    const cmd = `cast send ${weightUpdateRunner} "registerPool(address,address,address[],uint256,uint256)" ${pool.address} 0x0000000000000000000000000000000000000000 ${oraclesArg} 3600 10 --rpc-url ${rpcUrl} --private-key ${privateKey}`
+
+    try {
+      exec(cmd)
+      registeredPools.push(pool.address)
+      console.log(`    Registered: ${pool.address}`)
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error)
+      console.log(`    Failed to register: ${msg.slice(0, 60)}`)
+    }
+  }
+
+  return { weightUpdateRunner, registeredPools }
+}
+
+/**
+ * Save weight update runner deployment
+ */
+export function saveWeightRunnerDeployment(
+  contractsDir: string,
+  result: WeightRunnerResult,
+): void {
+  // Update contracts.json
+  const configPath = join(contractsDir, '../config/contracts.json')
+  if (existsSync(configPath)) {
+    const config = JSON.parse(readFileSync(configPath, 'utf-8'))
+    if (!config.localnet) config.localnet = {}
+    if (!config.localnet.amm) config.localnet.amm = {}
+    config.localnet.amm.weightUpdateRunner = result.weightUpdateRunner
+    writeFileSync(configPath, JSON.stringify(config, null, 2))
+    console.log(`Updated: ${configPath}`)
+  }
+}

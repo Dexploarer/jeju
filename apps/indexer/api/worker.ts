@@ -144,7 +144,7 @@ const MCPRequestSchema = z.object({
 // These must be hardcoded since env vars don't persist reliably in DWS workers
 const DATABASE_IDS: Record<string, string> = {
   localnet: 'indexer-local',
-  testnet: 'f5bf9ea3723bf1c3d77b6914f1f8ecd1c1d8c9bd89890d769488e9a9682db960',
+  testnet: '13b03bc72029819feeca85f8cc82bbc9844ebdb04936ee490a9df85a38584c24',
   mainnet: 'indexer-mainnet', // To be created on mainnet deployment
 }
 
@@ -286,7 +286,7 @@ async function executeGraphQLQuery(
       const orderBy = extractOrderBy(args)
       const where = extractWhere(args, variables)
 
-      let sql = `SELECT * FROM blocks`
+      let sql = `SELECT * FROM block`
       const params: Array<string | number | null> = []
 
       if (Object.keys(where).length > 0) {
@@ -328,7 +328,7 @@ async function executeGraphQLQuery(
       const orderBy = extractOrderBy(args)
       const where = extractWhere(args, variables)
 
-      let sql = `SELECT * FROM transactions`
+      let sql = `SELECT * FROM transaction`
       const params: Array<string | number | null> = []
 
       if (Object.keys(where).length > 0) {
@@ -369,7 +369,7 @@ async function executeGraphQLQuery(
       const limit = extractLimit(args)
       const where = extractWhere(args, variables)
 
-      let sql = `SELECT * FROM accounts`
+      let sql = `SELECT * FROM account`
       const params: Array<string | number | null> = []
 
       if (Object.keys(where).length > 0) {
@@ -830,12 +830,12 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
 
           const result = await sqlitQuery(
             DATABASE_ID,
-            `SELECT * FROM blocks ORDER BY number DESC LIMIT ? OFFSET ?`,
+            `SELECT * FROM block ORDER BY number DESC LIMIT ? OFFSET ?`,
             [limit, offset],
           )
           const countResult = await sqlitQuery(
             DATABASE_ID,
-            `SELECT COUNT(*) as count FROM blocks`,
+            `SELECT COUNT(*) as count FROM block`,
             [],
           )
           if (!result.success) {
@@ -849,7 +849,7 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
         .get('/blocks/latest', async () => {
           const result = await sqlitQuery(
             DATABASE_ID,
-            `SELECT * FROM blocks ORDER BY number DESC LIMIT 1`,
+            `SELECT * FROM block ORDER BY number DESC LIMIT 1`,
             [],
           )
           if (!result.success) {
@@ -862,7 +862,7 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
           const blockNumber = parseInt(params.blockNumber, 10)
           const result = await sqlitQuery(
             DATABASE_ID,
-            `SELECT * FROM blocks WHERE number = ? LIMIT 1`,
+            `SELECT * FROM block WHERE number = ? LIMIT 1`,
             [blockNumber],
           )
           if (!result.success) {
@@ -883,12 +883,12 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
 
           const result = await sqlitQuery(
             DATABASE_ID,
-            `SELECT * FROM transactions ORDER BY block_number DESC LIMIT ? OFFSET ?`,
+            `SELECT * FROM transaction ORDER BY block_number DESC LIMIT ? OFFSET ?`,
             [limit, offset],
           )
           const countResult = await sqlitQuery(
             DATABASE_ID,
-            `SELECT COUNT(*) as count FROM transactions`,
+            `SELECT COUNT(*) as count FROM transaction`,
             [],
           )
           if (!result.success) {
@@ -902,7 +902,7 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
         .get('/transactions/:hash', async ({ params }) => {
           const result = await sqlitQuery(
             DATABASE_ID,
-            `SELECT * FROM transactions WHERE hash = ? LIMIT 1`,
+            `SELECT * FROM transaction WHERE hash = ? LIMIT 1`,
             [params.hash],
           )
           if (!result.success) {
@@ -921,7 +921,7 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
           const address = params.address.toLowerCase()
           const result = await sqlitQuery(
             DATABASE_ID,
-            `SELECT * FROM accounts WHERE address = ? OR id = ? LIMIT 1`,
+            `SELECT * FROM account WHERE address = ? OR id = ? LIMIT 1`,
             [address, address],
           )
           if (!result.success) {
@@ -940,7 +940,7 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
 
           const result = await sqlitQuery(
             DATABASE_ID,
-            `SELECT * FROM transactions WHERE from_address = ? OR to_address = ? ORDER BY block_number DESC LIMIT ?`,
+            `SELECT * FROM transaction WHERE from_address = ? OR to_address = ? ORDER BY block_number DESC LIMIT ?`,
             [address, address, limit],
           )
           if (!result.success) {
@@ -961,7 +961,7 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
           const limit = parseInt(String(query.limit ?? '10'), 10)
           const result = await sqlitQuery(
             DATABASE_ID,
-            `SELECT * FROM contracts WHERE is_erc20 = 1 OR is_erc721 = 1 OR is_erc1155 = 1 LIMIT ?`,
+            `SELECT * FROM contract WHERE is_erc20 = 1 OR is_erc721 = 1 OR is_erc1155 = 1 LIMIT ?`,
             [limit],
           )
           if (!result.success) {
@@ -974,7 +974,7 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
           const address = params.address.toLowerCase()
           const result = await sqlitQuery(
             DATABASE_ID,
-            `SELECT * FROM contracts WHERE address = ? LIMIT 1`,
+            `SELECT * FROM contract WHERE address = ? LIMIT 1`,
             [address],
           )
           if (!result.success) {
@@ -993,7 +993,7 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
           const limit = parseInt(String(query.limit ?? '10'), 10)
           const result = await sqlitQuery(
             DATABASE_ID,
-            `SELECT * FROM decoded_events ORDER BY timestamp DESC LIMIT ?`,
+            `SELECT * FROM decoded_event ORDER BY timestamp DESC LIMIT ?`,
             [limit],
           )
           if (!result.success) {
@@ -1008,7 +1008,7 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
 
           const result = await sqlitQuery(
             DATABASE_ID,
-            `SELECT * FROM decoded_events WHERE address_id = ? ORDER BY timestamp DESC LIMIT ?`,
+            `SELECT * FROM decoded_event WHERE address_id = ? ORDER BY timestamp DESC LIMIT ?`,
             [contractAddress, limit],
           )
           if (!result.success) {
@@ -1030,22 +1030,22 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
             await Promise.all([
               sqlitQuery(
                 DATABASE_ID,
-                `SELECT COUNT(*) as count FROM blocks`,
+                `SELECT COUNT(*) as count FROM block`,
                 [],
               ),
               sqlitQuery(
                 DATABASE_ID,
-                `SELECT COUNT(*) as count FROM transactions`,
+                `SELECT COUNT(*) as count FROM transaction`,
                 [],
               ),
               sqlitQuery(
                 DATABASE_ID,
-                `SELECT COUNT(*) as count FROM accounts`,
+                `SELECT COUNT(*) as count FROM account`,
                 [],
               ),
               sqlitQuery(
                 DATABASE_ID,
-                `SELECT timestamp FROM blocks ORDER BY number DESC LIMIT 1`,
+                `SELECT timestamp FROM block ORDER BY number DESC LIMIT 1`,
                 [],
               ),
             ])
@@ -1061,8 +1061,8 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
           const oneMinuteAgo = new Date(Date.now() - 60000).toISOString()
           const result = await sqlitQuery(
             DATABASE_ID,
-            `SELECT COUNT(*) as count FROM transactions t 
-             JOIN blocks b ON t.block_id = b.id 
+            `SELECT COUNT(*) as count FROM transaction t 
+             JOIN block b ON t.block_id = b.id 
              WHERE b.timestamp > ?`,
             [oneMinuteAgo],
           )
@@ -1105,7 +1105,7 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
             const limit = typeof params?.limit === 'number' ? params.limit : 10
             const result = await sqlitQuery(
               DATABASE_ID,
-              `SELECT number, hash, timestamp FROM blocks ORDER BY number DESC LIMIT ?`,
+              `SELECT number, hash, timestamp FROM block ORDER BY number DESC LIMIT ?`,
               [limit],
             )
             if (!result.success) {
@@ -1177,7 +1177,7 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
             const limit = typeof args.limit === 'number' ? args.limit : 10
             const result = await sqlitQuery(
               DATABASE_ID,
-              `SELECT number, hash, timestamp FROM blocks ORDER BY number DESC LIMIT ?`,
+              `SELECT number, hash, timestamp FROM block ORDER BY number DESC LIMIT ?`,
               [limit],
             )
             if (!result.success) {
@@ -1193,7 +1193,7 @@ export function createIndexerApp(env?: Partial<IndexerEnv>) {
                 ? args.address.toLowerCase()
                 : null
 
-            let sql = `SELECT hash, block_number, from_address, to_address FROM transactions`
+            let sql = `SELECT hash, block_number, from_address, to_address FROM transaction`
             const params: Array<string | number | null> = []
 
             if (address) {

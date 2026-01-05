@@ -1,32 +1,30 @@
-import { getLocalhostHost } from '@jejunetwork/config'
 import { expect, test } from '@playwright/test'
 
-const FRONTEND_URL =
-  (typeof process !== 'undefined' ? process.env.FRONTEND_URL : undefined) ||
-  `http://${getLocalhostHost()}:4501`
-const API_URL =
-  (typeof process !== 'undefined' ? process.env.API_URL : undefined) ||
-  `http://${getLocalhostHost()}:4500`
+// Use baseURL from playwright config (supports both local and testnet)
+// For local: http://localhost:4501 / http://localhost:4500
+// For testnet: https://example.testnet.jejunetwork.org
 
 test.describe('Frontend Page Load', () => {
-  test('loads the homepage', async ({ page }) => {
-    await page.goto(FRONTEND_URL)
+  test('loads the homepage', async ({ page, baseURL }) => {
+    await page.goto(baseURL ?? '/')
     await page.waitForLoadState('domcontentloaded')
 
     await expect(page.locator('#app')).toBeVisible()
     await expect(page.getByText('Jeju Tasks')).toBeVisible()
   })
 
-  test('shows connect wallet screen when not connected', async ({ page }) => {
-    await page.goto(FRONTEND_URL)
+  test('shows connect wallet screen when not connected', async ({ page, baseURL }) => {
+    await page.goto(baseURL ?? '/')
     await page.waitForLoadState('domcontentloaded')
 
     await expect(page.getByText('Connect your wallet')).toBeVisible()
-    await expect(page.locator('#connect')).toBeVisible()
+    // The button might have different IDs depending on the build
+    const connectBtn = page.locator('button:has-text("Connect")').first()
+    await expect(connectBtn).toBeVisible()
   })
 
-  test('displays service badges', async ({ page }) => {
-    await page.goto(FRONTEND_URL)
+  test('displays service badges', async ({ page, baseURL }) => {
+    await page.goto(baseURL ?? '/')
     await page.waitForLoadState('domcontentloaded')
 
     await expect(page.getByText('SQLit')).toBeVisible()
@@ -34,8 +32,8 @@ test.describe('Frontend Page Load', () => {
     await expect(page.getByText('KMS')).toBeVisible()
   })
 
-  test('has proper HTML structure', async ({ page }) => {
-    await page.goto(FRONTEND_URL)
+  test('has proper HTML structure', async ({ page, baseURL }) => {
+    await page.goto(baseURL ?? '/')
     await page.waitForLoadState('domcontentloaded')
 
     await expect(page).toHaveTitle(/Jeju Tasks/i)
@@ -43,11 +41,12 @@ test.describe('Frontend Page Load', () => {
     await expect(page.locator('h1')).toBeVisible()
   })
 
-  test('shows error message when no wallet installed', async ({ page }) => {
-    await page.goto(FRONTEND_URL)
+  test('shows error message when no wallet installed', async ({ page, baseURL }) => {
+    await page.goto(baseURL ?? '/')
     await page.waitForLoadState('domcontentloaded')
 
-    await page.locator('#connect').click()
+    const connectBtn = page.locator('button:has-text("Connect")').first()
+    await connectBtn.click()
 
     await expect(
       page.getByText(/Wallet not detected|Install MetaMask/i),
@@ -56,8 +55,8 @@ test.describe('Frontend Page Load', () => {
 })
 
 test.describe('API Health Check', () => {
-  test('API health endpoint responds', async ({ request }) => {
-    const response = await request.get(`${API_URL}/health`)
+  test('API health endpoint responds', async ({ request, baseURL }) => {
+    const response = await request.get(`${baseURL}/health`)
     expect(response.status()).toBe(200)
 
     const data = await response.json()
@@ -65,8 +64,8 @@ test.describe('API Health Check', () => {
     expect(data.services).toBeInstanceOf(Array)
   })
 
-  test('API root endpoint responds with info', async ({ request }) => {
-    const response = await request.get(`${API_URL}/`)
+  test('API root endpoint responds with info', async ({ request, baseURL }) => {
+    const response = await request.get(`${baseURL}/api/v1`)
     expect(response.status()).toBe(200)
 
     const data = await response.json()
@@ -75,8 +74,8 @@ test.describe('API Health Check', () => {
     expect(data.endpoints.rest).toBe('/api/v1')
   })
 
-  test('API docs endpoint responds', async ({ request }) => {
-    const response = await request.get(`${API_URL}/docs`)
+  test('API docs endpoint responds', async ({ request, baseURL }) => {
+    const response = await request.get(`${baseURL}/api/v1/docs`)
     expect(response.status()).toBe(200)
 
     const data = await response.json()
@@ -84,9 +83,9 @@ test.describe('API Health Check', () => {
     expect(data.restEndpoints).toBeDefined()
   })
 
-  test('A2A agent card is available', async ({ request }) => {
+  test('A2A agent card is available', async ({ request, baseURL }) => {
     const response = await request.get(
-      `${API_URL}/a2a/.well-known/agent-card.json`,
+      `${baseURL}/a2a/.well-known/agent-card.json`,
     )
     expect(response.status()).toBe(200)
 
@@ -97,31 +96,31 @@ test.describe('API Health Check', () => {
     expect(data.skills.length).toBeGreaterThan(0)
   })
 
-  test('x402 info endpoint responds', async ({ request }) => {
-    const response = await request.get(`${API_URL}/x402/info`)
+  test('x402 info endpoint responds', async ({ request, baseURL }) => {
+    const response = await request.get(`${baseURL}/x402/info`)
     expect(response.status()).toBe(200)
 
     const data = await response.json()
     expect(typeof data.enabled).toBe('boolean')
   })
 
-  test('REST API rejects unauthenticated requests', async ({ request }) => {
-    const response = await request.get(`${API_URL}/api/v1/todos`)
+  test('REST API rejects unauthenticated requests', async ({ request, baseURL }) => {
+    const response = await request.get(`${baseURL}/api/v1/todos`)
     expect([400, 401]).toContain(response.status())
   })
 })
 
 test.describe('MCP Protocol', () => {
-  test('MCP info endpoint responds', async ({ request }) => {
-    const response = await request.get(`${API_URL}/mcp`)
+  test('MCP info endpoint responds', async ({ request, baseURL }) => {
+    const response = await request.get(`${baseURL}/mcp`)
     expect(response.status()).toBe(200)
 
     const data = await response.json()
     expect(data.name).toBeDefined()
   })
 
-  test('MCP tools list responds', async ({ request }) => {
-    const response = await request.post(`${API_URL}/mcp/tools/list`)
+  test('MCP tools list responds', async ({ request, baseURL }) => {
+    const response = await request.post(`${baseURL}/mcp/tools/list`)
     expect(response.status()).toBe(200)
 
     const data = await response.json()
@@ -129,8 +128,8 @@ test.describe('MCP Protocol', () => {
     expect(data.tools.length).toBeGreaterThan(0)
   })
 
-  test('MCP resources list responds', async ({ request }) => {
-    const response = await request.post(`${API_URL}/mcp/resources/list`)
+  test('MCP resources list responds', async ({ request, baseURL }) => {
+    const response = await request.post(`${baseURL}/mcp/resources/list`)
     expect(response.status()).toBe(200)
 
     const data = await response.json()

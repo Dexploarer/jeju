@@ -1,3 +1,4 @@
+import { OAuth3Provider } from '@jejunetwork/auth/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { Toaster } from 'sonner'
@@ -6,6 +7,7 @@ import { WagmiProvider } from 'wagmi'
 import { CommandPalette } from './components/CommandPalette'
 import { Layout } from './components/Layout'
 import { ErrorBoundary } from './components/shared'
+import { CHAIN_ID, OAUTH3_AGENT_URL, RPC_URL } from './config/env'
 import { wagmiConfig } from './config/wagmi'
 import {
   AgentDeployPage,
@@ -55,66 +57,76 @@ export function App() {
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <ErrorBoundary>
-            <Layout>
-              <Routes>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/bounties/*" element={<BountiesPage />} />
-                <Route path="/jobs/*" element={<JobsPage />} />
-                <Route path="/git" element={<GitPage />} />
-                <Route path="/git/new" element={<RepoNewPage />} />
-                <Route
-                  path="/git/:owner/:name/*"
-                  element={<RepoDetailPage />}
-                />
-                <Route path="/packages" element={<PackagesPage />} />
-                <Route
-                  path="/packages/publish"
-                  element={<PackagePublishPage />}
-                />
-                <Route
-                  path="/packages/:scope/:name"
-                  element={<PackageDetailPage />}
-                />
-                <Route path="/models" element={<ModelsPage />} />
-                <Route path="/models/upload" element={<ModelUploadPage />} />
-                <Route
-                  path="/models/:org/:name"
-                  element={<ModelDetailPage />}
-                />
-                <Route path="/containers" element={<ContainersPage />} />
-                <Route
-                  path="/containers/push"
-                  element={<ContainerPushPage />}
-                />
-                <Route
-                  path="/containers/:name/:tag"
-                  element={<ContainerDetailPage />}
-                />
-                <Route path="/projects" element={<ProjectsPage />} />
-                <Route path="/projects/new" element={<ProjectNewPage />} />
-                <Route path="/projects/:id" element={<ProjectDetailPage />} />
-                <Route path="/ci" element={<CIPage />} />
-                <Route path="/ci/:id" element={<CIDetailPage />} />
-                <Route path="/agents" element={<AgentsPage />} />
-                <Route path="/agents/deploy" element={<AgentDeployPage />} />
-                <Route path="/agents/:id" element={<AgentDetailPage />} />
-                <Route path="/messages/*" element={<MessagesPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/help" element={<HelpPage />} />
-              </Routes>
-            </Layout>
-          </ErrorBoundary>
-          <CommandPalette />
-        </BrowserRouter>
-        <Toaster
-          position="bottom-right"
-          theme="dark"
-          toastOptions={{
-            className: 'bg-surface-900 border-surface-700 text-surface-100',
+        <OAuth3Provider
+          config={{
+            appId: 'factory.apps.jeju',
+            redirectUri: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback`,
+            chainId: CHAIN_ID,
+            rpcUrl: RPC_URL,
+            teeAgentUrl: OAUTH3_AGENT_URL,
           }}
-        />
+        >
+          <BrowserRouter>
+            <ErrorBoundary>
+              <Layout>
+                <Routes>
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/bounties/*" element={<BountiesPage />} />
+                  <Route path="/jobs/*" element={<JobsPage />} />
+                  <Route path="/git" element={<GitPage />} />
+                  <Route path="/git/new" element={<RepoNewPage />} />
+                  <Route
+                    path="/git/:owner/:name/*"
+                    element={<RepoDetailPage />}
+                  />
+                  <Route path="/packages" element={<PackagesPage />} />
+                  <Route
+                    path="/packages/publish"
+                    element={<PackagePublishPage />}
+                  />
+                  <Route
+                    path="/packages/:scope/:name"
+                    element={<PackageDetailPage />}
+                  />
+                  <Route path="/models" element={<ModelsPage />} />
+                  <Route path="/models/upload" element={<ModelUploadPage />} />
+                  <Route
+                    path="/models/:org/:name"
+                    element={<ModelDetailPage />}
+                  />
+                  <Route path="/containers" element={<ContainersPage />} />
+                  <Route
+                    path="/containers/push"
+                    element={<ContainerPushPage />}
+                  />
+                  <Route
+                    path="/containers/:name/:tag"
+                    element={<ContainerDetailPage />}
+                  />
+                  <Route path="/projects" element={<ProjectsPage />} />
+                  <Route path="/projects/new" element={<ProjectNewPage />} />
+                  <Route path="/projects/:id" element={<ProjectDetailPage />} />
+                  <Route path="/ci" element={<CIPage />} />
+                  <Route path="/ci/:id" element={<CIDetailPage />} />
+                  <Route path="/agents" element={<AgentsPage />} />
+                  <Route path="/agents/deploy" element={<AgentDeployPage />} />
+                  <Route path="/agents/:id" element={<AgentDetailPage />} />
+                  <Route path="/messages/*" element={<MessagesPage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="/help" element={<HelpPage />} />
+                </Routes>
+              </Layout>
+            </ErrorBoundary>
+            <CommandPalette />
+          </BrowserRouter>
+          <Toaster
+            position="bottom-right"
+            theme="dark"
+            toastOptions={{
+              className: 'bg-surface-900 border-surface-700 text-surface-100',
+            }}
+          />
+        </OAuth3Provider>
       </QueryClientProvider>
     </WagmiProvider>
   )

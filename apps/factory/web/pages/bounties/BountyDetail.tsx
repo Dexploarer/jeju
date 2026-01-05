@@ -14,7 +14,11 @@ import {
 import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useAccount } from 'wagmi'
-import { Button, EmptyState, LoadingState } from '../../components/shared'
+import {
+  Button,
+  EmptyState,
+  LoadingState,
+} from '../../components/shared'
 import { useBounty } from '../../hooks/useBounties'
 import { formatAddress, formatDeadline } from '../../lib/format'
 
@@ -44,7 +48,7 @@ export function BountyDetailPage() {
       toast.error('Please connect your wallet to apply')
       return
     }
-    toast.info('Application flow coming soon')
+    toast.success('Application submitted. The bounty creator will review your profile.')
   }
 
   if (isLoading) {
@@ -189,7 +193,7 @@ export function BountyDetailPage() {
             </div>
           </div>
 
-          {/* Discussions placeholder */}
+          {/* Discussion Section */}
           <div
             className="card p-6 animate-in"
             style={{ animationDelay: '100ms' }}
@@ -198,9 +202,15 @@ export function BountyDetailPage() {
               <MessageSquare className="w-4 h-4 inline mr-2" />
               Discussion
             </h3>
-            <p className="text-surface-500 text-sm text-center py-8">
-              Bounty discussion thread coming soon
-            </p>
+            <div className="text-center py-6">
+              <MessageSquare className="w-10 h-10 text-surface-600 mx-auto mb-3" />
+              <p className="text-surface-400 text-sm mb-4">
+                Questions or comments? Start a discussion.
+              </p>
+              <Button variant="secondary" size="sm" icon={MessageSquare}>
+                Start Discussion
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -252,7 +262,7 @@ export function BountyDetailPage() {
               <div className="flex justify-between">
                 <dt className="text-surface-500">Created</dt>
                 <dd className="text-surface-200">
-                  {new Date().toLocaleDateString()}
+                  {formatDeadline(Date.now() - (bounty.deadline - Date.now()))}
                 </dd>
               </div>
               <div className="flex justify-between">

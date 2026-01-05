@@ -18,7 +18,7 @@ let encoding: Tiktoken | null = null
 async function getEncoding(): Promise<Tiktoken> {
   if (!encoding) {
     const { encodingForModel } = await import('js-tiktoken')
-    encoding = encodingForModel('gpt-4')
+    encoding = encodingForModel('gpt-5')
   }
   return encoding
 }
@@ -171,7 +171,7 @@ export const MODEL_TOKEN_LIMITS: Record<string, number> = {
   'gpt-5.1': 128000,
   'gpt-5-nano': 128000,
   'gpt-5.1-turbo': 128000,
-  'gpt-4': 8192,
+  'gpt-5': 8192,
   'gpt-5.2': 128000,
   'gpt-3.5-turbo': 16385,
   'gpt-3.5-turbo-16k': 16385,

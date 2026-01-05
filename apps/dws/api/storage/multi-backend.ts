@@ -785,16 +785,29 @@ export class MultiBackendManager {
       return preferred
     }
 
+    let backends: StorageBackendType[]
     switch (tier) {
       case 'system':
-        return this.config.systemContentBackends
+        backends = [...this.config.systemContentBackends]
+        break
       case 'popular':
-        return this.config.popularContentBackends
+        backends = [...this.config.popularContentBackends]
+        break
       case 'private':
-        return this.config.privateContentBackends
+        backends = [...this.config.privateContentBackends]
+        break
       default:
-        return this.config.popularContentBackends
+        backends = [...this.config.popularContentBackends]
     }
+
+    // On localnet, add 'local' as fallback if not already included
+    // This allows deployment without running IPFS locally
+    const network = getCurrentNetwork()
+    if (network === 'localnet' && !backends.includes('local')) {
+      backends.push('local')
+    }
+
+    return backends
   }
 
   private createBasicMetadata(cid: string, content: Buffer): ContentMetadata {

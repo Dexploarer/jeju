@@ -3,11 +3,17 @@ import {
   getCurrentNetwork,
   getLocalhostHost,
   getServicesConfig,
+  type NetworkType,
 } from '@jejunetwork/config'
 
 export const NETWORK_NAME = 'Jeju Network'
 
-const NETWORK = getCurrentNetwork()
+// IMPORTANT: Do NOT call getCurrentNetwork() at module level!
+// In bundled apps, env vars may not be set when the module is first evaluated.
+// Use lazy getter function instead.
+function getNetwork(): NetworkType {
+  return getCurrentNetwork()
+}
 
 // Crucible API runs on the executor port (4021)
 export const CRUCIBLE_PORT = CORE_PORTS.CRUCIBLE_API.DEFAULT
@@ -68,9 +74,11 @@ const CHAIN_IDS = {
 
 /**
  * OAuth3 configuration for wallet authentication
+ * Called at runtime to ensure network is detected correctly
  */
 export function getOAuth3Config() {
   const services = getServicesConfig()
+  const network = getNetwork()
 
   return {
     appId: 'crucible',
@@ -82,12 +90,13 @@ export function getOAuth3Config() {
     // RPC URL for on-chain interactions - use network-appropriate URL
     rpcUrl: services.rpc.l2,
     // Chain ID for the current network - prevents defaulting to localnet
-    chainId: CHAIN_IDS[NETWORK],
+    chainId: CHAIN_IDS[network],
     // Enable decentralized discovery via JNS
-    decentralized: NETWORK !== 'localnet',
+    decentralized: network !== 'localnet',
     // Network for chain interactions
-    network: NETWORK,
+    network,
   }
 }
 
-export { NETWORK }
+// Export getter function for network (lazy evaluation)
+export { getNetwork }

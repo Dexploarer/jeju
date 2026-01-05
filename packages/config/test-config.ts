@@ -130,11 +130,11 @@ function getRemoteFrontendURL(app: AppName, network: 'testnet' | 'mainnet'): str
     case 'autocrat':
       return services.autocrat.api
     case 'monitoring':
-      return services.monitoring.api
+      return services.monitoring.api ?? `https://monitoring.${network === 'testnet' ? 'testnet.' : ''}jejunetwork.org`
     case 'oauth3':
       return services.oauth3?.api ?? `https://oauth3.${network === 'testnet' ? 'testnet.' : ''}jejunetwork.org`
     case 'indexer':
-      return services.indexer.api
+      return services.indexer.api ?? services.indexer.graphql
     case 'node':
       return services.node?.api ?? `https://node.${network === 'testnet' ? 'testnet.' : ''}jejunetwork.org`
     case 'wallet':
@@ -171,11 +171,11 @@ function getRemoteApiURL(app: AppName, network: 'testnet' | 'mainnet'): string {
     case 'autocrat':
       return services.autocrat.api
     case 'monitoring':
-      return services.monitoring.api
+      return services.monitoring.api ?? `https://monitoring.${network === 'testnet' ? 'testnet.' : ''}jejunetwork.org/api`
     case 'oauth3':
       return services.oauth3?.api ?? `https://oauth3.${network === 'testnet' ? 'testnet.' : ''}jejunetwork.org`
     case 'indexer':
-      return services.indexer.api
+      return services.indexer.api ?? services.indexer.graphql
     case 'node':
       return services.node?.api ?? `https://node.${network === 'testnet' ? 'testnet.' : ''}jejunetwork.org`
     case 'wallet':

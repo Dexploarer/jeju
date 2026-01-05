@@ -276,7 +276,7 @@ export function createAuthInitRouter(_config: AuthConfig) {
           identityId: sessionId, // Use session as identity for wallet auth
           smartAccount: address,
           expiresAt,
-          capabilities: ['SIGN_MESSAGE', 'SIGN_TRANSACTION'],
+          capabilities: ['sign_message', 'sign_transaction'],
           signingPublicKey: ephemeralKey.publicKey,
           attestation: {
             quote: '0x' as Hex,

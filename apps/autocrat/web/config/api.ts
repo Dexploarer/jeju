@@ -490,7 +490,7 @@ export async function assessProposalFull(
     minRequired: data.minRequired ?? 70,
     similarProposals: [],
     assessedAt: Date.now(),
-    model: 'gpt-4',
+    model: 'gpt-5',
   }
 }
 

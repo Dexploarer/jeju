@@ -12,7 +12,7 @@
     "build": "bun run build",
     "start": "bun run start",
     "test": "bun run test:e2e",
-    "deploy": "bun run scripts/deploy-cdn.ts"
+    "deploy": "bun run scripts/deploy.ts"
   },
   "ports": {
     "main": 4009

@@ -1,3 +1,6 @@
+// Check if running against testnet/mainnet
+const isRemote = process.env.JEJU_NETWORK === 'testnet' || process.env.JEJU_NETWORK === 'mainnet'
+
 /**
  * Containers E2E Tests
  * Tests container registry listing, detail view, and push flows

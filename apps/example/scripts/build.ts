@@ -30,10 +30,12 @@ async function buildCSS(): Promise<string> {
   const tempDir = await mkdtemp(join(tmpdir(), 'example-css-'))
   const outputPath = join(tempDir, 'output.css')
 
+  // Use bunx with explicit package version to avoid resolution issues
   const proc = Bun.spawn(
     [
-      'bunx',
-      'tailwindcss',
+      'bun',
+      'x',
+      'tailwindcss@3.4.17',
       '-i',
       inputPath,
       '-o',
@@ -74,7 +76,7 @@ async function build() {
   const cssContent = await buildCSS()
   await writeFile(join(outdir, 'web/styles.css'), cssContent)
 
-  // Build API
+  // Build API (full server for local dev)
   console.log('[Example] Building API...')
   const apiResult = await Bun.build({
     entrypoints: [resolve(APP_DIR, 'api/index.ts')],
@@ -84,6 +86,26 @@ async function build() {
     sourcemap: 'external',
     drop: ['debugger'],
   })
+
+  // Build minimal worker for DWS deployment (workaround for workerd compatibility)
+  console.log('[Example] Building minimal worker for DWS...')
+  const workerResult = await Bun.build({
+    entrypoints: [resolve(APP_DIR, 'api/minimal-worker.ts')],
+    outdir: join(outdir, 'worker'),
+    target: 'bun',
+    minify: true,
+    sourcemap: 'external',
+    naming: 'worker.js',
+  })
+
+  if (!workerResult.success) {
+    console.error('[Example] Worker build failed:')
+    for (const log of workerResult.logs) {
+      console.error(log)
+    }
+    process.exit(1)
+  }
+  console.log('[Example] Worker built successfully')
 
   if (!apiResult.success) {
     console.error('[Example] API build failed:')

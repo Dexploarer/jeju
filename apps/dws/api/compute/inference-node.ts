@@ -1,4 +1,4 @@
-import { getContract, getRpcUrl } from '@jejunetwork/config'
+import { getRpcUrl, tryGetContract } from '@jejunetwork/config'
 import type { Address, Hex, PublicClient } from 'viem'
 import { createPublicClient, http, keccak256, toBytes } from 'viem'
 import { z } from 'zod'
@@ -198,11 +198,11 @@ function getClient(): PublicClient {
   return publicClient
 }
 
-function getComputeRegistryAddress(): Address {
+function getComputeRegistryAddress(): Address | null {
   if (!computeRegistryAddress) {
-    const address = getContract('compute', 'registry')
+    const address = tryGetContract('compute', 'registry')
     if (!address) {
-      throw new Error('ComputeRegistry address not configured')
+      return null
     }
     computeRegistryAddress = address as Address
   }
@@ -222,8 +222,17 @@ export async function syncFromChain(): Promise<void> {
     return // Already synced recently
   }
 
-  const client = getClient()
   const registryAddress = getComputeRegistryAddress()
+  if (!registryAddress) {
+    // No registry contract deployed - rely on locally registered nodes only
+    console.log(
+      `[Inference] ComputeRegistry not configured, using ${locallyRegisteredNodes.size} local nodes only`,
+    )
+    lastSyncTimestamp = now
+    return
+  }
+
+  const client = getClient()
 
   // Get active inference providers from chain
   let activeAddresses: Address[] = []
@@ -478,8 +487,13 @@ export async function forceSync(): Promise<void> {
  * Check if a specific address is registered as an inference provider
  */
 export async function isRegisteredProvider(address: Address): Promise<boolean> {
-  const client = getClient()
   const registryAddress = getComputeRegistryAddress()
+  if (!registryAddress) {
+    // No registry configured - check local nodes only
+    return locallyRegisteredNodes.has(address.toLowerCase())
+  }
+
+  const client = getClient()
 
   return (await client.readContract({
     address: registryAddress,

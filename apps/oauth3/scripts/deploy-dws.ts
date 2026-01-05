@@ -157,40 +157,38 @@ async function uploadDirectory(
 
 async function deployWorker(
   workerCid: string,
-  workerHash: `0x${string}`,
+  _workerHash: `0x${string}`,
 ): Promise<string> {
-  const deployRequest = {
-    name: 'oauth3-api',
-    codeCid: workerCid,
-    codeHash: workerHash,
-    runtime: 'bun',
-    handler: 'worker.js:default',
-    memory: 256,
-    timeout: 30000,
-    env: {
-      NETWORK: network,
-      RPC_URL: getL2RpcUrl(),
-      DWS_URL: DWS_URL,
-      SQLIT_NODES: getSQLitBlockProducerUrl(),
-      SQLIT_DATABASE_ID: process.env.SQLIT_DATABASE_ID ?? 'oauth3',
-      JWT_SECRET: process.env.JWT_SECRET ?? 'testnet-jwt-secret',
-      ALLOWED_ORIGINS: '*',
-      SERVICE_AGENT_ID: 'auth.jeju',
-    },
-  }
-
   console.log('[OAuth3] Deploying worker to DWS...')
   console.log(`  Code CID: ${workerCid}`)
   console.log(`  Runtime: bun`)
   console.log(`  Memory: 256MB`)
 
-  const response = await fetch(`${DWS_URL}/workers`, {
+  // Use /deploy/worker endpoint with codeCid
+  const response = await fetch(`${DWS_URL}/deploy/worker`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'x-jeju-address': '0x0000000000000000000000000000000000000000',
     },
-    body: JSON.stringify(deployRequest),
+    body: JSON.stringify({
+      codeCid: workerCid,
+      name: 'oauth3-api',
+      runtime: 'bun',
+      handler: 'worker.js:default',
+      memory: 256,
+      timeout: 30000,
+      env: {
+        NETWORK: network,
+        RPC_URL: getL2RpcUrl(),
+        DWS_URL: DWS_URL,
+        SQLIT_NODES: getSQLitBlockProducerUrl(),
+        SQLIT_DATABASE_ID: process.env.SQLIT_DATABASE_ID ?? 'oauth3',
+        JWT_SECRET: process.env.JWT_SECRET ?? 'testnet-jwt-secret',
+        ALLOWED_ORIGINS: '*',
+        SERVICE_AGENT_ID: 'auth.jeju',
+      },
+    }),
   })
 
   if (!response.ok) {
@@ -211,12 +209,13 @@ async function deployWorker(
   console.log(`  Worker ID: ${parsed.data.functionId}`)
   console.log(`  Status: ${parsed.data.status}`)
 
-  return parsed.data.functionId
+  // Return the CID as the worker identifier for URL construction
+  return workerCid
 }
 
 async function registerApp(
   staticAssets: Map<string, { cid: string }>,
-  workerId: string,
+  workerCid: string,
 ): Promise<void> {
   const indexCid = staticAssets.get('index.html')?.cid
   const staticFiles: Record<string, string> = {}
@@ -224,26 +223,25 @@ async function registerApp(
     staticFiles[path] = result.cid
   }
 
-  // Use DWS worker endpoint (decentralized)
-  const backendEndpoint = `${DWS_URL}/workers/${workerId}/http`
+  // Use CID-based worker endpoint (decentralized, no worker ID lookup needed)
+  const backendEndpoint = `${DWS_URL}/workers/${workerCid}/http`
 
   console.log('[OAuth3] Registering app with DWS...')
   console.log(`  Frontend CID: ${indexCid}`)
-  console.log(`  Backend Worker: ${workerId}`)
+  console.log(`  Backend CID: ${workerCid}`)
   console.log(`  Backend Endpoint: ${backendEndpoint}`)
 
   const response = await fetch(`${DWS_URL}/apps/deployed`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-jeju-address': '0x0000000000000000000000000000000000000000',
     },
     body: JSON.stringify({
       name: 'oauth3',
       jnsName: 'auth.jeju',
       frontendCid: indexCid,
       staticFiles: Object.keys(staticFiles).length > 0 ? staticFiles : null,
-      backendWorkerId: workerId,
+      backendWorkerId: null, // Use CID-based endpoint instead of worker ID
       backendEndpoint: backendEndpoint,
       apiPaths: [
         '/api',
@@ -335,8 +333,13 @@ async function deploy(): Promise<void> {
   console.log('Deployment complete.')
   console.log('')
   console.log('OAuth3 is now running on DWS decentralized infrastructure:')
-  console.log(`  Frontend: https://oauth3.testnet.jejunetwork.org`)
-  console.log(`  Worker: ${DWS_URL}/workers/${workerId}/http`)
+  const frontendUrl = network === 'mainnet' 
+    ? 'https://oauth3.jejunetwork.org'
+    : network === 'testnet'
+    ? 'https://oauth3.testnet.jejunetwork.org'
+    : `http://localhost:4201`
+  console.log(`  Frontend: ${frontendUrl}`)
+  console.log(`  Worker: ${DWS_URL}/workers/${workerCid}/http`)
   console.log('')
   console.log('Routing is now decentralized via DWS app router.')
 }

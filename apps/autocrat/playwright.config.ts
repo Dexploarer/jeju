@@ -8,6 +8,9 @@ const config = getTestConfig('autocrat')
 
 export default defineConfig({
   testDir: './tests/e2e',
+  testMatch: '**/*.e2e.ts',
+  // Ignore tests that require synpress/wallet - run those with synpress.config.ts
+  testIgnore: ['**/dao-full-flow.e2e.ts'],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

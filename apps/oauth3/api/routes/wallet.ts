@@ -106,25 +106,102 @@ function generateWalletConnectPage(
     const message = '${escapeJsString(message)}';
     
     let address = null;
+    let selectedProvider = null;
+    
+    // Detect available wallets
+    function detectWallets() {
+      const wallets = [];
+      
+      // Check for MetaMask specifically (has isMetaMask flag)
+      if (window.ethereum?.isMetaMask && !window.ethereum?.isPhantom) {
+        wallets.push({ name: 'MetaMask', provider: window.ethereum, icon: '🦊' });
+      }
+      
+      // Check for Phantom EVM
+      if (window.phantom?.ethereum) {
+        wallets.push({ name: 'Phantom', provider: window.phantom.ethereum, icon: '👻' });
+      } else if (window.ethereum?.isPhantom) {
+        wallets.push({ name: 'Phantom', provider: window.ethereum, icon: '👻' });
+      }
+      
+      // Check for Coinbase Wallet
+      if (window.ethereum?.isCoinbaseWallet) {
+        wallets.push({ name: 'Coinbase', provider: window.ethereum, icon: '🔵' });
+      }
+      
+      // Check for Rainbow
+      if (window.ethereum?.isRainbow) {
+        wallets.push({ name: 'Rainbow', provider: window.ethereum, icon: '🌈' });
+      }
+      
+      // Fallback to generic ethereum provider if no specific wallet detected
+      if (wallets.length === 0 && window.ethereum) {
+        wallets.push({ name: 'Browser Wallet', provider: window.ethereum, icon: '🔐' });
+      }
+      
+      return wallets;
+    }
+    
+    // Show wallet selector if multiple wallets
+    function showWalletSelector(wallets) {
+      const btn = document.getElementById('connectBtn');
+      const status = document.getElementById('status');
+      
+      if (wallets.length === 0) {
+        status.textContent = 'No wallet found. Install MetaMask or another browser wallet.';
+        status.className = 'status error';
+        btn.disabled = true;
+        return;
+      }
+      
+      if (wallets.length === 1) {
+        selectedProvider = wallets[0].provider;
+        btn.innerHTML = wallets[0].icon + ' Connect with ' + wallets[0].name;
+        return;
+      }
+      
+      // Multiple wallets - show selector
+      let html = '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">';
+      wallets.forEach((wallet, i) => {
+        html += '<button class="wallet-option" data-index="' + i + '" style="display:flex;align-items:center;gap:8px;padding:12px 16px;border:1px solid rgba(99,102,241,0.3);border-radius:8px;background:rgba(99,102,241,0.1);color:#e2e8f0;cursor:pointer;font-size:14px;">';
+        html += '<span style="font-size:20px;">' + wallet.icon + '</span>';
+        html += '<span>' + wallet.name + '</span>';
+        html += '</button>';
+      });
+      html += '</div>';
+      
+      status.innerHTML = html;
+      status.className = 'status';
+      btn.style.display = 'none';
+      
+      // Add click handlers
+      document.querySelectorAll('.wallet-option').forEach(el => {
+        el.addEventListener('click', () => {
+          const idx = parseInt(el.dataset.index);
+          selectedProvider = wallets[idx].provider;
+          status.innerHTML = '';
+          btn.style.display = 'block';
+          btn.innerHTML = wallets[idx].icon + ' Connect with ' + wallets[idx].name;
+          connect();
+        });
+      });
+    }
     
     async function connect() {
       const status = document.getElementById('status');
       const btn = document.getElementById('connectBtn');
       
-      if (!window.ethereum) {
-        status.textContent = 'No wallet found. Install MetaMask or another browser wallet.';
-        status.className = 'status error';
+      if (!selectedProvider) {
+        status.textContent = 'Please select a wallet';
         return;
       }
       
       try {
         btn.disabled = true;
         btn.textContent = 'Connecting...';
-        status.textContent = '';
-        status.className = 'status';
         
         // Request accounts
-        const accounts = await window.ethereum.request({ 
+        const accounts = await selectedProvider.request({ 
           method: 'eth_requestAccounts' 
         });
         address = accounts[0];
@@ -133,7 +210,7 @@ function generateWalletConnectPage(
         status.innerHTML = 'Connected: <span class="address-badge">' + address.slice(0, 6) + '...' + address.slice(-4) + '</span>';
         
         // Request signature
-        const signature = await window.ethereum.request({
+        const signature = await selectedProvider.request({
           method: 'personal_sign',
           params: [message, address]
         });
@@ -169,6 +246,10 @@ function generateWalletConnectPage(
         btn.textContent = 'Try Again';
       }
     }
+    
+    // Initialize on load
+    const wallets = detectWallets();
+    showWalletSelector(wallets);
     
     document.getElementById('connectBtn').addEventListener('click', connect);
   `

@@ -135,6 +135,7 @@ const browserPlugin: BunPlugin = {
 }
 
 // Node.js built-ins that need to be external for browser builds
+// Note: @elysiajs/eden is NOT external - it's the browser client and must be bundled
 const BROWSER_EXTERNALS = [
   '@google-cloud/*',
   '@grpc/*',
@@ -152,8 +153,11 @@ const BROWSER_EXTERNALS = [
   '@jejunetwork/kms',
   '@jejunetwork/deployment',
   '@jejunetwork/training',
-  'elysia',
-  '@elysiajs/*',
+  'elysia', // Server-only, not needed in browser
+  '@elysiajs/cors', // Server-only
+  '@elysiajs/swagger', // Server-only
+  '@elysiajs/static', // Server-only
+  // Note: @elysiajs/eden is intentionally NOT here - it's the browser client
   'ioredis',
   'croner',
   'opossum',
