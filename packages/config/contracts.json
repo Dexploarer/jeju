@@ -73,12 +73,12 @@
       "workerRegistry": "0x364C7188028348566E38D762f6095741c49f492B",
       "cdnRegistry": "0x5147c5C1Cb5b5D3f56186C37a4bcFBb3Cd0bD5A7",
       "repoRegistry": "0x0dcd1bf9a1b36ce34237eeafef220932846bcd82",
-      "packageRegistry": "0x15bb2cc3ea43ab2658f7aaeceb78a9d3769be3cb",
-      "managedDatabaseRegistry": "0x084815d1330ecc3ef94193a19ec222c0c73dff2d",
-      "gitRegistry": "0xcdb63c58b907e76872474a0597c5252edc97c883",
-      "cacheManager": "0xa4d0806d597146df93796a38435abb2a3cb96677",
-      "cronOrchestrator": "0xae246e208ea35b3f23de72b697d47044fc594d5f",
-      "containerRegistry": "0x82bbaa3b0982d88741b275ae1752db85cafe3c65",
+      "packageRegistry": "0x5f246addcf057e0f778cd422e20e413be70f9a0c",
+      "managedDatabaseRegistry": "0xbe6eb4acb499f992ba2dac7cad59d56da9e0d823",
+      "gitRegistry": "0x3c2bafebbb0c8c58f39a976e725cd20d611d01e9",
+      "cacheManager": "0xad82ecf79e232b0391c5479c7f632aa1ea701ed1",
+      "cronOrchestrator": "0x4dd5336f3c0d70893a7a86c6aebe9b953e87c891",
+      "containerRegistry": "0x91a1eee63f300b8f41ae6af67edea2e2ed8c3f79",
       "storageProviderRegistry": "0xdc64a140aa3e981100a9beca4e685f962f0cf6c9",
       "identityRegistry": "0x5fc8d32690cc91d4c39d9d3abcbd16989f875707"
     },
@@ -106,7 +106,7 @@
       "inferenceServing": "0x08A90aF9A6eBBe11c322AD9930CC58E122231B5A",
       "staking": "0x7bdd3b028C4796eF0EAf07d11394d0d9d8c24139",
       "workerRegistry": "",
-      "cronTriggerRegistry": "0xae246e208ea35b3f23de72b697d47044fc594d5f"
+      "cronTriggerRegistry": "0x4dd5336f3c0d70893a7a86c6aebe9b953e87c891"
     },
     "sequencer": {
       "registry": "0xf4fa0d1C10c47cDe9F65D56c3eC977CbEb13449A",

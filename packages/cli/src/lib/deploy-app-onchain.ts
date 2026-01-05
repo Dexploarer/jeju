@@ -563,9 +563,10 @@ function collectFiles(
 
 function checkIPFSAvailable(apiUrl: string): void {
   // Quick check to verify IPFS is responding with JSON
+  // Note: IPFS API requires POST method for all endpoints
   const proc = spawnSync(
     'curl',
-    ['-s', '-m', '5', `${apiUrl}/api/v0/id`],
+    ['-s', '-m', '5', '-X', 'POST', `${apiUrl}/api/v0/id`],
     { encoding: 'utf-8' },
   )
 

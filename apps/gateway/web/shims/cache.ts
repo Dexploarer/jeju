@@ -24,4 +24,21 @@ export function resetCacheClients(): void {
   // No-op in browser
 }
 
+export function safeParseCached<T>(
+  cached: string | null,
+  schema: { safeParse: (data: unknown) => { success: boolean; data?: T } },
+): T | null {
+  if (cached === null) return null
+  try {
+    const parsed = JSON.parse(cached)
+    const result = schema.safeParse(parsed)
+    if (result.success && result.data !== undefined) {
+      return result.data
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
 export const CacheClient = {} as const

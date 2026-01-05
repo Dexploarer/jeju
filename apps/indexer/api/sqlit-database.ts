@@ -360,7 +360,7 @@ class SQLitStore implements SQLitStoreInterface {
     for (const e of entities) {
       const entityObj = e as Record<string, unknown>
       const entityCtor = entityObj.constructor as EntityClass<E>
-      const tableName = this.getTableName(entityCtor)
+      const tableName = this.getTableName(entityCtor, entityObj)
 
       // Skip invalid entities (Object, unknown, etc.)
       if (!tableName) continue
@@ -390,7 +390,7 @@ class SQLitStore implements SQLitStoreInterface {
     for (const e of entities) {
       const entityObj = e as Record<string, unknown>
       const entityCtor = entityObj.constructor as EntityClass<E>
-      const tableName = this.getTableName(entityCtor)
+      const tableName = this.getTableName(entityCtor, entityObj)
 
       // Skip invalid entities
       if (!tableName) continue
@@ -439,7 +439,10 @@ class SQLitStore implements SQLitStoreInterface {
     }
 
     const result = await this.client.query(sql, params, this.databaseId)
-    return result.rows as E[]
+    // Hydrate all rows into proper entity instances
+    return result.rows.map((row) =>
+      this.hydrateEntity(entityClass, row as Record<string, unknown>),
+    )
   }
 
   async get<E>(
@@ -452,7 +455,11 @@ class SQLitStore implements SQLitStoreInterface {
       [id],
       this.databaseId,
     )
-    return result.rows[0] as E | undefined
+    const row = result.rows[0]
+    if (!row) return undefined
+
+    // Hydrate the raw row into a proper entity instance
+    return this.hydrateEntity(entityClass, row as Record<string, unknown>)
   }
 
   async count<E>(
@@ -489,6 +496,54 @@ class SQLitStore implements SQLitStoreInterface {
       await this.batchUpsert(tableName, entities)
     }
     this.pendingWrites.clear()
+  }
+
+  /**
+   * Hydrate a raw database row into a proper entity instance.
+   * This ensures the entity has the correct constructor/prototype chain.
+   */
+  private hydrateEntity<E>(
+    entityClass: EntityClass<E>,
+    row: Record<string, unknown>,
+  ): E {
+    // Convert snake_case columns back to camelCase
+    const toCamelCase = (str: string): string =>
+      str.replace(/_([a-z])/g, (_, c) => c.toUpperCase())
+
+    const props: Record<string, unknown> = {}
+
+    for (const [key, value] of Object.entries(row)) {
+      const camelKey = toCamelCase(key)
+      // Convert string dates back to Date objects
+      if (
+        typeof value === 'string' &&
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)
+      ) {
+        props[camelKey] = new Date(value)
+      }
+      // Parse JSON arrays/objects stored as strings
+      else if (
+        typeof value === 'string' &&
+        (value.startsWith('[') || value.startsWith('{'))
+      ) {
+        try {
+          props[camelKey] = JSON.parse(value)
+        } catch {
+          props[camelKey] = value
+        }
+      }
+      // Handle FK columns (e.g., contract_id -> contract)
+      else if (key.endsWith('_id')) {
+        const refKey = camelKey.replace(/Id$/, '')
+        // Store just the id as a reference object for FK relationships
+        props[refKey] = value !== null ? { id: value } : null
+      } else {
+        props[camelKey] = value
+      }
+    }
+
+    // Create a new instance of the entity class with the hydrated props
+    return new entityClass(props as Partial<E>) as E
   }
 
   private async batchUpsert(
@@ -862,14 +917,24 @@ class SQLitStore implements SQLitStoreInterface {
     }
   }
 
-  private getTableName<E>(entityClass: EntityClass<E>): string {
+  private getTableName<E>(
+    entityClass: EntityClass<E>,
+    entity?: Record<string, unknown>,
+  ): string {
     const name = entityClass.name ?? 'unknown'
 
     // Handle common base object cases that shouldn't be stored
     if (name === 'Object' || name === 'object' || name === 'unknown') {
-      console.warn(
-        `[SQLitStore] Skipping invalid entity with constructor name: ${name}`,
-      )
+      // Log entity info to help debug - this usually indicates a plain object
+      // was passed instead of a proper entity class instance
+      if (entity) {
+        const entityId = 'id' in entity ? String(entity.id).slice(0, 40) : 'no-id'
+        const keys = Object.keys(entity).slice(0, 5).join(', ')
+        console.warn(
+          `[SQLitStore] Skipping plain object (id: ${entityId}, keys: ${keys}). ` +
+            `Use proper entity class instances instead of plain objects.`,
+        )
+      }
       return '' // Return empty to signal skip
     }
 
