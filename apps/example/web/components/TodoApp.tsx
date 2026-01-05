@@ -4,7 +4,7 @@
  * Todo list with OAuth3 authentication.
  */
 
-import { useJejuAuth } from '@jejunetwork/auth/react'
+import { useJejuAuth, useJejuWallet } from '@jejunetwork/auth/react'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { getApiBaseUrl } from '../config'
@@ -64,7 +64,8 @@ function PriorityBadge({ priority }: { priority: Todo['priority'] }) {
 }
 
 export function TodoApp() {
-  const { authenticated, walletAddress, signMessage, loading: authLoading } = useJejuAuth()
+  const { authenticated, walletAddress, loading: authLoading } = useJejuAuth()
+  const { signMessage } = useJejuWallet()
   const [todos, setTodos] = useState<Todo[]>([])
   const [loading, setLoading] = useState(false)
   const [newTitle, setNewTitle] = useState('')

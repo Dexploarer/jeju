@@ -94,7 +94,6 @@ export function getOAuth3Config(): OAuth3ProviderProps['config'] {
 
   return {
     appId: 'example',
-    appName: 'Example',
     redirectUri: getRedirectUri(),
     teeAgentUrl: services.oauth3Tee,
     rpcUrl: services.rpc,
