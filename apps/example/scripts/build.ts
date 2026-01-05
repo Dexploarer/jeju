@@ -195,10 +195,10 @@ async function build() {
   reportBundleSizes(apiResult, 'Example API')
   console.log('[Example] API built successfully')
 
-  // Build frontend (React)
+  // Build frontend
   console.log('[Example] Building frontend...')
   const frontendResult = await Bun.build({
-    entrypoints: [resolve(APP_DIR, 'web/main.tsx')],
+    entrypoints: [resolve(APP_DIR, 'web/app.ts')],
     outdir: join(outdir, 'web'),
     target: 'browser',
     minify: true,
@@ -207,20 +207,10 @@ async function build() {
     packages: 'bundle',
     naming: 'app.[hash].[ext]',
     drop: ['debugger'],
-    external: BROWSER_EXTERNALS,
-    plugins: [browserPlugin],
+    external: ['bun:sqlite', 'node:*', 'elysia', '@elysiajs/*'],
     define: {
       'process.env.NODE_ENV': JSON.stringify('production'),
-      'process.env': JSON.stringify({ NODE_ENV: 'production' }),
       'process.browser': 'true',
-      'process.version': JSON.stringify(''),
-      'process.platform': JSON.stringify('browser'),
-      'process': JSON.stringify({
-        env: { NODE_ENV: 'production' },
-        browser: true,
-        version: '',
-        platform: 'browser',
-      }),
     },
   })
 

@@ -2255,7 +2255,7 @@ export function isSQLitDebug(): boolean {
 
 /** Get SQLit port */
 export function getSQLitPort(): number {
-  return parseInt(process.env.SQLIT_PORT ?? process.env.PORT ?? '4400', 10)
+  return parseInt(process.env.SQLIT_PORT ?? '4661', 10)
 }
 
 /** Get SQLit data directory */

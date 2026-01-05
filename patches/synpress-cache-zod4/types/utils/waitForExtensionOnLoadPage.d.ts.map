@@ -1,1 +1,0 @@
-{"version":3,"file":"waitForExtensionOnLoadPage.d.ts","sourceRoot":"","sources":["../../src/utils/waitForExtensionOnLoadPage.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,KAAK,cAAc,EAAE,KAAK,IAAI,EAA8B,MAAM,iBAAiB,CAAA;AAiG5F;;GAEG;AACH,wBAAsB,0BAA0B,CAAC,OAAO,EAAE,cAAc,EAAE,aAAa,EAAE,MAAM,GAAG,OAAO,CAAC,IAAI,CAAC,CA0F9G"}

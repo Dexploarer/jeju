@@ -1,1 +1,0 @@
-{"version":3,"file":"defineWalletSetup.d.ts","sourceRoot":"","sources":["../src/defineWalletSetup.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,cAAc,EAAE,IAAI,EAAE,MAAM,iBAAiB,CAAA;AAK3D,MAAM,MAAM,mBAAmB,GAAG,CAAC,OAAO,EAAE,cAAc,EAAE,UAAU,EAAE,IAAI,KAAK,OAAO,CAAC,IAAI,CAAC,CAAA;AAG9F;;;;;;;;GAQG;AACH,wBAAgB,iBAAiB,CAAC,cAAc,EAAE,MAAM,EAAE,EAAE,EAAE,mBAAmB;;;;EAUhF"}

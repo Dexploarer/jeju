@@ -48,9 +48,14 @@ function getOrCreateDatabase(databaseId: string): Database {
 const defaultDb = getOrCreateDatabase('default')
 
 interface QueryBody {
-  sql: string
+  // Support both server formats (sql/params/databaseId) and Go adapter format (query/args/database)
+  sql?: string
+  query?: string
   params?: (string | number | boolean | null)[]
+  args?: (string | number | boolean | null)[]
   databaseId?: string
+  database?: string
+  assoc?: boolean
 }
 
 function executeQuery(body: QueryBody): {
@@ -67,10 +72,23 @@ function executeQuery(body: QueryBody): {
   blockHeight: number
 } {
   const start = performance.now()
-  const db = body.databaseId ? getOrCreateDatabase(body.databaseId) : defaultDb
+  
+  // Support both formats: (databaseId/sql/params) and (database/query/args)
+  const dbId = body.databaseId ?? body.database
+  const db = dbId ? getOrCreateDatabase(dbId) : defaultDb
 
-  const sql = body.sql.trim()
-  const params = body.params ?? []
+  const sqlStr = body.sql ?? body.query
+  if (!sqlStr) {
+    return {
+      success: false,
+      error: 'Missing sql or query parameter',
+      executionTime: 0,
+      blockHeight,
+    }
+  }
+  
+  const sql = sqlStr.trim()
+  const params = body.params ?? body.args ?? []
 
   // Determine if this is a read query or a write query that returns rows
   const isRead = /^(SELECT|PRAGMA|EXPLAIN)/i.test(sql)
@@ -145,7 +163,7 @@ const app = new Elysia()
     version: '1.0.0-local',
     databases: databases.size,
   }))
-  // Query endpoint (read)
+  // Query endpoint (read) - accepts both (sql/params/databaseId) and (query/args/database)
   .post(
     '/v1/query',
     ({ body }) => {
@@ -165,11 +183,17 @@ const app = new Elysia()
     },
     {
       body: t.Object({
-        sql: t.String(),
+        sql: t.Optional(t.String()),
+        query: t.Optional(t.String()),
         params: t.Optional(
           t.Array(t.Union([t.String(), t.Number(), t.Boolean(), t.Null()])),
         ),
+        args: t.Optional(
+          t.Array(t.Union([t.String(), t.Number(), t.Boolean(), t.Null()])),
+        ),
         databaseId: t.Optional(t.String()),
+        database: t.Optional(t.String()),
+        assoc: t.Optional(t.Boolean()),
       }),
     },
   )
@@ -188,7 +212,7 @@ const app = new Elysia()
       }
     }
   })
-  // Exec endpoint (write)
+  // Exec endpoint (write) - accepts both (sql/params/databaseId) and (query/args/database)
   .post(
     '/v1/exec',
     ({ body }) => {
@@ -208,11 +232,17 @@ const app = new Elysia()
     },
     {
       body: t.Object({
-        sql: t.String(),
+        sql: t.Optional(t.String()),
+        query: t.Optional(t.String()),
         params: t.Optional(
           t.Array(t.Union([t.String(), t.Number(), t.Boolean(), t.Null()])),
         ),
+        args: t.Optional(
+          t.Array(t.Union([t.String(), t.Number(), t.Boolean(), t.Null()])),
+        ),
         databaseId: t.Optional(t.String()),
+        database: t.Optional(t.String()),
+        assoc: t.Optional(t.Boolean()),
       }),
     },
   )
