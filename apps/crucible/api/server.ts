@@ -6,6 +6,7 @@ import {
 } from '@jejunetwork/api'
 import type { ContractCategoryName } from '@jejunetwork/config'
 import {
+  getContract,
   getCurrentNetwork,
   getEnvNumber,
   getEnvVar,
@@ -124,7 +125,7 @@ const activityStore = {
 function getContractSafe(
   category: ContractCategoryName,
   name: string,
-  _network: 'localnet' | 'testnet' | 'mainnet',
+  network: 'localnet' | 'testnet' | 'mainnet',
 ): `0x${string}` | undefined {
   // Check env var first
   const envKey = `${category.toUpperCase()}_${name.replace(/([A-Z])/g, '_$1').toUpperCase()}`
@@ -132,7 +133,12 @@ function getContractSafe(
   if (envVal && /^0x[a-fA-F0-9]{40}$/.test(envVal)) {
     return envVal as `0x${string}`
   }
-  return undefined
+  // Fall back to contracts.json via getContract
+  try {
+    return getContract(category, name, network)
+  } catch {
+    return undefined
+  }
 }
 
 /**
