@@ -162,24 +162,45 @@ function generateAuthorizePage(
   })
 }
 
-export async function createOAuthRouter(config: AuthConfig) {
-  // Initialize database tables
-  await initializeState()
+// Lazy initialization state
+let isInitialized = false
+let initializationPromise: Promise<void> | null = null
 
-  // Initialize KMS for secure token signing
-  await initializeKMS({
-    jwtSigningKeyId: config.jwtSigningKeyId ?? 'oauth3-jwt-signing',
-    jwtSignerAddress:
-      config.jwtSignerAddress ??
-      ('0x0000000000000000000000000000000000000000' as `0x${string}`),
-    serviceAgentId: config.serviceAgentId,
-    chainId: config.chainId ?? 'eip155:420691',
-    devMode: config.devMode ?? !isProductionEnv(),
-  })
+async function ensureInitialized(config: AuthConfig): Promise<void> {
+  if (isInitialized) return
+  if (initializationPromise) {
+    await initializationPromise
+    return
+  }
 
-  // Load sealed OAuth provider secrets
-  await loadSealedProviders()
+  initializationPromise = (async () => {
+    console.log('[OAuth3] Lazy initialization starting...')
 
+    // Initialize database tables
+    await initializeState()
+
+    // Initialize KMS for secure token signing
+    await initializeKMS({
+      jwtSigningKeyId: config.jwtSigningKeyId ?? 'oauth3-jwt-signing',
+      jwtSignerAddress:
+        config.jwtSignerAddress ??
+        ('0x0000000000000000000000000000000000000000' as `0x${string}`),
+      serviceAgentId: config.serviceAgentId,
+      chainId: config.chainId ?? 'eip155:420691',
+      devMode: config.devMode ?? !isProductionEnv(),
+    })
+
+    // Load sealed OAuth provider secrets
+    await loadSealedProviders()
+
+    isInitialized = true
+    console.log('[OAuth3] Lazy initialization complete')
+  })()
+
+  await initializationPromise
+}
+
+export function createOAuthRouter(config: AuthConfig) {
   const network = getCurrentNetwork()
   const host = getLocalhostHost()
   const baseUrl =
@@ -191,6 +212,8 @@ export async function createOAuthRouter(config: AuthConfig) {
       .get(
         '/authorize',
         async ({ query, set }) => {
+          await ensureInitialized(config)
+
           if (!query.client_id || !query.redirect_uri) {
             set.status = 400
             return {
@@ -242,6 +265,8 @@ export async function createOAuthRouter(config: AuthConfig) {
       .post(
         '/token',
         async ({ body, set }) => {
+          await ensureInitialized(config)
+
           if (body.grant_type === 'authorization_code') {
             if (!body.code || !body.client_id) {
               set.status = 400
@@ -461,6 +486,8 @@ export async function createOAuthRouter(config: AuthConfig) {
       )
 
       .get('/userinfo', async ({ headers, set }) => {
+        await ensureInitialized(config)
+
         const auth = headers.authorization
         if (!auth?.startsWith('Bearer ')) {
           set.status = 401
@@ -497,6 +524,8 @@ export async function createOAuthRouter(config: AuthConfig) {
       .get(
         '/social/:provider',
         async ({ params, query, set }) => {
+          await ensureInitialized(config)
+
           const providerName = params.provider.toLowerCase()
 
           // Map to AuthProvider enum
@@ -569,6 +598,8 @@ export async function createOAuthRouter(config: AuthConfig) {
       .get(
         '/callback/:provider',
         async ({ params, query, set }) => {
+          await ensureInitialized(config)
+
           const providerName = params.provider.toLowerCase()
 
           if (query.error) {

@@ -5,7 +5,10 @@
 
 import { expect, test } from '@playwright/test'
 
+const isRemote = process.env.JEJU_NETWORK === 'testnet' || process.env.JEJU_NETWORK === 'mainnet'
+
 test.describe('Model Hub', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test('displays model hub page', async ({ page }) => {
     await page.goto('/models')
     await expect(

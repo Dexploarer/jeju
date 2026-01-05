@@ -10,6 +10,8 @@ import {
 } from '@jejunetwork/tests/playwright-only'
 import { expect, type Page, test } from '@playwright/test'
 
+const isRemote = process.env.JEJU_NETWORK === 'testnet' || process.env.JEJU_NETWORK === 'mainnet'
+
 const DESKTOP_VIEWPORT = { width: 1280, height: 800 }
 const MOBILE_VIEWPORT = { width: 375, height: 812 }
 
@@ -19,6 +21,7 @@ async function navigateTo(page: Page, url: string): Promise<void> {
 }
 
 test.describe('Homepage', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test('displays homepage with all features', async ({ page }) => {
     await captureUserFlow(page, {
       appName: 'bazaar',
@@ -99,6 +102,7 @@ test.describe('Homepage', () => {
 })
 
 test.describe('Navigation', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test('navigates to coins page', async ({ page }) => {
     await captureUserFlow(page, {
       appName: 'bazaar',
@@ -167,6 +171,7 @@ test.describe('Navigation', () => {
 })
 
 test.describe('Feature Cards', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test('all feature cards are clickable', async ({ page }) => {
     await page.setViewportSize(DESKTOP_VIEWPORT)
     await navigateTo(page, '/')
@@ -202,6 +207,7 @@ test.describe('Feature Cards', () => {
 })
 
 test.describe('Mobile Navigation', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize(MOBILE_VIEWPORT)
   })

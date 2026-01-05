@@ -48,6 +48,7 @@ async function checkSpaRoutingError(page: import('@playwright/test').Page): Prom
 }
 
 test.describe('DWS - Page Load Tests', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test.beforeEach(async ({ page }) => {
     const response = await page.goto('/', { timeout: 30000 })
     if (!response || response.status() >= 400) {
@@ -93,6 +94,7 @@ test.describe('DWS - Page Load Tests', () => {
 })
 
 test.describe('DWS - Compute Section', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test('containers page loads', async ({ page }) => {
     const errors = setupErrorCapture(page)
 

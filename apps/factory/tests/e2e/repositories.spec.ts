@@ -5,7 +5,10 @@
 
 import { expect, test } from '@playwright/test'
 
+const isRemote = process.env.JEJU_NETWORK === 'testnet' || process.env.JEJU_NETWORK === 'mainnet'
+
 test.describe('Repository List', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test('displays repository list', async ({ page }) => {
     await page.goto('/git')
     await expect(

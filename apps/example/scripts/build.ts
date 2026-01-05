@@ -5,11 +5,12 @@
  *
  * Builds frontend and API for DWS deployment:
  * - Processes Tailwind CSS with CLI
- * - Bundles frontend TypeScript
+ * - Bundles frontend TypeScript (React)
  * - Bundles API server
  * - Copies public assets
  */
 
+import type { BunPlugin } from 'bun'
 import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -18,6 +19,83 @@ import { reportBundleSizes } from '@jejunetwork/shared'
 
 const APP_DIR = resolve(import.meta.dir, '..')
 const outdir = resolve(APP_DIR, 'dist')
+
+// React paths for browser build
+const reactPath = require.resolve('react')
+const reactDomPath = require.resolve('react-dom')
+
+// Plugin to resolve workspace packages for browser builds
+const browserPlugin: BunPlugin = {
+  name: 'browser-resolve',
+  setup(build) {
+    // Resolve React properly
+    build.onResolve({ filter: /^react$/ }, () => ({ path: reactPath }))
+    build.onResolve({ filter: /^react\/jsx-runtime$/ }, () => ({
+      path: require.resolve('react/jsx-runtime'),
+    }))
+    build.onResolve({ filter: /^react\/jsx-dev-runtime$/ }, () => ({
+      path: require.resolve('react/jsx-dev-runtime'),
+    }))
+    build.onResolve({ filter: /^react-dom$/ }, () => ({ path: reactDomPath }))
+    build.onResolve({ filter: /^react-dom\/client$/ }, () => ({
+      path: require.resolve('react-dom/client'),
+    }))
+
+    // Resolve workspace packages from source for proper tree-shaking
+    build.onResolve({ filter: /^@jejunetwork\/shared$/ }, () => ({
+      path: resolve(APP_DIR, '../../packages/shared/src/index.ts'),
+    }))
+    build.onResolve({ filter: /^@jejunetwork\/types$/ }, () => ({
+      path: resolve(APP_DIR, '../../packages/types/src/index.ts'),
+    }))
+    build.onResolve({ filter: /^@jejunetwork\/sdk$/ }, () => ({
+      path: resolve(APP_DIR, '../../packages/sdk/src/index.ts'),
+    }))
+    build.onResolve({ filter: /^@jejunetwork\/config$/ }, () => ({
+      path: resolve(APP_DIR, '../../packages/config/index.ts'),
+    }))
+    build.onResolve({ filter: /^@jejunetwork\/auth\/react$/ }, () => ({
+      path: resolve(APP_DIR, '../../packages/auth/src/react/index.ts'),
+    }))
+    build.onResolve({ filter: /^@jejunetwork\/auth\/types$/ }, () => ({
+      path: resolve(APP_DIR, '../../packages/auth/src/types.ts'),
+    }))
+    build.onResolve({ filter: /^@jejunetwork\/auth$/ }, () => ({
+      path: resolve(APP_DIR, '../../packages/auth/src/index.ts'),
+    }))
+    build.onResolve({ filter: /^@jejunetwork\/ui\/auth$/ }, () => ({
+      path: resolve(APP_DIR, '../../packages/ui/src/auth/index.ts'),
+    }))
+    build.onResolve({ filter: /^@jejunetwork\/ui$/ }, () => ({
+      path: resolve(APP_DIR, '../../packages/ui/src/index.ts'),
+    }))
+  },
+}
+
+// Node.js built-ins that need to be external for browser builds
+const BROWSER_EXTERNALS = [
+  'bun:sqlite',
+  'child_process',
+  'http2',
+  'tls',
+  'dgram',
+  'fs',
+  'net',
+  'dns',
+  'stream',
+  'crypto',
+  'module',
+  'worker_threads',
+  'node:url',
+  'node:fs',
+  'node:path',
+  'node:crypto',
+  'node:events',
+  'node:module',
+  'node:worker_threads',
+  'elysia',
+  '@elysiajs/*',
+]
 
 async function buildCSS(): Promise<string> {
   console.log('[Example] Building CSS with Tailwind...')
@@ -117,22 +195,27 @@ async function build() {
   reportBundleSizes(apiResult, 'Example API')
   console.log('[Example] API built successfully')
 
-  // Build frontend
+  // Build frontend (React)
   console.log('[Example] Building frontend...')
   const frontendResult = await Bun.build({
-    entrypoints: [resolve(APP_DIR, 'web/app.ts')],
+    entrypoints: [resolve(APP_DIR, 'web/main.tsx')],
     outdir: join(outdir, 'web'),
     target: 'browser',
     minify: true,
     sourcemap: 'external',
     splitting: false,
     packages: 'bundle',
-    naming: '[name].[hash].[ext]',
+    naming: 'app.[hash].[ext]',
     drop: ['debugger'],
-    external: ['bun:sqlite', 'node:*', 'elysia', '@elysiajs/*'],
+    external: BROWSER_EXTERNALS,
+    plugins: [browserPlugin],
     define: {
       'process.env.NODE_ENV': JSON.stringify('production'),
       'process.browser': 'true',
+      'globalThis.process': JSON.stringify({
+        env: { NODE_ENV: 'production' },
+        browser: true,
+      }),
     },
   })
 

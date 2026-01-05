@@ -23,9 +23,30 @@ import {
 import { DEFAULT_PORTS } from '../types'
 import { createInferenceServer, type LocalInferenceServer } from './inference'
 
-const ContractAddressValueSchema: z.ZodType<string | Record<string, string>> =
-  z.lazy(() => z.union([z.string(), z.record(z.string(), z.string())]))
-const ContractAddressesSchema = z.record(z.string(), ContractAddressValueSchema)
+// Contract address values can be:
+// - Simple address string: "0x..."
+// - Record of addresses: { pool: "0x...", router: "0x..." }
+// - Complex nested objects with arrays (e.g., tfmm pools, perps config)
+const JsonValueSchema: z.ZodType<
+  string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue }
+> = z.lazy(() =>
+  z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.null(),
+    z.array(JsonValueSchema),
+    z.record(z.string(), JsonValueSchema),
+  ]),
+)
+type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue }
+const ContractAddressesSchema = z.record(z.string(), JsonValueSchema)
 
 export interface ServiceConfig {
   inference: boolean
@@ -512,10 +533,7 @@ class ServicesOrchestrator {
     }
   }
 
-  private loadContractAddresses(): Record<
-    string,
-    string | Record<string, string>
-  > {
+  private loadContractAddresses(): Record<string, JsonValue> {
     const paths = [
       join(
         this.rootDir,
@@ -539,9 +557,9 @@ class ServicesOrchestrator {
               ContractAddressesSchema,
               `contract addresses at ${path}`,
             )
-            return validated as Record<string, string | Record<string, string>>
+            return validated as Record<string, JsonValue>
           }
-          return {} as Record<string, string | Record<string, string>>
+          return {} as Record<string, JsonValue>
         } else {
           const content = readFileSync(path, 'utf-8')
           const contracts: Record<string, string> = {}

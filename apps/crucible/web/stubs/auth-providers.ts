@@ -4,6 +4,17 @@
  * Exported as classes since the SDK uses `new Provider(...)`
  */
 
+export function generateFarcasterSignInMessage(_params: {
+  domain: string
+  address: string
+  uri: string
+  nonce?: string
+  chainId?: number
+  statement?: string
+}): string {
+  throw new Error('Farcaster sign-in requires server-side support')
+}
+
 export class FarcasterProvider {
   name = 'farcaster'
   async authenticate(): Promise<never> {

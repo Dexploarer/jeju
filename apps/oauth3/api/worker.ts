@@ -51,7 +51,7 @@ function parseAddress(
   return value
 }
 
-async function createApp(env: Env) {
+function createApp(env: Env) {
   // Set environment variables for the app
   process.env.RPC_URL = env.RPC_URL
   process.env.MPC_REGISTRY_ADDRESS = env.MPC_REGISTRY_ADDRESS
@@ -167,7 +167,7 @@ async function createApp(env: Env) {
       docs: 'https://docs.jejunetwork.org/auth',
     }))
     .use(createAuthInitRouter(config))
-    .use(await createOAuthRouter(config))
+    .use(createOAuthRouter(config))
     .use(createWalletRouter(config))
     .use(createFarcasterRouter(config))
     .use(createSessionRouter(config))
@@ -177,16 +177,22 @@ async function createApp(env: Env) {
 }
 
 // Cloudflare Workers / DWS handler
-let app: Awaited<ReturnType<typeof createApp>> | null = null
+let app: ReturnType<typeof createApp> | null = null
 
-export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+const workerHandler = {
+  fetch(request: Request, env: Env): Response | Promise<Response> {
     if (!app) {
-      app = await createApp(env)
+      app = createApp(env)
     }
     return app.fetch(request)
   },
 }
+
+// Set global handler for DWS runtime compatibility
+globalThis.__WORKER_HANDLER__ = workerHandler
+
+export { workerHandler }
+export default workerHandler
 
 /**
  * Bun server entry point - only runs when executed directly
@@ -208,12 +214,11 @@ if (isMainModule) {
     SQLIT_DATABASE_ID: process.env.SQLIT_DATABASE_ID ?? '',
   }
 
-  createApp(devEnv).then((appInstance) => {
-    console.log(`[OAuth3 Worker] Starting on http://${host}:${port}`)
-    Bun.serve({
-      port,
-      hostname: host,
-      fetch: appInstance.fetch,
-    })
+  const appInstance = createApp(devEnv)
+  console.log(`[OAuth3 Worker] Starting on http://${host}:${port}`)
+  Bun.serve({
+    port,
+    hostname: host,
+    fetch: appInstance.fetch,
   })
 }

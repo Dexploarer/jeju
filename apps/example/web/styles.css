@@ -6,9 +6,31 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
+  /* Brand gradients */
   --gradient-brand: linear-gradient(135deg, #7c3aed 0%, #06b6d4 100%);
   --gradient-card: linear-gradient(180deg, rgba(124, 58, 237, 0.05) 0%, rgba(6, 182, 212, 0.05) 100%);
   --shadow-glow: 0 0 40px rgba(124, 58, 237, 0.15);
+
+  /* OAuth3 component CSS variables (light mode) */
+  --bg-secondary: #f3f4f6;
+  --surface: #ffffff;
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --border: #e5e7eb;
+  --color-primary: #7c3aed;
+  --shadow-card: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-secondary: #1f2937;
+    --surface: #111827;
+    --text-primary: #f9fafb;
+    --text-secondary: #9ca3af;
+    --border: #374151;
+    --color-primary: #7c3aed;
+    --shadow-card: 0 4px 6px -1px rgb(0 0 0 / 0.3);
+  }
 }
 
 /* Focus styles for accessibility */
@@ -123,7 +145,8 @@ body {
 }
 
 /* Gradient text */
-.gradient-text {
+.gradient-text,
+.text-gradient {
   background: var(--gradient-brand);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;

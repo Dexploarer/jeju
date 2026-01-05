@@ -5,13 +5,90 @@
  * Starts both API and frontend with hot reload.
  */
 
+import type { BunPlugin, Subprocess } from 'bun'
 import { watch } from 'node:fs'
 import { mkdir, readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { getLocalhostHost } from '@jejunetwork/config'
-import type { Subprocess } from 'bun'
 
 const APP_DIR = resolve(import.meta.dir, '..')
+
+// React paths for browser build
+const reactPath = require.resolve('react')
+const reactDomPath = require.resolve('react-dom')
+
+// Plugin to resolve workspace packages for browser builds
+const browserPlugin: BunPlugin = {
+  name: 'browser-resolve',
+  setup(build) {
+    // Resolve React properly
+    build.onResolve({ filter: /^react$/ }, () => ({ path: reactPath }))
+    build.onResolve({ filter: /^react\/jsx-runtime$/ }, () => ({
+      path: require.resolve('react/jsx-runtime'),
+    }))
+    build.onResolve({ filter: /^react\/jsx-dev-runtime$/ }, () => ({
+      path: require.resolve('react/jsx-dev-runtime'),
+    }))
+    build.onResolve({ filter: /^react-dom$/ }, () => ({ path: reactDomPath }))
+    build.onResolve({ filter: /^react-dom\/client$/ }, () => ({
+      path: require.resolve('react-dom/client'),
+    }))
+
+    // Resolve workspace packages from source
+    build.onResolve({ filter: /^@jejunetwork\/shared$/ }, () => ({
+      path: resolve(APP_DIR, '../../packages/shared/src/index.ts'),
+    }))
+    build.onResolve({ filter: /^@jejunetwork\/types$/ }, () => ({
+      path: resolve(APP_DIR, '../../packages/types/src/index.ts'),
+    }))
+    build.onResolve({ filter: /^@jejunetwork\/sdk$/ }, () => ({
+      path: resolve(APP_DIR, '../../packages/sdk/src/index.ts'),
+    }))
+    build.onResolve({ filter: /^@jejunetwork\/config$/ }, () => ({
+      path: resolve(APP_DIR, '../../packages/config/index.ts'),
+    }))
+    build.onResolve({ filter: /^@jejunetwork\/auth\/react$/ }, () => ({
+      path: resolve(APP_DIR, '../../packages/auth/src/react/index.ts'),
+    }))
+    build.onResolve({ filter: /^@jejunetwork\/auth\/types$/ }, () => ({
+      path: resolve(APP_DIR, '../../packages/auth/src/types.ts'),
+    }))
+    build.onResolve({ filter: /^@jejunetwork\/auth$/ }, () => ({
+      path: resolve(APP_DIR, '../../packages/auth/src/index.ts'),
+    }))
+    build.onResolve({ filter: /^@jejunetwork\/ui\/auth$/ }, () => ({
+      path: resolve(APP_DIR, '../../packages/ui/src/auth/index.ts'),
+    }))
+    build.onResolve({ filter: /^@jejunetwork\/ui$/ }, () => ({
+      path: resolve(APP_DIR, '../../packages/ui/src/index.ts'),
+    }))
+  },
+}
+
+// Node.js built-ins that need to be external for browser builds
+const BROWSER_EXTERNALS = [
+  'bun:sqlite',
+  'child_process',
+  'http2',
+  'tls',
+  'dgram',
+  'fs',
+  'net',
+  'dns',
+  'stream',
+  'crypto',
+  'module',
+  'worker_threads',
+  'node:url',
+  'node:fs',
+  'node:path',
+  'node:crypto',
+  'node:events',
+  'node:module',
+  'node:worker_threads',
+  'elysia',
+  '@elysiajs/*',
+]
 const API_PORT = Number(process.env.API_PORT) || 3001
 const FRONTEND_PORT = Number(process.env.PORT) || 3000
 
@@ -95,16 +172,22 @@ async function buildFrontend(): Promise<boolean> {
   const startTime = Date.now()
 
   const result = await Bun.build({
-    entrypoints: [resolve(APP_DIR, 'web/app.ts')],
+    entrypoints: [resolve(APP_DIR, 'web/main.tsx')],
     outdir: resolve(APP_DIR, 'dist/dev'),
     target: 'browser',
     minify: false,
     sourcemap: 'inline',
-    external: ['bun:sqlite', 'node:*', 'elysia', '@elysiajs/*'],
+    external: BROWSER_EXTERNALS,
+    plugins: [browserPlugin],
     define: {
       'process.env.NODE_ENV': JSON.stringify('development'),
       'process.browser': 'true',
+      'globalThis.process': JSON.stringify({
+        env: { NODE_ENV: 'development' },
+        browser: true,
+      }),
     },
+    naming: 'app.js',
   })
 
   buildInProgress = false
@@ -136,8 +219,8 @@ async function startFrontendServer(): Promise<boolean> {
   }
 
   const indexHtml = await readFile(resolve(APP_DIR, 'web/index.html'), 'utf-8')
-  // Replace ./app.ts with /app.js to serve the built bundle
-  const devHtml = indexHtml.replace('./app.ts', '/app.js')
+  // Replace ./main.tsx with /app.js to serve the built bundle
+  const devHtml = indexHtml.replace('./main.tsx', '/app.js')
 
   const host = getLocalhostHost()
 

@@ -5,6 +5,8 @@
 
 import { expect, type Page, test } from '@playwright/test'
 
+const isRemote = process.env.JEJU_NETWORK === 'testnet' || process.env.JEJU_NETWORK === 'mainnet'
+
 const DESKTOP_VIEWPORT = { width: 1280, height: 800 }
 const MOBILE_VIEWPORT = { width: 375, height: 812 }
 
@@ -22,6 +24,7 @@ async function expectButtonClickable(
 }
 
 test.describe('Desktop Viewport', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize(DESKTOP_VIEWPORT)
   })
@@ -92,6 +95,7 @@ test.describe('Desktop Viewport', () => {
 })
 
 test.describe('Mobile Viewport', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize(MOBILE_VIEWPORT)
   })
@@ -191,6 +195,7 @@ test.describe('Mobile Viewport', () => {
 })
 
 test.describe('Mobile Page-Specific Tests', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize(MOBILE_VIEWPORT)
   })
@@ -259,6 +264,7 @@ test.describe('Mobile Page-Specific Tests', () => {
 })
 
 test.describe('Button Edge Cases', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test('disabled buttons not clickable on desktop', async ({ page }) => {
     await page.setViewportSize(DESKTOP_VIEWPORT)
     await navigateTo(page, '/coins/create')

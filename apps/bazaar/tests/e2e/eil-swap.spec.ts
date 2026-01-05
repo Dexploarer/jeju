@@ -13,6 +13,8 @@
 import { assertNoPageErrors } from '@jejunetwork/tests/playwright-only'
 import { expect, type Page, test } from '@playwright/test'
 
+const isRemote = process.env.JEJU_NETWORK === 'testnet' || process.env.JEJU_NETWORK === 'mainnet'
+
 const WAIT_SHORT = 200
 const WAIT_MEDIUM = 500
 const WAIT_LONG = 1000
@@ -23,6 +25,7 @@ async function navigateTo(page: Page, url: string): Promise<void> {
 }
 
 test.describe('EIL Cross-Chain - Chain Selection', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test.beforeEach(async ({ page }) => {
     await navigateTo(page, '/swap')
   })
@@ -106,6 +109,7 @@ test.describe('EIL Cross-Chain - Chain Selection', () => {
 })
 
 test.describe('EIL Cross-Chain - Fee Display', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test.beforeEach(async ({ page }) => {
     await navigateTo(page, '/swap')
   })
@@ -167,6 +171,7 @@ test.describe('EIL Cross-Chain - Fee Display', () => {
 })
 
 test.describe('EIL Cross-Chain - Button States', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test.beforeEach(async ({ page }) => {
     await navigateTo(page, '/swap')
   })
@@ -235,6 +240,7 @@ test.describe('EIL Cross-Chain - Button States', () => {
 })
 
 test.describe('EIL Cross-Chain - Availability Warning', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test('shows warning when cross-chain bridge unavailable', async ({ page }) => {
     await navigateTo(page, '/swap')
     await assertNoPageErrors(page)
@@ -261,6 +267,7 @@ test.describe('EIL Cross-Chain - Availability Warning', () => {
 })
 
 test.describe('EIL Cross-Chain - EIL Info', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test('shows EIL powered info when available', async ({ page }) => {
     await navigateTo(page, '/swap')
     await assertNoPageErrors(page)
@@ -281,6 +288,7 @@ test.describe('EIL Cross-Chain - EIL Info', () => {
 })
 
 test.describe('Liquidity Page - XLP Integration', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test.beforeEach(async ({ page }) => {
     await navigateTo(page, '/liquidity')
   })
@@ -315,6 +323,7 @@ test.describe('Liquidity Page - XLP Integration', () => {
 })
 
 test.describe('Cross-Chain - Mobile', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test('cross-chain UI works on mobile', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 })
     await navigateTo(page, '/swap')

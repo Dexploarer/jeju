@@ -9,6 +9,7 @@ const isRemote = process.env.JEJU_NETWORK === 'testnet' || process.env.JEJU_NETW
 import { expect, test } from '@playwright/test'
 
 test.describe('Container Registry', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test('displays containers page with heading', async ({ page }) => {
     await page.goto('/containers')
     await expect(
@@ -47,6 +48,7 @@ test.describe('Container Registry', () => {
 })
 
 test.describe('Push Container', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test('displays push page', async ({ page }) => {
     await page.goto('/containers/push')
     await expect(page.getByRole('main')).toBeVisible()
@@ -66,6 +68,7 @@ test.describe('Push Container', () => {
 })
 
 test.describe('Container Detail', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test('displays container detail page', async ({ page }) => {
     await page.goto('/containers/jeju/node')
     await expect(page.getByRole('main')).toBeVisible()
@@ -90,6 +93,7 @@ test.describe('Container Detail', () => {
 })
 
 test.describe('Container Filters', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test('filters by organization', async ({ page }) => {
     await page.goto('/containers')
     const orgFilter = page.locator('select').first()

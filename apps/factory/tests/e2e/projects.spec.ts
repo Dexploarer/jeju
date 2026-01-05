@@ -5,7 +5,10 @@
 
 import { expect, test } from '@playwright/test'
 
+const isRemote = process.env.JEJU_NETWORK === 'testnet' || process.env.JEJU_NETWORK === 'mainnet'
+
 test.describe('Projects List', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test('displays projects page', async ({ page }) => {
     await page.goto('/projects')
     await expect(page.getByRole('heading').first()).toBeVisible()

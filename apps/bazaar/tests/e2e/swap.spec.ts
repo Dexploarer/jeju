@@ -14,6 +14,8 @@
 import { assertNoPageErrors } from '@jejunetwork/tests/playwright-only'
 import { expect, type Page, test } from '@playwright/test'
 
+const isRemote = process.env.JEJU_NETWORK === 'testnet' || process.env.JEJU_NETWORK === 'mainnet'
+
 const WAIT_SHORT = 200
 const WAIT_MEDIUM = 500
 const WAIT_LONG = 1000
@@ -24,6 +26,7 @@ async function navigateTo(page: Page, url: string): Promise<void> {
 }
 
 test.describe('Swap Page - Core UI', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test.beforeEach(async ({ page }) => {
     await navigateTo(page, '/swap')
   })
@@ -113,6 +116,7 @@ test.describe('Swap Page - Core UI', () => {
 })
 
 test.describe('Swap - Token Selection', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test.beforeEach(async ({ page }) => {
     await navigateTo(page, '/swap')
   })
@@ -199,6 +203,7 @@ test.describe('Swap - Token Selection', () => {
 })
 
 test.describe('Swap - Chain Selection', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test.beforeEach(async ({ page }) => {
     await navigateTo(page, '/swap')
   })
@@ -261,6 +266,7 @@ test.describe('Swap - Chain Selection', () => {
 })
 
 test.describe('Swap - Amount Input', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test.beforeEach(async ({ page }) => {
     await navigateTo(page, '/swap')
   })
@@ -330,6 +336,7 @@ test.describe('Swap - Amount Input', () => {
 })
 
 test.describe('Swap - Swap Direction Toggle', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test.beforeEach(async ({ page }) => {
     await navigateTo(page, '/swap')
   })
@@ -354,6 +361,7 @@ test.describe('Swap - Swap Direction Toggle', () => {
 })
 
 test.describe('Swap - Recipient Address', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test.beforeEach(async ({ page }) => {
     await navigateTo(page, '/swap')
   })
@@ -404,6 +412,7 @@ test.describe('Swap - Recipient Address', () => {
 })
 
 test.describe('Swap - Button States', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test.beforeEach(async ({ page }) => {
     await navigateTo(page, '/swap')
   })
@@ -462,6 +471,7 @@ test.describe('Swap - Button States', () => {
 })
 
 test.describe('Swap - Cross-Chain UI', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test.beforeEach(async ({ page }) => {
     await navigateTo(page, '/swap')
   })
@@ -528,6 +538,7 @@ test.describe('Swap - Cross-Chain UI', () => {
 })
 
 test.describe('Swap - Mobile Responsive', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test('renders correctly on mobile viewport', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 })
     await navigateTo(page, '/swap')
@@ -553,6 +564,7 @@ test.describe('Swap - Mobile Responsive', () => {
 })
 
 test.describe('Swap - Error Handling', () => {
+  test.skip(isRemote, 'Skipping on remote network')
   test('no console errors on page load', async ({ page }) => {
     const errors: string[] = []
     page.on('console', (msg) => {

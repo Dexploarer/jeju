@@ -126,10 +126,15 @@ async function main() {
   console.log('╔════════════════════════════════════════════════════════════╗')
   console.log('║                  Deployment Complete                        ║')
   console.log('╠════════════════════════════════════════════════════════════╣')
+  const domainSuffix = options.network === 'mainnet' 
+    ? 'jejunetwork.org' 
+    : options.network === 'testnet' 
+      ? 'testnet.jejunetwork.org' 
+      : 'local.jejunetwork.org'
   for (const appName of appsToProcess) {
     const appConfig = APP_CONFIGS[appName]
     console.log(
-      `${`║  ${appConfig.jnsName.padEnd(15)} -> ${appConfig.name}.jejunetwork.org`.padEnd(60)}║`,
+      `${`║  ${appConfig.jnsName.padEnd(15)} -> ${appConfig.name}.${domainSuffix}`.padEnd(60)}║`,
     )
   }
   console.log('╚════════════════════════════════════════════════════════════╝')
@@ -225,12 +230,55 @@ async function deployApp(
     return
   }
 
-  // Configure CDN
+  // Register app with DWS for routing
+  console.log(`[${appName}] Registering app with DWS...`)
+  if (!options.dryRun) {
+    // Convert uploadedFiles map to staticFiles object
+    const staticFiles: Record<string, string> = {}
+    for (const [path, cid] of uploadedFiles.entries()) {
+      staticFiles[path] = cid
+    }
+
+    const appDeployment = {
+      name: appName,
+      jnsName: appConfig.jnsName,
+      frontendCid: indexCid, // Main CID for fallback
+      staticFiles, // Individual file CIDs for serving
+      backendWorkerId: appConfig.hasWorker ? `${appName}-worker` : null,
+      backendEndpoint: null,
+      apiPaths: ['/api/', '/health', '/a2a/', '/mcp/'],
+      spa: true,
+      enabled: true,
+    }
+
+    try {
+      const response = await fetch(`${config.dwsUrl}/apps/deployed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(appDeployment),
+      })
+      if (response.ok) {
+        console.log(`[${appName}] App registered with DWS`)
+      } else {
+        const errorText = await response.text()
+        console.warn(`[${appName}] App registration returned ${response.status}: ${errorText}`)
+      }
+    } catch (e) {
+      console.warn(`[${appName}] App registration failed: ${e}`)
+    }
+  }
+
+  // Configure CDN (legacy, kept for backward compatibility)
   console.log(`[${appName}] Configuring CDN...`)
   if (!options.dryRun) {
+    const networkSuffix = options.network === 'mainnet' 
+      ? 'jejunetwork.org' 
+      : options.network === 'testnet' 
+        ? 'testnet.jejunetwork.org' 
+        : 'local.jejunetwork.org'
     const cdnConfig = {
       name: appName,
-      domain: `${appName}.jejunetwork.org`,
+      domain: `${appName}.${networkSuffix}`,
       jnsName: appConfig.jnsName,
       spa: {
         enabled: true,
@@ -298,27 +346,50 @@ async function uploadDirectory(
       return
     }
 
+    // Skip source maps to reduce upload size and avoid timeouts
+    if (relativePath.endsWith('.map')) {
+      console.log(`   Skipping source map: ${relativePath}`)
+      return
+    }
+
     const content = readFileSync(filePath)
-    const formData = new FormData()
-    formData.append('file', new Blob([content]), `${prefix}/${relativePath}`)
-    formData.append('name', `${prefix}/${relativePath}`)
+    
+    // Retry logic for transient failures
+    let lastError: Error | null = null
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const formData = new FormData()
+        formData.append('file', new Blob([content]), `${prefix}/${relativePath}`)
+        formData.append('name', `${prefix}/${relativePath}`)
 
-    const response = await fetch(`${dwsUrl}/storage/upload`, {
-      method: 'POST',
-      body: formData,
-    })
+        const response = await fetch(`${dwsUrl}/storage/upload`, {
+          method: 'POST',
+          body: formData,
+        })
 
-    if (!response.ok) {
-      throw new Error(`Upload failed for ${relativePath}: ${response.status}`)
+        if (!response.ok) {
+          const errorText = await response.text()
+          throw new Error(`Upload failed for ${relativePath}: ${response.status} - ${errorText}`)
+        }
+
+        const rawJson = await response.json()
+        const parsed = UploadResponseSchema.safeParse(rawJson)
+        if (!parsed.success) {
+          throw new Error(`Invalid upload response for ${relativePath}`)
+        }
+
+        results.set(key, parsed.data.cid)
+        return
+      } catch (e) {
+        lastError = e instanceof Error ? e : new Error(String(e))
+        if (attempt < 2) {
+          console.log(`   Retry ${attempt + 1}/3 for ${relativePath}...`)
+          await new Promise(r => setTimeout(r, 1000 * (attempt + 1)))
+        }
+      }
     }
-
-    const rawJson = await response.json()
-    const parsed = UploadResponseSchema.safeParse(rawJson)
-    if (!parsed.success) {
-      throw new Error(`Invalid upload response for ${relativePath}`)
-    }
-
-    results.set(key, parsed.data.cid)
+    
+    throw lastError
   }
 
   async function processDir(dir: string, baseDir: string): Promise<void> {
