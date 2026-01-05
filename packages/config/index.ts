@@ -92,6 +92,7 @@ export * from './rpc-chains'
 import { getBridgeRelayerUrl } from './ports'
 
 export * from './schemas'
+export * from './test-config'
 
 // Types from schemas.ts
 

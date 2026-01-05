@@ -23,6 +23,7 @@
     "@elizaos/core": "^1.6.6",
     "@elysiajs/cors": "^1.4.0",
     "@jejunetwork/api": "workspace:*",
+    "@jejunetwork/cache": "workspace:*",
     "@jejunetwork/config": "workspace:*",
     "@jejunetwork/messaging": "workspace:*",
     "@jejunetwork/shared": "workspace:*",

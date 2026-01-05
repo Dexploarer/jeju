@@ -1,0 +1,132 @@
+# SQLit Adapter for Testnet
+# Simple Bun-based SQLit HTTP API using local SQLite storage
+# This provides the SQLit API without requiring the full decentralized SQLit stack
+#
+# Deploy: kubectl apply -f packages/deployment/kubernetes/manifests/sqlit-adapter-testnet.yaml
+# Check: kubectl -n dws get pods -l app=sqlit-adapter
+#
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dws
+  labels:
+    name: dws
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sqlit-adapter
+  namespace: dws
+  labels:
+    app: sqlit-adapter
+    app.kubernetes.io/name: sqlit-adapter
+    app.kubernetes.io/component: database
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sqlit-adapter
+  template:
+    metadata:
+      labels:
+        app: sqlit-adapter
+        app.kubernetes.io/name: sqlit-adapter
+    spec:
+      containers:
+        - name: sqlit-adapter
+          image: 502713364895.dkr.ecr.us-east-1.amazonaws.com/jeju/sqlit-adapter:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8546
+              protocol: TCP
+          env:
+            - name: PORT
+              value: "8546"
+            - name: NODE_ENV
+              value: "production"
+            - name: DATA_DIR
+              value: "/data/sqlit/databases"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /v1/status
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /v1/status
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: data
+              mountPath: /data/sqlit
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: sqlit-adapter-data
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sqlit-adapter-data
+  namespace: dws
+  labels:
+    app: sqlit-adapter
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: gp3
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sqlit-adapter
+  namespace: dws
+  labels:
+    app: sqlit-adapter
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8546
+      targetPort: http
+      protocol: TCP
+  selector:
+    app: sqlit-adapter
+---
+# NetworkPolicy to allow DWS to connect to sqlit-adapter
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: sqlit-adapter-allow-dws
+  namespace: dws
+spec:
+  podSelector:
+    matchLabels:
+      app: sqlit-adapter
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: dws
+      ports:
+        - protocol: TCP
+          port: 8546

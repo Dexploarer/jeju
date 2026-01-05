@@ -1,7 +1,5 @@
 /**
  * @jejunetwork/durable-objects - Namespace and Stub Implementation
- *
- * Provides the binding interface for workers to access Durable Objects.
  */
 
 import { DWSObjectId } from './id.js'
@@ -12,27 +10,14 @@ import type {
   GetDurableObjectOptions,
 } from './types.js'
 
-/**
- * Configuration for the DO router
- */
 export interface DORouterConfig {
-  /** Base URL for the DWS API that handles DO routing */
   dwsApiUrl: string
-  /** Timeout for requests to DOs (ms) */
   requestTimeout?: number
-  /** Enable debug logging */
-  debug?: boolean
 }
 
-/**
- * DWS implementation of DurableObjectStub
- *
- * Routes requests to the DO instance via the DWS API.
- */
 export class DWSObjectStub implements DurableObjectStub {
   readonly id: DurableObjectId
   readonly name?: string
-
   private readonly namespace: string
   private readonly dwsApiUrl: string
   private readonly requestTimeout: number
@@ -46,36 +31,33 @@ export class DWSObjectStub implements DurableObjectStub {
   }
 
   async fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-    const originalRequest =
-      input instanceof Request ? input : new Request(input, init)
-    const originalUrl = new URL(originalRequest.url)
-    const path = originalUrl.pathname + originalUrl.search
+    const req = input instanceof Request ? input : new Request(input, init)
+    const url = new URL(req.url)
+    const path = url.pathname + url.search
 
-    // Route: {dwsApiUrl}/do/{namespace}/{doId}/{path}
-    const doUrl = `${this.dwsApiUrl}/do/${this.namespace}/${this.id.toString()}${path}`
-
-    const headers = new Headers(originalRequest.headers)
+    const headers = new Headers(req.headers)
     headers.set('X-DO-Namespace', this.namespace)
     headers.set('X-DO-Id', this.id.toString())
     if (this.name) headers.set('X-DO-Name', this.name)
 
     return fetch(
-      new Request(doUrl, {
-        method: originalRequest.method,
-        headers,
-        body: originalRequest.body,
-        redirect: originalRequest.redirect,
-        signal: AbortSignal.timeout(this.requestTimeout),
-      }),
+      new Request(
+        `${this.dwsApiUrl}/do/${this.namespace}/${this.id.toString()}${path}`,
+        {
+          method: req.method,
+          headers,
+          body: req.body,
+          redirect: req.redirect,
+          signal: AbortSignal.timeout(this.requestTimeout),
+        },
+      ),
     )
   }
 }
 
 /**
- * DWS implementation of DurableObjectNamespace
- *
- * Factory for creating DO IDs and stubs.
- * Note: Due to async ID generation, use DWSObjectNamespaceAsync for most cases.
+ * Synchronous namespace - IDs are deferred until actually needed.
+ * Cloudflare's API is sync, but our crypto is async, hence deferred resolution.
  */
 export class DWSObjectNamespace implements DurableObjectNamespace {
   private readonly name: string
@@ -99,13 +81,13 @@ export class DWSObjectNamespace implements DurableObjectNamespace {
   }
 
   get(id: DurableObjectId): DurableObjectStub {
-    const resolvedId = id instanceof DWSObjectIdDeferred ? id.getResolved() : id
-    if (resolvedId instanceof Promise) {
+    const resolved = id instanceof DWSObjectIdDeferred ? id.getResolved() : id
+    if (resolved instanceof Promise) {
       throw new Error(
         'DurableObjectId not resolved. Use DWSObjectNamespaceAsync or await the ID first.',
       )
     }
-    return new DWSObjectStub(resolvedId as DWSObjectId, this.name, this.config)
+    return new DWSObjectStub(resolved as DWSObjectId, this.name, this.config)
   }
 
   getByName(): DurableObjectStub {
@@ -115,10 +97,6 @@ export class DWSObjectNamespace implements DurableObjectNamespace {
   }
 }
 
-/**
- * Deferred ID that lazily resolves async ID creation.
- * Cloudflare's API is synchronous, but our crypto operations are async.
- */
 class DWSObjectIdDeferred implements DurableObjectId {
   private readonly namespace: string
   private readonly source?: string
@@ -142,18 +120,17 @@ class DWSObjectIdDeferred implements DurableObjectId {
 
     this.resolving = (async () => {
       switch (this.type) {
-        case 'name': {
+        case 'name':
           if (!this.source) throw new Error('source required for name-based ID')
           this.resolved = await DWSObjectId.fromName(
             this.namespace,
             this.source,
           )
           break
-        }
         case 'unique':
           this.resolved = await DWSObjectId.newUnique(this.namespace)
           break
-        case 'string': {
+        case 'string':
           if (!this.source)
             throw new Error('source required for string-based ID')
           this.resolved = await DWSObjectId.fromString(
@@ -161,11 +138,9 @@ class DWSObjectIdDeferred implements DurableObjectId {
             this.source,
           )
           break
-        }
       }
       return this.resolved
     })()
-
     return this.resolving
   }
 
@@ -190,11 +165,14 @@ class DWSObjectIdDeferred implements DurableObjectId {
   }
 }
 
-/**
- * Async version of the namespace that returns resolved IDs
- *
- * Use this when you need fully resolved IDs before using them.
- */
+export function createNamespace(
+  name: string,
+  config: DORouterConfig,
+): DWSObjectNamespace {
+  return new DWSObjectNamespace(name, config)
+}
+
+/** Async namespace - returns fully resolved IDs */
 export class DWSObjectNamespaceAsync {
   private readonly name: string
   private readonly config: DORouterConfig
@@ -224,24 +202,10 @@ export class DWSObjectNamespaceAsync {
     name: string,
     options?: GetDurableObjectOptions,
   ): Promise<DWSObjectStub> {
-    const id = await this.idFromName(name)
-    return this.get(id, options)
+    return this.get(await this.idFromName(name), options)
   }
 }
 
-/**
- * Create a DurableObjectNamespace binding for a worker
- */
-export function createNamespace(
-  name: string,
-  config: DORouterConfig,
-): DurableObjectNamespace {
-  return new DWSObjectNamespace(name, config)
-}
-
-/**
- * Create an async DurableObjectNamespace for use in workers that can await
- */
 export function createAsyncNamespace(
   name: string,
   config: DORouterConfig,

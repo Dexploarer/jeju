@@ -4,6 +4,7 @@ import { Elysia } from 'elysia'
 import type { Address } from 'viem'
 import { isAddress } from 'viem'
 import type { AuthConfig } from '../lib/types'
+import { createAuthInitRouter } from './routes/auth-init'
 import { createClientRouter } from './routes/client'
 import { createFarcasterRouter } from './routes/farcaster'
 import { createOAuthRouter } from './routes/oauth'
@@ -103,10 +104,36 @@ async function createApp(env: Env) {
     devMode: false, // DWS is production
   }
 
+  // Build explicit allowed origins for CORS (wildcards don't work with credentials)
+  const explicitOrigins = [
+    // Jeju testnet apps
+    'https://crucible.testnet.jejunetwork.org',
+    'https://autocrat.testnet.jejunetwork.org',
+    'https://factory.testnet.jejunetwork.org',
+    'https://gateway.testnet.jejunetwork.org',
+    'https://bazaar.testnet.jejunetwork.org',
+    'https://dws.testnet.jejunetwork.org',
+    'https://oauth3.testnet.jejunetwork.org',
+    // Jeju mainnet apps
+    'https://crucible.jejunetwork.org',
+    'https://autocrat.jejunetwork.org',
+    'https://factory.jejunetwork.org',
+    'https://gateway.jejunetwork.org',
+    'https://bazaar.jejunetwork.org',
+    'https://dws.jejunetwork.org',
+    'https://oauth3.jejunetwork.org',
+    // Eliza cloud
+    'https://cloud.elizaos.com',
+    'https://eliza.cloud',
+    'https://elizaos.ai',
+    // User-provided allowed origins (except wildcards)
+    ...config.allowedOrigins.filter((o) => o !== '*'),
+  ]
+
   const app = new Elysia()
     .use(
       cors({
-        origin: config.allowedOrigins,
+        origin: explicitOrigins,
         credentials: true,
         allowedHeaders: [
           'Content-Type',
@@ -116,6 +143,7 @@ async function createApp(env: Env) {
           'X-Jeju-Timestamp',
           'X-Jeju-Nonce',
         ],
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
       }),
     )
     .get('/health', () => ({
@@ -138,6 +166,7 @@ async function createApp(env: Env) {
       },
       docs: 'https://docs.jejunetwork.org/auth',
     }))
+    .use(createAuthInitRouter(config))
     .use(await createOAuthRouter(config))
     .use(createWalletRouter(config))
     .use(createFarcasterRouter(config))

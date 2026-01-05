@@ -7,14 +7,18 @@ import {
   Brain,
   ChevronLeft,
   Cloud,
+  Code2,
   Coins,
   Cpu,
   CreditCard,
   Database,
+  DollarSign,
+  Download,
   FolderGit2,
   Gauge,
   GitBranch,
   Globe,
+  HardDrive,
   Key,
   Keyboard,
   Layers,
@@ -28,6 +32,7 @@ import {
   Package,
   Radio,
   Search,
+  Server,
   Settings,
   Shield,
   Sparkles,
@@ -39,7 +44,7 @@ import {
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { NETWORK } from '../config'
-import { useTheme, useViewMode } from '../context/AppContext'
+import { useTheme } from '../context/AppContext'
 
 interface NavItem {
   id: string
@@ -249,6 +254,35 @@ const NAV_SECTIONS: NavSection[] = [
       },
     ],
   },
+  {
+    title: 'Provide & Earn',
+    items: [
+      {
+        id: 'run-node',
+        label: 'Run a Node',
+        icon: <Download size={20} />,
+        path: '/provider/node',
+      },
+      {
+        id: 'my-nodes',
+        label: 'My Nodes',
+        icon: <Server size={20} />,
+        path: '/provider/nodes',
+      },
+      {
+        id: 'earnings',
+        label: 'Earnings',
+        icon: <DollarSign size={20} />,
+        path: '/provider/earnings',
+      },
+      {
+        id: 'broker-sdk',
+        label: 'Broker SDK',
+        icon: <Code2 size={20} />,
+        path: '/provider/broker',
+      },
+    ],
+  },
 ]
 
 const BOTTOM_NAV: NavItem[] = [
@@ -278,7 +312,6 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation()
-  const { viewMode, setViewMode } = useViewMode()
   const { theme, toggleTheme } = useTheme()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
@@ -472,23 +505,6 @@ export default function Layout({ children }: LayoutProps) {
           </div>
 
           <div className="header-right">
-            <div className="mode-toggle">
-              <button
-                type="button"
-                className={viewMode === 'consumer' ? 'active' : ''}
-                onClick={() => setViewMode('consumer')}
-              >
-                Consumer
-              </button>
-              <button
-                type="button"
-                className={viewMode === 'provider' ? 'active' : ''}
-                onClick={() => setViewMode('provider')}
-              >
-                Provider
-              </button>
-            </div>
-
             <button
               type="button"
               className="btn btn-ghost btn-icon"

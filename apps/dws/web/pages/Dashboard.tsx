@@ -9,6 +9,7 @@ import {
   Cpu,
   Database,
   DollarSign,
+  Download,
   Plus,
   Server,
   Zap,
@@ -24,14 +25,8 @@ import {
   useWorkers,
 } from '../hooks'
 import { useBanStatus } from '../hooks/useBanStatus'
-import type { ViewMode } from '../types'
-import NodeOperatorDashboard from './node/NodeOperatorDashboard'
 
-interface DashboardProps {
-  viewMode: ViewMode
-}
-
-export default function Dashboard({ viewMode }: DashboardProps) {
+export default function Dashboard() {
   const { isConnected, address } = useAccount()
   const { isBanned, banRecord } = useBanStatus()
   const { data: health, isLoading: healthLoading } = useHealth()
@@ -41,7 +36,6 @@ export default function Dashboard({ viewMode }: DashboardProps) {
   const { data: account, isLoading: accountLoading } = useUserAccount()
   const { data: cacheStats } = useCacheStats()
 
-  // Show loading state while initial data loads (only for consumer mode)
   const isDataLoading =
     containersLoading || workersLoading || jobsLoading || accountLoading
 
@@ -92,12 +86,6 @@ export default function Dashboard({ viewMode }: DashboardProps) {
     )
   }
 
-  // Provider mode uses the dedicated NodeOperatorDashboard with its own loading state
-  if (viewMode === 'provider') {
-    return <NodeOperatorDashboard />
-  }
-
-  // Consumer mode loading state
   if (isDataLoading) {
     return (
       <div>
@@ -127,7 +115,6 @@ export default function Dashboard({ viewMode }: DashboardProps) {
     )
   }
 
-  // Data is now loaded - extract arrays (defaults handle any edge cases)
   const executions = containersData?.executions ?? []
   const workerFunctions = workersData?.functions ?? []
   const jobsList = jobsData?.jobs ?? []
@@ -146,40 +133,7 @@ export default function Dashboard({ viewMode }: DashboardProps) {
         <h1 className="page-title">Dashboard</h1>
       </div>
 
-      <ConsumerDashboard
-        health={health}
-        healthLoading={healthLoading}
-        runningContainers={runningContainers}
-        activeWorkers={activeWorkers}
-        runningJobs={runningJobs}
-        account={account}
-        cacheStats={cacheStats}
-      />
-    </div>
-  )
-}
-
-interface ConsumerDashboardProps {
-  health: ReturnType<typeof useHealth>['data']
-  healthLoading: boolean
-  runningContainers: number
-  activeWorkers: number
-  runningJobs: number
-  account: ReturnType<typeof useUserAccount>['data']
-  cacheStats: ReturnType<typeof useCacheStats>['data']
-}
-
-function ConsumerDashboard({
-  health,
-  healthLoading,
-  runningContainers,
-  activeWorkers,
-  runningJobs,
-  account,
-  cacheStats,
-}: ConsumerDashboardProps) {
-  return (
-    <>
+      {/* Stats Grid */}
       <div className="stats-grid">
         <div className="stat-card">
           <div className="stat-icon compute">
@@ -230,6 +184,7 @@ function ConsumerDashboard({
         </div>
       </div>
 
+      {/* Main Grid */}
       <div
         style={{
           display: 'grid',
@@ -237,6 +192,7 @@ function ConsumerDashboard({
           gap: '1.5rem',
         }}
       >
+        {/* Service Status */}
         <div className="card">
           <div className="card-header">
             <h3 className="card-title">
@@ -282,6 +238,7 @@ function ConsumerDashboard({
           )}
         </div>
 
+        {/* Quick Actions */}
         <div className="card">
           <div className="card-header">
             <h3 className="card-title">
@@ -340,6 +297,7 @@ function ConsumerDashboard({
           </div>
         </div>
 
+        {/* Network Stats */}
         <div className="card">
           <div className="card-header">
             <h3 className="card-title">
@@ -392,6 +350,7 @@ function ConsumerDashboard({
           )}
         </div>
 
+        {/* Cache Stats */}
         <div className="card">
           <div className="card-header">
             <h3 className="card-title">
@@ -445,9 +404,13 @@ function ConsumerDashboard({
           )}
         </div>
 
+        {/* Recent Activity */}
         <RecentActivity />
+
+        {/* Provide & Earn CTA */}
+        <ProviderCTA />
       </div>
-    </>
+    </div>
   )
 }
 
@@ -456,7 +419,6 @@ function RecentActivity() {
   const { data: workersData } = useWorkers()
   const { data: jobsData } = useJobs()
 
-  // Combine all activity into a single sorted list
   const activities: Array<{
     id: string
     type: 'container' | 'worker' | 'job'
@@ -465,12 +427,10 @@ function RecentActivity() {
     timestamp: number
   }> = []
 
-  // Extract arrays with defaults
   const executions = containersData?.executions ?? []
   const functions = workersData?.functions ?? []
   const jobs = jobsData?.jobs ?? []
 
-  // Add containers
   for (const c of executions) {
     const imageParts = c.image.split('/')
     const lastPart = imageParts[imageParts.length - 1]
@@ -485,7 +445,6 @@ function RecentActivity() {
     })
   }
 
-  // Add workers
   for (const w of functions) {
     activities.push({
       id: w.id,
@@ -496,9 +455,8 @@ function RecentActivity() {
     })
   }
 
-  // Add jobs
   for (const j of jobs) {
-    if (j.startedAt === null) continue // Skip jobs that haven't started
+    if (j.startedAt === null) continue
     activities.push({
       id: j.jobId,
       type: 'job',
@@ -508,7 +466,6 @@ function RecentActivity() {
     })
   }
 
-  // Sort by timestamp descending and take top 8
   const recentActivities = activities
     .sort((a, b) => b.timestamp - a.timestamp)
     .slice(0, 8)
@@ -633,6 +590,91 @@ function RecentActivity() {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+function ProviderCTA() {
+  return (
+    <div
+      className="card"
+      style={{
+        background:
+          'linear-gradient(135deg, var(--accent-soft) 0%, var(--bg-elevated) 100%)',
+        border: '1px solid var(--accent)',
+      }}
+    >
+      <div className="card-header">
+        <h3 className="card-title">
+          <DollarSign size={18} /> Earn with Jeju Network
+        </h3>
+      </div>
+      <p
+        style={{
+          color: 'var(--text-secondary)',
+          marginBottom: '1rem',
+          fontSize: '0.9rem',
+        }}
+      >
+        Turn your spare compute into passive income. Run VPN, CDN, storage, and
+        compute services to earn rewards.
+      </p>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: '0.75rem',
+          marginBottom: '1rem',
+        }}
+      >
+        <EarningStat label="VPN Node" amount="~$50/mo" />
+        <EarningStat label="CDN Edge" amount="~$30/mo" />
+        <EarningStat label="Storage" amount="~$40/mo" />
+        <EarningStat label="RPC Provider" amount="~$80/mo" />
+      </div>
+      <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <a
+          href="/provider/node"
+          className="btn btn-primary"
+          style={{ flex: 1 }}
+        >
+          <Download size={16} /> Run a Node
+        </a>
+        <a
+          href="/provider/nodes"
+          className="btn btn-secondary"
+        >
+          <Server size={16} /> My Nodes
+        </a>
+      </div>
+    </div>
+  )
+}
+
+function EarningStat({ label, amount }: { label: string; amount: string }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '0.5rem 0.75rem',
+        background: 'var(--bg-tertiary)',
+        borderRadius: 'var(--radius-sm)',
+      }}
+    >
+      <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+        {label}
+      </span>
+      <span
+        style={{
+          fontSize: '0.85rem',
+          fontWeight: 600,
+          color: 'var(--success)',
+        }}
+      >
+        {amount}
+      </span>
     </div>
   )
 }

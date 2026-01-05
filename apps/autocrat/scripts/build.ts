@@ -321,6 +321,7 @@ async function buildFrontend(): Promise<void> {
   <meta name="theme-color" content="#FFFBF7" media="(prefers-color-scheme: light)">
   <title>Autocrat - AI-Powered Governance</title>
   <meta name="description" content="Multi-tenant DAO governance with AI Directors, futarchy, and deep funding.">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -345,7 +346,7 @@ async function buildFrontend(): Promise<void> {
   await Bun.write(`${STATIC_DIR}/index.html`, html)
 
   if (existsSync(resolve(APP_DIR, 'public'))) {
-    await cp(resolve(APP_DIR, 'public'), `${STATIC_DIR}/public`, {
+    await cp(resolve(APP_DIR, 'public'), STATIC_DIR, {
       recursive: true,
     })
   }

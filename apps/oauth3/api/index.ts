@@ -53,12 +53,31 @@ async function createApp() {
   // Build explicit allowed origins for CORS (wildcards don't work with credentials)
   const host = getLocalhostHost()
   const explicitOrigins = [
+    // Localhost development
     `http://${host}:3000`,
     `http://${host}:3001`,
     `http://${host}:4200`,
+    `http://${host}:4020`, // Crucible frontend
+    `http://${host}:4040`, // Autocrat frontend
+    // Eliza cloud
     'https://cloud.elizaos.com',
     'https://eliza.cloud',
     'https://elizaos.ai',
+    // Jeju testnet apps
+    'https://crucible.testnet.jejunetwork.org',
+    'https://autocrat.testnet.jejunetwork.org',
+    'https://factory.testnet.jejunetwork.org',
+    'https://gateway.testnet.jejunetwork.org',
+    'https://bazaar.testnet.jejunetwork.org',
+    'https://dws.testnet.jejunetwork.org',
+    // Jeju mainnet apps
+    'https://crucible.jejunetwork.org',
+    'https://autocrat.jejunetwork.org',
+    'https://factory.jejunetwork.org',
+    'https://gateway.jejunetwork.org',
+    'https://bazaar.jejunetwork.org',
+    'https://dws.jejunetwork.org',
+    // User-provided allowed origins
     ...authConfig.allowedOrigins.filter((o) => o !== '*'),
   ]
 

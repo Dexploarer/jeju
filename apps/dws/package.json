@@ -19,8 +19,7 @@
     "start": "bun run api/server/index.ts",
     "serve": "bun run scripts/serve.ts",
     "deploy": "bun run scripts/deploy.ts",
-    "test": "jeju test --app=dws",
-    "test:unit": "bun test tests/",
+    "test": "bun test tests/",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -277,7 +277,12 @@ Environment:
 
   // Step 3: Deploy each app
   const results: DeployedApp[] = []
-  const ipfsApiUrl = process.env.IPFS_API_URL || 'http://localhost:5001'
+  const defaultIpfsApi = {
+    localnet: 'http://localhost:5001',
+    testnet: 'https://ipfs-api.testnet.jejunetwork.org',
+    mainnet: 'https://ipfs-api.jejunetwork.org',
+  }
+  const ipfsApiUrl = process.env.IPFS_API_URL || defaultIpfsApi[network]
 
   for (const app of apps) {
     console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
@@ -398,7 +403,26 @@ function loadDWSContracts(network: NetworkType): DWSContracts {
     throw new Error(`DWS deployment not found: ${deploymentFile}`)
   }
 
-  return JSON.parse(readFileSync(deploymentFile, 'utf-8'))
+  const data = JSON.parse(readFileSync(deploymentFile, 'utf-8'))
+
+  // Handle both formats: direct camelCase or nested PascalCase in contracts object
+  if (data.contracts) {
+    const c = data.contracts
+    return {
+      storageManager: c.StorageManager ?? c.storageManager,
+      workerRegistry: c.WorkerRegistry ?? c.workerRegistry,
+      cdnRegistry: c.CDNRegistry ?? c.cdnRegistry,
+      jnsRegistry: c.JNSRegistry ?? c.jnsRegistry,
+      jnsResolver: c.JNSResolver ?? c.jnsResolver,
+      jnsRegistrar: c.JNSRegistrar ?? c.jnsRegistrar,
+      jnsReverseRegistrar: c.JNSReverseRegistrar ?? c.jnsReverseRegistrar,
+      identityRegistry: c.IdentityRegistry ?? c.identityRegistry ?? data.deployer,
+      nodeRegistry: c.NodeRegistry ?? c.nodeRegistry ?? c.CDNRegistry ?? c.cdnRegistry,
+      keepaliveRegistry: c.KeepaliveRegistry ?? c.keepaliveRegistry ?? c.WorkerRegistry ?? c.workerRegistry,
+    }
+  }
+
+  return data
 }
 
 function saveDWSContracts(network: NetworkType, contracts: DWSContracts): void {
@@ -621,10 +645,42 @@ async function deployApp(
 }
 
 function uploadToIPFS(path: string, apiUrl: string): string {
-  const cmd = `curl -s -X POST -F "file=@${path}" "${apiUrl}/api/v0/add?recursive=true&wrap-with-directory=true" | tail -1 | jq -r '.Hash'`
-  const result = execSync(cmd, { encoding: 'utf-8' }).trim()
+  // Try direct IPFS API first (for localnet with local IPFS node)
+  const ipfsCmd = `curl -s -X POST -F "file=@${path}" "${apiUrl}/api/v0/add?recursive=true&wrap-with-directory=true" 2>/dev/null | tail -1 | jq -r '.Hash' 2>/dev/null`
+  let result = execSync(ipfsCmd, { encoding: 'utf-8' }).trim()
 
+  // If IPFS API fails, try DWS storage endpoint
   if (!result || result === 'null') {
+    // Convert IPFS API URL to DWS storage URL
+    // e.g., https://ipfs-api.testnet.jejunetwork.org -> https://dws.testnet.jejunetwork.org
+    let dwsStorageUrl = apiUrl
+      .replace('ipfs-api.', 'dws.')
+      .replace('/api/v0', '')
+
+    // Handle localhost case
+    if (apiUrl.includes('localhost:5001')) {
+      dwsStorageUrl = 'http://localhost:4030'
+    }
+
+    console.log(`   Trying DWS storage endpoint: ${dwsStorageUrl}`)
+
+    // For directories, we need to create a tar and upload
+    const isDir =
+      execSync(`test -d "${path}" && echo "dir" || echo "file"`, {
+        encoding: 'utf-8',
+      }).trim() === 'dir'
+
+    if (isDir) {
+      // Create a tar of the directory and upload
+      const tarCmd = `cd "${path}" && tar -cf - . | curl -s -X POST -F "file=@-;filename=upload.tar" "${dwsStorageUrl}/storage/upload" | jq -r '.cid // .hash // .Hash'`
+      result = execSync(tarCmd, { encoding: 'utf-8', shell: '/bin/bash' }).trim()
+    } else {
+      const dwsCmd = `curl -s -X POST -F "file=@${path}" "${dwsStorageUrl}/storage/upload" | jq -r '.cid // .hash // .Hash'`
+      result = execSync(dwsCmd, { encoding: 'utf-8' }).trim()
+    }
+  }
+
+  if (!result || result === 'null' || result === '') {
     throw new Error(`Failed to upload to IPFS: ${path}`)
   }
 

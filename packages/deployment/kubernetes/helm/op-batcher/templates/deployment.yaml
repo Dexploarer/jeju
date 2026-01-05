@@ -37,12 +37,22 @@ spec:
         - --l1-eth-rpc={{ .Values.config.l1.rpcUrl }}
         - --l2-eth-rpc={{ .Values.config.l2.rpcUrl }}
         - --rollup-rpc={{ .Values.config.rollup.rpcUrl }}
-        - --max-channel-duration={{ .Values.config.maxChannelDuration }}
-        - --sub-safety-margin={{ .Values.config.subSafetyMargin }}
-        - --poll-interval={{ .Values.config.pollInterval }}
-        - --num-confirmations={{ .Values.config.numConfirmations }}
-        - --safe-abort-nonce-too-low-count={{ .Values.config.safeAbortNonceTooLowCount }}
-        - --batch-type={{ .Values.config.batchType }}
+        - --max-channel-duration={{ .Values.config.maxChannelDuration | default 1 }}
+        - --sub-safety-margin={{ .Values.config.subSafetyMargin | default 4 }}
+        - --poll-interval={{ .Values.config.pollInterval | default "6s" }}
+        - --num-confirmations={{ .Values.config.numConfirmations | default 1 }}
+        - --safe-abort-nonce-too-low-count={{ .Values.config.safeAbortNonceTooLowCount | default 3 }}
+        {{- if eq .Values.config.dataAvailability.type "blobs" }}
+        # Use EIP-4844 blobs for data availability (cheaper post-Dencun)
+        - --data-availability-type=blobs
+        {{- if .Values.config.l1.beacon.url }}
+        - --l1-beacon={{ .Values.config.l1.beacon.url }}
+        {{- end }}
+        {{- else if eq .Values.config.dataAvailability.type "calldata" }}
+        # Legacy calldata mode (more expensive)
+        - --data-availability-type=calldata
+        - --batch-type={{ .Values.config.batchType | default 1 }}
+        {{- end }}
         {{- if .Values.config.privateKey }}
         - --private-key={{ .Values.config.privateKey }}
         {{- else }}

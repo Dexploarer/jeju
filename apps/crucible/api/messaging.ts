@@ -85,7 +85,7 @@ class CrucibleMessagingService {
     const cacheKey = `profile:${fid}`
 
     // Check DWS cache first
-    const cached = await cache.get(cacheKey).catch((err) => {
+    const cached = await cache.get(cacheKey).catch((err: Error) => {
       console.warn('[Crucible] Cache read failed:', err)
       return null
     })
@@ -107,7 +107,7 @@ class CrucibleMessagingService {
       console.debug('[Crucible] Cache miss, caching profile:', fid)
       cache
         .set(cacheKey, JSON.stringify(profile), PROFILE_CACHE_TTL)
-        .catch((err) => console.warn('[Crucible] Cache write failed:', err))
+        .catch((err: Error) => console.warn('[Crucible] Cache write failed:', err))
     }
     return profile
   }

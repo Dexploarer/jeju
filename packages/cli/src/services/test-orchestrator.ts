@@ -11,7 +11,12 @@
 
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { getL2RpcUrl, getSQLitBlockProducerUrl } from '@jejunetwork/config'
+import {
+  getL2RpcUrl,
+  getServicesConfig,
+  getSQLitBlockProducerUrl,
+  type NetworkType,
+} from '@jejunetwork/config'
 import { logger } from '../lib/logger'
 import { runSmokeTests } from '../testing/smoke-test-runner'
 import type { TestMode } from '../types'
@@ -35,6 +40,8 @@ export interface TestOrchestratorOptions {
   headless?: boolean
   /** Skip smoke tests (not recommended) */
   skipSmokeTests?: boolean
+  /** Target network: localnet, testnet, mainnet */
+  network?: 'localnet' | 'testnet' | 'mainnet'
 }
 
 const MODE_TO_PROFILE: Record<TestMode, TestProfile> = {
@@ -182,7 +189,26 @@ export class TestOrchestrator {
       return
     }
 
+    const network = this.options.network ?? 'localnet'
+    const isRemoteNetwork = network !== 'localnet'
+
     logger.header(`TEST SETUP - ${this.options.mode.toUpperCase()}`)
+
+    // Remote network mode: skip all local infrastructure
+    if (isRemoteNetwork) {
+      logger.info(`Remote network mode: ${network}`)
+      logger.info('Skipping local infrastructure - testing against deployed services')
+
+      // Verify remote services are accessible
+      await this.verifyRemoteServices(network)
+
+      this.setupComplete = true
+      logger.newline()
+      logger.success(`Remote test setup complete - targeting ${network}`)
+      return
+    }
+
+    // Local network mode: start all required infrastructure
 
     // Step 1: Start SQLit (required for all tests)
     logger.step('Starting SQLit (core database)...')
@@ -382,36 +408,56 @@ export class TestOrchestrator {
   }
 
   getEnvVars(): Record<string, string> {
+    const network = this.options.network ?? 'localnet'
+    const isRemoteNetwork = network !== 'localnet'
+    const services = getServicesConfig(network)
+
     // All infrastructure is verified during setup - no skip conditions needed
     // Tests can assume all services are available when orchestrator is used
     const env: Record<string, string> = {
       NODE_ENV: 'test',
       CI: process.env.CI || '',
-      SQLIT_URL: getSQLitBlockProducerUrl(),
-      // Infrastructure is ALWAYS available when using the test orchestrator
-      // Tests should NOT check these - if setup passed, everything is ready
+      JEJU_NETWORK: network,
+      // RPC and chain configuration from services.json
+      RPC_URL: services.rpc.l2,
+      JEJU_RPC_URL: services.rpc.l2,
+      L2_RPC_URL: services.rpc.l2,
+      L1_RPC_URL: services.rpc.l1,
+      WS_URL: services.rpc.ws,
+      CHAIN_ID: network === 'localnet' ? '31337' : network === 'testnet' ? '420690' : '420691',
+      // Service URLs for the target network
+      INDEXER_URL: services.indexer.graphql,
+      EXPLORER_URL: services.explorer,
+      DWS_URL: services.dws.api,
+      SQLIT_URL: isRemoteNetwork ? services.sqlit.blockProducer : getSQLitBlockProducerUrl(),
+      // Skip local webserver when testing remote
+      SKIP_WEBSERVER: isRemoteNetwork ? '1' : '',
+      // Infrastructure flags
       INFRA_READY: 'true',
       SQLIT_AVAILABLE: 'true',
       ANVIL_AVAILABLE: this.localnetOrchestrator ? 'true' : 'false',
       DOCKER_AVAILABLE: this.dockerOrchestrator ? 'true' : 'false',
       IPFS_AVAILABLE: this.dockerOrchestrator ? 'true' : 'false',
       // CONTRACTS_VERIFIED means we've verified contracts on-chain, not just file exists
-      CONTRACTS_VERIFIED: this.contractsVerified ? 'true' : 'false',
-      CONTRACTS_DEPLOYED: this.contractsVerified ? 'true' : 'false',
+      CONTRACTS_VERIFIED: this.contractsVerified || isRemoteNetwork ? 'true' : 'false',
+      CONTRACTS_DEPLOYED: this.contractsVerified || isRemoteNetwork ? 'true' : 'false',
     }
 
-    Object.assign(env, this.infrastructureService.getEnvVars())
+    // Local network - add local infrastructure env vars
+    if (!isRemoteNetwork) {
+      Object.assign(env, this.infrastructureService.getEnvVars())
 
-    if (this.localnetOrchestrator) {
-      Object.assign(env, this.localnetOrchestrator.getEnvVars())
-    }
+      if (this.localnetOrchestrator) {
+        Object.assign(env, this.localnetOrchestrator.getEnvVars())
+      }
 
-    if (this.dockerOrchestrator) {
-      Object.assign(env, this.dockerOrchestrator.getEnvVars())
-    }
+      if (this.dockerOrchestrator) {
+        Object.assign(env, this.dockerOrchestrator.getEnvVars())
+      }
 
-    if (this.appOrchestrator) {
-      Object.assign(env, this.appOrchestrator.getEnvVars())
+      if (this.appOrchestrator) {
+        Object.assign(env, this.appOrchestrator.getEnvVars())
+      }
     }
 
     return env
@@ -429,6 +475,83 @@ export class TestOrchestrator {
     }
 
     return env
+  }
+
+  /**
+   * Verify remote services are accessible before running tests
+   */
+  private async verifyRemoteServices(network: NetworkType): Promise<void> {
+    logger.step('Verifying remote services are accessible...')
+
+    const services = getServicesConfig(network)
+
+    // Check RPC is accessible
+    const rpcHealthy = await this.checkRpcHealth(services.rpc.l2)
+    if (!rpcHealthy) {
+      throw new Error(
+        `FATAL: RPC not accessible for ${network}: ${services.rpc.l2}\n` +
+          'Make sure the chain is running and accessible.',
+      )
+    }
+    logger.success(`RPC accessible: ${services.rpc.l2}`)
+
+    // Check DWS API is accessible
+    const dwsHealthy = await this.checkHttpHealth(`${services.dws.api}/health`)
+    if (!dwsHealthy) {
+      logger.warn(`DWS API not accessible: ${services.dws.api} (some tests may fail)`)
+    } else {
+      logger.success(`DWS API accessible: ${services.dws.api}`)
+    }
+
+    // Check Indexer is accessible
+    const indexerHealthy = await this.checkHttpHealth(services.indexer.api)
+    if (!indexerHealthy) {
+      logger.warn(`Indexer not accessible: ${services.indexer.api} (some tests may fail)`)
+    } else {
+      logger.success(`Indexer accessible: ${services.indexer.api}`)
+    }
+
+    logger.success(`Remote services verified for ${network}`)
+  }
+
+  /**
+   * Check if an RPC endpoint is healthy
+   */
+  private async checkRpcHealth(rpcUrl: string): Promise<boolean> {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000)
+
+    const response = await fetch(rpcUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'eth_chainId',
+        params: [],
+        id: 1,
+      }),
+      signal: controller.signal,
+    }).catch(() => null).finally(() => clearTimeout(timeoutId))
+
+    if (!response?.ok) return false
+
+    const data = (await response.json().catch(() => null)) as { result?: string; error?: unknown } | null
+    return Boolean(data?.result && !data?.error)
+  }
+
+  /**
+   * Check if an HTTP endpoint is healthy
+   */
+  private async checkHttpHealth(url: string): Promise<boolean> {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000)
+
+    const response = await fetch(url, {
+      method: 'GET',
+      signal: controller.signal,
+    }).catch(() => null).finally(() => clearTimeout(timeoutId))
+
+    return Boolean(response?.ok || (response && response.status < 500))
   }
 
   isSetup(): boolean {

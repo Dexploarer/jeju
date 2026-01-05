@@ -316,6 +316,13 @@ secretEnv:
     secretName: dws-secrets
     secretKey: ipfs-api-key
 
+# SQLit (decentralized database) configuration
+sqlit:
+  enabled: false
+  # Private key for SQLit transactions (hex string without 0x prefix)
+  # In production, use SealedSecrets or external secret manager
+  privateKey: ""
+
 # Persistence for local storage cache
 persistence:
   enabled: true

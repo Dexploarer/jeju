@@ -209,6 +209,10 @@ export class CrucibleDatabase {
     )
     await this.fetchQuery(
       'exec',
+      `CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at DESC)`,
+    )
+    await this.fetchQuery(
+      'exec',
       `CREATE INDEX IF NOT EXISTS idx_triggers_agent ON triggers(agent_id)`,
     )
   }
@@ -490,6 +494,14 @@ export class CrucibleDatabase {
     }
 
     return this.query<Message>(sql, values)
+  }
+
+  async getRecentMessages(options: { limit?: number } = {}): Promise<Message[]> {
+    const limit = options.limit ?? 10
+    return this.query<Message>(
+      `SELECT * FROM messages ORDER BY created_at DESC LIMIT ?`,
+      [limit],
+    )
   }
 
   // ============================================

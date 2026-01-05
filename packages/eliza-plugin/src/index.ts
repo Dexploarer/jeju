@@ -97,6 +97,12 @@ import {
   listMyRentalsAction,
   listProvidersAction,
 } from './actions/rentals'
+// Extended Actions - Security (Blue Team)
+import {
+  analyzeTransactionAction,
+  checkScamAddressAction,
+  scanContractAction,
+} from './actions/security'
 import { retrieveFileAction, uploadFileAction } from './actions/storage'
 // Extended Actions - Storage
 import {
@@ -244,6 +250,11 @@ export const jejuPlugin: Plugin = {
     submitTrajectory,
     checkTrainingStatus,
     startTrainingJob,
+
+    // Security actions for Blue Team
+    analyzeTransactionAction,
+    scanContractAction,
+    checkScamAddressAction,
   ],
 }
 

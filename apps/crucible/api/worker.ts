@@ -72,11 +72,14 @@ function getAllowedOrigins(network: string): string[] | true {
   }
 
   // Production/Testnet: Allow same-origin and JNS-resolved domains
-  // These are resolved dynamically by the frontend based on JNS
   const host = getLocalhostHost()
   return [
-    // Same-origin requests (relative URLs from JNS-served frontend)
-    '',
+    // Testnet origins
+    'https://crucible.testnet.jejunetwork.org',
+    'https://dws.testnet.jejunetwork.org',
+    // Mainnet origins
+    'https://crucible.jejunetwork.org',
+    'https://dws.jejunetwork.org',
     // Local development fallback
     `http://${host}:4020`,
     `http://${host}:4021`,
@@ -150,6 +153,31 @@ export function createCrucibleApp(env?: Partial<CrucibleEnv>) {
       dwsAvailable: true,
       runtimes: Object.keys(characters).length,
     }))
+
+    // ============================================
+    // Activity Feed API
+    // ============================================
+    .get('/api/v1/activity', async ({ query }) => {
+      const limit = Math.min(Math.max(1, Number(query.limit) || 10), 50)
+      const database = getDatabase()
+      
+      // Get recent messages as activity events
+      const messages = await database.getRecentMessages({ limit })
+      
+      const events = messages.map((msg) => ({
+        id: String(msg.id),
+        type: 'message_sent' as const,
+        actor: msg.agent_id,
+        description: `Message in room ${msg.room_id}`,
+        timestamp: msg.created_at * 1000,
+        metadata: {
+          roomId: msg.room_id,
+          agentId: msg.agent_id,
+        },
+      }))
+
+      return { events }
+    })
 
     // ============================================
     // Character Templates API

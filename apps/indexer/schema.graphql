@@ -231,6 +231,156 @@ type NFTApprovalEvent @entity {
   chainId: Int! @index
 }
 
+# ============ TFMM (Temporal Function Market Maker) Entities ============
+
+"""
+TFMM Pool - Dynamic weight AMM pool for on-chain portfolio management.
+Supports time-varying weights based on strategy signals.
+"""
+type TFMMPool @entity {
+  id: ID! # chainId-poolAddress
+  address: String! @unique @index
+  chainId: Int! @index
+  name: String! @index
+  symbol: String!
+  
+  # Pool tokens
+  tokens: [String!]!
+  tokenSymbols: [String!]!
+  
+  # Current state
+  balances: [BigInt!]!
+  currentWeights: [BigInt!]!
+  targetWeights: [BigInt!]!
+  weightDeltas: [BigInt!]!
+  lastUpdateBlock: Int!
+  blocksRemaining: Int!
+  
+  # Fees
+  swapFeeBps: Int!
+  protocolFeeBps: Int!
+  
+  # LP token
+  totalSupply: BigInt!
+  
+  # Governance
+  owner: String!
+  governance: String!
+  treasury: String
+  strategyRule: String
+  weightRunner: String
+  
+  # Guard rails
+  minWeight: BigInt!
+  maxWeight: BigInt!
+  maxWeightChangeBps: Int!
+  minUpdateInterval: Int!
+  
+  # TVL and stats
+  tvl: String!
+  tvlUSD: String!
+  volume24h: BigInt!
+  volumeUSD24h: String!
+  totalVolume: BigInt!
+  totalVolumeUSD: String!
+  txCount: Int!
+  lpProviderCount: Int!
+  
+  # Performance
+  apy: String
+  sharpeRatio: String
+  maxDrawdown: String
+  
+  isActive: Boolean! @index
+  createdAt: DateTime! @index
+  lastUpdated: DateTime! @index
+  createdTxHash: String!
+  
+  # Relations
+  swaps: [TFMMSwap!]! @derivedFrom(field: "pool")
+  liquidityEvents: [TFMMLiquidityEvent!]! @derivedFrom(field: "pool")
+  weightUpdates: [TFMMWeightUpdate!]! @derivedFrom(field: "pool")
+}
+
+"""
+TFMM Swap event
+"""
+type TFMMSwap @entity {
+  id: ID! # txHash-logIndex
+  pool: TFMMPool!
+  sender: Account!
+  tokenIn: String!
+  tokenOut: String!
+  amountIn: BigInt!
+  amountOut: BigInt!
+  feeAmount: BigInt!
+  amountInUSD: String
+  amountOutUSD: String
+  priceIn: String
+  priceOut: String
+  timestamp: DateTime! @index
+  blockNumber: Int! @index
+  txHash: String! @index
+  logIndex: Int!
+}
+
+"""
+TFMM Liquidity Add/Remove event
+"""
+type TFMMLiquidityEvent @entity {
+  id: ID! # txHash-logIndex
+  pool: TFMMPool!
+  provider: Account!
+  eventType: TFMMLiquidityEventType!
+  amounts: [BigInt!]!
+  lpTokens: BigInt!
+  timestamp: DateTime! @index
+  blockNumber: Int! @index
+  txHash: String! @index
+  logIndex: Int!
+}
+
+enum TFMMLiquidityEventType {
+  ADD
+  REMOVE
+}
+
+"""
+TFMM Weight Update event
+"""
+type TFMMWeightUpdate @entity {
+  id: ID! # txHash-logIndex
+  pool: TFMMPool!
+  oldWeights: [BigInt!]!
+  newWeights: [BigInt!]!
+  blocksToTarget: Int!
+  blockNumber: Int! @index
+  timestamp: DateTime! @index
+  txHash: String! @index
+}
+
+"""
+TFMM Global Stats
+"""
+type TFMMStats @entity {
+  id: ID! # "global" or date string
+  date: DateTime @index
+  chainId: Int @index
+  
+  totalPools: Int!
+  activePools: Int!
+  totalTvl: BigInt!
+  totalTvlUSD: String!
+  totalVolume24h: BigInt!
+  totalVolumeUSD24h: String!
+  totalSwaps24h: Int!
+  
+  # Top pools by TVL
+  topPoolsByTvl: [String!]!
+  
+  lastUpdated: DateTime!
+}
+
 # ============ DEX Trading & Token Market Data ============
 
 """

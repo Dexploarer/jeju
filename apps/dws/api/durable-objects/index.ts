@@ -12,6 +12,7 @@ export {
 } from './alarm-scheduler.js'
 export {
   createDurableObjectsRouter,
+  getDOMetrics,
   registerDurableObjectClass,
   startDurableObjectManager,
   stopDurableObjectManager,

@@ -39,6 +39,9 @@ const SAFE_ENV_KEYS = new Set([
   'CHAIN_ID',
   'L1_CHAIN_ID',
   'DWS_URL',
+  'DWS_API_URL',
+  'DWS_REGION',
+  'DWS_CACHE_URL',
   'GATEWAY_URL',
   'INDEXER_URL',
   'KMS_URL', // Workers need this to fetch secrets from KMS
@@ -48,6 +51,13 @@ const SAFE_ENV_KEYS = new Set([
   'WORKER_ID',
   'KMS_SECRET_IDS', // List of secret IDs to fetch from KMS
   'OWNER_ADDRESS',
+  // SQLit configuration (non-sensitive URLs/IDs)
+  'SQLIT_ENDPOINT',
+  'SQLIT_DATABASE_ID',
+  'SQLIT_NODES',
+  'SQLIT_URL',
+  // Static assets
+  'STATIC_ASSETS_URL',
 ])
 
 // Worker bootstrap - sets env and imports the main module
@@ -87,7 +97,13 @@ const workerEnv = {
   WORKER_ID: process.env.WORKER_ID || process.env.FUNCTION_ID || '',
   OWNER_ADDRESS: process.env.OWNER_ADDRESS || '',
   KMS_SECRET_IDS: process.env.KMS_SECRET_IDS || '',
-  // SECURITY: NO SECRETS HERE - SQLIT_PRIVATE_KEY etc must come from KMS
+  // SQLit configuration (non-sensitive)
+  // SECURITY: SQLIT_PRIVATE_KEY must come from KMS in production
+  SQLIT_NODES: process.env.SQLIT_NODES || process.env.SQLIT_URL || '',
+  SQLIT_URL: process.env.SQLIT_URL || process.env.SQLIT_NODES || '',
+  SQLIT_DATABASE_ID: process.env.SQLIT_DATABASE_ID || '',
+  SQLIT_KMS_KEY_ID: process.env.SQLIT_KMS_KEY_ID || '',
+  SQLIT_MINER_ENDPOINT: process.env.SQLIT_MINER_ENDPOINT || '',
 };
 
 // ExecutionContext stub for Cloudflare Workers compatibility

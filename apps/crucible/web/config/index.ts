@@ -59,6 +59,13 @@ function getRedirectUri(): string {
   return 'http://localhost:4020/auth/callback'
 }
 
+// Chain IDs for Jeju networks
+const CHAIN_IDS = {
+  localnet: 420691,
+  testnet: 420690,
+  mainnet: 420692,
+} as const
+
 /**
  * OAuth3 configuration for wallet authentication
  */
@@ -72,6 +79,10 @@ export function getOAuth3Config() {
     redirectUri: getRedirectUri(),
     // OAuth3 TEE agent URL
     teeAgentUrl: services.oauth3.tee,
+    // RPC URL for on-chain interactions - use network-appropriate URL
+    rpcUrl: services.rpc.l2,
+    // Chain ID for the current network - prevents defaulting to localnet
+    chainId: CHAIN_IDS[NETWORK],
     // Enable decentralized discovery via JNS
     decentralized: NETWORK !== 'localnet',
     // Network for chain interactions

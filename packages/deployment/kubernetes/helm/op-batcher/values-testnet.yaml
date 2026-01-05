@@ -1,15 +1,15 @@
 # OP-Batcher values for testnet
-# Uses internal L1 full node
+# Uses public L1 endpoints for reliability
 
-replicaCount: 1  # Enable batcher for L1/L2 connectivity
+replicaCount: 1
 
 resources:
   limits:
-    cpu: 500m
-    memory: 1Gi
+    cpu: 1000m
+    memory: 2Gi
   requests:
-    cpu: 100m
-    memory: 256Mi
+    cpu: 250m
+    memory: 512Mi
 
 nodeSelector: {}
 
@@ -17,14 +17,22 @@ tolerations: []
 
 config:
   l1:
-    # Use public Sepolia RPC for testnet (internal L1 node has disk space issues)
-    rpcUrl: "https://ethereum-sepolia-rpc.publicnode.com"
+    # Use reliable public Sepolia RPC
+    rpcUrl: "https://sepolia.drpc.org"
+    beacon:
+      # Public Sepolia beacon endpoint for blob submission
+      url: "https://ethereum-sepolia-beacon-api.publicnode.com"
   l2:
     rpcUrl: "http://reth-sequencer.execution.svc.cluster.local:8545"
   rollup:
     rpcUrl: "http://op-node.op-stack.svc.cluster.local:9545"
   dataAvailability:
-    type: "calldata"
+    # Use blobs (EIP-4844) - much cheaper than calldata post-Dencun
+    type: "blobs"
+  blobs:
+    maxBlobsPerBatch: 6
+    targetBlobUtilization: 0.8
+    compression: true
   # SECURITY: Private key must be injected from Vault or --set at deploy time
   # NEVER commit real private keys to version control
   # Deploy with: --set config.privateKey=$BATCHER_PRIVATE_KEY

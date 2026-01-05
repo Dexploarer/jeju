@@ -37,6 +37,7 @@ import {
 import { processCrossServiceEvents } from './cross-service-processor'
 import { processDEXEvents } from './dex-processor'
 import { processEILEvents } from './eil-processor'
+import { processTFMMEvents, registerTFMMPool } from './tfmm-processor'
 import { processMarketEvents } from './market-processor'
 import { processModerationEvent } from './moderation-processor'
 import { processNodeStakingEvents } from './node-staking-processor'
@@ -735,6 +736,7 @@ processor.run(db, async (ctx: ProcessorContext<Store>) => {
   await processCrossServiceEvents(ctx)
   await processOracleEvents(ctx)
   await processDEXEvents(ctx)
+  await processTFMMEvents(ctx)
 
   for (const block of ctx.blocks) {
     for (const log of block.logs) {

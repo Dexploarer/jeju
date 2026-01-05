@@ -22,6 +22,7 @@ import { createTable, getSQLit, type SQLitClient } from '@jejunetwork/db'
 
 import { expect as expectExists, expectValid } from '@jejunetwork/types'
 import { Elysia } from 'elysia'
+import { getSqlitPrivateKey } from '../lib/secrets'
 import {
   A2ARequestSchema,
   TFMMGetQuerySchema,
@@ -378,7 +379,7 @@ export function createBazaarApp(env?: Partial<BazaarEnv>) {
   // TFMM API
   app.group('/api/tfmm', (app) =>
     app
-      .get('/', ({ query }) => {
+      .get('/', async ({ query }) => {
         const parsedQuery = expectValid(
           TFMMGetQuerySchema,
           {
@@ -391,7 +392,7 @@ export function createBazaarApp(env?: Partial<BazaarEnv>) {
         const { pool, action } = parsedQuery
 
         if (pool) {
-          const foundPool = getTFMMPool(pool)
+          const foundPool = await getTFMMPool(pool)
           expectExists(foundPool, 'Pool not found')
           return { pool: foundPool }
         }
@@ -404,9 +405,12 @@ export function createBazaarApp(env?: Partial<BazaarEnv>) {
           return { oracles: getOracleStatus() }
         }
 
-        const stats = getTFMMStats()
+        const [pools, stats] = await Promise.all([
+          getAllTFMMPools(),
+          getTFMMStats(),
+        ])
         return {
-          pools: getAllTFMMPools(),
+          pools,
           ...stats,
         }
       })
@@ -676,12 +680,13 @@ export default {
 const isMainModule = typeof Bun !== 'undefined' && import.meta.path === Bun.main
 
 if (isMainModule) {
-  // Initialize config from environment variables
+  // Initialize config - secrets retrieved through secrets module
   configureBazaar({
     bazaarApiUrl: getEnvVar('BAZAAR_API_URL'),
     farcasterHubUrl: getEnvVar('FARCASTER_HUB_URL'),
     sqlitDatabaseId: getEnvVar('SQLIT_DATABASE_ID'),
-    sqlitPrivateKey: getEnvVar('SQLIT_PRIVATE_KEY'),
+    // SQLit private key retrieved through secrets module (not raw env var)
+    sqlitPrivateKey: getSqlitPrivateKey(),
   })
 
   const PORT = CORE_PORTS.BAZAAR_API.get()

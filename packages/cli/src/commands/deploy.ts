@@ -107,7 +107,7 @@ export const deployCommand = new Command('deploy')
   .argument('[network]', 'testnet | mainnet')
   .option('--contracts', 'Deploy only contracts')
   .option('--infrastructure', 'Deploy only infrastructure')
-  .option('--apps', 'Deploy only apps')
+  .option('--apps [list]', 'Deploy only apps (optionally comma-separated list)')
   .option('--dry-run', 'Simulate without making changes')
   .option('-y, --yes', 'Skip confirmations')
   .action(async (networkArg, options) => {
@@ -259,10 +259,43 @@ export const deployCommand = new Command('deploy')
       }
     }
 
+    const rootDir = findMonorepoRoot()
+
+    // Check if --apps was passed with a specific list (e.g., --apps autocrat,bazaar)
+    // In this case, delegate to the DWS deployment flow
+    if (typeof options.apps === 'string') {
+      if (isDryRun) {
+        logger.warn('DRY RUN - would deploy apps via DWS')
+        logger.keyValue('Apps', options.apps)
+        logger.keyValue('Network', network)
+        return
+      }
+
+      logger.info(`Deploying specific apps via DWS: ${options.apps}`)
+      const scriptPath = join(
+        rootDir,
+        'packages/deployment/scripts/deploy/dws-bootstrap.ts',
+      )
+
+      if (!existsSync(scriptPath)) {
+        logger.error('DWS bootstrap script not found')
+        return
+      }
+
+      const args: string[] = ['--apps', options.apps]
+
+      await execa('bun', ['run', scriptPath, ...args], {
+        cwd: rootDir,
+        stdio: 'inherit',
+        env: { ...process.env, NETWORK: network },
+      })
+      return
+    }
+
     // Determine what to deploy
     let deployContracts = options.contracts
     let deployInfra = options.infrastructure
-    let deployApps = options.apps
+    let deployApps = options.apps === true
 
     if (!deployContracts && !deployInfra && !deployApps) {
       if (isDryRun) {
@@ -343,8 +376,6 @@ export const deployCommand = new Command('deploy')
         return
       }
     }
-
-    const rootDir = findMonorepoRoot()
 
     // Deploy
     if (deployContracts) {

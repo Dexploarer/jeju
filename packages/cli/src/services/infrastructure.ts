@@ -1055,6 +1055,10 @@ export class InfrastructureService {
       JEJU_RPC_URL: getL2RpcUrl(),
       SQLIT_URL: getSQLitBlockProducerUrl(),
       SQLIT_BLOCK_PRODUCER_ENDPOINT: getSQLitBlockProducerUrl(),
+      // Default SQLit private key for local development (standard Anvil account #0)
+      SQLIT_PRIVATE_KEY:
+        process.env.SQLIT_PRIVATE_KEY ??
+        '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
       IPFS_API_URL: getIpfsApiUrl(),
       // Cache and DA are now provided by DWS
       DA_URL: `${dwsUrl}/da`,

@@ -1,13 +1,5 @@
 /**
- * Durable Objects Router
- *
- * Handles routing requests to Durable Object instances.
- *
- * Routes:
- * - POST /do/:namespace/:doId/* - Route request to DO instance
- * - GET  /do/:namespace/:doId/ws - WebSocket upgrade to DO
- * - GET  /do/stats - Get DO system statistics
- * - POST /do/schema/init - Initialize DO schema (admin only)
+ * Durable Objects Router - routes requests to DO instances
  */
 
 import { getLogLevel, getSQLitDatabaseId } from '@jejunetwork/config'
@@ -31,14 +23,40 @@ import {
   stopAlarmScheduler,
 } from './alarm-scheduler.js'
 
-const log = pino({
-  name: 'dws:durable-objects',
-  level: getLogLevel(),
-})
+const log = pino({ name: 'dws:durable-objects', level: getLogLevel() })
 
-// ============================================================================
-// DO Instance Manager
-// ============================================================================
+// Metrics collection
+const metrics = {
+  instancesCreated: 0,
+  instancesEvicted: 0,
+  requestsTotal: 0,
+  requestsSuccess: 0,
+  requestsError: 0,
+  alarmsProcessed: 0,
+  websocketsAccepted: 0,
+  websocketsClosed: 0,
+  requestLatencyMs: [] as number[],
+}
+
+export function getDOMetrics() {
+  const latencies = metrics.requestLatencyMs.slice(-100)
+  const sorted = [...latencies].sort((a, b) => a - b) // Copy before sort
+  const p99Index = Math.max(0, Math.ceil(sorted.length * 0.99) - 1) // Proper p99 index
+  return {
+    instancesCreated: metrics.instancesCreated,
+    instancesEvicted: metrics.instancesEvicted,
+    requestsTotal: metrics.requestsTotal,
+    requestsSuccess: metrics.requestsSuccess,
+    requestsError: metrics.requestsError,
+    alarmsProcessed: metrics.alarmsProcessed,
+    websocketsAccepted: metrics.websocketsAccepted,
+    websocketsClosed: metrics.websocketsClosed,
+    avgLatencyMs:
+      sorted.length > 0 ? sorted.reduce((a, b) => a + b, 0) / sorted.length : 0,
+    p99LatencyMs: sorted.length > 0 ? sorted[p99Index] : 0,
+    sampleCount: sorted.length,
+  }
+}
 
 interface DOInstance {
   id: string
@@ -50,19 +68,13 @@ interface DOInstance {
   createdAt: number
 }
 
-/**
- * Manages DO instances and routes requests to them.
- * Implements DOInstanceProvider for the alarm scheduler.
- */
 class DurableObjectManager implements DOInstanceProvider {
   private instances = new Map<string, DOInstance>()
   private sqlit: SQLitClient
   private databaseId: string
   private debug: boolean
-  private maxIdleMs = 5 * 60 * 1000 // 5 minutes before eviction
+  private maxIdleMs = 5 * 60 * 1000
   private evictionInterval: ReturnType<typeof setInterval> | null = null
-
-  // Registered DO classes by namespace
   private registeredClasses = new Map<string, DurableObjectConstructor>()
 
   constructor(sqlit: SQLitClient, databaseId: string, debug = false) {
@@ -71,26 +83,15 @@ class DurableObjectManager implements DOInstanceProvider {
     this.debug = debug
   }
 
-  /**
-   * Register a Durable Object class for a namespace
-   */
   registerClass(namespace: string, doClass: DurableObjectConstructor): void {
     this.registeredClasses.set(namespace, doClass)
     log.info({ namespace }, 'Registered DO class')
   }
 
-  /**
-   * Check if an instance exists and is active
-   * (Implements DOInstanceProvider)
-   */
   hasInstance(key: string): boolean {
     return this.instances.has(key)
   }
 
-  /**
-   * Get or create a DO instance
-   * (Implements DOInstanceProvider)
-   */
   async getOrCreateInstance(
     namespace: string,
     doIdString: string,
@@ -104,15 +105,12 @@ class DurableObjectManager implements DOInstanceProvider {
       return instance
     }
 
-    // Get the registered class
     const doClass = this.registeredClasses.get(namespace)
-    if (!doClass) {
+    if (!doClass)
       throw new Error(
         `No Durable Object class registered for namespace: ${namespace}`,
       )
-    }
 
-    // Create the DO state
     const id = await DWSObjectId.fromString(namespace, doIdString)
     const state = createDurableObjectState(
       id,
@@ -120,8 +118,6 @@ class DurableObjectManager implements DOInstanceProvider {
       this.databaseId,
       this.debug,
     )
-
-    // Create the DO instance
     const doInstance = new doClass(state, env)
 
     instance = {
@@ -135,44 +131,45 @@ class DurableObjectManager implements DOInstanceProvider {
     }
 
     this.instances.set(key, instance)
+    metrics.instancesCreated++
+    if (this.debug) log.debug({ namespace, doIdString }, 'Created DO instance')
 
-    if (this.debug) {
-      log.debug({ namespace, doIdString }, 'Created DO instance')
-    }
-
-    // Register location in SQLit
     await this.registerLocation(namespace, doIdString)
-
     return instance
   }
 
-  /**
-   * Route a fetch request to a DO instance
-   */
   async routeRequest(
     namespace: string,
     doIdString: string,
     request: Request,
     env: Record<string, unknown> = {},
   ): Promise<Response> {
-    const instance = await this.getOrCreateInstance(namespace, doIdString, env)
+    const start = Date.now()
+    metrics.requestsTotal++
 
-    // Wait for any blocking operations
+    const instance = await this.getOrCreateInstance(namespace, doIdString, env)
     await instance.state.waitForUnblock()
 
-    // Call the DO's fetch handler
     if (!instance.instance.fetch) {
+      metrics.requestsError++
       return new Response('Durable Object does not implement fetch()', {
         status: 501,
       })
     }
 
-    return instance.instance.fetch(request)
+    const response = await instance.instance.fetch(request)
+    const latency = Date.now() - start
+    metrics.requestLatencyMs.push(latency)
+    if (metrics.requestLatencyMs.length > 1000) metrics.requestLatencyMs.shift()
+
+    if (response.ok) {
+      metrics.requestsSuccess++
+    } else {
+      metrics.requestsError++
+    }
+    return response
   }
 
-  /**
-   * Register DO location in SQLit
-   */
   private async registerLocation(
     namespace: string,
     doIdString: string,
@@ -183,34 +180,26 @@ class DurableObjectManager implements DOInstanceProvider {
     const port = parseInt(process.env.PORT ?? '4030', 10)
 
     await this.sqlit.exec(
-      `INSERT INTO do_locations (key, pod_id, port, status, last_seen, created_at)
-       VALUES (?, ?, ?, 'active', ?, ?)
+      `INSERT INTO do_locations (key, pod_id, port, status, last_seen, created_at) VALUES (?, ?, ?, 'active', ?, ?)
        ON CONFLICT (key) DO UPDATE SET pod_id = excluded.pod_id, port = excluded.port, status = 'active', last_seen = excluded.last_seen`,
       [key, podId, port, now, now],
       this.databaseId,
     )
   }
 
-  /**
-   * Update location heartbeat
-   */
   async heartbeat(): Promise<void> {
     const now = Date.now()
     const podId = process.env.POD_ID ?? process.env.HOSTNAME ?? 'local'
 
     for (const instance of this.instances.values()) {
-      const key = `${instance.namespace}:${instance.doIdString}`
       await this.sqlit.exec(
         `UPDATE do_locations SET last_seen = ? WHERE key = ? AND pod_id = ?`,
-        [now, key, podId],
+        [now, `${instance.namespace}:${instance.doIdString}`, podId],
         this.databaseId,
       )
     }
   }
 
-  /**
-   * Evict idle instances
-   */
   async evictIdleInstances(): Promise<number> {
     const now = Date.now()
     let evicted = 0
@@ -222,63 +211,45 @@ class DurableObjectManager implements DOInstanceProvider {
       }
     }
 
-    if (evicted > 0) {
-      log.info({ evicted }, 'Evicted idle DO instances')
-    }
-
+    if (evicted > 0) log.info({ evicted }, 'Evicted idle DO instances')
     return evicted
   }
 
-  /**
-   * Evict a specific instance
-   */
   async evictInstance(key: string): Promise<void> {
     const instance = this.instances.get(key)
     if (!instance) return
 
-    // Close all WebSockets
+    metrics.websocketsClosed += instance.state.getWebSocketCount()
     instance.state.closeAllWebSockets(1001, 'Durable Object evicted')
-
-    // Drain waitUntil promises
     await instance.state.drainWaitUntil()
 
-    // Mark as evicted in SQLit
     await this.sqlit.exec(
       `UPDATE do_locations SET status = 'evicted' WHERE key = ?`,
       [key],
       this.databaseId,
     )
-
-    // Remove from local map
     this.instances.delete(key)
-
-    if (this.debug) {
-      log.debug({ key }, 'Evicted DO instance')
-    }
+    metrics.instancesEvicted++
+    if (this.debug) log.debug({ key }, 'Evicted DO instance')
   }
 
-  /**
-   * Start background tasks (heartbeat, eviction)
-   */
   startBackgroundTasks(): void {
-    // Heartbeat every 30 seconds
-    setInterval(() => {
-      this.heartbeat().catch((err) => {
-        log.error({ error: err }, 'Heartbeat failed')
-      })
-    }, 30000)
-
-    // Eviction check every minute
-    this.evictionInterval = setInterval(() => {
-      this.evictIdleInstances().catch((err) => {
-        log.error({ error: err }, 'Eviction check failed')
-      })
-    }, 60000)
+    setInterval(
+      () =>
+        this.heartbeat().catch((err) =>
+          log.error({ error: err }, 'Heartbeat failed'),
+        ),
+      30000,
+    )
+    this.evictionInterval = setInterval(
+      () =>
+        this.evictIdleInstances().catch((err) =>
+          log.error({ error: err }, 'Eviction failed'),
+        ),
+      60000,
+    )
   }
 
-  /**
-   * Stop background tasks
-   */
   stopBackgroundTasks(): void {
     if (this.evictionInterval) {
       clearInterval(this.evictionInterval)
@@ -286,35 +257,22 @@ class DurableObjectManager implements DOInstanceProvider {
     }
   }
 
-  /**
-   * Get instance count
-   */
   getInstanceCount(): number {
     return this.instances.size
   }
-
-  /**
-   * Get all registered namespaces
-   */
   getRegisteredNamespaces(): string[] {
     return Array.from(this.registeredClasses.keys())
   }
 }
-
-// ============================================================================
-// Singleton Manager
-// ============================================================================
 
 let manager: DurableObjectManager | null = null
 let schemaInitialized = false
 
 async function getManager(): Promise<DurableObjectManager> {
   if (!manager) {
-    const sqlit = getSQLit()
-    const databaseId = getSQLitDatabaseId() ?? 'dws-durable-objects'
     manager = new DurableObjectManager(
-      sqlit,
-      databaseId,
+      getSQLit(),
+      getSQLitDatabaseId() ?? 'dws-durable-objects',
       getLogLevel() === 'debug',
     )
   }
@@ -323,140 +281,129 @@ async function getManager(): Promise<DurableObjectManager> {
 
 async function ensureSchemaInitialized(): Promise<void> {
   if (schemaInitialized) return
-
   const sqlit = getSQLit()
   const databaseId = getSQLitDatabaseId() ?? 'dws-durable-objects'
-
-  const initialized = await isDOSchemaInitialized(sqlit, databaseId)
-  if (!initialized) {
+  if (!(await isDOSchemaInitialized(sqlit, databaseId))) {
     await initializeDOSchema(sqlit, databaseId)
   }
   schemaInitialized = true
 }
 
-// ============================================================================
-// Router
-// ============================================================================
+async function handleDORequest(
+  params: { namespace: string; doId: string },
+  request: Request,
+  path: string,
+): Promise<Response> {
+  await ensureSchemaInitialized()
+  const mgr = await getManager()
 
-export function createDurableObjectsRouter() {
-  return (
-    new Elysia({ prefix: '/do' })
-      // -------------------------------------------------------------------------
-      // Stats endpoint
-      // -------------------------------------------------------------------------
-      .get('/stats', async () => {
-        await ensureSchemaInitialized()
-        const sqlit = getSQLit()
-        const databaseId = getSQLitDatabaseId() ?? 'dws-durable-objects'
-
-        const stats = await getDOStats(sqlit, databaseId)
-        const mgr = await getManager()
-
-        return {
-          ...stats,
-          localInstances: mgr.getInstanceCount(),
-          registeredNamespaces: mgr.getRegisteredNamespaces(),
-        }
-      })
-
-      // -------------------------------------------------------------------------
-      // Schema initialization (admin only)
-      // -------------------------------------------------------------------------
-      .post('/schema/init', async () => {
-        const sqlit = getSQLit()
-        const databaseId = getSQLitDatabaseId() ?? 'dws-durable-objects'
-
-        await initializeDOSchema(sqlit, databaseId)
-        schemaInitialized = true
-
-        return { success: true, message: 'DO schema initialized' }
-      })
-
-      // -------------------------------------------------------------------------
-      // Cleanup stale data
-      // -------------------------------------------------------------------------
-      .post('/cleanup', async () => {
-        await ensureSchemaInitialized()
-        const sqlit = getSQLit()
-        const databaseId = getSQLitDatabaseId() ?? 'dws-durable-objects'
-
-        const result = await cleanupStaleDOData(sqlit, databaseId)
-
-        return { success: true, ...result }
-      })
-
-      // -------------------------------------------------------------------------
-      // Route request to DO instance
-      // -------------------------------------------------------------------------
-      .all('/:namespace/:doId/*', async ({ params, request }) => {
-        await ensureSchemaInitialized()
-        const mgr = await getManager()
-
-        const { namespace, doId } = params
-        const path = request.url.split(`/do/${namespace}/${doId}`)[1] ?? '/'
-
-        // Validate DO ID format
-        const isValidId = await DWSObjectId.validateNamespace(namespace, doId)
-        if (!isValidId) {
-          return new Response(
-            JSON.stringify({
-              error: 'Invalid Durable Object ID for namespace',
-            }),
-            { status: 400, headers: { 'Content-Type': 'application/json' } },
-          )
-        }
-
-        // Create a new request with the DO-relative path
-        const doUrl = new URL(path, request.url)
-        const doRequest = new Request(doUrl.toString(), {
-          method: request.method,
-          headers: request.headers,
-          body: request.body,
-        })
-
-        return mgr.routeRequest(namespace, doId, doRequest)
-      })
-
-      // -------------------------------------------------------------------------
-      // Direct route for DO root (without trailing path)
-      // -------------------------------------------------------------------------
-      .all('/:namespace/:doId', async ({ params, request }) => {
-        await ensureSchemaInitialized()
-        const mgr = await getManager()
-
-        const { namespace, doId } = params
-
-        // Validate DO ID format
-        const isValidId = await DWSObjectId.validateNamespace(namespace, doId)
-        if (!isValidId) {
-          return new Response(
-            JSON.stringify({
-              error: 'Invalid Durable Object ID for namespace',
-            }),
-            { status: 400, headers: { 'Content-Type': 'application/json' } },
-          )
-        }
-
-        // Create a new request with root path
-        const doUrl = new URL('/', request.url)
-        const doRequest = new Request(doUrl.toString(), {
-          method: request.method,
-          headers: request.headers,
-          body: request.body,
-        })
-
-        return mgr.routeRequest(namespace, doId, doRequest)
-      })
+  const isValidId = await DWSObjectId.validateNamespace(
+    params.namespace,
+    params.doId,
   )
+  if (!isValidId) {
+    return new Response(
+      JSON.stringify({ error: 'Invalid Durable Object ID for namespace' }),
+      {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      },
+    )
+  }
+
+  const doUrl = new URL(path, request.url)
+  const doRequest = new Request(doUrl.toString(), {
+    method: request.method,
+    headers: request.headers,
+    body: request.body,
+  })
+
+  return mgr.routeRequest(params.namespace, params.doId, doRequest)
 }
 
-// ============================================================================
-// DO Registration API (for workers to register their DO classes)
-// ============================================================================
+export function createDurableObjectsRouter() {
+  return new Elysia({ prefix: '/do' })
+    .get('/health', async () => {
+      const start = Date.now()
+      const sqlit = getSQLit()
+      const databaseId = getSQLitDatabaseId() ?? 'dws-durable-objects'
 
-/**
- * Register a Durable Object class for a namespace
- */
+      // Check SQLit connectivity
+      let sqlitHealthy = false
+      let sqlitLatencyMs = 0
+      try {
+        const sqlitStart = Date.now()
+        await sqlit.query('SELECT 1', undefined, databaseId)
+        sqlitLatencyMs = Date.now() - sqlitStart
+        sqlitHealthy = true
+      } catch {
+        sqlitHealthy = false
+      }
+
+      // Check schema
+      let schemaReady = false
+      try {
+        schemaReady = await isDOSchemaInitialized(sqlit, databaseId)
+      } catch {
+        schemaReady = false
+      }
+
+      const mgr = manager
+      const healthy = sqlitHealthy && schemaReady
+
+      return {
+        status: healthy ? 'healthy' : 'unhealthy',
+        checks: {
+          sqlit: { healthy: sqlitHealthy, latencyMs: sqlitLatencyMs },
+          schema: { initialized: schemaReady },
+          manager: {
+            initialized: !!mgr,
+            instanceCount: mgr?.getInstanceCount() ?? 0,
+            namespaces: mgr?.getRegisteredNamespaces() ?? [],
+          },
+        },
+        uptimeMs: Date.now() - start,
+      }
+    })
+    .get('/metrics', () => getDOMetrics())
+    .get('/stats', async () => {
+      await ensureSchemaInitialized()
+      const sqlit = getSQLit()
+      const databaseId = getSQLitDatabaseId() ?? 'dws-durable-objects'
+      const stats = await getDOStats(sqlit, databaseId)
+      const mgr = await getManager()
+      return {
+        ...stats,
+        localInstances: mgr.getInstanceCount(),
+        registeredNamespaces: mgr.getRegisteredNamespaces(),
+      }
+    })
+    .post('/schema/init', async () => {
+      await initializeDOSchema(
+        getSQLit(),
+        getSQLitDatabaseId() ?? 'dws-durable-objects',
+      )
+      schemaInitialized = true
+      return { success: true, message: 'DO schema initialized' }
+    })
+    .post('/cleanup', async () => {
+      await ensureSchemaInitialized()
+      const result = await cleanupStaleDOData(
+        getSQLit(),
+        getSQLitDatabaseId() ?? 'dws-durable-objects',
+      )
+      return { success: true, ...result }
+    })
+    .all('/:namespace/:doId/*', async ({ params, request }) => {
+      const path =
+        request.url.split(`/do/${params.namespace}/${params.doId}`)[1] ?? '/'
+      return handleDORequest(params, request, path)
+    })
+    .all('/:namespace/:doId', async ({ params, request }) => {
+      return handleDORequest(params, request, '/')
+    })
+}
+
 export async function registerDurableObjectClass(
   namespace: string,
   doClass: DurableObjectConstructor,
@@ -466,30 +413,19 @@ export async function registerDurableObjectClass(
   mgr.registerClass(namespace, doClass)
 }
 
-/**
- * Start the DO manager background tasks
- */
 export async function startDurableObjectManager(): Promise<void> {
   await ensureSchemaInitialized()
   const mgr = await getManager()
   mgr.startBackgroundTasks()
 
-  // Connect manager to alarm scheduler as instance provider
   const alarmScheduler = getAlarmScheduler()
   alarmScheduler.setInstanceProvider(mgr)
-
-  // Start alarm scheduler
   startAlarmScheduler()
 
   log.info('Durable Object manager started')
 }
 
-/**
- * Stop the DO manager background tasks
- */
 export async function stopDurableObjectManager(): Promise<void> {
-  if (manager) {
-    manager.stopBackgroundTasks()
-  }
+  if (manager) manager.stopBackgroundTasks()
   stopAlarmScheduler()
 }

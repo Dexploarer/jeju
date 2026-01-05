@@ -24,6 +24,11 @@ export {
   TokenCustomizationSchema,
 } from './launch'
 export {
+  getSecretsService,
+  type PlatformSecrets,
+  type SecureSecretsService,
+} from './secrets'
+export {
   type ConversationState,
   getStateManager,
   type PendingAction,

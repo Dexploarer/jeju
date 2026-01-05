@@ -24,6 +24,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { type Address, createPublicClient, formatEther, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
+import { getDeployerKey } from '../lib/secrets'
 
 // Network configurations
 const NETWORKS = {
@@ -45,9 +46,6 @@ const NETWORKS = {
 
 type NetworkName = keyof typeof NETWORKS
 
-const ANVIL_DEFAULT_KEY =
-  '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'
-
 interface DeploymentResult {
   chainId: number
   network: string
@@ -56,6 +54,7 @@ interface DeploymentResult {
   contracts: {
     jeju: string
     usdc: string
+    tokenFactory: string
     predictionOracle: string
     predictionMarket: string
     perpetualMarket: string
@@ -63,6 +62,13 @@ interface DeploymentResult {
     insuranceFund: string
     priceOracle: string
     simpleCollectible: string
+    nftMarketplace: string
+    tfmmPools: Array<{
+      address: string
+      name: string
+      symbol: string
+      tokens: string[]
+    }>
   }
   markets: {
     predictions: Array<{
@@ -81,9 +87,10 @@ interface DeploymentResult {
 // Track deployment warnings globally
 const deploymentWarnings: string[] = []
 
-function parseArgs(): { network: NetworkName } {
+function parseArgs(): { network: NetworkName; forceDeploy: boolean } {
   const args = process.argv.slice(2)
   let network: NetworkName = 'testnet'
+  let forceDeploy = false
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--network' && args[i + 1]) {
@@ -96,25 +103,18 @@ function parseArgs(): { network: NetworkName } {
         )
       }
     }
+    if (args[i] === '--force-deploy' || args[i] === '--force') {
+      forceDeploy = true
+    }
   }
 
-  return { network }
+  return { network, forceDeploy }
 }
 
-function getDeployerKey(networkName: NetworkName): string {
-  const envKey = process.env.PRIVATE_KEY
-
-  if (envKey) return envKey
-
-  if (networkName === 'localnet') {
-    console.log('  Using default Anvil key for localnet')
-    return ANVIL_DEFAULT_KEY
-  }
-
-  throw new Error(
-    'PRIVATE_KEY environment variable required for non-local deployments.\n' +
-      'Usage: PRIVATE_KEY=0x... bun run scripts/deploy-testnet.ts',
-  )
+// Used below in main()
+function getDeployerKeyForNetwork(networkName: NetworkName): string {
+  const config = NETWORKS[networkName]
+  return getDeployerKey(config.rpcUrl)
 }
 
 const CONTRACTS_DIR = join(import.meta.dirname, '../../../packages/contracts')
@@ -178,11 +178,22 @@ async function checkChainHealth(
 
   if (blockAge > config.minBlockAge) {
     const blockDate = new Date(Number(block.timestamp) * 1000).toISOString()
+
+    // Check if --force flag is passed to skip the stale check
+    if (process.argv.includes('--force-deploy')) {
+      console.log(
+        `  WARNING: Chain appears stale but --force-deploy was passed. Proceeding anyway.`,
+      )
+      console.log(`  Last block: ${blockNumber} at ${blockDate}`)
+      return
+    }
+
     throw new Error(
       `Chain appears to be stalled. Last block (${blockNumber}) was produced ${blockAge}s ago at ${blockDate}.\n` +
         `The ${config.name} sequencer may need to be restarted.\n\n` +
         `For localnet, run: jeju dev --start\n` +
-        `For testnet, check Kubernetes deployment status.`,
+        `For testnet, check Kubernetes deployment status.\n\n` +
+        `Use --force-deploy to skip this check if you know the chain is operational.`,
     )
   }
 
@@ -326,6 +337,42 @@ async function deployTokens(
   }
 
   return { jeju, usdc }
+}
+
+async function deployTokenFactory(
+  rpcUrl: string,
+  privateKey: string,
+): Promise<string> {
+  console.log('\n=== Deploying Token Factory ===\n')
+
+  // Check if TokenFactory already exists
+  const configPath = join(CONFIG_DIR, 'contracts.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf-8'))
+  const existingFactory = config.testnet?.bazaar?.tokenFactory
+
+  if (existingFactory && existingFactory !== '') {
+    // Verify contract exists on chain
+    try {
+      const code = exec(`cast code ${existingFactory} --rpc-url ${rpcUrl}`)
+      if (code !== '0x') {
+        console.log(`  Using existing TokenFactory: ${existingFactory}`)
+        return existingFactory
+      }
+    } catch {
+      // Contract doesn't exist, deploy new one
+    }
+  }
+
+  // Deploy SimpleERC20Factory
+  const tokenFactory = deployContract(
+    rpcUrl,
+    privateKey,
+    'src/tokens/TokenFactory.sol:SimpleERC20Factory',
+    [],
+    'SimpleERC20Factory (TokenFactory)',
+  )
+
+  return tokenFactory
 }
 
 async function deployPredictionMarkets(
@@ -621,14 +668,175 @@ async function deployNFT(
   return simpleCollectible
 }
 
+async function deployNFTMarketplace(
+  rpcUrl: string,
+  privateKey: string,
+  deployer: string,
+  tokens: { jeju: string; usdc: string },
+): Promise<string> {
+  console.log('\n=== Deploying NFT Marketplace ===\n')
+
+  // Deploy Marketplace contract
+  // Constructor: (initialOwner, _gameGold, _usdc, _feeRecipient)
+  const nftMarketplace = deployContract(
+    rpcUrl,
+    privateKey,
+    'src/marketplace/Marketplace.sol:Marketplace',
+    [
+      deployer, // initialOwner
+      tokens.jeju, // gameGold (using JEJU as the game token)
+      tokens.usdc, // usdc
+      deployer, // feeRecipient
+    ],
+    'NFT Marketplace',
+  )
+
+  console.log(`  NFT Marketplace deployed at: ${nftMarketplace}`)
+
+  return nftMarketplace
+}
+
+interface TFMMPoolConfig {
+  name: string
+  symbol: string
+  tokens: string[]
+  initialWeights: string[]
+  swapFeeBps: number
+  initialLiquidity: string[]
+}
+
+async function deployTFMMPools(
+  rpcUrl: string,
+  privateKey: string,
+  deployer: string,
+  tokens: { jeju: string; usdc: string },
+): Promise<DeploymentResult['contracts']['tfmmPools']> {
+  console.log('\n=== Deploying TFMM Liquidity Pools ===\n')
+
+  const pools: DeploymentResult['contracts']['tfmmPools'] = []
+
+  // Pool configurations
+  const poolConfigs: TFMMPoolConfig[] = [
+    {
+      name: 'JEJU-USDC Pool',
+      symbol: 'TFMM-JEJU-USDC',
+      tokens: [tokens.jeju, tokens.usdc],
+      initialWeights: ['500000000000000000', '500000000000000000'], // 50/50
+      swapFeeBps: 30, // 0.3%
+      initialLiquidity: ['100000000000000000000000', '10000000000'], // 100k JEJU, 10k USDC (6 decimals)
+    },
+  ]
+
+  for (const poolConfig of poolConfigs) {
+    console.log(`  Deploying ${poolConfig.name}...`)
+
+    // Deploy TFMMPool contract
+    // Constructor: (name, symbol, tokens, initialWeights, swapFeeBps, owner)
+    const tokensArray = `[${poolConfig.tokens.map((t) => `"${t}"`).join(',')}]`
+    const weightsArray = `[${poolConfig.initialWeights.join(',')}]`
+
+    let poolAddress: string
+    try {
+      // Build constructor args
+      const constructorTypes = 'string,string,address[],uint256[],uint256,address'
+      const constructorValues = `"${poolConfig.name}" "${poolConfig.symbol}" ${tokensArray} ${weightsArray} ${poolConfig.swapFeeBps} ${deployer}`
+
+      // Get bytecode
+      const artifactPath = join(CONTRACTS_DIR, 'out/TFMMPool.sol/TFMMPool.json')
+      const artifact = JSON.parse(readFileSync(artifactPath, 'utf-8'))
+      let bytecode = artifact.bytecode.object as string
+
+      // Encode constructor args
+      const encoded = exec(
+        `cast abi-encode "constructor(${constructorTypes})" ${constructorValues}`,
+      )
+      bytecode = bytecode + encoded.slice(2)
+
+      // Deploy
+      const cmd = `cast send --rpc-url ${rpcUrl} --private-key ${privateKey} --create "${bytecode}" --json`
+      const output = exec(cmd)
+      const result = JSON.parse(output)
+      poolAddress = result.contractAddress
+
+      if (!poolAddress) {
+        throw new Error(`Deployment failed: ${result.transactionHash}`)
+      }
+
+      console.log(`    ${poolConfig.name}: ${poolAddress}`)
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error)
+      const warning = `TFMM pool ${poolConfig.name} deployment failed: ${msg.slice(0, 100)}`
+      console.log(`    WARNING: ${warning}`)
+      deploymentWarnings.push(warning)
+      continue
+    }
+
+    // Approve tokens and add initial liquidity
+    console.log('    Approving tokens...')
+    for (let i = 0; i < poolConfig.tokens.length; i++) {
+      sendTx(
+        rpcUrl,
+        privateKey,
+        poolConfig.tokens[i],
+        'approve(address,uint256)',
+        [poolAddress, poolConfig.initialLiquidity[i]],
+        `    Approved ${i === 0 ? 'JEJU' : 'USDC'}`,
+      )
+    }
+
+    // Add initial liquidity
+    console.log('    Adding initial liquidity...')
+    const amountsArray = `"[${poolConfig.initialLiquidity.join(',')}]"`
+    const addLiquidityCmd = `cast send ${poolAddress} "addLiquidity(uint256[],uint256)" ${amountsArray} 0 --rpc-url ${rpcUrl} --private-key ${privateKey}`
+
+    try {
+      exec(addLiquidityCmd)
+      console.log('    Liquidity added.')
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error)
+      const warning = `TFMM ${poolConfig.name} liquidity failed: ${msg.slice(0, 80)}`
+      console.log(`    WARNING: ${warning}`)
+      deploymentWarnings.push(warning)
+    }
+
+    pools.push({
+      address: poolAddress,
+      name: poolConfig.name,
+      symbol: poolConfig.symbol,
+      tokens: poolConfig.tokens,
+    })
+  }
+
+  return pools
+}
+
 function saveDeployment(result: DeploymentResult, networkName: string): void {
-  // Save to deployments folder
+  // Save full deployment to deployments folder
   const deployPath = join(
     CONTRACTS_DIR,
     `deployments/bazaar-${networkName}.json`,
   )
   writeFileSync(deployPath, JSON.stringify(result, null, 2))
   console.log(`\nSaved: ${deployPath}`)
+
+  // Also save marketplace-specific deployment file for contracts package
+  const marketplaceDeployment = {
+    marketplace: result.contracts.nftMarketplace,
+    at: result.contracts.nftMarketplace,
+    goldToken: result.contracts.jeju,
+    usdcToken: result.contracts.usdc,
+    Owner: result.deployer,
+    Recipient: result.deployer,
+    chainId: result.chainId,
+    network: result.network,
+    deployedAt: result.deployedAt,
+  }
+  const marketplacePath = join(
+    CONTRACTS_DIR,
+    `deployments/bazaar-marketplace-${result.chainId}.json`,
+  )
+  writeFileSync(marketplacePath, JSON.stringify(marketplaceDeployment, null, 2))
+  console.log(`Saved: ${marketplacePath}`)
 
   // Update contracts.json
   const configPath = join(CONFIG_DIR, 'contracts.json')
@@ -646,9 +854,15 @@ function saveDeployment(result: DeploymentResult, networkName: string): void {
     config[netKey].tokens.usdc = result.contracts.usdc
   }
 
+  config[netKey].bazaar.tokenFactory = result.contracts.tokenFactory
   config[netKey].bazaar.predictionMarket = result.contracts.predictionMarket
   config[netKey].bazaar.predictionOracle = result.contracts.predictionOracle
   config[netKey].bazaar.simpleCollectible = result.contracts.simpleCollectible
+  config[netKey].bazaar.marketplace = result.contracts.nftMarketplace
+
+  // Also update commerce.nftMarketplace for compatibility
+  if (!config[netKey].commerce) config[netKey].commerce = {}
+  config[netKey].commerce.nftMarketplace = result.contracts.nftMarketplace
 
   config[netKey].perps = {
     market: result.contracts.perpetualMarket,
@@ -657,8 +871,35 @@ function saveDeployment(result: DeploymentResult, networkName: string): void {
     priceOracle: result.contracts.priceOracle,
   }
 
+  // Save TFMM pools as flat addresses in amm category
+  if (!config[netKey].amm) config[netKey].amm = {}
+  for (const pool of result.contracts.tfmmPools) {
+    const key = `TFMMPool_${pool.symbol.replace('TFMM-', '').replace('-', '_')}`
+    config[netKey].amm[key] = pool.address
+  }
+
   writeFileSync(configPath, JSON.stringify(config, null, 2))
   console.log(`Updated: ${configPath}`)
+
+  // Also save TFMM-specific deployment file
+  if (result.contracts.tfmmPools.length > 0) {
+    const tfmmDeployPath = join(
+      CONTRACTS_DIR,
+      `deployments/tfmm-${networkName}.json`,
+    )
+    writeFileSync(
+      tfmmDeployPath,
+      JSON.stringify(
+        {
+          pools: result.contracts.tfmmPools,
+          deployedAt: result.deployedAt,
+        },
+        null,
+        2,
+      ),
+    )
+    console.log(`Saved: ${tfmmDeployPath}`)
+  }
 }
 
 function printSummary(result: DeploymentResult): void {
@@ -669,6 +910,9 @@ function printSummary(result: DeploymentResult): void {
   console.log('\nTokens:')
   console.log(`  JEJU:  ${result.contracts.jeju}`)
   console.log(`  USDC:  ${result.contracts.usdc}`)
+
+  console.log('\nToken Factory:')
+  console.log(`  TokenFactory:  ${result.contracts.tokenFactory}`)
 
   console.log('\nPrediction Markets:')
   console.log(`  Oracle:  ${result.contracts.predictionOracle}`)
@@ -690,6 +934,16 @@ function printSummary(result: DeploymentResult): void {
 
   console.log('\nNFT:')
   console.log(`  Simple Collectible: ${result.contracts.simpleCollectible}`)
+  console.log(`  NFT Marketplace:    ${result.contracts.nftMarketplace}`)
+
+  console.log('\nTFMM Liquidity Pools:')
+  if (result.contracts.tfmmPools.length === 0) {
+    console.log('  No pools deployed')
+  } else {
+    for (const pool of result.contracts.tfmmPools) {
+      console.log(`  ${pool.name}: ${pool.address}`)
+    }
+  }
 
   // Show warnings if any
   if (result.warnings.length > 0) {
@@ -721,7 +975,7 @@ function printSummary(result: DeploymentResult): void {
 }
 
 async function main(): Promise<void> {
-  const { network } = parseArgs()
+  const { network, forceDeploy } = parseArgs()
   const config = NETWORKS[network]
 
   console.log(
@@ -732,11 +986,15 @@ async function main(): Promise<void> {
   console.log(`RPC URL: ${config.rpcUrl}`)
   console.log(`Chain ID: ${config.chainId}`)
 
-  // Check chain health first
-  await checkChainHealth(config.rpcUrl, config)
+  // Check chain health first (skip if --force-deploy is set)
+  if (forceDeploy) {
+    console.log('\n--force-deploy: Skipping chain health check')
+  } else {
+    await checkChainHealth(config.rpcUrl, config)
+  }
 
   // Get deployer
-  const privateKey = getDeployerKey(network)
+  const privateKey = getDeployerKeyForNetwork(network)
   const account = privateKeyToAccount(privateKey as `0x${string}`)
   const deployer = account.address
 
@@ -758,6 +1016,7 @@ async function main(): Promise<void> {
 
   // Deploy all contracts
   const tokens = await deployTokens(config.rpcUrl, privateKey, deployer)
+  const tokenFactory = await deployTokenFactory(config.rpcUrl, privateKey)
   const predictions = await deployPredictionMarkets(
     config.rpcUrl,
     privateKey,
@@ -766,6 +1025,18 @@ async function main(): Promise<void> {
   )
   const perps = await deployPerps(config.rpcUrl, privateKey, deployer, tokens)
   const simpleCollectible = await deployNFT(config.rpcUrl, privateKey, deployer)
+  const nftMarketplace = await deployNFTMarketplace(
+    config.rpcUrl,
+    privateKey,
+    deployer,
+    tokens,
+  )
+  const tfmmPools = await deployTFMMPools(
+    config.rpcUrl,
+    privateKey,
+    deployer,
+    tokens,
+  )
 
   const result: DeploymentResult = {
     chainId: config.chainId,
@@ -775,6 +1046,7 @@ async function main(): Promise<void> {
     contracts: {
       jeju: tokens.jeju,
       usdc: tokens.usdc,
+      tokenFactory,
       predictionOracle: predictions.predictionOracle,
       predictionMarket: predictions.predictionMarket,
       perpetualMarket: perps.perpetualMarket,
@@ -782,6 +1054,8 @@ async function main(): Promise<void> {
       insuranceFund: perps.insuranceFund,
       priceOracle: perps.priceOracle,
       simpleCollectible,
+      nftMarketplace,
+      tfmmPools,
     },
     markets: {
       predictions: predictions.markets,

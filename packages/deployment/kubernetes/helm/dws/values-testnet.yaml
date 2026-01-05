@@ -93,6 +93,11 @@ ingress:
       paths:
         - path: /
           pathType: Prefix
+    # Eliza Cloud - AI agent cloud platform
+    - host: cloud.testnet.jejunetwork.org
+      paths:
+        - path: /
+          pathType: Prefix
 
 resources:
   limits:
@@ -213,6 +218,9 @@ env:
   # SQLit connection for decentralized database
   - name: SQLIT_ENABLED
     value: "true"
+  # Allow fallback to memory mode if SQLit adapter isn't deployed yet
+  - name: DWS_SQLIT_FALLBACK
+    value: "1"
   # Use sqlit-adapter service for HTTP API (sqlit pod itself only listens on native RPC port 4661)
   - name: SQLIT_HTTP_URL
     value: "http://sqlit-adapter.dws.svc.cluster.local:8546"
@@ -221,6 +229,14 @@ env:
   # Native SQLit RPC connection
   - name: SQLIT_CLUSTER_URL
     value: "sqlit.dws.svc.cluster.local:4661"
+  # SQLit authentication - testnet uses a static key (simple adapter doesn't verify signatures)
+  # In production, use KMS-backed key via SQLIT_KEY_ID
+  - name: SQLIT_PRIVATE_KEY
+    valueFrom:
+      secretKeyRef:
+        name: dws-sqlit-credentials
+        key: private-key
+        optional: false
 
 persistence:
   # Disabled - DWS uses SQLit + ConfigMap for state (allows HA with 3 replicas)
@@ -238,3 +254,10 @@ metrics:
   enabled: true
   serviceMonitor:
     enabled: true
+
+# SQLit configuration for testnet
+sqlit:
+  enabled: true
+  # Static testnet key (32 bytes hex) - simple adapter doesn't verify signatures
+  # WARNING: This is for testnet only. Use SealedSecrets or AWS Secrets Manager for mainnet
+  privateKey: "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"

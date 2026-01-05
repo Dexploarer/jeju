@@ -24,7 +24,7 @@
     "@jejunetwork/config": "workspace:*",
     "@jejunetwork/db": "workspace:*",
     "@jejunetwork/types": "workspace:*",
-    "pino": "^10.1.0",
+    "pino": "10.1.0",
     "viem": "2.43.3",
     "zod": "4.2.1"
   },

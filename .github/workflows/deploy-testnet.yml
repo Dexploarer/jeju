@@ -64,6 +64,9 @@ jobs:
           - app: indexer
             context: apps/indexer
             dockerfile: apps/indexer/Dockerfile.k8s
+          - app: sqlit-adapter
+            context: packages/sqlit/adapter
+            dockerfile: packages/sqlit/adapter/Dockerfile
     steps:
       - uses: actions/checkout@v4
       

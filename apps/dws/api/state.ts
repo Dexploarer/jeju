@@ -173,9 +173,18 @@ async function getSQLitClient(): Promise<MinimalSQLitClient> {
     // Reset any existing client to ensure fresh config
     resetSQLit()
 
-    // Get URLs from centralized config (respects JEJU_NETWORK)
+    // Get URLs from centralized config (respects JEJU_NETWORK and env overrides)
+    // Priority: SQLIT_BLOCK_PRODUCER_ENDPOINT env var > services.json config
     const blockProducerEndpoint = getSQLitUrl()
     const minerEndpoint = getSQLitMinerUrl()
+
+    const network = getCurrentNetwork()
+    const isK8s = Boolean(process.env.KUBERNETES_SERVICE_HOST)
+    console.log(
+      `[DWS State] Connecting to SQLit (network: ${network}, k8s: ${isK8s})`,
+    )
+    console.log(`[DWS State]   Block producer: ${blockProducerEndpoint}`)
+    console.log(`[DWS State]   Miner: ${minerEndpoint}`)
 
     sqlitClient = getSQLit({
       blockProducerEndpoint,
@@ -188,8 +197,28 @@ async function getSQLitClient(): Promise<MinimalSQLitClient> {
     const healthy = await sqlitClient.isHealthy()
     if (!healthy) {
       sqlitClient = null
-      const network = getCurrentNetwork()
-      const message = `DWS requires SQLit for decentralized state (network: ${network}). Ensure SQLit is running: docker compose up -d sqlit`
+
+      // On testnet with fallback enabled, or when DWS_SQLIT_FALLBACK=1, use memory mode
+      if (allowSQLitFallback || network === 'testnet') {
+        console.warn(
+          `[DWS State] SQLit unavailable at ${blockProducerEndpoint}, falling back to memory mode`,
+        )
+        memoryOnlyMode = true
+        sqlitClient = createMemorySQLitClient()
+        return sqlitClient
+      }
+
+      // Build helpful error message based on environment
+      let helpMessage: string
+      if (isK8s) {
+        helpMessage = `Check sqlit-adapter deployment: kubectl -n dws get pods -l app=sqlit-adapter`
+      } else if (network === 'localnet') {
+        helpMessage = `Start SQLit: cd packages/sqlit/adapter && bun run start`
+      } else {
+        helpMessage = `Ensure SQLIT_BLOCK_PRODUCER_ENDPOINT env var points to a healthy SQLit service`
+      }
+
+      const message = `DWS requires SQLit for decentralized state (network: ${network}). Endpoint ${blockProducerEndpoint} is not responding. ${helpMessage}`
       throw new Error(message)
     }
 
@@ -2948,8 +2977,12 @@ export const creditTransactionState = {
 }
 
 // Track if we're in memory-only mode (no SQLit)
-// Allow memory-only mode when testing (DWS_TEST_MODE=1) or explicitly requested
-const memoryOnlyMode = process.env.DWS_TEST_MODE === '1'
+// Allow memory-only mode when:
+// - DWS_TEST_MODE=1 (explicit test mode)
+// - DWS_SQLIT_FALLBACK=1 (allow fallback when SQLit unavailable)
+// - SQLit health check fails and we're on testnet (automatic fallback)
+let memoryOnlyMode = process.env.DWS_TEST_MODE === '1'
+const allowSQLitFallback = process.env.DWS_SQLIT_FALLBACK === '1'
 
 // In-memory stores for when SQLit is unavailable
 const memoryStores = {

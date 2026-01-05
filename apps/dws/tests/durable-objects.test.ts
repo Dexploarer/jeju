@@ -10,13 +10,17 @@
  * - Instance management
  * - Error handling
  *
- * Uses mocks for unit tests, requires SQLit for integration tests.
+ * REQUIREMENTS:
+ * - SQLit must be running at http://localhost:4661 (default)
+ * - Start with: bun run jeju start sqlit
+ * - Tests NEVER skip - they fail with clear instructions if infra is missing
  *
  * Run with: bun test tests/durable-objects.test.ts
  */
 
 import {
   afterAll,
+  beforeAll,
   beforeEach,
   describe,
   expect,
@@ -1211,9 +1215,299 @@ describe('DWSObjectState', () => {
 })
 
 // ============================================================================
+// Metrics Tests
+// ============================================================================
+
+import {
+  AlarmScheduler,
+  getAlarmScheduler,
+  startAlarmScheduler,
+  stopAlarmScheduler,
+} from '../api/durable-objects/alarm-scheduler.js'
+import {
+  createDurableObjectsRouter,
+  getDOMetrics,
+  registerDurableObjectClass,
+  startDurableObjectManager,
+  stopDurableObjectManager,
+} from '../api/durable-objects/router.js'
+
+describe('Router exports', () => {
+  test('createDurableObjectsRouter is exported and callable', () => {
+    expect(typeof createDurableObjectsRouter).toBe('function')
+  })
+
+  test('getDOMetrics is exported and callable', () => {
+    expect(typeof getDOMetrics).toBe('function')
+  })
+
+  test('registerDurableObjectClass is exported and callable', () => {
+    expect(typeof registerDurableObjectClass).toBe('function')
+  })
+
+  test('startDurableObjectManager is exported and callable', () => {
+    expect(typeof startDurableObjectManager).toBe('function')
+  })
+
+  test('stopDurableObjectManager is exported and callable', () => {
+    expect(typeof stopDurableObjectManager).toBe('function')
+  })
+})
+
+describe('AlarmScheduler exports', () => {
+  test('AlarmScheduler class is exported', () => {
+    expect(AlarmScheduler).toBeDefined()
+  })
+
+  test('getAlarmScheduler is exported and callable', () => {
+    expect(typeof getAlarmScheduler).toBe('function')
+  })
+
+  test('startAlarmScheduler is exported and callable', () => {
+    expect(typeof startAlarmScheduler).toBe('function')
+  })
+
+  test('stopAlarmScheduler is exported and callable', () => {
+    expect(typeof stopAlarmScheduler).toBe('function')
+  })
+})
+
+describe('getDOMetrics', () => {
+  test('returns all metric fields', () => {
+    const metrics = getDOMetrics()
+    expect(metrics).toHaveProperty('instancesCreated')
+    expect(metrics).toHaveProperty('instancesEvicted')
+    expect(metrics).toHaveProperty('requestsTotal')
+    expect(metrics).toHaveProperty('requestsSuccess')
+    expect(metrics).toHaveProperty('requestsError')
+    expect(metrics).toHaveProperty('alarmsProcessed')
+    expect(metrics).toHaveProperty('websocketsAccepted')
+    expect(metrics).toHaveProperty('websocketsClosed')
+    expect(metrics).toHaveProperty('avgLatencyMs')
+    expect(metrics).toHaveProperty('p99LatencyMs')
+    expect(metrics).toHaveProperty('sampleCount')
+  })
+
+  test('all metric values are numbers', () => {
+    const metrics = getDOMetrics()
+    expect(typeof metrics.instancesCreated).toBe('number')
+    expect(typeof metrics.instancesEvicted).toBe('number')
+    expect(typeof metrics.requestsTotal).toBe('number')
+    expect(typeof metrics.requestsSuccess).toBe('number')
+    expect(typeof metrics.requestsError).toBe('number')
+    expect(typeof metrics.alarmsProcessed).toBe('number')
+    expect(typeof metrics.websocketsAccepted).toBe('number')
+    expect(typeof metrics.websocketsClosed).toBe('number')
+    expect(typeof metrics.avgLatencyMs).toBe('number')
+    expect(typeof metrics.p99LatencyMs).toBe('number')
+    expect(typeof metrics.sampleCount).toBe('number')
+  })
+
+  test('avgLatencyMs is 0 when no samples', () => {
+    const metrics = getDOMetrics()
+    if (metrics.sampleCount === 0) {
+      expect(metrics.avgLatencyMs).toBe(0)
+      expect(metrics.p99LatencyMs).toBe(0)
+    }
+  })
+
+  test('does not mutate internal state on multiple calls', () => {
+    const metrics1 = getDOMetrics()
+    const metrics2 = getDOMetrics()
+    expect(metrics1.requestsTotal).toBe(metrics2.requestsTotal)
+    expect(metrics1.instancesCreated).toBe(metrics2.instancesCreated)
+  })
+
+  test('sampleCount is non-negative', () => {
+    const metrics = getDOMetrics()
+    expect(metrics.sampleCount).toBeGreaterThanOrEqual(0)
+    expect(metrics.sampleCount).toBeLessThanOrEqual(100) // Max 100 samples kept
+  })
+})
+
+// ============================================================================
+// Schema Rollback Tests
+// ============================================================================
+
+import {
+  initializeDOSchema,
+  isDOSchemaInitialized,
+  rollbackDOSchema,
+} from '@jejunetwork/durable-objects'
+
+describe('rollbackDOSchema', () => {
+  test('is exported and callable', () => {
+    expect(typeof rollbackDOSchema).toBe('function')
+  })
+
+  test('initializeDOSchema is exported and callable', () => {
+    expect(typeof initializeDOSchema).toBe('function')
+  })
+
+  test('isDOSchemaInitialized is exported and callable', () => {
+    expect(typeof isDOSchemaInitialized).toBe('function')
+  })
+})
+
+describe('DO_SCHEMA_STATEMENTS', () => {
+  test('contains required table definitions', async () => {
+    const { DO_SCHEMA_STATEMENTS } = await import(
+      '@jejunetwork/durable-objects'
+    )
+    expect(Array.isArray(DO_SCHEMA_STATEMENTS)).toBe(true)
+    expect(DO_SCHEMA_STATEMENTS.length).toBeGreaterThan(0)
+
+    const statements = DO_SCHEMA_STATEMENTS.join('\n')
+    expect(statements).toContain('do_locations')
+    expect(statements).toContain('do_state')
+    expect(statements).toContain('do_alarms')
+  })
+})
+
+// ============================================================================
+// Integration Tests (SQLit) - ALWAYS RUN AGAINST REAL INFRASTRUCTURE
+// ============================================================================
+
+import { getSQLitBlockProducerUrl } from '@jejunetwork/config'
+import { getSQLit } from '@jejunetwork/db'
+
+// SQLit runs on port 4661 by default (see packages/config/ports.ts)
+// When running tests via `jeju test`, SQLit is automatically started
+const SQLIT_URL = getSQLitBlockProducerUrl() // defaults to http://localhost:4661
+
+async function requireSQLit(): Promise<void> {
+  // Try multiple health endpoints (SQLit supports both /v1/status and /health)
+  const endpoints = [`${SQLIT_URL}/v1/status`, `${SQLIT_URL}/health`]
+
+  for (const endpoint of endpoints) {
+    try {
+      const response = await fetch(endpoint, {
+        signal: AbortSignal.timeout(5000),
+      })
+      if (response.ok) {
+        return // SQLit is running
+      }
+    } catch {
+      // Try next endpoint
+    }
+  }
+
+  throw new Error(
+    `\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `TEST ENVIRONMENT ERROR: SQLit is not available at ${SQLIT_URL}\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `\n` +
+      `Run tests via jeju CLI (automatically starts SQLit):\n` +
+      `  bun run test              # from monorepo root\n` +
+      `  jeju test --app=dws       # or directly\n` +
+      `\n` +
+      `Or start SQLit manually:\n` +
+      `  jeju start sqlit\n` +
+      `\n` +
+      `Tests MUST run against real infrastructure. No skipping.\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`,
+  )
+}
+
+describe('Integration Tests (SQLit)', () => {
+  const databaseId = `do-integration-test-${Date.now()}`
+
+  // Fail fast if SQLit is not running
+  beforeAll(async () => {
+    await requireSQLit()
+  })
+
+  test('initializes schema on real SQLit', async () => {
+    const sqlit = getSQLit()
+    await initializeDOSchema(sqlit, databaseId)
+    const initialized = await isDOSchemaInitialized(sqlit, databaseId)
+    expect(initialized).toBe(true)
+  })
+
+  test('storage operations work on real SQLit', async () => {
+    const sqlit = getSQLit()
+    const storage = new DWSObjectStorage(
+      'integration-test-do',
+      sqlit,
+      databaseId,
+    )
+
+    await storage.put('test-key', { value: 'integration-test' })
+    const result = await storage.get<{ value: string }>('test-key')
+    expect(result?.value).toBe('integration-test')
+
+    const deleted = await storage.delete('test-key')
+    expect(deleted).toBe(true)
+
+    const afterDelete = await storage.get('test-key')
+    expect(afterDelete).toBeUndefined()
+  })
+
+  test('transactions work on real SQLit', async () => {
+    const sqlit = getSQLit()
+    const storage = new DWSObjectStorage(
+      'integration-tx-test',
+      sqlit,
+      databaseId,
+    )
+
+    await storage.transaction(async () => {
+      await storage.put('tx-key-1', 'value-1')
+      await storage.put('tx-key-2', 'value-2')
+    })
+
+    const values = await storage.get(['tx-key-1', 'tx-key-2'])
+    expect(values.get('tx-key-1')).toBe('value-1')
+    expect(values.get('tx-key-2')).toBe('value-2')
+  })
+
+  test('alarm scheduling works on real SQLit', async () => {
+    const sqlit = getSQLit()
+    const storage = new DWSObjectStorage(
+      'integration-alarm-test',
+      sqlit,
+      databaseId,
+    )
+
+    const futureTime = Date.now() + 60000
+    await storage.setAlarm(futureTime)
+
+    const alarm = await storage.getAlarm()
+    expect(alarm).toBe(futureTime)
+
+    await storage.deleteAlarm()
+    const afterDelete = await storage.getAlarm()
+    expect(afterDelete).toBeNull()
+  })
+
+  test('list operations work on real SQLit', async () => {
+    const sqlit = getSQLit()
+    const storage = new DWSObjectStorage(
+      'integration-list-test',
+      sqlit,
+      databaseId,
+    )
+
+    await storage.put({
+      'prefix:a': 1,
+      'prefix:b': 2,
+      'prefix:c': 3,
+      'other:x': 4,
+    })
+
+    const prefixed = await storage.list({ prefix: 'prefix:' })
+    expect(prefixed.size).toBe(3)
+    expect(prefixed.has('prefix:a')).toBe(true)
+    expect(prefixed.has('other:x')).toBe(false)
+  })
+})
+
+// ============================================================================
 // Cleanup
 // ============================================================================
 
 afterAll(() => {
   console.log('[Durable Objects Comprehensive Tests] Complete')
+  console.log(`[Integration Tests] SQLit endpoint: ${SQLIT_URL}`)
 })

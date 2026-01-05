@@ -10,11 +10,9 @@ import type { QueryParam, SQLitClient, SQLitConnection } from '@jejunetwork/db'
 import pino from 'pino'
 import type {
   DurableObjectStorage,
-  GetAlarmOptions,
   GetOptions,
   ListOptions,
   PutOptions,
-  SetAlarmOptions,
 } from './types.js'
 
 export const MAX_KEY_SIZE = 2048
@@ -28,19 +26,28 @@ function validateKey(key: string): void {
   if (key.length === 0) throw new Error('Key cannot be empty')
   const bytes = new TextEncoder().encode(key)
   if (bytes.length > MAX_KEY_SIZE) {
-    throw new Error(`Key size ${bytes.length} exceeds maximum ${MAX_KEY_SIZE} bytes`)
+    throw new Error(
+      `Key size ${bytes.length} exceeds maximum ${MAX_KEY_SIZE} bytes`,
+    )
   }
 }
 
 function validateValue(serialized: string): void {
   const bytes = new TextEncoder().encode(serialized)
   if (bytes.length > MAX_VALUE_SIZE) {
-    throw new Error(`Value size ${bytes.length} exceeds maximum ${MAX_VALUE_SIZE} bytes (128KB)`)
+    throw new Error(
+      `Value size ${bytes.length} exceeds maximum ${MAX_VALUE_SIZE} bytes (128KB)`,
+    )
   }
 }
 
-interface StateRow { key: string; value: string }
-interface AlarmRow { scheduled_time: number }
+interface StateRow {
+  key: string
+  value: string
+}
+interface AlarmRow {
+  scheduled_time: number
+}
 
 export class DWSObjectStorage implements DurableObjectStorage {
   private readonly doId: string
@@ -50,16 +57,30 @@ export class DWSObjectStorage implements DurableObjectStorage {
   private inTransaction = false
   private transactionConnection: SQLitConnection | null = null
 
-  constructor(doId: string, sqlit: SQLitClient, databaseId: string, debug = false) {
+  constructor(
+    doId: string,
+    sqlit: SQLitClient,
+    databaseId: string,
+    debug = false,
+  ) {
     this.doId = doId
     this.sqlit = sqlit
     this.databaseId = databaseId
     this.debug = debug
   }
 
-  async get<T = unknown>(key: string, options?: GetOptions): Promise<T | undefined>
-  async get<T = unknown>(keys: string[], options?: GetOptions): Promise<Map<string, T>>
-  async get<T = unknown>(keyOrKeys: string | string[], _options?: GetOptions): Promise<T | undefined | Map<string, T>> {
+  async get<T = unknown>(
+    key: string,
+    options?: GetOptions,
+  ): Promise<T | undefined>
+  async get<T = unknown>(
+    keys: string[],
+    options?: GetOptions,
+  ): Promise<Map<string, T>>
+  async get<T = unknown>(
+    keyOrKeys: string | string[],
+    _options?: GetOptions,
+  ): Promise<T | undefined | Map<string, T>> {
     if (typeof keyOrKeys === 'string') {
       validateKey(keyOrKeys)
       const result = await this.query<StateRow>(
@@ -83,13 +104,24 @@ export class DWSObjectStorage implements DurableObjectStorage {
     for (const row of result) {
       map.set(row.key, JSON.parse(row.value) as T)
     }
-    if (this.debug) log.debug({ doId: this.doId, found: map.size }, 'getMultiple')
+    if (this.debug)
+      log.debug({ doId: this.doId, found: map.size }, 'getMultiple')
     return map
   }
 
-  async put<T = unknown>(key: string, value: T, options?: PutOptions): Promise<void>
-  async put<T = unknown>(entries: Record<string, T>, options?: PutOptions): Promise<void>
-  async put<T = unknown>(keyOrEntries: string | Record<string, T>, valueOrOptions?: T | PutOptions): Promise<void> {
+  async put<T = unknown>(
+    key: string,
+    value: T,
+    options?: PutOptions,
+  ): Promise<void>
+  async put<T = unknown>(
+    entries: Record<string, T>,
+    options?: PutOptions,
+  ): Promise<void>
+  async put<T = unknown>(
+    keyOrEntries: string | Record<string, T>,
+    valueOrOptions?: T | PutOptions,
+  ): Promise<void> {
     if (typeof keyOrEntries === 'string') {
       validateKey(keyOrEntries)
       const serialized = JSON.stringify(valueOrOptions)
@@ -106,7 +138,9 @@ export class DWSObjectStorage implements DurableObjectStorage {
     const keys = Object.keys(keyOrEntries)
     if (keys.length === 0) return
     if (keys.length > MAX_BATCH_SIZE) {
-      throw new Error(`Batch put size ${keys.length} exceeds maximum ${MAX_BATCH_SIZE}`)
+      throw new Error(
+        `Batch put size ${keys.length} exceeds maximum ${MAX_BATCH_SIZE}`,
+      )
     }
 
     const serialized = keys.map((key) => {
@@ -133,7 +167,8 @@ export class DWSObjectStorage implements DurableObjectStorage {
       await tx.commit()
       this.sqlit.getPool(this.databaseId).release(conn)
     }
-    if (this.debug) log.debug({ doId: this.doId, count: keys.length }, 'putMultiple')
+    if (this.debug)
+      log.debug({ doId: this.doId, count: keys.length }, 'putMultiple')
   }
 
   async delete(key: string): Promise<boolean>
@@ -145,7 +180,11 @@ export class DWSObjectStorage implements DurableObjectStorage {
         `DELETE FROM do_state WHERE do_id = ? AND key = ?`,
         [this.doId, keyOrKeys],
       )
-      if (this.debug) log.debug({ doId: this.doId, key: keyOrKeys, deleted: result.rowsAffected > 0 }, 'delete')
+      if (this.debug)
+        log.debug(
+          { doId: this.doId, key: keyOrKeys, deleted: result.rowsAffected > 0 },
+          'delete',
+        )
       return result.rowsAffected > 0
     }
 
@@ -157,13 +196,20 @@ export class DWSObjectStorage implements DurableObjectStorage {
       `DELETE FROM do_state WHERE do_id = ? AND key IN (${placeholders})`,
       [this.doId, ...keyOrKeys],
     )
-    if (this.debug) log.debug({ doId: this.doId, deleted: result.rowsAffected }, 'deleteMultiple')
+    if (this.debug)
+      log.debug(
+        { doId: this.doId, deleted: result.rowsAffected },
+        'deleteMultiple',
+      )
     return result.rowsAffected
   }
 
   async deleteAll(): Promise<void> {
-    const result = await this.exec(`DELETE FROM do_state WHERE do_id = ?`, [this.doId])
-    if (this.debug) log.debug({ doId: this.doId, deleted: result.rowsAffected }, 'deleteAll')
+    const result = await this.exec(`DELETE FROM do_state WHERE do_id = ?`, [
+      this.doId,
+    ])
+    if (this.debug)
+      log.debug({ doId: this.doId, deleted: result.rowsAffected }, 'deleteAll')
   }
 
   async list<T = unknown>(options?: ListOptions): Promise<Map<string, T>> {
@@ -233,7 +279,10 @@ export class DWSObjectStorage implements DurableObjectStorage {
   }
 
   async setAlarm(scheduledTime: Date | number): Promise<void> {
-    const time = typeof scheduledTime === 'number' ? scheduledTime : scheduledTime.getTime()
+    const time =
+      typeof scheduledTime === 'number'
+        ? scheduledTime
+        : scheduledTime.getTime()
     if (time <= Date.now()) throw new Error('Alarm time must be in the future')
 
     await this.exec(
@@ -241,7 +290,8 @@ export class DWSObjectStorage implements DurableObjectStorage {
        ON CONFLICT (do_id) DO UPDATE SET scheduled_time = excluded.scheduled_time, created_at = excluded.created_at`,
       [this.doId, time, Date.now()],
     )
-    if (this.debug) log.debug({ doId: this.doId, scheduledTime: time }, 'setAlarm')
+    if (this.debug)
+      log.debug({ doId: this.doId, scheduledTime: time }, 'setAlarm')
   }
 
   async deleteAlarm(): Promise<void> {
@@ -255,10 +305,19 @@ export class DWSObjectStorage implements DurableObjectStorage {
     return (await this.sqlit.query<T>(sql, params, this.databaseId)).rows
   }
 
-  private async exec(sql: string, params: QueryParam[]): Promise<{ rowsAffected: number }> {
+  private async exec(
+    sql: string,
+    params: QueryParam[],
+  ): Promise<{ rowsAffected: number }> {
     if (this.inTransaction && this.transactionConnection) {
-      return { rowsAffected: (await this.transactionConnection.exec(sql, params)).rowsAffected }
+      return {
+        rowsAffected: (await this.transactionConnection.exec(sql, params))
+          .rowsAffected,
+      }
     }
-    return { rowsAffected: (await this.sqlit.exec(sql, params, this.databaseId)).rowsAffected }
+    return {
+      rowsAffected: (await this.sqlit.exec(sql, params, this.databaseId))
+        .rowsAffected,
+    }
   }
 }

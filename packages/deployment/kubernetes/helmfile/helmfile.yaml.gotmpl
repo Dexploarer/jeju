@@ -306,12 +306,29 @@ releases:
   # Core infrastructure for permissionless compute, storage, and container management
   # ==========================================================================
 
+  # SQLit Adapter (HTTP API for SQLit - required by DWS for decentralized state)
+  - name: sqlit-adapter
+    namespace: dws
+    createNamespace: true
+    chart: ../helm/sqlit-adapter
+    installed: {{ ne .Environment.Name "localnet" }}
+    values:
+      - ../helm/sqlit-adapter/values.yaml
+      {{- if ne .Environment.Name "localnet" }}
+      - ../helm/sqlit-adapter/values-{{ .Environment.Name }}.yaml
+      {{- end }}
+    set:
+      - name: image.repository
+        value: {{ .Values.ecr_registry | default "jeju" }}/sqlit-adapter
+
   # DWS Core Service
   - name: dws
     namespace: dws
     createNamespace: true
     chart: ../helm/dws
     installed: {{ ne .Environment.Name "localnet" }}
+    needs:
+      - dws/sqlit-adapter
     values:
       - ../helm/dws/values.yaml
       - ../helm/dws/values-{{ .Environment.Name }}.yaml

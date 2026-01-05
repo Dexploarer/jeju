@@ -126,9 +126,16 @@ interface IndexerPoolRaw {
 }
 
 function formatUSD(value: number): string {
-  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`
-  if (value >= 1_000) return `$${(value / 1_000).toFixed(1)}K`
+  if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`
+  if (value >= 1e3) return `$${(value / 1e3).toFixed(1)}K`
   return `$${value.toFixed(2)}`
+}
+
+function parseFormattedNumber(s: string): number {
+  const clean = s.replace(/[$,%]/g, '')
+  if (clean.endsWith('M')) return parseFloat(clean) * 1e6
+  if (clean.endsWith('K')) return parseFloat(clean) * 1e3
+  return parseFloat(clean) || 0
 }
 
 async function fetchPoolsFromIndexer(): Promise<TFMMPool[]> {
@@ -203,6 +210,62 @@ async function fetchPoolsFromIndexer(): Promise<TFMMPool[]> {
   })
 }
 
+async function fetchPoolsFromApi(): Promise<TFMMPool[]> {
+  // Fallback to Bazaar API for pools (works without indexer)
+  const response = await fetch('/api/tfmm')
+  
+  if (!response.ok) {
+    console.warn('[useTFMMPools] API fetch failed:', response.status)
+    return []
+  }
+
+  const json = (await response.json()) as {
+    pools: Array<{
+      address: string
+      name: string
+      symbol: string
+      strategy: string
+      tokens: string[]
+      weights: number[]
+      targetWeights: number[]
+      tvl: string
+      tvlUSD: string
+      apy: string
+      volume24h: string
+      totalSupply: string
+      swapFeeBps: number
+    }>
+  }
+
+  return (json.pools ?? []).map((pool) => {
+    const tvlUsd = parseFormattedNumber(pool.tvlUSD)
+    const volume24hUsd = parseFormattedNumber(pool.volume24h)
+    const apyPercent = parseFormattedNumber(pool.apy)
+
+    return {
+      address: pool.address as Address,
+      name: pool.name,
+      strategy: pool.strategy,
+      tvl: pool.tvl,
+      apy: pool.apy,
+      volume24h: pool.volume24h,
+      metrics: {
+        tvlUsd,
+        apyPercent,
+        volume24hUsd,
+      },
+      state: {
+        tokens: pool.tokens as Address[],
+        balances: [], // Will be fetched on-chain
+        weights: pool.weights.map((w) => BigInt(Math.floor(w * 1e16))),
+        swapFee: BigInt(pool.swapFeeBps * 100), // Convert bps to basis
+        totalSupply: BigInt(pool.totalSupply || '0'),
+      },
+      userBalance: 0n,
+    }
+  })
+}
+
 export function useTFMMPools() {
   useAccount() // For re-rendering when wallet changes
   const [selectedPool, setSelectedPool] = useState<Address | null>(null)
@@ -215,14 +278,16 @@ export function useTFMMPools() {
   } = useQuery({
     queryKey: ['tfmm-pools', CHAIN_ID],
     queryFn: async () => {
+      // Try indexer first
       const isIndexerUp = await checkIndexerHealth()
-      if (!isIndexerUp) {
-        console.log(
-          '[useTFMMPools] Indexer not available, returning empty pools',
-        )
-        return []
+      if (isIndexerUp) {
+        const indexerPools = await fetchPoolsFromIndexer()
+        if (indexerPools.length > 0) {
+          return indexerPools
+        }
       }
-      return fetchPoolsFromIndexer()
+      // Fallback to API (reads from config/on-chain)
+      return fetchPoolsFromApi()
     },
     staleTime: 30000, // 30 seconds
     refetchInterval: 60000, // 1 minute

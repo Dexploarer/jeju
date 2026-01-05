@@ -1,6 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout'
-import { useViewMode } from './context/AppContext'
 import AgentsPage from './pages/Agents'
 import AnalyticsPage from './pages/Analytics'
 import EmbeddingsPage from './pages/ai/Embeddings'
@@ -23,7 +22,10 @@ import MarketplacePage from './pages/marketplace/Browse'
 import ListingsPage from './pages/marketplace/Listings'
 import RPCGatewayPage from './pages/network/RPCGateway'
 import VPNProxyPage from './pages/network/VPNProxy'
-import NodeOperatorDashboard from './pages/node/NodeOperatorDashboard'
+import BrokerSDKPage from './pages/provider/BrokerSDK'
+import EarningsPage from './pages/provider/Earnings'
+import MyNodesPage from './pages/provider/MyNodes'
+import RunNodePage from './pages/provider/RunNode'
 import SettingsPage from './pages/Settings'
 import KeysPage from './pages/security/Keys'
 import OAuth3Page from './pages/security/OAuth3'
@@ -36,12 +38,10 @@ import CDNPage from './pages/storage/CDN'
 import IPFSPage from './pages/storage/IPFS'
 
 export default function App() {
-  const { viewMode } = useViewMode()
-
   return (
     <Layout>
       <Routes>
-        <Route path="/" element={<Dashboard viewMode={viewMode} />} />
+        <Route path="/" element={<Dashboard />} />
 
         {/* Compute */}
         <Route path="/compute/containers" element={<ContainersPage />} />
@@ -97,18 +97,23 @@ export default function App() {
         {/* Moderation */}
         <Route path="/moderation" element={<ModerationPage />} />
 
-        {/* Node Operator */}
-        <Route path="/node" element={<NodeOperatorDashboard />} />
+        {/* Provider / Earn Section */}
+        <Route path="/provider/node" element={<RunNodePage />} />
+        <Route path="/provider/nodes" element={<MyNodesPage />} />
+        <Route path="/provider/earnings" element={<EarningsPage />} />
+        <Route path="/provider/broker" element={<BrokerSDKPage />} />
+        {/* Redirect old /node path to new location */}
+        <Route
+          path="/node"
+          element={<Navigate to="/provider/nodes" replace />}
+        />
 
         {/* Marketplace */}
         <Route path="/marketplace/browse" element={<MarketplacePage />} />
-        <Route
-          path="/marketplace/listings"
-          element={<ListingsPage viewMode={viewMode} />}
-        />
+        <Route path="/marketplace/listings" element={<ListingsPage />} />
 
         {/* Billing & Settings */}
-        <Route path="/billing" element={<BillingPage viewMode={viewMode} />} />
+        <Route path="/billing" element={<BillingPage />} />
         <Route path="/settings" element={<SettingsPage />} />
 
         {/* Faucet (Testnet only) */}

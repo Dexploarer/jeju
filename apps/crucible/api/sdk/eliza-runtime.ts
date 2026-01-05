@@ -2,6 +2,7 @@ import type { Action, Plugin, Service } from '@elizaos/core'
 import { getCurrentNetwork } from '@jejunetwork/config'
 import {
   initJejuService,
+  JEJU_SERVICE_NAME,
   type StandaloneJejuService,
 } from '@jejunetwork/eliza-plugin'
 import type { JejuClient } from '@jejunetwork/sdk'
@@ -15,10 +16,6 @@ import {
   getSharedDWSClient,
 } from '../client/dws'
 import { createLogger, type Logger } from './logger'
-
-// Get network-specific service name
-const NETWORK_NAME = getCurrentNetwork()
-const JEJU_SERVICE_NAME = NETWORK_NAME.toLowerCase()
 
 // Store the original Eliza action handlers
 type ElizaActionHandler = Action['handler']
@@ -158,8 +155,9 @@ export class CrucibleAgentRuntime {
     })
 
     // Initialize Jeju service if we have credentials
-    const privateKey =
-      this.config.privateKey ?? (process.env.PRIVATE_KEY as Hex | undefined)
+    // NOTE: Private key must be passed through config (from secrets module)
+    // DO NOT fall back to process.env - that bypasses secret management
+    const privateKey = this.config.privateKey
     if (privateKey) {
       try {
         const network =

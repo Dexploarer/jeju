@@ -56,8 +56,11 @@ import {
   hashMessage,
   hashTypedData,
   http,
+  keccak256,
   toBytes,
+  toHex,
 } from 'viem'
+import { privateKeyToAccount } from 'viem/accounts'
 import { z } from 'zod'
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -277,6 +280,11 @@ export class KMSSigner {
 
     const messageHash = typeof input === 'string' ? input : input.messageHash
 
+    // Handle local-dev mode with local signing
+    if (this.mode === 'local-dev') {
+      return this.signLocal(messageHash)
+    }
+
     const response = await this.kmsRequest('/sign', {
       serviceId: this.serviceId,
       keyId: this.keyId,
@@ -295,6 +303,33 @@ export class KMSSigner {
           ? 'local-dev'
           : (parsed.mode as SigningMode),
       keyId: parsed.keyId,
+      signedAt: Date.now(),
+    }
+  }
+
+  /**
+   * Sign locally for development mode
+   */
+  private async signLocal(messageHash: Hash): Promise<SignResult> {
+    // Generate the same deterministic key as getLocalDevKey
+    const seed = keccak256(toHex(`jeju-dev-${this.serviceId}-${this.network}`)) as Hex
+    const account = privateKeyToAccount(seed)
+
+    // Sign the message hash
+    const signature = await account.signMessage({ message: { raw: messageHash as Hex } })
+
+    // Parse signature components (r, s, v)
+    const r = ('0x' + signature.slice(2, 66)) as Hex
+    const s = ('0x' + signature.slice(66, 130)) as Hex
+    const v = parseInt(signature.slice(130, 132), 16)
+
+    return {
+      signature,
+      r,
+      s,
+      v,
+      mode: 'local-dev',
+      keyId: this.keyId ?? `local-dev-${this.serviceId}`,
       signedAt: Date.now(),
     }
   }
@@ -323,6 +358,11 @@ export class KMSSigner {
   ): Promise<TransactionSignResult> {
     this.ensureInitialized()
 
+    // Handle local-dev mode with local signing
+    if (this.mode === 'local-dev') {
+      return this.signTransactionLocal(transaction)
+    }
+
     const response = await this.kmsRequest('/sign-transaction', {
       serviceId: this.serviceId,
       keyId: this.keyId,
@@ -345,6 +385,27 @@ export class KMSSigner {
         parsed.mode === 'development'
           ? 'local-dev'
           : (parsed.mode as SigningMode),
+    }
+  }
+
+  /**
+   * Sign transaction locally for development mode
+   */
+  private async signTransactionLocal(
+    transaction: TransactionSerializable,
+  ): Promise<TransactionSignResult> {
+    // Generate the same deterministic key as getLocalDevKey
+    const seed = keccak256(toHex(`jeju-dev-${this.serviceId}-${this.network}`)) as Hex
+    const account = privateKeyToAccount(seed)
+
+    // Sign the transaction
+    const signedTransaction = await account.signTransaction(transaction)
+    const hash = keccak256(signedTransaction)
+
+    return {
+      signedTransaction,
+      hash,
+      mode: 'local-dev',
     }
   }
 
@@ -506,6 +567,11 @@ export class KMSSigner {
    * Get key info from KMS
    */
   private async getOrCreateKey(): Promise<KMSKeyInfo> {
+    // In local-dev mode, generate a deterministic key for testing
+    if (this.mode === 'local-dev') {
+      return this.getLocalDevKey()
+    }
+
     const response = await this.kmsRequest('/keys', {
       serviceId: this.serviceId,
       action: 'get-or-create',
@@ -520,6 +586,30 @@ export class KMSSigner {
       threshold: parsed.threshold ?? 2,
       totalParties: parsed.totalParties ?? 3,
       createdAt: parsed.createdAt ?? Date.now(),
+    }
+  }
+
+  /**
+   * Generate deterministic key for local development
+   * Uses serviceId to generate a consistent key per service
+   */
+  private getLocalDevKey(): KMSKeyInfo {
+    // Generate deterministic private key from serviceId
+    // Use a well-known mnemonic + service derivation for consistency
+    const seed = keccak256(toHex(`jeju-dev-${this.serviceId}-${this.network}`))
+    const account = privateKeyToAccount(seed as Hex)
+
+    console.warn(
+      `[KMSSigner] Using LOCAL DEV key for ${this.serviceId}. NOT secure for production.`,
+    )
+
+    return {
+      keyId: `local-dev-${this.serviceId}`,
+      publicKey: '0x' as Hex, // Not needed for local dev
+      address: account.address,
+      threshold: 1,
+      totalParties: 1,
+      createdAt: Date.now(),
     }
   }
 

@@ -82,7 +82,7 @@
     },
     "oauth3": {
       "api": "http://127.0.0.1:4200",
-      "tee": "http://127.0.0.1:4201"
+      "tee": "http://127.0.0.1:4200"
     },
     "tee": {
       "mode": "simulated",
@@ -211,7 +211,7 @@
     },
     "oauth3": {
       "api": "https://oauth3.testnet.jejunetwork.org",
-      "tee": "https://oauth3.testnet.jejunetwork.org/tee"
+      "tee": "https://oauth3.testnet.jejunetwork.org"
     },
     "tee": {
       "mode": "phala",
@@ -342,7 +342,7 @@
     },
     "oauth3": {
       "api": "https://oauth3.jejunetwork.org",
-      "tee": "https://oauth3.jejunetwork.org/tee"
+      "tee": "https://oauth3.jejunetwork.org"
     },
     "tee": {
       "mode": "phala",

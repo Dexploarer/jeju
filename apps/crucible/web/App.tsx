@@ -72,12 +72,6 @@ function Layout({ children }: { children: React.ReactNode }) {
                 Crucible
               </span>
             </div>
-            <p
-              className="text-sm text-center md:text-right"
-              style={{ color: 'var(--text-tertiary)' }}
-            >
-              Decentralized AI Agents
-            </p>
           </div>
         </div>
       </footer>
