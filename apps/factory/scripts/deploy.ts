@@ -139,8 +139,7 @@ async function deploy(): Promise<DeployResult> {
 
   const indexFormData = new FormData()
   indexFormData.append('file', Bun.file(indexHtmlPath), 'index.html')
-  indexFormData.append('tier', 'system')
-  indexFormData.append('backends', 'local,arweave')
+  indexFormData.append('name', 'index.html')
 
   const uploadResponse = await fetch(`${DWS_URL}/storage/upload`, {
     method: 'POST',
@@ -177,8 +176,7 @@ async function deploy(): Promise<DeployResult> {
         const relPath = relative(frontendDir, fullPath)
         const fileFormData = new FormData()
         fileFormData.append('file', Bun.file(fullPath), entry.name)
-        fileFormData.append('tier', 'system')
-        fileFormData.append('backends', 'local,arweave')
+        fileFormData.append('name', relPath)
 
         const resp = await fetch(`${DWS_URL}/storage/upload`, {
           method: 'POST',
@@ -223,8 +221,7 @@ async function deploy(): Promise<DeployResult> {
   // Upload worker using multipart form data
   const workerFormData = new FormData()
   workerFormData.append('file', Bun.file(workerPath), 'worker.js')
-  workerFormData.append('tier', 'system')
-  workerFormData.append('backends', 'local,arweave')
+  workerFormData.append('name', 'factory-api-worker.js')
 
   const workerUploadResponse = await fetch(`${DWS_URL}/storage/upload`, {
     method: 'POST',
