@@ -1,6 +1,4 @@
-import {
-  writeContract as typedWriteContract,
-} from '@jejunetwork/contracts'
+import { writeContract as typedWriteContract } from '@jejunetwork/contracts'
 import {
   type Address,
   createPublicClient,
@@ -258,14 +256,13 @@ export class FederationClient {
       throw new Error('FederatedIdentity not configured')
     }
 
-    const [isValid, federatedId, reputation] = (await this.localClient.readContract(
-      {
+    const [isValid, federatedId, reputation] =
+      (await this.localClient.readContract({
         address: this.config.federatedIdentityAddress,
         abi: FEDERATED_IDENTITY_ABI,
         functionName: 'verifyIdentity',
         args: [BigInt(originChainId), BigInt(originAgentId)],
-      },
-    )) as [boolean, Hex, bigint]
+      })) as [boolean, Hex, bigint]
 
     let attestedNetworks: number[] = []
     if (isValid) {

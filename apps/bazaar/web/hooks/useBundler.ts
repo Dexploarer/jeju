@@ -8,7 +8,14 @@
  */
 
 import { useCallback, useState } from 'react'
-import { type Address, type Hex, encodeAbiParameters, encodeFunctionData, keccak256, toHex } from 'viem'
+import {
+  type Address,
+  encodeAbiParameters,
+  encodeFunctionData,
+  type Hex,
+  keccak256,
+  toHex,
+} from 'viem'
 import { useAccount, useChainId, usePublicClient, useSignMessage } from 'wagmi'
 
 import { CHAIN_ID, RPC_URL } from '../config'
@@ -70,7 +77,7 @@ function getBundlerUrl(): string {
 
 async function bundlerRpc(method: string, params: unknown[]): Promise<unknown> {
   const url = getBundlerUrl()
-  
+
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -87,7 +94,7 @@ async function bundlerRpc(method: string, params: unknown[]): Promise<unknown> {
   }
 
   const data = await response.json()
-  
+
   if (data.error) {
     throw new Error(data.error.message || 'Bundler RPC error')
   }
@@ -111,7 +118,11 @@ function serializeUserOp(userOp: UserOperation): Record<string, string> {
   }
 }
 
-function computeUserOpHash(userOp: UserOperation, chainId: number, entryPoint: Address): Hex {
+function computeUserOpHash(
+  userOp: UserOperation,
+  chainId: number,
+  entryPoint: Address,
+): Hex {
   const packed = encodeAbiParameters(
     [
       { type: 'address' },
@@ -159,189 +170,249 @@ export function useBundler() {
   const publicClient = usePublicClient()
   const { signMessageAsync } = useSignMessage()
 
-  const [status, setStatus] = useState<'idle' | 'building' | 'signing' | 'pending' | 'complete' | 'error'>('idle')
+  const [status, setStatus] = useState<
+    'idle' | 'building' | 'signing' | 'pending' | 'complete' | 'error'
+  >('idle')
   const [error, setError] = useState<string | null>(null)
   const [lastResult, setLastResult] = useState<BundlerResult | null>(null)
 
   // Get smart account nonce from EntryPoint
-  const getNonce = useCallback(async (smartAccountAddress: Address): Promise<bigint> => {
-    if (!publicClient) return 0n
+  const getNonce = useCallback(
+    async (smartAccountAddress: Address): Promise<bigint> => {
+      if (!publicClient) return 0n
 
-    try {
-      const nonce = await publicClient.readContract({
-        address: ENTRY_POINT_V07,
-        abi: [
-          {
-            name: 'getNonce',
-            type: 'function',
-            inputs: [{ type: 'address' }, { type: 'uint192' }],
-            outputs: [{ type: 'uint256' }],
-          },
-        ],
-        functionName: 'getNonce',
-        args: [smartAccountAddress, 0n],
-      })
-      return nonce as bigint
-    } catch {
-      return 0n
-    }
-  }, [publicClient])
+      try {
+        const nonce = await publicClient.readContract({
+          address: ENTRY_POINT_V07,
+          abi: [
+            {
+              name: 'getNonce',
+              type: 'function',
+              inputs: [{ type: 'address' }, { type: 'uint192' }],
+              outputs: [{ type: 'uint256' }],
+            },
+          ],
+          functionName: 'getNonce',
+          args: [smartAccountAddress, 0n],
+        })
+        return nonce as bigint
+      } catch {
+        return 0n
+      }
+    },
+    [publicClient],
+  )
 
   // Estimate gas for a UserOperation
-  const estimateGas = useCallback(async (
-    sender: Address,
-    callData: Hex,
-    initCode: Hex = '0x',
-  ): Promise<{ callGasLimit: bigint; verificationGasLimit: bigint; preVerificationGas: bigint }> => {
-    const nonce = await getNonce(sender)
-    
-    const partialOp = {
-      sender,
-      nonce: toHex(nonce),
-      initCode,
-      callData,
-      callGasLimit: toHex(500000n),
-      verificationGasLimit: toHex(500000n),
-      preVerificationGas: toHex(50000n),
-      maxFeePerGas: toHex(50000000000n), // 50 gwei
-      maxPriorityFeePerGas: toHex(1500000000n), // 1.5 gwei
-      paymasterAndData: '0x',
-      signature: '0x',
-    }
+  const estimateGas = useCallback(
+    async (
+      sender: Address,
+      callData: Hex,
+      initCode: Hex = '0x',
+    ): Promise<{
+      callGasLimit: bigint
+      verificationGasLimit: bigint
+      preVerificationGas: bigint
+    }> => {
+      const nonce = await getNonce(sender)
 
-    const result = await bundlerRpc('eth_estimateUserOperationGas', [partialOp, ENTRY_POINT_V07]) as {
-      callGasLimit: string
-      verificationGasLimit: string
-      preVerificationGas: string
-    }
+      const partialOp = {
+        sender,
+        nonce: toHex(nonce),
+        initCode,
+        callData,
+        callGasLimit: toHex(500000n),
+        verificationGasLimit: toHex(500000n),
+        preVerificationGas: toHex(50000n),
+        maxFeePerGas: toHex(50000000000n), // 50 gwei
+        maxPriorityFeePerGas: toHex(1500000000n), // 1.5 gwei
+        paymasterAndData: '0x',
+        signature: '0x',
+      }
 
-    return {
-      callGasLimit: BigInt(result.callGasLimit),
-      verificationGasLimit: BigInt(result.verificationGasLimit),
-      preVerificationGas: BigInt(result.preVerificationGas),
-    }
-  }, [getNonce])
+      const result = (await bundlerRpc('eth_estimateUserOperationGas', [
+        partialOp,
+        ENTRY_POINT_V07,
+      ])) as {
+        callGasLimit: string
+        verificationGasLimit: string
+        preVerificationGas: string
+      }
+
+      return {
+        callGasLimit: BigInt(result.callGasLimit),
+        verificationGasLimit: BigInt(result.verificationGasLimit),
+        preVerificationGas: BigInt(result.preVerificationGas),
+      }
+    },
+    [getNonce],
+  )
 
   // Build a UserOperation for a simple call
-  const buildUserOperation = useCallback(async (params: {
-    smartAccountAddress: Address
-    to: Address
-    value: bigint
-    data: Hex
-    paymasterAndData?: Hex
-    initCode?: Hex
-  }): Promise<UserOperation> => {
-    const { smartAccountAddress, to, value, data, paymasterAndData = '0x', initCode = '0x' } = params
+  const buildUserOperation = useCallback(
+    async (params: {
+      smartAccountAddress: Address
+      to: Address
+      value: bigint
+      data: Hex
+      paymasterAndData?: Hex
+      initCode?: Hex
+    }): Promise<UserOperation> => {
+      const {
+        smartAccountAddress,
+        to,
+        value,
+        data,
+        paymasterAndData = '0x',
+        initCode = '0x',
+      } = params
 
-    // Encode execute call
-    const callData = encodeFunctionData({
-      abi: ACCOUNT_ABI,
-      functionName: 'execute',
-      args: [to, value, data],
-    })
+      // Encode execute call
+      const callData = encodeFunctionData({
+        abi: ACCOUNT_ABI,
+        functionName: 'execute',
+        args: [to, value, data],
+      })
 
-    // Get nonce
-    const nonce = await getNonce(smartAccountAddress)
+      // Get nonce
+      const nonce = await getNonce(smartAccountAddress)
 
-    // Estimate gas
-    const gasEstimate = await estimateGas(smartAccountAddress, callData, initCode)
+      // Estimate gas
+      const gasEstimate = await estimateGas(
+        smartAccountAddress,
+        callData,
+        initCode,
+      )
 
-    // Get current gas price (simplified - in production use bundler's gas oracle)
-    const gasPrice = await publicClient?.getGasPrice() ?? 50000000000n
+      // Get current gas price (simplified - in production use bundler's gas oracle)
+      const gasPrice = (await publicClient?.getGasPrice()) ?? 50000000000n
 
-    return {
-      sender: smartAccountAddress,
-      nonce,
-      initCode,
-      callData,
-      callGasLimit: gasEstimate.callGasLimit,
-      verificationGasLimit: gasEstimate.verificationGasLimit,
-      preVerificationGas: gasEstimate.preVerificationGas,
-      maxFeePerGas: gasPrice,
-      maxPriorityFeePerGas: gasPrice / 10n,
-      paymasterAndData,
-      signature: '0x',
-    }
-  }, [getNonce, estimateGas, publicClient])
+      return {
+        sender: smartAccountAddress,
+        nonce,
+        initCode,
+        callData,
+        callGasLimit: gasEstimate.callGasLimit,
+        verificationGasLimit: gasEstimate.verificationGasLimit,
+        preVerificationGas: gasEstimate.preVerificationGas,
+        maxFeePerGas: gasPrice,
+        maxPriorityFeePerGas: gasPrice / 10n,
+        paymasterAndData,
+        signature: '0x',
+      }
+    },
+    [getNonce, estimateGas, publicClient],
+  )
 
   // Sign a UserOperation
-  const signUserOperation = useCallback(async (userOp: UserOperation): Promise<UserOperation> => {
-    const hash = computeUserOpHash(userOp, chainId || CHAIN_ID, ENTRY_POINT_V07)
-    const signature = await signMessageAsync({ message: { raw: hash } })
-    return { ...userOp, signature }
-  }, [chainId, signMessageAsync])
+  const signUserOperation = useCallback(
+    async (userOp: UserOperation): Promise<UserOperation> => {
+      const hash = computeUserOpHash(
+        userOp,
+        chainId || CHAIN_ID,
+        ENTRY_POINT_V07,
+      )
+      const signature = await signMessageAsync({ message: { raw: hash } })
+      return { ...userOp, signature }
+    },
+    [chainId, signMessageAsync],
+  )
 
   // Send a UserOperation to the bundler
-  const sendUserOperation = useCallback(async (userOp: UserOperation): Promise<Hex> => {
-    const serialized = serializeUserOp(userOp)
-    const userOpHash = await bundlerRpc('eth_sendUserOperation', [serialized, ENTRY_POINT_V07]) as Hex
-    return userOpHash
-  }, [])
+  const sendUserOperation = useCallback(
+    async (userOp: UserOperation): Promise<Hex> => {
+      const serialized = serializeUserOp(userOp)
+      const userOpHash = (await bundlerRpc('eth_sendUserOperation', [
+        serialized,
+        ENTRY_POINT_V07,
+      ])) as Hex
+      return userOpHash
+    },
+    [],
+  )
 
   // Wait for UserOperation receipt
-  const waitForReceipt = useCallback(async (userOpHash: Hex, maxAttempts = 30): Promise<BundlerResult['receipt']> => {
-    for (let i = 0; i < maxAttempts; i++) {
-      await new Promise(r => setTimeout(r, 2000)) // Poll every 2 seconds
+  const waitForReceipt = useCallback(
+    async (
+      userOpHash: Hex,
+      maxAttempts = 30,
+    ): Promise<BundlerResult['receipt']> => {
+      for (let i = 0; i < maxAttempts; i++) {
+        await new Promise((r) => setTimeout(r, 2000)) // Poll every 2 seconds
 
-      const receipt = await bundlerRpc('eth_getUserOperationReceipt', [userOpHash]) as {
-        success: boolean
-        receipt: { transactionHash: Hex; blockNumber: string }
-      } | null
+        const receipt = (await bundlerRpc('eth_getUserOperationReceipt', [
+          userOpHash,
+        ])) as {
+          success: boolean
+          receipt: { transactionHash: Hex; blockNumber: string }
+        } | null
 
-      if (receipt) {
-        return {
-          success: receipt.success,
-          txHash: receipt.receipt.transactionHash,
-          blockNumber: BigInt(receipt.receipt.blockNumber),
+        if (receipt) {
+          return {
+            success: receipt.success,
+            txHash: receipt.receipt.transactionHash,
+            blockNumber: BigInt(receipt.receipt.blockNumber),
+          }
         }
       }
-    }
 
-    return undefined
-  }, [])
+      return undefined
+    },
+    [],
+  )
 
   // Full flow: build, sign, send, wait
-  const executeGasless = useCallback(async (params: {
-    smartAccountAddress: Address
-    to: Address
-    value: bigint
-    data: Hex
-    paymasterAndData?: Hex
-  }): Promise<BundlerResult> => {
-    if (!userAddress) {
-      throw new Error('Wallet not connected')
-    }
+  const executeGasless = useCallback(
+    async (params: {
+      smartAccountAddress: Address
+      to: Address
+      value: bigint
+      data: Hex
+      paymasterAndData?: Hex
+    }): Promise<BundlerResult> => {
+      if (!userAddress) {
+        throw new Error('Wallet not connected')
+      }
 
-    setStatus('building')
-    setError(null)
+      setStatus('building')
+      setError(null)
 
-    try {
-      // Build UserOp
-      const userOp = await buildUserOperation(params)
+      try {
+        // Build UserOp
+        const userOp = await buildUserOperation(params)
 
-      // Sign
-      setStatus('signing')
-      const signedOp = await signUserOperation(userOp)
+        // Sign
+        setStatus('signing')
+        const signedOp = await signUserOperation(userOp)
 
-      // Send to bundler
-      setStatus('pending')
-      const userOpHash = await sendUserOperation(signedOp)
+        // Send to bundler
+        setStatus('pending')
+        const userOpHash = await sendUserOperation(signedOp)
 
-      // Wait for receipt
-      const receipt = await waitForReceipt(userOpHash)
+        // Wait for receipt
+        const receipt = await waitForReceipt(userOpHash)
 
-      const result: BundlerResult = { userOpHash, receipt }
-      setLastResult(result)
-      setStatus('complete')
+        const result: BundlerResult = { userOpHash, receipt }
+        setLastResult(result)
+        setStatus('complete')
 
-      return result
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Gasless transaction failed'
-      setError(message)
-      setStatus('error')
-      throw err
-    }
-  }, [userAddress, buildUserOperation, signUserOperation, sendUserOperation, waitForReceipt])
+        return result
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : 'Gasless transaction failed'
+        setError(message)
+        setStatus('error')
+        throw err
+      }
+    },
+    [
+      userAddress,
+      buildUserOperation,
+      signUserOperation,
+      sendUserOperation,
+      waitForReceipt,
+    ],
+  )
 
   const reset = useCallback(() => {
     setStatus('idle')
@@ -354,7 +425,7 @@ export function useBundler() {
     status,
     error,
     lastResult,
-    
+
     // Actions
     buildUserOperation,
     signUserOperation,

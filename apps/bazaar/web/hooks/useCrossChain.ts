@@ -10,7 +10,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { type Address, type Hex } from 'viem'
+import type { Address, Hex } from 'viem'
 import { useAccount } from 'wagmi'
 import { OIF_AGGREGATOR_URL } from '../config'
 
@@ -175,7 +175,8 @@ export function useCrossChainQuotes(params: TransferParams | null) {
       setQuotes(parsedQuotes)
       setBestQuote(parsedQuotes[0] ?? null)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch quotes'
+      const message =
+        err instanceof Error ? err.message : 'Failed to fetch quotes'
       setError(message)
       setQuotes([])
       setBestQuote(null)
@@ -221,7 +222,13 @@ export function useCrossChainQuotes(params: TransferParams | null) {
 export function useCrossChainTransfer() {
   const { address: userAddress } = useAccount()
   const [status, setStatus] = useState<
-    'idle' | 'preparing' | 'signing' | 'pending' | 'tracking' | 'complete' | 'error'
+    | 'idle'
+    | 'preparing'
+    | 'signing'
+    | 'pending'
+    | 'tracking'
+    | 'complete'
+    | 'error'
   >('idle')
   const [error, setError] = useState<string | null>(null)
   const [txData, setTxData] = useState<{
@@ -316,40 +323,39 @@ export function useCrossChainTransfer() {
   )
 
   // Track intent status (for OIF route)
-  const trackIntent = useCallback(
-    async (id: Hex) => {
-      if (!OIF_AGGREGATOR_URL) return
+  const trackIntent = useCallback(async (id: Hex) => {
+    if (!OIF_AGGREGATOR_URL) return
 
-      try {
-        const response = await fetch(`${OIF_AGGREGATOR_URL}/intents/${id}`)
-        if (!response.ok) return
+    try {
+      const response = await fetch(`${OIF_AGGREGATOR_URL}/intents/${id}`)
+      if (!response.ok) return
 
-        const data = await response.json()
-        const newStatus: IntentStatus = {
-          intentId: data.intentId as Hex,
-          status: data.status,
-          solver: data.solver as Address | undefined,
-          fillTxHash: data.fillTxHash as Hex | undefined,
-          createdAt: data.createdAt,
-          filledAt: data.filledAt,
-        }
-
-        setIntentStatus(newStatus)
-
-        // Stop polling if terminal state
-        if (['filled', 'expired', 'cancelled', 'failed'].includes(newStatus.status)) {
-          if (pollRef.current) {
-            clearInterval(pollRef.current)
-            pollRef.current = null
-          }
-          setStatus(newStatus.status === 'filled' ? 'complete' : 'error')
-        }
-      } catch {
-        // Ignore polling errors
+      const data = await response.json()
+      const newStatus: IntentStatus = {
+        intentId: data.intentId as Hex,
+        status: data.status,
+        solver: data.solver as Address | undefined,
+        fillTxHash: data.fillTxHash as Hex | undefined,
+        createdAt: data.createdAt,
+        filledAt: data.filledAt,
       }
-    },
-    [],
-  )
+
+      setIntentStatus(newStatus)
+
+      // Stop polling if terminal state
+      if (
+        ['filled', 'expired', 'cancelled', 'failed'].includes(newStatus.status)
+      ) {
+        if (pollRef.current) {
+          clearInterval(pollRef.current)
+          pollRef.current = null
+        }
+        setStatus(newStatus.status === 'filled' ? 'complete' : 'error')
+      }
+    } catch {
+      // Ignore polling errors
+    }
+  }, [])
 
   // Start tracking after transaction confirmed
   const startTracking = useCallback(

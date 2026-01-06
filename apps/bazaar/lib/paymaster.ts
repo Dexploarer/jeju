@@ -15,15 +15,15 @@ import { formatEther } from 'viem'
 export {
   checkPaymasterApproval,
   estimateTokenCost,
+  generatePaymasterData,
   getApprovalTxData,
   getAvailablePaymasters,
   getPaymasterForToken,
   getPaymasterOptions,
-  preparePaymasterData,
-  generatePaymasterData,
   type PaymasterConfig,
   type PaymasterInfo,
   type PaymasterOption,
+  preparePaymasterData,
 } from '@jejunetwork/shared'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -36,7 +36,10 @@ export {
  */
 export function isPaymasterEnabled(): boolean {
   // Default to enabled unless explicitly disabled
-  if (typeof process !== 'undefined' && process.env?.DISABLE_PAYMASTER === 'true') {
+  if (
+    typeof process !== 'undefined' &&
+    process.env?.DISABLE_PAYMASTER === 'true'
+  ) {
     return false
   }
   return true
@@ -47,7 +50,7 @@ export function isPaymasterEnabled(): boolean {
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Type imports for local use
-import type { PaymasterOption, PaymasterInfo } from '@jejunetwork/shared'
+import type { PaymasterInfo, PaymasterOption } from '@jejunetwork/shared'
 
 // Preferred tokens for gas payment (in order)
 const PREFERRED_GAS_TOKENS = ['JEJU', 'USDC', 'USDT', 'DAI']
@@ -65,7 +68,8 @@ export function getBestPaymasterForSwap(
   // If user specified a preference, try to use it
   if (preferredToken) {
     const preferred = options.find(
-      (opt) => opt.paymaster.token.toLowerCase() === preferredToken.toLowerCase(),
+      (opt) =>
+        opt.paymaster.token.toLowerCase() === preferredToken.toLowerCase(),
     )
     if (preferred) return preferred
   }

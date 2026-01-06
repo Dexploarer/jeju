@@ -93,8 +93,7 @@ let dbClient: SQLitClient | null = null
 function getDatabase(env: BazaarEnv): SQLitClient {
   if (dbClient) return dbClient
 
-  const endpoint =
-    env.SQLIT_NODES.split(',')[0] || getSQLitBlockProducerUrl()
+  const endpoint = env.SQLIT_NODES.split(',')[0] || getSQLitBlockProducerUrl()
   const databaseId = env.SQLIT_DATABASE_ID
 
   dbClient = getSQLit({

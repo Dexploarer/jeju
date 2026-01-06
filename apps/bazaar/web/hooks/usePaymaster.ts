@@ -11,7 +11,6 @@ import { type Address, formatEther } from 'viem'
 import { useAccount, useGasPrice } from 'wagmi'
 
 import {
-  type PaymasterInfo,
   checkPaymasterApproval,
   estimateSwapGas,
   formatPaymasterCost,
@@ -19,6 +18,7 @@ import {
   getPaymasterOptions,
   hasSufficientGasTokenBalance,
   isPaymasterEnabled,
+  type PaymasterInfo,
   preparePaymasterData,
 } from '../../lib/paymaster'
 
@@ -74,7 +74,8 @@ export function usePaymasterList() {
         setPaymasters(list)
         setError(null)
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to load paymasters'
+        const message =
+          err instanceof Error ? err.message : 'Failed to load paymasters'
         setError(message)
         setPaymasters([])
       } finally {
@@ -121,7 +122,10 @@ export function usePaymasterCosts(
             paymaster: opt.paymaster,
             cost: opt.estimatedCost,
             costFormatted: formatPaymasterCost(opt),
-            hasSufficientBalance: hasSufficientGasTokenBalance(balance, opt.estimatedCost),
+            hasSufficientBalance: hasSufficientGasTokenBalance(
+              balance,
+              opt.estimatedCost,
+            ),
             isRecommended: opt.isRecommended,
           }
         })
@@ -140,7 +144,10 @@ export function usePaymasterCosts(
   return {
     options,
     isLoading: isLoading || paymasterLoading,
-    bestOption: options.length > 0 ? options.find((o) => o.isRecommended) ?? options[0] : null,
+    bestOption:
+      options.length > 0
+        ? (options.find((o) => o.isRecommended) ?? options[0])
+        : null,
   }
 }
 
@@ -153,7 +160,8 @@ export function usePaymaster(isCrossChain: boolean = false) {
   const { data: gasPrice } = useGasPrice()
 
   // State
-  const [selectedPaymaster, setSelectedPaymaster] = useState<PaymasterInfo | null>(null)
+  const [selectedPaymaster, setSelectedPaymaster] =
+    useState<PaymasterInfo | null>(null)
   const [isGasless, setIsGasless] = useState(false)
   const [approvalNeeded, setApprovalNeeded] = useState(false)
 
@@ -231,7 +239,9 @@ export function usePaymaster(isCrossChain: boolean = false) {
     if (!selectedPaymaster || !gasPrice) return null
 
     const option = options.find(
-      (o) => o.paymaster.address.toLowerCase() === selectedPaymaster.address.toLowerCase(),
+      (o) =>
+        o.paymaster.address.toLowerCase() ===
+        selectedPaymaster.address.toLowerCase(),
     )
 
     if (!option) return null
@@ -279,7 +289,10 @@ export function usePaymaster(isCrossChain: boolean = false) {
 // Utility: Format ETH gas cost for comparison
 // ═══════════════════════════════════════════════════════════════════════════
 
-export function formatEthGasCost(gasEstimate: bigint, gasPrice: bigint | undefined): string {
+export function formatEthGasCost(
+  gasEstimate: bigint,
+  gasPrice: bigint | undefined,
+): string {
   if (!gasPrice) return '...'
 
   const cost = gasEstimate * gasPrice

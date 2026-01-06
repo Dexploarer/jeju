@@ -7,15 +7,14 @@
  */
 
 import { type Address, formatEther, parseEther } from 'viem'
+// Import from API (single source of truth) and re-export
+import { SWAP_TOKENS } from '../api/swap'
 import type {
   SwapFeeEstimate,
   SwapQuote,
   SwapToken,
   SwapValidationResult,
 } from '../schemas/swap'
-
-// Import from API (single source of truth) and re-export
-import { SWAP_TOKENS } from '../api/swap'
 export { SWAP_TOKENS }
 
 export const DEFAULT_FEE_BPS = 30n

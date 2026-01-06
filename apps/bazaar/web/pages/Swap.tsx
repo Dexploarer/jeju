@@ -8,16 +8,24 @@
  * - ETH/ERC20 transfers as fallback
  */
 
-import { ArrowDownUp, Clock, Fuel, Loader2, RefreshCw, Zap, Coins } from 'lucide-react'
+import {
+  ArrowDownUp,
+  Clock,
+  Coins,
+  Fuel,
+  Loader2,
+  RefreshCw,
+  Zap,
+} from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import {
   type Address,
+  encodeFunctionData,
   erc20Abi,
   formatUnits,
-  parseUnits,
-  encodeFunctionData,
   parseEther,
+  parseUnits,
 } from 'viem'
 import {
   useAccount,
@@ -30,12 +38,14 @@ import {
 } from 'wagmi'
 import { CHAIN_ID } from '../../config'
 import { InfoCard, PageHeader } from '../components/ui'
+import { useBundler } from '../hooks/useBundler'
 import {
   useCrossChainQuotes,
   useCrossChainTransfer,
   useOIFAvailable,
 } from '../hooks/useCrossChain'
-import { useCrossChainSwap, useEILConfig } from '../hooks/useEIL'
+// Note: EIL has been deprecated in favor of OIF (Open Intents Framework)
+import { usePaymaster } from '../hooks/usePaymaster'
 import { useSameChainSwap } from '../hooks/useSameChainSwap'
 import {
   ETH_TOKEN,
@@ -44,8 +54,6 @@ import {
   useSwapRouter,
   useSwapTokens,
 } from '../hooks/useSwap'
-import { usePaymaster } from '../hooks/usePaymaster'
-import { useBundler } from '../hooks/useBundler'
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const
 
@@ -102,22 +110,17 @@ export default function SwapPage() {
     hash: sameChainHash,
   } = useSameChainSwap()
 
-  // EIL for cross-chain (legacy)
-  const { isAvailable: eilAvailable, crossChainPaymaster } = useEILConfig()
-  const {
-    executeCrossChainSwap,
-    isLoading: crossChainLoading,
-    hash: crossChainHash,
-    reset: resetCrossChain,
-  } = useCrossChainSwap(crossChainPaymaster)
+  // Note: EIL cross-chain has been deprecated in favor of OIF
+  const eilAvailable = false
+  const crossChainLoading = false
+  const crossChainHash = undefined
+  const resetCrossChain = () => {}
 
   // OIF for cross-chain (unified quotes from EIL + OIF routes)
   // Note: oifQuoteParams is computed inline in useCrossChainQuotes below after parsedAmount is defined
   const oifAvailable = useOIFAvailable()
-  const {
-    status: oifTransferStatus,
-    prepareTransfer: prepareOIFTransfer,
-  } = useCrossChainTransfer()
+  const { status: oifTransferStatus, prepareTransfer: prepareOIFTransfer } =
+    useCrossChainTransfer()
 
   // Paymaster for gasless swaps
   const {
@@ -225,16 +228,17 @@ export default function SwapPage() {
     : 0n
 
   // OIF quote params - must be after parsedAmount is defined
-  const oifQuoteParams = isCrossChain && parsedAmount > 0n ? {
-    sourceChainId,
-    destinationChainId: destChainId,
-    sourceToken: inputToken.address,
-    destinationToken: outputToken.address,
-    amount: parsedAmount,
-  } : null
-  const {
-    bestQuote: oifQuote,
-  } = useCrossChainQuotes(oifQuoteParams)
+  const oifQuoteParams =
+    isCrossChain && parsedAmount > 0n
+      ? {
+          sourceChainId,
+          destinationChainId: destChainId,
+          sourceToken: inputToken.address,
+          destinationToken: outputToken.address,
+          amount: parsedAmount,
+        }
+      : null
+  const { bestQuote: oifQuote } = useCrossChainQuotes(oifQuoteParams)
 
   const hasInsufficientBalance = parsedAmount > currentBalance
   const isSameToken = inputToken.symbol === outputToken.symbol
@@ -324,18 +328,7 @@ export default function SwapPage() {
         }
         return
       }
-      // Fallback to EIL if no OIF quote
-      if (eilAvailable) {
-        await executeCrossChainSwap({
-          sourceToken: inputToken.address,
-          destinationToken: outputToken.address,
-          amount: parsedAmount,
-          sourceChainId,
-          destinationChainId: destChainId,
-          recipient: to,
-        })
-        return
-      }
+      // EIL fallback removed - OIF is the only supported cross-chain method
       toast.error('Cross-chain bridge not available')
       return
     }
@@ -349,7 +342,7 @@ export default function SwapPage() {
         if (paymasterData) {
           try {
             toast.loading('Preparing gasless transaction...', { id: 'gasless' })
-            
+
             // For gasless, we need to encode the swap call
             const swapCalldata = encodeFunctionData({
               abi: erc20Abi,
@@ -371,7 +364,9 @@ export default function SwapPage() {
             return
           } catch (err) {
             const error = err as Error
-            toast.error(error.message || 'Gasless swap failed', { id: 'gasless' })
+            toast.error(error.message || 'Gasless swap failed', {
+              id: 'gasless',
+            })
             return
           }
         }
@@ -403,7 +398,7 @@ export default function SwapPage() {
       if (paymasterData) {
         try {
           toast.loading('Preparing gasless transfer...', { id: 'gasless' })
-          
+
           const transferCalldata = encodeFunctionData({
             abi: erc20Abi,
             functionName: 'transfer',
@@ -424,7 +419,9 @@ export default function SwapPage() {
           return
         } catch (err) {
           const error = err as Error
-          toast.error(error.message || 'Gasless transfer failed', { id: 'gasless' })
+          toast.error(error.message || 'Gasless transfer failed', {
+            id: 'gasless',
+          })
           return
         }
       }
@@ -759,7 +756,11 @@ export default function SwapPage() {
                   <dd>
                     <select
                       value={selectedPaymaster?.address ?? ''}
-                      onChange={(e) => selectPaymaster(e.target.value as `0x${string}` || null)}
+                      onChange={(e) =>
+                        selectPaymaster(
+                          (e.target.value as `0x${string}`) || null,
+                        )
+                      }
                       className="input py-1 px-2 text-xs w-24"
                     >
                       <option value="">ETH</option>
