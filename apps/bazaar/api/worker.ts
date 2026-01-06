@@ -93,12 +93,12 @@ let dbClient: SQLitClient | null = null
 function getDatabase(env: BazaarEnv): SQLitClient {
   if (dbClient) return dbClient
 
-  const blockProducerEndpoint =
+  const endpoint =
     env.SQLIT_NODES.split(',')[0] || getSQLitBlockProducerUrl()
   const databaseId = env.SQLIT_DATABASE_ID
 
   dbClient = getSQLit({
-    blockProducerEndpoint,
+    endpoint,
     databaseId,
     debug: env.NETWORK === 'localnet',
   })
@@ -426,12 +426,22 @@ export function createBazaarApp(env?: Partial<BazaarEnv>) {
           '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'
         const account = privateKeyToAccount(deployerKey as `0x${string}`)
 
+        // Define localnet chain for viem clients
+        const localnet = {
+          id: 31337,
+          name: 'Anvil',
+          nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+          rpcUrls: { default: { http: [getL2RpcUrl()] } },
+        } as const
+
         const publicClient = createPublicClient({
+          chain: localnet,
           transport: http(getL2RpcUrl()),
         })
 
         const walletClient = createWalletClient({
           account,
+          chain: localnet,
           transport: http(getL2RpcUrl()),
         })
 

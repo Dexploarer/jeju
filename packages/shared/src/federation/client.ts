@@ -1,5 +1,4 @@
 import {
-  readContract,
   writeContract as typedWriteContract,
 } from '@jejunetwork/contracts'
 import {
@@ -176,7 +175,7 @@ export class FederationClient {
   }
 
   async getNetwork(chainId: number): Promise<NetworkInfo> {
-    const result = (await readContract(this.hubClient, {
+    const result = (await this.hubClient.readContract({
       address: this.config.networkRegistryAddress,
       abi: NETWORK_REGISTRY_ABI,
       functionName: 'getNetwork',
@@ -186,7 +185,7 @@ export class FederationClient {
   }
 
   async getActiveNetworks(): Promise<number[]> {
-    const result = (await readContract(this.hubClient, {
+    const result = (await this.hubClient.readContract({
       address: this.config.networkRegistryAddress,
       abi: NETWORK_REGISTRY_ABI,
       functionName: 'getActiveNetworks',
@@ -195,7 +194,7 @@ export class FederationClient {
   }
 
   async getVerifiedNetworks(): Promise<number[]> {
-    const result = (await readContract(this.hubClient, {
+    const result = (await this.hubClient.readContract({
       address: this.config.networkRegistryAddress,
       abi: NETWORK_REGISTRY_ABI,
       functionName: 'getVerifiedNetworks',
@@ -204,7 +203,7 @@ export class FederationClient {
   }
 
   async getTrustedPeers(chainId: number): Promise<number[]> {
-    const result = (await readContract(this.hubClient, {
+    const result = (await this.hubClient.readContract({
       address: this.config.networkRegistryAddress,
       abi: NETWORK_REGISTRY_ABI,
       functionName: 'getTrustedPeers',
@@ -217,7 +216,7 @@ export class FederationClient {
     sourceChainId: number,
     targetChainId: number,
   ): Promise<boolean> {
-    return readContract(this.hubClient, {
+    return this.hubClient.readContract({
       address: this.config.networkRegistryAddress,
       abi: NETWORK_REGISTRY_ABI,
       functionName: 'isTrusted',
@@ -226,7 +225,7 @@ export class FederationClient {
   }
 
   async isMutuallyTrusted(chainA: number, chainB: number): Promise<boolean> {
-    return readContract(this.hubClient, {
+    return this.hubClient.readContract({
       address: this.config.networkRegistryAddress,
       abi: NETWORK_REGISTRY_ABI,
       functionName: 'isMutuallyTrusted',
@@ -259,8 +258,7 @@ export class FederationClient {
       throw new Error('FederatedIdentity not configured')
     }
 
-    const [isValid, federatedId, reputation] = (await readContract(
-      this.localClient,
+    const [isValid, federatedId, reputation] = (await this.localClient.readContract(
       {
         address: this.config.federatedIdentityAddress,
         abi: FEDERATED_IDENTITY_ABI,
@@ -271,7 +269,7 @@ export class FederationClient {
 
     let attestedNetworks: number[] = []
     if (isValid) {
-      const attestations = (await readContract(this.localClient, {
+      const attestations = (await this.localClient.readContract({
         address: this.config.federatedIdentityAddress,
         abi: FEDERATED_IDENTITY_ABI,
         functionName: 'getAttestations',
@@ -313,7 +311,7 @@ export class FederationClient {
       throw new Error('FederatedSolver not configured')
     }
 
-    return readContract(this.localClient, {
+    return this.localClient.readContract({
       address: this.config.federatedSolverAddress,
       abi: FEDERATED_SOLVER_ABI,
       functionName: 'getSolversForRoute',
@@ -333,8 +331,7 @@ export class FederationClient {
       throw new Error('FederatedSolver not configured')
     }
 
-    const [solverId, stake, successRate] = (await readContract(
-      this.localClient,
+    const [solverId, stake, successRate] = (await this.localClient.readContract(
       {
         address: this.config.federatedSolverAddress,
         abi: FEDERATED_SOLVER_ABI,
@@ -375,7 +372,7 @@ export class FederationClient {
       throw new Error('FederatedLiquidity not configured')
     }
 
-    const [totalEth, totalToken] = (await readContract(this.localClient, {
+    const [totalEth, totalToken] = (await this.localClient.readContract({
       address: this.config.federatedLiquidityAddress,
       abi: FEDERATED_LIQUIDITY_ABI,
       functionName: 'getTotalFederatedLiquidity',
@@ -391,7 +388,7 @@ export class FederationClient {
       throw new Error('FederatedLiquidity not configured')
     }
 
-    const [chainId, available] = (await readContract(this.localClient, {
+    const [chainId, available] = (await this.localClient.readContract({
       address: this.config.federatedLiquidityAddress,
       abi: FEDERATED_LIQUIDITY_ABI,
       functionName: 'getBestNetworkForLiquidity',
@@ -433,7 +430,7 @@ export class FederationClient {
       throw new Error('FederatedLiquidity not configured')
     }
 
-    return readContract(this.localClient, {
+    return this.localClient.readContract({
       address: this.config.federatedLiquidityAddress,
       abi: FEDERATED_LIQUIDITY_ABI,
       functionName: 'getXLPsForRoute',

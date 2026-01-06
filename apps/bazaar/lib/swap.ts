@@ -14,8 +14,9 @@ import type {
   SwapValidationResult,
 } from '../schemas/swap'
 
-// Re-export from API (single source of truth)
-export { SWAP_TOKENS } from '../api/swap'
+// Import from API (single source of truth) and re-export
+import { SWAP_TOKENS } from '../api/swap'
+export { SWAP_TOKENS }
 
 export const DEFAULT_FEE_BPS = 30n
 export const BASE_NETWORK_FEE = parseEther('0.001')
