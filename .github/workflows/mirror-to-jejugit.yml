@@ -11,17 +11,17 @@ on:
         required: false
         default: 'main'
 
-env:
-  JEJUGIT_URL: ${{ secrets.JEJUGIT_URL }}
-
 jobs:
   mirror-to-jejugit:
     runs-on: ubuntu-latest
+    env:
+      JEJUGIT_URL: ${{ secrets.JEJUGIT_URL }}
+      JEJUGIT_TOKEN: ${{ secrets.JEJUGIT_TOKEN }}
     steps:
       - name: Check configuration
         id: check
         run: |
-          if [ -z "${{ secrets.JEJUGIT_URL }}" ]; then
+          if [ -z "$JEJUGIT_URL" ]; then
             echo "JejuGit URL not configured, skipping mirror."
             echo "skip=true" >> $GITHUB_OUTPUT
           else
@@ -38,9 +38,10 @@ jobs:
       - name: Configure JejuGit remote
         if: steps.check.outputs.skip != 'true'
         run: |
-          git remote add jejugit ${{ env.JEJUGIT_URL }}/jeju/jeju.git || git remote set-url jejugit ${{ env.JEJUGIT_URL }}/jeju/jeju.git
+          git remote add jejugit "$JEJUGIT_URL/jeju/jeju.git" || git remote set-url jejugit "$JEJUGIT_URL/jeju/jeju.git"
           git config --global credential.helper store
-          echo "https://${{ secrets.JEJUGIT_TOKEN }}:x-oauth-basic@${JEJUGIT_URL#https://}" > ~/.git-credentials
+          JEJUGIT_HOST="${JEJUGIT_URL#https://}"
+          echo "https://$JEJUGIT_TOKEN:x-oauth-basic@$JEJUGIT_HOST" > ~/.git-credentials
 
       - name: Push to JejuGit
         if: steps.check.outputs.skip != 'true'
@@ -53,7 +54,7 @@ jobs:
       - name: Update JejuGit repository metadata
         if: steps.check.outputs.skip != 'true' && success()
         run: |
-          curl -X POST "${{ env.JEJUGIT_URL }}/api/v1/repos/jeju/jeju/sync" \
-            -H "Authorization: Bearer ${{ secrets.JEJUGIT_TOKEN }}" \
+          curl -X POST "$JEJUGIT_URL/api/v1/repos/jeju/jeju/sync" \
+            -H "Authorization: Bearer $JEJUGIT_TOKEN" \
             -H "Content-Type: application/json" \
             -d '{"source": "github", "sourceUrl": "${{ github.server_url }}/${{ github.repository }}"}'
