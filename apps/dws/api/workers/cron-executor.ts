@@ -11,7 +11,6 @@
  * the in-memory CronScheduler class.
  */
 
-import { getCurrentNetwork } from '@jejunetwork/config'
 import { type CacheClient, getCacheClient } from '@jejunetwork/shared'
 import {
   type DWSWorker,
@@ -61,7 +60,7 @@ export class CronExecutor {
   private readonly maxHistorySize = 100
 
   constructor(config: Partial<CronExecutorConfig> = {}) {
-    const network = getCurrentNetwork()
+    const network = process.env.JEJU_NETWORK ?? 'localnet'
 
     this.config = {
       workerBaseUrl:

@@ -2507,9 +2507,9 @@ function calculateNextRunTime(
     )
   }
 
-  const [minutePart, hourPart, _dayPart, _monthPart, _dowPart] = parts
+  const [minutePart, hourPart] = parts
 
-  // Simple implementation: find next matching minute/hour
+  // Simple implementation: matches minute/hour only (day/month/dow always match)
   const now = new Date(fromTime)
   const candidate = new Date(now)
   candidate.setSeconds(0, 0)
