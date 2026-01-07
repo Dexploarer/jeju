@@ -60,6 +60,16 @@ import {
   terminateHubble,
 } from '../../services/hubble'
 import {
+  deployMessaging,
+  getMessagingService,
+  getMessagingStats,
+  getTestnetMessagingConfig,
+  listMessagingServices,
+  type MessagingConfig,
+  scaleMessaging,
+  terminateMessaging,
+} from '../../services/messaging'
+import {
   deployOAuth3,
   getOAuth3MPCStatus,
   getOAuth3Service,
@@ -70,6 +80,17 @@ import {
   scaleOAuth3,
   terminateOAuth3,
 } from '../../services/oauth3'
+import {
+  deploySQLit,
+  getSQLitClusterStatus,
+  getSQLitService,
+  getSQLitStats,
+  getTestnetSQLitConfig,
+  listSQLitServices,
+  type SQLitConfig,
+  scaleSQLit,
+  terminateSQLit,
+} from '../../services/sqlit'
 import {
   deployRPCGateway,
   deploySQLitAdapter,
@@ -86,27 +107,6 @@ import {
   type WorkerService,
   type X402FacilitatorConfig,
 } from '../../services/workers'
-import {
-  deployMessaging,
-  getMessagingService,
-  getMessagingStats,
-  getTestnetMessagingConfig,
-  listMessagingServices,
-  type MessagingConfig,
-  scaleMessaging,
-  terminateMessaging,
-} from '../../services/messaging'
-import {
-  deploySQLit,
-  getSQLitClusterStatus,
-  getSQLitService,
-  getSQLitStats,
-  getTestnetSQLitConfig,
-  listSQLitServices,
-  scaleSQLit,
-  type SQLitConfig,
-  terminateSQLit,
-} from '../../services/sqlit'
 
 // ============================================================================
 // Request Schemas

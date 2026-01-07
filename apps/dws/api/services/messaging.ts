@@ -59,8 +59,8 @@ export interface MessagingConfig {
   }
   contracts: {
     rpcUrl: string
-    keyRegistryAddress: Address
-    nodeRegistryAddress: Address
+    keyRegistryAddress: Address | string
+    nodeRegistryAddress: Address | string
   }
   hardware?: Partial<HardwareSpec>
 }
@@ -87,8 +87,8 @@ export const MessagingConfigSchema = z.object({
   }),
   contracts: z.object({
     rpcUrl: z.string().url(),
-    keyRegistryAddress: z.string(),
-    nodeRegistryAddress: z.string(),
+    keyRegistryAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+    nodeRegistryAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
   }),
   hardware: z
     .object({
@@ -199,8 +199,16 @@ export async function deployMessaging(
       RELAY_WS_PORT: String(validatedConfig.relay.wsPort),
     },
     ports: [
-      { name: 'http', containerPort: validatedConfig.relay.port, protocol: 'tcp' },
-      { name: 'ws', containerPort: validatedConfig.relay.wsPort, protocol: 'tcp' },
+      {
+        name: 'http',
+        containerPort: validatedConfig.relay.port,
+        protocol: 'tcp',
+      },
+      {
+        name: 'ws',
+        containerPort: validatedConfig.relay.wsPort,
+        protocol: 'tcp',
+      },
     ],
     hardware,
     volumes: [],
@@ -245,11 +253,15 @@ export async function deployMessaging(
         TEE_MODE: 'simulated', // Will be 'dstack' or 'phala' in production
       },
       ports: [
-        { name: 'kms', containerPort: validatedConfig.kms.port, protocol: 'tcp' },
+        {
+          name: 'kms',
+          containerPort: validatedConfig.kms.port,
+          protocol: 'tcp',
+        },
       ],
       hardware: {
         ...hardware,
-        teePlatform: 'dstack', // KMS requires TEE
+        teePlatform: 'intel-tdx', // KMS requires TEE
       },
       volumes: [
         {
@@ -307,7 +319,9 @@ export async function deployMessaging(
     {
       'messaging.relay.replicas': String(validatedConfig.relay.replicas),
       'messaging.kms.enabled': String(validatedConfig.kms.enabled),
-      'messaging.farcaster.syncEnabled': String(validatedConfig.farcaster.syncEnabled),
+      'messaging.farcaster.syncEnabled': String(
+        validatedConfig.farcaster.syncEnabled,
+      ),
     },
   )
 
@@ -339,7 +353,9 @@ export async function deployMessaging(
 /**
  * Get messaging service by ID
  */
-export function getMessagingService(serviceId: string): MessagingService | null {
+export function getMessagingService(
+  serviceId: string,
+): MessagingService | null {
   return messagingServices.get(serviceId) ?? null
 }
 
@@ -373,7 +389,9 @@ export async function scaleMessaging(
   const statefulProvisioner = getStatefulProvisioner()
   await statefulProvisioner.scale(service.components.relay.id, owner, replicas)
 
-  console.log(`[MessagingService] Scaled ${service.name} to ${replicas} relay nodes`)
+  console.log(
+    `[MessagingService] Scaled ${service.name} to ${replicas} relay nodes`,
+  )
 }
 
 /**
@@ -478,8 +496,8 @@ export function getTestnetMessagingConfig(): MessagingConfig {
     },
     contracts: {
       rpcUrl: 'https://testnet.jejunetwork.org',
-      keyRegistryAddress: '0x0000000000000000000000000000000000000000' as Address,
-      nodeRegistryAddress: '0x0000000000000000000000000000000000000000' as Address,
+      keyRegistryAddress: '0x0000000000000000000000000000000000000000',
+      nodeRegistryAddress: '0x0000000000000000000000000000000000000000',
     },
   }
 }

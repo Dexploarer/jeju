@@ -52,13 +52,17 @@ export interface UseSwapQuotesResult extends AsyncState {
 // Hook Implementation
 // ═══════════════════════════════════════════════════════════════════════════
 
-export function useSwapQuotes(params: SwapQuoteParams | null): UseSwapQuotesResult {
+export function useSwapQuotes(
+  params: SwapQuoteParams | null,
+): UseSwapQuotesResult {
   const { client } = useNetworkContext()
   const { address: userAddress } = useAccount()
   const { isLoading, error, execute } = useAsyncState()
 
   // State - separate types for different quote types
-  const [crossChainQuotes, setCrossChainQuotes] = useState<CrossChainQuote[]>([])
+  const [crossChainQuotes, setCrossChainQuotes] = useState<CrossChainQuote[]>(
+    [],
+  )
   const [swapQuote, setSwapQuote] = useState<SwapQuote | null>(null)
 
   // Debounce ref
@@ -66,8 +70,7 @@ export function useSwapQuotes(params: SwapQuoteParams | null): UseSwapQuotesResu
 
   // Check if cross-chain
   const isCrossChain = Boolean(
-    params &&
-      params.sourceChain &&
+    params?.sourceChain &&
       params.destinationChain &&
       params.sourceChain !== params.destinationChain,
   )
@@ -107,7 +110,9 @@ export function useSwapQuotes(params: SwapQuoteParams | null): UseSwapQuotesResu
           recipient: params.recipient ?? userAddress,
         }
 
-        const result = await execute(() => c.crosschain.getQuotes(transferParams))
+        const result = await execute(() =>
+          c.crosschain.getQuotes(transferParams),
+        )
         if (result) {
           setCrossChainQuotes(result)
           setSwapQuote(null)

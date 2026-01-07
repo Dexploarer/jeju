@@ -112,15 +112,23 @@ export function usePaymaster(): UsePaymasterResult {
       try {
         // Use SDK's paymaster module if available
         const c = requireClient(client)
-        if ('paymaster' in c && typeof c.paymaster === 'object' && c.paymaster !== null) {
-          const pm = c.paymaster as { getAvailable?: () => Promise<PaymasterInfo[]> }
+        if (
+          'paymaster' in c &&
+          typeof c.paymaster === 'object' &&
+          c.paymaster !== null
+        ) {
+          const pm = c.paymaster as {
+            getAvailable?: () => Promise<PaymasterInfo[]>
+          }
           if (pm.getAvailable) {
             const list = await pm.getAvailable()
             setPaymasters(list)
           }
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load paymasters')
+        setError(
+          err instanceof Error ? err.message : 'Failed to load paymasters',
+        )
         setPaymasters([])
       } finally {
         setIsLoading(false)
@@ -139,9 +147,10 @@ export function usePaymaster(): UsePaymasterResult {
 
     return paymasters.map((pm) => {
       // Convert ETH cost to token cost using exchange rate
-      const tokenCost = pm.exchangeRate > 0n
-        ? (baseCost * BigInt(1e18)) / pm.exchangeRate
-        : baseCost
+      const tokenCost =
+        pm.exchangeRate > 0n
+          ? (baseCost * BigInt(1e18)) / pm.exchangeRate
+          : baseCost
 
       return {
         paymaster: pm,
@@ -155,7 +164,10 @@ export function usePaymaster(): UsePaymasterResult {
 
   const bestOption = useMemo(() => {
     if (options.length === 0) return null
-    return options.find((o) => o.isRecommended && o.hasSufficientBalance) ?? options[0]
+    return (
+      options.find((o) => o.isRecommended && o.hasSufficientBalance) ??
+      options[0]
+    )
   }, [options])
 
   // Select paymaster
@@ -182,7 +194,9 @@ export function usePaymaster(): UsePaymasterResult {
   const currentCostEstimate = useMemo(() => {
     if (!selectedPaymaster) return null
     const opt = options.find(
-      (o) => o.paymaster.address.toLowerCase() === selectedPaymaster.address.toLowerCase(),
+      (o) =>
+        o.paymaster.address.toLowerCase() ===
+        selectedPaymaster.address.toLowerCase(),
     )
     return opt ? { cost: opt.cost, costFormatted: opt.costFormatted } : null
   }, [selectedPaymaster, options])
@@ -215,7 +229,10 @@ export function usePaymaster(): UsePaymasterResult {
 // Utility: Format ETH gas cost
 // ═══════════════════════════════════════════════════════════════════════════
 
-export function formatEthGasCost(gasEstimate: bigint, gasPrice: bigint | undefined): string {
+export function formatEthGasCost(
+  gasEstimate: bigint,
+  gasPrice: bigint | undefined,
+): string {
   if (!gasPrice) return '...'
   const cost = gasEstimate * gasPrice
   const num = parseFloat(formatEther(cost))

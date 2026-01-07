@@ -748,7 +748,10 @@ dwsServicesCommand
   .command('terminate')
   .description('Terminate a DWS service')
   .argument('<id>', 'Service ID to terminate')
-  .argument('<type>', 'Service type (oauth3, da, email, hubble, messaging, sqlit, workers)')
+  .argument(
+    '<type>',
+    'Service type (oauth3, da, email, hubble, messaging, sqlit, workers)',
+  )
   .action(async (id: string, type: string) => {
     const { getDWSUrl, getCurrentNetwork } = await import('@jejunetwork/config')
     const network = getCurrentNetwork()

@@ -64,7 +64,7 @@ export interface SQLitConfig {
   }
   contracts: {
     rpcUrl: string
-    nodeRegistryAddress: Address
+    nodeRegistryAddress: Address | string
   }
   backup: {
     enabled: boolean
@@ -93,7 +93,7 @@ export const SQLitConfigSchema = z.object({
   }),
   contracts: z.object({
     rpcUrl: z.string().url(),
-    nodeRegistryAddress: z.string(),
+    nodeRegistryAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
   }),
   backup: z.object({
     enabled: z.boolean().default(true),
@@ -203,14 +203,12 @@ export async function deploySQLit(
       sizeMb: validatedConfig.storage.sizeMb,
       tier: validatedConfig.storage.tier,
       mountPath: '/data',
-      backup: validatedConfig.backup.enabled
-        ? {
-            enabled: true,
-            intervalSeconds: validatedConfig.backup.intervalSeconds,
-            retentionCount: 24,
-            ipfsPin: validatedConfig.backup.ipfsPin,
-          }
-        : undefined,
+      backup: {
+        enabled: validatedConfig.backup.enabled,
+        intervalSeconds: validatedConfig.backup.intervalSeconds,
+        retentionCount: 24,
+        ipfsPin: validatedConfig.backup.ipfsPin,
+      },
     },
   ]
 
@@ -237,10 +235,26 @@ export async function deploySQLit(
       SQLIT_ROLE: 'blockproducer',
     },
     ports: [
-      { name: 'client', containerPort: validatedConfig.ports.client, protocol: 'tcp' },
-      { name: 'http', containerPort: validatedConfig.ports.http, protocol: 'tcp' },
-      { name: 'gossip', containerPort: validatedConfig.ports.gossip, protocol: 'tcp' },
-      { name: 'raft', containerPort: validatedConfig.ports.raft, protocol: 'tcp' },
+      {
+        name: 'client',
+        containerPort: validatedConfig.ports.client,
+        protocol: 'tcp',
+      },
+      {
+        name: 'http',
+        containerPort: validatedConfig.ports.http,
+        protocol: 'tcp',
+      },
+      {
+        name: 'gossip',
+        containerPort: validatedConfig.ports.gossip,
+        protocol: 'tcp',
+      },
+      {
+        name: 'raft',
+        containerPort: validatedConfig.ports.raft,
+        protocol: 'tcp',
+      },
     ],
     hardware,
     volumes,
@@ -292,9 +306,21 @@ export async function deploySQLit(
         SQLIT_LEADER_ENDPOINT: `${validatedConfig.name}-bp-0.${validatedConfig.name}-bp.${validatedConfig.namespace}.svc.jeju:${validatedConfig.ports.raft}`,
       },
       ports: [
-        { name: 'client', containerPort: validatedConfig.ports.client, protocol: 'tcp' },
-        { name: 'http', containerPort: validatedConfig.ports.http, protocol: 'tcp' },
-        { name: 'gossip', containerPort: validatedConfig.ports.gossip, protocol: 'tcp' },
+        {
+          name: 'client',
+          containerPort: validatedConfig.ports.client,
+          protocol: 'tcp',
+        },
+        {
+          name: 'http',
+          containerPort: validatedConfig.ports.http,
+          protocol: 'tcp',
+        },
+        {
+          name: 'gossip',
+          containerPort: validatedConfig.ports.gossip,
+          protocol: 'tcp',
+        },
       ],
       hardware: {
         ...hardware,
@@ -318,7 +344,10 @@ export async function deploySQLit(
       terminationGracePeriodSeconds: 30,
     }
 
-    components.followers = await statefulProvisioner.create(owner, followerConfig)
+    components.followers = await statefulProvisioner.create(
+      owner,
+      followerConfig,
+    )
   }
 
   // Register with service discovery
@@ -493,7 +522,10 @@ export async function terminateSQLit(
 
   const statefulProvisioner = getStatefulProvisioner()
 
-  await statefulProvisioner.terminate(service.components.blockProducers.id, owner)
+  await statefulProvisioner.terminate(
+    service.components.blockProducers.id,
+    owner,
+  )
   if (service.components.followers) {
     await statefulProvisioner.terminate(service.components.followers.id, owner)
   }
@@ -606,7 +638,8 @@ export function getTestnetSQLitConfig(): SQLitConfig {
     },
     contracts: {
       rpcUrl: 'https://testnet.jejunetwork.org',
-      nodeRegistryAddress: '0x0000000000000000000000000000000000000000' as Address,
+      nodeRegistryAddress:
+        '0x0000000000000000000000000000000000000000' as Address,
     },
     backup: {
       enabled: true,

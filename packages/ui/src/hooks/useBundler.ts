@@ -59,7 +59,8 @@ export interface UseBundlerResult {
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ERC-4337 EntryPoint v0.6.0 address (canonical)
-const ENTRY_POINT_ADDRESS = '0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789' as Address
+const ENTRY_POINT_ADDRESS =
+  '0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789' as Address
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Hook Implementation
@@ -90,7 +91,9 @@ export function useBundler(): UseBundlerResult {
 
       try {
         // Use SDK's bundler module
-        const bundler = c.bundler as { sendUserOp?: (op: PartialUserOperation) => Promise<Hex> }
+        const bundler = c.bundler as {
+          sendUserOp?: (op: PartialUserOperation) => Promise<Hex>
+        }
         if (!bundler.sendUserOp) {
           throw new Error('Bundler sendUserOp not available')
         }
@@ -99,7 +102,8 @@ export function useBundler(): UseBundlerResult {
         setHash(userOpHash)
         return userOpHash
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to send UserOperation'
+        const message =
+          err instanceof Error ? err.message : 'Failed to send UserOperation'
         setError(message)
         throw err
       } finally {
