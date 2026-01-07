@@ -12,7 +12,6 @@ import { cors } from '@elysiajs/cors'
 import { Elysia, t } from 'elysia'
 import { SQLitNode } from './node'
 import type {
-  BatchExecuteRequest,
   CreateDatabaseRequest,
   ExecuteRequest,
   SQLitNodeConfig,
@@ -56,9 +55,7 @@ export async function createSQLitServer(config: SQLitServerConfig) {
   }
 
   // Helper to serialize BigInt values in objects
-  const serializeDatabase = (
-    db: import('@jejunetwork/types').DatabaseInstance,
-  ) => ({
+  const serializeDatabase = (db: import('./types').DatabaseInstance) => ({
     ...db,
     sizeBytes: db.sizeBytes.toString(),
     rowCount: db.rowCount.toString(),
@@ -68,7 +65,7 @@ export async function createSQLitServer(config: SQLitServerConfig) {
   // Helper to serialize query results
   const serializeQueryResult = (result: import('./types').ExecuteResponse) => ({
     ...result,
-    walPosition: result.walPosition.toString(),
+    walPosition: (result.walPosition ?? BigInt(0)).toString(),
     lastInsertId: result.lastInsertId.toString(),
   })
 
@@ -80,7 +77,7 @@ export async function createSQLitServer(config: SQLitServerConfig) {
     walPosition: result.walPosition.toString(),
     results: result.results.map((r) => ({
       ...r,
-      walPosition: r.walPosition.toString(),
+      walPosition: (r.walPosition ?? BigInt(0)).toString(),
       lastInsertId: r.lastInsertId.toString(),
     })),
   })
@@ -229,54 +226,53 @@ export async function createSQLitServer(config: SQLitServerConfig) {
 
     // ============ V2 Query API ============
 
-    .post(
-      '/v2/execute',
-      async ({ body }) => {
-        try {
-          const result = await node.execute(body as ExecuteRequest)
-          return { success: true, ...serializeQueryResult(result) }
-        } catch (error) {
-          return handleError(error)
+    .post('/v2/execute', async ({ body }) => {
+      try {
+        const reqBody = body as {
+          databaseId: string
+          sql: string
+          params?: (string | number | boolean | null | bigint)[]
+          queryType?: string
+          requiredWalPosition?: string
+          signature?: string
+          timestamp?: number
         }
-      },
-      {
-        body: t.Object({
-          databaseId: t.String(),
-          sql: t.String(),
-          params: t.Optional(t.Array(t.Any())),
-          queryType: t.Optional(t.String()),
-          timeoutMs: t.Optional(t.Number()),
-          sessionId: t.Optional(t.String()),
-          requiredWalPosition: t.Optional(t.String()),
-          signature: t.Optional(t.String()),
-          timestamp: t.Optional(t.Number()),
-        }),
-      },
-    )
+        const request: ExecuteRequest = {
+          databaseId: reqBody.databaseId,
+          sql: reqBody.sql,
+          params: reqBody.params,
+          queryType: reqBody.queryType as 'read' | 'write' | 'ddl' | undefined,
+          requiredWalPosition: reqBody.requiredWalPosition
+            ? BigInt(reqBody.requiredWalPosition)
+            : undefined,
+          signature: reqBody.signature as `0x${string}` | undefined,
+          timestamp: reqBody.timestamp,
+        }
+        const result = await node.execute(request)
+        const serialized = serializeQueryResult(result)
+        return { ...serialized, success: true }
+      } catch (error) {
+        return handleError(error)
+      }
+    })
 
-    .post(
-      '/v2/batch',
-      async ({ body }) => {
-        try {
-          const result = await node.batchExecute(body as BatchExecuteRequest)
-          return { success: true, ...serializeBatchResult(result) }
-        } catch (error) {
-          return handleError(error)
+    .post('/v2/batch', async ({ body }) => {
+      try {
+        const reqBody = body as {
+          databaseId: string
+          queries: Array<{
+            sql: string
+            params?: (string | number | boolean | null | bigint)[]
+          }>
+          transactional: boolean
         }
-      },
-      {
-        body: t.Object({
-          databaseId: t.String(),
-          queries: t.Array(
-            t.Object({
-              sql: t.String(),
-              params: t.Optional(t.Array(t.Any())),
-            }),
-          ),
-          transactional: t.Boolean(),
-        }),
-      },
-    )
+        const result = await node.batchExecute(reqBody)
+        const serialized = serializeBatchResult(result)
+        return { ...serialized, success: true }
+      } catch (error) {
+        return handleError(error)
+      }
+    })
 
     // ============ Database Management ============
 
@@ -454,7 +450,8 @@ export async function createSQLitServer(config: SQLitServerConfig) {
               | (string | number | boolean | null | bigint)[]
               | undefined,
           })
-          return { success: true, ...serializeQueryResult(result) }
+          const serialized = serializeQueryResult(result)
+          return { ...serialized, success: true }
         } catch (error) {
           return handleError(error)
         }
@@ -469,12 +466,9 @@ export async function createSQLitServer(config: SQLitServerConfig) {
 
     // ============ Vector API ============
 
-    .post(
-      '/v2/vector/create-index',
-      async ({
-        body,
-      }: {
-        body: {
+    .post('/v2/vector/create-index', async ({ body }) => {
+      try {
+        const reqBody = body as {
           databaseId: string
           tableName: string
           dimensions: number
@@ -482,31 +476,25 @@ export async function createSQLitServer(config: SQLitServerConfig) {
           metadataColumns?: Array<{ name: string; type: string }>
           partitionKey?: string
         }
-      }) => {
-        try {
-          await node.createVectorIndex(body.databaseId, {
-            tableName: body.tableName,
-            dimensions: body.dimensions,
-            vectorType: body.vectorType,
-            metadataColumns: body.metadataColumns as Array<{
-              name: string
-              type: 'TEXT' | 'INTEGER' | 'REAL' | 'BLOB'
-            }>,
-            partitionKey: body.partitionKey,
-          })
-          return { success: true, status: 'created' }
-        } catch (error) {
-          return handleError(error)
-        }
-      },
-    )
+        await node.createVectorIndex(reqBody.databaseId, {
+          tableName: reqBody.tableName,
+          dimensions: reqBody.dimensions,
+          vectorType: reqBody.vectorType,
+          metadataColumns: reqBody.metadataColumns as Array<{
+            name: string
+            type: 'TEXT' | 'INTEGER' | 'REAL' | 'BLOB'
+          }>,
+          partitionKey: reqBody.partitionKey,
+        })
+        return { success: true, status: 'created' }
+      } catch (error) {
+        return handleError(error)
+      }
+    })
 
-    .post(
-      '/v2/vector/insert',
-      async ({
-        body,
-      }: {
-        body: {
+    .post('/v2/vector/insert', async ({ body }) => {
+      try {
+        const reqBody = body as {
           databaseId: string
           tableName: string
           vector: number[]
@@ -514,28 +502,22 @@ export async function createSQLitServer(config: SQLitServerConfig) {
           metadata?: Record<string, string | number | boolean | null>
           partitionValue?: string | number
         }
-      }) => {
-        try {
-          const result = await node.insertVector(body.databaseId, {
-            tableName: body.tableName,
-            vector: body.vector,
-            rowid: body.rowid,
-            metadata: body.metadata,
-            partitionValue: body.partitionValue,
-          })
-          return { success: true, ...result }
-        } catch (error) {
-          return handleError(error)
-        }
-      },
-    )
+        const result = await node.insertVector(reqBody.databaseId, {
+          tableName: reqBody.tableName,
+          vector: reqBody.vector,
+          rowid: reqBody.rowid,
+          metadata: reqBody.metadata,
+          partitionValue: reqBody.partitionValue,
+        })
+        return { success: true, ...result }
+      } catch (error) {
+        return handleError(error)
+      }
+    })
 
-    .post(
-      '/v2/vector/batch-insert',
-      async ({
-        body,
-      }: {
-        body: {
+    .post('/v2/vector/batch-insert', async ({ body }) => {
+      try {
+        const reqBody = body as {
           databaseId: string
           tableName: string
           vectors: Array<{
@@ -545,25 +527,19 @@ export async function createSQLitServer(config: SQLitServerConfig) {
             partitionValue?: string | number
           }>
         }
-      }) => {
-        try {
-          const result = await node.batchInsertVectors(body.databaseId, {
-            tableName: body.tableName,
-            vectors: body.vectors,
-          })
-          return { success: true, ...result }
-        } catch (error) {
-          return handleError(error)
-        }
-      },
-    )
+        const result = await node.batchInsertVectors(reqBody.databaseId, {
+          tableName: reqBody.tableName,
+          vectors: reqBody.vectors,
+        })
+        return { success: true, ...result }
+      } catch (error) {
+        return handleError(error)
+      }
+    })
 
-    .post(
-      '/v2/vector/search',
-      async ({
-        body,
-      }: {
-        body: {
+    .post('/v2/vector/search', async ({ body }) => {
+      try {
+        const reqBody = body as {
           databaseId: string
           tableName: string
           vector: number[]
@@ -572,22 +548,19 @@ export async function createSQLitServer(config: SQLitServerConfig) {
           metadataFilter?: string
           includeMetadata?: boolean
         }
-      }) => {
-        try {
-          const results = await node.searchVectors(body.databaseId, {
-            tableName: body.tableName,
-            vector: body.vector,
-            k: body.k,
-            partitionValue: body.partitionValue,
-            metadataFilter: body.metadataFilter,
-            includeMetadata: body.includeMetadata,
-          })
-          return { success: true, results }
-        } catch (error) {
-          return handleError(error)
-        }
-      },
-    )
+        const results = await node.searchVectors(reqBody.databaseId, {
+          tableName: reqBody.tableName,
+          vector: reqBody.vector,
+          k: reqBody.k,
+          partitionValue: reqBody.partitionValue,
+          metadataFilter: reqBody.metadataFilter,
+          includeMetadata: reqBody.includeMetadata,
+        })
+        return { success: true, results }
+      } catch (error) {
+        return handleError(error)
+      }
+    })
 
     .get('/v2/vector/check/:databaseId', async ({ params }) => {
       try {
@@ -600,53 +573,41 @@ export async function createSQLitServer(config: SQLitServerConfig) {
 
     // ============ ACL API ============
 
-    .post(
-      '/v2/acl/grant',
-      async ({
-        body,
-      }: {
-        body: {
+    .post('/v2/acl/grant', async ({ body }) => {
+      try {
+        const reqBody = body as {
           databaseId: string
           grantee: `0x${string}`
           permissions: Array<'read' | 'write' | 'admin'>
           expiresAt?: number
         }
-      }) => {
-        try {
-          await node.grant(body.databaseId, {
-            grantee: body.grantee,
-            permissions: body.permissions,
-            expiresAt: body.expiresAt,
-          })
-          return { success: true, status: 'granted' }
-        } catch (error) {
-          return handleError(error)
-        }
-      },
-    )
+        await node.grant(reqBody.databaseId, {
+          grantee: reqBody.grantee,
+          permissions: reqBody.permissions,
+          expiresAt: reqBody.expiresAt,
+        })
+        return { success: true, status: 'granted' }
+      } catch (error) {
+        return handleError(error)
+      }
+    })
 
-    .post(
-      '/v2/acl/revoke',
-      async ({
-        body,
-      }: {
-        body: {
+    .post('/v2/acl/revoke', async ({ body }) => {
+      try {
+        const reqBody = body as {
           databaseId: string
           grantee: `0x${string}`
           permissions?: Array<'read' | 'write' | 'admin'>
         }
-      }) => {
-        try {
-          await node.revoke(body.databaseId, {
-            grantee: body.grantee,
-            permissions: body.permissions,
-          })
-          return { success: true, status: 'revoked' }
-        } catch (error) {
-          return handleError(error)
-        }
-      },
-    )
+        await node.revoke(reqBody.databaseId, {
+          grantee: reqBody.grantee,
+          permissions: reqBody.permissions,
+        })
+        return { success: true, status: 'revoked' }
+      } catch (error) {
+        return handleError(error)
+      }
+    })
 
     .get('/v2/acl/list/:databaseId', ({ params }) => {
       try {

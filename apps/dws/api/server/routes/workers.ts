@@ -63,6 +63,9 @@ let sharedRuntime: WorkerRuntime | null = null
 // Shared registry instance
 let sharedRegistry: WorkerRegistryService | null = null
 
+// Shared backend manager instance
+let sharedBackend: BackendManager | null = null
+
 // Cache for CID -> functionId mapping (for lazy deployment)
 const cidToFunctionId = new Map<string, string>()
 
@@ -72,6 +75,21 @@ export function getSharedWorkersRuntime(): WorkerRuntime | null {
 
 export function getSharedWorkerRegistry(): WorkerRegistryService | null {
   return sharedRegistry
+}
+
+/**
+ * Public interface to getOrLoadWorker for use by other modules (e.g., app-router)
+ * Handles both UUID and CID-based worker IDs
+ */
+export async function getOrLoadWorkerPublic(
+  functionId: string,
+): Promise<WorkerFunction | null> {
+  if (!sharedRuntime || !sharedBackend) {
+    console.error('[Workers] Runtime or backend not initialized')
+    return null
+  }
+
+  return getOrLoadWorker(functionId, sharedBackend)
 }
 
 /**
@@ -283,6 +301,7 @@ export function createWorkersRouter(backend: BackendManager) {
 
   sharedRuntime = runtime // Store reference for shared access
   sharedRegistry = registry // Store registry reference
+  sharedBackend = backend // Store backend reference for getOrLoadWorkerPublic
 
   // Set up registry callback for deploying workers loaded from cache/SQLit
   registry.setWorkerLoadedCallback(async (worker: WorkerFunction) => {

@@ -10,11 +10,16 @@ import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import {
-  BROWSER_EXTERNALS,
-  createBrowserPlugin,
-  reportBundleSizes,
-} from '@jejunetwork/shared'
+import { createBrowserPlugin, reportBundleSizes } from '@jejunetwork/shared'
+
+// Node.js built-ins that cannot run in browser - NOT React/browser libraries
+const LANDER_EXTERNALS = [
+  'bun:sqlite',
+  'node:*',
+  '@tauri-apps/*',
+  'pino',
+  'pino-pretty',
+]
 
 const APP_DIR = resolve(import.meta.dir, '..')
 const LANDER_DIR = resolve(APP_DIR, 'lander')
@@ -71,6 +76,7 @@ async function build() {
     await rm(DIST_DIR, { recursive: true })
   }
   await mkdir(DIST_DIR, { recursive: true })
+  await mkdir(MINIAPP_DIR, { recursive: true })
 
   // Build CSS for lander (tree-shaken to only lander classes)
   console.log('[Wallet] Building lander CSS...')
@@ -87,7 +93,7 @@ async function build() {
     splitting: false,
     sourcemap: 'external',
     packages: 'bundle',
-    external: [...BROWSER_EXTERNALS],
+    external: LANDER_EXTERNALS,
     plugins: [createBrowserPlugin({ appDir: APP_DIR })],
     define: {
       'process.env.NODE_ENV': JSON.stringify('production'),
@@ -150,7 +156,7 @@ async function build() {
     splitting: false,
     sourcemap: 'external',
     packages: 'bundle',
-    external: [...BROWSER_EXTERNALS],
+    external: LANDER_EXTERNALS,
     plugins: [createBrowserPlugin({ appDir: APP_DIR })],
     define: {
       'process.env.NODE_ENV': JSON.stringify('production'),

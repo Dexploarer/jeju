@@ -175,22 +175,19 @@ async function getSQLitClient(): Promise<MinimalSQLitClient> {
 
     // Get URLs from centralized config (respects JEJU_NETWORK and env overrides)
     // Priority: SQLIT_BLOCK_PRODUCER_ENDPOINT env var > services.json config
-    const blockProducerEndpoint = getSQLitUrl()
-    const minerEndpoint = getSQLitMinerUrl()
+    const endpoint = getSQLitUrl()
 
     const network = getCurrentNetwork()
     const isK8s = Boolean(process.env.KUBERNETES_SERVICE_HOST)
     console.log(
       `[DWS State] Connecting to SQLit (network: ${network}, k8s: ${isK8s})`,
     )
-    console.log(`[DWS State]   Block producer: ${blockProducerEndpoint}`)
-    console.log(`[DWS State]   Miner: ${minerEndpoint}`)
+    console.log(`[DWS State]   Endpoint: ${endpoint}`)
 
     sqlitClient = getSQLit({
-      blockProducerEndpoint,
-      minerEndpoint,
+      endpoint,
       databaseId: SQLIT_DATABASE_ID,
-      timeout: 30000,
+      timeoutMs: 30000,
       debug: !isProductionEnv(),
     })
 
@@ -201,7 +198,7 @@ async function getSQLitClient(): Promise<MinimalSQLitClient> {
       // On testnet with fallback enabled, or when DWS_SQLIT_FALLBACK=1, use memory mode
       if (allowSQLitFallback || network === 'testnet') {
         console.warn(
-          `[DWS State] SQLit unavailable at ${blockProducerEndpoint}, falling back to memory mode`,
+          `[DWS State] SQLit unavailable at ${endpoint}, falling back to memory mode`,
         )
         memoryOnlyMode = true
         sqlitClient = createMemorySQLitClient()
@@ -218,7 +215,7 @@ async function getSQLitClient(): Promise<MinimalSQLitClient> {
         helpMessage = `Ensure SQLIT_BLOCK_PRODUCER_ENDPOINT env var points to a healthy SQLit service`
       }
 
-      const message = `DWS requires SQLit for decentralized state (network: ${network}). Endpoint ${blockProducerEndpoint} is not responding. ${helpMessage}`
+      const message = `DWS requires SQLit for decentralized state (network: ${network}). Endpoint ${endpoint} is not responding. ${helpMessage}`
       throw new Error(message)
     }
 
@@ -2251,6 +2248,17 @@ export const dwsWorkerState = {
       [newCount, newAvg, newErrors, Date.now(), id],
       SQLIT_DATABASE_ID,
     )
+  },
+
+  async getByCid(cid: string): Promise<DWSWorker | null> {
+    const client = await getSQLitClient()
+    const result = await client.query<DWSWorkerRow>(
+      'SELECT * FROM dws_workers WHERE code_cid = ? ORDER BY updated_at DESC LIMIT 1',
+      [cid],
+      SQLIT_DATABASE_ID,
+    )
+    const row = result.rows[0]
+    return row ? rowToWorker(row) : null
   },
 }
 

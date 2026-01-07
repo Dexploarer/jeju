@@ -10,7 +10,7 @@
 
 import { readContract } from '@jejunetwork/contracts'
 import { Elysia } from 'elysia'
-import type { Address } from 'viem'
+import type { Address, PublicClient } from 'viem'
 import { createPublicClient, getAddress, http, verifyMessage } from 'viem'
 import { z } from 'zod'
 import { NETWORK_BAN_MANAGER_ABI } from '../api/abis'
@@ -136,7 +136,7 @@ const IDENTITY_REGISTRY_ABI = [
 
 // ERC-8004 Identity Verification
 
-let erc8004Client: ReturnType<typeof createPublicClient> | null = null
+let erc8004Client: PublicClient | null = null
 let erc8004Config: ERC8004Config | null = null
 
 export function configureERC8004(config: ERC8004Config): void {

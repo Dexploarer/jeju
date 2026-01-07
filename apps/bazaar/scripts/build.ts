@@ -94,19 +94,17 @@ const browserPlugin: BunPlugin = {
     const messagingStub = resolve('./web/stubs/messaging.ts')
     const dbStub = resolve('./web/stubs/db.ts')
     const sharedStub = resolve('./web/stubs/shared.ts')
+    const contractsStub = resolve('./web/stubs/contracts.ts')
 
     build.onResolve({ filter: /^@jejunetwork\/kms/ }, () => ({ path: kmsStub }))
+    build.onResolve({ filter: /^@jejunetwork\/contracts/ }, () => ({
+      path: contractsStub,
+    }))
     build.onResolve({ filter: /^@jejunetwork\/messaging/ }, () => ({
       path: messagingStub,
     }))
     build.onResolve({ filter: /^@jejunetwork\/db/ }, () => ({ path: dbStub }))
     build.onResolve({ filter: /^@jejunetwork\/deployment/ }, () => ({
-      path: serverOnlyStub,
-    }))
-    build.onResolve({ filter: /^@xmtp\/node-sdk/ }, () => ({
-      path: serverOnlyStub,
-    }))
-    build.onResolve({ filter: /^@xmtp\/node-bindings/ }, () => ({
       path: serverOnlyStub,
     }))
     build.onResolve({ filter: /^ioredis/ }, () => ({ path: serverOnlyStub }))

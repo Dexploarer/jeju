@@ -20,10 +20,6 @@ async function build() {
   // Clean lib directory
   await rm(resolve(APP_DIR, 'lib'), { recursive: true, force: true })
 
-  // Run pre-build script
-  console.log('[Indexer] Running pre-build...')
-  await $`bun scripts/pre-build.ts`.cwd(APP_DIR)
-
   // Run TypeScript compilation (ignore errors for now, frontend is separate)
   console.log('[Indexer] Compiling TypeScript...')
   await $`bunx tsc 2>/dev/null || true`.cwd(APP_DIR)

@@ -37,9 +37,6 @@ export default defineConfig({
         'pino-pretty',
         'ioredis',
         'bun:sqlite',
-        // Node-only SDKs
-        '@xmtp/node-sdk',
-        '@xmtp/node-bindings',
       ],
     },
   },

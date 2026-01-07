@@ -264,25 +264,10 @@ module "eks" {
 }
 
 # ============================================================
-# Module: RDS (PostgreSQL Databases)
-# ============================================================
-module "rds" {
-  source = "../../modules/rds"
-
-  environment             = local.environment
-  vpc_id                  = module.network.vpc_id
-  data_subnet_ids         = module.network.data_subnet_ids
-  instance_class          = "db.t3.medium"
-  allocated_storage       = 100
-  max_allocated_storage   = 500
-  engine_version          = "15.15" # Use latest PostgreSQL 15.x available
-  multi_az                = true
-  backup_retention_period = 7
-  tags                    = local.common_tags
-}
-
-# ============================================================
 # Module: ECR (Container Registry)
+# TRANSITIONAL: Used only for infrastructure bootstrap images (sqlit, ipfs)
+# Apps deploy to DWS Storage (IPFS) - see packages/deployment/scripts/dws-bootstrap.ts
+# Target: Migrate to fully decentralized OCI registry at registry.jeju
 # ============================================================
 module "ecr" {
   source = "../../modules/ecr"
@@ -955,11 +940,6 @@ output "eks_cluster_endpoint" {
   value       = module.eks.cluster_endpoint
 }
 
-output "rds_endpoint" {
-  description = "RDS endpoint"
-  value       = module.rds.db_endpoint
-}
-
 output "ecr_repository_urls" {
   description = "ECR repository URLs"
   value       = module.ecr.repository_urls
@@ -1199,7 +1179,7 @@ output "deployment_summary" {
     domain              = var.domain_name
     vpc_id              = module.network.vpc_id
     eks_cluster         = module.eks.cluster_name
-    rds_endpoint        = module.rds.db_endpoint
+    sqlit_endpoint      = module.sqlit.http_endpoint
     alb_endpoint        = module.alb.alb_dns_name
     route53_zone_id     = module.route53.zone_id
     acm_certificate_arn = module.acm.certificate_arn

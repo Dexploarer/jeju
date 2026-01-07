@@ -10,6 +10,7 @@ import {
   type Hex,
   http,
   keccak256,
+  type PublicClient,
   type WalletClient,
 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
@@ -31,8 +32,8 @@ import { toAttestation, toNetworkInfo } from './types'
 
 export class FederationClient {
   private config: FederationConfig
-  private hubClient: ReturnType<typeof createPublicClient>
-  private localClient: ReturnType<typeof createPublicClient>
+  private hubClient: PublicClient
+  private localClient: PublicClient
   private walletClient?: WalletClient
 
   constructor(config: FederationConfig) {

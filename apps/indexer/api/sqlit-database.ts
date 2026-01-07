@@ -81,6 +81,9 @@ export class SQLitDatabase {
       this.databaseId,
     )
 
+    // Create database if it doesn't exist
+    await this.ensureDatabaseExists()
+
     // Initialize full schema (tables and indexes)
     await this.initializeSchema()
 
@@ -171,6 +174,49 @@ export class SQLitDatabase {
         this.hotBlocks = this.hotBlocks.slice(finalizedIndex + 1)
       }
     }
+  }
+
+  /**
+   * Ensure the database exists, creating it if necessary
+   */
+  private async ensureDatabaseExists(): Promise<void> {
+    console.log('[SQLit] Checking if database exists:', this.databaseId)
+
+    const endpoint = this.client.getEndpoint()
+
+    // First check if database exists
+    const checkResponse = await fetch(
+      `${endpoint}/v2/databases/${this.databaseId}`,
+      { signal: AbortSignal.timeout(5000) },
+    )
+
+    if (checkResponse.ok) {
+      console.log('[SQLit] Database already exists:', this.databaseId)
+      return
+    }
+
+    // Create the database
+    console.log('[SQLit] Creating database:', this.databaseId)
+    const createResponse = await fetch(`${endpoint}/v2/databases`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: this.databaseId,
+        encryptionMode: 'none',
+        replication: { replicaCount: 1 },
+      }),
+      signal: AbortSignal.timeout(10000),
+    })
+
+    if (!createResponse.ok) {
+      const errorText = await createResponse.text()
+      // "already exists" is fine
+      if (!errorText.includes('already exists')) {
+        throw new Error(`Failed to create database: ${errorText}`)
+      }
+    }
+
+    console.log('[SQLit] Database created:', this.databaseId)
   }
 
   /**
@@ -1186,6 +1232,8 @@ class SQLitStore implements SQLitStoreInterface {
     // Filter out skip columns
     const columns: string[] = []
     const snakeCols: string[] = []
+    const propertyToColumn = new Map<string, string>()
+    const columnOrder: string[] = []
 
     for (const col of rawColumns) {
       if (skipColumns.has(col)) continue
@@ -1262,6 +1310,8 @@ class SQLitStore implements SQLitStoreInterface {
       valuesClauses.push(`(${placeholders})`)
       for (let i = 0; i < columns.length; i++) {
         const col = columns[i]
+        const dbCol = snakeCols[i] // Database column name (snake_case)
+        const prop = col // Property name on the entity (camelCase)
         const isFk = fkColumns.has(col)
         const val = entity[col]
 

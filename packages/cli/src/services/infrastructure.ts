@@ -134,12 +134,12 @@ export class InfrastructureService {
       }
     }
 
-    // Fall back to SQLite-based SQLit server
+    // Fall back to SQLit server
     logger.step('Starting SQLit server...')
 
-    const serverPath = join(this.rootDir, 'packages/db/src/server.ts')
+    const serverPath = join(this.rootDir, 'packages/sqlit/src/server.ts')
     if (!existsSync(serverPath)) {
-      logger.error('SQLit server not found at packages/db/src/server.ts')
+      logger.error('SQLit server not found at packages/sqlit/src/server.ts')
       return false
     }
 

@@ -3,23 +3,8 @@ import { createPortal } from 'react-dom'
 import { useAccount, useConnect, useDisconnect, useSignMessage } from 'wagmi'
 import { injected, walletConnect } from 'wagmi/connectors'
 
-// Type declaration for MetaMask's ethereum provider
-declare global {
-  interface Window {
-    ethereum?: {
-      request: (args: {
-        method: string
-        params?: unknown[]
-      }) => Promise<unknown>
-      isMetaMask?: boolean
-      on: (event: string, handler: (...args: unknown[]) => void) => void
-      removeListener: (
-        event: string,
-        handler: (...args: unknown[]) => void,
-      ) => void
-    }
-  }
-}
+// Note: Window.ethereum is already declared globally by @types packages
+// We use it with type assertion when needed
 
 interface SIWEMessage {
   domain: string

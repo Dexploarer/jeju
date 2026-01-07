@@ -83,6 +83,7 @@ function isDeployed(deployment: DeploymentData | undefined): boolean {
 
 // Load deployment files (missing files return empty objects)
 const uniswapV4_1337_raw = loadDeployment('uniswap-v4-31337.json')
+const uniswapV4_420690_raw = loadDeployment('uniswap-v4-420690.json')
 const uniswapV4_420691_raw = loadDeployment('uniswap-v4-420691.json')
 const bazaarMarketplace1337_raw = loadDeployment(
   'bazaar-marketplace-31337.json',
@@ -104,6 +105,7 @@ const eilTestnet_raw = loadDeployment('eil-testnet.json')
 
 // Parse with Zod schemas (all fields are optional, so empty objects are valid)
 const uniswapV4_1337 = UniswapV4DeploymentSchema.parse(uniswapV4_1337_raw)
+const uniswapV4_420690 = UniswapV4DeploymentSchema.parse(uniswapV4_420690_raw)
 const uniswapV4_420691 = UniswapV4DeploymentSchema.parse(uniswapV4_420691_raw)
 const bazaarMarketplace1337 = BazaarMarketplaceDeploymentSchema.parse(
   bazaarMarketplace1337_raw,
@@ -129,6 +131,7 @@ export const uniswapV4Deployments: Partial<
   Record<ChainId, UniswapV4Deployment>
 > = {
   31337: uniswapV4_1337,
+  420690: uniswapV4_420690,
   420691: uniswapV4_420691,
 }
 
@@ -356,6 +359,7 @@ export function getContractAddressesByNetwork(
 
 export const rawDeployments = {
   uniswapV4_1337: uniswapV4_1337_raw,
+  uniswapV4_420690: uniswapV4_420690_raw,
   uniswapV4_420691: uniswapV4_420691_raw,
   bazaarMarketplace1337: bazaarMarketplace1337_raw,
   erc20Factory1337: erc20Factory1337_raw,

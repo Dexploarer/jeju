@@ -65,7 +65,7 @@ const MAX_DISCOVERY_CACHE_SIZE = 1000
 
 export class FederationDiscovery {
   private config: DiscoveryConfig
-  private hubClient: ReturnType<typeof createPublicClient>
+  private hubClient: PublicClient
   private cache: Map<
     string,
     CacheEntry<

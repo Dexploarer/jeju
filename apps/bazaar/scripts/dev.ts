@@ -55,8 +55,6 @@ const EXTERNALS = [
   '@jejunetwork/db',
   '@jejunetwork/kms',
   '@jejunetwork/messaging',
-  '@xmtp/node-sdk',
-  '@xmtp/node-bindings',
   'elysia',
   '@elysiajs/*',
   'ioredis',
@@ -117,8 +115,8 @@ async function buildFrontend(): Promise<void> {
           build.onResolve({ filter: /^@jejunetwork\/shared/ }, () => ({
             path: resolve(process.cwd(), './web/stubs/shared.ts'),
           }))
-          build.onResolve({ filter: /^@xmtp\// }, () => ({
-            path: resolve(process.cwd(), './web/stubs/empty.ts'),
+          build.onResolve({ filter: /^@jejunetwork\/contracts/ }, () => ({
+            path: resolve(process.cwd(), './web/stubs/contracts.ts'),
           }))
           build.onResolve({ filter: /^ioredis/ }, () => ({
             path: resolve(process.cwd(), './web/stubs/empty.ts'),

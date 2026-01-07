@@ -102,6 +102,7 @@ import { createA2ARouter } from './routes/a2a'
 import { createAPIMarketplaceRouter } from './routes/api-marketplace'
 import {
   createAppRouter,
+  DEFAULT_API_PATHS,
   getDeployedApp,
   initializeAppRouter,
   proxyToBackend,
@@ -126,6 +127,7 @@ import {
 import { createMCPRouter } from './routes/mcp'
 import { createModerationRouter } from './routes/moderation'
 import { createOAuth3Router } from './routes/oauth3'
+import { createOCIRegistryRouter } from './routes/oci-registry'
 import { createPkgRouter } from './routes/pkg'
 import { createPkgRegistryProxyRouter } from './routes/pkg-registry-proxy'
 import {
@@ -829,6 +831,7 @@ app.use(
 app.use(createOAuth3Router())
 app.use(createAPIMarketplaceRouter())
 app.use(createContainerRouter())
+app.use(createOCIRegistryRouter()) // Docker Registry v2 API for container pulls
 app.use(createA2ARouter())
 app.use(createMCPRouter())
 
@@ -1779,13 +1782,8 @@ if (import.meta.main) {
       return app.handle(req)
     },
     websocket: {
-      open(ws: {
-        data: WebSocketData
-        readyState: number
-        send(data: string): number
-        close(): void
-      }) {
-        const data = ws.data
+      open(ws) {
+        const data = ws.data as WebSocketData
         if (data.type === 'prices') {
           // Set up price subscription service
           const service = getPriceService()

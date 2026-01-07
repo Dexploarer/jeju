@@ -5,6 +5,7 @@
  * 1. Builds frontend
  * 2. Uploads static assets to IPFS
  * 3. Registers worker with DWS network
+ * 4. Sets JNS contenthash on-chain (decentralized resolution)
  *
  * Usage:
  *   bun run scripts/deploy.ts
@@ -13,11 +14,22 @@
 
 import { existsSync } from 'node:fs'
 import {
+  getContract,
   getCurrentNetwork,
   getDWSUrl,
   getEnvVar,
+  getL2RpcUrl,
   isProductionEnv,
 } from '@jejunetwork/config'
+import { foundry, jeju, jejuTestnet } from '@jejunetwork/config/chains'
+import bs58 from 'bs58'
+import {
+  type Address,
+  createWalletClient,
+  http,
+  namehash,
+  publicActions,
+} from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { z } from 'zod'
 
@@ -103,6 +115,105 @@ async function verifyContentRetrievable(
 interface DeployResult {
   frontend: { cid: string; url: string }
   backend: { workerId: string; url: string }
+  jns?: { name: string; contenthash: string; txHash: string }
+}
+
+const JNS_RESOLVER_ABI = [
+  {
+    name: 'setContenthash',
+    type: 'function',
+    inputs: [
+      { name: 'node', type: 'bytes32' },
+      { name: 'hash', type: 'bytes' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    name: 'setText',
+    type: 'function',
+    inputs: [
+      { name: 'node', type: 'bytes32' },
+      { name: 'key', type: 'string' },
+      { name: 'value', type: 'string' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+] as const
+
+/**
+ * Encode CIDv0 to EIP-1577 contenthash format
+ * Format: 0xe3 (ipfs-ns) + 0x01 (version) + 0x70 (dag-pb) + sha256 hash
+ */
+function cidV0ToContenthash(cid: string): `0x${string}` {
+  const decoded = bs58.decode(cid)
+  // Skip the multihash prefix (0x12 0x20) to get just the hash
+  const hashOnly = Buffer.from(decoded.slice(2))
+  const contentHash = Buffer.concat([Buffer.from([0xe3, 0x01, 0x70]), hashOnly])
+  return `0x${contentHash.toString('hex')}` as `0x${string}`
+}
+
+/**
+ * Register app on JNS (on-chain contenthash)
+ * This enables decentralized resolution without relying on DWS registration
+ */
+async function registerOnJNS(
+  name: string,
+  frontendCid: string,
+  workerCid: string,
+): Promise<{ txHash: string; contenthash: string } | null> {
+  const jnsResolver = getContract('jns', 'resolver') as Address | undefined
+  if (!jnsResolver) {
+    console.log('  JNS resolver not configured, skipping on-chain registration')
+    return null
+  }
+
+  if (!DEPLOYER_PRIVATE_KEY) {
+    console.log('  No deployer key, skipping on-chain registration')
+    return null
+  }
+
+  const rpcUrl = getL2RpcUrl()
+  const chain =
+    NETWORK === 'mainnet' ? jeju : NETWORK === 'testnet' ? jejuTestnet : foundry
+
+  const account = privateKeyToAccount(DEPLOYER_PRIVATE_KEY)
+  const client = createWalletClient({
+    account,
+    chain,
+    transport: http(rpcUrl),
+  }).extend(publicActions)
+
+  const node = namehash(`${name}.jeju`)
+  const contenthash = cidV0ToContenthash(frontendCid)
+
+  console.log(`  JNS name: ${name}.jeju`)
+  console.log(`  Contenthash: ${contenthash.slice(0, 20)}...`)
+
+  // Set contenthash (frontend CID)
+  const hash = await client.writeContract({
+    address: jnsResolver,
+    abi: JNS_RESOLVER_ABI,
+    functionName: 'setContenthash',
+    args: [node, contenthash],
+  })
+
+  await client.waitForTransactionReceipt({ hash })
+  console.log(`  Contenthash set: ${hash}`)
+
+  // Set worker CID as text record
+  const workerHash = await client.writeContract({
+    address: jnsResolver,
+    abi: JNS_RESOLVER_ABI,
+    functionName: 'setText',
+    args: [node, 'dws.worker', workerCid],
+  })
+
+  await client.waitForTransactionReceipt({ hash: workerHash })
+  console.log(`  Worker text record set: ${workerHash}`)
+
+  return { txHash: hash, contenthash }
 }
 
 async function deploy(): Promise<DeployResult> {
@@ -261,11 +372,9 @@ async function deploy(): Promise<DeployResult> {
   }
   console.log('  Worker code verified in storage')
 
-  // Use CID directly as the workerId - DWS will deploy from CID on first request
-  // This uses the deployFromCid function which sets handler: 'fetch' correctly
-  const backendEndpoint = `${DWS_URL}/workers/${workerCid}/http`
-
   // Register the app with the DWS app router using CID as backendWorkerId
+  // IMPORTANT: Do NOT set backendEndpoint - this causes app-router to proxy externally
+  // Instead, only set backendWorkerId and let app-router invoke the worker directly
   console.log('\nRegistering app with DWS...')
   const appRegistrationResponse = await fetch(`${DWS_URL}/apps/deployed`, {
     method: 'POST',
@@ -279,7 +388,7 @@ async function deploy(): Promise<DeployResult> {
       frontendCid: frontendCid,
       staticFiles: Object.keys(staticFiles).length > 0 ? staticFiles : null,
       backendWorkerId: workerCid, // Use CID directly - DWS will deploy on first request
-      backendEndpoint: backendEndpoint,
+      backendEndpoint: null, // Must be null for direct worker invocation
       apiPaths: ['/api', '/health', '/a2a', '/mcp', '/swagger'],
       spa: true,
       enabled: true,
@@ -295,17 +404,43 @@ async function deploy(): Promise<DeployResult> {
   const regJson: unknown = await appRegistrationResponse.json()
   console.log(`  App registered: ${JSON.stringify(regJson)}`)
 
+  // Register on JNS (on-chain contenthash for decentralized resolution)
+  console.log('\nRegistering on JNS (on-chain)...')
+  let jnsResult: { txHash: string; contenthash: string } | null = null
+  try {
+    jnsResult = await registerOnJNS('factory', frontendCid, workerCid)
+    if (jnsResult) {
+      console.log('  JNS registration complete')
+    }
+  } catch (error) {
+    console.log(
+      `  JNS registration failed: ${error instanceof Error ? error.message : String(error)}`,
+    )
+    console.log(
+      '  App will still work via DWS cache, but not via on-chain resolution',
+    )
+  }
+
   const result: DeployResult = {
     frontend: { cid: frontendCid, url: `${DWS_URL}/ipfs/${frontendCid}` },
     backend: {
       workerId: workerCid,
-      url: backendEndpoint,
+      url: `${DWS_URL}/workers/${workerCid}/http`,
     },
+    jns: jnsResult ? { name: 'factory.jeju', ...jnsResult } : undefined,
   }
 
   console.log('\nDeployment complete.')
   console.log(`  Frontend: ${result.frontend.url}`)
-  console.log(`  Backend: ${result.backend.url}`)
+  console.log(`  Backend (direct): ${result.backend.url}`)
+  if (result.jns) {
+    console.log(
+      `  JNS: ${result.jns.name} -> ${result.jns.contenthash.slice(0, 20)}...`,
+    )
+  }
+  console.log(
+    `  App URL: https://factory.${NETWORK === 'mainnet' ? '' : 'testnet.'}jejunetwork.org`,
+  )
 
   return result
 }

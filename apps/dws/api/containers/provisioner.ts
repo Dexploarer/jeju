@@ -45,6 +45,7 @@ export type TEEPlatform =
   | 'intel-tdx'
   | 'amd-sev'
   | 'nvidia-cc'
+  | 'aws-nitro'
   | 'none'
 
 export interface HardwareSpec {
@@ -111,7 +112,14 @@ export const HardwareSpecSchema = z.object({
   networkBandwidthMbps: z.number().min(100).default(1000),
   publicIp: z.boolean().default(false),
   teePlatform: z
-    .enum(['intel-sgx', 'intel-tdx', 'amd-sev', 'nvidia-cc', 'none'])
+    .enum([
+      'intel-sgx',
+      'intel-tdx',
+      'amd-sev',
+      'nvidia-cc',
+      'aws-nitro',
+      'none',
+    ])
     .default('none'),
   teeMemoryMb: z.number().optional(),
   region: z.string().optional(),
@@ -876,6 +884,7 @@ export class ContainerProvisioner {
       'intel-tdx': 0,
       'amd-sev': 0,
       'nvidia-cc': 0,
+      'aws-nitro': 0,
       none: 0,
     }
 

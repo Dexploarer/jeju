@@ -82,6 +82,11 @@ const browserPlugin: BunPlugin = {
       path: resolve('./web/shims/node-crypto.ts'),
     }))
 
+    // Shim @jejunetwork/contracts for browser (not available at runtime)
+    build.onResolve({ filter: /^@jejunetwork\/contracts$/ }, () => ({
+      path: resolve('./web/shims/contracts.ts'),
+    }))
+
     // Dedupe React
     const reactPath = require.resolve('react')
     const reactDomPath = require.resolve('react-dom')
@@ -116,6 +121,13 @@ const browserPlugin: BunPlugin = {
     build.onResolve({ filter: /^@jejunetwork\/auth\/react$/ }, () => ({
       path: resolve('../../packages/auth/src/react/index.ts'),
     }))
+    // SDK needs to be resolved to source for browser builds
+    build.onResolve({ filter: /^@jejunetwork\/sdk$/ }, () => ({
+      path: resolve('../../packages/sdk/src/index.ts'),
+    }))
+    build.onResolve({ filter: /^@jejunetwork\/token$/ }, () => ({
+      path: resolve('../../packages/token/src/index.ts'),
+    }))
   },
 }
 
@@ -139,6 +151,7 @@ const BROWSER_EXTERNALS = [
   'node:events',
   'node:module',
   'node:worker_threads',
+  // '@jejunetwork/contracts' - shimmed in browserPlugin instead
   '@jejunetwork/deployment',
   '@jejunetwork/db',
   '@jejunetwork/kms',
@@ -293,6 +306,28 @@ async function buildApi(): Promise<void> {
   console.log(`  API: ${API_DIR}/`)
 }
 
+// Packages that use native bindings and must be excluded from worker bundles
+const WORKER_EXTERNALS = [
+  // Node.js built-ins
+  'bun:sqlite',
+  'child_process',
+  'node:child_process',
+  'node:fs',
+  'node:path',
+  'node:crypto',
+  // Farcaster hub uses native proto bindings
+  '@farcaster/hub-nodejs',
+  // SQLit uses native bindings in some modes
+  '@jejunetwork/sqlit',
+  '@jejunetwork/db',
+  // Other native packages
+  'better-sqlite3',
+  'libsql',
+  '@libsql/*',
+  'pino',
+  'pino-pretty',
+]
+
 async function buildWorker(): Promise<void> {
   console.log('Building API (worker)...')
 
@@ -305,14 +340,7 @@ async function buildWorker(): Promise<void> {
     minify: true,
     sourcemap: 'external',
     drop: ['debugger'],
-    external: [
-      'bun:sqlite',
-      'child_process',
-      'node:child_process',
-      'node:fs',
-      'node:path',
-      'node:crypto',
-    ],
+    external: WORKER_EXTERNALS,
     define: { 'process.env.NODE_ENV': JSON.stringify('production') },
   })
 

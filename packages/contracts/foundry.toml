@@ -60,6 +60,8 @@ remappings = [
     "@uniswap/lib/contracts/=lib/solidity-lib/contracts/",
     "@uniswap/v4-core/=lib/v4-core/",
     "@uniswap/v4-periphery/=lib/v4-periphery/",
+    "solmate/=lib/v4-periphery/lib/permit2/lib/solmate/",
+    "permit2/=lib/v4-periphery/lib/permit2/",
 ]
 
 # =============================================================================

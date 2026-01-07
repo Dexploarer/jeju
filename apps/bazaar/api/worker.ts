@@ -93,12 +93,11 @@ let dbClient: SQLitClient | null = null
 function getDatabase(env: BazaarEnv): SQLitClient {
   if (dbClient) return dbClient
 
-  const blockProducerEndpoint =
-    env.SQLIT_NODES.split(',')[0] || getSQLitBlockProducerUrl()
+  const endpoint = env.SQLIT_NODES.split(',')[0] || getSQLitBlockProducerUrl()
   const databaseId = env.SQLIT_DATABASE_ID
 
   dbClient = getSQLit({
-    blockProducerEndpoint,
+    endpoint,
     databaseId,
     debug: env.NETWORK === 'localnet',
   })
@@ -419,19 +418,23 @@ export function createBazaarApp(env?: Partial<BazaarEnv>) {
         )
         const { privateKeyToAccount } = await import('viem/accounts')
         const { getL2RpcUrl } = await import('@jejunetwork/config')
+        const { getChain } = await import('@jejunetwork/shared')
 
         // Use deployer key for localnet (only)
         const deployerKey =
           process.env.PRIVATE_KEY ||
           '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'
         const account = privateKeyToAccount(deployerKey as `0x${string}`)
+        const chain = getChain('localnet')
 
         const publicClient = createPublicClient({
+          chain,
           transport: http(getL2RpcUrl()),
         })
 
         const walletClient = createWalletClient({
           account,
+          chain,
           transport: http(getL2RpcUrl()),
         })
 

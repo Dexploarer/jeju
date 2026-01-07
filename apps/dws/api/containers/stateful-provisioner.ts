@@ -937,7 +937,7 @@ export class StatefulProvisioner {
 
     clearTimeout(timeoutId)
 
-    return response?.ok
+    return response?.ok ?? false
   }
 
   /**

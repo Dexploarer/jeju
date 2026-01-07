@@ -25,7 +25,7 @@ async function getSQLitClient(): Promise<SQLitClient> {
     const { getSQLit } = await import('@jejunetwork/db')
     sqlitClient = getSQLit({
       databaseId: SQLIT_DATABASE_ID,
-      timeout: 30000,
+      timeoutMs: 30000,
       debug: !isProductionEnv(),
     })
 

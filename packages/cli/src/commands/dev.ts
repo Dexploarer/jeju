@@ -30,7 +30,7 @@ import {
   createOrchestrator,
   type ServicesOrchestrator,
 } from '../services/orchestrator'
-import { type AppManifest, DOMAIN_CONFIG, WELL_KNOWN_KEYS } from '../types'
+import { type AppManifest, DEFAULT_PORTS, DOMAIN_CONFIG, WELL_KNOWN_KEYS } from '../types'
 
 interface RunningService {
   name: string
@@ -295,6 +295,13 @@ async function deployAppsOnchain(
 
     logger.debug(`  Starting ${manifest.name} backend on port ${apiPort}...`)
 
+    // Get database ID from manifest defaultEnv or use app name
+    const defaultEnv = (manifest.defaultEnv ?? {}) as Record<string, string>
+    const sqLitDatabaseId = defaultEnv.SQLIT_DATABASE_ID ?? manifest.name
+
+    // Get inference URL for LLM calls
+    const inferenceUrl = `http://${getLocalhostHost()}:${DEFAULT_PORTS.inference}`
+
     const workerProc = execa('bun', ['run', startCmd.replace('bun run ', '')], {
       cwd: dir,
       env: {
@@ -305,6 +312,11 @@ async function deployAppsOnchain(
         JEJU_NETWORK: 'localnet',
         TEE_PROVIDER: 'local',
         SQLIT_BLOCK_PRODUCER_ENDPOINT: getSQLitBlockProducerUrl(),
+        SQLIT_DATABASE_ID: sqLitDatabaseId,
+        // Inference URL for LLM calls via Jeju Compute
+        JEJU_GATEWAY_URL: inferenceUrl,
+        JEJU_COMPUTE_ENDPOINT: inferenceUrl,
+        JEJU_INFERENCE_URL: inferenceUrl,
         WORKER_REGISTRY_ADDRESS: dwsContracts.workerRegistry,
         STORAGE_MANAGER_ADDRESS: dwsContracts.storageManager,
         CDN_REGISTRY_ADDRESS: dwsContracts.cdnRegistry,
@@ -340,6 +352,16 @@ async function deployAppsOnchain(
         `  ${backend.name} backend started on port ${backend.port}`,
       )
     }
+  }
+
+  // Start cron scheduler for vendor app cron jobs
+  logger.step('Starting cron scheduler for backend apps...')
+  const cronScheduler = startLocalCronScheduler(vendorAppsWithBackend)
+  if (cronScheduler) {
+    runningServices.push({
+      name: 'Cron Scheduler',
+    })
+    logger.success('  Cron scheduler running')
   }
 
   logger.step('Starting JNS Gateway...')
@@ -398,6 +420,117 @@ async function stopDev(): Promise<void> {
   logger.success('Stopped')
 }
 
+// Cron interval IDs for cleanup
+const cronIntervalIds: ReturnType<typeof setInterval>[] = []
+
+/**
+ * Start a local cron scheduler for vendor app cron jobs
+ * This triggers cron endpoints defined in jeju-manifest.json dws.cron
+ */
+function startLocalCronScheduler(
+  apps: Array<{ dir: string; manifest: AppManifest }>,
+): boolean {
+  const cronJobs: Array<{
+    appName: string
+    port: number
+    endpoint: string
+    schedule: string
+    name: string
+  }> = []
+
+  // Collect cron jobs from all apps
+  for (const { manifest } of apps) {
+    const dws = manifest.dws as { cron?: Array<{ name: string; schedule: string; endpoint: string }> } | undefined
+    if (!dws?.cron) continue
+
+    const port = manifest.ports?.api ?? manifest.ports?.main ?? 5009
+
+    for (const cron of dws.cron) {
+      cronJobs.push({
+        appName: manifest.name,
+        port,
+        endpoint: cron.endpoint,
+        schedule: cron.schedule,
+        name: cron.name,
+      })
+    }
+  }
+
+  if (cronJobs.length === 0) {
+    logger.debug('No cron jobs found in manifests')
+    return false
+  }
+
+  logger.debug(`Registered ${cronJobs.length} cron jobs:`)
+  for (const job of cronJobs) {
+    logger.debug(`  ${job.appName}: ${job.name} (${job.schedule}) -> ${job.endpoint}`)
+  }
+
+  // Simple interval-based scheduler (runs every minute)
+  const intervalId = setInterval(async () => {
+    const now = new Date()
+    const minute = now.getMinutes()
+    const hour = now.getHours()
+
+    for (const job of cronJobs) {
+      if (shouldRunCron(job.schedule, minute, hour)) {
+        // Trigger the cron endpoint
+        const url = `http://localhost:${job.port}${job.endpoint}`
+        try {
+          const response = await fetch(url, { method: 'POST' })
+          if (!response.ok) {
+            logger.warn(`Cron ${job.name} failed: ${response.status}`)
+          } else {
+            logger.debug(`Cron ${job.name} triggered successfully`)
+          }
+        } catch (error) {
+          logger.warn(`Cron ${job.name} failed: ${error instanceof Error ? error.message : String(error)}`)
+        }
+      }
+    }
+  }, 60 * 1000) // Check every minute
+
+  cronIntervalIds.push(intervalId)
+  return true
+}
+
+/**
+ * Simple cron schedule matcher
+ * Supports: star/n (every n), star (every), and specific values
+ */
+function shouldRunCron(schedule: string, minute: number, hour: number): boolean {
+  const parts = schedule.trim().split(/\s+/)
+  if (parts.length < 2) return false
+
+  const [minPart, hourPart] = parts
+
+  // Check minute
+  if (!matchCronPart(minPart, minute)) return false
+
+  // Check hour
+  if (!matchCronPart(hourPart, hour)) return false
+
+  return true
+}
+
+function matchCronPart(part: string, value: number): boolean {
+  if (part === '*') return true
+
+  // */n - every n
+  if (part.startsWith('*/')) {
+    const interval = parseInt(part.slice(2), 10)
+    return value % interval === 0
+  }
+
+  // Specific value
+  const specific = parseInt(part, 10)
+  if (!isNaN(specific)) {
+    return value === specific
+  }
+
+  return false
+}
+
 function setupSignalHandlers(): void {
   const cleanup = async () => {
     if (isShuttingDown) return
@@ -405,6 +538,12 @@ function setupSignalHandlers(): void {
 
     logger.newline()
     logger.step('Shutting down...')
+
+    // Stop cron scheduler
+    for (const id of cronIntervalIds) {
+      clearInterval(id)
+    }
+    cronIntervalIds.length = 0
 
     if (proxyEnabled) {
       const { stopProxy } = await import('../lib/local-proxy')
