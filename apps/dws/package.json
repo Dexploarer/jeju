@@ -20,7 +20,8 @@
     "serve": "bun run scripts/serve.ts",
     "deploy": "bun run scripts/deploy.ts",
     "test": "bun test tests/",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "install:workerd": "bun run scripts/install-workerd.ts"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "3.954.0",

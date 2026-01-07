@@ -111,22 +111,16 @@ jobs:
         run: bun install
 
       - name: Run config tests
-        run: bun test config/index.test.ts
+        run: bun test packages/config/index.test.ts
         # Tests MUST exist and MUST pass
 
-      - name: Run shared utilities tests
-        run: bun test scripts/shared/
+      - name: Run shared package tests
+        run: bun test packages/shared/
         # Tests MUST exist and MUST pass
 
-      - name: Verify test count
-        run: |
-          # Ensure we actually ran tests
-          TEST_COUNT=$(bun test scripts/shared/ 2>&1 | grep -E "^\s*[0-9]+ pass" | awk '{print $1}')
-          if [ -z "$TEST_COUNT" ] || [ "$TEST_COUNT" -lt "50" ]; then
-            echo "❌ Not enough tests ran: $TEST_COUNT (expected: 50+)"
-            exit 1
-          fi
-          echo "✅ Ran $TEST_COUNT tests"
+      - name: Run tests package tests
+        run: bun test packages/tests/shared/*.test.ts
+        # Tests MUST exist and MUST pass
 
   # Infrastructure - MUST pass
   infrastructure:

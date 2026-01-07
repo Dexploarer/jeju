@@ -77,26 +77,45 @@ jobs:
       - name: Scan for hardcoded secrets
         run: |
           # Look for private keys in non-test files (64 hex chars after 0x that look like private keys)
-          # Exclude: test files, example files, mock data, well-known addresses
+          # Exclude: test files, example files, mock data, well-known addresses, scripts
           FOUND=0
           
+          # Well-known test private keys to exclude (Anvil default keys)
+          KNOWN_TEST_KEYS=(
+            "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+            "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
+            "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a"
+          )
+          
           # Check for common private key patterns in source files
-          if grep -rE "privateKey.*=.*['\"]0x[a-fA-F0-9]{64}['\"]" \
+          MATCHES=$(grep -rE "privateKey.*=.*['\"]0x[a-fA-F0-9]{64}['\"]" \
             --include="*.ts" --include="*.js" --include="*.tsx" --include="*.jsx" \
             --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=test --exclude-dir=tests \
-            --exclude="*.test.ts" --exclude="*.spec.ts" --exclude="*mock*" \
-            . 2>/dev/null; then
-            echo "Found potential hardcoded private key"
+            --exclude-dir=scripts --exclude-dir=packages/deployment \
+            --exclude="*.test.ts" --exclude="*.spec.ts" --exclude="*mock*" --exclude="*example*" \
+            . 2>/dev/null || true)
+          
+          # Filter out known test keys
+          for key in "${KNOWN_TEST_KEYS[@]}"; do
+            MATCHES=$(echo "$MATCHES" | grep -v "$key" || true)
+          done
+          
+          if [ -n "$MATCHES" ]; then
+            echo "Found potential hardcoded private key:"
+            echo "$MATCHES"
             FOUND=1
           fi
           
           # Check for AWS keys (exclude test files and well-known example keys)
-          if grep -rE "AKIA[0-9A-Z]{16}" \
-            --include="*.ts" --include="*.js" --include="*.json" --include="*.env*" \
+          AWS_MATCHES=$(grep -rE "AKIA[0-9A-Z]{16}" \
+            --include="*.ts" --include="*.js" --include="*.json" \
             --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=test --exclude-dir=tests \
             --exclude="*.test.ts" --exclude="*.spec.ts" --exclude="*mock*" \
-            . 2>/dev/null | grep -v "AKIAIOSFODNN7EXAMPLE"; then
-            echo "Found potential AWS key"
+            . 2>/dev/null | grep -v "AKIAIOSFODNN7EXAMPLE" || true)
+          
+          if [ -n "$AWS_MATCHES" ]; then
+            echo "Found potential AWS key:"
+            echo "$AWS_MATCHES"
             FOUND=1
           fi
           

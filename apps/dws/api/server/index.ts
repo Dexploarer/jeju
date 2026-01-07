@@ -148,6 +148,7 @@ import { createStorageRouter } from './routes/storage'
 import { createVPNRouter } from './routes/vpn'
 import { createDefaultWorkerdRouter } from './routes/workerd'
 import { createWorkersRouter } from './routes/workers'
+import { createNitroDatabaseRouter } from './routes/nitro-database'
 
 // Config injection for workerd compatibility
 export interface DWSServerConfig {
@@ -856,6 +857,7 @@ app.use(createPricesRouter())
 app.use(createModerationRouter())
 app.use(releasesRoutes)
 app.use(createEmailRouter())
+app.use(createNitroDatabaseRouter())
 
 // Funding and package registry proxy
 app.use(createFundingRouter())

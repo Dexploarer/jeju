@@ -36,7 +36,6 @@ jobs:
       - name: Build dependencies
         run: |
           cd packages/types && bun run build
-          cd ../config && bun run build
           cd ../shared && bun run build
 
       - name: Type check
