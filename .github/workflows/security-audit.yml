@@ -63,7 +63,11 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
 
       - name: Install contract dependencies
-        run: cd packages/contracts && forge install --no-git || true
+        working-directory: packages/contracts
+        run: |
+          forge install foundry-rs/forge-std --no-git || true
+          forge install OpenZeppelin/openzeppelin-contracts@v5.3.0 --no-git || true
+          forge install eth-infinitism/account-abstraction --no-git || true
 
       - name: Build contracts
         run: cd packages/contracts && forge build

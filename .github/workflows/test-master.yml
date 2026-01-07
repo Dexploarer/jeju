@@ -67,7 +67,11 @@ jobs:
 
       - name: Install contract dependencies
         working-directory: packages/contracts
-        run: forge install --no-git || true
+        run: |
+          forge install foundry-rs/forge-std --no-git || true
+          forge install OpenZeppelin/openzeppelin-contracts@v5.3.0 --no-git || true
+          forge install eth-infinitism/account-abstraction --no-git || true
+          ls -la lib/
 
       - name: Run Forge build
         working-directory: packages/contracts
