@@ -99,6 +99,12 @@ jobs:
         working-directory: apps/dws
         run: bun run install:workerd
 
+      - name: Initialize contract dependencies
+        working-directory: packages/contracts
+        run: |
+          forge install eth-infinitism/account-abstraction --no-git || true
+          forge install foundry-rs/forge-std --no-git || true
+
       - name: Build contracts
         working-directory: packages/contracts
         run: forge build
