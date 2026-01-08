@@ -79,4 +79,3 @@ export function getWalletClient() {
 
 // Export constants
 export const SDK_VERSION = '0.0.0-browser'
-

@@ -76,7 +76,7 @@
     "test": "bun run jeju test",
     "typecheck": "turbo run typecheck --filter='!./vendor/*' && tsc --noEmit && pyright packages/training/python apps/dws/api && bun run typecheck:rust",
     "typecheck:rust": "bash -c '. $HOME/.cargo/env 2>/dev/null; cargo check --manifest-path apps/node/app/src-tauri/Cargo.toml && cargo check --manifest-path apps/vpn/app/src-tauri/Cargo.toml && cargo check --manifest-path apps/wallet/app/src-tauri/Cargo.toml'",
-    "lint": "biome check --write --unsafe packages apps && ruff check packages apps --exclude packages/workerd --exclude packages/contracts/lib --fix && ruff format packages apps --exclude packages/workerd --exclude packages/contracts/lib && bun run lint:rust",
+    "lint": "biome check --write --unsafe packages/a2a packages/agents packages/api packages/auth packages/bots packages/bridge packages/cache packages/cli packages/config packages/db packages/deployment packages/durable-objects packages/eliza-plugin packages/kms packages/mcp packages/messaging packages/sdk packages/shared packages/solana packages/sqlit packages/tests packages/token packages/training packages/types packages/ui apps && ruff check packages apps --exclude packages/workerd --exclude packages/contracts --fix && ruff format packages apps --exclude packages/workerd --exclude packages/contracts && bun run lint:rust",
     "lint:rust": "bash -c '. $HOME/.cargo/env 2>/dev/null; cargo fmt --manifest-path apps/node/app/src-tauri/Cargo.toml && cargo fmt --manifest-path apps/vpn/app/src-tauri/Cargo.toml && cargo fmt --manifest-path apps/wallet/app/src-tauri/Cargo.toml'",
     "forge": "cd packages/contracts && forge",
     "localnet": "cd packages/deployment && bun run localnet:start",

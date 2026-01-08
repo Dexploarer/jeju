@@ -269,7 +269,7 @@ export function getTestConfig(
     apiURL,
     network,
     isRemote,
-    skipWebServer: isRemote, // Skip local server when testing remote
+    skipWebServer: isRemote || process.env.SKIP_WEBSERVER === '1', // Skip when testing remote OR when env is set
     chainId: CHAIN_IDS[network],
     rpcURL: services.rpc.l2,
   }

@@ -3,7 +3,6 @@ src = "src"
 out = "out"
 cache_path = "cache"
 libs = ["lib"]
-
 solc_version = "0.8.33"
 auto_detect_solc = true
 optimizer = true

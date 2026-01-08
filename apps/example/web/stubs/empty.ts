@@ -11,14 +11,24 @@
  */
 
 // Pino-compatible logger stub
-const noopLogger = {
+interface NoopLogger {
+  info: () => void
+  warn: () => void
+  error: () => void
+  debug: () => void
+  trace: () => void
+  fatal: () => void
+  child: () => NoopLogger
+}
+
+const noopLogger: NoopLogger = {
   info: (): void => {},
   warn: (): void => {},
   error: (): void => {},
   debug: (): void => {},
   trace: (): void => {},
   fatal: (): void => {},
-  child: (): typeof noopLogger => noopLogger,
+  child: (): NoopLogger => noopLogger,
 }
 
 export function pino(): typeof noopLogger {

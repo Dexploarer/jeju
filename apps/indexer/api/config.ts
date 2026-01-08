@@ -55,7 +55,7 @@ export interface IndexerConfig {
 function getDwsUrl(): string {
   const explicit = getEnvVar('DWS_URL')
   if (explicit) return explicit
-  
+
   const network = getCurrentNetwork()
   switch (network) {
     case 'localnet':

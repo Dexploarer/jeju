@@ -89,7 +89,13 @@ const BROWSER_EXTERNALS = [
   'node:worker_threads',
   'elysia',
   '@elysiajs/*',
+  '@jejunetwork/contracts',
+  '@jejunetwork/deployment',
+  '@jejunetwork/db',
+  '@jejunetwork/kms',
+  '@jejunetwork/dws',
 ]
+
 import { CORE_PORTS } from '@jejunetwork/config'
 
 const FRONTEND_PORT = CORE_PORTS.EXAMPLE.get()
@@ -175,7 +181,7 @@ async function buildFrontend(): Promise<boolean> {
   const startTime = Date.now()
 
   const result = await Bun.build({
-    entrypoints: [resolve(APP_DIR, 'web/main.tsx')],
+    entrypoints: [resolve(APP_DIR, 'web/app.ts')],
     outdir: resolve(APP_DIR, 'dist/dev'),
     target: 'browser',
     minify: false,

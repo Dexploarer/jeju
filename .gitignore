@@ -157,4 +157,4 @@ ONBOARDING-FIXES.md
 vendor/babylon/
 vendor/eliza/
 vendor/eliza-cloud-v2/
-vendor/
+vendor/packages/contracts/mcore_*

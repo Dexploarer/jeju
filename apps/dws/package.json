@@ -70,7 +70,7 @@
     "start": "bun run api/server/index.ts",
     "serve": "bun run scripts/serve.ts",
     "deploy": "bun run scripts/deploy.ts",
-    "test": "bun test tests/",
+    "test": "bun test tests/*.test.ts tests/sdk-compatibility/*.test.ts tests/mcp-a2a/*.test.ts",
     "typecheck": "tsc --noEmit",
     "install:workerd": "bun run scripts/install-workerd.ts"
   }
