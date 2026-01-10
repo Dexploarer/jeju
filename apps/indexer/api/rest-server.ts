@@ -669,6 +669,58 @@ const app = new Elysia()
     // Fallback: redirect to /graphql
     return Response.redirect('/graphql', 302)
   })
+  // Vendor assets for /playground (CSP requires script-src/style-src 'self')
+  .get('/vendor/react.production.min.js', async () => {
+    const file = Bun.file(
+      `${import.meta.dir}/../public/vendor/react.production.min.js`,
+    )
+    if (!(await file.exists())) {
+      return new Response('Not Found', { status: 404 })
+    }
+    return new Response(file, {
+      headers: { 'Content-Type': 'application/javascript' },
+    })
+  })
+  .get('/vendor/react-dom.production.min.js', async () => {
+    const file = Bun.file(
+      `${import.meta.dir}/../public/vendor/react-dom.production.min.js`,
+    )
+    if (!(await file.exists())) {
+      return new Response('Not Found', { status: 404 })
+    }
+    return new Response(file, {
+      headers: { 'Content-Type': 'application/javascript' },
+    })
+  })
+  .get('/vendor/graphiql.min.js', async () => {
+    const file = Bun.file(`${import.meta.dir}/../public/vendor/graphiql.min.js`)
+    if (!(await file.exists())) {
+      return new Response('Not Found', { status: 404 })
+    }
+    return new Response(file, {
+      headers: { 'Content-Type': 'application/javascript' },
+    })
+  })
+  .get('/vendor/graphiql.min.css', async () => {
+    const file = Bun.file(
+      `${import.meta.dir}/../public/vendor/graphiql.min.css`,
+    )
+    if (!(await file.exists())) {
+      return new Response('Not Found', { status: 404 })
+    }
+    return new Response(file, {
+      headers: { 'Content-Type': 'text/css' },
+    })
+  })
+  .get('/vendor/playground.js', async () => {
+    const file = Bun.file(`${import.meta.dir}/../public/vendor/playground.js`)
+    if (!(await file.exists())) {
+      return new Response('Not Found', { status: 404 })
+    }
+    return new Response(file, {
+      headers: { 'Content-Type': 'application/javascript' },
+    })
+  })
   // GraphQL proxy with CORS - forwards to Subsquid GraphQL server
   .post('/graphql', async (ctx: Context) => {
     const graphqlPort = process.env.GQL_PORT ?? '4350'

@@ -78,7 +78,9 @@ export class TradingBot {
     }
 
     this.running = true
-    console.log(`[TradingBot] ${this.name} started on ${this.options.chains.length} chains`)
+    console.log(
+      `[TradingBot] ${this.name} started on ${this.options.chains.length} chains`,
+    )
   }
 
   /**
@@ -122,4 +124,7 @@ export class TradingBot {
 export function createTradingBot(options: TradingBotOptions): TradingBot {
   return new TradingBot(options)
 }
+
+
+
 

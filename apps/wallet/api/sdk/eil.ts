@@ -92,7 +92,9 @@ export class EILClient {
     // Use custom paymaster or look up from contracts
     const contracts = EIL_CONTRACTS[config.chainId]
     this.paymasterAddress =
-      config.paymasterAddress ?? contracts?.paymaster ?? (ZERO_ADDRESS as Address)
+      config.paymasterAddress ??
+      contracts?.paymaster ??
+      (ZERO_ADDRESS as Address)
   }
 
   /**
@@ -119,7 +121,7 @@ export class EILClient {
   async canSponsor(
     gasCost: bigint,
     token: Address,
-    user: Address
+    user: Address,
   ): Promise<SponsorResult> {
     const result = (await this.publicClient.readContract({
       address: this.paymasterAddress,
@@ -156,7 +158,7 @@ export class EILClient {
   async getBestGasToken(
     user: Address,
     gasCost: bigint,
-    tokens: Address[]
+    tokens: Address[],
   ): Promise<BestTokenResult> {
     const result = (await this.publicClient.readContract({
       address: this.paymasterAddress,
@@ -192,7 +194,7 @@ export class EILClient {
     app: Address,
     user: Address,
     gasCost: bigint,
-    tokenBalances: TokenBalance[]
+    tokenBalances: TokenBalance[],
   ): Promise<BestPaymentTokenResult> {
     const tokens = tokenBalances.map((tb) => tb.token.address)
 
@@ -232,7 +234,7 @@ export class EILClient {
   async previewTokenCost(
     estimatedGas: bigint,
     gasPrice: bigint,
-    token: Address
+    token: Address,
   ): Promise<bigint> {
     return this.publicClient.readContract({
       address: this.paymasterAddress,
@@ -259,7 +261,7 @@ export class EILClient {
   async getSwapQuote(
     tokenIn: Address,
     tokenOut: Address,
-    amountIn: bigint
+    amountIn: bigint,
   ): Promise<SwapQuoteResult> {
     const result = (await this.publicClient.readContract({
       address: this.paymasterAddress,
@@ -292,7 +294,7 @@ export class EILClient {
    * Create a cross-chain transfer request
    */
   async createCrossChainTransfer(
-    params: CrossChainTransferParams
+    _params: CrossChainTransferParams,
   ): Promise<Hex> {
     if (!this.isReady()) {
       throw new Error('EIL not configured for this chain')
@@ -412,4 +414,7 @@ export class EILClient {
 export function createEILClient(config: EILClientConfig): EILClient {
   return new EILClient(config)
 }
+
+
+
 

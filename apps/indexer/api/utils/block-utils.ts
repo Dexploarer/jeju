@@ -3,7 +3,7 @@
  * Shared business logic for block-related operations
  */
 
-import { HashSchema, validateOrThrow } from '@jejunetwork/types'
+import { HashSchema } from '@jejunetwork/types'
 import { blockNumberSchema } from './validation'
 
 export type BlockIdentifier =

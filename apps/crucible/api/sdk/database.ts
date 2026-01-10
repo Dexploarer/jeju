@@ -229,7 +229,7 @@ export class CrucibleDatabase {
 
   async updateAgent(
     agentId: string,
-    updates: Partial<CreateAgentParams>
+    updates: Partial<CreateAgentParams>,
   ): Promise<void> {
     const setClauses: string[] = []
     const params: (string | number)[] = []
@@ -322,7 +322,9 @@ export class CrucibleDatabase {
 
   // Message Operations
 
-  async createMessage(params: CreateMessageParams): Promise<MessageRecord | null> {
+  async createMessage(
+    params: CreateMessageParams,
+  ): Promise<MessageRecord | null> {
     const id = `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
     const sql = `
       INSERT INTO messages (id, room_id, agent_id, content)
@@ -332,16 +334,17 @@ export class CrucibleDatabase {
 
     const rows = await this.query<MessageRecord>(
       'SELECT * FROM messages WHERE id = ?',
-      [id]
+      [id],
     )
     return rows[0] ?? null
   }
 
   async getMessages(
     roomId: string,
-    options?: GetMessagesOptions
+    options?: GetMessagesOptions,
   ): Promise<MessageRecord[]> {
-    let sql = 'SELECT * FROM messages WHERE room_id = ? ORDER BY created_at DESC'
+    let sql =
+      'SELECT * FROM messages WHERE room_id = ? ORDER BY created_at DESC'
     const params: (string | number)[] = [roomId]
 
     if (options?.limit) {
@@ -357,4 +360,7 @@ export class CrucibleDatabase {
     return this.query<MessageRecord>(sql, params)
   }
 }
+
+
+
 

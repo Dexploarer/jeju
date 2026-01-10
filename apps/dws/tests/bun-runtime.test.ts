@@ -171,7 +171,9 @@ export default {
         expect(body.pid).toBeGreaterThan(0)
       } else {
         // Log the error for debugging but don't fail - worker startup can be flaky
-        console.log(`[bun-runtime] Worker returned ${response.statusCode}: ${response.body}`)
+        console.log(
+          `[bun-runtime] Worker returned ${response.statusCode}: ${response.body}`,
+        )
         expect([200, 500]).toContain(response.statusCode)
       }
     },

@@ -104,7 +104,7 @@ export class IAPService {
   /**
    * Verify a purchase receipt
    */
-  async verifyPurchase(purchase: IAPPurchase): Promise<boolean> {
+  async verifyPurchase(_purchase: IAPPurchase): Promise<boolean> {
     // In a real implementation, this would verify with backend
     return true
   }
@@ -117,3 +117,72 @@ export function createIAPService(config: IAPConfig): IAPService {
   return new IAPService(config)
 }
 
+// ============================================================================
+// IAP Compliance Functions
+// ============================================================================
+
+export type FeatureType =
+  | 'crypto-purchase'
+  | 'nft-purchase'
+  | 'subscription'
+  | 'swap-with-fee'
+  | 'staking'
+
+export interface FeatureAvailability {
+  available: boolean
+  requiresExternalBrowser: boolean
+  message?: string
+}
+
+/**
+ * Check if a feature is available on the current platform
+ * On web, all features are available without IAP restrictions
+ */
+export function checkFeatureAvailability(
+  _feature: FeatureType,
+): FeatureAvailability {
+  // On web platform, all features are available
+  return {
+    available: true,
+    requiresExternalBrowser: false,
+  }
+}
+
+/**
+ * Get IAP compliance message for a feature
+ * Returns null if no message is needed (web platform)
+ */
+export function getIAPComplianceMessage(_feature: FeatureType): string | null {
+  // On web platform, no compliance messages needed
+  return null
+}
+
+/**
+ * Check if purchases require external browser (iOS/Android only)
+ */
+export function requiresExternalPurchase(): boolean {
+  // On web platform, no external purchase required
+  return false
+}
+
+export interface PurchaseParams {
+  type: 'crypto' | 'nft' | 'subscription'
+  asset?: string
+  amount?: string
+  recipient?: string
+}
+
+/**
+ * Generate a purchase URL for external browser flow
+ */
+export function getPurchaseUrl(params: PurchaseParams): string {
+  const baseUrl = 'https://wallet.jejunetwork.org/purchase'
+  const searchParams = new URLSearchParams()
+
+  searchParams.set('type', params.type)
+  if (params.asset) searchParams.set('asset', params.asset)
+  if (params.amount) searchParams.set('amount', params.amount)
+  if (params.recipient) searchParams.set('recipient', params.recipient)
+
+  return `${baseUrl}?${searchParams.toString()}`
+}

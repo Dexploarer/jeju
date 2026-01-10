@@ -172,7 +172,7 @@ describe('Auth API', () => {
           owner: '0x1234567890123456789012345678901234567890',
         }),
       })
-      
+
       // May fail due to reputation requirements on fresh localnet
       if (response.ok) {
         const data = await response.json()

@@ -9,43 +9,43 @@
  */
 
 export {
-  // Core functions
-  initDB,
+  // Types
+  type BountyRow,
   closeDB,
-  getDB,
-  generateId,
-  isHealthy,
-  // Bounties
-  listBounties,
-  getBounty,
   createBounty,
-  updateBountyStatus,
-  getBountyStats,
-  // Jobs
-  listJobs,
-  getJob,
   createJob,
-  getJobStats,
-  // Projects
-  listProjects,
-  getProject,
   createProject,
+  generateId,
+  getBounty,
+  getBountyStats,
+  getDB,
+  getJob,
+  getJobStats,
   // Leaderboard
   getLeaderboard,
   getLeaderboardEntry,
-  updateLeaderboardScore,
-  // Types
-  type BountyRow,
+  getProject,
+  // Core functions
+  initDB,
+  isHealthy,
   type JobRow,
-  type ProjectRow,
   type LeaderboardRow,
+  // Bounties
+  listBounties,
+  // Jobs
+  listJobs,
+  // Projects
+  listProjects,
+  type ProjectRow,
+  updateBountyStatus,
+  updateLeaderboardScore,
 } from './sqlit-client'
 
 // Re-export remaining types and functions that need to be implemented
 // These are stubs that will be filled in as needed
 
-import { getDB, generateId } from './sqlit-client'
 import { z } from 'zod'
+import { generateId, getDB } from './sqlit-client'
 
 // Additional row schemas for complete API coverage
 const TaskRowSchema = z.object({
@@ -310,13 +310,65 @@ export type PackageSettingsRow = z.infer<typeof PackageSettingsRowSchema>
 export type FidLinkRow = z.infer<typeof FidLinkRowSchema>
 export type FarcasterSignerRow = z.infer<typeof FarcasterSignerRowSchema>
 export type ContainerInstanceRow = z.infer<typeof ContainerInstanceRowSchema>
-export type IssueCommentRow = { id: string; issue_id: string; author: string; body: string; created_at: number }
-export type PRReviewRow = { id: string; pr_id: string; author: string; state: 'approved' | 'changes_requested' | 'commented'; body: string; submitted_at: number }
-export type DiscussionReplyRow = { id: string; discussion_id: string; author: string; author_name: string; author_avatar: string; content: string; likes: number; is_answer: number; created_at: number }
-export type MaintainerRow = { scope: string; name: string; login: string; avatar: string; role: 'owner' | 'maintainer'; created_at: number }
-export type PackageTokenRow = { id: string; scope: string; name: string; token_name: string; token_hash: string; permissions: string; expires_at: number | null; last_used: number | null; created_at: number }
-export type CastReactionRow = { id: string; address: string; cast_hash: string; cast_fid: number; reaction_type: 'like' | 'recast'; created_at: number }
-export type ProjectChannelRow = { project_id: string; channel_id: string; channel_url: string; created_at: number }
+export type IssueCommentRow = {
+  id: string
+  issue_id: string
+  author: string
+  body: string
+  created_at: number
+}
+export type PRReviewRow = {
+  id: string
+  pr_id: string
+  author: string
+  state: 'approved' | 'changes_requested' | 'commented'
+  body: string
+  submitted_at: number
+}
+export type DiscussionReplyRow = {
+  id: string
+  discussion_id: string
+  author: string
+  author_name: string
+  author_avatar: string
+  content: string
+  likes: number
+  is_answer: number
+  created_at: number
+}
+export type MaintainerRow = {
+  scope: string
+  name: string
+  login: string
+  avatar: string
+  role: 'owner' | 'maintainer'
+  created_at: number
+}
+export type PackageTokenRow = {
+  id: string
+  scope: string
+  name: string
+  token_name: string
+  token_hash: string
+  permissions: string
+  expires_at: number | null
+  last_used: number | null
+  created_at: number
+}
+export type CastReactionRow = {
+  id: string
+  address: string
+  cast_hash: string
+  cast_fid: number
+  reaction_type: 'like' | 'recast'
+  created_at: number
+}
+export type ProjectChannelRow = {
+  project_id: string
+  channel_id: string
+  channel_url: string
+  created_at: number
+}
 
 // Helper to convert to JSON string
 function toJSON(data: unknown): string {
@@ -349,7 +401,15 @@ export async function createTask(task: {
   await database.exec(
     `INSERT INTO project_tasks (id, project_id, title, assignee, due_date, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [id, task.projectId, task.title, task.assignee ?? null, task.dueDate ?? null, now, now],
+    [
+      id,
+      task.projectId,
+      task.title,
+      task.assignee ?? null,
+      task.dueDate ?? null,
+      now,
+      now,
+    ],
   )
 
   const result = await database.query<TaskRow>(
@@ -361,7 +421,12 @@ export async function createTask(task: {
 
 export async function updateTask(
   id: string,
-  updates: Partial<{ title: string; status: string; assignee: string; dueDate: number }>,
+  updates: Partial<{
+    title: string
+    status: string
+    assignee: string
+    dueDate: number
+  }>,
 ): Promise<TaskRow | null> {
   const database = getDB()
   const sets: string[] = ['updated_at = ?']
@@ -385,7 +450,10 @@ export async function updateTask(
   }
 
   params.push(id)
-  await database.exec(`UPDATE project_tasks SET ${sets.join(', ')} WHERE id = ?`, params)
+  await database.exec(
+    `UPDATE project_tasks SET ${sets.join(', ')} WHERE id = ?`,
+    params,
+  )
 
   const result = await database.query<TaskRow>(
     'SELECT * FROM project_tasks WHERE id = ?',
@@ -406,7 +474,10 @@ export async function getNextIssueNumber(repo: string): Promise<number> {
   )
 
   if (!result.rows[0]) {
-    await database.exec('INSERT INTO issue_sequences (repo, next_number) VALUES (?, 2)', [repo])
+    await database.exec(
+      'INSERT INTO issue_sequences (repo, next_number) VALUES (?, 2)',
+      [repo],
+    )
     return 1
   }
 
@@ -446,7 +517,8 @@ export async function listIssues(filter?: {
     params.push(`%${filter.assignee}%`)
   }
 
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+  const whereClause =
+    conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
   const page = filter?.page ?? 1
   const limit = filter?.limit ?? 20
   const offset = (page - 1) * limit
@@ -467,11 +539,17 @@ export async function listIssues(filter?: {
 
 export async function getIssue(id: string): Promise<IssueRow | null> {
   const database = getDB()
-  const result = await database.query<IssueRow>('SELECT * FROM issues WHERE id = ?', [id])
+  const result = await database.query<IssueRow>(
+    'SELECT * FROM issues WHERE id = ?',
+    [id],
+  )
   return result.rows[0] ? IssueRowSchema.parse(result.rows[0]) : null
 }
 
-export async function getIssueByNumber(repo: string, number: number): Promise<IssueRow | null> {
+export async function getIssueByNumber(
+  repo: string,
+  number: number,
+): Promise<IssueRow | null> {
   const database = getDB()
   const result = await database.query<IssueRow>(
     'SELECT * FROM issues WHERE repo = ? AND number = ?',
@@ -515,7 +593,9 @@ export async function createIssue(issue: {
   return created
 }
 
-export async function getIssueComments(issueId: string): Promise<IssueCommentRow[]> {
+export async function getIssueComments(
+  issueId: string,
+): Promise<IssueCommentRow[]> {
   const database = getDB()
   const result = await database.query<IssueCommentRow>(
     'SELECT * FROM issue_comments WHERE issue_id = ? ORDER BY created_at ASC',
@@ -588,7 +668,10 @@ export async function updateIssue(
   }
 
   params.push(id)
-  await database.exec(`UPDATE issues SET ${sets.join(', ')} WHERE id = ?`, params)
+  await database.exec(
+    `UPDATE issues SET ${sets.join(', ')} WHERE id = ?`,
+    params,
+  )
 
   return getIssue(id)
 }
@@ -605,7 +688,10 @@ export async function getNextPRNumber(repo: string): Promise<number> {
   )
 
   if (!result.rows[0]) {
-    await database.exec('INSERT INTO pr_sequences (repo, next_number) VALUES (?, 2)', [repo])
+    await database.exec(
+      'INSERT INTO pr_sequences (repo, next_number) VALUES (?, 2)',
+      [repo],
+    )
     return 1
   }
 
@@ -640,7 +726,8 @@ export async function listPullRequests(filter?: {
     params.push(filter.author)
   }
 
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+  const whereClause =
+    conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
   const page = filter?.page ?? 1
   const limit = filter?.limit ?? 20
   const offset = (page - 1) * limit
@@ -659,7 +746,9 @@ export async function listPullRequests(filter?: {
   return { pulls: result.rows.map((r) => PullRequestRowSchema.parse(r)), total }
 }
 
-export async function getPullRequest(id: string): Promise<PullRequestRow | null> {
+export async function getPullRequest(
+  id: string,
+): Promise<PullRequestRow | null> {
   const database = getDB()
   const result = await database.query<PullRequestRow>(
     'SELECT * FROM pull_requests WHERE id = ?',
@@ -668,7 +757,10 @@ export async function getPullRequest(id: string): Promise<PullRequestRow | null>
   return result.rows[0] ? PullRequestRowSchema.parse(result.rows[0]) : null
 }
 
-export async function getPullRequestByNumber(repo: string, number: number): Promise<PullRequestRow | null> {
+export async function getPullRequestByNumber(
+  repo: string,
+  number: number,
+): Promise<PullRequestRow | null> {
   const database = getDB()
   const result = await database.query<PullRequestRow>(
     'SELECT * FROM pull_requests WHERE repo = ? AND number = ?',
@@ -694,7 +786,19 @@ export async function createPullRequest(pr: {
   await database.exec(
     `INSERT INTO pull_requests (id, number, repo, title, body, source_branch, target_branch, is_draft, author, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [id, number, pr.repo, pr.title, pr.body, pr.sourceBranch, pr.targetBranch, pr.isDraft ? 1 : 0, pr.author, now, now],
+    [
+      id,
+      number,
+      pr.repo,
+      pr.title,
+      pr.body,
+      pr.sourceBranch,
+      pr.targetBranch,
+      pr.isDraft ? 1 : 0,
+      pr.author,
+      now,
+      now,
+    ],
   )
 
   const created = await getPullRequest(id)
@@ -727,7 +831,10 @@ export async function createPRReview(review: {
     [id, review.prId, review.author, review.state, review.body, now],
   )
 
-  const result = await database.query<PRReviewRow>('SELECT * FROM pr_reviews WHERE id = ?', [id])
+  const result = await database.query<PRReviewRow>(
+    'SELECT * FROM pr_reviews WHERE id = ?',
+    [id],
+  )
   return result.rows[0]
 }
 
@@ -769,7 +876,8 @@ export async function listDiscussions(filter?: {
     params.push(filter.category)
   }
 
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+  const whereClause =
+    conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
   const page = filter?.page ?? 1
   const limit = filter?.limit ?? 20
   const offset = (page - 1) * limit
@@ -785,7 +893,10 @@ export async function listDiscussions(filter?: {
     [...params, limit, offset],
   )
 
-  return { discussions: result.rows.map((r) => DiscussionRowSchema.parse(r)), total }
+  return {
+    discussions: result.rows.map((r) => DiscussionRowSchema.parse(r)),
+    total,
+  }
 }
 
 export async function getDiscussion(id: string): Promise<DiscussionRow | null> {
@@ -832,7 +943,9 @@ export async function createDiscussion(discussion: {
   return created
 }
 
-export async function getDiscussionReplies(discussionId: string): Promise<DiscussionReplyRow[]> {
+export async function getDiscussionReplies(
+  discussionId: string,
+): Promise<DiscussionReplyRow[]> {
   const database = getDB()
   const result = await database.query<DiscussionReplyRow>(
     'SELECT * FROM discussion_replies WHERE discussion_id = ? ORDER BY created_at ASC',
@@ -855,7 +968,15 @@ export async function createDiscussionReply(reply: {
   await database.exec(
     `INSERT INTO discussion_replies (id, discussion_id, author, author_name, author_avatar, content, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [id, reply.discussionId, reply.author, reply.authorName, reply.authorAvatar, reply.content, now],
+    [
+      id,
+      reply.discussionId,
+      reply.author,
+      reply.authorName,
+      reply.authorAvatar,
+      reply.content,
+      now,
+    ],
   )
 
   await database.exec(
@@ -898,7 +1019,8 @@ export async function listCIRuns(filter?: {
     params.push(filter.branch)
   }
 
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+  const whereClause =
+    conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
   const page = filter?.page ?? 1
   const limit = filter?.limit ?? 20
   const offset = (page - 1) * limit
@@ -919,7 +1041,10 @@ export async function listCIRuns(filter?: {
 
 export async function getCIRun(id: string): Promise<CIRunRow | null> {
   const database = getDB()
-  const result = await database.query<CIRunRow>('SELECT * FROM ci_runs WHERE id = ?', [id])
+  const result = await database.query<CIRunRow>(
+    'SELECT * FROM ci_runs WHERE id = ?',
+    [id],
+  )
   return result.rows[0] ? CIRunRowSchema.parse(result.rows[0]) : null
 }
 
@@ -938,7 +1063,18 @@ export async function createCIRun(run: {
   await database.exec(
     `INSERT INTO ci_runs (id, workflow, repo, branch, commit_sha, commit_message, author, started_at, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [id, run.workflow, run.repo, run.branch, run.commitSha ?? '', run.commitMessage ?? '', run.author ?? '', now, now, now],
+    [
+      id,
+      run.workflow,
+      run.repo,
+      run.branch,
+      run.commitSha ?? '',
+      run.commitMessage ?? '',
+      run.author ?? '',
+      now,
+      now,
+      now,
+    ],
   )
 
   const created = await getCIRun(id)
@@ -972,7 +1108,8 @@ export async function listAgents(filter?: {
     params.push(filter.owner)
   }
 
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+  const whereClause =
+    conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
   const result = await database.query<AgentRow>(
     `SELECT * FROM agents ${whereClause} ORDER BY reputation DESC, created_at DESC`,
     params,
@@ -983,7 +1120,10 @@ export async function listAgents(filter?: {
 
 export async function getAgent(agentId: string): Promise<AgentRow | null> {
   const database = getDB()
-  const result = await database.query<AgentRow>('SELECT * FROM agents WHERE agent_id = ?', [agentId])
+  const result = await database.query<AgentRow>(
+    'SELECT * FROM agents WHERE agent_id = ?',
+    [agentId],
+  )
   return result.rows[0] ? AgentRowSchema.parse(result.rows[0]) : null
 }
 
@@ -1031,7 +1171,10 @@ export async function createAgent(agent: {
 // CONTAINERS
 // ============================================================================
 
-export async function listContainers(filter?: { org?: string; name?: string }): Promise<ContainerRow[]> {
+export async function listContainers(filter?: {
+  org?: string
+  name?: string
+}): Promise<ContainerRow[]> {
   const database = getDB()
   const conditions: string[] = []
   const params: string[] = []
@@ -1045,7 +1188,8 @@ export async function listContainers(filter?: { org?: string; name?: string }): 
     params.push(`%${filter.name}%`)
   }
 
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+  const whereClause =
+    conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
   const result = await database.query<ContainerRow>(
     `SELECT * FROM containers ${whereClause} ORDER BY created_at DESC`,
     params,
@@ -1084,11 +1228,17 @@ export async function createContainer(container: {
     ],
   )
 
-  const result = await database.query<ContainerRow>('SELECT * FROM containers WHERE id = ?', [id])
+  const result = await database.query<ContainerRow>(
+    'SELECT * FROM containers WHERE id = ?',
+    [id],
+  )
   return ContainerRowSchema.parse(result.rows[0])
 }
 
-export async function listContainerInstances(filter?: { owner?: string; status?: string }): Promise<ContainerInstanceRow[]> {
+export async function listContainerInstances(filter?: {
+  owner?: string
+  status?: string
+}): Promise<ContainerInstanceRow[]> {
   const database = getDB()
   const conditions: string[] = []
   const params: string[] = []
@@ -1102,7 +1252,8 @@ export async function listContainerInstances(filter?: { owner?: string; status?:
     params.push(filter.status)
   }
 
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+  const whereClause =
+    conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
   const result = await database.query<ContainerInstanceRow>(
     `SELECT * FROM container_instances ${whereClause} ORDER BY created_at DESC`,
     params,
@@ -1126,7 +1277,16 @@ export async function createContainerInstance(instance: {
   await database.exec(
     `INSERT INTO container_instances (id, container_id, name, cpu, memory, gpu, owner, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [id, instance.containerId, instance.name, instance.cpu, instance.memory, instance.gpu ?? null, instance.owner, now],
+    [
+      id,
+      instance.containerId,
+      instance.name,
+      instance.cpu,
+      instance.memory,
+      instance.gpu ?? null,
+      instance.owner,
+      now,
+    ],
   )
 
   const result = await database.query<ContainerInstanceRow>(
@@ -1154,7 +1314,10 @@ export async function updateContainerInstanceStatus(
 // DATASETS
 // ============================================================================
 
-export async function listDatasets(filter?: { type?: string; org?: string }): Promise<DatasetRow[]> {
+export async function listDatasets(filter?: {
+  type?: string
+  org?: string
+}): Promise<DatasetRow[]> {
   const database = getDB()
   const conditions: string[] = []
   const params: string[] = []
@@ -1168,7 +1331,8 @@ export async function listDatasets(filter?: { type?: string; org?: string }): Pr
     params.push(filter.org)
   }
 
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+  const whereClause =
+    conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
   const result = await database.query<DatasetRow>(
     `SELECT * FROM datasets ${whereClause} ORDER BY downloads DESC, created_at DESC`,
     params,
@@ -1192,10 +1356,23 @@ export async function createDataset(dataset: {
   await database.exec(
     `INSERT INTO datasets (id, name, organization, description, type, license, owner, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [id, dataset.name, dataset.organization, dataset.description, dataset.type, dataset.license, dataset.owner, now, now],
+    [
+      id,
+      dataset.name,
+      dataset.organization,
+      dataset.description,
+      dataset.type,
+      dataset.license,
+      dataset.owner,
+      now,
+      now,
+    ],
   )
 
-  const result = await database.query<DatasetRow>('SELECT * FROM datasets WHERE id = ?', [id])
+  const result = await database.query<DatasetRow>(
+    'SELECT * FROM datasets WHERE id = ?',
+    [id],
+  )
   return DatasetRowSchema.parse(result.rows[0])
 }
 
@@ -1203,7 +1380,10 @@ export async function createDataset(dataset: {
 // MODELS
 // ============================================================================
 
-export async function listModels(filter?: { type?: string; org?: string }): Promise<ModelRow[]> {
+export async function listModels(filter?: {
+  type?: string
+  org?: string
+}): Promise<ModelRow[]> {
   const database = getDB()
   const conditions: string[] = []
   const params: string[] = []
@@ -1217,7 +1397,8 @@ export async function listModels(filter?: { type?: string; org?: string }): Prom
     params.push(filter.org)
   }
 
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+  const whereClause =
+    conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
   const result = await database.query<ModelRow>(
     `SELECT * FROM models ${whereClause} ORDER BY downloads DESC, created_at DESC`,
     params,
@@ -1226,9 +1407,15 @@ export async function listModels(filter?: { type?: string; org?: string }): Prom
   return result.rows.map((r) => ModelRowSchema.parse(r))
 }
 
-export async function getModel(org: string, name: string): Promise<ModelRow | null> {
+export async function getModel(
+  org: string,
+  name: string,
+): Promise<ModelRow | null> {
   const database = getDB()
-  const result = await database.query<ModelRow>('SELECT * FROM models WHERE id = ?', [`${org}/${name}`])
+  const result = await database.query<ModelRow>(
+    'SELECT * FROM models WHERE id = ?',
+    [`${org}/${name}`],
+  )
   return result.rows[0] ? ModelRowSchema.parse(result.rows[0]) : null
 }
 
@@ -1247,11 +1434,24 @@ export async function createModel(model: {
   await database.exec(
     `INSERT INTO models (id, name, organization, description, type, file_uri, owner, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [id, model.name, model.organization, model.description, model.type, model.fileUri, model.owner, now, now],
+    [
+      id,
+      model.name,
+      model.organization,
+      model.description,
+      model.type,
+      model.fileUri,
+      model.owner,
+      now,
+      now,
+    ],
   )
 
   const created = await getModel(model.organization, model.name)
-  if (!created) throw new Error(`Failed to create model ${model.organization}/${model.name}`)
+  if (!created)
+    throw new Error(
+      `Failed to create model ${model.organization}/${model.name}`,
+    )
   return created
 }
 
@@ -1269,7 +1469,10 @@ export async function starModel(org: string, name: string): Promise<boolean> {
 // REPO SETTINGS
 // ============================================================================
 
-export async function getRepoSettings(owner: string, repo: string): Promise<RepoSettingsRow | null> {
+export async function getRepoSettings(
+  owner: string,
+  repo: string,
+): Promise<RepoSettingsRow | null> {
   const database = getDB()
   const result = await database.query<RepoSettingsRow>(
     'SELECT * FROM repo_settings WHERE owner = ? AND repo = ?',
@@ -1381,15 +1584,30 @@ export async function upsertRepoSettings(
   return result
 }
 
-export async function deleteRepoSettings(owner: string, repo: string): Promise<boolean> {
+export async function deleteRepoSettings(
+  owner: string,
+  repo: string,
+): Promise<boolean> {
   const database = getDB()
-  await database.exec('DELETE FROM repo_collaborators WHERE owner = ? AND repo = ?', [owner, repo])
-  await database.exec('DELETE FROM repo_webhooks WHERE owner = ? AND repo = ?', [owner, repo])
-  const result = await database.exec('DELETE FROM repo_settings WHERE owner = ? AND repo = ?', [owner, repo])
+  await database.exec(
+    'DELETE FROM repo_collaborators WHERE owner = ? AND repo = ?',
+    [owner, repo],
+  )
+  await database.exec(
+    'DELETE FROM repo_webhooks WHERE owner = ? AND repo = ?',
+    [owner, repo],
+  )
+  const result = await database.exec(
+    'DELETE FROM repo_settings WHERE owner = ? AND repo = ?',
+    [owner, repo],
+  )
   return result.rowsAffected > 0
 }
 
-export async function getRepoCollaborators(owner: string, repo: string): Promise<CollaboratorRow[]> {
+export async function getRepoCollaborators(
+  owner: string,
+  repo: string,
+): Promise<CollaboratorRow[]> {
   const database = getDB()
   const result = await database.query<CollaboratorRow>(
     'SELECT * FROM repo_collaborators WHERE owner = ? AND repo = ?',
@@ -1401,7 +1619,11 @@ export async function getRepoCollaborators(owner: string, repo: string): Promise
 export async function addRepoCollaborator(
   owner: string,
   repo: string,
-  collaborator: { login: string; avatar: string; permission: 'read' | 'write' | 'admin' },
+  collaborator: {
+    login: string
+    avatar: string
+    permission: 'read' | 'write' | 'admin'
+  },
 ): Promise<CollaboratorRow> {
   const database = getDB()
   const now = Date.now()
@@ -1409,7 +1631,14 @@ export async function addRepoCollaborator(
   await database.exec(
     `INSERT INTO repo_collaborators (owner, repo, login, avatar, permission, created_at) VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT(owner, repo, login) DO UPDATE SET avatar = excluded.avatar, permission = excluded.permission`,
-    [owner, repo, collaborator.login, collaborator.avatar, collaborator.permission, now],
+    [
+      owner,
+      repo,
+      collaborator.login,
+      collaborator.avatar,
+      collaborator.permission,
+      now,
+    ],
   )
 
   const result = await database.query<CollaboratorRow>(
@@ -1419,7 +1648,11 @@ export async function addRepoCollaborator(
   return CollaboratorRowSchema.parse(result.rows[0])
 }
 
-export async function removeRepoCollaborator(owner: string, repo: string, login: string): Promise<boolean> {
+export async function removeRepoCollaborator(
+  owner: string,
+  repo: string,
+  login: string,
+): Promise<boolean> {
   const database = getDB()
   const result = await database.exec(
     'DELETE FROM repo_collaborators WHERE owner = ? AND repo = ? AND login = ?',
@@ -1428,7 +1661,10 @@ export async function removeRepoCollaborator(owner: string, repo: string, login:
   return result.rowsAffected > 0
 }
 
-export async function getRepoWebhooks(owner: string, repo: string): Promise<WebhookRow[]> {
+export async function getRepoWebhooks(
+  owner: string,
+  repo: string,
+): Promise<WebhookRow[]> {
   const database = getDB()
   const result = await database.query<WebhookRow>(
     'SELECT * FROM repo_webhooks WHERE owner = ? AND repo = ?',
@@ -1451,13 +1687,18 @@ export async function addRepoWebhook(
     [id, owner, repo, webhook.url, toJSON(webhook.events), now],
   )
 
-  const result = await database.query<WebhookRow>('SELECT * FROM repo_webhooks WHERE id = ?', [id])
+  const result = await database.query<WebhookRow>(
+    'SELECT * FROM repo_webhooks WHERE id = ?',
+    [id],
+  )
   return WebhookRowSchema.parse(result.rows[0])
 }
 
 export async function removeRepoWebhook(id: string): Promise<boolean> {
   const database = getDB()
-  const result = await database.exec('DELETE FROM repo_webhooks WHERE id = ?', [id])
+  const result = await database.exec('DELETE FROM repo_webhooks WHERE id = ?', [
+    id,
+  ])
   return result.rowsAffected > 0
 }
 
@@ -1465,7 +1706,10 @@ export async function removeRepoWebhook(id: string): Promise<boolean> {
 // PACKAGE SETTINGS
 // ============================================================================
 
-export async function getPackageSettings(scope: string, name: string): Promise<PackageSettingsRow | null> {
+export async function getPackageSettings(
+  scope: string,
+  name: string,
+): Promise<PackageSettingsRow | null> {
   const database = getDB()
   const result = await database.query<PackageSettingsRow>(
     'SELECT * FROM package_settings WHERE scope = ? AND name = ?',
@@ -1477,7 +1721,11 @@ export async function getPackageSettings(scope: string, name: string): Promise<P
 export async function upsertPackageSettings(
   scope: string,
   name: string,
-  settings: { description?: string; visibility?: 'public' | 'private'; publishEnabled?: boolean },
+  settings: {
+    description?: string
+    visibility?: 'public' | 'private'
+    publishEnabled?: boolean
+  },
 ): Promise<PackageSettingsRow> {
   const database = getDB()
   const now = Date.now()
@@ -1486,7 +1734,14 @@ export async function upsertPackageSettings(
   if (!existing) {
     await database.exec(
       `INSERT INTO package_settings (scope, name, description, visibility, publish_enabled, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
-      [scope, name, settings.description ?? null, settings.visibility ?? 'public', settings.publishEnabled !== false ? 1 : 0, now],
+      [
+        scope,
+        name,
+        settings.description ?? null,
+        settings.visibility ?? 'public',
+        settings.publishEnabled !== false ? 1 : 0,
+        now,
+      ],
     )
   } else {
     const sets: string[] = ['updated_at = ?']
@@ -1506,15 +1761,23 @@ export async function upsertPackageSettings(
     }
 
     params.push(scope, name)
-    await database.exec(`UPDATE package_settings SET ${sets.join(', ')} WHERE scope = ? AND name = ?`, params)
+    await database.exec(
+      `UPDATE package_settings SET ${sets.join(', ')} WHERE scope = ? AND name = ?`,
+      params,
+    )
   }
 
   const result = await getPackageSettings(scope, name)
-  if (!result) throw new Error(`Failed to get package settings ${scope}/${name}`)
+  if (!result)
+    throw new Error(`Failed to get package settings ${scope}/${name}`)
   return result
 }
 
-export async function deprecatePackage(scope: string, name: string, message: string): Promise<boolean> {
+export async function deprecatePackage(
+  scope: string,
+  name: string,
+  message: string,
+): Promise<boolean> {
   const database = getDB()
   const result = await database.exec(
     'UPDATE package_settings SET deprecated = 1, deprecation_message = ?, updated_at = ? WHERE scope = ? AND name = ?',
@@ -1523,7 +1786,10 @@ export async function deprecatePackage(scope: string, name: string, message: str
   return result.rowsAffected > 0
 }
 
-export async function undeprecatePackage(scope: string, name: string): Promise<boolean> {
+export async function undeprecatePackage(
+  scope: string,
+  name: string,
+): Promise<boolean> {
   const database = getDB()
   const result = await database.exec(
     'UPDATE package_settings SET deprecated = 0, deprecation_message = NULL, updated_at = ? WHERE scope = ? AND name = ?',
@@ -1532,7 +1798,10 @@ export async function undeprecatePackage(scope: string, name: string): Promise<b
   return result.rowsAffected > 0
 }
 
-export async function getPackageMaintainers(scope: string, name: string): Promise<MaintainerRow[]> {
+export async function getPackageMaintainers(
+  scope: string,
+  name: string,
+): Promise<MaintainerRow[]> {
   const database = getDB()
   const result = await database.query<MaintainerRow>(
     'SELECT * FROM package_maintainers WHERE scope = ? AND name = ?',
@@ -1562,7 +1831,11 @@ export async function addPackageMaintainer(
   return result.rows[0]
 }
 
-export async function removePackageMaintainer(scope: string, name: string, login: string): Promise<boolean> {
+export async function removePackageMaintainer(
+  scope: string,
+  name: string,
+  login: string,
+): Promise<boolean> {
   const database = getDB()
   const result = await database.exec(
     'DELETE FROM package_maintainers WHERE scope = ? AND name = ? AND login = ?',
@@ -1586,16 +1859,31 @@ export async function createPackageToken(
 
   await database.exec(
     `INSERT INTO package_tokens (id, scope, name, token_name, token_hash, permissions, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [id, scope, name, token.tokenName, tokenHash, toJSON(token.permissions), token.expiresAt ?? null, now],
+    [
+      id,
+      scope,
+      name,
+      token.tokenName,
+      tokenHash,
+      toJSON(token.permissions),
+      token.expiresAt ?? null,
+      now,
+    ],
   )
 
-  const result = await database.query<PackageTokenRow>('SELECT * FROM package_tokens WHERE id = ?', [id])
+  const result = await database.query<PackageTokenRow>(
+    'SELECT * FROM package_tokens WHERE id = ?',
+    [id],
+  )
   return { row: result.rows[0], plainToken }
 }
 
 export async function revokePackageToken(id: string): Promise<boolean> {
   const database = getDB()
-  const result = await database.exec('DELETE FROM package_tokens WHERE id = ?', [id])
+  const result = await database.exec(
+    'DELETE FROM package_tokens WHERE id = ?',
+    [id],
+  )
   return result.rowsAffected > 0
 }
 
@@ -1614,7 +1902,10 @@ export async function getFidLink(address: string): Promise<FidLinkRow | null> {
 
 export async function getFidLinkByFid(fid: number): Promise<FidLinkRow | null> {
   const database = getDB()
-  const result = await database.query<FidLinkRow>('SELECT * FROM fid_links WHERE fid = ?', [fid])
+  const result = await database.query<FidLinkRow>(
+    'SELECT * FROM fid_links WHERE fid = ?',
+    [fid],
+  )
   return result.rows[0] ? FidLinkRowSchema.parse(result.rows[0]) : null
 }
 
@@ -1632,7 +1923,16 @@ export async function createFidLink(link: {
   await database.exec(
     `INSERT INTO fid_links (address, fid, username, display_name, pfp_url, bio, verified_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(address) DO UPDATE SET fid = excluded.fid, username = excluded.username, display_name = excluded.display_name, pfp_url = excluded.pfp_url, bio = excluded.bio, updated_at = excluded.updated_at`,
-    [link.address.toLowerCase(), link.fid, link.username ?? null, link.displayName ?? null, link.pfpUrl ?? null, link.bio ?? null, now, now],
+    [
+      link.address.toLowerCase(),
+      link.fid,
+      link.username ?? null,
+      link.displayName ?? null,
+      link.pfpUrl ?? null,
+      link.bio ?? null,
+      now,
+      now,
+    ],
   )
 
   const created = await getFidLink(link.address)
@@ -1642,11 +1942,16 @@ export async function createFidLink(link: {
 
 export async function deleteFidLink(address: string): Promise<boolean> {
   const database = getDB()
-  const result = await database.exec('DELETE FROM fid_links WHERE address = ?', [address.toLowerCase()])
+  const result = await database.exec(
+    'DELETE FROM fid_links WHERE address = ?',
+    [address.toLowerCase()],
+  )
   return result.rowsAffected > 0
 }
 
-export async function getFarcasterSigner(address: string): Promise<FarcasterSignerRow | null> {
+export async function getFarcasterSigner(
+  address: string,
+): Promise<FarcasterSignerRow | null> {
   const database = getDB()
   const result = await database.query<FarcasterSignerRow>(
     "SELECT * FROM farcaster_signers WHERE address = ? AND key_state = 'active' ORDER BY created_at DESC LIMIT 1",
@@ -1655,7 +1960,9 @@ export async function getFarcasterSigner(address: string): Promise<FarcasterSign
   return result.rows[0] ? FarcasterSignerRowSchema.parse(result.rows[0]) : null
 }
 
-export async function getFarcasterSignerByPublicKey(publicKey: string): Promise<FarcasterSignerRow | null> {
+export async function getFarcasterSignerByPublicKey(
+  publicKey: string,
+): Promise<FarcasterSignerRow | null> {
   const database = getDB()
   const result = await database.query<FarcasterSignerRow>(
     'SELECT * FROM farcaster_signers WHERE signer_public_key = ?',
@@ -1664,7 +1971,9 @@ export async function getFarcasterSignerByPublicKey(publicKey: string): Promise<
   return result.rows[0] ? FarcasterSignerRowSchema.parse(result.rows[0]) : null
 }
 
-export async function listFarcasterSigners(address: string): Promise<FarcasterSignerRow[]> {
+export async function listFarcasterSigners(
+  address: string,
+): Promise<FarcasterSignerRow[]> {
   const database = getDB()
   const result = await database.query<FarcasterSignerRow>(
     'SELECT * FROM farcaster_signers WHERE address = ? ORDER BY created_at DESC',
@@ -1688,7 +1997,18 @@ export async function createFarcasterSigner(signer: {
 
   await database.exec(
     `INSERT INTO farcaster_signers (id, address, fid, signer_public_key, encrypted_private_key, encryption_iv, key_state, deadline, signature, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)`,
-    [id, signer.address.toLowerCase(), signer.fid, signer.signerPublicKey, signer.encryptedPrivateKey, signer.encryptionIv, signer.deadline ?? null, signer.signature ?? null, now, now],
+    [
+      id,
+      signer.address.toLowerCase(),
+      signer.fid,
+      signer.signerPublicKey,
+      signer.encryptedPrivateKey,
+      signer.encryptionIv,
+      signer.deadline ?? null,
+      signer.signature ?? null,
+      now,
+      now,
+    ],
   )
 
   const result = await database.query<FarcasterSignerRow>(
@@ -1698,7 +2018,10 @@ export async function createFarcasterSigner(signer: {
   return FarcasterSignerRowSchema.parse(result.rows[0])
 }
 
-export async function updateSignerState(id: string, state: 'pending' | 'active' | 'revoked'): Promise<boolean> {
+export async function updateSignerState(
+  id: string,
+  state: 'pending' | 'active' | 'revoked',
+): Promise<boolean> {
   const database = getDB()
   const result = await database.exec(
     'UPDATE farcaster_signers SET key_state = ?, updated_at = ? WHERE id = ?',
@@ -1707,7 +2030,10 @@ export async function updateSignerState(id: string, state: 'pending' | 'active' 
   return result.rowsAffected > 0
 }
 
-export async function activateSigner(publicKey: string, signature: string): Promise<boolean> {
+export async function activateSigner(
+  publicKey: string,
+  signature: string,
+): Promise<boolean> {
   const database = getDB()
   const result = await database.exec(
     "UPDATE farcaster_signers SET key_state = 'active', signature = ?, updated_at = ? WHERE signer_public_key = ?",
@@ -1716,7 +2042,9 @@ export async function activateSigner(publicKey: string, signature: string): Prom
   return result.rowsAffected > 0
 }
 
-export async function getProjectChannel(projectId: string): Promise<ProjectChannelRow | null> {
+export async function getProjectChannel(
+  projectId: string,
+): Promise<ProjectChannelRow | null> {
   const database = getDB()
   const result = await database.query<ProjectChannelRow>(
     'SELECT * FROM project_channels WHERE project_id = ?',
@@ -1725,7 +2053,11 @@ export async function getProjectChannel(projectId: string): Promise<ProjectChann
   return result.rows[0] ?? null
 }
 
-export async function setProjectChannel(projectId: string, channelId: string, channelUrl: string): Promise<ProjectChannelRow> {
+export async function setProjectChannel(
+  projectId: string,
+  channelId: string,
+  channelUrl: string,
+): Promise<ProjectChannelRow> {
   const database = getDB()
   const now = Date.now()
 
@@ -1736,17 +2068,27 @@ export async function setProjectChannel(projectId: string, channelId: string, ch
   )
 
   const created = await getProjectChannel(projectId)
-  if (!created) throw new Error(`Failed to set channel for project ${projectId}`)
+  if (!created)
+    throw new Error(`Failed to set channel for project ${projectId}`)
   return created
 }
 
-export async function deleteProjectChannel(projectId: string): Promise<boolean> {
+export async function deleteProjectChannel(
+  projectId: string,
+): Promise<boolean> {
   const database = getDB()
-  const result = await database.exec('DELETE FROM project_channels WHERE project_id = ?', [projectId])
+  const result = await database.exec(
+    'DELETE FROM project_channels WHERE project_id = ?',
+    [projectId],
+  )
   return result.rowsAffected > 0
 }
 
-export async function getCastReaction(address: string, castHash: string, reactionType: 'like' | 'recast'): Promise<CastReactionRow | null> {
+export async function getCastReaction(
+  address: string,
+  castHash: string,
+  reactionType: 'like' | 'recast',
+): Promise<CastReactionRow | null> {
   const database = getDB()
   const result = await database.query<CastReactionRow>(
     'SELECT * FROM cast_reactions WHERE address = ? AND cast_hash = ? AND reaction_type = ?',
@@ -1755,7 +2097,10 @@ export async function getCastReaction(address: string, castHash: string, reactio
   return result.rows[0] ?? null
 }
 
-export async function getUserReactionsForCasts(address: string, castHashes: string[]): Promise<CastReactionRow[]> {
+export async function getUserReactionsForCasts(
+  address: string,
+  castHashes: string[],
+): Promise<CastReactionRow[]> {
   if (castHashes.length === 0) return []
   const database = getDB()
   const placeholders = castHashes.map(() => '?').join(', ')
@@ -1779,15 +2124,30 @@ export async function createCastReaction(reaction: {
   await database.exec(
     `INSERT INTO cast_reactions (id, address, cast_hash, cast_fid, reaction_type, created_at) VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT(address, cast_hash, reaction_type) DO NOTHING`,
-    [id, reaction.address.toLowerCase(), reaction.castHash, reaction.castFid, reaction.reactionType, now],
+    [
+      id,
+      reaction.address.toLowerCase(),
+      reaction.castHash,
+      reaction.castFid,
+      reaction.reactionType,
+      now,
+    ],
   )
 
-  const row = await getCastReaction(reaction.address, reaction.castHash, reaction.reactionType)
+  const row = await getCastReaction(
+    reaction.address,
+    reaction.castHash,
+    reaction.reactionType,
+  )
   if (!row) throw new Error('Failed to create cast reaction')
   return row
 }
 
-export async function deleteCastReaction(address: string, castHash: string, reactionType: 'like' | 'recast'): Promise<boolean> {
+export async function deleteCastReaction(
+  address: string,
+  castHash: string,
+  reactionType: 'like' | 'recast',
+): Promise<boolean> {
   const database = getDB()
   const result = await database.exec(
     'DELETE FROM cast_reactions WHERE address = ? AND cast_hash = ? AND reaction_type = ?',
@@ -1798,5 +2158,7 @@ export async function deleteCastReaction(address: string, castHash: string, reac
 
 // Sync compatibility aliases (for routes that haven't been updated yet)
 export function closeDBSync() {
-  console.warn('[Factory] closeDBSync is deprecated - use async closeDB instead')
+  console.warn(
+    '[Factory] closeDBSync is deprecated - use async closeDB instead',
+  )
 }

@@ -5,7 +5,7 @@
 
 import { ZERO_ADDRESS } from '@jejunetwork/types'
 import type { Address, PublicClient } from 'viem'
-import { createEILClient, EILClient } from './eil'
+import { createEILClient, type EILClient } from './eil'
 import type { TokenBalance } from './types'
 
 // Supported gas tokens by chain
@@ -90,10 +90,7 @@ export class GasAbstractionService {
     for (const chainId of options.supportedChains) {
       const publicClient = options.publicClients.get(chainId)
       if (publicClient) {
-        this.eilClients.set(
-          chainId,
-          createEILClient({ chainId, publicClient })
-        )
+        this.eilClients.set(chainId, createEILClient({ chainId, publicClient }))
       }
     }
   }
@@ -111,7 +108,7 @@ export class GasAbstractionService {
   async getGasStatus(
     chainId: number,
     user: Address,
-    tokenBalances: TokenBalance[]
+    tokenBalances: TokenBalance[],
   ): Promise<GasStatus> {
     if (!this.supportedChains.has(chainId)) {
       throw new Error(`Chain ${chainId} not supported`)
@@ -180,7 +177,7 @@ export class GasAbstractionService {
     chainId: number,
     user: Address,
     tokenBalances: TokenBalance[],
-    requiredGas: bigint
+    requiredGas: bigint,
   ): Promise<EnsureGasResult> {
     const status = await this.getGasStatus(chainId, user, tokenBalances)
 
@@ -223,7 +220,7 @@ export class GasAbstractionService {
     chainId: number,
     user: Address,
     tokenBalances: TokenBalance[],
-    estimatedGas: bigint
+    estimatedGas: bigint,
   ): Promise<GasOption | null> {
     const eilClient = this.eilClients.get(chainId)
     if (!eilClient?.isReady()) {
@@ -231,7 +228,7 @@ export class GasAbstractionService {
     }
 
     const relevantBalances = tokenBalances.filter(
-      (tb) => tb.token.chainId === chainId && tb.balance > 0n
+      (tb) => tb.token.chainId === chainId && tb.balance > 0n,
     )
 
     if (relevantBalances.length === 0) {
@@ -256,7 +253,12 @@ export class GasAbstractionService {
 /**
  * Create a gas abstraction service
  */
-export function createGasService(config: GasServiceConfig): GasAbstractionService {
+export function createGasService(
+  config: GasServiceConfig,
+): GasAbstractionService {
   return new GasAbstractionService(config)
 }
+
+
+
 

@@ -4,14 +4,14 @@
  */
 
 import type { PublicClient } from 'viem'
+import type { CrucibleConfig } from '../../lib/types'
 import type { AgentSDK } from '../sdk/agent'
 import type { KMSSigner } from '../sdk/kms-signer'
-import type { CrucibleConfig } from '../../lib/types'
 import {
   createTradingBotOptions,
   getDefaultBotsForNetwork,
 } from './default-bots'
-import { createTradingBot, TradingBot } from './trading-bot'
+import { createTradingBot, type TradingBot } from './trading-bot'
 
 export interface BotInitializerConfig {
   crucibleConfig: CrucibleConfig
@@ -40,8 +40,7 @@ export class BotInitializer {
    */
   private hasSigner(): boolean {
     return (
-      this.config.privateKey !== undefined ||
-      this.kmsSigner.isInitialized()
+      this.config.privateKey !== undefined || this.kmsSigner.isInitialized()
     )
   }
 
@@ -51,7 +50,9 @@ export class BotInitializer {
   async initializeDefaultBots(): Promise<Map<bigint, TradingBot>> {
     // Check if we have a signer
     if (!this.hasSigner()) {
-      console.log('[BotInitializer] No signer available, skipping bot initialization')
+      console.log(
+        '[BotInitializer] No signer available, skipping bot initialization',
+      )
       return this.bots
     }
 
@@ -78,9 +79,9 @@ export class BotInitializer {
             {
               botType: 'trading_bot',
               initialFunding: BigInt(
-                Math.floor(parseFloat(botConfig.initialFunding) * 1e18)
+                Math.floor(parseFloat(botConfig.initialFunding) * 1e18),
               ),
-            }
+            },
           )
 
           // Create trading bot options
@@ -88,7 +89,7 @@ export class BotInitializer {
             botConfig,
             registration.agentId,
             network,
-            this.config.contracts.agentVault
+            this.config.contracts.agentVault,
           )
 
           // Add private key if available
@@ -103,17 +104,20 @@ export class BotInitializer {
           this.bots.set(registration.agentId, bot)
           return { agentId: registration.agentId, bot }
         } catch (error) {
-          console.error(`[BotInitializer] Failed to initialize ${botConfig.name}:`, error)
+          console.error(
+            `[BotInitializer] Failed to initialize ${botConfig.name}:`,
+            error,
+          )
           throw error
         }
-      })
+      }),
     )
 
     // Log results
     const successful = results.filter((r) => r.status === 'fulfilled').length
     const failed = results.filter((r) => r.status === 'rejected').length
     console.log(
-      `[BotInitializer] Initialized ${successful} bots, ${failed} failed`
+      `[BotInitializer] Initialized ${successful} bots, ${failed} failed`,
     )
 
     return this.bots
@@ -153,7 +157,12 @@ export class BotInitializer {
 /**
  * Create a bot initializer
  */
-export function createBotInitializer(config: BotInitializerConfig): BotInitializer {
+export function createBotInitializer(
+  config: BotInitializerConfig,
+): BotInitializer {
   return new BotInitializer(config)
 }
+
+
+
 

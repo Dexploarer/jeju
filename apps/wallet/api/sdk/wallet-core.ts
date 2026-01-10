@@ -3,12 +3,12 @@
  * EIP-1193 compatible wallet implementation with account abstraction support
  */
 
-import type { Address, Hex } from 'viem'
+import type { Address } from 'viem'
 import { createPublicClient, http } from 'viem'
-import { mainnet, base, arbitrum, optimism, sepolia } from 'viem/chains'
-import { createAAClient, AAClient } from './account-abstraction'
-import { createEILClient, EILClient } from './eil'
-import { createGasService, GasAbstractionService } from './gas-abstraction'
+import { arbitrum, base, mainnet, optimism, sepolia } from 'viem/chains'
+import { type AAClient, createAAClient } from './account-abstraction'
+import { createEILClient, type EILClient } from './eil'
+import { createGasService, type GasAbstractionService } from './gas-abstraction'
 
 // Supported chains
 const SUPPORTED_CHAINS = new Map([
@@ -68,8 +68,10 @@ export class WalletCore {
   private accounts: Account[] = []
   private activeAccountId?: string
   private connectedSites: Set<string> = new Set()
-  private eventListeners: Map<WalletEventType, Set<(event: WalletEvent) => void>> =
-    new Map()
+  private eventListeners: Map<
+    WalletEventType,
+    Set<(event: WalletEvent) => void>
+  > = new Map()
 
   // Cross-chain clients
   private aaClients: Map<number, AAClient> = new Map()
@@ -99,7 +101,7 @@ export class WalletCore {
           chainId,
           publicClient,
           bundlerUrl: this.bundlerUrl,
-        })
+        }),
       )
 
       // Create EIL client
@@ -108,7 +110,7 @@ export class WalletCore {
         createEILClient({
           chainId,
           publicClient,
-        })
+        }),
       )
     }
 
@@ -287,7 +289,10 @@ export class WalletCore {
 
   // Event system
 
-  on(event: WalletEventType, callback: (event: WalletEvent) => void): () => void {
+  on(
+    event: WalletEventType,
+    callback: (event: WalletEvent) => void,
+  ): () => void {
     if (!this.eventListeners.has(event)) {
       this.eventListeners.set(event, new Set())
     }
@@ -315,4 +320,3 @@ export class WalletCore {
 export function createWalletCore(config?: WalletCoreConfig): WalletCore {
   return new WalletCore(config)
 }
-

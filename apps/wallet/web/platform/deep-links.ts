@@ -12,7 +12,8 @@ export const DeepLinkActions = {
   IMPORT: 'import',
 } as const
 
-export type DeepLinkAction = (typeof DeepLinkActions)[keyof typeof DeepLinkActions]
+export type DeepLinkAction =
+  (typeof DeepLinkActions)[keyof typeof DeepLinkActions]
 
 // URL schemes
 const JEJU_SCHEME = 'jeju://'
@@ -89,10 +90,7 @@ export function parseDeepLink(url: string): ParsedDeepLink | null {
  * @param params - Optional query parameters
  * @returns The deep link URL
  */
-export function buildDeepLink(
-  action: string,
-  params?: DeepLinkParams
-): string {
+export function buildDeepLink(action: string, params?: DeepLinkParams): string {
   let url = `${JEJU_SCHEME}${WALLET_PATH}${action}`
 
   if (params && Object.keys(params).length > 0) {
@@ -116,7 +114,7 @@ export function buildDeepLink(
  */
 export function buildUniversalLink(
   action: string,
-  params?: DeepLinkParams
+  params?: DeepLinkParams,
 ): string {
   let url = `${UNIVERSAL_DOMAIN}/${action}`
 
@@ -158,4 +156,7 @@ export function createPaymentRequestLink(params: PaymentRequestParams): string {
 
   return buildUniversalLink('send', linkParams)
 }
+
+
+
 

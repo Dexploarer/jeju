@@ -5,8 +5,11 @@
  * All operations are async to work with the HTTP-based SQLit.
  */
 
-import { createDatabaseService, type DatabaseService } from '@jejunetwork/shared'
 import { getSQLitUrl } from '@jejunetwork/config'
+import {
+  createDatabaseService,
+  type DatabaseService,
+} from '@jejunetwork/shared'
 import { z } from 'zod'
 import { getFactoryConfig } from '../config'
 import FACTORY_SCHEMA from './schema'
@@ -118,7 +121,7 @@ export async function initDB(): Promise<DatabaseService> {
     for (const stmt of statements) {
       if (stmt.length > 5) {
         // Skip empty or trivial statements
-        await database.exec(stmt + ';')
+        await database.exec(`${stmt};`)
       }
     }
 
@@ -505,7 +508,15 @@ export async function createProject(project: {
   await database.exec(
     `INSERT INTO projects (id, name, description, visibility, owner, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [id, project.name, project.description, project.visibility, project.owner, now, now],
+    [
+      id,
+      project.name,
+      project.description,
+      project.visibility,
+      project.owner,
+      now,
+      now,
+    ],
   )
 
   const created = await getProject(id)
@@ -517,7 +528,9 @@ export async function createProject(project: {
 // LEADERBOARD
 // ============================================================================
 
-export async function getLeaderboard(limit: number = 50): Promise<LeaderboardRow[]> {
+export async function getLeaderboard(
+  limit: number = 50,
+): Promise<LeaderboardRow[]> {
   const database = getDB()
   const result = await database.query<LeaderboardRow>(
     'SELECT * FROM leaderboard ORDER BY score DESC LIMIT ?',
@@ -526,7 +539,9 @@ export async function getLeaderboard(limit: number = 50): Promise<LeaderboardRow
   return result.rows.map((r) => LeaderboardRowSchema.parse(r))
 }
 
-export async function getLeaderboardEntry(address: string): Promise<LeaderboardRow | null> {
+export async function getLeaderboardEntry(
+  address: string,
+): Promise<LeaderboardRow | null> {
   const database = getDB()
   const result = await database.query<LeaderboardRow>(
     'SELECT * FROM leaderboard WHERE address = ?',
@@ -552,7 +567,8 @@ export async function updateLeaderboardScore(
   if (!existing) {
     const name = updates.name ?? `${address.slice(0, 6)}...${address.slice(-4)}`
     const avatar =
-      updates.avatar ?? `https://api.dicebear.com/7.x/identicon/svg?seed=${address}`
+      updates.avatar ??
+      `https://api.dicebear.com/7.x/identicon/svg?seed=${address}`
     const score = updates.scoreIncrement ?? 0
     const contributions = updates.contributionsIncrement ?? 0
     const bounties = updates.bountiesIncrement ?? 0
@@ -602,10 +618,10 @@ export async function updateLeaderboardScore(
       else if (updated.score >= 1000) tier = 'silver'
 
       if (tier !== updated.tier) {
-        await database.exec('UPDATE leaderboard SET tier = ? WHERE address = ?', [
-          tier,
-          address,
-        ])
+        await database.exec(
+          'UPDATE leaderboard SET tier = ? WHERE address = ?',
+          [tier, address],
+        )
       }
     }
   }
@@ -623,4 +639,3 @@ export async function isHealthy(): Promise<boolean> {
   const database = getDB()
   return database.isHealthy()
 }
-

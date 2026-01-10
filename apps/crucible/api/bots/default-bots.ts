@@ -203,7 +203,7 @@ export const DEFAULT_BOTS: DefaultBotConfig[] = [
  * Get default bots configured for a specific network
  */
 export function getDefaultBotsForNetwork(
-  network: 'localnet' | 'testnet' | 'mainnet'
+  network: 'localnet' | 'testnet' | 'mainnet',
 ): DefaultBotConfig[] {
   if (network === 'mainnet') {
     return DEFAULT_BOTS
@@ -223,9 +223,11 @@ export function getDefaultBotsForNetwork(
       .map((chainId) => MAINNET_TO_TESTNET[chainId])
       .filter((chainId): chainId is number => chainId !== undefined)
       .filter((chainId) => TESTNET_CHAIN_IDS.has(chainId))
-    
+
     const fundingMultiplier = 0.1 // 10% of mainnet funding for testnet
-    const newFunding = (parseFloat(bot.initialFunding) * fundingMultiplier).toString()
+    const newFunding = (
+      parseFloat(bot.initialFunding) * fundingMultiplier
+    ).toString()
 
     return {
       ...bot,
@@ -249,7 +251,7 @@ export function createTradingBotOptions(
   config: DefaultBotConfig,
   agentId: bigint,
   network: 'localnet' | 'testnet' | 'mainnet',
-  treasuryAddress?: Address
+  treasuryAddress?: Address,
 ): TradingBotOptions {
   // Map chain IDs to chain configs
   const chains: TradingBotChain[] = config.chains
@@ -266,4 +268,3 @@ export function createTradingBotOptions(
     treasuryAddress,
   }
 }
-

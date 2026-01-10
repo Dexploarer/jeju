@@ -16,7 +16,7 @@ test.describe('Network Wallet - Full Coverage', () => {
   test('should load homepage without critical errors', async ({ page }) => {
     // Just verify the page loads and basic HTML structure is present
     await expect(page).toHaveTitle(/Wallet/i)
-    
+
     // Check HTML response was valid
     const html = await page.content()
     expect(html).toContain('<!DOCTYPE html>')
@@ -86,6 +86,8 @@ test.describe('Network Wallet - Error States', () => {
     await page.goto('/nonexistent-page-12345')
     // Either shows 404 or redirects home - both are valid
     const url = page.url()
-    expect(url.includes('nonexistent') || url === baseURL || url === `${baseURL}/`).toBe(true)
+    expect(
+      url.includes('nonexistent') || url === baseURL || url === `${baseURL}/`,
+    ).toBe(true)
   })
 })

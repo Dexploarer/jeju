@@ -28,4 +28,3 @@ export const Preferences = {
 }
 
 export default { Preferences }
-
