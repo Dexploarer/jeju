@@ -6,6 +6,9 @@ import type { Address } from 'viem'
  * Importing them from `@jejunetwork/shared` pulled a second `elysia`
  * type graph into docs typechecking, triggering `AnyElysia` private-type
  * incompatibility.
+ *
+ * Keep these definitions intentionally in sync with
+ * `packages/shared/src/x402.ts` when protocol shapes change.
  */
 export type X402Network =
   | 'sepolia'
