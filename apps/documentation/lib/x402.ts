@@ -1,6 +1,12 @@
 import { ZERO_ADDRESS } from '@jejunetwork/types'
 import type { Address } from 'viem'
 
+/**
+ * Intentionally keep these payment protocol types local to documentation.
+ * Importing them from `@jejunetwork/shared` pulled a second `elysia`
+ * type graph into docs typechecking, triggering `AnyElysia` private-type
+ * incompatibility.
+ */
 export type X402Network =
   | 'sepolia'
   | 'ethereum'
