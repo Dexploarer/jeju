@@ -178,6 +178,28 @@ function validateDocPath(pagePath: string): string {
   return normalized
 }
 
+function getClientIp(
+  request: Request,
+  server?: {
+    requestIP?: (
+      request: Request,
+    ) => string | { address?: string | null } | null,
+  } | null,
+) {
+  const forwarded = request.headers.get('x-forwarded-for')
+  if (forwarded) {
+    return forwarded.split(',')[0]?.trim() ?? 'unknown'
+  }
+
+  const requestIp = server?.requestIP?.(request)
+  if (typeof requestIp === 'string') return requestIp
+  if (requestIp && typeof requestIp === 'object' && 'address' in requestIp) {
+    return requestIp.address ?? 'unknown'
+  }
+
+  return 'unknown'
+}
+
 async function executeSkill(
   skillId: string,
   params: Record<string, string>,
@@ -231,9 +253,7 @@ export const app = new Elysia()
     return new Response(null, { status: 204 })
   })
   .derive(({ request, server }) => {
-    const forwarded = request.headers.get('x-forwarded-for')
-    const clientIp =
-      forwarded || server?.requestIP(request)?.address || 'unknown'
+    const clientIp = getClientIp(request, server)
     return { clientIp }
   })
   .onBeforeHandle(async ({ clientIp, set }) => {
