@@ -1,8 +1,33 @@
-import type { PaymentRequirements, X402Network } from '@jejunetwork/shared'
 import { ZERO_ADDRESS } from '@jejunetwork/types'
 import type { Address } from 'viem'
 
-export type { PaymentRequirements }
+export type X402Network =
+  | 'sepolia'
+  | 'ethereum'
+  | 'jeju'
+  | 'jeju-testnet'
+  | 'base'
+  | 'base-sepolia'
+
+export interface PaymentScheme {
+  scheme: 'exact' | 'upto'
+  network: X402Network
+  maxAmountRequired: string
+  resource: string
+  description: string
+  payTo: Address
+  asset: Address
+  maxTimeoutSeconds: number
+  mimeType: string
+  outputSchema: string | null
+  extra?: Record<string, unknown>
+}
+
+export interface PaymentRequirements {
+  x402Version: number
+  error: string
+  accepts: PaymentScheme[]
+}
 
 export const parseEther = (value: string): bigint => {
   const [whole, decimal = ''] = value.split('.')
